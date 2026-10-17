@@ -812,7 +812,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
         repo = self.temp_dir / "review repo"
         repo.mkdir()
-        subprocess.run(["git", "init", "--quiet", str(repo)], check=True, capture_output=True)
+
+        def git(*args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
+
+        git("init", "--quiet", str(repo))
         task = "task.name-1"
         task_file = repo / f".orchestration/tasks/{task}.md"
         task_file.parent.mkdir(parents=True)
@@ -822,27 +826,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         script.parent.mkdir(parents=True)
         script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
         script.chmod(0o755)
-        subprocess.run(
-            ["git", "add", "scripts/orchestrator/local-review.sh"], cwd=repo, check=True, capture_output=True
-        )
-        subprocess.run(
-            [
-                "git",
-                "-c",
-                "user.name=Wrapper Test",
-                "-c",
-                "user.email=wrapper@example.invalid",
-                "-c",
-                "commit.gpgsign=false",
-                "commit",
-                "--quiet",
-                "-m",
-                "Track the review stub",
-            ],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-        )
+        git("add", "scripts/orchestrator/local-review.sh")
+        for key, value in (("user.name", "Wrapper Test"), ("user.email", "wrapper@example.invalid")):
+            git("config", key, value)
+        git("-c", "commit.gpgsign=false", "commit", "-qm", "Track the review stub")
         stub_bin = repo / "bin"
         stub_bin.mkdir()
         decoy = stub_bin / "local-review.sh"
@@ -882,12 +869,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(2, result.returncode, result.stderr)
                 self.assertFalse(record.exists())
         linked = self.temp_dir / "linked worktree"
-        subprocess.run(
-            ["git", "worktree", "add", "--quiet", "--detach", str(linked)],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-        )
+        git("worktree", "add", "--quiet", "--detach", str(linked))
         linked_task = linked / task_file.relative_to(repo)
         linked_task.parent.mkdir(parents=True)
         linked_task.touch()
@@ -902,18 +884,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             with self.subTest(state=state):
                 record.unlink(missing_ok=True)
                 if state == "untracked script":
-                    subprocess.run(["git", "rm", "--cached", str(script)], cwd=repo, check=True, capture_output=True)
+                    git("rm", "--cached", str(script))
                 elif state == "modified script":
-                    subprocess.run(["git", "reset", "--quiet", "HEAD", "--", str(script)], cwd=repo, check=True)
+                    git("reset", "--quiet", "HEAD", "--", str(script))
                     script.write_text(script.read_text() + "# changed\n")
                 elif state == "staged script":
-                    subprocess.run(["git", "add", str(script)], cwd=repo, check=True)
+                    git("add", str(script))
                 elif state in ("assume-unchanged script", "skip-worktree script"):
-                    subprocess.run(["git", "update-index", "--no-assume-unchanged", str(script)], cwd=repo, check=True)
-                    subprocess.run(
-                        ["git", "restore", "--source=HEAD", "--staged", "--worktree", str(script)], cwd=repo, check=True
-                    )
-                    subprocess.run(["git", "update-index", "--" + state.split()[0], str(script)], cwd=repo, check=True)
+                    git("update-index", "--no-assume-unchanged", str(script))
+                    git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
+                    git("update-index", "--" + state.split()[0], str(script))
                     script.write_text(script.read_text() + "# hidden change\n")
                 result = subprocess.run(
                     [str(wrapper), task, "a" * 40],
@@ -928,7 +908,50 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 )
                 self.assertFalse(record.exists())
         linked_task.unlink()
-        subprocess.run(["git", "worktree", "remove", str(linked)], cwd=repo, check=True, capture_output=True)
+        git("worktree", "remove", str(linked))
+        git("update-index", "--no-skip-worktree", str(script))
+        git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
+        helper = self.temp_dir / "git-helper"
+        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\ncat\n')
+        helper.chmod(0o755)
+        helper_record = repo / "git-helper-called"
+        env["HELPER_RECORD"] = str(helper_record)
+        for key in ("core.fsmonitor", "filter.reviewguard.clean"):
+            with self.subTest(git_helper=key):
+                helper_record.unlink(missing_ok=True)
+                git("config", key, str(helper))
+                if key.startswith("filter."):
+                    (repo / ".git/info/attributes").write_text(
+                        "scripts/orchestrator/local-review.sh filter=reviewguard\n"
+                    )
+                    os.utime(script, (0, 0))
+                result = subprocess.run(
+                    [str(wrapper), task, "a" * 40], cwd=nested, env=env, capture_output=True, check=False
+                )
+                git("config", "--unset", key)
+                self.assertEqual(23, result.returncode, result.stderr)
+                self.assertFalse(helper_record.exists(), key)
+        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\nexit 1\n')
+        for key, value in (
+            ("extensions.partialClone", "origin"),
+            ("remote.origin.promisor", "true"),
+            ("remote.origin.url", str(self.temp_dir)),
+            ("remote.origin.uploadpack", str(helper)),
+        ):
+            git("config", key, value)
+        blob = git("rev-parse", "HEAD:scripts/orchestrator/local-review.sh").stdout.strip()
+        (repo / ".git/objects" / blob[:2] / blob[2:]).unlink()
+        record.unlink()
+        result = subprocess.run(
+            [str(wrapper), task, "a" * 40],
+            cwd=nested,
+            env=env | {"GIT_ALLOW_PROTOCOL": "file"},
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertFalse(record.exists())
+        self.assertFalse(helper_record.exists())
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()

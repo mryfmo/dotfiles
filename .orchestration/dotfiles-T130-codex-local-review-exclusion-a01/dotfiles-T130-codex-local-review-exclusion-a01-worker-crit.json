@@ -63,5 +63,37 @@
       "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
     },
     "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4"
+  },
+  {
+    "id": "T130-local-review-Bot4303419130-git-helpers-P1",
+    "body": "First-head Bot P1 fsmonitor callback and independent pre-push P1 lazy promisor fetch could run repository-configured helpers before trust. Callback cases RED2 and promisor case RED1 reproduced marker execution. Fixed in the one worker Bot fix round: all guard Git calls disable pager/fsmonitor, cached index diff disables external diff/textconv, raw HEAD/disk cmp retained, command-local empty protocol whitelist forbids fetch transports even with hostile caller file allowance. Final unit/independent marker probes pass without helper execution; full212current-frozen tests green. Current exact7hash approval is separate below.",
+    "scope": "file",
+    "path": "home/dot_local/bin/common/executable_codex-local-review",
+    "resolved": true
+  },
+  {
+    "id": "T130-local-review-filter-evidence-correction",
+    "body": "Earlier independent clean-filter probe combined two update-index bit-clear actions and did not independently establish unflagged filter behavior. That isolated-filter claim is withdrawn; historical reports retained. Corrected probe clears flags separately and asserts H before every state, then proves clean-filter diff equality with distinct raw bytes and wrapper refusal. Separate unit marker cases prove the wrapper never executes fsmonitor/clean-filter callbacks. Parent read initial incorrect and final corrected reports fully.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T130-local-review-Bot-fix-round1-source-approval",
+    "body": "Independent frozen-source security re-review approves all7current hashes after fsmonitor/filter/promisor controls. Exact final quoted-empty wrapper method and local-only missing-blob probe pass, corrected flag/filter probe passes. Parent read complete incorrect/final reports and all8resolved evidence records. Full current212tests, final exact7source validator0, static/render/format checks and baseline-exact Ruff21/21; production55/80/test190changed/200. Source-phase approval only; new push/final CI/once-requested Bot re-review and orchestrator integration remain separate.",
+    "scope": "review",
+    "resolved": true,
+    "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+    "source_sha256": {
+      "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+      "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+      "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+      "tests/unit/test_generate_agent_configs.py": "f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0",
+      "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+      "home/dot_local/bin/common/executable_codex-local-review": "96940b96f50f9573089c9c3904facc5624bc9961256e0567e51375f451914714",
+      "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+    },
+    "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+    "prior_reviewed_head": "e06f36a1b98c7bcc42f055953a18cc4c537c370a",
+    "bot_fix_round": 1
   }
 ]

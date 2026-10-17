@@ -15870,3 +15870,5054 @@ $ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T130-codex-local-revi
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 (exit 0)
 ```
+
+## bot-fix-source-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-bot-fix-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "reviewed_old_head": "e06f36a1b98c7bcc42f055953a18cc4c537c370a",
+  "bot_fix_round": 1,
+  "bot_thread": 4303419130,
+  "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "4a846476257c012fe226b5e2846b27bb145432cddde83293dc92dd33d5158004",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "1ad4bf35921ae91d9a8920092977c3294a27fbf4b90a63638340f981cfaffa7a",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+  },
+  "production_changed": 55,
+  "test_added": 176,
+  "test_changed": 179,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n36\t0\thome/dot_local/bin/common/executable_codex-local-review\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n151\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## bot-fix-shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## bot-fix-shfmt
+
+```text
+$ shfmt -d home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Ruff baseline comparison
+
+```text
+$ uv run --offline --no-project /tmp/codex-T130-local-review-ruff-compare.py
+{
+  "baseline_diagnostics": 21,
+  "current_diagnostics": 21,
+  "introduced": [],
+  "removed": []
+}
+```
+
+### Full Ruff baseline output
+
+```json
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/tmp/codex-T130-lint-7bnq0_l7/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]```
+
+### Full Ruff current output
+
+```json
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 967
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 964
+          },
+          "location": {
+            "column": 17,
+            "row": 964
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 966
+          },
+          "location": {
+            "column": 17,
+            "row": 965
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 960
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 960,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1016
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1012
+          },
+          "location": {
+            "column": 13,
+            "row": 1012
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1014
+          },
+          "location": {
+            "column": 13,
+            "row": 1013
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1008
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1008,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1051
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1047
+          },
+          "location": {
+            "column": 13,
+            "row": 1047
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1049
+          },
+          "location": {
+            "column": 13,
+            "row": 1048
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1043
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1043,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1077
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1077
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1077,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1439
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1435
+          },
+          "location": {
+            "column": 13,
+            "row": 1435
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1437
+          },
+          "location": {
+            "column": 13,
+            "row": 1436
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1427
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1427,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1464
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1460
+          },
+          "location": {
+            "column": 13,
+            "row": 1460
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1462
+          },
+          "location": {
+            "column": 13,
+            "row": 1461
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1456
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1456,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1491
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1487
+          },
+          "location": {
+            "column": 13,
+            "row": 1487
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1489
+          },
+          "location": {
+            "column": 13,
+            "row": 1488
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1483
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1483,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]```
+
+## bot-fix-python-format
+
+```text
+$ uv run --offline --no-project --with ruff ruff format --check scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py
+4 files already formatted
+(exit 0)
+```
+
+## bot-fix-render-check
+
+```text
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+(exit 0)
+```
+
+## First Bot P1; one worker fix round active
+
+PR399 firsthead e06f36a1: code review5558705580 has one P1thread4303419130 (local core.fsmonitor helper runs before script trust); final firsthead security review completed with no finding. Both full review bodies/inline and summary read; no thread reply/resolve. Add fsmonitor and worktree clean-filter callback regressions, RED2 then GREEN1 1.850s, before source fix. The wrapper now suppresses pager/fsmonitor for all guard Git calls and uses cached HEAD/index diff with external diff/textconv disabled, then the existing raw HEAD/disk cmp; worktree filters are never called by that index comparison. This retains tracked and byte-identical contract. Temp-local author identity setup shortened only inside fixture; no user/shared config change. All original refusal/argv assertions retained. Initial helper-fixture flag-clear error preserved before final RED2. Source proof current55production/176testadded179changed/generated4, frozen7hashes under raw/bot-fix-r1/source-integrity.json. Full connected/static/validator and independent security extension pending. This is the sole authorized worker P0/P1 fix round; after new push request @codex review once and wait final CI/Bot from push. Surviving P0/P1 => RESULTopen IDs/bot_rounds2, no further fix.
+
+## bot-fix-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-_vu3b2xx/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 212 tests in 22.696s
+
+OK
+(exit 0)
+```
+
+## Bot fix round1 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all seven working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-z82jcdi5 (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## bot-fix-complete-source-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-bot-fix-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "reviewed_old_head": "e06f36a1b98c7bcc42f055953a18cc4c537c370a",
+  "bot_fix_round": 1,
+  "bot_thread": 4303419130,
+  "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "244dce815afee6d3b8cb3b33b42832f93182f0e9d699e7223ea2861c54ae6833",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+  },
+  "production_changed": 55,
+  "test_added": 187,
+  "test_changed": 190,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n36\t0\thome/dot_local/bin/common/executable_codex-local-review\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n162\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## bot-fix-helpers-red-final.log
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ...
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='core.fsmonitor') ... FAIL
+  test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='filter.reviewguard.clean') ... FAIL
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='core.fsmonitor')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 937, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertFalse(helper_record.exists(), key)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : core.fsmonitor
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) (git_helper='filter.reviewguard.clean')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 937, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertFalse(helper_record.exists(), key)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : filter.reviewguard.clean
+
+----------------------------------------------------------------------
+Ran 1 test in 2.206s
+
+FAILED (failures=2)
+(exit 1)
+```
+
+## bot-fix-helpers-green.log
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.850s
+
+OK
+(exit 0)
+```
+
+## bot-fix-promisor-unit-red.log
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... FAIL
+
+======================================================================
+FAIL: test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py", line 954, in test_codex_local_review_wrapper_only_execs_the_repository_local_review_script
+    self.assertFalse(helper_record.exists())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 2.482s
+
+FAILED (failures=1)
+(exit 1)
+```
+
+## bot-fix-all-helpers-green.log
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.097s
+
+OK
+(exit 0)
+```
+
+## Promisor path and fixture integrity
+
+Independent pre-push P1: locally configured promisor missingblob caused upload-pack helper execution before refusal. Required unitcase RED1 then GREEN1 2.097s after empty GIT_ALLOW_PROTOCOL scoped to each guard Git call; even caller file-whitelist is overridden. fsmonitor/filter callbacks RED2/GREEN retained. One temp-local Git fixture helper reuses16calls and every original wrapper assertion remains. Current cap55production/190testchanged. Initial fsmonitor-only source proof/report/validator are historical; fresh final7hash proof and fresh validation/re-review required. Earlier independent clean-filter evidence used a combined two-bit clearing command that can leave skip-worktree; corrected independent probes clear flags separately and verify no flags before filter case. New unit test also clears skip bit separately. Official Git docs: https://git-scm.com/docs/git/2.53.0.html GIT_ALLOW_PROTOCOL overrides existing protocol config with a whitelist; empty list permits none. Upstream v2.43.0 source was checked before choosing this control rather than a version-dependent no-lazy-fetch flag. No live transports or actual downstream Codex review used.
+
+## bot-fix-complete-shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+
+In home/dot_local/bin/common/executable_codex-local-review line 11:
+git() { GIT_ALLOW_PROTOCOL= command git --no-pager -c core.fsmonitor=false "$@"; }
+                           ^-- SC1007 (warning): Remove space after = if trying to assign a value (for empty string, use var='' ... ).
+
+For more information:
+  https://www.shellcheck.net/wiki/SC1007 -- Remove space after = if trying to...
+(exit 1)
+```
+
+## bot-fix-complete-shfmt
+
+```text
+$ shfmt -d home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## Ruff baseline comparison
+
+```text
+$ uv run --offline --no-project /tmp/codex-T130-local-review-ruff-compare.py
+{
+  "baseline_diagnostics": 21,
+  "current_diagnostics": 21,
+  "introduced": [],
+  "removed": []
+}
+```
+
+### Full Ruff baseline output
+
+```json
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 817
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 814
+          },
+          "location": {
+            "column": 17,
+            "row": 814
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 816
+          },
+          "location": {
+            "column": 17,
+            "row": 815
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 810
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 810,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 866
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 862
+          },
+          "location": {
+            "column": 13,
+            "row": 862
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 864
+          },
+          "location": {
+            "column": 13,
+            "row": 863
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 858
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 858,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 901
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 897
+          },
+          "location": {
+            "column": 13,
+            "row": 897
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 899
+          },
+          "location": {
+            "column": 13,
+            "row": 898
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 893
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 893,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 927
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 927
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 927,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1289
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1285
+          },
+          "location": {
+            "column": 13,
+            "row": 1285
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1287
+          },
+          "location": {
+            "column": 13,
+            "row": 1286
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1277
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1277,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1314
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1310
+          },
+          "location": {
+            "column": 13,
+            "row": 1310
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1312
+          },
+          "location": {
+            "column": 13,
+            "row": 1311
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1306
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1306,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1341
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1337
+          },
+          "location": {
+            "column": 13,
+            "row": 1337
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1339
+          },
+          "location": {
+            "column": 13,
+            "row": 1338
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1333
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1333,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1631
+    },
+    "filename": "/tmp/codex-T130-lint-5gts4kfo/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1631
+          },
+          "location": {
+            "column": 41,
+            "row": 1631
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1631
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1631,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]```
+
+### Full Ruff current output
+
+```json
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 904
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 904
+          },
+          "location": {
+            "column": 12,
+            "row": 904
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 904
+          },
+          "location": {
+            "column": 69,
+            "row": 904
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 904
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 904,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 968
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 965
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 967
+          },
+          "location": {
+            "column": 13,
+            "row": 966
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 961
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 961,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 45
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_claude_settings_merge.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 41
+          },
+          "location": {
+            "column": 13,
+            "row": 41
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 43
+          },
+          "location": {
+            "column": 13,
+            "row": 42
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 37
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 37,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "SIM117",
+    "end_location": {
+      "column": 95,
+      "row": 434
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 13,
+      "row": 433
+    },
+    "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+    "name": "multiple-with-statements",
+    "noqa_row": 433,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 624
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 615
+          },
+          "location": {
+            "column": 13,
+            "row": 615
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 617
+          },
+          "location": {
+            "column": 13,
+            "row": 616
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 611
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 611,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 656
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 652
+          },
+          "location": {
+            "column": 13,
+            "row": 652
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 654
+          },
+          "location": {
+            "column": 13,
+            "row": 653
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 648
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 648,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 14,
+      "row": 978
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 39,
+            "row": 975
+          },
+          "location": {
+            "column": 17,
+            "row": 975
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 17,
+            "row": 977
+          },
+          "location": {
+            "column": 17,
+            "row": 976
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 22,
+      "row": 971
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 971,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1027
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1023
+          },
+          "location": {
+            "column": 13,
+            "row": 1023
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1025
+          },
+          "location": {
+            "column": 13,
+            "row": 1024
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1019
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1019,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1062
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1058
+          },
+          "location": {
+            "column": 13,
+            "row": 1058
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1060
+          },
+          "location": {
+            "column": 13,
+            "row": 1059
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1054
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1054,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "S102",
+    "end_location": {
+      "column": 13,
+      "row": 1088
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 1088
+    },
+    "message": "Use of `exec` detected",
+    "name": "exec-builtin",
+    "noqa_row": 1088,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1450
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1446
+          },
+          "location": {
+            "column": 13,
+            "row": 1446
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1448
+          },
+          "location": {
+            "column": 13,
+            "row": 1447
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1438
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1438,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1475
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1471
+          },
+          "location": {
+            "column": 13,
+            "row": 1471
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1473
+          },
+          "location": {
+            "column": 13,
+            "row": 1472
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1467
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1467,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1502
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_generate_agent_configs.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1498
+          },
+          "location": {
+            "column": 13,
+            "row": 1498
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 1500
+          },
+          "location": {
+            "column": 13,
+            "row": 1499
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1494
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1494,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 1654
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 1654
+          },
+          "location": {
+            "column": 41,
+            "row": 1654
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 1654
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 1654,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]```
+
+## bot-fix-complete-python-format
+
+```text
+$ uv run --offline --no-project --with ruff ruff format --check scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py tests/unit/test_claude_settings_merge.py
+4 files already formatted
+(exit 0)
+```
+
+## bot-fix-complete-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-492h7kw4/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 212 tests in 21.713s
+
+OK
+(exit 0)
+```
+
+## bot-fix-quoted-shellcheck
+
+```text
+$ shellcheck home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## bot-fix-quoted-shfmt
+
+```text
+$ shfmt -d home/dot_local/bin/common/executable_codex-local-review
+(exit 0)
+```
+
+## bot-fix-quoted-source-integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml python /tmp/codex-T130-bot-fix-integrity.py
+{
+  "base": "a8a747af06b32ff1d0d1720467892f34d9465ae4",
+  "reviewed_old_head": "e06f36a1b98c7bcc42f055953a18cc4c537c370a",
+  "bot_fix_round": 1,
+  "bot_thread": 4303419130,
+  "task_sha256": "aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+    "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+    "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+    "tests/unit/test_generate_agent_configs.py": "f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0",
+    "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+    "home/dot_local/bin/common/executable_codex-local-review": "96940b96f50f9573089c9c3904facc5624bc9961256e0567e51375f451914714",
+    "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+  },
+  "production_changed": 55,
+  "test_added": 187,
+  "test_changed": 190,
+  "generated_excluded": 4,
+  "all_other_manifest_values_identical": true,
+  "numstat": "3\t1\thome/.chezmoitemplates/claude-settings-managed.json\n2\t0\thome/dot_agents/agent-config.yaml\n36\t0\thome/dot_local/bin/common/executable_codex-local-review\n10\t7\tscripts/validate-agent-assets.py\n1\t1\ttests/unit/test_claude_settings_merge.py\n162\t1\ttests/unit/test_generate_agent_configs.py\n24\t1\ttests/unit/test_validate_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Same Bot fix round: independent promisor path closed
+
+Independent second P1 before this fix round's push: missing HEAD blob in a local promisor fixture ran configured upload-pack helper before refusing. Unitcase RED1 then GREEN; native empty GIT_ALLOW_PROTOCOL whitelist scoped to guard Git calls now denies every transport, including hostile caller file whitelist; missing blobs fail locally, no upload-pack callback. This complements fsmonitor=false/no-pager/cached-no-external-diff/no-textconv/raw-byte controls. Current frozen wrapper96940b96/testf13e19f6 proof has cap55production/187added190changedtests/generated4; all other5source hashes unchanged. Explicit empty quotes fix SC1007 with identical environment value, shellcheck/shfmt0. Repeated full212 on final freeze and independent exact-hash extension pending; new approved-candidate snapshot required. Earlier fsmonitor-only and unquoted validators/proofs are historical, never current approval. Source in this round changes only allowed wrapper/test plus records; no push/final Bot review requested yet. Surviving P0/P1 on the next review will be escalated as bot_rounds2; no second worker fix.
+
+## bot-fix-final-frozen-connected-tests
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_validate_agent_assets tests.unit.test_claude_settings_merge -v
+test_a_declare_r_assignment_must_appear_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver) ... ok
+test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+test_asset_constant_must_be_assigned_exactly_once (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_sandbox_renders_per_os_from_the_manifest (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_command_hooks_render_after_permission_request_in_manifest_order (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_command_hooks_render_after_permission_request_in_manifest_order) ... ok
+test_codex_config_renders_permgate_permission_request (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_empty_or_missing_codex_command_hooks_render_no_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_empty_or_missing_codex_command_hooks_render_no_table) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_hook_trust_hash_reproduces_codex_current_hashes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_hook_trust_hash_reproduces_codex_current_hashes) ... ok
+test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb) ... ok
+test_managed_codex_path_includes_installed_common_bin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_orchestrator_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_orchestrator_kind) ... ok
+test_model_profiles_env_renders_worker_kind (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_env_selects_no_github_store (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_selects_no_github_store) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_orchestrator_kind_defaults_to_claude (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_orchestrator_kind_defaults_to_claude) ... ok
+test_plugin_versions_order_build_metadata_like_the_semver_crate (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_plugin_versions_order_build_metadata_like_the_semver_crate) ... ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_handle_table_headers_with_trailing_comments (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_handle_table_headers_with_trailing_comments) ... ok
+test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin) ... ok
+test_profile_modify_scripts_hash_the_plugin_version_codex_loads (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_hash_the_plugin_version_codex_loads) ... ok
+test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_header_like_lines_inside_multiline_strings) ... ok
+test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_replace_a_single_quoted_declared_entry (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_a_single_quoted_declared_entry) ... ok
+test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_dotted_keys_under_hooks_and_at_the_root) ... ok
+test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_declared_hook_trust_and_keep_undeclared) ... ok
+test_profile_modify_scripts_replace_inline_table_and_dotted_forms (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_replace_inline_table_and_dotted_forms) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_treat_equivalent_hook_state_spellings_as_one_table) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_project_map_reload_hook_accepts_only_cdp_target_ids (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_accepts_only_cdp_target_ids) ... ok
+test_project_map_reload_hook_acts_only_on_the_map_and_never_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_acts_only_on_the_map_and_never_fails) ... ok
+test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) ... ok
+test_project_map_reload_hook_guards_against_a_tab_navigating_away (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) ... ok
+test_project_map_reload_hook_matches_percent_encoded_tilde (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_matches_percent_encoded_tilde) ... ok
+test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open) ... ok
+test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_opens_the_pane_when_no_browser_shows_the_map) ... ok
+test_project_map_reload_hook_pins_the_bound_tab_when_it_closes (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_pins_the_bound_tab_when_it_closes) ... ok
+test_project_map_reload_hook_rejects_percent_encoded_path_separators (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_rejects_percent_encoded_path_separators) ... ok
+test_project_map_reload_hook_renders_into_post_tool_use (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_renders_into_post_tool_use) ... ok
+test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_resolves_relative_paths_from_physical_cwd) ... ok
+test_project_map_reload_hook_selects_the_event_map_among_two_repositories (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_selects_the_event_map_among_two_repositories) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_reaches_the_fallback_pin_and_its_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_reaches_the_fallback_pin_and_its_checksums) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_orchestrator_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_orchestrator_kind_fails) ... ok
+test_unknown_worker_kind_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-l0y5jhcb/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_current_only_key_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path) ... ok
+test_managed_post_tool_use_replaces_stale_format_only_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_post_tool_use_replaces_stale_format_only_entry) ... ok
+test_managed_session_start_replacement_keeps_hook_order (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+test_trailing_newline (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+
+----------------------------------------------------------------------
+Ran 212 tests in 23.144s
+
+OK
+(exit 0)
+```
+
+## Bot fix round1 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all seven working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-tfsp87fo (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Bot fix round1 clean candidate make validate-agent-assets
+
+```text
+Clean index export with all seven working source/test files copied over and SHA256-bound; unrelated untracked historical logs are absent.
+$ make validate-agent-assets
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T130-candidate-si4cqrb5 (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Bot fix round1 security-review-initial.md — complete report
+
+# Independent security review: PR399 Bot fix round 1
+
+This read-only source review covers the frozen seven-source candidate against base a8a747af06b32ff1d0d1720467892f34d9465ae4 and previous PR head e06f36a1b98c7bcc42f055953a18cc4c537c370a. Full Amendment 3 task read; SHA256 aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a verified. This is worker source evidence, not final CI/Bot/audit/acceptance. No source edit, real downstream review, Bats, browser, install, live apply, or GitHub action occurred. Temporary probes use only harmless scripts in /tmp and local Git repositories.
+
+## Finding
+
+P1, high confidence — home/dot_local/bin/common/executable_codex-local-review:28 (private Git helper at line 11): the pre-trust raw-blob check still permits Git lazy-fetch execution. In a primary repository configured with a promisor remote, a missing HEAD script blob makes git cat-file automatically fetch from that remote, executing its repository-configured remote.origin.uploadpack helper outside the sandbox before the trust check has succeeded. Disabling fsmonitor and worktree filters does not disable this path. The independent reproduction below used a local-only file remote, a harmless upload-pack script that writes a marker then exits, and GIT_ALLOW_PROTOCOL=file. The wrapper returned 2 but the helper marker was already present. No actual network transport or downstream review ran. Missing partial-clone objects must cause a local refusal without implicit fetch/helper execution; disable that mechanism for every pre-exec Git operation and add a regression proving no helper marker.
+
+This is the same class of trust-boundary failure as Bot thread 4303419130, through a remaining execution-capable Git path. The task's closed wrapper/trust-boundary row is not fully closed by the current test selector, which covers fsmonitor and clean filters but not lazy fetch. There is no source approval for this candidate.
+
+## Confirmed controls and tests
+
+The new private git function applies --no-pager and core.fsmonitor=false to all wrapper Git commands. The index check uses --cached --quiet --no-ext-diff --no-textconv, avoiding worktree clean-filter conversion, while the raw HEAD/disk comparison retains byte-level refusal independently of index flags. Full lowercase head validation, primary-root restriction, tracked script, quoted literal argv, root cwd, PATH script decoy refusal, exit propagation, and exact both-OS exclusion lists remain unchanged. Downstream local-review.sh remains unchanged. New fsmonitor/clean-filter unit cases pass, as do all four focused methods (2.027 seconds); tests execute only temporary stubs. Parent broader validation was pending and is not claimed passed here.
+
+Evidence correction: the prior independent probe cleared assume-unchanged and skip-worktree in one update-index invocation. That is not reliable proof that both bits were cleared, so its old clean-filter state is withdrawn as isolated filter evidence. This review uses separate calls and asserts git ls-files -v reports `H` before every case. The corrected filter case has ordinary Git diff equality (exit 0), different raw bytes, wrapper exit 2, and no downstream execution marker. Its diagnostic git diff intentionally invokes the harmless sed clean filter; it is not evidence that the wrapper invokes it. The new unit callback case separately proves the wrapper does not call the clean-filter marker helper when the tracked script is valid.
+
+Source cap independently confirmed from numstat: production 55/80, tests 176 additions / 179 changed lines of 200, generated 4 excluded. Only the wrapper and generator test differ from the previous reviewed PR source; the other five full-file hashes are unchanged. All seven final source hashes and task SHA match the frozen proof after the tests.
+
+## Exact source binding
+
+- `home/dot_agents/agent-config.yaml`: `45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af`
+- `home/.chezmoitemplates/claude-settings-managed.json`: `5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d`
+- `scripts/validate-agent-assets.py`: `f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72`
+- `tests/unit/test_generate_agent_configs.py`: `4a846476257c012fe226b5e2846b27bb145432cddde83293dc92dd33d5158004`
+- `tests/unit/test_validate_agent_assets.py`: `503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270`
+- `home/dot_local/bin/common/executable_codex-local-review`: `1ad4bf35921ae91d9a8920092977c3294a27fbf4b90a63638340f981cfaffa7a`
+- `tests/unit/test_claude_settings_merge.py`: `9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a`
+
+## Source inspection commands and full output
+
+```text
+$ git rev-parse HEAD
+e06f36a1b98c7bcc42f055953a18cc4c537c370a
+exit=0
+
+$ git diff HEAD -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py
+diff --git a/home/dot_local/bin/common/executable_codex-local-review b/home/dot_local/bin/common/executable_codex-local-review
+index e351169a..78f7a5af 100755
+--- a/home/dot_local/bin/common/executable_codex-local-review
++++ b/home/dot_local/bin/common/executable_codex-local-review
+@@ -1,13 +1,15 @@
+ #!/usr/bin/env bash
+ # @file codex-local-review
+ # @brief Run the primary checkout's committed local review after validating its task and head.
+-# @description Compare HEAD's blob directly because Git index flags can hide local changes.
++# @description Check the index and raw HEAD bytes without fsmonitor or worktree filters.
+ # @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
+ # @arg $2 string Head containing exactly 40 lowercase hexadecimal digits.
+ # @arg $3 string Additional review-script arguments, forwarded unchanged.
+ # @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or an uncommitted review script.
+ set -euo pipefail
+
++git() { command git --no-pager -c core.fsmonitor=false "$@"; }
++
+ [[ ${1:-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${2:-} =~ ^[0-9a-f]{40}$ ]] || {
+     printf 'usage: codex-local-review <task> <40 lowercase hex head> [args...]\n' >&2
+     exit 2
+@@ -22,7 +24,7 @@ cd -- "$root"
+     exit 2
+ }
+ if ! git ls-files --error-unmatch -- scripts/orchestrator/local-review.sh >/dev/null 2>&1 ||
+-	! git diff --quiet HEAD -- scripts/orchestrator/local-review.sh ||
++	! git diff --cached --quiet --no-ext-diff --no-textconv HEAD -- scripts/orchestrator/local-review.sh ||
+     ! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+     printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+     exit 2
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index cbf07600..56a91b3d 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -825,20 +825,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         subprocess.run(
+             ["git", "add", "scripts/orchestrator/local-review.sh"], cwd=repo, check=True, capture_output=True
+         )
++        for key, value in (("user.name", "Wrapper Test"), ("user.email", "wrapper@example.invalid")):
++            subprocess.run(["git", "config", key, value], cwd=repo, check=True)
+         subprocess.run(
+-            [
+-                "git",
+-                "-c",
+-                "user.name=Wrapper Test",
+-                "-c",
+-                "user.email=wrapper@example.invalid",
+-                "-c",
+-                "commit.gpgsign=false",
+-                "commit",
+-                "--quiet",
+-                "-m",
+-                "Track the review stub",
+-            ],
++            ["git", "-c", "commit.gpgsign=false", "commit", "-qm", "Track the review stub"],
+             cwd=repo,
+             check=True,
+             capture_output=True,
+@@ -929,6 +919,28 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 self.assertFalse(record.exists())
+         linked_task.unlink()
+         subprocess.run(["git", "worktree", "remove", str(linked)], cwd=repo, check=True, capture_output=True)
++        subprocess.run(["git", "update-index", "--no-skip-worktree", str(script)], cwd=repo, check=True)
++        subprocess.run(["git", "restore", "--source=HEAD", "--staged", "--worktree", str(script)], cwd=repo, check=True)
++        helper = self.temp_dir / "git-helper"
++        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\ncat\n')
++        helper.chmod(0o755)
++        helper_record = repo / "git-helper-called"
++        env["HELPER_RECORD"] = str(helper_record)
++        for key in ("core.fsmonitor", "filter.reviewguard.clean"):
++            with self.subTest(git_helper=key):
++                helper_record.unlink(missing_ok=True)
++                subprocess.run(["git", "config", key, str(helper)], cwd=repo, check=True)
++                if key.startswith("filter."):
++                    (repo / ".git/info/attributes").write_text(
++                        "scripts/orchestrator/local-review.sh filter=reviewguard\n"
++                    )
++                    os.utime(script, (0, 0))
++                result = subprocess.run(
++                    [str(wrapper), task, "a" * 40], cwd=nested, env=env, capture_output=True, check=False
++                )
++                subprocess.run(["git", "config", "--unset", key], cwd=repo, check=True)
++                self.assertEqual(23, result.returncode, result.stderr)
++                self.assertFalse(helper_record.exists(), key)
+
+     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
+         manifest = sample_manifest()
+exit=0
+
+$ git diff --numstat a8a747af06b32ff1d0d1720467892f34d9465ae4 -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py
+3	1	home/.chezmoitemplates/claude-settings-managed.json
+2	0	home/dot_agents/agent-config.yaml
+36	0	home/dot_local/bin/common/executable_codex-local-review
+10	7	scripts/validate-agent-assets.py
+1	1	tests/unit/test_claude_settings_merge.py
+151	1	tests/unit/test_generate_agent_configs.py
+24	1	tests/unit/test_validate_agent_assets.py
+exit=0
+
+$ git diff a8a747af06b32ff1d0d1720467892f34d9465ae4 -- scripts/orchestrator/local-review.sh
+exit=0
+Task and all seven current source hashes match frozen proof.
+{
+  "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+  "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+  "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+  "tests/unit/test_generate_agent_configs.py": "4a846476257c012fe226b5e2846b27bb145432cddde83293dc92dd33d5158004",
+  "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+  "home/dot_local/bin/common/executable_codex-local-review": "1ad4bf35921ae91d9a8920092977c3294a27fbf4b90a63638340f981cfaffa7a",
+  "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+}
+```
+
+The full task and wrapper were read using cat; wrapper test and connected expectation were read with sed -n 760,955p tests/unit/test_generate_agent_configs.py. The source diff above includes the complete current Bot fix.
+
+## Focused test command and full output
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging -v > /tmp/codex-T130-local-review-r1-focused.log 2>&1
+```
+Exit 0.
+
+```text
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.027s
+
+OK
+```
+
+## Corrected index flag / clean-filter probe
+
+Exact probe source (written only to /tmp):
+
+```python
+from pathlib import Path
+import hashlib, json, os, subprocess, tempfile
+wrapper = Path('home/dot_local/bin/common/executable_codex-local-review').resolve()
+with tempfile.TemporaryDirectory(prefix='codex-local-review-fixed-', dir='/tmp') as directory:
+    repo = Path(directory)
+    def git(*args):
+        return subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', *args], cwd=repo, capture_output=True, text=True, check=True)
+    git('init', '--quiet')
+    script = repo / 'scripts/orchestrator/local-review.sh'
+    script.parent.mkdir(parents=True)
+    original = '#!/bin/sh\nprintf committed > "$RECORD_PATH"\n'
+    modified = '#!/bin/sh\nprintf UNCOMMITTED > "$RECORD_PATH"\n'
+    script.write_text(original)
+    script.chmod(0o755)
+    git('add', 'scripts/orchestrator/local-review.sh')
+    git('-c', 'user.name=Security Test', '-c', 'user.email=security@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'committed stub')
+    task = repo / '.orchestration/tasks/task-1.md'
+    task.parent.mkdir(parents=True)
+    task.touch()
+    record = repo / 'executed'
+    for state in ('committed', 'modified', '--assume-unchanged', '--skip-worktree', 'clean-filter'):
+        git('update-index', '--no-assume-unchanged', 'scripts/orchestrator/local-review.sh')
+        git('update-index', '--no-skip-worktree', 'scripts/orchestrator/local-review.sh')
+        flags = git('ls-files', '-v', '--', 'scripts/orchestrator/local-review.sh').stdout.strip()
+        assert flags.startswith('H '), flags
+        script.write_text(original)
+        if state.startswith('--'):
+            git('update-index', state, 'scripts/orchestrator/local-review.sh')
+        elif state == 'clean-filter':
+            (repo / '.git/info/attributes').write_text('scripts/orchestrator/local-review.sh filter=reviewfixture\n')
+            git('config', 'filter.reviewfixture.clean', 'sed s/UNCOMMITTED/committed/')
+        if state != 'committed':
+            script.write_text(modified)
+        record.unlink(missing_ok=True)
+        diff = subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', 'scripts/orchestrator/local-review.sh'], cwd=repo)
+        result = subprocess.run([str(wrapper), 'task-1', 'a' * 40, '392'], cwd=repo, env=os.environ | {'RECORD_PATH': str(record)}, capture_output=True, text=True)
+        row = {'initial_index_flags': flags, 'state': state, 'diff_quiet_exit': diff.returncode, 'wrapper_exit': result.returncode, 'stderr': result.stderr.strip(), 'executed_marker': record.read_text() if record.exists() else None, 'committed_sha256': hashlib.sha256(original.encode()).hexdigest(), 'disk_sha256': hashlib.sha256(script.read_bytes()).hexdigest()}
+        print(json.dumps(row))
+        if state == 'committed':
+            assert result.returncode == 0 and record.read_text() == 'committed'
+        else:
+            assert result.returncode == 2 and not record.exists()
+            assert 'tracked and unchanged' in result.stderr
+        if state.startswith('--') or state == 'clean-filter':
+            assert diff.returncode == 0
+
+```
+
+Command:
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-T130-local-review-r1-corrected-filter-probe.py > /tmp/codex-T130-local-review-r1-corrected-filter-probe.log 2>&1
+```
+Probe process exit 0. Full output:
+
+```text
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "committed", "diff_quiet_exit": 0, "wrapper_exit": 0, "stderr": "", "executed_marker": "committed", "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "modified", "diff_quiet_exit": 1, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "--assume-unchanged", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "--skip-worktree", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "clean-filter", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+```
+
+## Local-only missing-blob execution reproduction
+
+Exact probe source (written only to /tmp):
+
+```python
+from pathlib import Path
+import tempfile,subprocess,os,json
+wrapper=Path('home/dot_local/bin/common/executable_codex-local-review').resolve()
+with tempfile.TemporaryDirectory(prefix='review-promisor-',dir='/tmp') as d:
+ p=Path(d); repo=p/'repo'; repo.mkdir(); remote=p/'remote'; remote.mkdir()
+ env=os.environ | {'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_ALLOW_PROTOCOL':'file','HELPER_RECORD':str(p/'helper-marker')}
+ def git(*args):
+  return subprocess.check_output(['git','-c','core.hooksPath=/dev/null',*args],cwd=repo,env=env,stderr=subprocess.STDOUT,text=True)
+ git('init','-q'); git('config','user.name','Test'); git('config','user.email','test@example.invalid'); git('config','commit.gpgsign','false')
+ script=repo/'scripts/orchestrator/local-review.sh'; script.parent.mkdir(parents=True); script.write_text('#!/bin/sh\nexit 23\n'); script.chmod(0o755)
+ task=repo/'.orchestration/tasks/test.md'; task.parent.mkdir(parents=True); task.touch()
+ git('add','.'); git('commit','-qm','stub')
+ blob=git('rev-parse','HEAD:scripts/orchestrator/local-review.sh').strip()
+ helper=p/'fake-upload-pack'; helper.write_text('#!/bin/sh\nprintf helper > "$HELPER_RECORD"\nexit 1\n'); helper.chmod(0o755)
+ git('config','extensions.partialClone','origin'); git('config','remote.origin.promisor','true'); git('config','remote.origin.url',str(remote)); git('config','remote.origin.uploadpack',str(helper)); git('config','protocol.file.allow','always')
+ (repo/'.git/objects'/blob[:2]/blob[2:]).unlink()
+ r=subprocess.run([str(wrapper),'test','a'*40],cwd=repo,env=env,text=True,capture_output=True,check=False)
+ print(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'pretrust_helper_called':(p/'helper-marker').exists()}))
+
+```
+
+Command:
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-local-review-promisor-probe.py > /tmp/codex-local-review-promisor-probe.log 2>&1
+```
+Probe process exit 0. Full output:
+
+```text
+{"exit": 2, "stdout": "", "stderr": "fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nfatal: git cat-file HEAD:scripts/orchestrator/local-review.sh: bad file\ncodex-local-review: local-review.sh must be tracked and unchanged against HEAD\n", "pretrust_helper_called": true}
+```
+
+Verdict: incorrect
+
+
+## Bot fix round1 security-review-final.md — complete report
+
+# Independent security re-review — PR399 first Bot fix round, final candidate
+
+## Binding and disposition
+
+Task: dotfiles-T130-codex-local-review-exclusion-a01, Amendment 3. Full task read; unchanged task SHA256 aafd30b243bbbde318dd730d35e173100b86176facf88dde48812f0432b10a8a independently verified. Base a8a747af06b32ff1d0d1720467892f34d9465ae4; previous PR head e06f36a1b98c7bcc42f055953a18cc4c537c370a. Source review is bound to the exact seven frozen hashes below, independently recomputed after the final quoted-empty update. It does not approve final CI, Bot feedback, task audit, merge, or acceptance.
+
+No remaining actionable P0–P3 findings. Explicit source approval: the final candidate closes both the Bot's fsmonitor P1 and this reviewer's lazy-fetch P1 while retaining the required tracked, primary-checkout, raw-byte, argument, and sandbox controls. The initial incorrect review is preserved byte-for-byte as security-review-initial.md; security-review.md remains historical. Neither historical findings nor earlier snapshot results are presented as approval of this candidate.
+
+- `home/dot_agents/agent-config.yaml`: `45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af`
+- `home/.chezmoitemplates/claude-settings-managed.json`: `5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d`
+- `scripts/validate-agent-assets.py`: `f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72`
+- `tests/unit/test_generate_agent_configs.py`: `f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0`
+- `tests/unit/test_validate_agent_assets.py`: `503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270`
+- `home/dot_local/bin/common/executable_codex-local-review`: `96940b96f50f9573089c9c3904facc5624bc9961256e0567e51375f451914714`
+- `tests/unit/test_claude_settings_merge.py`: `9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a`
+
+## Security reasoning and regression assessment
+
+Every pre-exec Git operation runs through a private function with command-local `GIT_ALLOW_PROTOCOL=''`, `--no-pager`, and `-c core.fsmonitor=false`. This prevents the reproduced repository-configured fsmonitor callback and denies transports used by implicit object fetches, including when the caller supplies GIT_ALLOW_PROTOCOL=file and repository protocol.file.allow=always. The independent local-only missing-blob probe now returns exit 2 with transport-not-allowed diagnostics and no helper marker; the previous candidate wrote that marker before returning 2. The test also verifies refusal without downstream execution. This closes the concrete missing-object execution path rather than merely detecting it afterwards.
+
+The index comparison is --cached --quiet --no-ext-diff --no-textconv, so it does not process worktree clean filters or external diff/textconv helpers. The separate cat-file raw HEAD blob comparison still detects changed disk bytes when assume-unchanged, skip-worktree, or a clean filter causes ordinary Git diff to report equality. Failed blob access stays a refusal under pipefail. The fixed unit test checks both fsmonitor and clean-filter callbacks with marker helpers and a deliberately old file mtime, then checks a missing promisor blob under hostile incoming protocol allowance.
+
+All existing wrapper validation remains: restricted task ID; 40 lowercase hex head; existing task file; primary repository root; tracked and HEAD-matching index entry; raw HEAD/disk equality; quoted original arguments; cwd set to root; owned root script rather than PATH decoy; exact downstream exit status. The test refactor only consolidates temporary-repository Git subprocess calls and retains those assertions, including literal spaces, dollar substitution text, semicolons, newline arguments, linked-worktree and changed-file refusals. Downstream local-review.sh is unchanged and was never invoked. The command-local protocol setting does not alter the global configuration or the downstream invocation's environment policy. No broad codex exclusion or allow rule is added; exact Darwin/Linux exclusion rendering and actual modifier runtime/env/idempotence assertions remain intact.
+
+The corrected independent filter probe clears assume-unchanged and skip-worktree with separate update-index calls and asserts `git ls-files -v` starts with H before each case. It confirms raw mismatch refusal in all three diff-equal cases. The old combined-clear probe is not relied on as isolated filter evidence. Its ordinary diagnostic git diff intentionally invokes only a harmless sed filter; separate unit marker cases establish that the wrapper itself does not invoke the filter.
+
+Four focused methods passed in 2.871 seconds on the equivalent unquoted-empty version. The only subsequent change was shell quoting the empty value, preserving Bash semantics; the full wrapper method (all helper, refusal and forwarding cases) and independent promisor probe were repeated on the exact final quoted source: one method passed in 1.953 seconds, missing blob refused with helper marker false. The corrected five-state flag/filter probe also passed before this quoting-only change. No assertions were removed. Final caps are production 55/80, tests 187 added / 190 changed of 200, generated four excluded. Other five source hashes match the prior approved rebase.
+
+Review boundaries: all probes used temporary files and harmless stubs; no live downstream review, local Bats, browser, package installer, live apply, or external mutation. Parent broader checks and final clean snapshot are separate pending evidence, not claimed passed here. The task's existing primary-checkout/committed-code trust premise remains; this review does not claim authentication of arbitrary repository provenance or protection against concurrent hostile writers.
+
+## Exact source checks and outputs
+
+Python hashlib.sha256 over pathlib.read_bytes independently matched each proof entry and the task hash. The final inspected source diff and numstat follow; all subprocess commands exited zero. The earlier task read and callback fixture inspection used cat task.md, cat executable_codex-local-review, and sed -n 802,970p tests/unit/test_generate_agent_configs.py.
+
+```text
+$ git diff e06f36a1b98c7bcc42f055953a18cc4c537c370a -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py
+diff --git a/home/dot_local/bin/common/executable_codex-local-review b/home/dot_local/bin/common/executable_codex-local-review
+index e351169a..aa3dd50d 100755
+--- a/home/dot_local/bin/common/executable_codex-local-review
++++ b/home/dot_local/bin/common/executable_codex-local-review
+@@ -1,13 +1,15 @@
+ #!/usr/bin/env bash
+ # @file codex-local-review
+ # @brief Run the primary checkout's committed local review after validating its task and head.
+-# @description Compare HEAD's blob directly because Git index flags can hide local changes.
++# @description Check local HEAD bytes without fsmonitor, worktree filters or transports.
+ # @arg $1 string Existing task id containing letters, digits, dots, underscores and hyphens.
+ # @arg $2 string Head containing exactly 40 lowercase hexadecimal digits.
+ # @arg $3 string Additional review-script arguments, forwarded unchanged.
+ # @exitcode 2 Malformed arguments, a missing task, a non-primary checkout or an uncommitted review script.
+ set -euo pipefail
+
++git() { GIT_ALLOW_PROTOCOL='' command git --no-pager -c core.fsmonitor=false "$@"; }
++
+ [[ ${1:-} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && ${2:-} =~ ^[0-9a-f]{40}$ ]] || {
+     printf 'usage: codex-local-review <task> <40 lowercase hex head> [args...]\n' >&2
+     exit 2
+@@ -22,7 +24,7 @@ cd -- "$root"
+     exit 2
+ }
+ if ! git ls-files --error-unmatch -- scripts/orchestrator/local-review.sh >/dev/null 2>&1 ||
+-	! git diff --quiet HEAD -- scripts/orchestrator/local-review.sh ||
++	! git diff --cached --quiet --no-ext-diff --no-textconv HEAD -- scripts/orchestrator/local-review.sh ||
+     ! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+     printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+     exit 2
+diff --git a/tests/unit/test_generate_agent_configs.py b/tests/unit/test_generate_agent_configs.py
+index cbf07600..739f0abe 100644
+--- a/tests/unit/test_generate_agent_configs.py
++++ b/tests/unit/test_generate_agent_configs.py
+@@ -812,7 +812,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         wrapper = ROOT / "home/dot_local/bin/common/executable_codex-local-review"
+         repo = self.temp_dir / "review repo"
+         repo.mkdir()
+-        subprocess.run(["git", "init", "--quiet", str(repo)], check=True, capture_output=True)
++
++        def git(*args: str) -> subprocess.CompletedProcess[str]:
++            return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
++
++        git("init", "--quiet", str(repo))
+         task = "task.name-1"
+         task_file = repo / f".orchestration/tasks/{task}.md"
+         task_file.parent.mkdir(parents=True)
+@@ -822,27 +826,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+         script.parent.mkdir(parents=True)
+         script.write_text('#!/usr/bin/env bash\nprintf \'%s\\0\' "$PWD" "$@" > "$RECORD_PATH"\nexit 23\n')
+         script.chmod(0o755)
+-        subprocess.run(
+-            ["git", "add", "scripts/orchestrator/local-review.sh"], cwd=repo, check=True, capture_output=True
+-        )
+-        subprocess.run(
+-            [
+-                "git",
+-                "-c",
+-                "user.name=Wrapper Test",
+-                "-c",
+-                "user.email=wrapper@example.invalid",
+-                "-c",
+-                "commit.gpgsign=false",
+-                "commit",
+-                "--quiet",
+-                "-m",
+-                "Track the review stub",
+-            ],
+-            cwd=repo,
+-            check=True,
+-            capture_output=True,
+-        )
++        git("add", "scripts/orchestrator/local-review.sh")
++        for key, value in (("user.name", "Wrapper Test"), ("user.email", "wrapper@example.invalid")):
++            git("config", key, value)
++        git("-c", "commit.gpgsign=false", "commit", "-qm", "Track the review stub")
+         stub_bin = repo / "bin"
+         stub_bin.mkdir()
+         decoy = stub_bin / "local-review.sh"
+@@ -882,12 +869,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 self.assertEqual(2, result.returncode, result.stderr)
+                 self.assertFalse(record.exists())
+         linked = self.temp_dir / "linked worktree"
+-        subprocess.run(
+-            ["git", "worktree", "add", "--quiet", "--detach", str(linked)],
+-            cwd=repo,
+-            check=True,
+-            capture_output=True,
+-        )
++        git("worktree", "add", "--quiet", "--detach", str(linked))
+         linked_task = linked / task_file.relative_to(repo)
+         linked_task.parent.mkdir(parents=True)
+         linked_task.touch()
+@@ -902,18 +884,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+             with self.subTest(state=state):
+                 record.unlink(missing_ok=True)
+                 if state == "untracked script":
+-                    subprocess.run(["git", "rm", "--cached", str(script)], cwd=repo, check=True, capture_output=True)
++                    git("rm", "--cached", str(script))
+                 elif state == "modified script":
+-                    subprocess.run(["git", "reset", "--quiet", "HEAD", "--", str(script)], cwd=repo, check=True)
++                    git("reset", "--quiet", "HEAD", "--", str(script))
+                     script.write_text(script.read_text() + "# changed\n")
+                 elif state == "staged script":
+-                    subprocess.run(["git", "add", str(script)], cwd=repo, check=True)
++                    git("add", str(script))
+                 elif state in ("assume-unchanged script", "skip-worktree script"):
+-                    subprocess.run(["git", "update-index", "--no-assume-unchanged", str(script)], cwd=repo, check=True)
+-                    subprocess.run(
+-                        ["git", "restore", "--source=HEAD", "--staged", "--worktree", str(script)], cwd=repo, check=True
+-                    )
+-                    subprocess.run(["git", "update-index", "--" + state.split()[0], str(script)], cwd=repo, check=True)
++                    git("update-index", "--no-assume-unchanged", str(script))
++                    git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
++                    git("update-index", "--" + state.split()[0], str(script))
+                     script.write_text(script.read_text() + "# hidden change\n")
+                 result = subprocess.run(
+                     [str(wrapper), task, "a" * 40],
+@@ -928,7 +908,50 @@ class GenerateAgentConfigsTest(unittest.TestCase):
+                 )
+                 self.assertFalse(record.exists())
+         linked_task.unlink()
+-        subprocess.run(["git", "worktree", "remove", str(linked)], cwd=repo, check=True, capture_output=True)
++        git("worktree", "remove", str(linked))
++        git("update-index", "--no-skip-worktree", str(script))
++        git("restore", "--source=HEAD", "--staged", "--worktree", str(script))
++        helper = self.temp_dir / "git-helper"
++        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\ncat\n')
++        helper.chmod(0o755)
++        helper_record = repo / "git-helper-called"
++        env["HELPER_RECORD"] = str(helper_record)
++        for key in ("core.fsmonitor", "filter.reviewguard.clean"):
++            with self.subTest(git_helper=key):
++                helper_record.unlink(missing_ok=True)
++                git("config", key, str(helper))
++                if key.startswith("filter."):
++                    (repo / ".git/info/attributes").write_text(
++                        "scripts/orchestrator/local-review.sh filter=reviewguard\n"
++                    )
++                    os.utime(script, (0, 0))
++                result = subprocess.run(
++                    [str(wrapper), task, "a" * 40], cwd=nested, env=env, capture_output=True, check=False
++                )
++                git("config", "--unset", key)
++                self.assertEqual(23, result.returncode, result.stderr)
++                self.assertFalse(helper_record.exists(), key)
++        helper.write_text('#!/bin/sh\n: > "$HELPER_RECORD"\nexit 1\n')
++        for key, value in (
++            ("extensions.partialClone", "origin"),
++            ("remote.origin.promisor", "true"),
++            ("remote.origin.url", str(self.temp_dir)),
++            ("remote.origin.uploadpack", str(helper)),
++        ):
++            git("config", key, value)
++        blob = git("rev-parse", "HEAD:scripts/orchestrator/local-review.sh").stdout.strip()
++        (repo / ".git/objects" / blob[:2] / blob[2:]).unlink()
++        record.unlink()
++        result = subprocess.run(
++            [str(wrapper), task, "a" * 40],
++            cwd=nested,
++            env=env | {"GIT_ALLOW_PROTOCOL": "file"},
++            capture_output=True,
++            check=False,
++        )
++        self.assertEqual(2, result.returncode, result.stderr)
++        self.assertFalse(record.exists())
++        self.assertFalse(helper_record.exists())
+
+     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
+         manifest = sample_manifest()
+exit=0
+
+$ git diff --numstat a8a747af06b32ff1d0d1720467892f34d9465ae4 -- home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py tests/unit/test_validate_agent_assets.py home/dot_local/bin/common/executable_codex-local-review tests/unit/test_claude_settings_merge.py
+3	1	home/.chezmoitemplates/claude-settings-managed.json
+2	0	home/dot_agents/agent-config.yaml
+36	0	home/dot_local/bin/common/executable_codex-local-review
+10	7	scripts/validate-agent-assets.py
+1	1	tests/unit/test_claude_settings_merge.py
+162	1	tests/unit/test_generate_agent_configs.py
+24	1	tests/unit/test_validate_agent_assets.py
+exit=0
+
+$ git diff a8a747af06b32ff1d0d1720467892f34d9465ae4 -- scripts/orchestrator/local-review.sh
+exit=0
+All seven final hashes and task hash independently verified.
+{
+  "home/dot_agents/agent-config.yaml": "45a6edc4ac9e865bc8aa9ab5d02575b537a303989e43ce6bd1334c676433d4af",
+  "home/.chezmoitemplates/claude-settings-managed.json": "5d91aebf3030ea727d1820c59bf0ac26d7906c2984e41b105f4f6634c93b768d",
+  "scripts/validate-agent-assets.py": "f72f8e33debccbbe182db213735fa2b7898c1778301a775e52409d8fc1ff6c72",
+  "tests/unit/test_generate_agent_configs.py": "f13e19f671abe583858fb2dd938bad0ae589d4dce5bb770e877d5ea7771244d0",
+  "tests/unit/test_validate_agent_assets.py": "503a73121ce7414b872a6f80de2577cc34aad41d5cf154afbbefb1ac6329c270",
+  "home/dot_local/bin/common/executable_codex-local-review": "96940b96f50f9573089c9c3904facc5624bc9961256e0567e51375f451914714",
+  "tests/unit/test_claude_settings_merge.py": "9cebaa7ec9fc50e927dd388c0341119bb3cb2c25227ca0f989e510a584b3499a"
+}
+```
+
+## Four focused methods, unquoted-empty equivalent
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging -v > /tmp/codex-T130-local-review-r1-final-focused.log 2>&1
+```
+Process exit 0. Full output:
+
+```text
+test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_excludes_codex_local_review_on_both_os_and_nothing_else_new) ... ok
+test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_accepts_codex_local_review_and_refuses_any_other_new_exclusion) ... ok
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.871s
+
+OK
+```
+
+## Final exact quoted-empty wrapper method
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -m unittest tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script -v > /tmp/codex-T130-local-review-r1-quoted-focused.log 2>&1
+```
+Process exit 0. Full output:
+
+```text
+test_codex_local_review_wrapper_only_execs_the_repository_local_review_script (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_local_review_wrapper_only_execs_the_repository_local_review_script) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.953s
+
+OK
+```
+
+## Corrected independent flag/filter probe
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-T130-local-review-r1-corrected-filter-probe.py > /tmp/codex-T130-local-review-r1-final-filter.log 2>&1
+```
+Process exit 0. Full output:
+
+```text
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "committed", "diff_quiet_exit": 0, "wrapper_exit": 0, "stderr": "", "executed_marker": "committed", "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "modified", "diff_quiet_exit": 1, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "--assume-unchanged", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "--skip-worktree", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+{"initial_index_flags": "H scripts/orchestrator/local-review.sh", "state": "clean-filter", "diff_quiet_exit": 0, "wrapper_exit": 2, "stderr": "codex-local-review: local-review.sh must be tracked and unchanged against HEAD", "executed_marker": null, "committed_sha256": "e4304a159c76803a4270ec113550ecc1986b75f8c98ce65582a2e0dba35935b3", "disk_sha256": "12204f1b1fbb5e0fea86ba503b09a9a18c5af817b24470fc7e6d118509b58f6d"}
+```
+
+## Final exact quoted-empty missing-blob probe
+
+```sh
+TMPDIR=/tmp PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python /tmp/codex-local-review-promisor-probe.py > /tmp/codex-T130-local-review-r1-quoted-promisor.log 2>&1
+```
+Process exit 0. Full output:
+
+```text
+{"exit": 2, "stdout": "", "stderr": "fatal: transport 'file' not allowed\nfatal: transport 'file' not allowed\nfatal: transport 'file' not allowed\nfatal: git cat-file HEAD:scripts/orchestrator/local-review.sh: bad file\ncodex-local-review: local-review.sh must be tracked and unchanged against HEAD\n", "pretrust_helper_called": false}
+```
+
+## Exact independent probe source: /tmp/codex-T130-local-review-r1-corrected-filter-probe.py
+
+```python
+from pathlib import Path
+import hashlib, json, os, subprocess, tempfile
+wrapper = Path('home/dot_local/bin/common/executable_codex-local-review').resolve()
+with tempfile.TemporaryDirectory(prefix='codex-local-review-fixed-', dir='/tmp') as directory:
+    repo = Path(directory)
+    def git(*args):
+        return subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', *args], cwd=repo, capture_output=True, text=True, check=True)
+    git('init', '--quiet')
+    script = repo / 'scripts/orchestrator/local-review.sh'
+    script.parent.mkdir(parents=True)
+    original = '#!/bin/sh\nprintf committed > "$RECORD_PATH"\n'
+    modified = '#!/bin/sh\nprintf UNCOMMITTED > "$RECORD_PATH"\n'
+    script.write_text(original)
+    script.chmod(0o755)
+    git('add', 'scripts/orchestrator/local-review.sh')
+    git('-c', 'user.name=Security Test', '-c', 'user.email=security@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'committed stub')
+    task = repo / '.orchestration/tasks/task-1.md'
+    task.parent.mkdir(parents=True)
+    task.touch()
+    record = repo / 'executed'
+    for state in ('committed', 'modified', '--assume-unchanged', '--skip-worktree', 'clean-filter'):
+        git('update-index', '--no-assume-unchanged', 'scripts/orchestrator/local-review.sh')
+        git('update-index', '--no-skip-worktree', 'scripts/orchestrator/local-review.sh')
+        flags = git('ls-files', '-v', '--', 'scripts/orchestrator/local-review.sh').stdout.strip()
+        assert flags.startswith('H '), flags
+        script.write_text(original)
+        if state.startswith('--'):
+            git('update-index', state, 'scripts/orchestrator/local-review.sh')
+        elif state == 'clean-filter':
+            (repo / '.git/info/attributes').write_text('scripts/orchestrator/local-review.sh filter=reviewfixture\n')
+            git('config', 'filter.reviewfixture.clean', 'sed s/UNCOMMITTED/committed/')
+        if state != 'committed':
+            script.write_text(modified)
+        record.unlink(missing_ok=True)
+        diff = subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', 'scripts/orchestrator/local-review.sh'], cwd=repo)
+        result = subprocess.run([str(wrapper), 'task-1', 'a' * 40, '392'], cwd=repo, env=os.environ | {'RECORD_PATH': str(record)}, capture_output=True, text=True)
+        row = {'initial_index_flags': flags, 'state': state, 'diff_quiet_exit': diff.returncode, 'wrapper_exit': result.returncode, 'stderr': result.stderr.strip(), 'executed_marker': record.read_text() if record.exists() else None, 'committed_sha256': hashlib.sha256(original.encode()).hexdigest(), 'disk_sha256': hashlib.sha256(script.read_bytes()).hexdigest()}
+        print(json.dumps(row))
+        if state == 'committed':
+            assert result.returncode == 0 and record.read_text() == 'committed'
+        else:
+            assert result.returncode == 2 and not record.exists()
+            assert 'tracked and unchanged' in result.stderr
+        if state.startswith('--') or state == 'clean-filter':
+            assert diff.returncode == 0
+
+```
+
+## Exact independent probe source: /tmp/codex-local-review-promisor-probe.py
+
+```python
+from pathlib import Path
+import tempfile,subprocess,os,json
+wrapper=Path('home/dot_local/bin/common/executable_codex-local-review').resolve()
+with tempfile.TemporaryDirectory(prefix='review-promisor-',dir='/tmp') as d:
+ p=Path(d); repo=p/'repo'; repo.mkdir(); remote=p/'remote'; remote.mkdir()
+ env=os.environ | {'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_ALLOW_PROTOCOL':'file','HELPER_RECORD':str(p/'helper-marker')}
+ def git(*args):
+  return subprocess.check_output(['git','-c','core.hooksPath=/dev/null',*args],cwd=repo,env=env,stderr=subprocess.STDOUT,text=True)
+ git('init','-q'); git('config','user.name','Test'); git('config','user.email','test@example.invalid'); git('config','commit.gpgsign','false')
+ script=repo/'scripts/orchestrator/local-review.sh'; script.parent.mkdir(parents=True); script.write_text('#!/bin/sh\nexit 23\n'); script.chmod(0o755)
+ task=repo/'.orchestration/tasks/test.md'; task.parent.mkdir(parents=True); task.touch()
+ git('add','.'); git('commit','-qm','stub')
+ blob=git('rev-parse','HEAD:scripts/orchestrator/local-review.sh').strip()
+ helper=p/'fake-upload-pack'; helper.write_text('#!/bin/sh\nprintf helper > "$HELPER_RECORD"\nexit 1\n'); helper.chmod(0o755)
+ git('config','extensions.partialClone','origin'); git('config','remote.origin.promisor','true'); git('config','remote.origin.url',str(remote)); git('config','remote.origin.uploadpack',str(helper)); git('config','protocol.file.allow','always')
+ (repo/'.git/objects'/blob[:2]/blob[2:]).unlink()
+ r=subprocess.run([str(wrapper),'test','a'*40],cwd=repo,env=env,text=True,capture_output=True,check=False)
+ print(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'pretrust_helper_called':(p/'helper-marker').exists()}))
+
+```
+
+Verdict: correct
+
+
+## First-head Bot code/inline/security feedback — complete captured output
+
+
+```text
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/399/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="e06f36a1b98c7bcc42f055953a18cc4c537c370a")|{id,commit_id,submitted_at,body,html_url}|@json'
+{"body":"<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `e06f36a1b9`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","commit_id":"e06f36a1b98c7bcc42f055953a18cc4c537c370a","html_url":"https://github.com/mryfmo/dotfiles/pull/399#pullrequestreview-5558705580","id":5558705580,"submitted_at":"2026-10-17T16:15:22Z"}
+(exit 0)
+```
+
+```text
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/399/comments --jq '.[]|select(.in_reply_to_id==null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="e06f36a1b98c7bcc42f055953a18cc4c537c370a")|{id,original_commit_id,path,line,body,html_url}|@json'
+{"body":"**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Disable Git helpers before running the guard**\n\nWhen sandboxed code can modify the primary checkout's local Git config, it can set `core.fsmonitor` to a workspace executable; this `git diff` then launches that helper while `codex-local-review` is running outside the Bash sandbox, before the committed-script check establishes trust. I reproduced the helper being executed even with an unchanged review script. Invoke Git with execution-capable repository configuration disabled—at minimum `core.fsmonitor=false`—and add a regression test using a hostile local config.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/e06f36a1b98c7bcc42f055953a18cc4c537c370a/AGENTS.md#L77-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->","html_url":"https://github.com/mryfmo/dotfiles/pull/399#discussion_r4303419130","id":4303419130,"line":25,"original_commit_id":"e06f36a1b98c7bcc42f055953a18cc4c537c370a","path":"home/dot_local/bin/common/executable_codex-local-review"}
+(exit 0)
+```
+
+```text
+$ gh api --paginate repos/mryfmo/dotfiles/issues/399/comments --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]")|{id,body,html_url,updated_at}|@json'
+{"body":"<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"e06f36a1b98c7bcc42f055953a18cc4c537c370a\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"e06f36a1b98c7bcc42f055953a18cc4c537c370a\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"e06f36a1b98c7bcc42f055953a18cc4c537c370a\",\"mergeGateEnabled\":false,\"pullRequestNumber\":399,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-17T16:15:24.724814Z\">2026-10-17T16:15:24.724814Z</relative-time> | `e06f36a` | Draft marked ready |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-17T16:17:50.581790Z\">2026-10-17T16:17:50.581790Z</relative-time> | `e06f36a` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>","html_url":"https://github.com/mryfmo/dotfiles/pull/399#issuecomment-6236423256","id":6236423256,"updated_at":"2026-10-17T16:17:51Z"}
+(exit 0)
+```
+
+## Bot fix round1 source review gate
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```
+
+## Canonical evidence indentation
+
+The first precommit diff-check found12 Git-diff context lines with space-before-tab indentation in pasted review output. Only those context prefixes are expanded to spaces in this canonical display; complete exact raw review reports remain unchanged. No source/test bytes changed. Full failed check output follows; the gate/diff-check is rerun before commit.
+
+```text
+$ git diff --cached --check
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20259: space before tab in indent.
++ 	printf 'usage: codex-local-review <task> <40 lowercase hex head> [args...]\n' >&2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20260: space before tab in indent.
++ 	exit 2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20262: space before tab in indent.
++ 	exit 2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20267: space before tab in indent.
++ 	! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20268: space before tab in indent.
++ 	printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20269: space before tab in indent.
++ 	exit 2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20539: space before tab in indent.
++ 	printf 'usage: codex-local-review <task> <40 lowercase hex head> [args...]\n' >&2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20540: space before tab in indent.
++ 	exit 2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20542: space before tab in indent.
++ 	exit 2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20547: space before tab in indent.
++ 	! git cat-file blob HEAD:scripts/orchestrator/local-review.sh | cmp -s - scripts/orchestrator/local-review.sh; then
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20548: space before tab in indent.
++ 	printf 'codex-local-review: local-review.sh must be tracked and unchanged against HEAD\n' >&2
+.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/validation.md:20549: space before tab in indent.
++ 	exit 2
+(exit 2)
+```
+
+## Bot fix round1 source review gate
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T130-codex-local-review-exclusion-a01/dotfiles-T130-codex-local-review-exclusion-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```

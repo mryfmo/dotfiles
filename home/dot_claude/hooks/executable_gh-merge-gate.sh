@@ -50,8 +50,10 @@ input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 cwd=$(jq -r '.cwd // empty' <<<"${input}" 2>/dev/null) || ask "unreadable payload"
 
-shape='(^|[^[:alnum:]_-])(pr[[:space:]]+(merge|update-branch|create)|pulls/[^[:space:]]*/(merge|update-branch))([^[:alnum:]_-]|$)'
+# A gh invocation of a gated verb (any wrapper, substitution or -c string still contains it), or an API merge path.
+shape='(^|[^[:alnum:]_.-])gh([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+pr[[:space:]]+(merge|update-branch|create)([^[:alnum:]_-]|$)|pulls/[^[:space:]]*/(merge|update-branch)([^[:alnum:]_-]|$)'
 grep -Eq "${shape}" <<<"${cmd}" || exit 0
+matched=$(grep -Eo "${shape}" <<<"${cmd}" | head -n 1 | cut -c1-80)
 
 # Require the payload's cwd to be the repository's main checkout; sets top.
 main_checkout() {
@@ -149,7 +151,7 @@ sys.stdout.write("".join(word + "\0" for word in words))
 [[ ${cmd} =~ ^gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$) ]] && gate_create
 
 case "${cmd}" in
-  *[\;\&\|\<\>\`\$\(\)\{\}\'\"\\]* | *$'\n'*) ask "not a single simple command" ;;
+  *[\;\&\|\<\>\`\$\(\)\{\}\'\"\\]* | *$'\n'*) ask "not a single simple command around: ${matched}" ;;
   *) ;;
 esac
 read -ra w <<<"${cmd}"

@@ -84,7 +84,14 @@ class GhMergeGateTest(unittest.TestCase):
         return f"gh pr merge 7 --squash --match-head-commit {SHA}{extra}"
 
     def test_unrelated_commands_get_no_decision(self) -> None:
-        for command in ("gh pr view 7", "git merge main", "gh pr checks 7", "echo merged"):
+        for command in (
+            "gh pr view 7",
+            "git merge main",
+            "gh pr checks 7",
+            "echo merged",
+            "git commit -F - <<'EOF'\nthe pr merge gate and the PR create rule\nEOF",
+            "printf '%s' 'records: the pr update-branch window' | tee x",
+        ):
             with self.subTest(command=command):
                 self.assertEqual(("", ""), self.decide(command))
 
@@ -117,6 +124,10 @@ class GhMergeGateTest(unittest.TestCase):
             self.pinned(" && true"),
             self.pinned(" $(true)"),
             f"env gh pr merge 7 --squash --match-head-commit {SHA}",
+            "bash -c 'gh pr merge 7 --admin'",
+            "echo 7 | xargs gh pr merge --admin",
+            "gh -R o/r pr merge 7 --admin",
+            "x=$(gh pr merge 7 --auto)",
             "gh api -X PUT repos/o/r/pulls/7/merge",
             "gh api repos/o/r/pulls/7/merge -X PUT",
         ):

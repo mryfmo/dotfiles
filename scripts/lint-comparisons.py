@@ -11,6 +11,7 @@ import hashlib
 import re
 import shlex
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +41,10 @@ PS = re.compile(
 )
 PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
 GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
-PY_NORM = re.compile(r"^(realpath|normpath|abspath|resolve|urlsplit|urlparse|unquote|canonical_path|normali[sz]e_\w+)$")
+PY_NORM = re.compile(
+    r"^(os\.path\.(realpath|normpath|abspath)|Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
+)
+RE_FUNCS = ("re.compile", "re.search", "re.match", "re.fullmatch")
 OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
@@ -77,7 +81,7 @@ def span(prog, p, fn):
     while hi < len(prog) and not (d == 0 and prog[hi] in stop + ")]}"):
         d += (prog[hi] in "([{") - (prog[hi] in ")]}")
         hi += 1
-    return prog[lo:hi]
+    return lo, hi
 
 
 def shell_hits(text):
@@ -101,24 +105,29 @@ def shell_hits(text):
     for begin, region in programs(code):
         prog, first = re.sub(r"\\\([^)]*\)", "", region), code.count("\n", 0, begin) + 1
         for op in JQ_OP.finditer(prog):
-            expr = span(prog, op.start(), op.group(0).endswith("("))
+            lo, hi = span(prog, op.start(), op.group(0).endswith("("))
+            expr, sides = prog[lo:hi], (prog[lo : op.start()], prog[op.start() : hi])
             hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
-                ok = any(expr.count(d) > 1 for d in JQ_DEF.findall(prog)) or MARKER.search(lines[first - 1])
+                ok = any(all(d in side for side in sides) for d in JQ_DEF.findall(prog)) or MARKER.search(
+                    lines[first - 1]
+                )
                 yield first + prog.count("\n", 0, op.start()), "R3", ok
 
 
 def python_hits(text):
-    def py_name(node):
-        return node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")
+    def dotted(node):
+        if isinstance(node, ast.Attribute):
+            return dotted(node.value) + "." + node.attr
+        return dotted(node.func) + "()" if isinstance(node, ast.Call) else getattr(node, "id", "?")
 
     def py_operand(node):
         if isinstance(node, ast.Constant):
             return isinstance(node.value, str) and bool(LITERAL.search(node.value))
-        return bool(TOKEN.search(py_name(node)))
+        return bool(TOKEN.search(node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")))
 
     def py_calls(nodes, accept):
-        return any(accept(py_name(c.func)) for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
+        return any(accept(dotted(c.func)) for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
 
     try:
         tree = ast.parse(text)
@@ -130,15 +139,9 @@ def python_hits(text):
             parts = [node.left, *node.comparators]
         elif call and isinstance(node.func, ast.Attribute) and node.func.attr in ("startswith", "endswith"):
             parts = [node.func.value, *node.args]
-        elif (
-            call
-            and py_name(node.func) in ("compile", "search", "match", "fullmatch")
-            and py_name(getattr(node.func, "value", None)) == "re"
-            and node.args
-            and isinstance(node.args[0], ast.JoinedStr)
-        ):
+        elif call and dotted(node.func) in RE_FUNCS and node.args and isinstance(node.args[0], ast.JoinedStr):
             values = [v.value for v in node.args[0].values if isinstance(v, ast.FormattedValue)]
-            yield node.lineno, "R6", py_calls(values, lambda name: name == "escape")
+            yield node.lineno, "R6", py_calls(values, lambda name: name == "re.escape")
             continue
         else:
             continue
@@ -175,22 +178,18 @@ def main(argv=None):
         print("\n".join(f"{rule} {text}" for rule, text in RULES.items()), LIMIT, sep="\n")
         return 0
     rows = args.baseline.read_text().splitlines() if args.baseline.is_file() else []
-    rows, used, scanned, failed = (
-        {tuple((r.split("\t") + ["", ""])[:3]) for r in rows if r.strip()},
-        set(),
-        set(),
-        False,
-    )
+    rows = Counter(tuple((r.split("\t") + ["", ""])[:3]) for r in rows if r.strip())
+    used, scanned, failed = Counter(), set(), False
     for rel, target in sorted([(f, Path(f)) for f in args.files] or default_files()):
         text, _ = target.read_text(errors="replace"), scanned.add(rel)
         for n, rule in sorted(set(lint(rel, text))):
             key = (rel, rule, hashlib.sha256(text.split("\n")[n - 1].strip().encode()).hexdigest())
-            if key in rows:
-                used.add(key)
+            if used[key] < rows[key]:
+                used[key] += 1
                 continue
             print(f"{rel}:{n}: {rule} {RULES[rule]}")
             failed = True
-    for rel, rule, _ in sorted(r for r in rows - used if not args.files or r[0] in scanned):
+    for rel, rule, _ in sorted(r for r in (rows - used).elements() if not args.files or r[0] in scanned):
         print(f"stale baseline row {rel} {rule}")
         failed = True
     return int(failed)

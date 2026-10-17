@@ -590,7 +590,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                     self.assertEqual(
                         ["agmsg-dispatch *"]
                         + (
-                            ["gh *", f"{self.home_dir}/.agents/skills/agmsg/scripts/actas-claim.sh *"]
+                            ["gh *", "herdr-agents *", f"{self.home_dir}/.agents/skills/agmsg/scripts/actas-claim.sh *"]
                             if os_name == "Linux"
                             else []
                         ),

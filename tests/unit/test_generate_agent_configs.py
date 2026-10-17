@@ -750,7 +750,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(
                     ["agmsg-dispatch *"]
                     + (
-                        ["gh *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
+                        ["gh *", "herdr-agents *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
                         if os_name == "linux"
                         else []
                     ),
@@ -768,6 +768,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     settings["env"],
                 )
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+
+    def test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation(self) -> None:
+        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
+        self.assertEqual(
+            [
+                "agmsg-dispatch *",
+                "gh *",
+                "herdr-agents *",
+                "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
+            ],
+            settings["sandbox"]["excludedCommands"],
+        )
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()

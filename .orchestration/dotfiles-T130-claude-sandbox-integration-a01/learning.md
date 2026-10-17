@@ -8,3 +8,5 @@ promotion: task-local-only
 Raw-template consumers include the production modifier and test fixture helpers, not only the generator and validator. Search every reference before introducing template control flow; exercise actual modifier entry points for each OS, and retain existing caller assertions. An OS-specific validator also needs a second-branch-only invalid fixture.
 
 No rule/skill/AutoSkill or project-memory promotion. These observations are validated task-local learning for orchestrator consolidation.
+
+Exclusion patterns match the submitted top-level command text, not internally invoked scripts. Trace the real caller before treating a child entry as socket access coverage; retain direct script patterns only for their documented direct command form. A pinned tool can also need a narrow existing policy-test exception, while all other latest/cooldown checks remain intact.

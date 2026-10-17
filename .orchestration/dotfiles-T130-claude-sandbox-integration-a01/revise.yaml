@@ -1,0 +1,12 @@
+task_id: dotfiles-T130-claude-sandbox-integration-a01
+round: 1
+previous_head: a06f646f7b6f4386173ccec54e043331dd5c24bc
+check: tests/unit/test_generate_agent_configs.py::test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation
+finding: '4302738193'
+priority: P1
+review: '5557862602'
+reason: Amendment3 authorizes real top-level Linux herdr-agents exclusion, bounded
+  exact list and rendered-list regression; sole P0/P1 worker fix round
+task_sha256: bdedd7d3e1da9e1fe82de0d2f4b6778ae6471e5069e68ce2eb477524bb928a54
+ci_check: tests/unit/test_supply_chain_policy.py::test_mise_tools_track_latest_behind_the_cooldown
+ci_amendment: Amendment4 authorizes the exact blocc held-map exception and reason only

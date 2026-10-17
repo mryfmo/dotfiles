@@ -112,6 +112,7 @@
   "excludedCommands": [
     "agmsg-dispatch *",
     "gh *",
+    "herdr-agents *",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
   ],
   "filesystem": {

@@ -285,9 +285,11 @@ claude:
       # outside the sandbox it delivered msgs 545-577 with read_at within
       # seconds (T49 E2E, 2026-10-01).
       - agmsg-dispatch *
-    # Linux's socket isolation blocks gh's keyring and the seat claim's herdr socket.
+    # Linux blocks gh's keyring and herdr-agents -> actas-claim.sh socket calls;
+    # child-script patterns cannot match the parent, but the absolute pattern covers direct calls.
     linux_excluded_commands:
       - gh *
+      - herdr-agents *
       - "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable

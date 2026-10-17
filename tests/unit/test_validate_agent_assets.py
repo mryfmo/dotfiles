@@ -1083,6 +1083,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
             (
+                "Linux extra exclusion",
+                lambda sandbox: sandbox["linux_excluded_commands"].append("bash *"),
+                "Linux.*excludedCommands",
+            ),
+            (
                 "Mach allowlist",
                 lambda sandbox: sandbox["network"].update(allowMachLookup=["com.apple.sysmond"]),
                 "Mach",

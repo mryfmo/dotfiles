@@ -75,6 +75,8 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         (self.main / "scripts").mkdir(parents=True)
         for name in ("check-regime-boundary.sh", "regime-counters.sh"):
             shutil.copy(ROOT / "scripts" / name, self.main / "scripts")
+        (self.main / "scripts/orchestrator").mkdir()
+        shutil.copy(ROOT / "scripts/orchestrator/seat-args.sh", self.main / "scripts/orchestrator")
         (self.main / ".orchestration/tasks").mkdir(parents=True)
         (self.main / ".orchestration/acceptance").mkdir()
         (self.main / ".orchestration/tasks/T1.md").write_text("task\n")
@@ -266,6 +268,60 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         shutil.copy(ROOT / "scripts/regime-counters.sh", self.main / "scripts")
         self.storage.unlink()
         self.assertEqual([], self.report())
+
+    def test_a_seated_worker_without_its_profile_arguments_is_a_violation(self):
+        worktree = self.main / ".claude/worktrees/b1"
+        subprocess.run(["git", "-C", str(self.main), "worktree", "add", "-q", "--detach", str(worktree)], check=True)
+        scripts = self.home / ".agents/skills/agmsg/scripts"
+        identities = scripts / "identities.sh"
+        identities.write_text(
+            "#!/usr/bin/env bash\n[[ $1 == */.claude/worktrees/b1 && $2 == claude-code ]] || exit 0\n"
+            'printf "dotfiles\\tclaude-standard-dot-a009\\nother\\tclaude-standard-dot-a009\\n"\n'
+        )
+        identities.chmod(0o755)
+        (self.home / ".agents/model-profiles.env").write_text(
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model claude-opus-5-5 --effort xhigh --advisor fable"\n'
+        )
+        ps = self.temp / "fixture-ps"
+        ps.write_text('#!/usr/bin/env bash\nprintf "call\\n" >> "$HOME/ps-calls"\ncat "$HOME/ps-lines"\n')
+        ps.chmod(0o755)
+        self.env["SEAT_ARGS_PS"] = str(ps)
+        violation = (
+            "regime-boundary: worker claude-standard-dot-a009 at .claude/worktrees/b1: "
+            "seat claude-standard-dot-a009 profile=standard kind=claude process=none args=unlaunched"
+        )
+        seated = (
+            "regime-boundary: worker still seated at .claude/worktrees/b1 "
+            "(herdr-agents --remove-worker .claude/worktrees/b1)"
+        )
+        for label, process, missing, expected in (
+            ("resumed", "100 claude --resume x\n", False, [violation, seated]),
+            (
+                "matching second team",
+                "100 claude --model claude-opus-5-5 --effort xhigh --advisor fable -n other-claude-standard-dot-a009\n",
+                False,
+                [seated],
+            ),
+            ("probe missing", "", True, [seated]),
+        ):
+            with self.subTest(label=label):
+                (self.home / "ps-lines").write_text(process)
+                (self.home / "ps-calls").write_text("")
+                self.env["SEAT_ARGS_PS"] = str(self.temp / "missing") if missing else str(ps)
+                result = subprocess.run(
+                    ["bash", str(self.main / "scripts/check-regime-boundary.sh"), "--report"],
+                    cwd=self.main,
+                    env=self.env,
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                lines = [line for line in result.stdout.splitlines() if ".claude/worktrees/b1" in line]
+                self.assertEqual(sorted(expected), sorted(lines))
+                self.assertEqual([] if missing else ["call"], (self.home / "ps-calls").read_text().splitlines())
 
     def test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal(self):
         # M-20261015-01: a seated worker's pane state, read through its placement record and the

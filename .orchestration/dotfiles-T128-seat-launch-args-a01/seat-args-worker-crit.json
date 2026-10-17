@@ -1,0 +1,8 @@
+[
+  {
+    "id": "seat-args-worker-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex review (high confidence) approved the four source/test paths against fixed branch base b167fe0a76a2e77d262f9f556c69ba6b9f118bbe. Literal profile parsing, selectors, cwd discrimination, minimum matching PID, adjacent expected pairs, exits0/2/3/4 and per-name/type boundary grouping follow the task. Seven additional stub-only cases passed, including exact profile key, review profile, absolute Node wrapper and non-executable probe. No finding. No live process/CI or full-suite rerun, repository edit or ref update by reviewer. Parent full requested suite12 tests passes. Verdict: correct.",
+    "resolved": true
+  }
+]

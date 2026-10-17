@@ -79,8 +79,11 @@ PROFILE_VALUE_RE = re.compile(r"^[A-Za-z0-9._\[\]-]+$")
 PROFILE_AGENT_KEYS = {
     "claude": ("model", "effort"),
     "codex": ("model", "model_reasoning_effort"),
+    "omp": ("model",),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
+# Anthropic by API key and OpenAI by the openai-codex OAuth provider only (plan 023 Decision).
+OMP_MODEL_RE = re.compile(r"^(openai-codex|anthropic)/[A-Za-z0-9._-]+$")
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 RUNTIME_PREFIXES = (
     "hooks.state",
@@ -109,7 +112,13 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
             optional = PROFILE_OPTIONAL_KEYS.get(agent, ())
             for key in keys + tuple(key for key in optional if key in mapping):
                 value = mapping.get(key)
-                if not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
+                if agent == "omp":
+                    if not isinstance(value, str) or not OMP_MODEL_RE.fullmatch(value):
+                        fail(
+                            f"model profile {name}.omp.model must be <provider>/<id> "
+                            "with provider openai-codex or anthropic"
+                        )
+                elif not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")
         sandbox_mode = profile["codex"].get("sandbox_mode")
         if sandbox_mode is not None and sandbox_mode not in CODEX_SANDBOX_MODES:
@@ -1290,7 +1299,12 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
             claude_args += f" --advisor {claude['advisor']}"
         lines.append(f'MODEL_PROFILE_{var}_CLAUDE_ARGS="{claude_args}"')
         lines.append(f'MODEL_PROFILE_{var}_CODEX_ARGS="--profile {name}"')
+        lines.append(f'MODEL_PROFILE_{var}_OMP_MODEL="{profile["omp"]["model"]}"')
     return "\n".join(lines) + "\n"
+
+
+def render_omp_config(manifest: dict[str, Any]) -> str:
+    return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {interactive_profile(manifest)['omp']['model']}\n"
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:
@@ -1352,6 +1366,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         )
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
+    outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):

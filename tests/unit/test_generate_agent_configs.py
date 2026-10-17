@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,10 +54,12 @@ def sample_manifest() -> dict:
             "express": {
                 "claude": {"model": "haiku", "effort": "low"},
                 "codex": {"model": "gpt-5.6-luna", "model_reasoning_effort": "low"},
+                "omp": {"model": "openai-codex/gpt-5.6-luna"},
             },
             "standard": {
                 "claude": {"model": "sonnet", "effort": "high"},
                 "codex": {"model": "gpt-6.1-sol", "model_reasoning_effort": "high"},
+                "omp": {"model": "anthropic/sonnet"},
             },
         },
         "interactive_profile": "standard",
@@ -639,6 +642,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
             },
+            "omp": {"model": "openai-codex/gpt-6-astra"},
         }
         outputs = self.module.expected_outputs(manifest)
         security_profile = self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
@@ -801,6 +805,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_mode": "read-only",
             },
+            "omp": {"model": "openai-codex/gpt-6-astra"},
         }
         outputs = self.module.expected_outputs(manifest)
         self.module.write_outputs(outputs)
@@ -1608,6 +1613,104 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         del missing_express["model_profiles"]["express"]
         with self.assertRaises(SystemExit):
             self.module.model_profiles(missing_express)
+
+    def test_model_profiles_require_an_omp_model_from_the_provider_allowlist(self) -> None:
+        refused = "model profile standard.omp.model must be <provider>/<id> with provider openai-codex or anthropic"
+        for value, message in (
+            (None, "model profile standard is missing omp"),
+            ("openai/gpt-x", refused),
+            ("anthropic/claude x", refused),
+            ("anthropic/claude-x\n", refused),
+        ):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                if value is None:
+                    del manifest["model_profiles"]["standard"]["omp"]
+                else:
+                    manifest["model_profiles"]["standard"]["omp"]["model"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.model_profiles(manifest)
+                self.assertIn(message, stderr.getvalue())
+
+        self.assertEqual(
+            self.module.model_profiles(sample_manifest())["standard"]["omp"], {"model": "anthropic/sonnet"}
+        )
+
+    def test_omp_config_renders_the_interactive_profile_as_the_default_role(self) -> None:
+        manifest = sample_manifest()
+        path = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
+        header = f"# {self.module.GENERATED_HEADER}\n"
+
+        self.assertEqual(
+            self.module.expected_outputs(manifest)[path], header + "modelRoles:\n  default: anthropic/sonnet\n"
+        )
+        manifest["interactive_profile"] = "express"
+        text = self.module.expected_outputs(manifest)[path]
+        self.assertEqual(text, header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n")
+        self.assertNotIn("ANTHROPIC", text)
+        self.assertNotIn("OAUTH", text)
+
+    def test_model_profiles_env_renders_one_omp_model_line_per_profile_in_sorted_order(self) -> None:
+        manifest = sample_manifest()
+        for name in ("review", "deep", "security", "audit"):
+            manifest["model_profiles"][name] = {
+                "claude": {"model": "sonnet", "effort": "high"},
+                "codex": {"model": "gpt-6.1-sol", "model_reasoning_effort": "high"},
+                "omp": {"model": f"anthropic/{name}-model"},
+            }
+
+        lines = self.module.render_model_profiles_env(manifest).splitlines()
+
+        self.assertEqual(
+            [line for line in lines if "_OMP_MODEL=" in line],
+            [
+                'MODEL_PROFILE_AUDIT_OMP_MODEL="anthropic/audit-model"',
+                'MODEL_PROFILE_DEEP_OMP_MODEL="anthropic/deep-model"',
+                'MODEL_PROFILE_EXPRESS_OMP_MODEL="openai-codex/gpt-5.6-luna"',
+                'MODEL_PROFILE_REVIEW_OMP_MODEL="anthropic/review-model"',
+                'MODEL_PROFILE_SECURITY_OMP_MODEL="anthropic/security-model"',
+                'MODEL_PROFILE_STANDARD_OMP_MODEL="anthropic/sonnet"',
+            ],
+        )
+        for name in ("audit", "deep", "express", "review", "security", "standard"):
+            index = lines.index(f'MODEL_PROFILE_{name.upper()}_CODEX_ARGS="--profile {name}"')
+            self.assertTrue(lines[index + 1].startswith(f"MODEL_PROFILE_{name.upper()}_OMP_MODEL="))
+
+    def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        profiles: dict[str, list[str]] = {}
+        current = None
+        in_profiles = False
+        for line in manifest.splitlines():
+            if not line.startswith(" "):
+                in_profiles = line == "model_profiles:"
+                continue
+            if in_profiles and (header := re.fullmatch(r"  ([a-z][a-z0-9_]*):", line)):
+                current = header[1]
+                profiles[current] = []
+            elif in_profiles and line.startswith("    omp:"):
+                profiles[current].append(line)
+
+        self.assertEqual(sorted(profiles), ["audit", "deep", "express", "review", "security", "standard"])
+        for name, lines in profiles.items():
+            with self.subTest(profile=name):
+                self.assertEqual(len(lines), 1)
+                value = re.fullmatch(r'    omp: \{ model: "([^"]+)" \}', lines[0])
+                self.assertIsNotNone(value)
+                self.assertIsNotNone(self.module.OMP_MODEL_RE.fullmatch(value[1]))
+
+        base = subprocess.run(
+            ["git", "-C", str(ROOT), "show", "origin/main:home/dot_agents/agent-config.yaml"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(base.returncode, 0, base.stderr)
+        if sum(line.startswith("    omp:") for line in base.stdout.splitlines()) == 6:
+            self.skipTest("origin/main already carries the six omp mappings")
+        stripped = "".join(line for line in manifest.splitlines(keepends=True) if not line.startswith("    omp:"))
+        self.assertEqual(stripped, base.stdout)
 
     def test_claude_settings_render_the_format_hook_from_its_path(self) -> None:
         settings = self.module.json.loads(self.module.render_claude_settings(sample_manifest()))

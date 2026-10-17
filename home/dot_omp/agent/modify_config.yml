@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""@file home/dot_omp/agent/modify_config.yml
+@brief Carry the managed omp model role into ~/.omp/agent/config.yml.
+@description
+    chezmoi passes the live config on stdin. The script sets modelRoles.default
+    from home/.chezmoitemplates/omp-config-managed.yml and keeps every other key
+    and role omp wrote. Without PyYAML, or when the live file is not a YAML
+    mapping, it prints its input unchanged with one warning on stderr and exits
+    0, so chezmoi apply never clobbers omp's file.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+
+def source_dir() -> Path:
+    if os.environ.get("CHEZMOI_SOURCE_DIR"):
+        return Path(os.environ["CHEZMOI_SOURCE_DIR"])
+    return Path(__file__).resolve().parents[2]
+
+
+def keep(current: str, reason: str) -> int:
+    print(f"omp config: {reason}; left ~/.omp/agent/config.yml unchanged", file=sys.stderr)
+    sys.stdout.write(current)
+    return 0
+
+
+def main() -> int:
+    current = sys.stdin.read()
+    try:
+        import yaml
+    except ImportError:
+        return keep(current, "PyYAML is not installed for python3")
+    managed = yaml.safe_load((source_dir() / ".chezmoitemplates/omp-config-managed.yml").read_text())
+    try:
+        data = yaml.safe_load(current) if current.strip() else {}
+    except yaml.YAMLError:
+        return keep(current, "the live file is not valid YAML")
+    if not isinstance(data, dict):
+        return keep(current, "the live file is not a YAML mapping")
+    if data.get("modelRoles") is None:
+        data["modelRoles"] = {}
+    if not isinstance(data["modelRoles"], dict):
+        return keep(current, "modelRoles is not a mapping")
+    data["modelRoles"]["default"] = managed["modelRoles"]["default"]
+    sys.stdout.write(yaml.safe_dump(data, sort_keys=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

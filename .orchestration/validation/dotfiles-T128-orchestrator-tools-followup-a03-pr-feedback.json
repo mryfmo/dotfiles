@@ -1,0 +1,502 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 374,
+  "head_sha": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+  "base_ref": "main",
+  "base_sha": "7722704731b6cd6155fbca51c61ff5a710eaacbd",
+  "generated_at": "2026-10-17T05:45:33+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834808"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834786"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834627"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834552"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314834060"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833980"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833973"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833972"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833940"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833898"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758852/job/117314833883"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/runs/117314831985"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `0ca51ca5-6e24-4158-bc4d-7b35560c80e7`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=374)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6211755266",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6211755266\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"5ef0ef3bb7d9d89d51bfa2056029fde54fc825d9\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"aeb4a0fbe9c4e88b6d95a4f3aa91f1f85e52d601\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"aeb4a0fbe9c4e88b6d95a4f3aa91f1f85e52d601\",\"mergeGateEnabled\":false,\"pullRequestNumber\":374,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-17T02:21:27.732354Z\">2026-10-17T02:21:27.732354Z</relative-time> | `5ef0ef3` | Manual request |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-16T09:00:45.836851Z\">2026-10-16T09:00:45.836851Z</relative-time> | `aeb4a0f` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6211756067",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6211756067\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225256851",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225256851\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225721682",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225721682\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Delightful!\n\n**Reviewed commit:** `9df6b0c759`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225762121",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6225762121\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226303513",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226303513\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226597044",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226597044\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Swish!\n\n**Reviewed commit:** `9cf65c0299`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226653561",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6226653561\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6227925975",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6227925975\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228186967",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228186967\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Bravo.\n\n**Reviewed commit:** `4408816708`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228214644",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228214644\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "@codex review",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228414281",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#issuecomment-6228414281\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `aeb4a0fbe9`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5545290170",
+      "commit": "aeb4a0fbe9c4e88b6d95a4f3aa91f1f85e52d601",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5545290170\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `57d3577ca7`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5554058212",
+      "commit": "57d3577ca780248f573fd26c4fa460e2b5e2d510",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5554058212\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `6ae8cf75df`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5554562648",
+      "commit": "6ae8cf75df74bb54eb3b724ea7c94e16b70759ef",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5554562648\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `9f6c5cebd2`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5555371628",
+      "commit": "9f6c5cebd23592793f3ad5247a20753aff26f388",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5555371628\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5ef0ef3bb7`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5555541928",
+      "commit": "5ef0ef3bb7d9d89d51bfa2056029fde54fc825d9",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5555541928\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493095",
+      "commit": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493095\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493223",
+      "commit": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493223\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493317",
+      "commit": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493317\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493424",
+      "commit": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493424\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493548",
+      "commit": "f364b7d478ab100d56c80b6935b90ffcf72a99ab",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#pullrequestreview-5556493548\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 181,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Isolate uv from the caller's project**\n\nWhen `dispatch.sh` is invoked from a directory containing an untrusted `pyproject.toml`, both `uv run` forms discover and synchronize that caller-controlled project before the task is validated; a local build backend can therefore execute during this probe. `uv run --help` defines `--no-project` as “Avoid discovering the project or workspace,” but it is omitted here. Add `--no-project` to both the offline and fallback forms (or run from a fixed trusted directory); otherwise the threat-table claim that the caller's working directory controls nothing is false.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/aeb4a0fbe9c4e88b6d95a4f3aa91f1f85e52d601/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4292675906",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:c8e813eaf423ed396467b9db7ff5fc243c54762c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 182,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Run uv outside the caller-controlled directory**\n\nWhen `dispatch.sh` is invoked from an untrusted directory containing `.python-version` with a path such as `./pwn`, both commands still let uv execute that caller-controlled interpreter with the orchestrator's credentials before validating the task. Fresh evidence beyond the earlier `pyproject.toml` report is that uv 0.7.22 executes `./pwn` even with `run --no-project`, while `uv help run` says `--no-project` still uses a virtual environment “found in a current or parent directory”; the existing uv test shim also models `.python-version` execution at `tests/unit/test_orchestrator_tools.py:40-43`. Run these commands from the trusted script root or resolve and pin a trusted interpreter first; the current behavior also contradicts the threat-table residual claiming the caller cwd chooses nothing.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/57d3577ca780248f573fd26c4fa460e2b5e2d510/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4299651928",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:8adf74bb3d804c917b5bbe5f4f806c8b1ceaabb7"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 197,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Isolate the PyYAML probe from inherited Python paths**\n\nWhen a trusted invocation inherits `PYTHONPATH` pointing to a caller-writable directory containing `yaml.py`, this probe runs `python -c 'import yaml'` without isolated mode, so uv preserves the variable and executes that module before the task is validated. I confirmed this behavior with uv 0.7.22; the later `python -I` calls do not prevent the initial execution. Use `python -I -c 'import yaml'` for the probe or remove Python override variables as part of the sanitized environment; otherwise the task's environment-input residual does not close this trust boundary.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/6ae8cf75df74bb54eb3b724ea7c94e16b70759ef/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4300102967",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:b18698d500581ec2fead4e4628da7889f40845bf"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 199,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Ignore caller-controlled uv configuration**\n\nWhen the caller can set `HOME` to a writable directory, both uv invocations discover `$HOME/.config/uv/uv.toml` because the clean environment preserves that value and neither command uses `--no-config`. I confirmed with uv 0.7.22 that a user config containing an `index-url` redirects the `pyyaml` fetch; a malicious index can therefore supply code that executes at the subsequent `import yaml` before the task is validated. `uv help run` documents that `--no-config` avoids configuration files normally discovered in user configuration directories, so add it to both command forms or pin a trusted HOME. This leaves the task's environment-input residual ineffective.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/9f6c5cebd23592793f3ad5247a20753aff26f388/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4300738707",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:e09f14ca"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "tests/unit/test_orchestrator_tools.py",
+      "line": 8,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Warm PyYAML before exercising the real uv wrapper**\n\nOn a clean unit-test runner, this case cannot use the stated “reachable index”: `dispatch.sh` now always invokes `uv run --offline --with pyyaml`, and `uv help run` defines `--offline` as “Disable network access.” The required Unit test workflow disables uv cache restoration and proceeds directly to `make unit-test`, which does not warm PyYAML, so the new cases exit 2 at the probe rather than reaching their assertions; this is reproducible with an empty cache. Warm the cache in the unit-test setup or make the fixture provision PyYAML independently.\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4300891366",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (operator decision D-S2-374-5: a further finding of the class after the re-plan round is advisory; the test's offline uv needs PyYAML in the pinned cache, which a fresh runner lacks and an earlier module warms in CI; the owner adds a warm step to the test helper); evidence=/usr/bin/grep -n \"^4300891366\" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 181,
+      "body": "Disposition (orchestrator): `fixed:c8e813eaf423ed396467b9db7ff5fc243c54762c`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612078",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612078\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 182,
+      "body": "Disposition (orchestrator): `fixed:8adf74bb3d804c917b5bbe5f4f806c8b1ceaabb7`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612192",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612192\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 197,
+      "body": "Disposition (orchestrator): `fixed:b18698d500581ec2fead4e4628da7889f40845bf`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612280",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612280\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/dispatch.sh",
+      "line": 199,
+      "body": "Disposition (orchestrator): `fixed:e09f14ca`. Fixed at root cause in that commit on this branch; verified by the task's tests and CI on the final head. Resolving.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612416",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612416\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "tests/unit/test_orchestrator_tools.py",
+      "line": 8,
+      "body": "Disposition (orchestrator): `not-applicable:advisory P2 owned by dotfiles-T128-orchestrator-tools-followup-a04 (operator decision D-S2-374-5: a further finding of the class after the re-plan round is advisory; the test's offline uv needs PyYAML in the pinned cache, which a fresh runner lacks and an earlier module warms in CI; the owner adds a warm step to the test helper); evidence=/usr/bin/grep -n \"^4300891366\" .orchestration/acceptance/dotfiles-T128-orchestrator-tools-followup-a03.md`. Resolving; the owning task on main carries it.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612539",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/374#discussion_r4301612539\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834786",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39004759087/job/117314834786\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314834060",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314834060\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833973",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39004758833/job/117314833973\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CI status, no finding; evidence=jq --argjson s '\"status\"' --argjson c '\"CodeRabbit\"' '.items[] | select(.source == $s and .check == $c)' .orchestration/validation/dotfiles-T128-orchestrator-tools-followup-a03-pr-feedback.json"
+    }
+  ]
+}

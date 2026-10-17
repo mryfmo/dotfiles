@@ -1,0 +1,130 @@
+# Report: dotfiles-T128-orchestrator-tools-followup-a03
+
+- **Seat and branch.** `claude-standard-dot-a003` in `.claude/worktrees/worker-c`, on the fresh branch `tools/dispatch-checker-window`, cut with `--no-track` from `origin/main` at `1d418126`. The earlier branches are left as they are.
+- **Task copy.** Byte-identical to the dispatched main-checkout file, sha256 `b291ba85…`, the TASK's `task_sha256` (validation §1).
+- **Commits.** `766c1491`: the change, its tests and the task copy; `aeb4a0fb`: this evidence; `c8e813ea`: the Bot's P1 fix; then this evidence's fix-round update.
+- cost: n/a (the runtime exposes no token or cost figures to the seat).
+
+## Item 1a: the checker refusal (C-52)
+
+- For an AGMSG-TASK line, after the hash checks and before any read or send, `dispatch.sh` picks the Makefile's `UV_PYYAML` form: `uv run --offline --with pyyaml` when that form imports yaml, else `uv run --with pyyaml`.
+- **The brief exemption.** It parses the task file's front matter (the lines between the first two `---` lines) with PyYAML under a `SafeLoader` whose mapping constructor refuses a duplicate key. Only a mapping whose `kind` is the string `review` skips the checker. A parse error, a duplicate key, no closed front matter, no `kind` or any other value runs it.
+- **The checker.** `task-consistency-check.py --root <root> <file>` beside the script, as `python -I`. A non-zero exit prints `dispatch: <file> fails the task-consistency check` and the checker's output on stderr, exits 1 and sends nothing.
+
+## Item 1b: the bounded window (C-53)
+
+- Both reads are `history.sh <team> "" <BUS_READ_WINDOW>` (default 200, a positive integer, else usage). `BUS_READ_LIMIT` and the cap refusal are gone.
+- **The window file.** `mktemp "${TMPDIR:-/tmp}/dispatch-window.XXXXXX"` (mode 0600), removed by an EXIT trap. The `check` mode writes the pre-send window there: each row's timestamp, sender, recipient and text, never its marker.
+- **The alignment.** The `append` mode tries every shift `j` from 0 to `m − 1` and keeps those where the post-send window without its `j` newest rows equals the pre-send window without its `e = n + j − m` oldest (`0 ≤ e < n`). An empty pre-send window takes `j = m`.
+- **Outcomes.** Zero or several fits: `does not align uniquely … raise BUS_READ_WINDOW or check the bus`. A unique `j = 0`: `this send added no bus row`. Otherwise the send is the last of the `j` new rows equal to the line, sender and recipient, and none equal: `no new row equals the line`. Every refusal exits 1 with the record unchanged.
+- The shdoc header, the `@env BUS_READ_WINDOW` line and the `@exitcode 1` line say so.
+
+## Tests
+
+- `test_dispatch_refuses_a_task_file_failing_the_checker`: the stub checker beside the copied script, a fake `uv` that logs its argv and runs the real `uv` next on PATH. Refused, each with the checker call logged and the C2 line on stderr: `kind: code`, `kind: "code"`, no `kind`, the duplicate key in both orders, and a closed but unparsable front matter with one `kind: review` line. Sent with no checker call: a single `kind: review`. The log's first call is the `UV_PYYAML` probe.
+- `test_dispatch_reads_a_bounded_history_window`: the limit argument is 200 on both reads, 50 with `BUS_READ_WINDOW=50`. Recorded once with the right marker: eviction plus collision, same second, and another seat's newer row. Refused with the record unchanged: left the window, no new row, a periodic bus. No `dispatch-window.*` file is left after any case.
+- **The module.** 54 tests pass (validation §1). Eight mutants, all killed (validation §2 and §4).
+- **Two of the 52 changed.** The cap's removal forced it; the names and edits are in validation §3. The module docstring names its new dependency on a real uv for the checker case.
+
+## Notes
+
+- **The uv form.** The Makefile's `UV_PYYAML` form plus `--no-project`, the Bot's P1 (below): a caller's `pyproject.toml` is never discovered, synced or built.
+- **Size.** 105 changed lines outside `tests/` and `.orchestration/` (of 200), 114 added under `tests/` (of 1000), 2 files (validation §4).
+
+## The Bot
+
+- **Code review of `aeb4a0fb`** (review 5545290170): one P1, thread 4292675906, `dispatch.sh:181`, "Isolate uv from the caller's project". `fixed:c8e813ea`: `--no-project` on both uv forms, and the checker test's review brief sent from a directory with an unresolvable `pyproject.toml` (validation §4). The fix round is the PR's one round; the Bot's re-review is asked with `@codex review` on the fix head.
+- **Security review of `aeb4a0fb`:** completed, no finding.
+- **The PING** of 2026-10-16T21:38:05Z (the host slept overnight) was answered with a PONG, `status=alive`.
+
+## Final state (main-checkout copy only)
+
+- **CI.** All 13 checks pass on `57d3577c`, the final head (validation §5); `mergeStateStatus` is `BLOCKED`, waiting for review.
+- **The Bot's re-review of `57d3577c`** (review 5554058212, asked with `@codex review`): one new P1, thread 4299651928, `dispatch.sh:182`, "Run uv outside the caller-controlled directory". `open:4299651928`, `bot_rounds=2`: the one fix round is spent, so it stops the PR and goes to the operator. P1 4292675906 is `fixed:c8e813ea`.
+- **The memory add:**
+
+```text
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T128-orchestrator-tools-followup-a03 (PR #374, head 57d3577c): dispatch.sh refuses an AGMSG-TASK whose task file fails task-consistency-check.py (python -I via the UV_PYYAML uv form; only a front matter PyYAML parses, duplicate keys refused, to kind: review is exempt) and both history reads take the newest BUS_READ_WINDOW rows (default 200), the recorder aligning the post-send window with the pre-send one (kept in a mktemp 0600 file, EXIT trap) by the unique fitting shift and recording the last new row equal to the line. Bot: P1 4292675906 (uv discovered the callers pyproject.toml) fixed:c8e813ea with --no-project; the re-review of 57d3577c left P1 4299651928 open (uv still runs a caller .python-version or venv interpreter; fix: run uv from the trusted script root or pin the interpreter), bot_rounds=2, the operators decision. Two of the 52 tests changed with the cap removal (limit 200; the capped-history case dropped, test renamed).'
+f603f433-3d66-40c2-9925-a7cb82a4501b
+rc=0
+```
+
+## Revise round 2 (`8adf74bb`)
+
+- **The P1.** The Bot's re-review of `57d3577c`, thread 4299651928, `dispatch.sh:182`: `--no-project` keeps a caller's `pyproject.toml` out, but a `.python-version` or virtual environment in the caller's directory still chooses uv's interpreter. The operator's decision D-P1-374 A: one more fix round.
+- **The fix.** `fixed:8adf74bb`. Both uv forms run in a subshell that changes to the script's checkout root (`uvr`); the checker is named by the script directory's absolute path.
+- **The test.** `test_dispatch_refuses_a_task_file_failing_the_checker` plants a `.python-version` naming an executable in the caller's directory: it never runs, and the fake uv records the root as every call's directory. Mutant M9 (no `cd`) is killed; all nine mutants are killed, and 54 tests pass (validation §6).
+- **Size after the round.** 108 changed lines outside `tests/` and `.orchestration/` (of 200), 122 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 2: CI and the Bot on `9df6b0c7`, the final head
+
+- **CI.** All 13 checks pass on `9df6b0c7` (validation §7); `mergeStateStatus` is `BLOCKED`, waiting for review.
+- **The Bot.** Its code re-review of `9df6b0c7` completed with no finding and a 👍 reaction. Both P1 threads are fixed: 4292675906 `fixed:c8e813ea`, 4299651928 `fixed:8adf74bb`.
+
+## Revise round 3 (`411c7d68`)
+
+- **The P1.** The local review of `9df6b0c7`, `local:9df6b0c:1` (`dispatch.sh:183-185`): an inherited `VIRTUAL_ENV` still chose uv's interpreter after the `cd`. The third finding of one class, the interpreter chosen from caller state. The operator's decision D-S2-374-2 A: one round that closes the class (C-57).
+- **The fix.** `fixed:411c7d68`. Both uv forms name `--python`, `python3` as `mise which` answers it under `env -i` at the root (else `python3` on PATH; a non-absolute answer refuses), and run under `env -u` for `VIRTUAL_ENV`, `VIRTUAL_ENV_PROMPT`, `CONDA_PREFIX` and every inherited `UV_*` variable. `--no-project` and the `cd` to the root stay.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state` sets a caller project, a caller `.python-version`, `VIRTUAL_ENV`, `CONDA_PREFIX` and `UV_PYTHON` at once; none is used (validation §8). The checker test's setup is now the shared helper `checker_dispatch`, and its probe assertion expects the pinned `--python`.
+- **Checks.** 55 tests pass; twelve mutants, all killed (validation §8).
+- **Size after the round.** 120 changed lines outside `tests/` and `.orchestration/` (of 200), 145 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 3: CI and the Bot on `6ae8cf75`, the final head
+
+- **CI.** All 13 checks pass on `6ae8cf75` (validation §9).
+- **The Bot.** Its code re-review of `6ae8cf75` left one new P1, thread 4300102967 (`dispatch.sh:197`): the PyYAML probe runs without `-I`, so an inherited `PYTHONPATH` can load a caller's `yaml.py`. `open:4300102967`; the proposed fix is `-I` on the probe (one flag) or `PYTHONPATH` and the `PYTHON*` overrides added to the `env -u` list, with one test planting `yaml.py` on `PYTHONPATH`. `local:9df6b0c:1` is `fixed:411c7d68`; the Bot's earlier P1s stay `fixed:c8e813ea` and `fixed:8adf74bb`.
+
+## Revise round 4 (`b18698d5`)
+
+- **The P1.** The Bot's re-review of `6ae8cf75`, thread 4300102967, `dispatch.sh:197`: the `import yaml` probe ran without `-I`, so an inherited `PYTHONPATH` could load a caller's `yaml.py`. The fourth finding of the class; the operator's decision D-S2-374-3 A: one round that ends the class by an allowlist.
+- **The fix.** `fixed:b18698d5`. Both uv forms run under `env -i` with `PATH`, `HOME`, `LANG` and `LC_ALL` when set, and the `AGMSG_*` variables, nothing else; the probe runs `python -I`. The pinned `--python`, `--no-project` and the `cd` to the root stay.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state`, extended: every caller-state source at once, now with a `yaml.py` on `PYTHONPATH`; the fake uv inherits only the allowlisted names (validation §10).
+- **Checks.** 55 tests pass; thirteen mutants, all killed (validation §10).
+- **Size after the round.** 124 changed lines outside `tests/` and `.orchestration/` (of 200), 153 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 4: CI and the Bot on `9cf65c02`, the final head
+
+- **CI.** All 13 checks pass on `9cf65c02` (validation §11); `mergeStateStatus` is `BEHIND`, since `main` moved.
+- **The Bot.** Its code re-review of `9cf65c02` completed with no finding and a 👍 reaction. Every P1 is fixed: 4292675906 `fixed:c8e813ea`, 4299651928 `fixed:8adf74bb`, `local:9df6b0c:1` `fixed:411c7d68`, 4300102967 `fixed:b18698d5`.
+
+## Revise round 5 (`f77185dd`)
+
+- **The P1.** The audit of `ef74eaea`, `audit:ef74eae:1` (`dispatch.sh:219`): the root discovery (`git rev-parse --show-toplevel`) ran under the inherited environment, so `GIT_DIR` or `GIT_WORK_TREE` redirected the root the checker trusts, and C6 accepted a stale receipt. The fifth finding of the class; the operator's decision D-S2-374-4 A: one round.
+- **The fix.** `fixed:f77185dd`. The `env -i` allowlist is built first and used for the root discovery, the one `git` call `dispatch.sh` makes, as well as the uv calls.
+- **The test.** `test_dispatch_resolves_its_root_without_inherited_git_variables`: `GIT_DIR` and `GIT_WORK_TREE` name another tree, and a task file named by an absolute path has a receipt that is stale under the real root; the C6 refusal happens, and the root and the checker path are the script's checkout (validation §12).
+- **The audit's other findings.** Its two P2s on the history window stay advisory, owned by a04, with no change here; its two orchestration findings concern the orchestrator's record.
+- **Checks.** 56 tests pass; fourteen mutants, all killed (validation §12).
+- **Size after the round.** 130 changed lines outside `tests/` and `.orchestration/` (of 200), 187 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 5: CI and the Bot on `9f6c5ceb`, the final head
+
+- **CI.** All 13 checks pass on `9f6c5ceb` (validation §13).
+- **The Bot.** Its code re-review of `9f6c5ceb` left one new P1, thread 4300738707 (`dispatch.sh:199`): uv still reads `$HOME/.config/uv/uv.toml`, so a caller-controlled `HOME` can redirect the `pyyaml` index. `open:4300738707`; the proposed fix is `--no-config` on both uv forms (one flag each), with one test planting a `uv.toml` under a temporary `HOME`. `audit:ef74eae:1` is `fixed:f77185dd`.
+- **The pattern.** This is the sixth finding of the class in six rounds: each fix narrows one input uv or Python reads, and the next review finds another (project, `.python-version`, `VIRTUAL_ENV`, `PYTHONPATH`, `GIT_*`, now user config). A round that runs the checker without uv's resolution (a pinned interpreter that already has PyYAML, run as `python -I` with no fetch) would remove the surface rather than narrow it; that is the orchestrator's and the operator's call.
+
+## Revise round 6 (`e09f14ca`), the final round of the class
+
+- **The P1.** The Bot's re-review of `9f6c5ceb`, thread 4300738707 (`dispatch.sh:199`): the allowlist kept the inherited `HOME` and uv read `$HOME/.config/uv/uv.toml`, so a caller could redirect the `pyyaml` index. The sixth finding of the class; the operator's decision D-S2-374-5 A: one final round naming every input at once, after which a further finding of the class is advisory under a04.
+- **The fix.** `fixed:e09f14ca`. Both uv forms pass `--no-config`, `--no-project` and the pinned `--python`, from the root, under `env -i` with only `PATH`, `HOME` (the script owner's passwd home), `UV_CACHE_DIR` (under it), `LANG`/`LC_ALL` and `AGMSG_*`; the probe runs `python -I`; the root discovery runs under the same environment.
+- **The test.** `test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state`, extended: every source at once, now with a planted `HOME`/`uv.toml`/index and `GIT_DIR`/`GIT_WORK_TREE`; the fake uv sees only the named inputs (validation §14).
+- **Checks.** 56 tests pass; seventeen mutants, all killed (validation §14).
+- **Size after the round.** 143 changed lines outside `tests/` and `.orchestration/` (of 200), 201 added under `tests/` (of 1000), 2 files.
+- **The Bot.** Its re-review is asked with `@codex review` on this round's head.
+
+## Round 6 supplement (`e2b7d2cc`): the re-plan
+
+- **The correction.** The operator's correction at 01:53:21Z: six single-source patches were not the re-plan S1 requires; the round's specification became a design change. The Bot wait on `44088167` was stopped.
+- **Offline only.** Both uv forms run `--offline`; no index is reached. A cold cache exits 2 with the `make validate-agent-assets` guidance.
+- **Positive identity.** The fake uv records each call's exact argv and environment; the test asserts both exactly for every call, with all planted sources in one case, so a new input source fails the test by construction. Only `__CF_USER_TEXT_ENCODING`, which macOS adds to every process, is dropped before the comparison.
+- **The cold cache.** The checker test asserts exit 2, the guidance, and nothing sent.
+- **Checks.** 56 tests pass; eighteen mutants, all killed (validation §15).
+- **Size after the round.** 149 changed lines outside `tests/` and `.orchestration/` (of 200), 235 added under `tests/` (of 1000), 2 files.
+
+## Round 6: CI and the Bot on `5ef0ef3b`, the final head
+
+- **CI.** All 13 checks pass on `5ef0ef3b` (validation §16); the three dispatch tests ran and passed in all four Unit test jobs, with no uv cache restored.
+- **The Bot.** Its code re-review of `5ef0ef3b` left one new P1, thread 4300891366 (`tests/unit/test_orchestrator_tools.py:8`): the offline uv needs PyYAML in the cache, which a fresh runner lacks. CI does not reproduce it (an earlier module warms the cache in the same job), so it is an order dependency. `open:4300891366`; the proposed fix is a warm step in the test helper with the pinned `HOME` and `UV_CACHE_DIR`. P1 4300738707 is `fixed:e09f14ca`, with the re-plan supplement in `e2b7d2cc`.

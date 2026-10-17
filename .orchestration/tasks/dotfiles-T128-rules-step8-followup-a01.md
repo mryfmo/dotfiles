@@ -73,3 +73,8 @@ One PR from a fresh branch off `origin/main` (after PR #371 merges). The PR is r
 ## Change (2026-10-16T04:16:43Z, before dispatch)
 
 The task-level audit of PR #371's head 07400690 (P2): `allowed_files` held nine paths in one YAML string, so the task had no executable scope; the nine paths are now nine list items. The Bot's P2 4290741790 (the lineage task text's threat row and item 5 naming the test's former name) is not an owned row of this task: the task text is the orchestrator's record and its `## Change (test name, …)` section corrects it.
+
+## Status (2026-10-17T00:41:46Z): no-op, not dispatched
+
+Its only owned row, 4290741790 (the task copy's stale test name), is closed by the orchestrator's `## Change (test name, 2026-10-16T04:16Z)` correction of the lineage task text, a file outside this task's allowed_files; no owner work remains. The task stays as the lineage's owner for a later advisory P2, if any; it dispatches only when its owner section holds an open row.
+

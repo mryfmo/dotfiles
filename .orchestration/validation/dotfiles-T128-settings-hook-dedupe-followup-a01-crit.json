@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-settings-hook-dedupe-followup-a01-pr380-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "002f188ee1259b57bb7827a99faa418b25abce95",
+    "pr": "380",
+    "reviewed_at": "2026-10-17T02:39:00Z",
+    "body": "Independent orchestrator review of PR #380 at the head the chain fetches after the update-branch onto the current main (the worker's head 3a952537 on 5fd4fe0c; task dotfiles-T128-settings-hook-dedupe-followup-a01, the settings-hook-dedupe lineage's owner task, pair-confirmed at 23b1cef3; branch tools/settings-hook-dedupe-followup): the diff touches the two files the task's allowed_files name, home/dot_claude/modify_private_settings.json (the owned row audit:ca892e4:1: is_managed_post_tool_use_hook compares the whole command string, stripped of surrounding whitespace, with the two renderings of the managed path and no longer splits with shlex, so a quoted or escaped tilde path stays unmanaged; still exactly the two renderings) and tests/unit/test_claude_settings_merge.py (test_managed_post_tool_use_keeps_a_quoted_or_escaped_tilde_path, both cases kept with the managed entry appended, red on the old predicate; 21 of 21 green), plus the task's evidence directory; 7 added lines outside tests (cap 200) and 14 under tests (cap 1000); make render-check ok; CI 13 pass on 3a952537; the Bot's code and security reviews of 3a952537 without findings, no threads; no P0/P1. Routing note: the file is a Claude-boundary source and the task went to a Claude seat (the orchestrator's routing mistake, M-20261017-03); the task-level audit, a Codex model, is the cross-boundary check before the gate."
+  }
+]

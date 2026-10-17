@@ -1,38 +1,50 @@
 ---
 {
-  "audit_findings": [],
-  "dispatch": [
-    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=5 status=revise previous_head=3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8 s1=process-visibility re-plan=.orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md#re-plan-process-visibility reason=C-59-re-plan-round(the-class-at-three:4301301556,4301342120,audit:3345c4d:2;operator-decision-D-S1-383-A)plus-the-audit-s-small-finding-1(equals-form-flag,new-class) check=tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(new-subcases:a-stub-ps-omitting-the-caller-s-own-parent-pid-gives-args=unknown-probe-exit-4-with-the-stderr-line-seat-args:-ps-hides-the-caller-s-own-process,whether-the-seat-is-listed-or-not;one-including-it-and-lacking-the-seat-gives-unlaunched-exit-3;one-including-both-gives-ok;a-process-carrying---effort=high-after-the-expected---effort-xhigh-gives-args=differs,and---effort=xhigh-alone-gives-ok) re-plan-text=specification:a-process-list-is-trusted-only-when-it-shows-the-checker-s-own-parent-process($PPID),since-a-sandbox-or-pid-namespace-that-hides-other-processes-hides-that-one-too;design:one-self-visibility-test-after-the-ps-call-and-before-any-selection,absent-means-unknown-probe,present-means-a-missing-seat-is-unlaunched;implementation:that-one-test-in-scripts/orchestrator/seat-args.sh,plus-the-managed-flag-comparison-reading---flag=value-tokens-as-a-pair(the-last-and-every-occurrence-rule-unchanged),nothing-else-moved;verification:the-subcases-named-in-check=,the-existing-ones-unchanged;then-push,CI,the-Bot-s-re-review,RESULT-round-2-naming-audit:3345c4d:1-and-audit:3345c4d:2-fixed:<sha>-and-4301301556-re-fixed:<sha> read_at=read",
-    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=5 status=pending-integration reason=RESULT-round-2-read:head-8b210af3,the-re-plan-round(self-visibility-test-and-equals-form-comparison);the-integration-chain-reruns-after-PR-379-s(one-chain-at-a-time);INV-6-revises-1;no-action-for-you-on-this-task-until-its-audit;no-TASK-is-queued-for-you-right-now read_at=read",
-    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=6 status=revise previous_head=8b210af3b9f151cef63776f63a74904115cef8b9 reason=C-50-round(INV-6:results-2,revises-1-of-2;the-task-s-Completion-clause-makes-a-small-in-scope-P2-fix-mandatory-while-the-count-allows):the-local-review-of-8b210af-found-one-P2,local:8b210af:1,class-ps-truncation:ps-may-truncate-command-lines-to-the-terminal-width,so-a-managed-flag-or-the--n-token-past-the-cut-is-invisible-and-a-launched-seat-reads-as-unlaunched-or-differs check=tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(new-subcase:the-stub-ps-records-its-argv-and-the-script-asks-for-untruncated-command-lines,-ww-before--o-pid=,command=,with-the-same-column-format;a-stub-that-truncates-unless--ww-is-given-makes-the-matching-seat-read-ok-only-with-the-flag) semantics=/bin/ps--axww--o-pid=,command=(or-the-seam-binary-with-the-same-arguments);nothing-else-moved;then-push,CI,the-Bot-s-re-review,RESULT-round-3-naming-local:8b210af:1-fixed:<sha>;queue-it-after-the-#379-round-you-hold read_at=unread"
-  ],
   "format": 1,
-  "head": "3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8",
+  "task": "dotfiles-T128-seat-launch-args-a01",
+  "head": "45b9dd9a1b5200f22668f5c27105f3386f0052fa",
+  "pr": 383,
   "ledger": [
     {
-      "class": "profile-name-grammar",
-      "id": "4301264676"
+      "id": "4301264676",
+      "class": "profile-name-grammar"
     },
     {
-      "class": "process-visibility",
-      "id": "4301301556"
+      "id": "4301301556",
+      "class": "process-visibility"
     },
     {
-      "class": "process-visibility",
-      "id": "4301342120"
+      "id": "4301342120",
+      "class": "process-visibility"
     },
     {
-      "class": "duplicate-managed-flags",
-      "id": "4301378546"
+      "id": "4301378546",
+      "class": "duplicate-managed-flags"
     },
     {
-      "class": "argv-diagnostic-disclosure",
-      "id": "4301378550"
+      "id": "4301378550",
+      "class": "argv-diagnostic-disclosure"
+    },
+    {
+      "id": "audit:3345c4d:1",
+      "class": "equals-form-flag"
+    },
+    {
+      "id": "audit:3345c4d:2",
+      "class": "process-visibility"
+    },
+    {
+      "id": "audit:3345c4d:3",
+      "class": "counters-not-pasted"
     }
   ],
-  "pr": 383,
-  "searches": [],
-  "task": "dotfiles-T128-seat-launch-args-a01"
+  "searches": [
+    {
+      "class": "process-visibility",
+      "records": []
+    }
+  ],
+  "audit_findings": []
 }
 ---
 
@@ -110,4 +122,27 @@ detail: pr=383 authors=claude-deep-dot tasks=01a147f6-ebd8-7bd5-87bd-8b5236f5fad
 results 2, revises 1 (threshold 2): the task's Completion clause makes the small in-scope fix mandatory while the count allows, so ACCEPTANCE `revise` (round 6, C-50, `previous_head=8b210af3`, the test selector) by dispatch-direct: `ps -axww -o pid=,command=`, one subcase; revises becomes 2 after its RESULT, which S2 flags at the merge for the operator; the worker queues it after the #379 round. The chain reruns on the new head.
 
 local:8b210af:1	ps-truncation
+- 2026-10-17T08:28:21Z plan 023 (the operator's harness migration, D-harness-20261017): held (②): PR #383 stays open and unmerged with its branch after chain 3's audit is recorded; the requirement (the launcher records argv and pid as JSON at spawn and the check compares) moves to plan 023's PR C.
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=5 status=revise previous_head=3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8 s1=process-visibility re-plan=.orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md#re-plan-process-visibility reason=C-59-re-plan-round(the-class-at-three:4301301556,4301342120,audit:3345c4d:2;operator-decision-D-S1-383-A)plus-the-audit-s-small-finding-1(equals-form-flag,new-class) check=tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(new-subcases:a-stub-ps-omitting-the-caller-s-own-parent-pid-gives-args=unknown-probe-exit-4-with-the-stderr-line-seat-args:-ps-hides-the-caller-s-own-process,whether-the-seat-is-listed-or-not;one-including-it-and-lacking-the-seat-gives-unlaunched-exit-3;one-including-both-gives-ok;a-process-carrying---effort=high-after-the-expected---effort-xhigh-gives-args=differs,and---effort=xhigh-alone-gives-ok) re-plan-text=specification:a-process-list-is-trusted-only-when-it-shows-the-checker-s-own-parent-process($PPID),since-a-sandbox-or-pid-namespace-that-hides-other-processes-hides-that-one-too;design:one-self-visibility-test-after-the-ps-call-and-before-any-selection,absent-means-unknown-probe,present-means-a-missing-seat-is-unlaunched;implementation:that-one-test-in-scripts/orchestrator/seat-args.sh,plus-the-managed-flag-comparison-reading---flag=value-tokens-as-a-pair(the-last-and-every-occurrence-rule-unchanged),nothing-else-moved;verification:the-subcases-named-in-check=,the-existing-ones-unchanged;then-push,CI,the-Bot-s-re-review,RESULT-round-2-naming-audit:3345c4d:1-and-audit:3345c4d:2-fixed:<sha>-and-4301301556-re-fixed:<sha> read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=5 status=pending-integration reason=RESULT-round-2-read:head-8b210af3,the-re-plan-round(self-visibility-test-and-equals-form-comparison);the-integration-chain-reruns-after-PR-379-s(one-chain-at-a-time);INV-6-revises-1;no-action-for-you-on-this-task-until-its-audit;no-TASK-is-queued-for-you-right-now read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=6 status=revise previous_head=8b210af3b9f151cef63776f63a74904115cef8b9 reason=C-50-round(INV-6:results-2,revises-1-of-2;the-task-s-Completion-clause-makes-a-small-in-scope-P2-fix-mandatory-while-the-count-allows):the-local-review-of-8b210af-found-one-P2,local:8b210af:1,class-ps-truncation:ps-may-truncate-command-lines-to-the-terminal-width,so-a-managed-flag-or-the--n-token-past-the-cut-is-invisible-and-a-launched-seat-reads-as-unlaunched-or-differs check=tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one(new-subcase:the-stub-ps-records-its-argv-and-the-script-asks-for-untruncated-command-lines,-ww-before--o-pid=,command=,with-the-same-column-format;a-stub-that-truncates-unless--ww-is-given-makes-the-matching-seat-read-ok-only-with-the-flag) semantics=/bin/ps--axww--o-pid=,command=(or-the-seam-binary-with-the-same-arguments);nothing-else-moved;then-push,CI,the-Bot-s-re-review,RESULT-round-3-naming-local:8b210af:1-fixed:<sha>;queue-it-after-the-#379-round-you-hold read_at=unread
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-seat-launch-args-a01 round=6 status=pending-integration reason=RESULT-round-3-read:head-5de57007,the-ps--ww-round;the-operator-s-decision-of-08:0xZ:the-rounds-on-this-PR-end-here,the-seat-args-check-is-advisory-and-the-PR-merges-after-its-chain-with-any-further-P2-under-the-owner-dotfiles-T128-seat-launch-args-followup-a01(a-redesign-row:the-launcher-records-the-launch-argv-and-pid-as-JSON-at-spawn-and-the-check-compares-against-it);no-action-for-you-on-this-task;your-next-TASK-is-the-rules-task-when-its-text-is-re-confirmed read_at=read
+- 2026-10-17T08:38:20Z integration chain 3 (`383-chain3.log`, rc 0): update-branch onto a0e8b8ad gives head `45b9dd9a1b5200f22668f5c27105f3386f0052fa`; CI green; no new Bot review in the 5-minute wait; sandbox scan and local review 0 findings; the audit of 45b9dd9 `Verdict: incorrect`, two P2 (below). INV-6 S2 counters (pasted) with the source readings for the unknown components: audits = receipts 3345c4d and 45b9dd9 (`/bin/ls …-audit-*.md.last.md`); Bot heads: the six threads of 383-extra.tsv, all `fixed:`, none a P1:
+
+```
+task=dotfiles-T128-seat-launch-args-a01 tasks=1 amendments=0 questions=0 results=3 withdrawn=0 revises=2 first_result_head=7b776a30a6a5b6c0ed9e8a9284650c1c9a2373ea bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-17T03:45:27Z..2026-10-17T08:00:59Z (4:15) source=live
+S2: revises 2 >= 2 source=live
+S1: class=process-visibility count=3 re-plan=present source=record
+detail: pr=383 authors=claude-deep-dot tasks=01a147f6-ebd8-7bd5-87bd-8b5236f5fad7 results=01a14836-8130-7c0d-8344-ee083e5f4e17,01a1488f-1cc8-7af0-8e8f-df229e2f58a9,01a148e0-de78-73ac-8eba-d648f3fd09b6 questions=- withdrawn=- bot_heads=- source=live
+```
+
+**Plan 023 (D-harness-20261017): this PR is held unmerged with its branch**; the audit is recorded, no finish-pr runs, and the requirement moves to plan 023's PR C.
+
+## Audit of 45b9dd9 (the update-branch head of 5de57007): Verdict incorrect, two P2 (rows id<TAB>class)
+
+audit:45b9dd9:1	process-visibility
+audit:45b9dd9:2	counters-unknown-components
+
+audit-finding: 45b9dd9:1 not-applicable:advisory P2 owned by dotfiles-T128-seat-launch-args-followup-a01 (plan 020 step 4 and C-59, the fifth finding of the re-planned class: the self-visibility test narrows the guarantee, a parent-visible and worker-hidden snapshot still reads unlaunched, as the worker's RESULT states; the disposition of 4301301556 is corrected in 383-extra.tsv to this limitation; plan 023's PR C replaces the probe by the launcher's own JSON record of argv and pid); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-seat-launch-args-followup-a01.md
+audit-finding: 45b9dd9:2 not-applicable:the finding names the record: the readings for the unknown components are pasted above (two receipts; six Bot threads, none a P1); evidence=/bin/ls .orchestration/validation/dotfiles-T128-seat-launch-args-a01-audit-45b9dd9.md.last.md
 

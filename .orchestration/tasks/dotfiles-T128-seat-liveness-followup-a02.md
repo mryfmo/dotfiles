@@ -10,7 +10,7 @@ allowed_files:
   - home/dot_local/bin/common/executable_herdr-agents
   - tests/unit/test_herdr_agents.py
   - .orchestration/dotfiles-T128-seat-liveness-followup-a02/**
-after: [dotfiles-T128-seat-liveness-followup-a01]
+after: [dotfiles-T128-seat-liveness-followup-a01, dotfiles-T128-seat-launch-args-a01]
 threat_table:
   - control: the PR edits home/dot_local/bin/common/executable_herdr-agents only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the orchestrator's diff review and the task-level audit from main compare the diff against those rows; an edit outside them is an undeclared change the audit fails"
@@ -29,7 +29,7 @@ threat_table:
   - control: in-process effects
     disposition: "residual: the tests run herdr-agents as a subprocess with stub agmsg scripts and a fake herdr on PATH in a temporary directory, and import only the standard library; nothing is imported into another process"
   - control: workflow and interpreter or environment inputs
-    disposition: "residual: no workflow or interpreter file is in allowed_files; herdr-agents runs the agmsg scripts and herdr from PATH as today and reads the manifest and model-profiles.env as data; nothing from a PR head runs; after the merge the operator runs `make update` (the launcher lives under `home/`)"
+    disposition: "residual: no workflow or interpreter file is in allowed_files; herdr-agents runs the agmsg scripts from their fixed paths under HOME (~/.agents/skills/agmsg/scripts) and sources ~/.agents/model-profiles.env in a subshell as today, both the operator's own files rendered by make update; the owned rows change what the launcher prints and checks, not what it runs; a PR checkout as cwd chooses nothing new"
   - control: new or renamed scripts
     disposition: "residual: no new or renamed script: the owned rows name edits to the two files the lineage landed; any new or renamed script is an undeclared change the audit fails"
   - control: orchestrator effect merge
@@ -43,10 +43,10 @@ premises:
     command: 'git cat-file -e origin/main:.orchestration/tasks/dotfiles-T128-seat-liveness-followup-a01.md && echo present || echo absent'
     output: |-
       present
-  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (absent today: it lands with the boundary after PR #377 merges; a dispatch before the section would read no rows)'
+  - claim: 'the lineage acceptance record''s Owned-by section is on origin/main at dispatch (present since boundary (17), PR #384 merged as a0e8b8ad on 2026-10-17)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md 2>/dev/null | /usr/bin/grep -q "^## Owned by dotfiles-T128-seat-liveness-followup-a02" && echo present || echo absent'
     output: |-
-      absent
+      present
 ---
 
 # AGMSG-TASK dotfiles-T128-seat-liveness-followup-a02 — the advisory findings of PR #377 (the owner task of the seat-liveness lineage; plan 020 step 1, C-51's owner-first rule)
@@ -65,4 +65,17 @@ Written 2026-10-16 by the orchestrator seat before the lineage's integration cha
 
 ## Completion
 
-One PR from a fresh branch off `origin/main` (after PR #377 merges). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more after a P0/P1 fix round), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 as fixed in a C-50 round or advisory; the orchestrator's audit of the final head is dispositioned finding by finding before the gate. The Bot reviews once, at PR open; its P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within allowed_files gets C-50's revise round while INV-6's counts allow it, else it is advisory and recorded under the same heading for the lineage's next owner task. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-seat-liveness-followup-a02/task.md>` and the evidence paths. After the merge the operator runs `make update` (the launcher lives under `home/`).
+One PR from a fresh branch off `origin/main` (after the lineage's PR #377 and dotfiles-T128-seat-launch-args-a01 merge). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the Check's outputs, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 of the Bot's first review on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50; the counters count every fix round, before or after the first RESULT); the third finding of one class on this PR stops the rounds until the orchestrator's `re-plan:` line (C-59); a later review's P2 and every P3 are advisory (C-61), as is any other P2, owned by `<lineage>-followup-a01`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by <lineage>-followup-a01` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-seat-liveness-followup-a02/task.md>` and the evidence paths.
+
+## Change (round 1, 2026-10-17T08:20:04Z)
+
+The Codex half's round 1: `after:` names the seat-launch-args task (the C-60:2 row consumes seat-args.sh); the environment row says what the launcher runs today (the agmsg scripts from their fixed HOME paths, the env sourced in a subshell); the Completion clause is the template's current one; the lineage's covering test is named where the module was; no template constraint sentence (withdrawn by the operator on 2026-10-17). Nothing else changes from `daa87828`.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+dotfiles-T128-seat-liveness-followup-a02.md: OK
+premise 1: OK
+premise 2: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md
+```

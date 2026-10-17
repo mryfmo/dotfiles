@@ -25,8 +25,9 @@ RULES = {
     "R6": "an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)",
 }
 LIMIT = "shortcut: the lint is statement-local, so a variable normalised on an earlier line and compared later is a hit (mark it with the marker and its reason); upgrade to a cross-line data-flow when a second such marker is needed"
-TOKENS = {t + s for t in ("path", "url", "cwd", "dir", "root", "file", "home", "pid", "proc") for s in ("", "s")}
-SEGMENT = re.compile(r"[_.-]|(?<=[a-z0-9])(?=[A-Z])")
+TOKEN = re.compile(
+    r"(?:^|[_.\-]|(?<=[a-z0-9])(?=[A-Z]))(?i:(?:path|url|cwd|dir|root|file|home|pid|proc)s?)(?:$|[_.\-]|(?<=[a-z])(?=[A-Z]))"
+)
 LITERAL = re.compile(r"/|~|file://|\.html|%2F")
 MARKER = re.compile(r"#\s*lint-comparisons:\s*allow\b[ \t]*(\S*)")
 SHEBANG = re.compile(r"^#!.*\b(sh|bash|zsh|python\d*)\b")
@@ -39,17 +40,12 @@ PS = re.compile(r"(?:^|[|;&(]|\$\()\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|
 PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
 GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
 PY_NORM = re.compile(r"^(realpath|normpath|abspath|resolve|urlsplit|urlparse|unquote|canonical_path|normali[sz]e_\w+)$")
-COMPARE = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
-
-
-def token(name):
-    return any(part.lower() in TOKENS for part in SEGMENT.split(name))
 
 
 def operand(tok):
     name = re.match(r"\$\{?([A-Za-z_]\w*)", tok)
     if name or "SUBST" in tok:
-        return bool(name and token(name.group(1)))
+        return bool(name and TOKEN.search(name.group(1)))
     return bool(LITERAL.search(re.sub(r"\$\{[^}]*\}|\$\w+", "", tok)))
 
 
@@ -64,17 +60,9 @@ def words(line):
 
 
 def quoted(code):
-    q, i = None, 0
-    while i < len(code):
-        if q is None and code[i] in "'\"":
-            q, start = code[i], i
-        elif code[i] == "\\" and q != "'":
-            i += 1
-        elif code[i] == q:
-            if q == "'":
-                yield start, code[start : i + 1]
-            q = None
-        i += 1
+    for m in re.finditer(r"""'[^']*'|"(?:\\.|[^"\\])*"|\\.""", code):
+        if m.group(0).startswith("'"):
+            yield m.start(), m.group(0)
 
 
 def span(prog, p, fn):
@@ -115,7 +103,7 @@ def shell_hits(text):
         prog, first = re.sub(r"\\\([^)]*\)", "", region), code.count("\n", 0, begin) + 1
         for op in JQ_OP.finditer(prog):
             expr = span(prog, op.start(), op.group(0).endswith("("))
-            hit = re.search(r"\.(url|path)\b", expr) or any(map(token, re.findall(r"\$(\w+)", expr)))
+            hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
                 fn = JQ_DEF.search(prog)
                 ok = (fn and fn.group(1) in expr) or MARKER.search(lines[first - 1])
@@ -129,7 +117,7 @@ def python_hits(text):
     def py_operand(node):
         if isinstance(node, ast.Constant):
             return isinstance(node.value, str) and bool(LITERAL.search(node.value))
-        return token(py_name(node))
+        return bool(TOKEN.search(py_name(node)))
 
     def py_calls(nodes, accept):
         return any(accept(py_name(c.func)) for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
@@ -140,7 +128,9 @@ def python_hits(text):
         return
     for node in ast.walk(tree):
         call = isinstance(node, ast.Call)
-        if isinstance(node, ast.Compare) and any(isinstance(o, COMPARE) for o in node.ops):
+        if isinstance(node, ast.Compare) and any(
+            isinstance(o, (ast.Eq, ast.NotEq, ast.In, ast.NotIn)) for o in node.ops
+        ):
             parts = [node.left, *node.comparators]
         elif call and isinstance(node.func, ast.Attribute) and node.func.attr in ("startswith", "endswith"):
             parts = [node.func.value, *node.args]
@@ -171,14 +161,11 @@ def default_files():
 def lint(rel, text):
     lines = text.split("\n")
     py = rel.removesuffix(".tmpl").endswith(".py") or re.match(r"#!.*python", lines[0])
-    seen = set()
     for n, rule, accepted in python_hits(text) if py else shell_hits(text):
         mark = MARKER.search(lines[n - 1])
-        if (n, rule) not in seen and not accepted and not (mark and mark.group(1)):
-            seen.add((n, rule))
+        if not accepted and not (mark and mark.group(1)):
             yield n, "R0" if mark else rule
-    bare = {n for n, raw in enumerate(lines, 1) if (m := MARKER.search(raw)) and not m.group(1)}
-    yield from ((n, "R0") for n in sorted(bare) if (n, "R0") not in seen)
+    yield from ((n, "R0") for n, raw in enumerate(lines, 1) if (m := MARKER.search(raw)) and not m.group(1))
 
 
 def main(argv=None):

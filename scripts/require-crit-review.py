@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Require native agent review for meaningful repository changes."""
+# S1 words are exact ASCII letter runs; the twin tokenizer is scripts/regime-counters.sh.
 
 from __future__ import annotations
 
@@ -921,6 +922,9 @@ def acceptance_errors(
         errors.append(f"S6: ledger lacks {', '.join(sorted(missing))}")
     classes = Counter(row["class"] for row in record["ledger"])
     stated = {entry["class"]: set(entry["records"]) for entry in record["searches"]}
+    lines = path.read_text().split("\n")
+    body = lines[lines.index("---", 1) + 1 :]
+    required_words = {"specification", "design", "implementation", "verification"}
     for cls, count in classes.items():
         if count < S6_CLASS_LIMIT:
             continue
@@ -929,6 +933,13 @@ def acceptance_errors(
             errors.append(f"S6: class {cls} at {count}: {found}")
         elif stated.get(cls) != found:
             errors.append(f"S6: class {cls} at {count} without a matching records search")
+        if cls != "advisory-p2":
+            prefix = f"re-plan: {cls} -> "
+            if not any(
+                line.startswith(prefix) and required_words.issubset(re.findall(r"[A-Za-z]+", line[len(prefix) :]))
+                for line in body
+            ):
+                errors.append(f"S1: {cls} at {count} rows without a re-plan line (C-59)")
     return errors, record
 
 

@@ -133,6 +133,47 @@ class RemoveAgentAssetTest(unittest.TestCase):
             self.manifest()["steps"]["ensure_mise_npm_agent_cli:codex"],
         )
 
+    def test_native_claude_code_install_is_removable_and_nothing_beside_it(self) -> None:
+        data = self.home / ".local/share/claude"
+        (data / "versions").mkdir(parents=True)
+        (data / "versions/2.1.287").write_text("binary")
+        launcher = self.home / ".local/bin/claude"
+        launcher.parent.mkdir(parents=True)
+        launcher.symlink_to(data / "versions/2.1.287")
+        sibling = self.home / ".local/bin/codex"
+        sibling.write_text("keep")
+        keys = self.home / ".local/share/claude-code-keys/claude-code.asc"
+        keys.parent.mkdir(parents=True)
+        keys.write_text("keep")
+        self.write_manifest({"ensure_claude_code": self.step("installer", [launcher, data])})
+
+        result = self.run_remover("ensure_claude_code", "--yes")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(os.path.lexists(launcher))
+        self.assertFalse(data.exists())
+        self.assertEqual({}, self.manifest()["steps"])
+
+        # The launcher is removed as a symlink: its target outside the claude prefix survives.
+        outside = self.home / "elsewhere/claude-binary"
+        outside.parent.mkdir()
+        outside.write_text("keep")
+        launcher.symlink_to(outside)
+        self.write_manifest({"ensure_claude_code": self.step("installer", [launcher])})
+        result = self.run_remover("ensure_claude_code", "--yes")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(os.path.lexists(launcher))
+        self.assertEqual("keep", outside.read_text())
+
+        # Nothing else in ~/.local/bin, and no ~/.local/share/claude* look-alike, is in reach.
+        for path in (sibling, keys):
+            with self.subTest(path=path):
+                self.write_manifest({"tampered": self.step("installer", [path])})
+                result = self.run_remover("tampered", "--yes")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("refusing path outside allowed asset roots", result.stderr)
+                self.assertEqual("keep", path.read_text())
+
     def test_invalid_manifest_is_rejected(self) -> None:
         cases = {
             "truncated": "{",

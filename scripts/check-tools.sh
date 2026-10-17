@@ -167,6 +167,23 @@ function check_crit_cli() {
 }
 
 #
+# @description Report Claude Code's native install and its update channel. ensure_claude_code in
+#   scripts/update-agent-assets.sh installs it, moves it on the autoUpdatesChannel channel and
+#   re-verifies it against the signed release manifest; Anthropic's own updater is off.
+#
+function check_claude_code() {
+    local launcher="${HOME%/}/.local/bin/claude" target channel
+
+    target="$(readlink "${launcher}" 2> /dev/null || true)"
+    if [ -z "${target}" ] || ! [ "${launcher}" -ef "${HOME%/}/.local/share/claude/versions/${target##*/}" ]; then
+        warn_optional "Claude Code is not the native install at ${launcher}; run make update (online, with gnupg installed)"
+        return 0
+    fi
+    channel="$(jq -r '.autoUpdatesChannel // "unset"' "${HOME%/}/.claude/settings.json" 2> /dev/null || printf 'unknown')"
+    printf 'found:   claude -> %s (native %s, channel %s)\n' "${launcher}" "${target##*/}" "${channel}"
+}
+
+#
 # @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
 #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
 #
@@ -300,6 +317,9 @@ function main() {
 
     section "Homebrew"
     check_homebrew
+
+    section "Claude Code"
+    check_claude_code
 
     section "Crit CLI"
     check_crit_cli

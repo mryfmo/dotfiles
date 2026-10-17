@@ -24,24 +24,3 @@ fi
 if command -v sheldon > /dev/null 2>&1; then
     eval "$(sheldon source)"
 fi
-
-#
-# Claude Code updater
-#
-claude-update() {
-    local claude_prefix
-    local claude_version
-
-    # Update claude-code via mise, bypassing npm's `min-release-age` cooldown
-    # for THIS install only; mise's own minimum_release_age still applies, and
-    # tool versions are not committed.
-    npm_config_min_release_age=0 mise upgrade "npm:@anthropic-ai/claude-code"
-    claude_prefix="$(mise where "npm:@anthropic-ai/claude-code")"
-    claude_version="$(mise current "npm:@anthropic-ai/claude-code")"
-    npm_config_min_release_age=0 npm install -g \
-        --prefix "${claude_prefix}" \
-        --ignore-scripts=false \
-        --allow-scripts=@anthropic-ai/claude-code \
-        --include=optional \
-        "@anthropic-ai/claude-code@${claude_version}"
-}

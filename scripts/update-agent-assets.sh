@@ -81,6 +81,12 @@ AGMSG_PIN_VERSION="1.5.0"
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"
 readonly TERMINAL_BROWSER_INSTALLER_URL="https://terminal-browser.sh/install"
+readonly CLAUDE_CODE_RELEASES_URL="https://downloads.claude.ai/claude-code-releases"
+readonly CLAUDE_CODE_KEY_URL="https://downloads.claude.ai/keys/claude-code.asc"
+readonly CLAUDE_CODE_VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+# Rendered from assets.claude-code in home/dot_agents/agent-config.yaml.
+CLAUDE_CODE_GPG_FINGERPRINT="31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE"
+CLAUDE_CODE_KEY_PATH="${CLAUDE_CODE_KEY_PATH:-${HOME}/.local/share/claude-code-keys/claude-code.asc}"
 
 #
 # @description Print a section heading.
@@ -99,39 +105,360 @@ function has_command() {
 }
 
 #
-# @description Remove node-global agent CLIs that shadow their dedicated mise tools.
+# @description Remove a node-global Codex that shadows its mise tool. Claude Code's global npm copy goes
+#   only once the native install verified (ensure_claude_code), so a host never loses its only claude.
 #
 function remove_node_global_agent_cli_shadows() {
-    local npm_package
-
     has_command npm || return 0
-    for npm_package in "@openai/codex" "@anthropic-ai/claude-code"; do
-        if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
-            npm uninstall -g "${npm_package}"
-        fi
-    done
+    if npm list -g @openai/codex --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g @openai/codex
+    fi
 }
 
 #
-# @description Reinstall one broken mise-managed agent CLI through npm.
+# @description Reinstall one broken mise-managed agent CLI through npm, at the version already in place.
+#   Codex skips the cooldown, so a newer release comes only through scripts/upgrade-tools.sh, which
+#   verifies its provenance; a repair never installs one.
 # @arg $1 string CLI command name.
 # @arg $2 string mise npm tool name.
 #
 function ensure_mise_npm_agent_cli() {
     local cli="$1"
     local mise_tool="$2"
+    local version
 
     if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
         return 0
     fi
     has_command mise || return 0
+    version="$(mise current "${mise_tool}" 2> /dev/null || true)"
+    if ! [[ "${version}" =~ ^[0-9][0-9A-Za-z.+-]*$ ]]; then
+        printf 'warning: %s is not installed; make update installs it and checks its provenance.\n' "${mise_tool}" >&2
+        return 0
+    fi
 
-    printf 'Repairing %s through the mise npm backend.\n' "${cli}"
+    printf 'Repairing %s %s through the mise npm backend.\n' "${cli}" "${version}"
     MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
-        mise install --force "${mise_tool}"
+        mise install --force "${mise_tool}@${version}"
     hash -r
     "${cli}" --version > /dev/null
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}@${version}"
+}
+
+#
+# @description Print this host's Claude Code release platform, named as Anthropic's install.sh names it.
+#
+function claude_code_platform() {
+    local os arch
+    case "$(uname -s)" in
+    Darwin) os=darwin ;;
+    Linux) os=linux ;;
+    *) return 1 ;;
+    esac
+    case "$(uname -m)" in
+    x86_64 | amd64) arch=x64 ;;
+    arm64 | aarch64) arch=arm64 ;;
+    *) return 1 ;;
+    esac
+    # An x64 shell under Rosetta still takes the native arm64 build.
+    if [ "${os}" = darwin ] && [ "${arch}" = x64 ] && [ "$(sysctl -n sysctl.proc_translated 2> /dev/null)" = 1 ]; then
+        arch=arm64
+    fi
+    if [ "${os}" = linux ] && { [ -f /lib/libc.musl-x86_64.so.1 ] || [ -f /lib/libc.musl-aarch64.so.1 ] || ldd /bin/ls 2>&1 | grep -q musl; }; then
+        printf 'linux-%s-musl\n' "${arch}"
+        return 0
+    fi
+    printf '%s-%s\n' "${os}" "${arch}"
+}
+
+#
+# @description Print the version the native launcher ~/.local/bin/claude runs, or nothing when the
+#   launcher is missing or is not a symlink into ~/.local/share/claude/versions.
+#
+function claude_code_active_version() {
+    local target version
+    target="$(readlink "${HOME}/.local/bin/claude" 2> /dev/null)" || return 0
+    version="${target##*/}"
+    # A version file that lost its execute bit cannot run, so it is no active install.
+    if [[ "${version}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]] &&
+        [ "${HOME}/.local/bin/claude" -ef "${HOME}/.local/share/claude/versions/${version}" ] &&
+        [ -x "${HOME}/.local/share/claude/versions/${version}" ]; then
+        printf '%s\n' "${version}"
+    fi
+}
+
+#
+# @description Print the sha256 that the signed release manifest of a Claude Code version lists for
+#   this platform, once gpgv has checked manifest.json.sig against the release key with the pinned
+#   fingerprint. gpgv reads a private homedir, so no other key on the host can validate it.
+# @arg $1 string The version.
+# @arg $2 path A private scratch directory.
+# @stdout The binary's sha256.
+# @exitcode 1 A check failed.
+# @exitcode 3 A tool or a download is missing, so nothing was checked.
+#
+function claude_code_signed_sha256() {
+    local version="$1" dir="$2" key="${CLAUDE_CODE_KEY_PATH}" command_name platform key_data fingerprint validity expiration checksum
+    for command_name in curl gpg gpgv jq shasum; do
+        has_command "${command_name}" || return 3
+    done
+    platform="$(claude_code_platform)" || return 1
+    if [ ! -r "${key}" ]; then
+        # The committed key is the source; Anthropic's published copy is a fallback, trusted by its fingerprint alone.
+        key="${dir}/claude-code.asc"
+        curl -fsSL "${CLAUDE_CODE_KEY_URL}" -o "${key}" || return 3
+    fi
+    curl -fsSL "${CLAUDE_CODE_RELEASES_URL}/${version}/manifest.json" -o "${dir}/manifest.json" || return 3
+    curl -fsSL "${CLAUDE_CODE_RELEASES_URL}/${version}/manifest.json.sig" -o "${dir}/manifest.json.sig" || return 3
+    mkdir -m 700 "${dir}/gnupg" || return 1
+    key_data="$(gpg --homedir "${dir}/gnupg" --batch --with-colons --import-options show-only --import "${key}")" || return 1
+    # Exactly one primary key, and the fingerprint line right after it is the primary's own.
+    read -r fingerprint validity expiration <<< "$(awk -F: '
+        $1 == "pub" { keys++; validity = $2; expiration = $7; primary = 1; next }
+        $1 == "fpr" && primary { fingerprint = $10; primary = 0 }
+        END { if (keys == 1) print fingerprint, validity, expiration }' <<< "${key_data}")"
+    if [ "${fingerprint}" != "${CLAUDE_CODE_GPG_FINGERPRINT}" ] || [ "${validity}" != "-" ] ||
+        { [ -n "${expiration}" ] && ! [ "${expiration}" -gt "$(date +%s)" ] 2> /dev/null; }; then
+        printf 'Claude Code release key validation failed.\n' >&2
+        return 1
+    fi
+    gpg --homedir "${dir}/gnupg" --batch --yes --dearmor --output "${dir}/claude-code-keyring.gpg" "${key}" || return 1
+    if ! gpgv --homedir "${dir}/gnupg" --keyring "${dir}/claude-code-keyring.gpg" "${dir}/manifest.json.sig" "${dir}/manifest.json"; then
+        printf 'The signature on the Claude Code %s release manifest did not verify.\n' "${version}" >&2
+        return 1
+    fi
+    # The signed manifest must name this version, so another release's signed manifest cannot stand in for it.
+    checksum="$(jq -r --arg version "${version}" --arg platform "${platform}" \
+        'if .version == $version then .platforms[$platform].checksum // empty else empty end' "${dir}/manifest.json")" || return 1
+    if ! [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]]; then
+        printf 'The signed Claude Code %s manifest lists no sha256 for %s.\n' "${version}" "${platform}" >&2
+        return 1
+    fi
+    printf '%s\n' "${checksum}"
+}
+
+#
+# @description Install the channel's current Claude Code. The downloaded binary runs only after the
+#   signed manifest and its sha256 verified; its own install step then creates the launcher that the
+#   native installer manages.
+# @arg $1 string The channel: stable or latest.
+# @stdout The installed version.
+# @exitcode 1 A check or the install step failed.
+# @exitcode 3 A tool or a download is missing; nothing ran.
+#
+function install_claude_code() (
+    local channel="$1" checksum platform tmpdir version
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/claude-code.XXXXXX")" || return 1
+    trap 'rm -rf "${tmpdir}"' EXIT
+    version="$(curl -fsSL "${CLAUDE_CODE_RELEASES_URL}/${channel}")" || return 3
+    # Fetched text reaches no URL or path until it matches the version pattern.
+    if ! [[ "${version}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]]; then
+        printf '%s/%s did not return a version.\n' "${CLAUDE_CODE_RELEASES_URL}" "${channel}" >&2
+        return 3
+    fi
+    checksum="$(claude_code_signed_sha256 "${version}" "${tmpdir}")" || return
+    platform="$(claude_code_platform)" || return 1
+    curl -fsSL "${CLAUDE_CODE_RELEASES_URL}/${version}/${platform}/claude" -o "${tmpdir}/claude" || return 3
+    if [ "$(shasum -a 256 "${tmpdir}/claude" | awk '{ print $1 }')" != "${checksum}" ]; then
+        printf 'Claude Code %s does not match its signed manifest; nothing ran.\n' "${version}" >&2
+        return 1
+    fi
+    chmod 0755 "${tmpdir}/claude" || return 1
+    # The exact version, never the channel, so the binary cannot fetch another build to install.
+    if ! "${tmpdir}/claude" install "${version}" >&2; then
+        # A failed install step never reaches the post-install check, so nothing it left may stay.
+        remove_claude_code_version "${version}"
+        return 1
+    fi
+    printf '%s\n' "${version}"
+)
+
+#
+# @description Check the installed binary of a Claude Code version against its signed release manifest.
+# @arg $1 string The version.
+# @exitcode 1 A check failed.
+# @exitcode 3 A tool or a download is missing, so nothing was checked.
+#
+function verify_active_claude_code() (
+    local version="$1" checksum tmpdir
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/claude-code.XXXXXX")" || return 1
+    trap 'rm -rf "${tmpdir}"' EXIT
+    checksum="$(claude_code_signed_sha256 "${version}" "${tmpdir}")" || return
+    [ "$(shasum -a 256 "${HOME}/.local/share/claude/versions/${version}" | awk '{ print $1 }')" = "${checksum}" ]
+)
+
+#
+# @description Remove a Claude Code version that failed its check or its install step, and the launcher
+#   when it points there, so no unverified binary stays runnable.
+# @arg $1 string The version, already matched against CLAUDE_CODE_VERSION_PATTERN.
+#
+function remove_claude_code_version() {
+    # The launcher goes too when it is left dangling, its version file already gone.
+    case "$(readlink "${HOME}/.local/bin/claude" 2> /dev/null || true)" in
+    */claude/versions/"$1") rm -f "${HOME}/.local/bin/claude" ;;
+    esac
+    rm -rf "${HOME}/.local/share/claude/versions/$1"
+}
+
+#
+# @description Put a launcher that was moved aside before the native install back, unless one is there.
+# @arg $1 path The moved launcher, or nothing.
+#
+function restore_claude_launcher() {
+    [ -n "$1" ] || return 0
+    if [ ! -e "${HOME}/.local/bin/claude" ] && [ ! -L "${HOME}/.local/bin/claude" ]; then
+        mv -f "$1" "${HOME}/.local/bin/claude"
+    fi
+}
+
+#
+# @description Remove the mise npm install Claude Code used to come from, once the native one verified.
+#   A host whose manifest still records that install's repair step keeps it, so the recorded path
+#   never vanishes under make doctor; remove-agent-asset retires both together.
+#
+function retire_mise_claude_code() {
+    # mise's own installs directory resolution: MISE_INSTALLS_DIR, then the data directory (MISE_DATA_DIR, then XDG_DATA_HOME).
+    local installs="${MISE_INSTALLS_DIR:-${MISE_DATA_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/mise}/installs}"
+
+    has_command mise || return 0
+    # The directory decides as well, because mise may not list a tool its config no longer names.
+    [ -d "${installs}/npm-anthropic-ai-claude-code" ] ||
+        [ -n "$(mise ls --installed --no-header npm:@anthropic-ai/claude-code 2> /dev/null)" ] || return 0
+    if jq -e '.steps["ensure_mise_npm_agent_cli:claude"]' "${HOME}/.agents/.installed-manifest.json" > /dev/null 2>&1; then
+        # remove-agent-asset deletes the install but not mise's shim, which would shadow ~/.local/bin/claude.
+        printf 'note: the old mise install of Claude Code stays; remove it with: remove-agent-asset ensure_mise_npm_agent_cli:claude --yes && mise reshim\n'
+        return 0
+    fi
+    # Its shim would otherwise shadow ~/.local/bin/claude from mise's shims directory.
+    mise uninstall --all npm:@anthropic-ai/claude-code && mise reshim && return 0
+    printf 'warning: could not remove the old mise install of Claude Code, whose shim can shadow ~/.local/bin/claude; run: mise uninstall --all npm:@anthropic-ai/claude-code && mise reshim\n' >&2
+}
+
+#
+# @description Succeed when Claude Code version $1 is newer than $2 (X.Y.Z; a pre-release suffix is ignored).
+#
+function claude_code_version_newer() {
+    local newer="${1%%-*}" older="${2%%-*}"
+    [ "${newer}" != "${older}" ] &&
+        [ "$(printf '%s\n%s\n' "${newer}" "${older}" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)" = "${newer}" ]
+}
+
+#
+# @description Put the previous version back after a failed update. It was verified earlier in this run,
+#   and its own install step re-creates the launcher the native installer manages.
+# @arg $1 string The previous version, or nothing.
+#
+function restore_previous_claude_code() {
+    [ -n "$1" ] || return 0
+    [ "$(claude_code_active_version)" != "$1" ] || return 0
+    "${HOME}/.local/share/claude/versions/$1" install "$1" >&2 ||
+        printf 'warning: could not put Claude Code %s back; run make update again\n' "$1" >&2
+}
+
+#
+# @description Finish a verified native Claude Code: retire the copies it replaces and record the step.
+# @arg $1 string The verified active version.
+#
+function finish_claude_code() {
+    # Only now that the native install verified: a global npm copy would shadow its launcher.
+    if has_command npm && npm list -g @anthropic-ai/claude-code --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g @anthropic-ai/claude-code || printf 'warning: could not remove the global npm Claude Code\n' >&2
+    fi
+    retire_mise_claude_code
+    printf 'Claude Code %s: native install, verified against its signed release manifest.\n' "$1"
+    manifest_record "ensure_claude_code" installer "$1" "${HOME}/.local/bin/claude" "${HOME}/.local/share/claude" -- \
+        "curl -fsSL ${CLAUDE_CODE_RELEASES_URL}/<autoUpdatesChannel>" \
+        "curl -fsSL ${CLAUDE_CODE_RELEASES_URL}/$1/manifest.json ${CLAUDE_CODE_RELEASES_URL}/$1/manifest.json.sig" \
+        "gpgv --keyring <release key ${CLAUDE_CODE_GPG_FINGERPRINT}> manifest.json.sig manifest.json" \
+        "curl -fsSL ${CLAUDE_CODE_RELEASES_URL}/$1/<platform>/claude" \
+        "shasum -a 256 <binary>" \
+        "<binary> install $1"
+}
+
+#
+# @description Keep Claude Code on Anthropic's native distribution, checked against its signed release
+#   manifest. Anthropic's updater is off on these hosts (claude.autoUpdates: false), so this is the only
+#   way it moves: re-verify the active binary on every run, and install the autoUpdatesChannel channel's
+#   version when the native launcher is missing or the channel has a newer one, through the same verified
+#   path. A failed update puts the previous version back.
+# @exitcode 1 A signature or sha256 did not verify, or the install step failed; that version is removed.
+#
+function ensure_claude_code() {
+    local aside="" channel head="" installed="" launcher="${HOME}/.local/bin/claude" leftover previous="" remedy
+    local settings="${HOME}/.claude/settings.json" status=0 version
+
+    section "Claude Code"
+    version="$(claude_code_active_version)"
+    channel="$(jq -r '.autoUpdatesChannel // empty' "${settings}" 2> /dev/null || true)"
+    [ "${channel}" = stable ] || [ "${channel}" = latest ] || channel=""
+    if [ -n "${version}" ]; then
+        verify_active_claude_code "${version}" || status=$?
+        if [ "${status}" -eq 3 ]; then
+            printf 'warning: could not re-verify Claude Code %s against its signed manifest (offline, or a tool is missing); it stays.\n' "${version}" >&2
+            return 0
+        elif [ "${status}" -ne 0 ]; then
+            # Untrusted bytes must not stay runnable, whoever put them there.
+            printf 'Claude Code %s does not match its signed release manifest; its version and launcher were removed (make update installs a verified one).\n' "${version}" >&2
+            remove_claude_code_version "${version}"
+            return 1
+        fi
+        [ -z "${channel}" ] || head="$(curl -fsSL "${CLAUDE_CODE_RELEASES_URL}/${channel}" 2> /dev/null || true)"
+        if ! [[ "${head}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]] || ! claude_code_version_newer "${head}" "${version}"; then
+            finish_claude_code "${version}"
+            return 0
+        fi
+        printf 'Claude Code %s: the %s channel has %s; updating through the verified install.\n' "${version}" "${channel}" "${head}"
+        previous="${version}"
+    elif [ -z "${channel}" ]; then
+        printf 'warning: no autoUpdatesChannel (stable or latest) could be read from %s; Claude Code was not installed.\n' "${settings}" >&2
+        return 0
+    elif [ -L "${launcher}" ] && [[ "$(readlink "${launcher}")" == */claude/versions/* ]]; then
+        # A native link whose version is gone or cannot run is a leftover, not someone's launcher; its
+        # stale version file goes too, so the install writes a fresh one.
+        leftover="$(readlink "${launcher}")"
+        leftover="${leftover##*/}"
+        if [[ "${leftover}" =~ ${CLAUDE_CODE_VERSION_PATTERN} ]]; then
+            remove_claude_code_version "${leftover}"
+        fi
+        rm -f "${launcher}" || return 1
+    elif [ -e "${launcher}" ] || [ -L "${launcher}" ]; then
+        # claude install can leave a launcher it did not create in place, so a non-native one moves aside
+        # to a unique name (an earlier backup is never overwritten) and comes back when the install fails.
+        aside="$(mktemp "${launcher}.before-native.XXXXXX")" || return 1
+        mv -f "${launcher}" "${aside}" || return 1
+    fi
+    status=0
+    installed="$(install_claude_code "${channel}")" || status=$?
+    if [ "${status}" -ne 0 ]; then
+        restore_claude_launcher "${aside}"
+        restore_previous_claude_code "${previous}"
+        [ "${status}" -eq 3 ] || return 1
+        remedy="run make update again once online"
+        has_command gpg && has_command gpgv || remedy="install gnupg, then run make update again"
+        printf 'warning: Claude Code could not be downloaded or checked, so nothing was installed: %s.\n' "${remedy}" >&2
+        return 0
+    fi
+    version="$(claude_code_active_version)"
+    if [ "${version}" != "${installed}" ]; then
+        printf 'claude install %s left the launcher at %s, not at the verified version; both were removed.\n' "${installed}" "${version:-nothing}" >&2
+        # The version the launcher points to was never checked this run, unless it is the previous one.
+        [ -z "${version}" ] || [ "${version}" = "${previous}" ] || remove_claude_code_version "${version}"
+        remove_claude_code_version "${installed}"
+        restore_claude_launcher "${aside}"
+        restore_previous_claude_code "${previous}"
+        return 1
+    fi
+    status=0
+    verify_active_claude_code "${version}" || status=$?
+    if [ "${status}" -ne 0 ]; then
+        printf 'Claude Code %s does not match its signed release manifest; its version and launcher were removed (make update installs a verified one).\n' "${version}" >&2
+        remove_claude_code_version "${version}"
+        restore_claude_launcher "${aside}"
+        restore_previous_claude_code "${previous}"
+        return 1
+    fi
+    [ -z "${aside}" ] || printf 'note: the previous, non-native launcher is kept at %s\n' "${aside}"
+    finish_claude_code "${version}"
 }
 
 #
@@ -1102,7 +1429,7 @@ function main() {
 
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
-    ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
+    ensure_claude_code
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     ensure_gh_extensions
     update_claude_superpowers

@@ -12,7 +12,9 @@
 #   operating-system package upgrades such as apt. The network-only phases
 #   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
 #   fail, so an offline host still converges; installing the declared mise tools
-#   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes
+#   stays required, while a per-tool upgrade that fails only warns. After the mise
+#   phase, every npm: tool's registry signature and provenance attestation are
+#   checked at its installed version, and a failed check is required. It edits no repository file, and exits 0 without changes
 #   when CI=true.
 
 set -Eeuo pipefail
@@ -415,10 +417,143 @@ function upgrade_mise_tools() {
 }
 
 #
-# @description Upgrade uv tool installations when uv is available.
+# @description Check one npm: tool at a version with npm audit signatures --include-attestations, in a
+#   scratch install with lifecycle scripts off. npm checks the registry signature, and a provenance
+#   attestation where one is published, over the integrity hash it verified at download; it does not
+#   re-hash the files on disk, so this proves the version came from a signed, attested publish.
+# @arg $1 string mise tool name, for example npm:@openai/codex.
+# @arg $2 string The installed version.
+# @arg $3 path A scratch directory for this tool.
+# @arg $4 string Non-empty for a tool outside the cooldown, whose install lifted npm's window.
+# @exitcode 0 The registry signature and the release's own provenance attestation verified.
+# @exitcode 1 A signature or an attestation failed to verify.
+# @exitcode 3 The tool could not be fetched or checked, so nothing was verified.
+# @exitcode 4 The registry signature verified; the release itself carries no attestation.
+#
+function check_npm_tool_provenance() {
+    local mise_tool="$1" version="$2" dir="$3" day_one="$4" attestation output status=0 window=""
+
+    { mkdir -p "${dir}" && printf '{"private":true}\n' > "${dir}/package.json"; } || return 3
+    # A tool outside mise's cooldown installs with npm's window lifted (its install_env in the mise
+    # config), so its scratch copy is fetched the same way; every other tool keeps ~/.npmrc's window.
+    [ -z "${day_one}" ] || window="--min-release-age=0"
+    (cd "${dir}" && npm_config_cache="${dir%/*}/cache" mise exec node -- npm install --ignore-scripts --no-audit --no-fund \
+        ${window:+"${window}"} "${mise_tool#npm:}@${version}") > /dev/null 2>&1 || return 3
+    # Plain text: the verdict below matches npm's own wording (lib/utils/verify-signatures.js), uncoloured.
+    output="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" npm_config_color=false \
+        mise exec node -- npm audit signatures --include-attestations 2>&1)" || status=$?
+    # Only npm's own verdict means a bad signature or attestation; any other failure (an HTTP or TLS error
+    # from the registry's key or attestation endpoint) only leaves the check unavailable.
+    if grep -qE 'packages? ha(s|ve) (an? )?(invalid|missing) (registry signatures?|attestations?)|EATTESTATIONVERIFY|tampered with this package' <<< "${output}"; then
+        printf '%s\n' "${output}" >&2
+        return 1
+    fi
+    if [ "${status}" -ne 0 ]; then
+        printf '%s\n' "${output}" >&2
+        return 3
+    fi
+    # npm prints a count line only for a non-zero count.
+    grep -qE '^[[:space:]]*[1-9][0-9]* packages? ha(s a|ve) verified registry signatures?$' <<< "${output}" || return 3
+    grep -qE '^[[:space:]]*[1-9][0-9]* packages? ha(s a|ve) verified attestations?$' <<< "${output}" || return 4
+    # The counts cover the whole tree, so an attested dependency could stand in: the tool's own release must
+    # carry the attestation the audit just verified.
+    attestation="$(cd "${dir}" && npm_config_cache="${dir%/*}/cache" mise exec node -- npm view \
+        ${window:+"${window}"} "${mise_tool#npm:}@${version}" dist.attestations.url 2> /dev/null)" || return 3
+    [ -n "${attestation}" ] || return 4
+}
+
+#
+# @description Verify every current npm: tool's registry signature and provenance attestation. For a
+#   tool behind the cooldown, a failed check is a required failure that names the package and removes
+#   that version, a package without an attestation is listed as signature-only, and a tool that cannot
+#   be fetched only warns.
+#   A tool outside the cooldown (minimum_release_age_excludes) stays installed only with a verified
+#   attestation, now or from an earlier run of the same version; any other outcome, a check that
+#   cannot run included, is a required failure that removes that version.
+#
+function verify_npm_provenance() {
+    local day_one excludes failed=0 index=0 marker mise_tool mise_tools scratch signature_only="" status version
+    local state="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/npm-provenance"
+
+    has_command mise || return 1
+    mise_tools="$(current_mise_tools)" || return 1
+    grep -q '^npm:' <<< "${mise_tools}" || return 0
+    section "npm provenance"
+    excludes="$(run_mise_with_isolated_git_config settings get minimum_release_age_excludes 2> /dev/null)" || excludes=""
+    scratch="$(mktemp -d "${TMPDIR:-/tmp}/npm-provenance.XXXXXX")" || return 1
+    while IFS= read -r mise_tool; do
+        [[ "${mise_tool}" == npm:* ]] || continue
+        index=$((index + 1))
+        day_one=""
+        case "${excludes}" in
+        *"\"${mise_tool}\""*) day_one=1 ;;
+        esac
+        version="$(run_mise_with_isolated_git_config current "${mise_tool}" 2> /dev/null)" || version=""
+        status=3
+        if [ -n "${version}" ]; then
+            status=0
+            check_npm_tool_provenance "${mise_tool}" "${version}" "${scratch}/${index}" "${day_one}" || status=$?
+        fi
+        if [ -n "${day_one}" ]; then
+            marker="${state}/${mise_tool//[^A-Za-z0-9._-]/_}"
+            if [ "${status}" -eq 0 ]; then
+                { mkdir -p "${state}" && printf '%s\n' "${version}" > "${marker}"; } ||
+                    printf 'warning: could not record the verified %s in %s\n' "${mise_tool}" "${marker}" >&2
+            elif [ "${status}" -eq 3 ] && [ -n "${version}" ] && [ "$(cat "${marker}" 2> /dev/null)" = "${version}" ]; then
+                printf 'optional warning: could not re-check %s %s; an earlier run verified its provenance\n' "${mise_tool}" "${version}" >&2
+                ((optional_warnings += 1))
+                continue
+            else
+                # A release that skipped the cooldown without verified provenance, now or in an earlier run,
+                # must not stay runnable, whether its check failed or could not run.
+                rm -f "${marker}"
+                if [ -z "${version}" ]; then
+                    printf 'npm provenance check failed: %s skips the cooldown and is not installed\n' "${mise_tool}" >&2
+                else
+                    printf 'npm provenance check failed: %s %s skips the cooldown without a verified provenance attestation; removing it\n' "${mise_tool}" "${version}" >&2
+                    run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
+                        printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
+                fi
+                failed=1
+                continue
+            fi
+        fi
+        case "${status}" in
+        0) printf 'verified: %s (registry signature and provenance attestation)\n' "${mise_tool}" ;;
+        4) signature_only+=" ${mise_tool}" ;;
+        3)
+            printf 'optional warning: could not fetch %s to check its provenance\n' "${mise_tool}" >&2
+            ((optional_warnings += 1))
+            ;;
+        *)
+            # An invalid signature or attestation means tampering, so that version must not stay runnable.
+            printf 'npm provenance check failed: %s %s has an invalid or missing registry signature or attestation; removing it\n' "${mise_tool}" "${version}" >&2
+            run_mise_with_isolated_git_config uninstall "${mise_tool}@${version}" ||
+                printf 'required: could not remove %s %s; remove it with mise uninstall %s@%s\n' "${mise_tool}" "${version}" "${mise_tool}" "${version}" >&2
+            failed=1
+            ;;
+        esac
+    done <<< "${mise_tools}"
+    rm -rf "${scratch}"
+    if [ -n "${signature_only}" ]; then
+        printf 'registry signature only (the publisher attaches no provenance attestation):%s\n' "${signature_only}"
+    fi
+    return "${failed}"
+}
+
+#
+# @description Upgrade uv tool installations when uv is available. Python CLIs come through mise
+#   pipx: (README), so this only moves uv tools a machine already has and prints nothing without any.
 #
 function upgrade_uv_tools() {
+    local tools
+
     has_command uv || return 1
+    # A listing that fails is a warning, not "no tools".
+    tools="$(uv tool list 2> /dev/null)" || return 1
+    case "${tools}" in
+    "" | "No tools installed"*) return 0 ;;
+    esac
 
     section "uv tools"
     uv tool upgrade --all
@@ -496,6 +631,7 @@ function main() {
     run_optional_phase "Homebrew" upgrade_homebrew
     run_optional_phase "mise self-update" upgrade_mise_self
     run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools
+    run_required_phase "npm provenance" verify_npm_provenance
     run_optional_phase "uv tool upgrade" upgrade_uv_tools
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions
     run_required_phase "apt system upgrade" upgrade_apt_packages

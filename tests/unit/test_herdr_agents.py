@@ -1820,7 +1820,8 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("npm uninstall -g @openai/codex", calls)
-        self.assertIn("npm uninstall -g @anthropic-ai/claude-code", calls)
+        # Claude Code is no longer a mise tool, so herdr-agents leaves its npm copy to the updater.
+        self.assertNotIn("npm uninstall -g @anthropic-ai/claude-code", calls)
 
     def test_start_skips_node_global_removal_without_stray(self) -> None:
         self.install_npm_fake(installed=False)

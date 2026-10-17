@@ -23,8 +23,10 @@ shfmt = "latest"
 ruff = "latest"
 "aqua:watchexec/watchexec" = "latest"
 
-"npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }
-"npm:@openai/codex" = "latest"
+# Day one: outside mise's cooldown (minimum_release_age_excludes below) and npm's
+# (~/.npmrc min-release-age, lifted for this install only), because
+# scripts/upgrade-tools.sh verifies its provenance attestation after every install.
+"npm:@openai/codex" = { version = "latest", install_env = { npm_config_min_release_age = "0" } }
 "npm:bash-language-server" = "latest"
 "npm:ccstatusline" = "latest"
 "npm:ccusage" = "latest"
@@ -67,6 +69,7 @@ macos-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-c
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
 minimum_release_age = "72h"
+minimum_release_age_excludes = ["npm:@openai/codex"]
 
 [settings.self_update]
 minimum_release_age = "72h"

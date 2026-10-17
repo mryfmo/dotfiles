@@ -102,18 +102,22 @@ function path_is_in_safe_root() {
         fi
     done
 
+    # The native Claude Code install (ensure_claude_code): its versions directory as a whole.
     for root in \
         "${CODEX_ASSET_ROOT}/plugins/crit" \
-        "${HOME}/.understand-anything/repo"; do
+        "${HOME}/.understand-anything/repo" \
+        "${HOME}/.local/share/claude"; do
         root="$(normalize_root_path "${root}")" || return 1
         if path_has_prefix "${candidate}" "${root}"; then
             return 0
         fi
     done
 
+    # Exact paths only; Claude Code's launcher symlink is removed as itself, never followed.
     for root in \
         "${HOME}/.claude/hooks/herdr-agent-state.sh" \
-        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh"; do
+        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh" \
+        "${HOME}/.local/bin/claude"; do
         [ "${candidate}" = "$(normalize_action_path "${root}")" ] && return 0
     done
     return 1

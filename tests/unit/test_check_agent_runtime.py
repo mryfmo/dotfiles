@@ -656,11 +656,14 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_parameterized_mise_step_uses_key_identity(self) -> None:
         missing = self.target_root / "missing-cli"
-        claude = self.module.AssetFinding(
-            "ensure_mise_npm_agent_cli:claude",
+        codex = self.module.AssetFinding(
+            "ensure_mise_npm_agent_cli:codex",
             (missing,),
             {"commands": []},
         )
+        # Claude Code left the mise npm backend; its native step repairs without an identity.
+        retired = self.module.AssetFinding("ensure_mise_npm_agent_cli:claude", (missing,), {"commands": []})
+        native = self.module.AssetFinding("ensure_claude_code", (missing,), {"commands": []})
         ambiguous = self.module.AssetFinding(
             "ensure_mise_npm_agent_cli:unknown",
             (missing,),
@@ -672,13 +675,15 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             },
         )
 
-        action = self.module.asset_repair_action(claude)
+        action = self.module.asset_repair_action(codex)
 
         self.assertEqual(
-            ("ensure_mise_npm_agent_cli", "claude", "npm:@anthropic-ai/claude-code"),
+            ("ensure_mise_npm_agent_cli", "codex", "npm:@openai/codex"),
             action.command[-3:],
         )
         self.assertIsNone(self.module.asset_repair_action(ambiguous))
+        self.assertIsNone(self.module.asset_repair_action(retired))
+        self.assertEqual("ensure_claude_code", self.module.asset_repair_action(native).command[-1])
 
     def test_installed_manifest_integrity_reasons(self) -> None:
         missing = self.temp_dir / "missing-manifest.json"

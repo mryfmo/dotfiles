@@ -42,8 +42,6 @@ threat_table:
     disposition: "residual: no workflow or interpreter file is in allowed_files; chain-integrate.sh checks its task, owner and PR arguments against a fixed grammar (no path segment can hold a slash or be . or ..), resolves gh, git, uv, shasum and date in the chain-review lineage's resolver form (mise which under env -i in the main checkout's root, else command -v; a shims path or none refused, exit 10) before any fetch or checkout and uses the absolute paths afterwards; it runs the repository scripts by the main checkout's absolute path (<main>/scripts/orchestrator/…, <main>/scripts/pr-feedback.py), never the head's copies, the Python ones as `<uv> run --no-project python -I <script>`; the review binary is local-review.sh's to resolve (the chain-review lineage's resolver); the orchestrator login for fill_sweep.py is `gh api user --jq .login`, read once before the sweep; the tests' seam is PATH; a PR checkout as cwd chooses nothing because the script never changes directory into it"
   - control: new or renamed scripts
     disposition: "residual: one new script under scripts/orchestrator, named in allowed_files and listed in the RESULT; any other new or renamed script is an undeclared change the audit fails"
-  - control: "the scripts chain-integrate.sh calls from the main checkout (scripts/orchestrator/*.sh and *.py)"
-    disposition: "residual: each called script must be tracked in main and byte-identical to HEAD's blob, checked before any fetch, else exit 10 (the fix d8bc67d4 after the Bot's P1 4291474880; test tests/unit/test_chain_glue.py::test_integrate_refuses_a_main_checkout_script_that_is_not_heads); the PR head's own copies are never executed, the chain reads the head only as data in the review worktree; added to the front matter after the local review of 6e4e9aa1 asked for a row (the Change note of 08:27Z said the same)"
   - control: orchestrator effect merge
     disposition: "residual: merge only through gh pr merge --squash --match-head-commit <audited head> after the gate (Orchestrator Playbook step 10.5); never a local merge or a push to main"
   - control: orchestrator effect update-branch
@@ -142,12 +140,3 @@ One PR from a fresh branch off `origin/main` (after PR #364 merges). The PR is r
 ## Change (bot_rounds, 2026-10-16T03:51:03Z)
 
 The Completion clause's `bot_rounds=1` becomes the template's `bot_rounds=2` form (the Bot's review at PR open and its re-review after the fix round): T13's amendment 6 after the Bot's P2 4290644781 on PR #371, applied to every undispatched task text right before its dispatch and re-confirmed Codex first (C-54). Nothing else changes from the pair-confirmed hash `06881680`.
-
-## Change (threat row, 2026-10-16T08:27:27Z, after the RESULT)
-
-The Codex Bot's P1 4291474880 on PR #372's head 9f1cee1c asked for a threat row on the main checkout's content that `chain-integrate.sh` executes. Row: control "the scripts chain-integrate.sh calls from the main checkout (scripts/orchestrator/*.sh and *.py)"; disposition "residual: each called script must be tracked in main and byte-identical to HEAD's blob, checked before any fetch, else exit 10 (the fix d8bc67d4, test test_integrate_refuses_a_main_checkout_script_that_is_not_heads); the PR head's own copies are never executed, the chain reads the head only as data in the review worktree". The dispatched hash `62706b88` stands (the branch's task copy is byte-identical to it by design); this row is the orchestrator's record, carried by the next boundary.
-
-## Change (threat row as a row, 2026-10-16T22:24:34Z)
-
-The local review of PR #372's head 6e4e9aa1 (P2) asked for the main-checkout script-integrity control as a threat_table row, not a prose note; the row above is now in the front matter (the Change note of 08:27Z stays as history). The dispatched hash `62706b88` stands; the branch's task copy is byte-identical to it by design.
-

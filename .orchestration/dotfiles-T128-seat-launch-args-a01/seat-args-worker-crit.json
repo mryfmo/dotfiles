@@ -4,5 +4,18 @@
     "scope": "review",
     "body": "Independent read-only Codex review (high confidence) approved the four source/test paths against fixed branch base b167fe0a76a2e77d262f9f556c69ba6b9f118bbe. Literal profile parsing, selectors, cwd discrimination, minimum matching PID, adjacent expected pairs, exits0/2/3/4 and per-name/type boundary grouping follow the task. Seven additional stub-only cases passed, including exact profile key, review profile, absolute Node wrapper and non-executable probe. No finding. No live process/CI or full-suite rerun, repository edit or ref update by reviewer. Parent full requested suite12 tests passes. Verdict: correct.",
     "resolved": true
+  },
+  {
+    "id": "bot-4301264676",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 profile-name-grammar: generator-valid underscores were rejected by the identity parser. Addressed by adding underscore to the existing profile character class and one my_profile regression subcase. Regression failed before the fix, then full12 tests passed. Independent C50 review approved at high confidence with no additional finding; three extra stub cases passed, including Codex my_profile and rejection of leading underscore.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-c50-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex C50 review against274257172db0915df34e9f1764c69f572346727f approved the one-character grammar change and seven-line regression subcase, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA256 d61a817387b6966b27b4a10c8f6ff10527b32227482e26c2fc3ff6443184709a is pasted verbatim in validation.md. Verdict: correct.",
+    "resolved": true
   }
 ]

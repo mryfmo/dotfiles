@@ -1,0 +1,7 @@
+task_id: dotfiles-T128-seat-launch-args-a01
+round: 1
+previous_head: 274257172db0915df34e9f1764c69f572346727f
+finding: 4301264676
+finding_class: profile-name-grammar
+check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+scope: Accept generator-valid underscores in the identity profile field; one regression subcase, no other behavior change.

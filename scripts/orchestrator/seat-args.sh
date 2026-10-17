@@ -15,7 +15,7 @@
 set -euo pipefail
 
 teams=$1 identity=$2 agent_type=$3 project=$4
-if [[ ! ${identity} =~ ^(claude|codex)-([a-z][a-z0-9]*)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+if [[ ! ${identity} =~ ^(claude|codex)-([a-z][a-z0-9_]*)-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
     printf 'seat %s args=unknown-identity\n' "${identity}"
     exit 2
 fi

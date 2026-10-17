@@ -103,6 +103,13 @@ class SeatArgsTest(unittest.TestCase):
                 runtime = "claude" if kind == "claude-code" else "codex"
                 self.assertEqual(f"seat {identity} profile=standard kind={runtime} {tail}\n", result.stdout)
 
+        with self.subTest(label="underscore profile"):
+            identity = "claude-my_profile-dot-a001"
+            self.profiles.write_text(f'MODEL_PROFILE_MY_PROFILE_CLAUDE_ARGS="{CLAUDE_ARGS}"\n')
+            result = self.run_probe(identity, "claude-code", "t", project, f"200 {match.replace(claude, identity)}\n")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(f"seat {identity} profile=my_profile kind=claude process=200 args=ok\n", result.stdout)
+
         for label, identity, kind, profile_text, seam, expected in [
             (
                 "missing key",

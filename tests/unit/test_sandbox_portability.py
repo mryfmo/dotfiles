@@ -125,6 +125,12 @@ class SandboxPortabilityTest(unittest.TestCase):
             ["scripts/bad.sh:2: diff <(sort a) <(sort b)"],
             hits(self.repo_with("bad.sh", continued), {"shell"}, refused),
         )
+        trailing = "#!/usr/bin/env bash\nfoo # a comment ending in a backslash \\\ndiff <(a) <(b)\n"
+        self.assertEqual(
+            ["scripts/bad.sh:3: diff <(a) <(b)"], hits(self.repo_with("bad.sh", trailing), {"shell"}, refused)
+        )
+        last = "diff <(a) <(b) \\"
+        self.assertEqual(["scripts/bad.sh:1: diff <(a) <(b)"], hits(self.repo_with("bad.sh", last), {"shell"}, refused))
 
     def test_a_quoted_hash_is_not_a_comment(self):
         def diff_refused(code_line, _line):

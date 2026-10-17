@@ -6,8 +6,8 @@
 #   task_sha256, (b) the changed files against allowed_files, (c) the Check's caps, (d) the Check's commands in the
 #   validation file, (e) CI on the head, (f) the Bot's review of the head or `bot: none` in the report, (g) every Bot
 #   thread of the PR in the report as `<id>:<P>:<disposition>` (a P0/P1 `fixed:<sha>` or `open:`), (h) the local review and (i) the audit dry run,
-#   the last two `unavailable (<reason>)` when they cannot run here. It writes `.orchestration/<task>/precheck-<sha7>.md`
-#   and exits 1 naming each `missing`. `verify <task> <RESULT line>` (the orchestrator) finds the receipt whose sha256
+#   the last two `unavailable (<reason>)` when they cannot run here (amendment 2). It writes `.orchestration/<task>/precheck-<sha7>.md`
+#   and exits 1 naming each `missing`; `unavailable` is no refusal. `verify <task> <RESULT line>` (the orchestrator) finds the receipt whose sha256
 #   is the line's `precheck=` in the tree of its `head=`, past which only `.orchestration/<task>/` may change, and
 #   requires every check `ok`; else it prints the revise line for the orchestrator to send, exit 1. Mechanical only.
 # @exitcode 0 Every check ok.
@@ -38,9 +38,11 @@ fi
 [[ $1 == run && $# == 4 && $3 =~ ^[0-9]+$ && $4 =~ ^[0-9a-f]{40}$ ]] || die "usage: result-precheck.sh run <task> <pr> <head>"
 pr=$3 head=$4 out=${d}/precheck-${4:0:7}.md a=${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}
 printf -- '---\ntask: %s\npr: %s\nhead: %s\n---\n\n' "${task}" "${pr}" "${head}" > "${out}"
-check() { # <letter> <command…>: ok or missing, with the command and its output
-    local r=ok o
-    o=$("${@:2}" 2>&1) || r=missing
+check() { # <letter> <command…>: ok, missing, or `unavailable (<reason>)` on exit 3, with the command and its output
+    local r=ok o rc=0
+    o=$("${@:2}" 2>&1) || rc=$?
+    ((rc == 0)) || r=missing
+    ((rc != 3)) || r="unavailable (${o#*unavailable (}"
     printf -- '- %s %s: `%s`\n\n```\n%s\n```\n\n' "$1" "${r}" "${*:2}" "${o}" >> "${out}"
 }
 check_a() {
@@ -90,12 +92,14 @@ check_g() {
         }
 }
 check_h() {
-    lr=$(ls ".orchestration/validation/${task}-local-review-${head:0:7}.md" 2> /dev/null) || { echo "local-review: unavailable (no local review of ${head:0:7} here; a Claude seat cannot run codex review)" && return; }
+    lr=$(ls ".orchestration/validation/${task}-local-review-${head:0:7}.md" 2> /dev/null) || { echo "local-review: unavailable (no local review of ${head:0:7} here; a Claude seat cannot run codex review)" && return 3; }
     ! /usr/bin/grep -E '^\s*(- )?\[P[01]\]' "${lr}"
 }
-check_i() {
-    command -v codex > /dev/null && codex exec --sandbox read-only -C . "Audit git diff origin/main...${head} for task ${task} by AGENTS.md's Audit section; end with one Verdict line." < /dev/null 2>&1 | tail -n 3 ||
-        echo "audit-dry-run: unavailable (codex is not on PATH or not reachable from this seat)"
+check_i() { # a codex that is absent or fails (unreachable from this seat) is unavailable, not missing
+    if command -v codex > /dev/null; then
+        codex exec --sandbox read-only -C . "Audit git diff origin/main...${head} for task ${task} by AGENTS.md's Audit section; end with one Verdict line." < /dev/null 2>&1 | tail -n 3 && return
+    fi
+    echo "audit-dry-run: unavailable (codex is not on PATH or not reachable from this seat)" && return 3
 }
 for x in a b c d; do check "${x}" "check_${x}"; done
 check_e() { [ "$(gh pr view "${pr}" --json headRefOid --jq .headRefOid)" = "${head}" ] && gh pr checks "${pr}" --required; }

@@ -274,9 +274,10 @@ class IntegrationSeatTest(unittest.TestCase):
     ) -> None:
         d = self.precheck_ready()
         out, receipt = self.precheck(0)
-        self.assertEqual(9, len(re.findall(r"^- [a-i] ok: ", receipt, re.MULTILINE)), receipt)
-        self.assertIn("local-review: unavailable", receipt)
-        self.assertIn("audit-dry-run: unavailable", receipt)
+        self.assertEqual(7, len(re.findall(r"^- [a-g] ok: ", receipt, re.MULTILINE)), receipt)
+        # Amendment 2: without codex, (h) and (i) are unavailable, which is no refusal.
+        self.assertIn("- h unavailable (no local review of", receipt)
+        self.assertIn("- i unavailable (codex is not on PATH", receipt)
         [(digest, path)] = re.findall(r"^precheck=([0-9a-f]{64}) (\S+)$", out, re.MULTILINE)
         self.assertEqual(hashlib.sha256((self.seed / path).read_bytes()).hexdigest(), digest)
         # verify: the receipt committed after the head (a records-only commit) is found by its sha256.
@@ -297,6 +298,7 @@ class IntegrationSeatTest(unittest.TestCase):
             "c": lambda: (d / "task.md").write_text((d / "task.md").read_text().replace("at most 10", "at most 1")),
             "d": lambda: (d / "validation.md").write_text("$ uv run python -m unittest tests/unit/test_x.py -v\n"),
             "e": lambda: (self.calls / "checks.status").write_text("1"),
+            "e, another head on GitHub": lambda: (self.calls / "head").write_text("0" * 40 + "\n"),
             "f": lambda: (self.calls / "reviews.json").write_text("[]"),
             "g": lambda: (d / "report.md").write_text("threads=4300000001:P1:proposed(x);4300000002:P2:proposed(x)\n"),
             "h": lambda: self.executable(
@@ -304,11 +306,13 @@ class IntegrationSeatTest(unittest.TestCase):
                 "- [P1] high a.sh:1 x\n",
             ),
         }
-        for letter, broken in cases.items():
-            with self.subTest(letter):
+        for case, broken in cases.items():
+            letter = case[0]
+            with self.subTest(case):
                 self.git("reset", "-q", "--hard", self.head, cwd=self.seed)
                 self.git("clean", "-q", "-fd", cwd=self.seed)
                 (self.calls / "checks.status").unlink(missing_ok=True)
+                (self.calls / "head").write_text(self.head + "\n")
                 (self.calls / "reviews.json").write_text(json.dumps([{"id": 9, "user": BOT, "commit_id": self.head}]))
                 self.bus("-", hashlib.sha256((d / "task.md").read_bytes()).hexdigest())
                 broken()
@@ -317,7 +321,7 @@ class IntegrationSeatTest(unittest.TestCase):
                 out, receipt = self.precheck(1)
                 self.assertIn(f"- {letter} missing: ", receipt)
                 self.assertIn(f"missing: {letter} ", out)
-                self.assertEqual(8, len(re.findall(r"^- [a-i] ok: ", receipt, re.MULTILINE)), receipt)
+                self.assertEqual(1, len(re.findall(r"^- [a-i] missing: ", receipt, re.MULTILINE)), receipt)
         # (b): a changed file outside allowed_files.
         self.git("reset", "-q", "--hard", self.head, cwd=self.seed)
         self.git("clean", "-q", "-fd", cwd=self.seed)

@@ -72,7 +72,7 @@ done
 [[ ${squash} == 1 ]] || ask "merge must be --squash"
 [[ ${sha} =~ ^[0-9a-f]{40}$ ]] || ask "merge must carry --match-head-commit with a full sha"
 
-[[ -n ${cwd} && -d ${cwd} ]] || cwd=${PWD}
+[[ -n ${cwd} && -d ${cwd} ]] || ask "the payload names no existing working directory"
 cd "${cwd}" || ask "no working directory"
 top=$(git rev-parse --show-toplevel 2>/dev/null) || ask "not in a git checkout"
 gitdir=$(git rev-parse --path-format=absolute --git-dir 2>/dev/null) || ask "no git dir"

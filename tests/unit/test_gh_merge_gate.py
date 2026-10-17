@@ -145,6 +145,7 @@ class GhMergeGateTest(unittest.TestCase):
         worktree = self.tmp / "wt"
         subprocess.run(["git", "-C", str(self.repo), "worktree", "add", "-q", str(worktree)], check=True)
         self.assertIn("main checkout", self.decide(self.pinned(), cwd=worktree)[1])
+        self.assertIn("no existing working directory", self.decide(self.pinned(), cwd=self.tmp / "gone")[1])
 
 
 if __name__ == "__main__":

@@ -1789,6 +1789,99 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         else [],
                     )
 
+    def _run_project_map_reload_listing(self, map_path: str, listing: dict):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            browser = root / "terminal-browser"
+            browser.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['BROWSER_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                "if sys.argv[1:] == ['ls', '--all', '--json']:\n"
+                "    print(os.environ['BROWSER_LISTING'])\n"
+            )
+            browser.chmod(0o755)
+            agent = root / "agent-browser"
+            agent.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "with open(os.environ['AGENT_CALLS'], 'a') as out:\n"
+                "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            )
+            agent.chmod(0o755)
+            (root / "jq").symlink_to(shutil.which("jq"))
+            result = subprocess.run(
+                ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
+                input=json.dumps({"tool_input": {"file_path": map_path}}),
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": str(root),
+                    "BROWSER_LISTING": json.dumps(listing),
+                    "BROWSER_CALLS": str(root / "browser-calls"),
+                    "AGENT_CALLS": str(root / "agent-calls"),
+                    "TERMINAL_BROWSER_AGENT": str(agent),
+                },
+                check=False,
+            )
+            self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+            return tuple(
+                [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+                for path in (root / "browser-calls", root / "agent-calls")
+            )
+
+    def test_project_map_reload_hook_selects_the_event_map_among_two_repositories(self) -> None:
+        target_id = "4A0B7C4E1F2D3A4B5C6D7E8F90A1B2C3"
+        for map_path in (
+            "/repo/.project-map/index.html",
+            "/repo with spaces/./.project-map/index.html",
+            "/repo/unused/../.project-map/index.html",
+            "/repo_日本%#?'x/.project-map/index.html",
+        ):
+            with self.subTest(map_path=map_path):
+                browser, agent = self._run_project_map_reload_listing(
+                    map_path,
+                    {
+                        "browsers": [
+                            {
+                                "cdpPort": 9222,
+                                "tabs": [{"url": "file:///other/.project-map/index.html", "targetId": "A" * 32}],
+                            },
+                            {
+                                "cdpPort": 9333,
+                                "tabs": [{"url": Path(os.path.normpath(map_path)).as_uri(), "targetId": target_id}],
+                            },
+                        ]
+                    },
+                )
+                self.assertEqual(browser, [["ls", "--all", "--json"]])
+                self.assertEqual(len(agent), 2)
+                self.assertEqual(
+                    agent[0], ["--cdp", "9333", "--session", "project-map-reload", "--pin-tab", "tab", target_id]
+                )
+                self.assertEqual(agent[1][:-1], agent[0][:-2] + ["eval"])
+
+    def test_project_map_reload_hook_opens_event_map_when_only_another_repository_is_open(self) -> None:
+        map_path = "/repo/.project-map/index.html"
+        browser, agent = self._run_project_map_reload_listing(
+            map_path,
+            {
+                "browsers": [
+                    {
+                        "cdpPort": 9222,
+                        "tabs": [{"url": "file:///repo-other/.project-map/index.html", "targetId": "A" * 32}],
+                    }
+                ]
+            },
+        )
+        self.assertEqual(
+            browser,
+            [["ls", "--all", "--json"], ["open", map_path, "--split", "right", "--size", "0.5", "--no-merge"]],
+        )
+        self.assertEqual(agent, [])
+
     def _run_project_map_reload_case(self, target_id: str, *, tab_gone: bool = False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

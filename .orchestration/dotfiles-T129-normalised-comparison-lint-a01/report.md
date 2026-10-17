@@ -11,6 +11,8 @@ evidence_commit: 4b843ce9
 round2_test_commit: 8d7b9831
 round2_fix_commit: df8055ce
 round2_p3_commit: 12d5d771
+round3_merge_commit: 35eff561
+round3_baseline_commit: e8a41419
 pr: 387
 task_sha256: 655e085b88a2e93be12a8c7913a7aee3431f074673e3ac24d2ab34a6e305651f
 ---
@@ -25,7 +27,7 @@ task_sha256: 655e085b88a2e93be12a8c7913a7aee3431f074673e3ac24d2ab34a6e305651f
 Validation §5 holds the numstat; the diff is three new files.
 
 - **`scripts/lint-comparisons.py`** (199 lines after round 2, standard library only, `python3 -I`): the rule table R0 to R6 of item 1 over the default file set (`git ls-files -z -- home scripts install`, names ending in `.sh`, `.bash`, `.zsh`, `.py` or `.tmpl`, or a `sh`, `bash`, `zsh` or `python` shebang). Shell lines are tokenised with `shlex` after the comment is cut and every `$(...)` folded away; R1 reads a `[[`/`[` test anywhere on the line (so `if [[ … ]]`, `elif`, `&& [[` count), R2 `case … in`, R5 `ps … | grep|awk|cut|sed` (the `ps -o <fields>= -p <pid>` form excepted) and `pgrep -f` on a `$variable`, R6 `grep -E`/`egrep` whose pattern holds `$name` or `${name` (`-F` or `escape_regex` accepted). a jq program is the first single-quoted string after each `jq` word on its logical line (backslash continuations joined, whole-line comments blanked), so a program inside `"$(… | jq '…')"` is read and an apostrophe elsewhere in the file cannot desynchronise the scan; R3 reads `==`, `!=`, `startswith(`, `endswith(`, `ltrimstr(`, `rtrimstr(`, `test(` over the operator's bracket group cut at top-level `,` `;` (and `|` for `==`/`!=`), hit when it holds `.url`, `.path`, a token `$name` or a slash-literal, accepted when a `def canonical_path`/`normalise_*`/`normalize_*` of the program is applied to both sides of that group. Python files go through `ast`: `Compare` with `Eq`/`NotEq`/`In`/`NotIn` and `.startswith`/`.endswith` calls (R4), `re.compile|search|match|fullmatch` on an f-string without `re.escape` (R6). The operand rule is Amendment 1's: a literal with `/`, `~`, `file://`, `.html` or `%2F`, or an identifier with a whole segment (split at `_`, `.`, `-` and lower-to-upper changes) equal to a token or its plural. The marker `# lint-comparisons: allow <reason>` accepts the line (for jq, the hit line or the program's first line); a bare marker is R0. `--list-rules` prints the seven rows and the statement-local limit. Output is sorted by path and line; with explicit file arguments only the scanned files' rows can be stale.
-- **`scripts/lint-comparisons-baseline.tsv`** (86 rows after round 2): one content-hashed row per hit on `origin/main` after Amendment 1 (a row is a count consumed once per hit, so remove-agent-asset's two identical lines are two rows), the four premise-3 lines among them; a row matching no hit fails as `stale baseline row <path> <rule id>`.
+- **`scripts/lint-comparisons-baseline.tsv`** (85 rows after round 3; 86 after round 2): one content-hashed row per hit on `origin/main` after Amendment 1 (a row is a count consumed once per hit, so remove-agent-asset's two identical lines are two rows), the four premise-3 lines among them; a row matching no hit fails as `stale baseline row <path> <rule id>`.
 - **`tests/unit/test_lint_comparisons.py`** (203 lines, 6 tests after round 2, stdlib only, the lint as a `python3 -I` subprocess on fixtures in a temporary directory and on the checkout): item 3's three tests, named below.
 
 ## The question, the amendment and the cap
@@ -107,6 +109,10 @@ The Bot's first review of the final head (review 5557621508, 11:46:20Z) left thr
 | 4302545085 | the jq normaliser was counted twice anywhere in the expression | the def must occur on each operand side of the operator separately (the input side and the operator side) | `test_the_jq_normaliser_is_required_on_each_operand_side` |
 
 The round's delta review (the same reviewer, round 4) returned `Verdict: correct` with three P3: the qualified `pathlib.Path(x).resolve()` had become a hit, fixed in `12d5d771` with a test form; a bare `realpath` after `from os.path import realpath` is a hit by the instruction's letter (the final attribute alone), declared; two different defs, one per jq side, are refused (the same def on both sides is the reading), declared. Red before, green after: validation §9 pastes the run of the three tests against the previous head's script (six failures, the three existing tests green) and the run after the fix (six OK). The tree's 86 hits are unchanged by the qualified-name rule (no tracked Python compares through a bare `.resolve()` or a foreign receiver); the script is 199 lines; no thread was resolved by the worker; the report's front-matter `task_sha256` is corrected to Amendment 2's hash.
+
+## Round 3 (PR #386's merge; the orchestrator's revise of 13:11:12Z; not a finding)
+
+PR #386 landed `scripts/orchestrator/local-advisory.sh` without the interpolated `grep -E` pattern at its line 81 (the chain-review a04 owner's fix), so that row of the baseline read stale and `test_the_tracked_tree_is_clean_against_the_baseline` failed on the update-branch head. `origin/main` (`59db77bb`) merged into the branch as `35eff561`; the lint named exactly one stale row, `scripts/orchestrator/local-advisory.sh R6`, and no new hit (85 hits, validation §10a); the row left in `e8a41419` and no row was added; the script and the tests are byte-identical to d215e062 (§10h). This is the baseline's intended life: a row leaves with the fix that removes its hit.
 
 ## Review, hook, cost
 

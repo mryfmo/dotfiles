@@ -10,3 +10,12 @@ constraints:
   - one row per hit; the baseline regenerated if the tree count changes
   - report.md front matter task_sha256 corrected to 655e085b
   - no thread resolved by the worker; after the push, @codex review once, CI and the Bot waited, RESULT round=2
+---
+# AGMSG-ACCEPTANCE status=revise of 2026-10-17T13:11:12Z (round 3; fix round 2 of INV-6 by count; a consequence of PR #386's merge, not a finding)
+previous_head: d215e062338ce587e35ebb4378479e33c5b45eb4
+reason: main carries local-advisory.sh without the R6 hit at line 81, so its baseline row is stale and the tree test fails on the update-branch head
+checks:
+  - tests/unit/test_lint_comparisons.py::test_the_tracked_tree_is_clean_against_the_baseline
+constraints:
+  - merge origin/main into the branch; drop every stale row the lint names (expected: the one row of scripts/orchestrator/local-advisory.sh R6); add no row
+  - the script and the tests unchanged; push; wait CI (the Bot's review of a row drop not waited for beyond 15 minutes); RESULT round=3 naming the dropped rows; resolve no thread

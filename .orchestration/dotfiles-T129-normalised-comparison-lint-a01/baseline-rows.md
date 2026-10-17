@@ -1,6 +1,6 @@
-# The baseline's rows: every hit of the lint on origin/main 35ab0e95 after Amendment 1 (per file, with the source line)
+# The baseline's rows: every hit of the lint on the branch's tree after PR #386's merge (origin/main 59db77bb; per file, with the source line)
 
-Generated from `scripts/lint-comparisons.py` run with no baseline over the default file set at 2026-10-17T11:25:33Z (after the worker review's fixes: the test word anywhere on the line, jq programs anchored at the `jq` word); the committed `scripts/lint-comparisons-baseline.tsv` holds one content-hashed row per line below (one row per hit since round 2: remove-agent-asset's two identical lines are two rows). Rows in files an in-flight task owns are that lineage's; the rest are for the orchestrator to assign owners at acceptance (Amendment 1).
+Generated from `scripts/lint-comparisons.py` run with no baseline over the default file set at 2026-10-17T13:12:44Z (round 3: the local-advisory.sh R6 row left with PR #386's fix); the committed `scripts/lint-comparisons-baseline.tsv` holds one content-hashed row per line below (one row per hit). Rows in files an in-flight task owns are that lineage's; the rest are for the orchestrator to assign owners at acceptance (Amendment 1).
 
 ## Rows per rule
 
@@ -9,7 +9,7 @@ Generated from `scripts/lint-comparisons.py` run with no baseline over the defau
    2 R2
    6 R3
   41 R4
-   4 R6
+   3 R6
 ```
 
 ## Rows per file
@@ -34,7 +34,6 @@ Generated from `scripts/lint-comparisons.py` run with no baseline over the defau
    1 scripts/orchestrator/resolve-threads.sh
    1 scripts/orchestrator/pr-cost.sh
    1 scripts/orchestrator/orch-gate.sh
-   1 scripts/orchestrator/local-advisory.sh
    1 scripts/orchestrator/ledger-check.py
    1 scripts/orchestrator/chain-integrate.sh
    1 scripts/lib/github-release.sh
@@ -104,7 +103,6 @@ R1 scripts/orchestrator/dispatch.sh:202 | tf="$(value_of task_file)" && [[ ${tf}
 R1 scripts/orchestrator/dispatch.sh:209 | [[ ${py} == /* ]] || {
 R1 scripts/orchestrator/dispatch.sh:334 | [[ ${record} == /* ]] || record="${PWD}/${record}"
 R4 scripts/orchestrator/ledger-check.py:24 | if item["source"] == "review_comment" and item.get("author") == BOT and "discussion_r" in url:
-R6 scripts/orchestrator/local-advisory.sh:81 | row=$(/usr/bin/grep -E "^(${ids%|})	" "$A" | /usr/bin/grep -v '	advisory-p2$' | tail -1 || true)
 R1 scripts/orchestrator/local-review.sh:82 | [[ $found == /* ]] || found=$R/$found
 R1 scripts/orchestrator/local-review.sh:83 | [[ $found != */shims/* ]] || {
 R1 scripts/orchestrator/orch-gate.sh:72 | [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"

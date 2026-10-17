@@ -39,14 +39,14 @@ threat_table:
   - control: orchestrator effect forced worker removal
     disposition: "residual: none planned; herdr-agents --remove-worker refuses a dirty worktree without --force, and a forced removal is recorded in the acceptance record with the uncommitted state it discarded"
 premises:
-  - claim: 'the owned rows are in the first owner task''s acceptance record on origin/main at dispatch (absent until boundary (16): the rows were written on 2026-10-15; this task never dispatches before)'
+  - claim: 'the owned rows are in the first owner task''s acceptance record on origin/main at dispatch (present since boundary (16), PR #373 merged as 1d418126 on 2026-10-16: the rows were written on 2026-10-15; the audit of ba451c6 added a second row of the same class)'
     command: 'git show origin/main:.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a01.md 2>/dev/null | /usr/bin/grep -c "^audit:2e3ff49:1	env-s-quoting" || true'
     output: |-
-      0
-  - claim: 'local-review.sh on origin/main after PR #364 splits an env -S remainder with read -r -a and refuses nothing about quotes (PR #364 is not merged today, so the count is 0 before and 1 after its merge; the dispatch needs 1)'
+      2
+  - claim: 'local-review.sh on origin/main after PR #364 splits an env -S remainder with read -r -a and refuses nothing about quotes (PR #364 merged as fdef3ceb on 2026-10-16, so the count is 1; the dispatch needs 1)'
     command: 'git show origin/main:scripts/orchestrator/local-review.sh | /usr/bin/grep -c "read -r -a words" || true'
     output: |-
-      0
+      1
 ---
 
 # AGMSG-TASK dotfiles-T128-chain-review-scripts-followup-a02 — local-review.sh refuses an `env -S` shebang remainder it cannot split as env does (the second owner task of the chain-review-scripts lineage; the audit of PR #364's 2e3ff49 and its local review)
@@ -66,8 +66,17 @@ Written 2026-10-15 by the orchestrator seat (the bus time of its TASK line is th
 
 ## Completion
 
-A fresh branch from `origin/main` after PR #364 merges and boundary (16), one new PR. The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's single review (on PR open) is in, every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot reviews once, at PR open; its P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round stops the PR and goes to the operator as a decision; a P2 on this PR whose fix stays within these files and is small is fixed in a revise round the orchestrator sends with a `check=` (correction C-50) while INV-6's counts allow it; any other P2 is advisory and recorded under the same heading in `.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a01.md` for the lineage's next owner task. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test name, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a02/task.md>` and the evidence paths.
+One PR from a fresh branch off `origin/main` (after PR #364 merged as fdef3ceb and boundary (16), PR #373 merged as 1d418126). The PR is ready for the orchestrator's integration when the ruleset's required checks are green, the Bot's review of the final head is in (at PR open, and once more on `@codex review` after a P0/P1 fix round: plan 020 step 2), every Bot thread is replied to and resolved by the orchestrator with its disposition, the validation file carries the outputs above, and the RESULT names every P0/P1 thread with `fixed:<sha>` and every P2 thread with the disposition the worker proposes; the orchestrator's audit of the final head is dispositioned finding by finding before the gate, and a P0/P1 it leaves is the operator's decision. The Bot's P0 and P1 get at most one fix round, worker-side before the RESULT, each named `fixed:<sha>` in the RESULT; a P0 or P1 that survives the round is listed as `open:<thread id>` with `bot_rounds=2` (the Bot's review at PR open and its re-review after the fix round), stops the PR and goes to the operator as a decision; a P2 on this PR's own change whose fix stays within `allowed_files` and is small (one flag or a few lines plus one test) is fixed in a revise round the orchestrator sends with a `check=` while INV-6's counts allow it (C-50); any other P2 is advisory, owned by `dotfiles-T128-chain-review-scripts-followup-a03`, which the orchestrator writes when the first advisory P2 appears, before the PR's dispositions (C-51), and recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a03` in this task's acceptance record. The orchestrator integrates (local review once per head, sweep, audit, gate) and merges with `gh pr merge --squash --match-head-commit <audited head>`. The RESULT names head, base, branch, files, every Bot thread with its disposition, the test names per row, the caps, `task_copy=<sha256 of .orchestration/dotfiles-T128-chain-review-scripts-followup-a02/task.md>` and the evidence paths.
 
 ## Change (round 2, 2026-10-15 09:0xZ)
 
 The review seat's round 1 (two P2, three P3; the Codex half confirmed round 1): the refused set covers the four `env -S` features that split differently (quote, escape, `$` expansion, `#` comment word), checked over the whole `-S` string; the refusal is a stdout line like the script's others; two test cases added; the record aligned (both rows under the owner heading with their class); the Completion names every P2 thread with the proposed disposition.
+
+## Change (premises, 2026-10-16T06:27:52Z, before dispatch)
+
+Boundary (16) (PR #373, merged as 1d418126 on 2026-10-16) landed the owner section on `origin/main` and PR #364 (fdef3ceb) landed local-review.sh's env -S splitting, so the premise that waited for it now records the post-boundary output that `presend.sh` replays at dispatch; its claim says so. Nothing else changes from the pair-confirmed hash `d76a00f9`; re-confirmed Codex first (C-54).
+
+## Change (Completion, 2026-10-16T08:44:50Z, before dispatch)
+
+The review seat's round on the premise change (P2, P3): the Completion clause still had the single-review form written before T13's amendment 6 (no `open:<thread id>`, no `bot_rounds=2`, "every P2 as advisory", the pre-C-51 owner wording). It is now the task template's clause of 2026-10-16 (`.orchestration/templates/task-short.md`, Completion): the Bot's review at PR open and once more on `@codex review` after a P0/P1 fix round, a surviving P0/P1 listed as `open:<thread id>` with `bot_rounds=2`, the C-50 revise round for a small in-scope P2, every other P2 advisory and owned by `dotfiles-T128-chain-review-scripts-followup-a03` (written when the first advisory P2 appears, C-51) under `## Owned by dotfiles-T128-chain-review-scripts-followup-a03` in this task's acceptance record. Nothing else changes from `d7808ca3`; re-confirmed Codex first (C-54).
+

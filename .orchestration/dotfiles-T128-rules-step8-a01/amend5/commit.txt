@@ -1,0 +1,7 @@
+error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
+[fix/regime-rules-step8 61dbd68e] docs(agents): align boundary cadence between integrations
+ 12 files changed, 198 insertions(+), 15 deletions(-)
+ create mode 100644 .orchestration/dotfiles-T128-rules-step8-a01/learning.md
+ create mode 100644 .orchestration/dotfiles-T128-rules-step8-a01/report.md
+ create mode 100644 .orchestration/dotfiles-T128-rules-step8-a01/sandbox.md
+ create mode 100644 .orchestration/dotfiles-T128-rules-step8-a01/validation.md

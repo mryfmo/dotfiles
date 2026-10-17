@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-chain-review-scripts-followup-a03-pr381-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "d3e8acfe553791577576282eb0c339c018721bde",
+    "pr": "381",
+    "reviewed_at": "2026-10-17T03:41:13Z",
+    "body": "Independent orchestrator review of PR #381 at the head the chain fetches after the update-branch onto the current main (the worker's head 1e0c2e92 on f7847616; task dotfiles-T128-chain-review-scripts-followup-a03, the chain-review lineage's third owner task, pair-confirmed at e328a3fb; branch tools/chain-review-scripts-followup-a03): the diff touches the two files the task's allowed_files name, scripts/orchestrator/local-advisory.sh (item 1a, C-51's tool half: an advisory row is refused with exit 2 and the record untouched when the owner task file is absent, and the row's evidence becomes the owner file's sha256; item 1b, C-50's repeat classing: the finding's token path and line, the earlier local-review files numbered as the loop, the last matching local: row other than advisory-p2 wins and a repeat names the earlier row; the owned row audit:40f3be4:2, the heading matched literally against the tXfollowup-a01 fixture) and tests/unit/test_chain_review_scripts.py (three new tests, two existing ones extended; 16 of 16 green, 6 of 6 mutants caught), plus the task's evidence directory; 43 changed lines outside tests (cap 200) and 60 under tests (cap 1000); CI: ShellCheck SC2015 on d2b33025 fixed in 9da0897a, 12 check runs green on 1e0c2e92; the Bot's no-findings comment after @codex review; no threads, no P0/P1."
+  }
+]

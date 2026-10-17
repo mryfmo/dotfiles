@@ -1,0 +1,12 @@
+[
+  {
+    "id": "dotfiles-T128-chain-glue-integrate-a01-pr372-review-1",
+    "scope": "review",
+    "resolved": true,
+    "author": "claude-code",
+    "head": "23d9af37b135faad5d5a63094eae37ad14c56fff",
+    "pr": "372",
+    "reviewed_at": "2026-10-16T23:03:54Z",
+    "body": "Independent orchestrator review of PR #372 at the head the chain fetches after the update-branch onto 1d418126 (the worker's head 23d9af37 on 2fe135c5, the update-branch merge of 1d418126; the local review's P1 of 6e4e9aa1 fixed in d49fbb61: NO_COLOR=1 exported and CLICOLOR_FORCE and GH_FORCE_TTY unset for every gh call; its three P2 advisory under the follow-up owner; the local review's P1 and P2 of 2fe135c5 fixed in bdb96c86: the audited head checked out again as the last audit step, the freshness check re-run after a base-move restart; task dotfiles-T128-chain-glue-integrate-a01, plan 022 T7, pair-confirmed at 62706b88 with the orchestrator's threat-row Change note added after the RESULT): the diff adds the two files the task's allowed_files name, scripts/orchestrator/chain-integrate.sh (179 lines: one PR head's integration chain up to the audit, run from the main checkout's scripts and never the head's copies, each called script tracked in main and byte-identical to HEAD's blob before any fetch else exit 10, the review worktree re-fetching origin/main and re-running the ancestry test after the checks and the Bot wait with a moved base restarting at the fetch, an extra TSV refused unless it resolves inside the main checkout) and tests/unit/test_chain_glue.py (371 lines, nine tests, 15 of 15 mutants caught), plus the task's evidence directory; 179 added lines outside tests (cap 200) and 371 under tests (cap 1000); CI 12 check runs green on a6d6c1c9; Bot threads 4291474880 (P1) fixed:d8bc67d4, 4291474885 and 4291474891 (P2, the C-50 revise round) fixed:d23cb50c; the Bot's re-review of 5ed27e92 without findings; no open P0/P1."
+  }
+]

@@ -467,6 +467,51 @@ class RegimeCountersTest(unittest.TestCase):
             [line for line in lines if line.startswith("S1:")],
         )
 
+    def s1_record_lines(self, cls, body):
+        repo = self.temp / "repo"
+        (repo / "scripts").mkdir(parents=True, exist_ok=True)
+        shutil.copy(SCRIPT, repo / "scripts")
+        (repo / ".orchestration/acceptance").mkdir(parents=True, exist_ok=True)
+        ledger = [{"id": f"42500286{i:02d}", "class": cls} for i in range(3)]
+        block = json.dumps({"format": 1, "task": "T1", "ledger": ledger})
+        (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block}\n---\n{body}")
+        lines = self.run_counters(
+            "T1",
+            "--history-file",
+            self.write("h.tsv", tsv(("orch", "AGMSG-TASK v1 task_id=T1"))),
+            "--github-file",
+            self.github([], []),
+            script=repo / "scripts/regime-counters.sh",
+        )
+        return [line for line in lines if line.startswith("S1:")]
+
+    def test_s1_reports_replan_present_for_the_class(self):
+        for words in (
+            "verification, implementation, design, specification.",
+            "specification design\u0301 implementation verification",
+        ):
+            with self.subTest(words=words):
+                lines = self.s1_record_lines("bookkeeping", f"re-plan: bookkeeping -> {words}\n")
+                self.assertEqual(lines, ["S1: class=bookkeeping count=3 re-plan=present source=record"])
+
+    def test_s1_reports_replan_missing_without_a_complete_matching_line(self):
+        for body in (
+            "",
+            "re-plan: other -> specification design implementation verification\n",
+            " re-plan: bookkeeping -> specification design implementation verification\n",
+            "re-plan: bookkeeping -> specification design implementation\n",
+            "re-plan: bookkeeping -> specification designation implementation verification\n",
+            "re-plan: bookkeeping -> specification design\nimplementation verification\n",
+        ):
+            with self.subTest(body=body):
+                self.assertEqual(
+                    self.s1_record_lines("bookkeeping", body),
+                    ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
+                )
+
+    def test_s1_excludes_advisory_p2_at_three_rows(self):
+        self.assertEqual(self.s1_record_lines("advisory-p2", ""), [])
+
     def test_s1_reads_the_ledger_classes_of_the_acceptance_record(self):
         repo = self.temp / "repo"
         (repo / "scripts").mkdir(parents=True)
@@ -482,7 +527,10 @@ class RegimeCountersTest(unittest.TestCase):
             "T1", "--history-file", history, "--github-file", gh, script=repo / "scripts/regime-counters.sh"
         )
         self.assertEqual(
-            ["S1: class=bookkeeping count=3 source=record", "S1: class=input-validation count=3 source=record"],
+            [
+                "S1: class=bookkeeping count=3 re-plan=missing source=record",
+                "S1: class=input-validation count=3 re-plan=missing source=record",
+            ],
             [line for line in lines if line.startswith("S1:")],
         )
         # Thread 4254771296: a record of another task is not this task's ledger; the title detector speaks.
@@ -522,7 +570,7 @@ class RegimeCountersTest(unittest.TestCase):
                 {"id": "4250028600", "class": "Reject $(id)"},
                 f"S1: candidate class=unclassified count=3 {title} source=record-ignored:class-not-slug",
             ),
-            (None, "S1: class=bookkeeping count=3 source=record"),
+            (None, "S1: class=bookkeeping count=3 re-plan=missing source=record"),
         ):
             with self.subTest(expected=expected):
                 block = json.dumps({"format": 1, "task": "T1", "ledger": good + ([row] if row is not None else [])})

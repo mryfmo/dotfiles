@@ -320,6 +320,34 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.assertEqual(expected, (self.calls / "fakeinterp.argv").read_text())
         self.assertEqual(1, self.log("codex").count(ARGV))
 
+    def test_local_review_refuses_a_quoted_env_S_shebang(self):
+        # audit:2e3ff49:1: env -S quotes, escapes, expands and comments where read -a does not; refused before the checkout.
+        review, head, env = self.review_head()
+        binary = self.temp / "installs/codex"
+        interp = self.temp / "installs/fakeinterp"
+        interp.parent.mkdir(parents=True, exist_ok=True)
+        interp.write_text(f'#!/bin/bash\ntouch "{self.calls}/fakeinterp.ran"\n')
+        interp.chmod(0o755)
+        self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+        refused = "local-review: the review binary's env -S shebang holds a quote, an escape, an expansion or a comment"
+        for rest in ('--require "/opt/a b/x.js"', "'x'", "a\\ b", "${HOMEX}/lib", "one # two"):
+            with self.subTest(rest=rest):
+                # Each case starts clean, so a run a mutant lets through cannot decide the next case.
+                for path in (self.calls / "fakeinterp.ran", self.calls / "codex.log"):
+                    path.unlink(missing_ok=True)
+                for path in (self.repo / ".orchestration/validation").iterdir():
+                    path.unlink()
+                self.git("checkout", "-q", "--detach", "main", cwd=review)
+                self.stub(binary, "codex")
+                binary.write_text(
+                    binary.read_text().replace("#!/usr/bin/env bash\n", f"#!/usr/bin/env -S fakeinterp {rest}\n")
+                )
+                self.assertIn(refused, self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env))
+                self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD", cwd=review))
+                self.assertEqual([], list((self.repo / ".orchestration/validation").iterdir()))
+                self.assertFalse((self.calls / "fakeinterp.ran").exists())
+                self.assertEqual("", self.log("codex"))
+
     def test_local_advisory_records_p2_rows_and_stops_on_p0_p1(self):
         head, owner = "abcdef0" + "1" * 33, "t-followup-a01"
         record = self.write(".orchestration/acceptance/t-a01.md", "# record\n")

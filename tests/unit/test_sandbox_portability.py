@@ -35,14 +35,16 @@ def code(line):
 
 
 def logical_lines(text):
-    """(first line number, text) per logical line: a backslash before the newline joins the next physical line."""
+    """(first line number, text) per logical line: a backslash before the newline, outside a comment, joins the next line."""
     start, parts = 1, []
     for n, line in enumerate(text.split("\n"), 1):
-        continued = line.endswith("\\") and not line.lstrip().startswith("#")
+        continued = code(line).endswith("\\")
         parts.append(line[:-1] if continued else line)
         if not continued:
             yield start, "".join(parts)
             start, parts = n + 1, []
+    if parts:
+        yield start, "".join(parts)
 
 
 def tracked(repo, kinds):

@@ -1,0 +1,163 @@
+"""Exercise verified artifact updates using fake downloads and installers only."""
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+UPDATER = ROOT / "scripts/update-agent-assets.sh"
+PLATFORMS = {
+    "Darwin/arm64": "DARWIN_ARM64",
+    "Darwin/x86_64": "DARWIN_AMD64",
+    "Linux/x86_64": "LINUX_AMD64",
+    "Linux/aarch64": "LINUX_ARM64",
+}
+STUB = r"""#!@PYTHON@
+import hashlib, json, os, shlex, sys
+from pathlib import Path
+name, args = Path(sys.argv[0]).name, sys.argv[1:]
+if name == "uname":
+    print(os.environ["FIXTURE_OS" if args == ["-s"] else "FIXTURE_ARCH"])
+    sys.exit(0)
+entry = {"tool": name, "argv": args}
+if name == "curl":
+    Path(args[args.index("-o") + 1]).write_bytes(Path(os.environ["PAYLOAD"]).read_bytes())
+else:
+    artifact = Path(args[-1])
+    if not artifact.is_file():
+        sys.exit("fixture installer requires an already downloaded file: " + str(artifact))
+    entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    tool = "omp" if name == "npm" else "hcom"
+    target = Path(os.environ["HOME"]) / ".local/bin" / tool
+    target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + " " + os.environ["FIXTURE_VERSION"]) + "\n")
+    target.chmod(0o755)
+with open(os.environ["CALLS"], "a") as log:
+    log.write(json.dumps(entry) + "\n")
+"""
+
+
+class UpdateAgentAssetsTest(unittest.TestCase):
+    def exercise_update(self, tool, platform="Linux/x86_64", *, unsupported=False):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            binary = home / ".local/bin"
+            binary.mkdir(parents=True)
+            for name in ("curl", "npm", "uv", "uname"):
+                path = binary / name
+                path.write_text(STUB.replace("@PYTHON@", sys.executable))
+                path.chmod(0o755)
+            target = binary / tool
+            payload = home / "payload"
+            payload.write_bytes(b"reproduced artifact bytes; no real package or binary\n")
+            digest = hashlib.sha256(payload.read_bytes()).hexdigest()
+            log = home / "calls.jsonl"
+            pin = "18.11.3" if tool == "omp" else "0.7.30"
+            constants = 'OMP_PIN_VERSION=18.11.3; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
+            for key in PLATFORMS.values():
+                constants += f'HCOM_{key}_SHA256="$2"; HCOM_{key}_URL="https://fixture.invalid/{key}/hcom-0.7.30-py3-none-any.whl"; '
+
+            def reset():
+                target.write_text("#!/usr/bin/env bash\nexit 1\n")
+                target.chmod(0o755)
+                log.write_text("")
+
+            def update(checksum=digest, version=pin, prefix=""):
+                return subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; ' + constants + prefix + f"update_{tool}",
+                        "bash",
+                        str(UPDATER),
+                        checksum,
+                    ],
+                    env={
+                        **os.environ,
+                        "HOME": directory,
+                        "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                        "CALLS": str(log),
+                        "PAYLOAD": str(payload),
+                        "FIXTURE_VERSION": version,
+                        "FIXTURE_OS": platform.split("/")[0],
+                        "FIXTURE_ARCH": platform.split("/")[1],
+                    },
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+
+            def calls():
+                return [json.loads(line) for line in log.read_text().splitlines()]
+
+            reset()
+            installed = update()
+            self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+            if unsupported:
+                self.assertEqual([], calls())
+                self.assertIn("unsupported platform", installed.stdout)
+                return
+            records = calls()
+            self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+            url = records[0]["argv"][1]
+            if tool == "omp":
+                self.assertEqual(
+                    f"https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-{pin}.tgz", url
+                )
+                self.assertEqual(["install", "-g", "--prefix", str(home / ".local")], records[1]["argv"][:-1])
+            else:
+                self.assertIn(PLATFORMS[platform], url)
+                self.assertEqual(["tool", "install", "--force"], records[1]["argv"][:-1])
+            artifact = Path(records[1]["argv"][-1])
+            self.assertEqual(".tgz" if tool == "omp" else ".whl", artifact.suffix)
+            self.assertEqual(digest, records[1]["sha256"])
+            self.assertFalse(artifact.exists())
+            self.assertFalse(artifact.parent.exists())
+            receipt_path = home / ".agents/.installed-manifest.json"
+            receipt = json.loads(receipt_path.read_text())["steps"][f"update_{tool}"]
+            self.assertEqual(pin, receipt["source_version"])
+            self.assertEqual([str(target)], receipt["paths"])
+            repeated = update()
+            self.assertEqual(0, repeated.returncode, repeated.stdout + repeated.stderr)
+            self.assertIn("already installed", repeated.stdout)
+            self.assertEqual(records, calls())
+
+            reset()
+            receipt_path.unlink()
+            bad_hash = "0" * 64
+            drifted_hash = update(checksum=bad_hash)
+            self.assertNotEqual(0, drifted_hash.returncode)
+            self.assertIn(bad_hash, drifted_hash.stdout + drifted_hash.stderr)
+            self.assertIn(digest, drifted_hash.stdout + drifted_hash.stderr)
+            self.assertEqual(["curl"], [row["tool"] for row in calls()])
+            self.assertFalse(Path(calls()[0]["argv"][-1]).parent.exists())
+            self.assertFalse(receipt_path.exists())
+
+            reset()
+            drifted_version = update(version="0.0.1")
+            self.assertNotEqual(0, drifted_version.returncode)
+            self.assertIn(pin, drifted_version.stdout + drifted_version.stderr)
+            self.assertIn("0.0.1", drifted_version.stdout + drifted_version.stderr)
+            self.assertEqual(2, len(calls()))
+            self.assertFalse(Path(calls()[1]["argv"][-1]).parent.exists())
+            self.assertFalse(receipt_path.exists())
+            reset()
+            skipped = update(prefix="has_command() { return 1; }; ")
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn("command not found", skipped.stdout)
+            self.assertEqual([], calls())
+
+    def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
+        self.exercise_update("omp")
+
+    def test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin(self):
+        for platform in PLATFORMS:
+            with self.subTest(platform=platform):
+                self.exercise_update("hcom", platform)
+        self.exercise_update("hcom", "Plan9/unknown", unsupported=True)

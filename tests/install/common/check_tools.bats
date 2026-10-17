@@ -35,6 +35,38 @@ function setup() {
     [[ "${output}" == *"crit 0.20.3"* ]]
 }
 
+@test "[common] check_omp reports its pin and warns when absent" {
+    local bin="${BATS_TEST_TMPDIR}/.local/bin"
+    source ./scripts/lib/installer-pins.sh
+    mkdir -p "${bin}"
+    printf '#!/usr/bin/env bash\nprintf "omp %s\\n"\n' "${OMP_PIN_VERSION}" > "${bin}/omp"
+    chmod +x "${bin}/omp"
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_omp"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   omp ->"*"(pin ${OMP_PIN_VERSION})"* ]]
+    [[ "${output}" == *"omp ${OMP_PIN_VERSION}"* ]]
+
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c 'source "$1"; check_omp; [ "$required_failures" -eq 0 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: omp not installed"* ]]
+}
+
+@test "[common] check_hcom reports its pin and warns when absent" {
+    local bin="${BATS_TEST_TMPDIR}/.local/bin"
+    source ./scripts/lib/installer-pins.sh
+    mkdir -p "${bin}"
+    printf '#!/usr/bin/env bash\nprintf "hcom %s\\n"\n' "${HCOM_PIN_VERSION}" > "${bin}/hcom"
+    chmod +x "${bin}/hcom"
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_hcom"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   hcom ->"*"(pin ${HCOM_PIN_VERSION})"* ]]
+    [[ "${output}" == *"hcom ${HCOM_PIN_VERSION}"* ]]
+
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c 'source "$1"; check_hcom; [ "$required_failures" -eq 0 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: hcom not installed"* ]]
+}
+
 @test "[common] check_zed is not applicable outside an Ubuntu client" {
     run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; uname() { printf 'Darwin\\n'; }; chezmoi() { printf client; }; check_zed"
     [ "${status}" -eq 0 ]

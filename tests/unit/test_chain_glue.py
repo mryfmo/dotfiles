@@ -438,7 +438,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.git("fetch", "-q", "origin", "pull/7/head", cwd=self.review)
         self.git("checkout", "-q", "--detach", "FETCH_HEAD", cwd=self.review)
         sha7 = self.head[:7]
-        (self.v / f"{TASK}-pr-feedback.json").write_text(json.dumps({"pr": 7, "items": []}))
+        (self.v / f"{TASK}-pr-feedback.json").write_text(json.dumps({"pr": 7, "head_sha": self.head, "items": []}))
         (self.v / f"{TASK}-audit-{sha7}.md").write_text("transcript\n")
         (self.v / f"{TASK}-audit-{sha7}.md.last.md").write_text(summary)
         (self.v / f"{TASK}-review-receipt.md").write_text("review_surface: crit-data\n")
@@ -487,6 +487,21 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         (self.v / f"{TASK}-review-receipt.md").unlink()
         refused(f"gate input missing: .orchestration/validation/{TASK}-review-receipt.md")
         self.assertEqual("", self.log())
+
+    def test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head(self):
+        # The local review of f20826e (P1): the thread step posts the sweep's dispositions, so a sweep of an earlier
+        # head of the same PR refuses before any GitHub write; the PR head read is the only gh call.
+        self.finish_ready()
+        sweep, stale = self.v / f"{TASK}-pr-feedback.json", "0" * 40
+        sweep.write_text(json.dumps({"pr": 7, "head_sha": stale, "items": []}))
+        result = self.finish(code=10)
+        self.assertIn(f"the sweep JSON is head {stale}'s, not the audited head {self.head}'s", result.stderr)
+        self.assertEqual([], [p.name for p in self.calls.glob("*.log") if p.name not in ("gh.log", "uv.log")])
+        self.assertEqual(["pr view 7 --json headRefOid --jq .headRefOid"], self.calls_of("gh"))
+        self.assertEqual("", self.log())
+        sweep.write_text(json.dumps({"pr": 7, "head_sha": self.head, "items": []}))
+        self.finish()
+        self.assertEqual(1, len(self.calls_of("resolve-threads")))
 
     def test_finish_requires_an_audit_finding_line_per_incorrect_finding(self):
         sha7 = self.head[:7]

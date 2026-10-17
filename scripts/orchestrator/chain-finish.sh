@@ -91,8 +91,10 @@ record=${main}/.orchestration/acceptance/${task}.md sweep=${v}/${task}-pr-feedba
 for f in "${record}" "${sweep}" "${v}/${task}-audit-${sha7}.md" "${v}/${task}-review-receipt.md" "${v}/${task}-crit.json"; do
     [ -f "${f}" ] || refuse 10 "gate input missing: ${f#"${main}"/}"
 done
-pre "${uv}" run --no-project python -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["pr"])' "${sweep}"
-[ "${out}" = "${pr}" ] || refuse 10 "the sweep JSON is PR ${out}'s, not ${pr}'s"
+# The thread step posts the sweep's dispositions, so the sweep must be the audited head's (local review of f20826e).
+pre "${uv}" run --no-project python -I -c 'import json, sys; d = json.load(open(sys.argv[1])); print(d["pr"], d.get("head_sha") or "none", sep="\n")' "${sweep}"
+[ "${out%%$'\n'*}" = "${pr}" ] || refuse 10 "the sweep JSON is PR ${out%%$'\n'*}'s, not ${pr}'s"
+[ "${out##*$'\n'}" = "${head}" ] || refuse 10 "the sweep JSON is head ${out##*$'\n'}'s, not the audited head ${head}'s: rerun scripts/pr-feedback.py"
 log=${v}/${task}-chain-${sha7}.log # T7's log, appended; nothing is logged before the head is known
 comments=${v}/${task}-pr-comments.json ledger=${v}/${task}-ledger-${sha7}.tsv dispositions=${v}/${task}-audit-dispositions-${sha7}.tsv
 cost=${v}/${task}-pr-cost-${sha7}.sh tools=${v}/${task}-pr-cost-bin-${sha7}

@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T129-integration-seat-result-gate-cap-a01
 seat: claude-standard-dot-a006
-code_commit: ec4a300d
+code_commit: 1c29ec0d
 ---
 
 # Validation: dotfiles-T129-integration-seat-result-gate-cap-a01
@@ -541,5 +541,157 @@ $ UV_OFFLINE=1 uv run --no-project .claude/hooks/contextdb_cli.py memory add --k
 ```console
 $ UV_OFFLINE=1 uv run --no-project .claude/hooks/contextdb_cli.py memory search worker_cap
 253b4a23-f87d-4604-8049-e476ade55790 [project/decision] [memory:decision] Plan 023 F4: worker_cap: 4 in agent-config.yaml, read by herdr-agents --add-worker with sed from the deployed ~/.agents/agent-config.yaml (no key or no file: no cap, one stderr line), counting .claude/worktrees/ worktrees with an agmsg identity; scripts/orchestrator/integrate-seat.sh runs a PR from the worker RESULT up to the audit on the integration seat (never audit, gate or merge) and sends AGMSG-RESULT kind=integration; scripts/orchestrator/result-prech…
+[exit 0]
+```
+
+## 10. The Bot's P1 fix round (threads 4302868172, 4302868177, 4302868180) and CI's ShellCheck, captured at 1c29ec0d
+
+CI on `194e0bde` failed at ShellCheck (SC2015 at `integrate-seat.sh:25`; this host's ShellCheck 0.11.0 does not report it), and the Bot's review 5558018807 left three P1. `ff9bb7c1` fixes all four and `1c29ec0d` shortens the headers to stay under the cap. Below: the updated module against `194e0bde`'s two scripts (red), restored; the module; the linters and a search for the `A && B || C` form (the remaining hits are `&&` inside `[[ ]]` or a `||` inside a loop body, not SC2015); the mutants, three added for the fixes (the mutant runner now takes several edits for one mutant: the record copy moved back after `local-advisory.sh`); the numstat. The environment is §1's. The mutant script as run:
+
+```python
+"""Apply each mutant alone as a literal replacement (asserted to match once), run its test, restore with git checkout.
+
+Prints one `mutant <n> rc=<test status> <file>: <label> (<test>)` line per mutant (caught is rc=1), then a baseline.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+H = "tests.unit.test_herdr_agents.HerdrAgentsTest."
+I = "tests.unit.test_integration_seat.IntegrationSeatTest."
+CAP = H + "test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap"
+TEXT = H + "test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat"
+CHAIN = I + "test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges"
+COLOUR = I + "test_integrate_seat_reads_plain_gh_output_under_clicolor_force"
+PRE = I + "test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt"
+HA = "home/dot_local/bin/common/executable_herdr-agents"
+SEAT, PC = "scripts/orchestrator/integrate-seat.sh", "scripts/orchestrator/result-precheck.sh"
+MUTANTS = [
+    (HA, 'if [[ ${seat_seated} == false ]] && ((seats >= seat_cap)); then', "if false; then", "the cap check dropped", CAP),
+    (HA, "((seats >= seat_cap))", "((seats > seat_cap))", "the cap off by one", CAP),
+    ("home/dot_agents/skills/agmsg-orchestration/SKILL.md", "(4 in the manifest today) in total", "(3 in the manifest today) in total", "a seat count out of step", TEXT),
+    ("home/dot_config/claude/rules/agmsg-orchestration.md", "the rest of integration runs on the integration seat through", "the rest of integration runs on another seat through", "the Delegation bullet without the integration seat", TEXT),
+    (SEAT, "export CLICOLOR_FORCE=0 FORCE_COLOR=0 NO_COLOR=1", "export FORCE_COLOR=0 NO_COLOR=1", "CLICOLOR_FORCE inherited", COLOUR),
+    (SEAT, '[[ ${ok} == *",${rc},"* ]] || {', "true || {", "a failing step does not block", CHAIN),
+    (SEAT, "elif [[ ${p} == P[23] && -n ${owner} ]]; then", "elif [[ -n ${owner} ]]; then", "an unfixed P0/P1 made advisory", CHAIN),
+    (PC, "[[ ${f} != ${g} ]] || hit=yes", "hit=yes", "(b) takes any file", PRE),
+    (PC, "exit !(o <= max && t <= tmax)", "exit 0", "(c) ignores the caps", PRE),
+    (PC, '/usr/bin/grep -q -F -- "${c}" "${d}/validation.md" || bad=1', 'true || bad=1', "(d) ignores the validation file", PRE),
+    (PC, '[ "$(gh pr view "${pr}" --json headRefOid --jq .headRefOid)" = "${head}" ] && gh pr checks', "gh pr checks", "(e) not bound to the head", PRE),
+    (PC, '/usr/bin/grep -q -E "${id}:${p}:$([[ ${p} == P[01] ]] && echo \'(fixed:[0-9a-f]{7}|open:)\')" "${d}/report.md" || bad=1', '/usr/bin/grep -q -F "${id}" "${d}/report.md" || bad=1', "(g) takes any mention of the id", PRE),
+    (PC, 'miss+="code-after-receipt,"', ":", "verify takes code after the receipt", PRE),
+    (PC, '[ "${want#task_sha256=}" = "$(shasum -a 256 < "${d}/task.md" | cut -d\' \' -f1)" ]', "true", "(a) takes any task copy", PRE),
+    (PC, '[ "${all}" = abcdefghi ] || miss+="incomplete-receipt,"', ":", "verify takes a receipt without its status lines", PRE),
+    (SEAT, "[ -z \"${BASH_REMATCH[1]}\" ] || key=pullrequestreview-${id} api=${pr}/reviews/${id}", ":", "a review-body finding keyed by its bare id", CHAIN),
+    (SEAT, [('step record-copy 0 cp -- "${main}/.orchestration/acceptance/${task}.md" .orchestration/acceptance/\nstep local-review', 'step local-review'), ("step record 0,1 ", 'step record-copy 0 cp -- "${main}/.orchestration/acceptance/${task}.md" .orchestration/acceptance/\nstep record 0,1 ')], None, "the record copied in after local-advisory.sh", CHAIN),
+]
+
+
+def test(name):
+    return subprocess.run([sys.executable, "-m", "unittest", name], capture_output=True, text=True).returncode
+
+
+for n, (rel, old, new, label, name) in enumerate(MUTANTS, 1):
+    path = Path(rel)
+    text = path.read_text()
+    for o, w in old if isinstance(old, list) else [(old, new)]:  # a list: several edits for one mutant
+        assert text.count(o) == 1, (rel, label, text.count(o))
+        text = text.replace(o, w)
+    path.write_text(text)
+    rc = test(name)
+    subprocess.run(["git", "checkout", "--", rel], check=True)
+    print(f"mutant {n} rc={rc} {rel}: {label} ({name.rsplit('.', 1)[1]})", flush=True)
+names = list(dict.fromkeys(name for *_, name in MUTANTS))
+rc = subprocess.run([sys.executable, "-m", "unittest", *names], capture_output=True, text=True).returncode
+print(f"baseline rc={rc}: the {len(names)} tests on the unmutated tree")
+```
+
+```console
+$ git log --oneline -3; git merge-base origin/main HEAD
+1c29ec0d docs(orchestrator): integrate-seat.sh and result-precheck.sh headers say what the fix round changed, in fewer lines (the 260 cap of amendment 2)
+ff9bb7c1 fix(orchestrator): the Bot's three P1 on 194e0bde and CI's ShellCheck (PR #393 threads 4302868172, 4302868177, 4302868180)
+194e0bde docs(orchestration): T129 integration-seat result-gate cap a01 evidence (ec4a300d)
+59db77bbab7fe19377bc2b94adc6ec5c576f3ebb
+[exit 0]
+```
+```console
+$ for f in scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh; do git show 194e0bde:$f > $f; done && git diff --stat
+ scripts/orchestrator/integrate-seat.sh  | 35 ++++++++++++++++-----------------
+ scripts/orchestrator/result-precheck.sh | 25 +++++++++++------------
+ 2 files changed, 28 insertions(+), 32 deletions(-)
+[exit 0]
+```
+```console
+$ set -o pipefail; uv run python -m unittest tests/unit/test_integration_seat.py 2>&1 | /usr/bin/grep -E '^(FAIL|ERROR):|^Ran|^FAILED|^OK'
+FAIL: test_integrate_seat_reads_plain_gh_output_under_clicolor_force (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_reads_plain_gh_output_under_clicolor_force)
+FAIL: test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+FAIL: test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+Ran 3 tests in 5.622s
+FAILED (failures=3)
+[exit 1]
+```
+```console
+$ git checkout -- scripts && git diff --quiet && echo restored to $(git rev-parse --short HEAD)
+restored to 1c29ec0d
+[exit 0]
+```
+```console
+$ uv run python -m unittest tests/unit/test_integration_seat.py -v
+test_integrate_seat_reads_plain_gh_output_under_clicolor_force (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_reads_plain_gh_output_under_clicolor_force) ... ok
+test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges (tests.unit.test_integration_seat.IntegrationSeatTest.test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges) ... ok
+test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt (tests.unit.test_integration_seat.IntegrationSeatTest.test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 14.044s
+
+OK
+[exit 0]
+```
+```console
+$ shellcheck scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh home/dot_local/bin/common/executable_herdr-agents && shfmt -d -i 4 -sr scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh && echo clean
+clean
+[exit 0]
+```
+```console
+$ /usr/bin/grep -n -E '&& [^|]*[|][|] ' scripts/orchestrator/integrate-seat.sh scripts/orchestrator/result-precheck.sh || echo 'no A && B || C outside [[ ]] and loop bodies: the lines above, if any, are those'
+scripts/orchestrator/integrate-seat.sh:17:[[ $# == 2 || ($# == 4 && $3 == --owner) ]] || die "usage: integrate-seat.sh <task> <pr> [--owner <followup task id>]"
+scripts/orchestrator/result-precheck.sh:23:    [[ ${head:-} =~ ^[0-9a-f]{7,40}$ && ${sum:-} =~ ^[0-9a-f]{64}$ ]] || die "the RESULT line has no head= or precheck="
+scripts/orchestrator/result-precheck.sh:38:[[ $1 == run && $# == 4 && $3 =~ ^[0-9]+$ && $4 =~ ^[0-9a-f]{40}$ ]] || die "usage: result-precheck.sh run <task> <pr> <head>"
+scripts/orchestrator/result-precheck.sh:58:        hit=no && for g in ${allowed[@]+"${allowed[@]}"}; do [[ ${f} != ${g} ]] || hit=yes; done
+[exit 0]
+```
+```console
+$ uv run python "$S/mutate-f4.py"
+mutant 1 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap check dropped (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 2 rc=1 home/dot_local/bin/common/executable_herdr-agents: the cap off by one (test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+mutant 3 rc=1 home/dot_agents/skills/agmsg-orchestration/SKILL.md: a seat count out of step (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 4 rc=1 home/dot_config/claude/rules/agmsg-orchestration.md: the Delegation bullet without the integration seat (test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat)
+mutant 5 rc=1 scripts/orchestrator/integrate-seat.sh: CLICOLOR_FORCE inherited (test_integrate_seat_reads_plain_gh_output_under_clicolor_force)
+mutant 6 rc=1 scripts/orchestrator/integrate-seat.sh: a failing step does not block (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 7 rc=1 scripts/orchestrator/integrate-seat.sh: an unfixed P0/P1 made advisory (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 8 rc=1 scripts/orchestrator/result-precheck.sh: (b) takes any file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 9 rc=1 scripts/orchestrator/result-precheck.sh: (c) ignores the caps (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 10 rc=1 scripts/orchestrator/result-precheck.sh: (d) ignores the validation file (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 11 rc=1 scripts/orchestrator/result-precheck.sh: (e) not bound to the head (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 12 rc=1 scripts/orchestrator/result-precheck.sh: (g) takes any mention of the id (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 13 rc=1 scripts/orchestrator/result-precheck.sh: verify takes code after the receipt (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 14 rc=1 scripts/orchestrator/result-precheck.sh: (a) takes any task copy (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 15 rc=1 scripts/orchestrator/result-precheck.sh: verify takes a receipt without its status lines (test_result_precheck_refuses_each_missing_condition_and_verify_refuses_a_result_without_a_matching_receipt)
+mutant 16 rc=1 scripts/orchestrator/integrate-seat.sh: a review-body finding keyed by its bare id (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+mutant 17 rc=1 scripts/orchestrator/integrate-seat.sh: the record copied in after local-advisory.sh (test_integrate_seat_runs_the_steps_in_order_stops_at_the_first_failure_and_never_merges)
+baseline rc=0: the 5 tests on the unmutated tree
+[exit 0]
+```
+```console
+$ git status --porcelain -- scripts tests home; git diff --numstat origin/main...HEAD -- home scripts tests
+3	0	home/dot_agents/agent-config.yaml
+6	6	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+2	2	home/dot_config/claude/rules/agmsg-orchestration.md
+18	0	home/dot_local/bin/common/executable_herdr-agents
+123	0	scripts/orchestrator/integrate-seat.sh
+113	0	scripts/orchestrator/result-precheck.sh
+76	0	tests/unit/test_herdr_agents.py
+380	0	tests/unit/test_integration_seat.py
 [exit 0]
 ```

@@ -24,4 +24,5 @@ Calls outside the sandbox, through the permission gate (`dangerouslyDisableSandb
 | 7 | the Bot wait: `gh api` reads of the Bot's reviews, top-level comments and receipt comments on the head, at most every 30 seconds up to 15 minutes, and `gh pr comment <pr> --body '@codex review'` only at 10 minutes without one | `gh` |
 | 8 | `scripts/orchestrator/result-precheck.sh run dotfiles-T129-integration-seat-result-gate-cap-a01 <pr> <head>` (its gh reads; its (i) runs `codex exec --sandbox read-only` when codex is on PATH there) | `gh`, `codex` |
 | 9 | after a P0/P1 fix round only: the push, then `gh pr comment <pr> --body '@codex review'` and the same wait | `gh` |
+| 9a | used: the fix round's push (inside the sandbox, the documented HTTPS form), `gh pr comment 393 --repo mryfmo/dotfiles --body '@codex review'`, `gh run view 39037670915 --log-failed` (a read of the failed CI log), `gh api` reads of the Bot's comments, and the same wait on the new head | `gh` |
 | 10 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T129-integration-seat-result-gate-cap-a01 …` | `agmsg-dispatch` |

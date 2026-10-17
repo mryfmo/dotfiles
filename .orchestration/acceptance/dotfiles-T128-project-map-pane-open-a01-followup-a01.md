@@ -2,10 +2,56 @@
 {
   "format": 1,
   "task": "dotfiles-T128-project-map-pane-open-a01-followup-a01",
-  "head": "2842c345f56113594f3feb298fb0a731baacee3b",
+  "head": "32889597f7e98018f3a744173733000d7af8ac3f",
   "pr": 379,
-  "ledger": [],
-  "searches": [],
+  "ledger": [
+    {
+      "id": "4300474045",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "4300561777",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "4301859324",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "4301888204",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "audit:990b607:1",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "audit:990b607:2",
+      "class": "record-counting"
+    },
+    {
+      "id": "audit:990b607:3",
+      "class": "evidence-checkpoint"
+    },
+    {
+      "id": "audit:8607a87:1",
+      "class": "path-form-normalisation"
+    },
+    {
+      "id": "audit:8607a87:2",
+      "class": "live-verification"
+    },
+    {
+      "id": "audit:8607a87:3",
+      "class": "record-counting"
+    }
+  ],
+  "searches": [
+    {
+      "class": "path-form-normalisation",
+      "records": []
+    }
+  ],
   "audit_findings": []
 }
 ---
@@ -31,3 +77,10 @@ audit:990b607:3	evidence-checkpoint
 audit:8607a87:1	path-form-normalisation
 audit:8607a87:2	live-verification
 audit:8607a87:3	record-counting
+
+## Owned by dotfiles-T128-project-map-pane-open-a01-followup-a02 (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)
+
+local:3288959:1	advisory-p2
+local-finding: 3288959:1 not-applicable:advisory P2 owned by dotfiles-T128-project-map-pane-open-a01-followup-a02 (- [P2] Check the map suffix before resolving its symlinks — home/dot_claude/hooks/executable_project-map-reload.sh:39-40); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a02.md (2bc357240403629a94e91f44a4e6cf6a2f95359ed621fa7f3f6dd8521ff83240)
+local:3288959:2	advisory-p2
+local-finding: 3288959:2 not-applicable:advisory P2 owned by dotfiles-T128-project-map-pane-open-a01-followup-a02 (- [P2] Compare map identity on case-insensitive filesystems — home/dot_claude/hooks/executable_project-map-reload.sh:55-); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-project-map-pane-open-a01-followup-a02.md (2bc357240403629a94e91f44a4e6cf6a2f95359ed621fa7f3f6dd8521ff83240)

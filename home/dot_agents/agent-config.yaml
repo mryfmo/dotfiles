@@ -69,6 +69,9 @@ interactive_profile: deep
 # ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit
 # HERDR_AGENTS_WORKER_KIND in the environment still overrides it.
 worker_kind: claude
+# Most worker seats herdr-agents --add-worker seats for one repository (worktrees
+# holding an agmsg identity); it reads this key from ~/.agents/agent-config.yaml.
+worker_cap: 4
 # Orchestrator pane agent for the herdr-agents pair: claude or codex; codex
 # means the pair is driven by codex-orchestrate (T86). Renders into
 # ~/.agents/model-profiles.env as HERDR_AGENTS_ORCHESTRATOR_KIND; an explicit

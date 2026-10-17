@@ -4231,8 +4231,10 @@
 <li><code>check_command</code></li>
 <li><code>check_crit_cli</code></li>
 <li><code>check_gh_extensions</code></li>
+<li><code>check_hcom</code></li>
 <li><code>check_homebrew</code></li>
 <li><code>check_machine_ssh_key</code></li>
+<li><code>check_omp</code></li>
 <li><code>check_private_chezmoi</code></li>
 <li><code>check_zed</code></li>
 <li><code>main</code></li>
@@ -4411,6 +4413,36 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report omp's installed version beside its manifest pin.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_omp<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/omp"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"omp not installed; run make update"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>pin
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="s1">'"'</span><span class="w"> </span><span class="s1">'/^OMP_PIN_VERSION=/ { print $2; exit }'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/lib/installer-pins.sh"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   omp -&gt; %s (pin %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span>warn_optional<span class="w"> </span><span class="s2">"omp --version failed; run make update"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Report hcom's installed version beside its manifest pin.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_hcom<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/hcom"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"hcom not installed; run make update"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>pin
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="s1">'"'</span><span class="w"> </span><span class="s1">'/^HCOM_PIN_VERSION=/ { print $2; exit }'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]%/*</span><span class="si">}</span><span class="s2">/lib/installer-pins.sh"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   hcom -&gt; %s (pin %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span>warn_optional<span class="w"> </span><span class="s2">"hcom --version failed; run make update"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an</span>
 <span class="c1">#   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.</span>
 <span class="c1">#</span>
@@ -4547,6 +4579,10 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
 <span class="w">    </span>check_crit_cli
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"Agent tools"</span>
+<span class="w">    </span>check_omp
+<span class="w">    </span>check_hcom
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Zed"</span>
 <span class="w">    </span>check_zed

@@ -819,6 +819,13 @@ def check() -> list[str]:
     )
     failures.extend(
         check_executable_hook(
+            SOURCE_ROOT / "dot_claude/hooks/executable_gh-merge-gate.sh",
+            HOME / ".claude/hooks/gh-merge-gate.sh",
+            "Claude gh-merge-gate hook",
+        )
+    )
+    failures.extend(
+        check_executable_hook(
             SOURCE_ROOT / "dot_claude/hooks/executable_format-edited-files.py",
             HOME / ".claude/hooks/format-edited-files.py",
             "Claude format-edited-files hook",

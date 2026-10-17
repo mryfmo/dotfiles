@@ -1166,6 +1166,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.module.validate_claude_permissions_allow({"allow": allow}, "permissions")
             self.assertIn("permissions.allow must be a list", stderr.getvalue())
 
+    def test_claude_gh_merge_gate_keeps_writes_on_ask_and_requires_the_hook(self) -> None:
+        writes = list(self.module.GH_WRITE_ASK)
+        gate = {"PreToolUse": [{"matcher": "Bash", "hooks": [{"command": "~/.claude/hooks/gh-merge-gate.sh"}]}]}
+        self.module.validate_claude_gh_merge_gate({"permissions": {"ask": writes}, "hooks": gate}, "s")
+        merge_ask = writes + ["Bash(gh pr merge:*)", "Bash(gh pr update-branch:*)"]
+        self.module.validate_claude_gh_merge_gate({"permissions": {"ask": merge_ask}, "hooks": {}}, "s")
+        for settings, message in (
+            ({"permissions": {"ask": writes}, "hooks": {}}, "without the gh-merge-gate"),
+            ({"permissions": {"ask": writes[1:]}, "hooks": gate}, "must keep the gh write rules"),
+            (
+                {"permissions": {"ask": writes, "allow": ["Bash(gh pr merge:*)"]}, "hooks": gate},
+                "must not pre-approve",
+            ),
+        ):
+            with (
+                self.subTest(message=message),
+                contextlib.redirect_stderr(io.StringIO()) as stderr,
+                self.assertRaises(SystemExit),
+            ):
+                self.module.validate_claude_gh_merge_gate(settings, "s")
+            self.assertIn(message, stderr.getvalue())
+
     def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")

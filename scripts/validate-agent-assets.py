@@ -365,6 +365,34 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
 
 
+GH_WRITE_ASK = tuple(
+    f"Bash(gh {command}:*)"
+    for command in ("pr create", "pr comment", "pr review", "pr close", "pr edit", "issue", "api -X POST", "api -X PUT")
+)
+
+
+def validate_claude_gh_merge_gate(settings: dict[str, Any], label: str) -> None:
+    """Keep every gh write on ask; a merge or update-branch leaves ask only behind the gh-merge-gate hook."""
+    permissions = settings.get("permissions", {})
+    ask = permissions.get("ask", [])
+    missing = [rule for rule in GH_WRITE_ASK if rule not in ask]
+    if missing:
+        fail(f"{label} permissions.ask must keep the gh write rules: missing={missing}")
+    gated = [rule for rule in permissions.get("allow", []) if str(rule).startswith(("Bash(gh pr", "Bash(gh api"))]
+    if gated:
+        fail(f"{label} permissions.allow must not pre-approve gh pr or gh api writes: {gated}")
+    if {"Bash(gh pr merge:*)", "Bash(gh pr update-branch:*)"} <= set(ask):
+        return
+    commands = [
+        hook.get("command", "")
+        for entry in settings.get("hooks", {}).get("PreToolUse", [])
+        if entry.get("matcher") == "Bash"
+        for hook in entry.get("hooks", [])
+    ]
+    if not any(str(command).endswith("/gh-merge-gate.sh") for command in commands):
+        fail(f"{label} drops the gh pr merge/update-branch ask rules without the gh-merge-gate PreToolUse hook")
+
+
 def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
     allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
     if not isinstance(allow, list) or not all(isinstance(rule, str) and rule.strip() for rule in allow):
@@ -390,6 +418,7 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
     validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
+    validate_claude_gh_merge_gate(settings, f"{settings_path} {os_name}")
     validate_claude_sandbox(
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),

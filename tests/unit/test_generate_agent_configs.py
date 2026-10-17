@@ -696,13 +696,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         expected_ask = [
             f"Bash(gh {command}:*)"
             for command in (
-                "pr merge",
                 "pr create",
                 "pr comment",
                 "pr review",
                 "pr close",
                 "pr edit",
-                "pr update-branch",
                 "issue",
                 "api -X POST",
                 "api --method POST",

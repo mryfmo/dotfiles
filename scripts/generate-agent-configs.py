@@ -442,7 +442,12 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                         {
                             "type": "command",
                             "command": hooks["enforce_uv_hook"],
-                        }
+                        },
+                        *(
+                            [{"type": "command", "command": hooks["gh_merge_gate_hook"]}]
+                            if "gh_merge_gate_hook" in hooks
+                            else []
+                        ),
                     ],
                 }
             ],

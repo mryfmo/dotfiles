@@ -54,7 +54,7 @@ unknown_probe() {
 }
 
 probe_status=0
-processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
+processes="$("${ps_probe}" -axww -o pid=,command= 2> /dev/null)" || probe_status=$?
 if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
 if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
     unknown_probe 'ps listed no process'

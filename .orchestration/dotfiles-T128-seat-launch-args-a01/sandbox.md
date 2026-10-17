@@ -1,12 +1,12 @@
 ---
 task_id: dotfiles-T128-seat-launch-args-a01
 status: final
-revise_round: 5
-result_round: 2
+revise_round: 6
+result_round: 3
 ---
 
-All revision commands run in the managed workspace-write sandbox without escalation, permission-gated commands or persistent Git configuration changes. Main task/acceptance/audit inputs are read only. Source/test writes stay in the allowed seat script and two test modules; production boundary remains unchanged. Other task branches and untracked evidence are preserved.
+All commands stayed in the managed workspace-write sandbox without escalation, permission-gated actions or persistent configuration changes. Main task/acceptance inputs remain read only; task copy hash unchanged. Only allowed seat source/test and task records are edited, while other branches and untracked logs are preserved.
 
-uv uses UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache. Tests execute the seat checker with temporary HOME/profile and synthetic ps/lsof data. Fixture parent PIDs come from Python os.getpid or shell PPID passed by an exec shim; no real ps/lsof query is used. The boundary integration test keeps the real copied checker bytes, existing assertions and original boundary invocation. Its initial outer-PID fixture failure is preserved, not hidden.
+uv uses UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache. Tests execute copied scripts with synthetic ps/lsof, temporary HOME/profile and fake boundary inputs. New ps stub records only probe option argv, prints the known fixture caller PID and truncates synthetic commands unless ww is present. No real ps/lsof, prompt, secret, pane, browser, daemon or re-seat is probed. Independent review is read only with a /tmp transcript.
 
-Fresh read-only security-profile review is the explicit AGENTS.md fallback for missing Crit data. No Crit server/web, human review request, Plan Mode, local Bats, real prompt/secret input, runtime/re-seat change, graph update, AutoSkill or memory promotion. Commit uses a per-command signing override; push uses per-command HTTPS identity rewrite without shared git config writes or -u. Nonfatal packed-refs/credential-store warnings are recorded if emitted. Authorized live writes are branch push and bounded Bot review request; worker never replies/resolves findings or integrates/merges.
+Unsigned commit and HTTPS push identity rewrite are per-command; shared git config is untouched and emitted packed-refs/credential-store warnings retained. Authorized GitHub actions are this PR push/body update, CI observation and final-head Bot re-review. No local Bats, Crit browser/server, Plan Mode, human review request, graph update or main write. Orchestrator retains integration/merge.

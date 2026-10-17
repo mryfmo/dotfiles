@@ -221,7 +221,22 @@ class SeatArgsTest(unittest.TestCase):
         calls = (self.home / "lsof-calls").read_text().splitlines()
         self.assertIn("-a -p 10 -d cwd -Fn", calls)
         self.assertIn("-a -p 20 -d cwd -Fn", calls)
-        self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
+        self.assertEqual({"-axww -o pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
+
+        with self.subTest(label="untruncated process arguments"):
+            original_ps = self.ps.read_text()
+            self.ps.write_text(
+                '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\n'
+                'printf "%s fixture caller\\n" "$FIXTURE_PS_CALLER_PID"\n'
+                'if [[ $1 == *ww* ]]; then cat "$HOME/ps-lines"; else cut -c1-64 "$HOME/ps-lines"; fi\n'
+            )
+            self.profiles.write_text(profiles)
+            long_match = match.replace("claude ", "claude " + "--verbose " * 16, 1)
+            result = self.run_probe(claude, "claude-code", "t", project, f"200 {long_match}\n")
+            self.ps.write_text(original_ps)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(f"seat {claude} profile=standard kind=claude process=200 args=ok\n", result.stdout)
+            self.assertEqual("-axww -o pid=,command=", (self.home / "ps-calls").read_text().splitlines()[-1])
 
         seat_pid = os.getpid() + 1_000_000
         for hidden, processes, code, tail in (

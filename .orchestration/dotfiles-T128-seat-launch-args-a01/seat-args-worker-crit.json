@@ -69,5 +69,11 @@
     "scope": "review",
     "body": "Fresh independent read-only security-profile review (manifest gpt-6-astra/high) of incremental diff against3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8 found no issue. Exact PPID-column prerequisite precedes selection; equals-form values preserve every-occurrence conflict latch and redacted fixed-state diagnostics. Named seat test, ShellCheck and seven synthetic cases passed. Corrected boundary exec shim captures immediate parent while copied production bytes remain unchanged. Approval implements D-S1-383-A parent-visibility proxy only; it does not prove complete host inventory or eliminate parent-visible/worker-hidden scenarios. Parent read full transcript; full12 suite18.008s/static checks pass; earlier records are historical checkpoint approvals.",
     "resolved": true
+  },
+  {
+    "id": "seat-ps-width-review-approval",
+    "scope": "review",
+    "body": "Independent read-only security-profile Codex review of the one-invocation ps-width correction against8b210af3 found no issues. Named fixture test and ShellCheck pass; boundary source/test unchanged; task hash/source hashes verified. Parent read complete121-line focused transcript and all12 resolved records. Wider input adds no raw argv output sink; parent-visible/worker-hidden and flattened-argv residuals remain explicit. Historical approvals certify only their checkpoint scopes.",
+    "resolved": true
   }
 ]

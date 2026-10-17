@@ -1,6 +1,340 @@
 ---
 task_id: dotfiles-T128-seat-launch-args-a01
 status: final
+revise_round: 6
+result_round: 3
+---
+
+Current C50 ps-width correction against8b210af3; task SHA256148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f. Local evidence binds to source hashes/caps in source-integrity below. Future publishing-head CI/Bot is observed in RESULT/raw round6-ps-width/. HOME/temp prefixes redacted; output/whitespace otherwise retained. Historical appendix applies only to its named checkpoint.
+
+## Explicit queued C50 authorization
+
+```text
+AGMSG-ACCEPTANCE received2026-10-17T06:47:07Z from claude-deep-dot task_id=dotfiles-T128-seat-launch-args-a01 round=6 status=revise previous_head=8b210af3b9f151cef63776f63a74904115cef8b9. C50 INV6 results2 revises1-of2 mandatory smallP2 local:8b210af:1 classps-truncation. Named SeatArgsTest method gets stub-recorded argv/truncates unless ww so matching seat argsok only when unlimited width. Production /bin/ps -axww -o pid=,command= (or seam sameargs), nothing else moved. PushCI/Bot re-review, RESULTround3 names findingfixed:<sha>; queued after379.
+```
+
+## Expected RED named seat method before source fix (exit1; new subcase only exit3 vs0)
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... 
+  test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='untruncated process arguments') ... FAIL
+
+======================================================================
+FAIL: test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) (label='untruncated process arguments')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_seat_args.py", line 237, in test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    self.assertEqual(0, result.returncode, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 3 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 3.854s
+
+FAILED (failures=1)
+```
+
+## UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project python -m unittest tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py -v (exit0)
+
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_closed_unmerged_is_reported_without_an_anchored_reset_record) ... ok
+test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_pr_none_record_silences_only_a_task_whose_results_name_no_pr) ... ok
+test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_naming_an_unrelated_accepted_design_anchors_nothing) ... ok
+test_a_reset_record_silences_only_when_another_identity_accepted_its_design (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_reset_record_silences_only_when_another_identity_accepted_its_design) ... ok
+test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal) ... ok
+test_a_seated_worker_without_its_profile_arguments_is_a_violation (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_seated_worker_without_its_profile_arguments_is_a_violation) ... ok
+test_a_task_over_a_count_is_reported (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_task_over_a_count_is_reported) ... ok
+test_a_waiver_line_silences_nothing (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_a_waiver_line_silences_nothing) ... ok
+test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_an_accepted_record_silences_only_when_the_tasks_pr_is_merged) ... ok
+test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_each_listed_task_is_counted_and_an_unsafe_id_is_skipped) ... ok
+test_the_probe_skips_without_the_counters_script_or_a_readable_store (tests.unit.test_check_regime_boundary.RegimeBoundaryCountsTest.test_the_probe_skips_without_the_counters_script_or_a_readable_store) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 29.022s
+
+OK
+```
+
+## shellcheck scripts/orchestrator/seat-args.sh scripts/check-regime-boundary.sh (exit0)
+
+```text
+```
+
+## shfmt -i 4 -sr -d both scripts (exit0)
+
+```text
+```
+
+## Ruff format apply seat module (exit0; before GREEN)
+
+```text
+1 file left unchanged
+```
+
+## Ruff format --check both modules (exit0)
+
+```text
+2 files already formatted
+```
+
+## git diff --check -- source/test paths (exit0)
+
+```text
+```
+
+## Working source/test numstat againstaf4f1e99 (exit0)
+
+```text
+17	1	scripts/check-regime-boundary.sh
+150	0	scripts/orchestrator/seat-args.sh
+66	0	tests/unit/test_check_regime_boundary.py
+320	0	tests/unit/test_seat_args.py
+```
+
+## git diff --numstat origin/main...HEAD at previous8b210af3 (historical, exit0)
+
+```text
+8	0	.orchestration/dotfiles-T128-seat-launch-args-a01/autoskill.md
+12	0	.orchestration/dotfiles-T128-seat-launch-args-a01/learning.md
+40	0	.orchestration/dotfiles-T128-seat-launch-args-a01/report.md
+48	0	.orchestration/dotfiles-T128-seat-launch-args-a01/revise.yaml
+12	0	.orchestration/dotfiles-T128-seat-launch-args-a01/sandbox.md
+73	0	.orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-crit.json
+10	0	.orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md
+107	0	.orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+5176	0	.orchestration/dotfiles-T128-seat-launch-args-a01/validation.md
+17	1	scripts/check-regime-boundary.sh
+150	0	scripts/orchestrator/seat-args.sh
+66	0	tests/unit/test_check_regime_boundary.py
+305	0	tests/unit/test_seat_args.py
+```
+
+## Task/source hashes, one-line-only production delta and boundary byte equality (exit0)
+
+```text
+{
+  "previous_head": "8b210af3b9f151cef63776f63a74904115cef8b9",
+  "task_sha256": "148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f",
+  "source_sha256": {
+    "scripts/orchestrator/seat-args.sh": "3ad4242874eeeb1edfe06fed8c179273ab609c9c1f121316f9432ff80150fdbb",
+    "scripts/check-regime-boundary.sh": "eb242b6e7f3ebcdeca2946993324f4012474e30ec85fdf6b418447764123d423",
+    "tests/unit/test_seat_args.py": "98b0580f2c8662e22d71b6efa2be6e36ff39801bc93271b5ad6a82188beaaef1",
+    "tests/unit/test_check_regime_boundary.py": "b1feb3229e4345a8c62d9ba6496400166a8d060e9bb462365661cd98b673a08a"
+  },
+  "source_changed": 168,
+  "test_added": 386,
+  "source_limit": 200,
+  "test_limit": 1000,
+  "full_methods": 12,
+  "seat_subcases": 41,
+  "seconds": "29.022",
+  "only_production_delta": "ps -axo -> -axww -o",
+  "boundary_source_and_test_byte_identical": true
+}
+```
+
+## crit status --json (exit0; missing review data)
+
+```text
+{
+  "branch": "feat/seat-launch-args-check",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "<HOME>/.crit/reviews/cc5727b5cdda/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+```
+
+## Initial make require-crit-review (exit2; evidence required)
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T128-project-map-pane-open-a01-followup-a01/crit-status.json
+- broad diff touches 476 files
+- broad diff changes 25861 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## gh pr view383 before push (historical, exit0)
+
+```text
+{"baseRefOid":"af4f1e997f78119d5994d7d7b1966894d62bbc6a","headRefName":"feat/seat-launch-args-check","headRefOid":"8b210af3b9f151cef63776f63a74904115cef8b9","url":"https://github.com/mryfmo/dotfiles/pull/383"}
+```
+
+## gh pr checks383 at previous8b210af3 (historical, exit0)
+
+```text
+[{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955624","name":"public-bootstrap (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566688/job/117328955683","name":"test (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955551","name":"private-bootstrap (macos-14, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955528","name":"public-bootstrap (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566688/job/117328955762","name":"test (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566685/job/117328955176","name":"validate","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566688/job/117328955462","name":"test (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566688/job/117328955894","name":"test (ubuntu-26.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955569","name":"private-bootstrap (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955546","name":"private-bootstrap (ubuntu-24.04, server)","state":"SUCCESS"},{"link":"https://github.com/mryfmo/dotfiles/actions/runs/39009566687/job/117328955320","name":"public-bootstrap (ubuntu-24.04, client)","state":"SUCCESS"},{"link":"https://dashboard.gitguardian.com","name":"GitGuardian Security Checks","state":"SUCCESS"},{"link":"","name":"CodeRabbit","state":"SUCCESS"}]
+```
+
+## Complete independent read-only ps-width review
+
+# Independent focused review: ps width correction
+
+Scope: PR383 C50 round6 incremental diff from 8b210af3b9f151cef63776f63a74904115cef8b9 in worker-e on feat/seat-launch-args-check. The parent authorized this bounded read-only follow-up to the previous review. No repository file, worklog, configuration, graph, or evidence was edited; only this /tmp transcript is written. Parent owns worklogs and integration.
+
+The same task copy remains SHA256 148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f. Reference skill/task/re-plan inputs were already read in the preceding parent-visibility review; unchanged documents were not reread or dumped.
+
+## Reference reads for this follow-up
+
+- nl -ba tests/unit/test_seat_args.py | sed -n '205,305p'
+- nl -ba scripts/orchestrator/seat-args.sh | sed -n '40,75p'
+- nl -ba scripts/orchestrator/seat-args.sh | sed -n '113,150p'
+
+These source excerpts are inputs, not findings; unchanged sections are not reproduced below.
+
+## Bounded diff
+
+```sh
+git diff 8b210af3b9f151cef63776f63a74904115cef8b9 -- scripts/orchestrator/seat-args.sh tests/unit/test_seat_args.py tests/unit/test_check_regime_boundary.py
+```
+Exit: 0
+```diff
+diff --git a/scripts/orchestrator/seat-args.sh b/scripts/orchestrator/seat-args.sh
+index 64c44e73..e02835a0 100755
+--- a/scripts/orchestrator/seat-args.sh
++++ b/scripts/orchestrator/seat-args.sh
+@@ -54,7 +54,7 @@ unknown_probe() {
+ }
+ 
+ probe_status=0
+-processes="$("${ps_probe}" -axo pid=,command= 2> /dev/null)" || probe_status=$?
++processes="$("${ps_probe}" -axww -o pid=,command= 2> /dev/null)" || probe_status=$?
+ if ((probe_status != 0)); then unknown_probe "ps failed (exit ${probe_status})"; fi
+ if ! grep -Eq '^[[:blank:]]*[0-9]+[[:blank:]]+[^[:blank:]]' <<< "${processes}"; then
+     unknown_probe 'ps listed no process'
+diff --git a/tests/unit/test_seat_args.py b/tests/unit/test_seat_args.py
+index 7011ca1b..1aae9ed2 100644
+--- a/tests/unit/test_seat_args.py
++++ b/tests/unit/test_seat_args.py
+@@ -221,7 +221,22 @@ class SeatArgsTest(unittest.TestCase):
+         calls = (self.home / "lsof-calls").read_text().splitlines()
+         self.assertIn("-a -p 10 -d cwd -Fn", calls)
+         self.assertIn("-a -p 20 -d cwd -Fn", calls)
+-        self.assertEqual({"-axo pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
++        self.assertEqual({"-axww -o pid=,command="}, set((self.home / "ps-calls").read_text().splitlines()))
++
++        with self.subTest(label="untruncated process arguments"):
++            original_ps = self.ps.read_text()
++            self.ps.write_text(
++                '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$HOME/ps-calls"\n'
++                'printf "%s fixture caller\\n" "$FIXTURE_PS_CALLER_PID"\n'
++                'if [[ $1 == *ww* ]]; then cat "$HOME/ps-lines"; else cut -c1-64 "$HOME/ps-lines"; fi\n'
++            )
++            self.profiles.write_text(profiles)
++            long_match = match.replace("claude ", "claude " + "--verbose " * 16, 1)
++            result = self.run_probe(claude, "claude-code", "t", project, f"200 {long_match}\n")
++            self.ps.write_text(original_ps)
++            self.assertEqual(0, result.returncode, result.stderr)
++            self.assertEqual(f"seat {claude} profile=standard kind=claude process=200 args=ok\n", result.stdout)
++            self.assertEqual("-axww -o pid=,command=", (self.home / "ps-calls").read_text().splitlines()[-1])
+ 
+         seat_pid = os.getpid() + 1_000_000
+         for hidden, processes, code, tail in (
+```
+
+## Exact independent checks
+
+```sh
+UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --no-project python -m unittest tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one -v
+```
+Exit: 0
+```text
+test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one (tests.unit.test_seat_args.SeatArgsTest.test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 5.151s
+
+OK
+```
+
+```sh
+shellcheck scripts/orchestrator/seat-args.sh
+```
+Exit: 0. Output: empty.
+
+```sh
+git diff --exit-code 8b210af3b9f151cef63776f63a74904115cef8b9 -- scripts/check-regime-boundary.sh tests/unit/test_check_regime_boundary.py
+```
+Exit: 0. Output: empty. Both boundary files are unchanged.
+
+```sh
+shasum -a 256 scripts/orchestrator/seat-args.sh tests/unit/test_seat_args.py .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+```
+Exit: 0
+```text
+3ad4242874eeeb1edfe06fed8c179273ab609c9c1f121316f9432ff80150fdbb  scripts/orchestrator/seat-args.sh
+98b0580f2c8662e22d71b6efa2be6e36ff39801bc93271b5ad6a82188beaaef1  tests/unit/test_seat_args.py
+148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f  .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+```
+
+The parent reported a red run before the one-line production fix, with the new long-command subcase returning unlaunched/3 instead of ok/0. I did not independently rerun that red state. The parent was running the full 12-method seat/boundary suite separately; this report makes no independent claim about that suite or CI.
+
+## Entire assessment
+
+No actionable findings in this incremental changeset.
+
+Justified approval (high confidence): scripts/orchestrator/seat-args.sh:57 adds the repeated wide-output option while preserving process selection options, the explicit headerless PID/command format, absolute default probe, quoted test seam, stderr suppression, and exit-status capture. Separating -o into its own argument preserves its existing format operand. The production diff is exactly one line and does not alter selection, status codes, parent visibility, comparison, or output formatting.
+
+The output width matters because managed flags and the Claude session marker can occur after long preceding arguments. tests/unit/test_seat_args.py:226-239 covers that causal failure: the synthetic command places those required tokens beyond character 64; the ps stub truncates only command lines when the wide option is absent, preserves the caller PID marker, and returns the full line when present. The test asserts the selected process and args=ok, then verifies exact probe argv. Thus the failure is not masked by the parent visibility check. The stub is restored before subsequent visibility/probe cases, and the named test passes in full. The pre-existing recorded-argv assertion is updated at line 224.
+
+Security and redaction: wider ps output increases the amount of process command text available inside the checker, which is necessary to avoid truncation. It adds no output sink and no raw argv logging. Existing observed values only feed comparisons; diagnostics contain fixed state labels, selected numeric PID, identity/profile, and configured expected flags. The named test still exercises private prompt redaction and literal, non-executed profile values. There is no new eval, source, shell interpolation of process data, dependency, write, signal, or executable configuration surface.
+
+Preserved parent proxy: the successful/nonempty ps checks and exact PPID-column gate still precede all seat selection. The four parent-visible/hidden subcases execute after restoring the ordinary fixture and pass. Missing caller visibility still gives unknown-probe/4 with fixed stderr. Parent-visible but worker-hidden remains a residual: the checker can still say unlaunched when a namespace shows its parent but hides the worker. This width correction does not claim to eliminate that limitation.
+
+Preserved parsing limitation: ps command output is flattened text, not a recoverable structured argv array. Quoted or space-containing arguments remain ambiguous. Requesting full width prevents this specific display truncation; it does not certify complete process inventory, immunity to all platform argument-reporting limits, or exact recovery of original argv boundaries.
+
+Scope and evidence integrity: only the one production invocation and one existing test method change; production/test boundary files are unchanged. Existing threat-table source/test/input rows remain applicable because the probe interface and outputs are unchanged. The unchanged task-copy hash is verified above. This is a focused local review of the recorded bytes, not acceptance or a final-head orchestration audit.
+
+📝 まとめ: ps の表示幅修正と fixture の独立レビューを完了し、指定テストと ShellCheck は成功しました。修正要求はありません。
+Not checked: live ps/lsof, Bats, browser/daemon, GitHub/CI, or the full suite independently. Parent-visible/worker-hidden and flattened-argv limitations remain.
+Verdict: correct
+
+
+
+## Current canonical masking and worker gate
+
+HOME/temp prefixes redacted; task bytes unchanged. Broad gate includes preserved untracked other-task logs, which are not staged.
+
+### uv validate-agent-assets.py --mask-secrets all9canonicalrecords (exit0)
+
+```text
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md
+```
+
+### AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-review-receipt.md make require-crit-review (exit0)
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Historical validation through8b210af3 (superseded for current ps-width claims)
+
+---
+task_id: dotfiles-T128-seat-launch-args-a01
+status: final
 revise_round: 5
 result_round: 2
 ---

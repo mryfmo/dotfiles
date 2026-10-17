@@ -1,0 +1,56 @@
+id	state_now	target_class	status	mechanisms
+C-1	pending-tool	code	pending (scratchpad script; T704 lands it)	validator:ledger-check (plan 007 T704); rule:SKILL#counters-bullet (landed e83e923d); rule:SKILL#worker-step-15 (plan 007 T712; PR #323 parked at dc7edcc0 as input)
+C-2	landed-tool	code	landed for fixtures and the bullet; pending for C4 and T703	fixture:tests/fixtures/regime/*.md (landed e83e923d); validator:task-consistency-check C4 (T704/T705); rule:AGENTS.md#code-review-rules (T703)
+C-3	pending-tool	code	pending (scratchpad script)	validator:task-consistency-check (T704); validator:validate-task (T705)
+C-4	text-only	text	pending (operator decision on the model download)	setting:.claude/contextdb/config.json#semantic (T707)
+C-5	pending-tool	code	pending	validator:require-crit-review#evidence (T702); rule:SKILL#orchestrator-playbook (T703)
+C-6	text-only	code	pending	script:new-successor (T706)
+C-7	pending-tool	code	pending (operator)	setting:ruleset#merge-queue (T709); validator:validate-task#canonical-hash (006 V1); rule:agent-stop-gate (T711)
+C-8	text-only	text	pending	rule:SKILL#worker-step-15 (plan 007 T712; PR #323 parked at dc7edcc0 as input)
+C-9	pending-tool	test	pending (Phase B)	fixture:tests/fixtures/regime/worker-step-15.md (T712)
+C-10	text-only	text	pending (operator reads the setting)	premise:plan-006#bot-behaviour (T713)
+C-11	text-only	text	pending (operator PR)	setting:claude-settings-managed.json#permissions.ask (T710)
+C-12	pending-tool	code	pending	rule:SKILL#orchestrator-step-6 (T703); validator:check-regime-boundary#dispatch-evidence (T704)
+C-13	text-only	code	pending	script:scratchpad/boundary-6.sh (now); plan:T718 (proposed)
+C-14	text-only	code	pending	script:scripts/orchestrator/codex-review.sh (T718, proposed)
+C-15	text-only	code	pending	script:scripts/orchestrator/design-keydiff.py (T718, proposed)
+C-16	pending-tool	code	pending	validator:task-consistency-check#C7 (T704)
+C-17	pending-tool	code	pending	rule:plan-007#three-repeat-procedure; rule:SKILL#three-repeat (T703, dotfiles-T128-playbook-rules-a04); validator:require-crit-review#s6-search-grammar (T702 amendment 1)
+C-18	text-only	code	pending	rule:plan-007#verified-figures; script:scripts/orchestrator/replay.sh (T718)
+C-19	pending-tool	code	pending	validator:task-consistency-check#C8 (T704, proposed)
+C-20	text-only	code	pending	script:scripts/orchestrator/dispatch.sh (T718, proposed)
+C-21	pending-tool	code	pending	validator:task-consistency-check#C9 (T704, proposed); rule:plan-007#dependency-rationale
+C-22	pending-tool	code	pending	validator:require-crit-review#s6-recompute (T702 a02 amendment 1)
+C-23	text-only	code	pending	script:scripts/orchestrator/three-repeat.sh (T718); rule:SKILL (obligation + script name + landing condition)
+C-24	pending-tool	code	pending	validator:require-crit-review#acceptance-front-matter (T702 successor)
+C-25	pending-tool	code	pending	rule:plan-012#ordering (T718 items-1-and-3 scripts before T703 merges); validator:task-consistency-check#C10 (T704, proposed)
+C-26	pending-tool	code	pending	rule:task-contract (identity triple; a03 amendment 1, plan 013); validator:diff-env-inputs#C11 (T704, proposed); validator:ledger-check#one-class-one-slug (T704, proposed)
+C-27	text-only	code	pending	script:amend-sweep.sh (scratchpad; T718 a02 candidate); rule:review-task (the round note pastes the sweep output)
+C-28	pending-tool	code	pending	rule:amend-review-template#behaviour-rows; validator:task-consistency-check#C7-effects (T704, proposed)
+C-29	text-only	code	pending	rule:integrate-prep#sandbox-scan; script:sandbox-check.py (T704 or T718 a02, proposed)
+C-30	text-only	code	pending	rule:SKILL#acceptance-statuses (proposed); script:scripts/agent-stop-gate.sh accepted set (proposed)
+C-31	pending-tool	code	pending	rule:redesign-brief-standing-items#input-grammar; validator:task-consistency-check#C12 (T704, proposed); task:dotfiles-T128-orchestrator-tools-a02 (tables before dispatch)
+C-32	text-only	code	pending	script:local-review.sh (scratchpad 2026-10-13; scripts/orchestrator in the tools task after a02, proposed); rule:integrate-prep#local-review-before-sweep; rule:boundary#hold-while-pr-awaits-merge; scr
+C-33	text-only	code	pending	script:brief-check.sh (scratchpad 2026-10-13); rule:redesign-brief-standing-items#brief-check-before-dispatch; rule:dispatch-scripts#brief-check-before-send (next brief)
+C-34	pending-tool	test	pending	script:finish-336c.sh exact verdict match (2026-10-13); rule:chain-scripts#exact-string-decisions (standing); task:tools task after a02 (chain scripts with stop-branch tests, proposed)
+C-35	pending-tool	code	pending	script:premise-run.py (scratchpad 2026-10-14); rule:dispatch-scripts#premise-run-before-send (standing); validator:task-consistency-check#C11 (plan 021 step 7.1 template task, proposed)
+C-36	text-only	code	pending	rule:dispatch-commands#previous-hash-from-origin-main (standing); script:dispatch.sh previous-token recomputation (proposed, owner follow-up); record:acceptance a05 correction PING
+C-37	text-only	code	pending	rule:orchestrator-edit-scripts#count-assert-and-line-edits (standing); script:brief-check.sh count lines (proposed, step 7.1)
+C-38	text-only	code	superseded by C-40	rule:orchestrator-edit-and-dispatch#set-e-and-count-assert (standing); script:brief-check.sh expected-count argument (proposed, step 7.1)
+C-39	text-only	code	pending	rule:chain-scripts#no-edit-while-running (standing); script:orch-audit.sh copy-out before cleanup (proposed, step 6.3)
+C-40	text-only	code	pending	rule:orchestrator-commands#explicit-exit-on-every-assertion (standing); rule:orchestrator-commands#probe-a-new-guard-once (standing); script:chain scripts as their own bash process with set -euo pipef
+C-41	text-only	code	pending	script:owner-rows.sh (scratchpad 2026-10-14); rule:record-figures#grammar-counter-named-beside-the-figure (standing); script:ledger-check.py --owner (proposed, task-checkers follow-up or step 7.1)
+C-42	text-only	code	pending	rule:result-step#thread-rows-with-extra-tsv (standing); script:fill_sweep.py class column + chain row writer (proposed, tools follow-up / step 6.3)
+C-43	text-only	code	pending	script:record-block.py dispatch-to-prose before the block write (scratchpad, 2026-10-14); record:five records restored from messages.db (2026-10-14 07:46Z); script:dispatch.sh prose section + gate blo
+C-44	pending-tool	code	pending	script:brief-check.sh mask step (scratchpad, 2026-10-14); rule:task-authoring#premise-outputs-masked-before-the-hash (standing); validator:task-consistency-check#C11 masker check mode (proposed, step 
+C-45	text-only	code	pending	rule:premises#section-scoped-source-and-freeze-during-review (standing); script:brief-check.sh premise-source listing (proposed, step 7.1)
+C-46	text-only	test	pending	rule:record-times#clock-in-the-writing-command (standing); script:brief-check.sh mtime-versus-latest-time (proposed, step 7.1)
+C-47	text-only	code	pending	rule:dispositions#no-semicolon-in-a-reason (standing); script:extra-row grammar check before the chain (standing one-liner); script:glue calls the repository fill_sweep.py (proposed, step 6.3)
+C-48	pending-tool	code	pending	script:disposition inserts inside the owner section (standing); rule:record-lines#count-from-owner-rows-sh (standing); validator:task-consistency-check#C15 (proposed, step 7.1)
+C-49	pending-tool	test	pending	procedure:re-seat the same identity with --add-worker (standing); launcher:herdr-agents --remove-worker --stale (task dotfiles-T128-seat-liveness-a01, plan 022 T6 item 2; the absence is the driver pan
+C-50	pending-tool	code	pending	procedure:revise round with check= for a small in-scope P2 (standing); rule:plan 020 step 4 Completion clause and task-short.md template (pending, plan 022 T13); tool:local-advisory.sh classes a repea
+C-51	pending-tool	code	pending	procedure:write the owner task before a chain run that can produce a first advisory P2 (standing); tool:local-advisory.sh refuses an advisory row whose owner task file is absent (pending, dotfiles-T12
+C-52	pending-tool	code	pending	tool:presend.sh glue runs the checker, the premises and the mask, then prints the hashes (standing); tool:dispatch.sh refuses a line whose task_sha256 names a file failing the checker (pending, dotfil
+C-53	pending-tool	code	pending	tool:dispatch-direct.sh glue sends and records with a bounded read (standing); tool:dispatch.sh bounds its history reads (pending, dotfiles-T128-orchestrator-tools-followup-a03); upstream:history.sh q
+C-54	text-only	text	pending	procedure:Codex half first, the seat after its confirm (standing); rule:task-short.md template sentence (done, orchestrator boundary edit)
+C-55	pending-tool	code	pending	procedure:identity over shape for managed-content predicates; one class slug for over-match findings (standing); task:dotfiles-T128-settings-hook-dedupe-followup-a01 row audit:ca892e4:1, the whole-com

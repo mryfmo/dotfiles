@@ -1289,6 +1289,7 @@ EOF
         (home / ".codex").mkdir()
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
+        shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'runtime drift\\n' >&2\nexit 7\n",
@@ -1320,6 +1321,7 @@ EOF
         (home / ".claude").mkdir()
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
+        shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'missing runtime root\\n' >&2\nexit 7\n",
@@ -1343,6 +1345,7 @@ EOF
         home.mkdir()
         shutil.copy(ROOT / "Makefile", repo / "Makefile")
         shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
+        shutil.copy(ROOT / "scripts/check-sleep.sh", repo / "scripts/check-sleep.sh")
         self.executable(
             repo / "scripts/check-agent-runtime.py",
             "printf 'repair=%s\\n' \"${REPAIR:-unset}\"\n",

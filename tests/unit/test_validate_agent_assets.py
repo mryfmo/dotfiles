@@ -1419,6 +1419,65 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment(
+        self,
+    ) -> None:
+        # Plan 023 PR D. The names are split so this module passes the committed-secret scan it sits beside.
+        key, oauth = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"
+        files = ("home/dot_config/fixture.sh", "install/fixture.sh", "scripts/fixture.sh")
+        for rel in files:
+            self.write_text_file(rel, "")
+        subprocess.run(["git", "init", "-q", str(self.temp_dir)], check=True)
+        subprocess.run(["git", "-C", str(self.temp_dir), "add", *files], check=True)
+
+        def check(rel: str, line: str) -> tuple[bool, str]:
+            self.write_text_file(rel, f"# fixture\n{line}\n")
+            stderr, refused = io.StringIO(), False
+            with contextlib.redirect_stderr(stderr):
+                try:
+                    self.module.validate_anthropic_auth_route()
+                except SystemExit:
+                    refused = True
+            self.write_text_file(rel, "")
+            return refused, stderr.getvalue()
+
+        home, install, scripts = files
+        for rel, line, rule in (
+            (home, f"export {oauth}=x", "R1"),
+            (install, f"export {oauth}=x", "R1"),
+            (home, f'{key}="literal-value"', "R2"),
+            (home, f"{key}: literal", "R2"),
+            (install, f"{key}=literal", "R2"),
+        ):
+            with self.subTest(rel=rel, line=line):
+                refused, stderr = check(rel, line)
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {rel}:2: {rule}:", stderr)
+                self.assertNotIn(line, stderr)  # the line may hold a real key; the log names only file, line and rule
+        for rel, line in (
+            (home, f"{key}=${key}"),
+            (home, f"apiKey: {key}"),
+            (home, f"env: {key}"),
+            (home, f"{key}="),
+            (home, f'{key}=""'),
+            (home, f'{key}="${{{key}}}"'),
+            (home, f"{key}= ${key}"),
+            (home, f"{key}: {{{{ .anthropic }}}}"),
+            (scripts, f"export {oauth}=x"),
+        ):
+            with self.subTest(rel=rel, line=line):
+                self.assertEqual((False, ""), check(rel, line))
+        # A tracked symlink is not followed, and a failed listing refuses instead of passing on an empty list.
+        self.write_text_file("outside.txt", f"export {oauth}=x\n")
+        (self.temp_dir / "home/dot_config/link").symlink_to("../../outside.txt")
+        subprocess.run(["git", "-C", str(self.temp_dir), "add", "home/dot_config/link"], check=True)
+        self.assertEqual((False, ""), check(scripts, ""))
+        failed = subprocess.CompletedProcess([], 128, b"", b"fatal: not a git repository")
+        with mock.patch.object(self.module.subprocess, "run", return_value=failed):
+            refused, stderr = check(scripts, "")
+        self.assertTrue(refused)
+        self.assertIn("git ls-files failed", stderr)
+
     def write_manifest(self, hook_command: str) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)

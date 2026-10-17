@@ -1572,6 +1572,35 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
+# R2: an assignment whose value is not a `$` reference, a `{{` template or empty. The whitespace and the optional
+# quote sit inside the lookahead, so neither can match empty in front of a reference and let it through as a literal.
+ANTHROPIC_API_KEY_LITERAL = re.compile(r"""ANTHROPIC_API_KEY\s*[:=](?!\s*["']?(?:\$|\{\{)|\s*(?:""|'')?\s*$)""")
+
+
+def validate_anthropic_auth_route() -> None:
+    """Plan 023 PR D: the applied files reach Anthropic through ANTHROPIC_API_KEY from the environment only."""
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--", "home", "install"], capture_output=True, check=False
+    )
+    if listed.returncode != 0:
+        fail(f"git ls-files failed, so the Anthropic auth route check cannot run: {os.fsdecode(listed.stderr).strip()}")
+    for name in filter(None, listed.stdout.split(b"\0")):
+        path = ROOT / os.fsdecode(name)
+        # A tracked symlink is not followed: on a PR checkout it could point at a device and hang the run.
+        if path.is_symlink() or not path.is_file():
+            continue
+        for number, line in enumerate(path.read_bytes().decode("utf-8", errors="replace").splitlines(), 1):
+            # The file, the line number and the rule only: the line itself may hold a real key, and CI logs are public.
+            if "ANTHROPIC_OAUTH_TOKEN" in line:
+                fail(
+                    f"{os.fsdecode(name)}:{number}: R1: names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"
+                )
+            if ANTHROPIC_API_KEY_LITERAL.search(line):
+                fail(
+                    f"{os.fsdecode(name)}:{number}: R2: assigns ANTHROPIC_API_KEY a literal; reference the environment"
+                )
+
+
 def validate_compactiondb_project_copy() -> None:
     """The project's CompactionDB runtime and hook scripts must be byte-identical to the vendor tree."""
     vendor = ROOT / "vendor/compactiondb/.claude"
@@ -1647,6 +1676,7 @@ def main() -> None:
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()
+    validate_anthropic_auth_route()
     report_regime_boundary()
     print("agent asset validation ok")
 

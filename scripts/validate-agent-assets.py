@@ -1572,12 +1572,14 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-# R2: an assignment whose whole value, up to the end of the line or a `#` comment after whitespace, is not one
-# `$NAME`/`${NAME}` reference, one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash
-# could assign: `$'...'`, `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
+# R2: an assignment (`=`, `:` or Bash's `+=`, the name bare or in matching quotes as a JSON, YAML or TOML key) whose
+# whole value, up to the end of the line or a `#` comment after whitespace, is not one `$NAME`/`${NAME}` reference,
+# one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash could assign: `$'...'`,
+# `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
 ANTHROPIC_API_KEY_LITERAL = re.compile(
-    r"""ANTHROPIC_API_KEY\s*[:=](?!\s*(?:(["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})\1"""
-    r"""|(["']?)\{\{(?:(?!\}\}).)*\}\}\2|""|'')?\s*(?:(?<=\s)#.*)?$)"""
+    r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\s*(?:\+?=|:)(?!\s*(?:"""
+    r"""(?P<q>["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
+    r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')?\s*(?:(?<=\s)#.*)?$)"""
 )
 
 

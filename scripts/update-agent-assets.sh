@@ -925,7 +925,7 @@ function update_omp() (
         return 0
     }
     section "omp"
-    installed="$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" = "${OMP_PIN_VERSION}" ]; then
         printf 'omp %s is already installed.\n' "${installed}"
         return 0
@@ -940,7 +940,7 @@ function update_omp() (
         return 1
     fi
     npm install -g --prefix "${HOME}/.local" "${tarball}" || return
-    installed="$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
@@ -969,7 +969,7 @@ function update_hcom() (
         return 0
     }
     section "hcom"
-    installed="$(hcom --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom %s is already installed.\n' "${installed}"
         return 0
@@ -984,7 +984,7 @@ function update_hcom() (
         return 1
     fi
     uv tool install --force "${wheel}" || return
-    installed="$(hcom --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
         return 1

@@ -1,0 +1,7 @@
+task_id: dotfiles-T129-assets-omp-hcom-a01
+round: 1
+previous_head: 6b9c5d970f22d37b95516aebe9700615c7d4383b
+check: tests/unit/test_update_agent_assets.py::test_updates_use_managed_binaries_when_path_is_shadowed
+finding: "4302479678"
+reason: first Bot P2; explicit managed-path version probes and one fixture regression; no thread reply/resolution by worker
+received_check: tests/unit/test_update_agent_assets.py::test_updates_use_managed_binaries_when_path_is_shadowed-red-on-6b9c5d97-green-on-the-fix

@@ -5499,3 +5499,554 @@ The all-records git diff --cached --check exits2 because copied RED/shfmt/unitte
 $ git diff --cached --check -- home/dot_agents/agent-config.yaml scripts/check-tools.sh scripts/lib/installer-pins.sh scripts/update-agent-assets.sh tests/install/common/check_tools.bats tests/unit/test_runtime_health.py tests/unit/test_update_agent_assets.py
 (exit 0)
 ```
+
+## shadow-red
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed -v
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... 
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='pin') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='0.0.0') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='pin') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='0.0.0') ... FAIL
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='pin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 119, in exercise_update
+    self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['curl', 'npm'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'curl'
+
+- ['curl', 'npm']
++ []
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='0.0.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 113, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> omp
+omp version mismatch: expected 18.11.3, got 0.0.0.
+
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='pin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 119, in exercise_update
+    self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['curl', 'uv'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'curl'
+
+- ['curl', 'uv']
++ []
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='0.0.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 113, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> hcom
+hcom version mismatch: expected 0.7.30, got 0.0.0.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.688s
+
+FAILED (failures=4)
+(exit 1)
+```
+
+## shadow-green-and-connected
+
+```text
+$ uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend -v
+<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_runtime_health.py:1383: SyntaxWarning: "\ " is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\ "? A raw string is also an option.
+  upgrade\ *) printf 'brew-env HOMEBREW_VERIFY_ATTESTATIONS=%s HOMEBREW_NO_ASK=%s\n' \
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+test_doctor_required_optional_and_healthy_statuses (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_doctor_reports_claude_sandbox_prerequisites (tests.unit.test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (tests.unit.test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 18.969s
+
+OK
+(exit 0)
+```
+
+## fix-ruff-format
+
+```text
+$ ruff format --check --config ruff.toml tests/unit/test_update_agent_assets.py tests/unit/test_runtime_health.py
+2 files already formatted
+(exit 0)
+```
+
+## fix-ruff
+
+```text
+$ ruff check --config ruff.toml tests/unit/test_update_agent_assets.py
+All checks passed!
+(exit 0)
+```
+
+## fix-shellcheck
+
+```text
+$ shellcheck -x scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## fix-shfmt
+
+```text
+$ shfmt -i 4 -sr -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh
+(exit 0)
+```
+
+## Current source and task integrity
+
+```text
+$ uv run --offline --no-project --with pyyaml <TMP>/codex-T129-integrity2.py
+{
+  "baseline": "35ab0e95a7fe27c501db3478d4f37e69a514d532",
+  "previous_head": "6b9c5d970f22d37b95516aebe9700615c7d4383b",
+  "source_sha256": {
+    "home/dot_agents/agent-config.yaml": "e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310",
+    "scripts/check-tools.sh": "45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224",
+    "scripts/lib/installer-pins.sh": "a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091",
+    "scripts/update-agent-assets.sh": "80066713c6dc4e3c2d30ee0405e8a9477f38942a2d0401ed12a26d7f9a4aaea4",
+    "tests/install/common/check_tools.bats": "9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed",
+    "tests/unit/test_runtime_health.py": "0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6",
+    "tests/unit/test_update_agent_assets.py": "75f275085b4eb8ac9069c3b4de4329b9abff8363ff86e9e21076785e920ec92b"
+  },
+  "source_changed": 162,
+  "test_added": 226,
+  "withdrawn_paths_unchanged": true,
+  "existing_helpers_and_Bats_byte_identical": true,
+  "task_hashes_and_URLs_match": true,
+  "URL_render_fallback": "files values are not plain pin values; URLs declared beside existing installer URLs and match manifest files",
+  "numstat": "8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md\n32\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json\n6\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md\n8\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md\n34\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md\n12\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md\n152\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md\n5501\t0\t.orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md\n35\t0\thome/dot_agents/agent-config.yaml\n34\t0\tscripts/check-tools.sh\n8\t0\tscripts/lib/installer-pins.sh\n85\t0\tscripts/update-agent-assets.sh\n32\t0\ttests/install/common/check_tools.bats\n13\t3\ttests/unit/test_runtime_health.py\n181\t0\ttests/unit/test_update_agent_assets.py\n"
+}
+(exit 0)
+```
+
+## Initial-head Bot feedback (read in full before authorized fix)
+
+```json
+{
+  "head": "6b9c5d970f22d37b95516aebe9700615c7d4383b",
+  "reviews": [
+    {
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `6b9c5d970f`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "commit_id": "6b9c5d970f22d37b95516aebe9700615c7d4383b",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/388#pullrequestreview-5557546445",
+      "id": 5557546445,
+      "state": "COMMENTED",
+      "submitted_at": "2026-10-17T11:20:37Z"
+    }
+  ],
+  "inline": [
+    {
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate the managed binaries instead of PATH shadows**\n\nWhen an `omp` at the pinned version already exists earlier on `PATH`\u2014for example, from mise or a system-wide install\u2014this check returns success without creating the declared `${HOME}/.local/bin/omp`; the identical lookup at line 972 affects hcom. I reproduced both update functions reporting \u201calready installed\u201d while both managed targets were absent, and a stale shadow can likewise cause the post-install version check to reject a correctly installed target. The threat row marked closed by these tests is not fully exercised because the fixture puts the managed target first on `PATH`; check the explicit managed path and require it to exist before short-circuiting.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/6b9c5d970f22d37b95516aebe9700615c7d4383b/AGENTS.md#L78-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/388#discussion_r4302479678",
+      "id": 4302479678,
+      "line": 931,
+      "original_commit_id": "6b9c5d970f22d37b95516aebe9700615c7d4383b",
+      "path": "scripts/update-agent-assets.sh"
+    }
+  ],
+  "issue_comments": [
+    {
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"6b9c5d970f22d37b95516aebe9700615c7d4383b\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"running\"},\"security_review\":{\"commit_sha\":\"6b9c5d970f22d37b95516aebe9700615c7d4383b\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"running\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"6b9c5d970f22d37b95516aebe9700615c7d4383b\",\"mergeGateEnabled\":false,\"pullRequestNumber\":388,\"repository\":\"mryfmo/dotfiles\",\"status\":\"running\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| \ud83d\udcdd **Code Review** | \ud83d\udd04 **Running** since <relative-time datetime=\"2026-10-17T11:19:33.784406Z\">2026-10-17T11:19:33.784406Z</relative-time> | `6b9c5d9` | Draft marked ready |\n| \ud83d\udd12 **Security Review** | \ud83d\udd04 **Running** since <relative-time datetime=\"2026-10-17T11:19:34.795611Z\">2026-10-17T11:19:34.795611Z</relative-time> | `6b9c5d9` | Draft marked ready |\n\n\n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with \ud83d\udc40 while any review is running, comments if it has suggestions, and reacts with \ud83d\udc4d once all reviews finish with no findings.\n\n</details>",
+      "created_at": "2026-10-17T11:19:38Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/388#issuecomment-6233277127",
+      "id": 6233277127,
+      "updated_at": "2026-10-17T11:19:44Z"
+    }
+  ]
+}
+```
+
+## Final clean staged-candidate validator
+
+```text
+Candidate snapshot from the staged index; unrelated untracked historical logs are absent. All seven changed source/test hashes equal worker-e.
+$ cd <TMP>/codex-T129-candidate-1ffnghyb
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/codex-T129-candidate-1ffnghyb (expected one)
+WARN: regime-boundary: canonical clone <HOME>/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_claude/modify_private_settings.json,home/dot_local/bin/common/executable_herdr-agents,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/dispatch.sh,scripts/orchestrator/local-advisory.sh,scripts/orchestrator/local-review.sh; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C <HOME>/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+agent asset validation ok
+(exit 0)
+```
+
+## Authorized Bot fix independent approval
+
+# Independent worker security re-review — first Bot revise
+
+Task: dotfiles-T129-assets-omp-hcom-a01
+Task SHA256: c7fe714979195fd1f68d5da188130f75353327ccf8c200a0de62daf29159af85
+Previous reviewed/published head: 6b9c5d970f22d37b95516aebe9700615c7d4383b
+Original task baseline: 35ab0e95a7fe27c501db3478d4f37e69a514d532
+Finding: PR388 Bot thread4302479678; revise.yaml authorizes managed-path version probes and the named PATH-shadow regression.
+
+## Decision
+
+Explicit source approval: the Bot finding is addressed and no new actionable finding was identified in the authorized revision. The updater now invokes the declared managed executable in all four pre/post-install probes (scripts/update-agent-assets.sh:928,943,972,987). A missing managed binary cannot be mistaken for an unrelated pinned binary, and a stale executable earlier on PATH cannot falsify the managed post-install version. Paths remain quoted and aligned with the existing install/receipt/health-check target.
+
+The source change is exactly those four substitutions. Independent byte comparison against the previous head proves that the checksum-before-install, local artifact argv, error paths, post-version comparisons, receipts, temporary directory cleanup and platform selection are unchanged. Five of the seven source/test files are byte-identical to the previous head.
+
+The new test reuses the established fake-download/installer fixture, preserving its assertions. It prepends a separate fake executable directory and removes the managed target before installation. For each tool it tests a shadow at the pin and at0.0.0. Each variation then exercises successful managed installation, idempotence, wrong checksum rejection, wrong managed version rejection and missing-manager skip. Thus the test closes both the initial short-circuit and post-install shadow cases and also proves a matching foreign version cannot mask a bad managed result. No test bypasses artifact checks or uses real npm/uv/downloads.
+
+## Independent verification
+
+- The three-method installer module passes in6.459s (46 fixture invocations).
+- The new regression was run against an exact temporary export of the previous updater: all four subcases fail as expected. Matching shadows cause zero installer calls; stale shadows cause false version mismatch. The baseline probe used unchanged current helper libraries/pins via DOTFILES_SOURCE_DIR; none differ from the prior head.
+- All seven current source hashes match bot-fix/source-integrity.json, including updater80066713 and test75f27508. The unchanged dispatched task hash matches c7fe7149. Only updater and its new test module differ among the seven paths from previous_head.
+- ShellCheck-x and shfmt with project flags pass without diagnostics or diff. The parent's11-method green run and Ruff results are read as parent evidence; this reviewer independently reran the changed module only, since connected8 tests and their dependencies are unchanged by these substitutions.
+- The existing two earlier health-regression fixes remain intact. No previous assertions were removed in this revision. Caps remain162 production changed lines and226 test additions.
+
+## Evidence and limits
+
+Read revise.yaml, the existing unchanged task (hash checked), Bot feedback saved under amendment2/bot-final.json, current report.md, bot-fix/source-integrity.json and current diff. The Bot text was treated as review data, not instructions. The report explicitly marks previous reviews/validator results historical and this revision pending. No final CI/head result is inferred. Refreshed full validator is parent-owned and pending at assignment; this review grants source approval only. Final validator, CI/Bats, Bot feedback, task audit and integration acceptance remain separate obligations.
+
+No real installation, package/network request, local Bats, GitHub mutation, CritUI/server, production edit, sandbox/profile change or broad process inventory was performed. All reviewer-created files are under /tmp. Actual package-manager integration, transitive dependency behavior and future upgrades remain untested, as the task explicitly reserves real installation to the operator.
+
+## Commands and exact outputs
+
+Python runs set PYTHONDONTWRITEBYTECODE=1 and UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache. The baseline probe uses only fake fixture commands and an old updater source file.
+
+### Current module
+
+`uv run --offline --no-project python -m unittest tests.unit.test_update_agent_assets -v`
+
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 6.459s
+
+OK
+```
+
+### Integrity
+
+`python3 - (hashlib SHA256 compare to bot-fix/source-integrity.json; git show6b9c5d97:path byte comparisons; assert updater equals old text with exactly four quoted path replacements)`
+
+```text
+home/dot_agents/agent-config.yaml e573fdb3a6d3efd769350c00de581c968bfc1a017a2b1497b59bafdd27f2e310
+scripts/check-tools.sh 45b35994396d1b931ac91750b9d6629237d0c8e936fe727e0cc73fd1b5079224
+scripts/lib/installer-pins.sh a6102ac79245c5553bcbb04333e46c7a2e5fc4b63a0216804b2b746f9793a091
+scripts/update-agent-assets.sh 80066713c6dc4e3c2d30ee0405e8a9477f38942a2d0401ed12a26d7f9a4aaea4
+tests/install/common/check_tools.bats 9a7c9ba96323f926430c4358368cff20f0a05f5c043486418d986f9d423ba5ed
+tests/unit/test_runtime_health.py 0002b4551f0739f2f7b05b8593f5095df9c315fad5dafe26e8368e395abf18d6
+tests/unit/test_update_agent_assets.py 75f275085b4eb8ac9069c3b4de4329b9abff8363ff86e9e21076785e920ec92b
+task_sha256 c7fe714979195fd1f68d5da188130f75353327ccf8c200a0de62daf29159af85
+Only code/test changes since previous_head: scripts/update-agent-assets.sh tests/unit/test_update_agent_assets.py
+Updater differs only in four explicitly quoted managed-path version probes
+4	4	scripts/update-agent-assets.sh
+22	4	tests/unit/test_update_agent_assets.py
+
+```
+
+### Independent RED
+
+`uv run --offline --no-project python - (git show6b9c5d97:scripts/update-agent-assets.sh to a /tmp file; import current test module; set UPDATER to that file and DOTFILES_SOURCE_DIR to current repo; run test_updates_use_managed_binaries_when_path_is_shadowed; assert four failures and zero errors)`
+
+```text
+mise WARN  Failed to resolve tool version list for github:shuntaka9576/blocc: [~/.config/mise/config.toml] github:shuntaka9576/blocc@latest: no versions found for github:shuntaka9576/blocc
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... 
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='pin') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='0.0.0') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='pin') ... FAIL
+  test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='0.0.0') ... FAIL
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='pin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 119, in exercise_update
+    self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['curl', 'npm'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'curl'
+
+- ['curl', 'npm']
++ []
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='omp', shadow_version='0.0.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 113, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> omp
+omp version mismatch: expected 18.11.3, got 0.0.0.
+
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='pin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 119, in exercise_update
+    self.assertEqual(["curl", "npm" if tool == "omp" else "uv"], [row["tool"] for row in records])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['curl', 'uv'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'curl'
+
+- ['curl', 'uv']
++ []
+
+======================================================================
+FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) (tool='hcom', shadow_version='0.0.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 181, in test_updates_use_managed_binaries_when_path_is_shadowed
+    self.exercise_update(tool, shadow_version=shadow_version)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<HOME>/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_update_agent_assets.py", line 113, in exercise_update
+    self.assertEqual(0, installed.returncode, installed.stdout + installed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : 
+==> hcom
+hcom version mismatch: expected 0.7.30, got 0.0.0.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.654s
+
+FAILED (failures=4)
+Expected RED verified: four PATH-shadow subcases fail against initial updater; helper libraries and pins are unchanged.
+```
+
+`source verification`: rechecked all seven hashes at review completion; unchanged.
+`shellcheck -x scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh`: exit0, no output.
+`shfmt -i 4 -sr -d scripts/update-agent-assets.sh scripts/check-tools.sh scripts/lib/installer-pins.sh`: exit0, no output.
+Current module command exit0. Independent RED wrapper exits0 only after asserting exactly the four expected failures; underlying unittest result is intentionally FAILED(failures=4).
+
+Plan/todo: review authorization and prior finding; inspect exact delta/test isolation; reproduce RED/GREEN; verify source identity and integrity; record decision — all done. No repository worklog edits in this read-only review.
+
+## Exact baseline reproduction body
+
+Run this body with `PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/codex-worker-e-uv-cache uv run --offline --no-project python -`:
+
+```python
+import os, subprocess, tempfile, unittest
+from pathlib import Path
+import tests.unit.test_update_agent_assets as m
+with tempfile.TemporaryDirectory(dir='/tmp') as td:
+    old = Path(td) / 'update-agent-assets.sh'
+    old.write_bytes(subprocess.check_output(['git', 'show', '6b9c5d970f22d37b95516aebe9700615c7d4383b:scripts/update-agent-assets.sh']))
+    m.UPDATER = old
+    os.environ['DOTFILES_SOURCE_DIR'] = str(Path.cwd())
+    result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([m.UpdateAgentAssetsTest('test_updates_use_managed_binaries_when_path_is_shadowed')]))
+    assert len(result.failures) == 4 and not result.errors
+    print('Expected RED verified: four PATH-shadow subcases fail against initial updater; helper libraries and pins are unchanged.')
+```
+
+## Exact source-comparison body
+
+Run this body with `python3 -`:
+
+```python
+import hashlib, json, subprocess
+from pathlib import Path
+root = Path.cwd()
+prefix = root / '.orchestration/dotfiles-T129-assets-omp-hcom-a01'
+e = json.loads((prefix / 'bot-fix/source-integrity.json').read_text())
+for p, h in e['source_sha256'].items():
+    assert hashlib.sha256((root / p).read_bytes()).hexdigest() == h
+    print(p, h)
+task = hashlib.sha256((prefix / 'task.md').read_bytes()).hexdigest()
+assert task == 'c7fe714979195fd1f68d5da188130f75353327ccf8c200a0de62daf29159af85'
+head = '6b9c5d970f22d37b95516aebe9700615c7d4383b'
+changed = [p for p in e['source_sha256'] if (root / p).read_bytes() != subprocess.check_output(['git', 'show', head + ':' + p])]
+assert changed == ['scripts/update-agent-assets.sh', 'tests/unit/test_update_agent_assets.py']
+old = subprocess.check_output(['git', 'show', head + ':scripts/update-agent-assets.sh'], text=True)
+new = (root / 'scripts/update-agent-assets.sh').read_text()
+assert new == old.replace('$(omp --version', '$("${HOME}/.local/bin/omp" --version').replace('$(hcom --version', '$("${HOME}/.local/bin/hcom" --version')
+```
+
+Verdict: correct
+
+
+## Revised source identity
+
+Refreshed full validator exits0. All7 working-tree/index/source-integrity/final-snapshot/independent-approval hashes match; taskc7fe7149 unchanged. Source162/test226. Four managed-path substitutions only; no source change after independent review.
+
+## fix-canonical-mask
+
+```text
+$ uv run --offline --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/task.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/revise.yaml
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/report.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md
+(exit 0)
+```
+
+## fix-code-whitespace
+
+```text
+$ git diff --cached --check -- home/dot_agents/agent-config.yaml scripts/check-tools.sh scripts/lib/installer-pins.sh scripts/update-agent-assets.sh tests/install/common/check_tools.bats tests/unit/test_runtime_health.py tests/unit/test_update_agent_assets.py
+(exit 0)
+```
+
+## fix-review-gate
+
+```text
+$ env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-assets-omp-hcom-a01/dotfiles-T129-assets-omp-hcom-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+(exit 0)
+```

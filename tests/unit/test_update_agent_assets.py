@@ -42,7 +42,7 @@ with open(os.environ["CALLS"], "a") as log:
 
 
 class UpdateAgentAssetsTest(unittest.TestCase):
-    def exercise_update(self, tool, platform="Linux/x86_64", *, unsupported=False):
+    def exercise_update(self, tool, platform="Linux/x86_64", *, unsupported=False, shadow_version=None):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             binary = home / ".local/bin"
@@ -57,13 +57,25 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             digest = hashlib.sha256(payload.read_bytes()).hexdigest()
             log = home / "calls.jsonl"
             pin = "18.11.3" if tool == "omp" else "0.7.30"
+            search_path = str(binary) + os.pathsep + os.environ["PATH"]
+            if shadow_version is not None:
+                shadows = home / "shadows"
+                shadows.mkdir()
+                shadow = shadows / tool
+                version = pin if shadow_version == "pin" else shadow_version
+                shadow.write_text(f"#!/usr/bin/env bash\nprintf '{tool} {version}\\n'\n")
+                shadow.chmod(0o755)
+                search_path = str(shadows) + os.pathsep + search_path
             constants = 'OMP_PIN_VERSION=18.11.3; HCOM_PIN_VERSION=0.7.30; OMP_TARBALL_SHA256="$2"; '
             for key in PLATFORMS.values():
                 constants += f'HCOM_{key}_SHA256="$2"; HCOM_{key}_URL="https://fixture.invalid/{key}/hcom-0.7.30-py3-none-any.whl"; '
 
             def reset():
-                target.write_text("#!/usr/bin/env bash\nexit 1\n")
-                target.chmod(0o755)
+                if shadow_version is None:
+                    target.write_text("#!/usr/bin/env bash\nexit 1\n")
+                    target.chmod(0o755)
+                else:
+                    target.unlink(missing_ok=True)
                 log.write_text("")
 
             def update(checksum=digest, version=pin, prefix=""):
@@ -79,7 +91,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                     env={
                         **os.environ,
                         "HOME": directory,
-                        "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                        "PATH": search_path,
                         "CALLS": str(log),
                         "PAYLOAD": str(payload),
                         "FIXTURE_VERSION": version,
@@ -161,3 +173,9 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             with self.subTest(platform=platform):
                 self.exercise_update("hcom", platform)
         self.exercise_update("hcom", "Plan9/unknown", unsupported=True)
+
+    def test_updates_use_managed_binaries_when_path_is_shadowed(self):
+        for tool in ("omp", "hcom"):
+            for shadow_version in ("pin", "0.0.0"):
+                with self.subTest(tool=tool, shadow_version=shadow_version):
+                    self.exercise_update(tool, shadow_version=shadow_version)

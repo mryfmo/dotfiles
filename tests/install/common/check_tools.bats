@@ -136,3 +136,41 @@ function setup() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"not applicable: agmsg (not installed)"* ]]
 }
+
+@test "[common] check_anthropic_auth_route refuses ANTHROPIC_OAUTH_TOKEN and an Anthropic OAuth credential in omp's auth store" {
+    local store_dir="${BATS_TEST_TMPDIR}/.omp/agent"
+    local schema="CREATE TABLE IF NOT EXISTS auth_credentials (id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, credential_type TEXT NOT NULL, data TEXT NOT NULL, disabled_cause TEXT DEFAULT NULL, identity_key TEXT DEFAULT NULL, created_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER)), updated_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER)))"
+
+    run env -u ANTHROPIC_OAUTH_TOKEN -u PI_CODING_AGENT_DIR ANTHROPIC_OAUTH_TOKEN=never-printed HOME="${BATS_TEST_TMPDIR}/empty" bash -c 'source "$1"; check_anthropic_auth_route; [ "$required_failures" -eq 1 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: ANTHROPIC_OAUTH_TOKEN is set"* ]]
+    [[ "${output}" == *"not applicable: omp auth store"* ]]
+    [[ "${output}" != *never-printed* ]]
+
+    run env -u ANTHROPIC_OAUTH_TOKEN -u PI_CODING_AGENT_DIR HOME="${BATS_TEST_TMPDIR}/empty" bash -c 'source "$1"; check_anthropic_auth_route; [ "$required_failures" -eq 0 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   ANTHROPIC_OAUTH_TOKEN -> unset"* ]]
+    [[ "${output}" != *never-printed* ]]
+
+    # (e) needs no sqlite3: without it the store is unverifiable as well.
+    mkdir -p "${store_dir}"
+    : > "${store_dir}/agent.db"
+    run env -u ANTHROPIC_OAUTH_TOKEN -u PI_CODING_AGENT_DIR HOME="${BATS_TEST_TMPDIR}" bash -c 'source "$1"; check_anthropic_auth_route; [ "$required_failures" -eq 1 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"could not be verified"* ]]
+    [[ "${output}" != *never-printed* ]]
+
+    command -v sqlite3 > /dev/null || skip "sqlite3 is not installed"
+    rm "${store_dir}/agent.db"
+    sqlite3 "${store_dir}/agent.db" "${schema}; INSERT INTO auth_credentials (provider, credential_type, data) VALUES ('anthropic', 'oauth', 'never-printed')"
+    run env -u ANTHROPIC_OAUTH_TOKEN -u PI_CODING_AGENT_DIR HOME="${BATS_TEST_TMPDIR}" bash -c 'source "$1"; check_anthropic_auth_route; [ "$required_failures" -eq 1 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: omp auth store holds 1"* ]]
+    [[ "${output}" != *never-printed* ]]
+
+    sqlite3 "${store_dir}/agent.db" "DELETE FROM auth_credentials; INSERT INTO auth_credentials (provider, credential_type, data) VALUES ('openai-codex', 'oauth', 'never-printed'), ('anthropic', 'api_key', 'never-printed')"
+    run env -u ANTHROPIC_OAUTH_TOKEN -u PI_CODING_AGENT_DIR PI_CODING_AGENT_DIR="${store_dir}" HOME="${BATS_TEST_TMPDIR}/empty" bash -c 'source "$1"; check_anthropic_auth_route; [ "$required_failures" -eq 0 ]' bash "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   omp auth store"* ]]
+    [[ "${output}" != *never-printed* ]]
+}

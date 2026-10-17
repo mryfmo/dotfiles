@@ -1226,7 +1226,7 @@ EOF
         (home / ".ssh").mkdir(parents=True, exist_ok=True)
         (home / ".ssh/id_ed25519.pub").touch()
         return {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_OAUTH_TOKEN", "PI_CODING_AGENT_DIR")},
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "FAIL_COMMAND": fail,

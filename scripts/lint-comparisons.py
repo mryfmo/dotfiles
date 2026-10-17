@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Refuse string-form comparisons of paths, URLs and processes (C-61 rule 6; plan 023 PR F2).
-
 python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [<file>...] prints each hit as `<file>:<line>:
-<rule id> <rule text>` and exits 1 when a hit is outside the baseline or a baseline row matches no hit; a statement that
-wraps an operand in a normaliser of its rule, or a line with `# lint-comparisons: allow <reason>`, is accepted.
+<rule id> <rule text>` and exits 1 when a hit is outside the baseline or a baseline row matches no hit (a normaliser in
+the statement, or `# lint-comparisons: allow <reason>` on the line, accepts; repo-relative paths as git ls-files prints).
 """
 
 import argparse
@@ -36,7 +35,9 @@ SH_NORM = re.compile(
 )
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
-PS = re.compile(r"(?:^|[|;&(]|\$\()\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b")
+PS = re.compile(
+    r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
+)
 PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+\S*\$")
 GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
 PY_NORM = re.compile(r"^(realpath|normpath|abspath|resolve|urlsplit|urlparse|unquote|canonical_path|normali[sz]e_\w+)$")
@@ -44,14 +45,13 @@ PY_NORM = re.compile(r"^(realpath|normpath|abspath|resolve|urlsplit|urlparse|unq
 
 def operand(tok):
     name = re.match(r"\$\{?([A-Za-z_]\w*)", tok)
-    if name or "SUBST" in tok:
-        return bool(name and TOKEN.search(name.group(1)))
+    if name:
+        return bool(TOKEN.search(name.group(1)))
     return bool(LITERAL.search(re.sub(r"\$\{[^}]*\}|\$\w+", "", tok)))
 
 
 def words(line):
-    line = "" if line.lstrip().startswith("#") else re.split(r"\s#", line, maxsplit=1)[0]
-    while (folded := re.sub(r"\$\([^()]*\)", "SUBST", line)) != line:
+    while (folded := re.sub(r"\$\([^()]*\)", "", line)) != line:
         line = folded
     try:
         return shlex.split(line)
@@ -59,10 +59,12 @@ def words(line):
         return line.split()
 
 
-def quoted(code):
-    for m in re.finditer(r"""'[^']*'|"(?:\\.|[^"\\])*"|\\.""", code):
-        if m.group(0).startswith("'"):
-            yield m.start(), m.group(0)
+def programs(code):
+    for m in re.finditer(r"\bjq\b", code):
+        start = m.end() + re.match(r"(?:\\\n|[^'\n])*", code[m.end() :]).end()
+        end = code.find("'", start + 1)
+        if start < len(code) and code[start] == "'" and end > 0:
+            yield start, code[start : end + 1]
 
 
 def span(prog, p, fn):
@@ -80,33 +82,28 @@ def span(prog, p, fn):
 def shell_hits(text):
     lines = text.split("\n")
     for n, raw in enumerate(lines, 1):
-        toks = words(raw)
+        line = "" if raw.lstrip().startswith("#") else re.split(r"\s#", raw, maxsplit=1)[0]
+        toks = words(line)
         for i, tok in enumerate(toks):
-            test = tok in ("==", "!=", "=") and 0 < i < len(toks) - 1 and toks[0] in ("[[", "[")
+            test = tok in ("==", "!=", "=") and 0 < i < len(toks) - 1 and ("[[" in toks[:i] or "[" in toks[:i])
             if test and (operand(toks[i - 1]) or operand(toks[i + 1])):
-                yield n, "R1", SH_NORM.search(raw)
-            if tok == "in" and i > 1 and toks[0] == "case" and operand(toks[i - 1]):
-                yield n, "R2", SH_NORM.search(raw)
-        if PS.search(" ".join(toks)) or PGREP.search(raw):
+                yield n, "R1", SH_NORM.search(line)
+            if tok == "in" and i > 1 and toks[i - 2] == "case" and operand(toks[i - 1]):
+                yield n, "R2", SH_NORM.search(line)
+        if PS.search(line) or PGREP.search(line):
             yield n, "R5", False
-        for cmd, flags, pattern in GREP.findall(raw):
+        for cmd, flags, pattern in GREP.findall(line):
             ere = cmd == "egrep" or re.search(r"\s-\w*E|--extended-regexp", flags)
             if ere and re.search(r"\$\{?[A-Za-z_]", pattern) and "-F" not in flags.split():
-                yield n, "R6", "escape_regex" in raw
+                yield n, "R6", "escape_regex" in line
     code = "\n".join("" if line.lstrip().startswith("#") else line for line in lines)
-    for begin, region in quoted(code):
-        start = begin
-        while (nl := code.rfind("\n", 0, start)) > 0 and code[nl - 1] == "\\":
-            start = nl
-        if not re.search(r"\bjq\b", code[code.rfind("\n", 0, start) + 1 : begin]):
-            continue
+    for begin, region in programs(code):
         prog, first = re.sub(r"\\\([^)]*\)", "", region), code.count("\n", 0, begin) + 1
         for op in JQ_OP.finditer(prog):
             expr = span(prog, op.start(), op.group(0).endswith("("))
             hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
-                fn = JQ_DEF.search(prog)
-                ok = (fn and fn.group(1) in expr) or MARKER.search(lines[first - 1])
+                ok = any(expr.count(d) > 1 for d in JQ_DEF.findall(prog)) or MARKER.search(lines[first - 1])
                 yield first + prog.count("\n", 0, op.start()), "R3", ok
 
 
@@ -178,9 +175,14 @@ def main(argv=None):
         print("\n".join(f"{rule} {text}" for rule, text in RULES.items()), LIMIT, sep="\n")
         return 0
     rows = args.baseline.read_text().splitlines() if args.baseline.is_file() else []
-    rows, used, failed = {tuple(r.split("\t")) for r in rows if r.strip()}, set(), False
+    rows, used, scanned, failed = (
+        {tuple((r.split("\t") + ["", ""])[:3]) for r in rows if r.strip()},
+        set(),
+        set(),
+        False,
+    )
     for rel, target in sorted([(f, Path(f)) for f in args.files] or default_files()):
-        text = target.read_text(errors="replace")
+        text, _ = target.read_text(errors="replace"), scanned.add(rel)
         for n, rule in sorted(set(lint(rel, text))):
             key = (rel, rule, hashlib.sha256(text.split("\n")[n - 1].strip().encode()).hexdigest())
             if key in rows:
@@ -188,7 +190,7 @@ def main(argv=None):
                 continue
             print(f"{rel}:{n}: {rule} {RULES[rule]}")
             failed = True
-    for rel, rule, _ in sorted(rows - used):
+    for rel, rule, _ in sorted(r for r in rows - used if not args.files or r[0] in scanned):
         print(f"stale baseline row {rel} {rule}")
         failed = True
     return int(failed)

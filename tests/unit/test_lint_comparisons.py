@@ -79,6 +79,17 @@ TABLE = {
     ),
 }
 PYTHON_R6 = ("r6.py", 're.search(f"^{name}$", text)\n', {"re.escape": 're.search(f"^{re.escape(name)}$", text)\n'})
+# forms beyond the table's fixtures that the lint also refuses: the test word not first on its line, a jq program inside
+# a double-quoted substitution, ps inside a substitution or after if, a jq normaliser applied to one side only
+MORE_REFUSED = {
+    "R1": ('if [[ "$path" == */x ]]; then :; fi\n', 'x=1 && [ "$1" = "$2/" ]\n'),
+    "R2": ('while :; do case "$url" in file://*) ;; esac; done\n',),
+    "R3": (
+        'x="$(printf %s "$j" | jq -r \'select(.url == $u)\')"\n',
+        "jq -r 'def canonical_path: .; select((.url | canonical_path) == $path)'\n",
+    ),
+    "R5": ("x=$(ps -axo pid,command | grep claude)\n", "if ps -axo pid,command | grep -q claude; then :; fi\n"),
+}
 
 
 class LintComparisonsTest(unittest.TestCase):
@@ -111,6 +122,11 @@ class LintComparisonsTest(unittest.TestCase):
                 with self.subTest(rule=rule, form=normaliser):
                     result = self.run_fixture(name, form)
                     self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+            for form in MORE_REFUSED.get(rule_id, ()):
+                with self.subTest(rule=rule, form=form):
+                    result = self.run_fixture(name, form)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertTrue(all(f" {rule_id} " in line for line in result.stdout.splitlines()), result.stdout)
         listed = self.lint("--list-rules")
         self.assertEqual(0, listed.returncode)
         self.assertEqual([f"R{i}" for i in range(7)], [line.split(" ")[0] for line in listed.stdout.splitlines()[:7]])
@@ -128,6 +144,12 @@ class LintComparisonsTest(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         self.assertIn(f"stale baseline row {name} R1\n", result.stdout)
         self.assertIn(f"{name}:1: R1 ", result.stdout)
+        # with explicit files, a row of a file that was not scanned is not stale (the default set reports every row)
+        baseline.write_text(
+            f"other.sh\tR1\t{'0' * 64}\n{name}\tR1\t{hashlib.sha256(refused.strip().encode()).hexdigest()}\n"
+        )
+        result = self.run_fixture(name, refused, baseline)
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
     def test_the_tracked_tree_is_clean_against_the_baseline(self):
         result = self.lint(cwd=ROOT)

@@ -2158,6 +2158,82 @@ exit {despawn_exit}
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
         )
 
+    def test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap(self) -> None:
+        # Plan 023 F4 item 3: worker_cap in the deployed manifest bounds the seats, the worktrees with an identity.
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        scripts, main = self.home_dir / ".agents/skills/agmsg/scripts", self.workdir.resolve()
+        # No deployed manifest (an older host): no cap, one line saying so, and the seat goes on.
+        result = self.run_helper("--add-worker", ".claude/worktrees/s0")
+        self.assertIn(
+            f"herdr-agents: no worker_cap in {self.home_dir}/.agents/agent-config.yaml; no cap enforced.", result.stderr
+        )
+        self.assertIn(f"workspace create --cwd {main}/.claude/worktrees/s0 ", self.calls_path.read_text())
+        self.calls_path.write_text("")
+        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_kind: claude\nworker_cap: 4\n")
+        rows = []
+        for n in range(1, 5):
+            path = main / f".claude/worktrees/s{n}"
+            subprocess.run(
+                ["git", "-C", str(main), "worktree", "add", "-q", "--detach", str(path), "origin/main"],
+                check=True,
+                capture_output=True,
+            )
+            rows.append(f"{path}\tdotfiles\tclaude-standard-dot-a00{n}\n")
+        seated = scripts / "seated.tsv"
+        seated.write_text("".join(rows))
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+printf 'identities %s\\n' "$*" >> {self.calls_path}
+[[ $2 == claude-code ]] || exit 0
+[[ $1 != {main} ]] || {{ printf 'dotfiles\\tclaude-remediation-dot\\n'; exit 0; }}
+awk -F'\\t' -v p="$1" '$1 == p {{ print $2 "\\t" $3 }}' {seated}
+"""
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/s5")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(
+            "herdr-agents: worker_cap is 4 and 4 worker seats are registered; remove one with --remove-worker first.",
+            result.stderr,
+        )
+        self.assertFalse((main / ".claude/worktrees/s5").exists())
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(c.startswith(("join ", "spawn ", "workspace create")) for c in calls), calls)
+        # A removal leaves its identity (leave.sh): the fifth seat is then within the cap.
+        seated.write_text("".join(rows[1:]))
+        result = self.run_helper("--add-worker", ".claude/worktrees/s5")
+        self.assertNotIn("worker_cap", result.stderr)
+        # Seating goes on past the cap check: the seat's workspace is created (spawn follows, outside this test's scope).
+        workspace = f"workspace create --cwd {main}/.claude/worktrees/s5 "
+        self.assertTrue(any(c.startswith(workspace) for c in self.calls_path.read_text().splitlines()), result.stderr)
+
+    def test_the_skill_and_the_rule_name_the_manifest_worker_cap_and_the_integration_seat(self) -> None:
+        # Plan 023 F4 item 3: the texts repeat the manifest's worker_cap and name the integration seat's role.
+        [cap] = re.findall(r"^worker_cap: ([0-9]+)$", (ROOT / "home/dot_agents/agent-config.yaml").read_text(), re.M)
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        rule = (ROOT / "home/dot_config/claude/rules/agmsg-orchestration.md").read_text()
+        counts = [line for line in skill.splitlines() if "at most `worker_cap` workers" in line]
+        self.assertEqual(2, len(counts), counts)
+        for line in counts:
+            self.assertIn(f"at most `worker_cap` workers ({cap} in the manifest today)", line)
+        self.assertNotRegex(skill, r"about three concurrent workers|at most three workers")
+        [exemption] = [line for line in skill.splitlines() if line.startswith("- The orchestrator acts directly")]
+        [delegation] = [line for line in rule.splitlines() if line.startswith("- **Delegation.**")]
+        for text in (exemption, delegation):
+            self.assertIn("integration seat", text)
+            self.assertIn("the acceptance judgment with the audit and its dispositions", text)
+            self.assertIn("the final gate and merge", text)
+            self.assertNotIn("final integration", text)
+        [acceptance] = [line for line in rule.splitlines() if line.startswith("- **Acceptance.**")]
+        self.assertIn("the integration seat runs the sweep, the local review and the thread resolution", acceptance)
+        self.assertIn(
+            "The implementing worker resolves no thread; the integration seat does, with the recorded dispositions.",
+            skill,
+        )
+        self.assertNotIn("The worker resolves no thread.", skill)
+
     def test_add_worker_names_the_seat_from_a_codex_orchestrator_identity(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tcodex-deep-dot")
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"

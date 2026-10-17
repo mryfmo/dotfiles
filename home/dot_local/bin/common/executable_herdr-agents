@@ -1827,6 +1827,24 @@ if [[ ${add_worker_mode} == true ]]; then
         printf 'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\n' "${workdir}" >&2
         exit 2
     fi
+    # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as
+    # the Stop checklist counts them; re-seating a seated worktree adds none.
+    seat_cap="$(sed -n 's/^worker_cap:[[:space:]]*\([1-9][0-9]*\)[[:space:]]*$/\1/p' "${HOME}/.agents/agent-config.yaml" 2> /dev/null | head -n 1)" || seat_cap=''
+    if [[ -z ${seat_cap} ]]; then
+        printf 'herdr-agents: no worker_cap in %s; no cap enforced.\n' "${HOME}/.agents/agent-config.yaml" >&2
+    else
+        seats=0 seat_seated=false
+        while IFS= read -r seat_path; do
+            [[ ${seat_path} == "${workdir}/.claude/worktrees/"* ]] || continue
+            [[ -n "$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_path}" claude-code 2> /dev/null)$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_path}" codex 2> /dev/null)" ]] || continue
+            seats=$((seats + 1))
+            [[ ${seat_path} != "${workdir}/${seat_worktree}" ]] || seat_seated=true
+        done < <(git -C "${workdir}" worktree list --porcelain | sed -n 's/^worktree //p')
+        if [[ ${seat_seated} == false ]] && ((seats >= seat_cap)); then
+            printf 'herdr-agents: worker_cap is %s and %s worker seats are registered; remove one with --remove-worker first.\n' "${seat_cap}" "${seats}" >&2
+            exit 2
+        fi
+    fi
     write_spawn_options "${seat_kind}" > /dev/null
     [[ -e ${workdir}/${seat_worktree} ]] || ensure_worker_identity "${seat_kind}" "${workdir}" "${workdir}/${seat_worktree}" --no-join > /dev/null
     seat_dir="$(ensure_worker_worktree "${workdir}" "${seat_worktree}")"

@@ -35,8 +35,8 @@ SH_NORM = re.compile(
 )
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
-JQ_WORD = re.compile(r"""(?:[ \t]|\\\n)+((?:"[^"]*"|[^\s'"])*('[^']*')?(?:'[^']*'|"[^"]*"|[^\s'"])*)""")
-JQ_ARGS = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
+JQ_QUOTE = re.compile(r"""(?:\\[\s\S]|"(?:[^"\\\n]|\\[\s\S])*"|[^'"\\\n])*('[^']*')""")  # skips "…" whole
+JQ_ARG = re.compile(r"(?<!\S)(?:--(?:arg|argjson|slurpfile|rawfile)(?:[\s\\]+\S+)?|--indent|-L|--library-path)[\s\\]+$")
 PS = re.compile(
     r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
 )
@@ -67,11 +67,11 @@ def words(line):
 
 def programs(code):
     for m in re.finditer(r"\bjq\b[\"})]*", code):  # also "$jq", "${jq}" and "$(command -v jq)"
-        w, owed = JQ_WORD.match(code, m.end()), 0
-        while w and (owed or w[1].startswith("-")):
-            w, owed = JQ_WORD.match(code, w.end()), owed - 1 if owed else JQ_ARGS.get(w[1], 0)
-        if w and w[2]:  # the first single-quoted run of the program word
-            yield w.start(2), w[2]
+        q = JQ_QUOTE.match(code, m.end())  # the first single-quoted string on the jq word's logical line
+        while q and JQ_ARG.search(code, m.end(), q.start(1)):  # an option's argument (jq 1.8 --help), not the program
+            q = JQ_QUOTE.match(code, q.end())
+        if q:
+            yield q.start(1), q[1]
 
 
 def span(prog, p, fn):
@@ -111,7 +111,7 @@ def shell_hits(text):
             expr, sides = prog[lo:hi], (prog[lo : op.start()], prog[op.start() : hi])
             hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or any(map(LITERAL.search, re.findall(r'"([^"]*)"', expr))):
-                bare = [re.sub(r'"(?:[^"\\]|\\.)*"', "", side) for side in sides]  # a name in a string applies nothing
+                bare = [re.sub(r'"(?:[^"\\]|\\.)*"|#.*', "", side) for side in sides]  # strings/comments apply nothing
                 ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in bare) for d in JQ_DEF.findall(prog))
                 yield first + prog.count("\n", 0, op.start()), "R3", ok or MARKER.search(lines[first - 1])
 
@@ -142,7 +142,7 @@ def python_hits(text):
             parts = [node.func.value, *node.args]
         elif call and dotted(node.func) in RE_FUNCS and node.args and isinstance(node.args[0], ast.JoinedStr):
             values = [v.value for v in node.args[0].values if isinstance(v, ast.FormattedValue)]
-            yield node.lineno, "R6", bool(values) and all(py_calls([v], "re.escape".__eq__) for v in values)
+            yield node.lineno, "R6", bool(values) and all("re.escape" in map(dotted, ast.walk(v)) for v in values)
             continue
         else:
             continue

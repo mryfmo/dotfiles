@@ -1,0 +1,79 @@
+[
+  {
+    "id": "seat-args-worker-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex review (high confidence) approved the four source/test paths against fixed branch base b167fe0a76a2e77d262f9f556c69ba6b9f118bbe. Literal profile parsing, selectors, cwd discrimination, minimum matching PID, adjacent expected pairs, exits0/2/3/4 and per-name/type boundary grouping follow the task. Seven additional stub-only cases passed, including exact profile key, review profile, absolute Node wrapper and non-executable probe. No finding. No live process/CI or full-suite rerun, repository edit or ref update by reviewer. Parent full requested suite12 tests passes. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301264676",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 profile-name-grammar: generator-valid underscores were rejected by the identity parser. Addressed by adding underscore to the existing profile character class and one my_profile regression subcase. Regression failed before the fix, then full12 tests passed. Independent C50 review approved at high confidence with no additional finding; three extra stub cases passed, including Codex my_profile and rejection of leading underscore.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-c50-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex C50 review against274257172db0915df34e9f1764c69f572346727f approved the one-character grammar change and seven-line regression subcase, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA256 d61a817387b6966b27b4a10c8f6ff10527b32227482e26c2fc3ff6443184709a is pasted verbatim in validation.md. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301301556-probe-failure-empty",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 process-visibility: failed or empty ps/lsof probes falsely became unlaunched. The explicit second C50 check is addressed by capturing ps status/snapshot, requiring a numeric process line, and skipping4 on failed/empty cwd lookup, with one diagnostic. Four subcases failed before the fix, then full12 tests passed16.258s. Independent review approved the narrowed delta and8 extra stub cases. Nonempty namespace filtering remains indistinguishable from real absence; no host-visibility closure is claimed.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-probe-c50-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex review againstbfae75c14f52ff1b8083a69179bd90e91aa99458 approved the authorized probe failure/empty-output delta, high confidence, no additional finding. Source hashes match parent-tested bytes. Transcript SHA25654768faec91b016680275bc472010ca569c69256bb7f104c9a0a6b8346f1c23e is pasted verbatim in validation.md. Explicit residual: nonempty sandbox PID namespace may hide host workers. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301342120",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 process-visibility occurrence2: uninspectable decoy cwd immediately skipped before a later visible worker. The amended C50 now saves the first cwd failure diagnostic, continues selection, compares a successfully inspected matching worker, and returns unknown4 only without any match plus a failed lookup. Three regression subcases failed before fix; full12 passes16.254s,27 seat subcases. Independent review approved with8 additional stub cases, no new finding.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-cwd-scan-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only Codex third C50 review againsta428eb5ff31dc8452e22fbea332efa2a5ee9a5e8 approved the amended cwd scan semantics, high confidence, no additional finding. First diagnostic retention, visible matching/differing worker precedence, inspected absence, and minimum visible matching PID all verified. Transcript SHA256621973453945c203a4c3d4c44d37eb87844cac94d8f637104d7e3c7510241035 pasted in validation.md. Nonempty hidden namespace limitation remains. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301378546",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 duplicate-managed-flags occurrence1: the probe accepted an expected pair plus a conflicting occurrence. Addressed by aggregating every occurrence and locking any conflict to differs. Identical duplicates remain accepted; each managed name is rendered once. Both conflicting orders and both runtimes verified by the security reviewer; parent full12 tests passes15.667s,34 seat subcases.",
+    "resolved": true
+  },
+  {
+    "id": "bot-4301378550",
+    "scope": "file",
+    "path": "scripts/orchestrator/seat-args.sh",
+    "body": "P2 argv-diagnostic-disclosure occurrence1: mismatch output copied positional/private process text. Under explicit04:35:12Z refinement, found now projects only expected managed flag names and fixed ok/differs/missing markers, never observed values. Probe stderr uses fixed descriptions/status only. Synthetic positional, unmanaged and managed-looking private markers are absent from stdout+stderr. Flattened matching ambiguity remains separate and explicitly reported.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-final-security-approval",
+    "scope": "review",
+    "body": "Independent fresh-context Codex security-tier review (manifest gpt-6-astra/high) approved the final delta against1086570f8a8b20271ba7d7417701e1dff922e149, no new finding. Existing seat module and14 extra synthetic fixture cases passed, covering both runtimes, duplicate orders, identical duplicates, missing/trailing values, marker absence and observed name ordering. Source SHA256b5e9a56bbbe3a81c394402666635baf6a124e694404164fb6b05989356089ad4 and test SHA2569dc5a8f8ee25cd5a9e01577e12f132f7c537c0501e680ca77267d73f9e4277af match parent-tested bytes. Full transcripts are pasted in validation.md; implementation transcript SHA25675ba8059b931cf0c26777285ca57410013e70bd6d8331f56c06560b14384a799, corrected plan SHA256db06d992caaeb34c19181815069b4f5fbad42bf093ad9819cffe76b6aaacf19a. Parent read the complete records. No host visibility/exact argv recovery claim. Verdict: correct.",
+    "resolved": true
+  },
+  {
+    "id": "seat-args-parent-visibility-equals-security-approval",
+    "scope": "review",
+    "body": "Fresh independent read-only security-profile review (manifest gpt-6-astra/high) of incremental diff against3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8 found no issue. Exact PPID-column prerequisite precedes selection; equals-form values preserve every-occurrence conflict latch and redacted fixed-state diagnostics. Named seat test, ShellCheck and seven synthetic cases passed. Corrected boundary exec shim captures immediate parent while copied production bytes remain unchanged. Approval implements D-S1-383-A parent-visibility proxy only; it does not prove complete host inventory or eliminate parent-visible/worker-hidden scenarios. Parent read full transcript; full12 suite18.008s/static checks pass; earlier records are historical checkpoint approvals.",
+    "resolved": true
+  },
+  {
+    "id": "seat-ps-width-review-approval",
+    "scope": "review",
+    "body": "Independent read-only security-profile Codex review of the one-invocation ps-width correction against8b210af3 found no issues. Named fixture test and ShellCheck pass; boundary source/test unchanged; task hash/source hashes verified. Parent read complete121-line focused transcript and all12 resolved records. Wider input adds no raw argv output sink; parent-visible/worker-hidden and flattened-argv residuals remain explicit. Historical approvals certify only their checkpoint scopes.",
+    "resolved": true
+  }
+]

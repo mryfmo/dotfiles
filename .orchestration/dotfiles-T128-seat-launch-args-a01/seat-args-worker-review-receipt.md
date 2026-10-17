@@ -1,0 +1,8 @@
+review_surface: crit-data
+reviewer: codex
+review_source: .orchestration/dotfiles-T128-seat-launch-args-a01/seat-args-worker-crit.json
+review_outcome: addressed
+
+Crit status has no review file/daemon; explicit AGENTS.md fallback uses independent read-only security-profile Codex review against8b210af3b9f151cef63776f63a74904115cef8b9. No findings; named truncation fixture and ShellCheck pass, boundary source/test byte equality and task/source hashes verified. Parent read full121-line transcript and all12 resolved records, checked current outputs/caps and passed worker gate. Full review in validation.md. Reviewed source hashes: {"scripts/check-regime-boundary.sh": "eb242b6e7f3ebcdeca2946993324f4012474e30ec85fdf6b418447764123d423", "scripts/orchestrator/seat-args.sh": "3ad4242874eeeb1edfe06fed8c179273ab609c9c1f121316f9432ff80150fdbb", "tests/unit/test_check_regime_boundary.py": "b1feb3229e4345a8c62d9ba6496400166a8d060e9bb462365661cd98b673a08a", "tests/unit/test_seat_args.py": "98b0580f2c8662e22d71b6efa2be6e36ff39801bc93271b5ad6a82188beaaef1"}. Task hash 148f5dde8795da8a8eeb265fcbbd40be11cb27e2407c979b772dcbcba772bd8f; no source change since review. Parent full12-method/41-case pass29.022s and static/cap checks are separate from the reviewer checks.
+
+Approval and previous visibility dispositions remain bounded to the parent-PID proxy; parent-visible/worker-hidden can still be unlaunched, and flattened argv ambiguity remains. Wider ps capture adds no output sink or raw argv diagnostic. This is process evidence, not authentication or final integration audit. No Crit web/server/human request, Bats or real ps/lsof. Orchestrator owns sweep/audit/dispositions/acceptance/merge.

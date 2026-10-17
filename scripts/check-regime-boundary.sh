@@ -10,7 +10,8 @@
 #   reported too); any identity at a linked worktree under `.claude/worktrees/`
 #   (a worker still seated: `herdr-agents --remove-worker <worktree>`, or, when
 #   its pane is gone, `herdr-agents --remove-worker <worktree> --stale`), and
-#   more than one name per type at any other checkout; a seated main checkout whose HEAD is
+#   worker launch arguments differing from their rendered profile; more than
+#   one name per type at any other checkout; a seated main checkout whose HEAD is
 #   not the `main` branch (a detached HEAD or another branch; a checkout with
 #   no identity, such as a CI checkout, is never flagged); running
 #   `crit _serve` review servers; a canonical clone (`chezmoi source-path`,
@@ -124,6 +125,21 @@ if [[ -x ${scripts}/identities.sh ]]; then
         done
         if ((seated > 0)) && [[ ${resolved} == "${resolved_main}/.claude/worktrees/"* ]]; then
             worktree=".claude/worktrees/${resolved#"${resolved_main}/.claude/worktrees/"}"
+            if [[ -x ${root}/scripts/orchestrator/seat-args.sh && -f ${HOME}/.agents/model-profiles.env ]]; then
+                for agent_type in claude-code codex; do
+                    while IFS=$'\t' read -r name teams; do
+                        probe_status=0
+                        launch_line="$("${root}/scripts/orchestrator/seat-args.sh" "${teams}" "${name}" "${agent_type}" "${checkout}" < /dev/null)" || probe_status=$?
+                        case ${probe_status} in
+                        2 | 3) violations+=("worker ${name} at ${worktree}: ${launch_line}") ;;
+                        esac
+                    done < <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${checkout}" "${agent_type}" 2> /dev/null |
+                        awk -F '\t' 'NF >= 2 && $2 != "" {
+                            if (!($2 in teams)) { names[++n] = $2; teams[$2] = $1 }
+                            else teams[$2] = teams[$2] "," $1
+                        } END { for (i = 1; i <= n; i++) print names[i] "\t" teams[names[i]] }')
+                done
+            fi
             # The first identity row decides whether the seat's pane is gone.
             row="$({
                 AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${checkout}" claude-code

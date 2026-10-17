@@ -1,0 +1,58 @@
+task_id: dotfiles-T128-seat-launch-args-a01
+round: 6
+result_round: 3
+previous_head: 8b210af3b9f151cef63776f63a74904115cef8b9
+finding: 'local:8b210af:1'
+finding_class: ps-truncation
+check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+scope: 'Only ps -axww -o pid=,command= and one recording/truncating fixture subcase'
+limit: 'Parent visibility remains a proxy; flattened argv ambiguity remains'
+historical_revisions:
+  task_id: dotfiles-T128-seat-launch-args-a01
+  round: 5
+  result_round: 2
+  previous_head: 3345c4d347dfe31ee1cbd59c89fee1e8f806f3c8
+  s1: process-visibility
+  re_plan: .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md#re-plan-process-visibility
+  operator_decision: D-S1-383-A
+  check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+  findings: ['audit:3345c4d:1', 'audit:3345c4d:2']
+  re_fixed: [4301301556]
+  scope: Parent PID prerequisite before selection and equals-form managed pairs; no other production change.
+  limit: Parent visibility is the approved proxy, not proof that every host worker is visible.
+  historical_revisions:
+    task_id: dotfiles-T128-seat-launch-args-a01
+    round: 1
+    previous_head: 274257172db0915df34e9f1764c69f572346727f
+    finding: 4301264676
+    finding_class: profile-name-grammar
+    check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+    scope: Accept generator-valid underscores in the identity profile field; one regression subcase, no other behavior change.
+  
+    probe_revision:
+      round: 2
+      previous_head: bfae75c14f52ff1b8083a69179bd90e91aa99458
+      finding: 4301301556
+      finding_class: process-visibility
+      check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+      scope: Probe failures and empty visibility report unknown-probe4 with one diagnostic; never false unlaunched.
+  
+    cwd_scan_revision:
+      round: 3
+      previous_head: a428eb5ff31dc8452e22fbea332efa2a5ee9a5e8
+      finding: 4301342120
+      finding_class: process-visibility
+      class_count: 2
+      check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+      scope: Save the first failed cwd diagnostic and continue; a visible cwd match decides, otherwise failures skip4 and only fully inspected absence is unlaunched3.
+  
+    final_diagnostic_revision:
+      round: 4
+      previous_head: 1086570f8a8b20271ba7d7417701e1dff922e149
+      findings: [4301378546, 4301378550]
+      finding_classes: [duplicate-managed-flags, argv-diagnostic-disclosure]
+      check: tests/unit/test_seat_args.py::SeatArgsTest::test_seat_args_reports_a_resumed_seat_a_differing_seat_and_a_matching_one
+      diagnostic_refinement: 2026-10-17T04:35:12Z
+      scope: All managed occurrences must agree; found contains only expected flag names and fixed ok/differs/missing markers, once per managed flag in observed order, never observed argv values.
+      last_pre_result_c50: true
+      further_p2: Proposed advisory for the orchestrator audit to judge, under ACCEPTANCE2026-10-17T04:34:17Z.

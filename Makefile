@@ -135,6 +135,7 @@ gh-auth:
 doctor:
 	@tool_status=0; runtime_status=0; runtime_result=passed; \
 	./scripts/check-tools.sh || tool_status=$$?; \
+	./scripts/check-sleep.sh || tool_status=$$?; \
 	if [ -d home/dot_agents ] && [ -d home/dot_claude ] && [ -d home/dot_codex ]; then \
 		./scripts/check-agent-runtime.py || runtime_status=$$?; \
 	else \

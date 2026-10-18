@@ -265,6 +265,25 @@ class ResultPrecheckTest(unittest.TestCase):
                     self.git("reset", "-q")
         self.assertIn("-x scripts/s0.sh scripts/s1.sh scripts/s2.sh", (self.calls / "shellcheck.log").read_text())
 
+    def test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree(self):
+        # Thread 4305945406: a malformed staged blob stops the commit even when the working-tree copy is fixed.
+        self.hooks()
+        stub = '#!/usr/bin/env bash\nfor f in "$@"; do [[ ! -f $f ]] || ! grep -q BAD -- "$f" || exit 1; done\n'
+        (self.temp / "bin/shfmt").write_text(stub)
+
+        def commit():
+            run = ["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "s"]
+            return subprocess.run(run, cwd=self.repo, env=self.env, capture_output=True, text=True, check=False)
+
+        self.write("scripts/s.sh", "#!/usr/bin/env bash\necho BAD\n")
+        self.git("add", "scripts/s.sh")
+        self.write("scripts/s.sh", "#!/usr/bin/env bash\necho fixed\n")
+        refused = commit()
+        self.assertEqual(refused.returncode, 1, refused.stdout + refused.stderr)
+        self.assertIn("failed: shfmt", refused.stdout + refused.stderr)
+        self.git("add", "scripts/s.sh")
+        self.assertEqual(commit().returncode, 0)
+
     def test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern(self):
         self.hooks()
         env = {**self.env, "PATH": os.environ["PATH"]}  # the real uv and the real masker

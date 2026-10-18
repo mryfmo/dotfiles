@@ -17,7 +17,7 @@
 #   pruned. `precheck.json` (`{head, tree, generated_at, checks, selectors}`) and `result.txt` (the RESULT line) are
 #   written and `precheck=<sha256>` printed last; the seat commits them and the logs last and sends the RESULT with
 #   `head=` set to that commit. A masker failure removes the logs instead. `--secrets <file>` (the pre-push hook) and
-#   `--staged` (`format` and `shellcheck` on the staged files, the pre-commit hook) run only those checks.
+#   `--staged` (`format` and `shellcheck` on the staged blobs, the pre-commit hook) run only those checks.
 # shortcut: a Claude seat cannot run codex inside its Bash sandbox (local-review.sh's header), so the orchestrator's acceptance runs the local review on the head as today; upgrade to seat when the seats run omp (plan 024 phase 2 B)
 # shortcut: inside a Claude seat's sandbox the full suite fails on sandbox-denied operations, so a seat runs the precheck with --tests on its task's modules and CI runs the full suite; upgrade when the seats run omp (plan 024 phase 2 B)
 # @arg $1 string Task id: letters, digits, `.`, `_` and `-`.
@@ -25,7 +25,7 @@
 # @option --previous-head <sha40> The `previous_head=` of a `status=revise` ACCEPTANCE; needs `--check`.
 # @option --check <selector> A `tests/unit/<module>.py::<name>` selector (the ACCEPTANCE's `check=`), repeatable.
 # @option --secrets <diff-file> Run only the secrets check on the file.
-# @option --staged Run only `format` and `shellcheck` on the staged files.
+# @option --staged Run only `format` and `shellcheck` on the staged blobs (the index exported to a temporary tree).
 # @env PRECHECK_LOCAL_REVIEW `orchestrator` (the default) or `seat`.
 # @exitcode 0 Every check and selector that ran is ok (a deferred check is neither).
 # @exitcode 1 A check or a selector failed, or the masker failed.
@@ -138,6 +138,10 @@ if [[ -n ${secrets} || -n ${staged} ]]; then
         exit
     fi
     rc=0
+    # Thread 4305945406: the checks read the staged blobs, the whole index exported with every tracked config.
+    GIT_DIR="$(git rev-parse --absolute-git-dir)" GIT_WORK_TREE=${PWD} GIT_INDEX_FILE="$(git rev-parse --path-format=absolute --git-path index)"
+    export GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE # a hook's GIT_INDEX_FILE may be relative to the root
+    git checkout-index -a --prefix="${work}/index/" && cd -- "${work}/index"
     check_format staged || rc=1
     check_shellcheck staged || rc=1
     exit "${rc}"
@@ -154,8 +158,7 @@ while IFS= read -r -d '' entry; do
         exit 2
     }
 done < <(git status --porcelain=v1 -z --untracked-files=all --no-renames)
-mkdir -p -- "${evidence}"
-rm -f -- "${evidence}"/precheck-*.log
+mkdir -p -- "${evidence}" && rm -f -- "${evidence}"/precheck-*.log
 
 # @description Run one check (name, then command) with its output in its log; record `name<TAB>exit<TAB>log`.
 run_check() {

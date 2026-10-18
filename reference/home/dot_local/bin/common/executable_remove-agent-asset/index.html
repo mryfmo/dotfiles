@@ -4300,6 +4300,7 @@
 <li><code>path_is_in_safe_root</code></li>
 <li><code>preflight_deletion_paths</code></li>
 <li><code>remove_brew</code></li>
+<li><code>remove_hcom</code></li>
 <li><code>remove_integration</code></li>
 <li><code>remove_manifest_step</code></li>
 <li><code>remove_plugin</code></li>
@@ -4407,7 +4408,8 @@
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/plugins/cache"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/.tmp/plugins/plugins"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/installs"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/installs"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/agent-assets"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>normalize_root_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>path_has_prefix<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4425,7 +4427,8 @@
 
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>root<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/hooks/herdr-agent-state.sh"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/herdr-agent-state.sh"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/herdr-agent-state.sh"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/hcom"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -4745,6 +4748,27 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Remove hcom: uv uninstalls its tool environment and receipt, then the recorded binary and wheel go.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>remove_hcom<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">tools</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>uv<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">tools</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>tool<span class="w"> </span>dir<span class="w"> </span>--color<span class="w"> </span>never<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="c1"># herdr panes export FORCE_COLOR and CLICOLOR_FORCE</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MODE</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"yes"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>fail<span class="w"> </span><span class="s2">"uv command not found, so hcom's uv tool environment and receipt cannot be uninstalled; nothing was removed"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>preflight_deletion_paths<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">RECORDED_PATHS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># An hcom uv no longer has (uninstalled by hand or by an earlier run) must not stop the rest of the removal.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tools</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tools</span><span class="si">}</span><span class="s2">/hcom"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>run_operation<span class="w"> </span>uv<span class="w"> </span>tool<span class="w"> </span>uninstall<span class="w"> </span>hcom
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'SKIP: uv has no hcom tool environment under %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tools</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>remove_recorded_paths<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">RECORDED_PATHS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Parse arguments and perform the selected inverse operation.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -4775,7 +4799,11 @@
 <span class="w">            </span>fail<span class="w"> </span><span class="s2">"manifest step has no removal paths: </span><span class="si">${</span><span class="nv">STEP</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="o">}</span>
-<span class="w">        </span>remove_recorded_paths<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">RECORDED_PATHS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">STEP</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"update_hcom"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>remove_hcom
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span>remove_recorded_paths<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">RECORDED_PATHS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>brew<span class="o">)</span>
 <span class="w">        </span>remove_brew

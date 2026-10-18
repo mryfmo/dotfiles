@@ -1610,8 +1610,8 @@ def validate_no_obvious_secrets() -> None:
 # Single quotes never expand an environment reference; suffixes and shell expansions are literals.
 ANTHROPIC_API_KEY_LITERAL = re.compile(
     r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\s*(?:\+?=|:)(?!\s*(?:"""
-    r"""(?P<q>"?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
-    r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')?\s*(?:(?<=\s)#.*)?$)"""
+    r"""(?:(?P<q>"?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
+    r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')(?=$|[ \t;|&()<>])|(?:(?<=\s)#.*)?$))"""
 )
 ANTHROPIC_API_KEY_DATA = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})|\{\{(?:(?!\}\}).)*\}\}|")
 CHEZMOI_FILE_ATTRIBUTES = {
@@ -1689,7 +1689,7 @@ def normalize_auth_names(line: str, arithmetic: bool = False) -> str:
         unsupported = {"case", "function", "coproc"}
         while pos < len(line):
             char = line[pos]
-            if char == "\\":
+            if char == "\\" and quote != "'":
                 if not quote:
                     command_start = False
                 pos += 2
@@ -1778,7 +1778,7 @@ def normalize_auth_names(line: str, arithmetic: bool = False) -> str:
             normalize_auth_names(line[pos + (1 if char == "`" else 2) : end - 1], is_arithmetic)
             pos = end
             continue
-        elif char == "\\" and pos + 1 < len(line):
+        elif char == "\\" and quote != "'" and pos + 1 < len(line):
             pos += 1
             if operator is None and line[pos] not in "'\"":
                 name.append("X" if line[pos] == "$" else line[pos])

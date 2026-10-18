@@ -1666,6 +1666,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for line in (f"{key}=literal-value", oauth, 'export "$NAME"=literal-value'):
             self.assertTrue(check("home/fixture.md", f"```bash\n{line}\n```")[0])
 
+    def test_anthropic_check_keeps_single_quote_semantics_for_backslashes(self) -> None:
+        (home, *_), check = self.anthropic_route_fixture()
+        fragment = r"""printf '%s' '\'; export "$NAME"=literal-value"""
+        for line in (fragment, f"out=$({fragment})", f'out="$({fragment})"'):
+            with self.subTest(line=line):
+                refused, stderr = check(home, "NAME=ANTHROPIC_API_" + "KEY; " + line)
+                self.assertTrue(refused)
+                self.assertIn("unreadable name", stderr)
+                self.assertNotIn("literal-value", stderr)
+        for line in (r"printf '%s' '\'", r"""out=$(printf '%s' '\')""", r'''printf '%s' "\\\""'''):
+            self.assertEqual((False, ""), check(home, line))
+
+    def test_anthropic_check_accepts_an_environment_reference_followed_by_a_command(self) -> None:
+        (home, *_), check = self.anthropic_route_fixture()
+        key = "ANTHROPIC_API_" + "KEY"
+        for suffix in (" client", "\tclient", "; exec client", "&& client", "| client", ">output"):
+            for value in ("$DEPLOYED_KEY", '"$DEPLOYED_KEY"', "${DEPLOYED_KEY}"):
+                with self.subTest(value=value, suffix=suffix):
+                    self.assertEqual((False, ""), check(home, f"export {key}={value}{suffix}"))
+        for value in ('"$DEPLOYED_KEY client"', "$DEPLOYED_KEY' suffix'", "$DEPLOYED_KEY\\ suffix"):
+            self.assertTrue(check(home, f"export {key}={value}; exec client")[0])
+
     def test_anthropic_auth_route_parses_both_platform_renderings_of_chezmoi_templates(self) -> None:
         rel = "home/.chezmoitemplates/fixture.json"
         key = "ANTHROPIC_API_" + "KEY"

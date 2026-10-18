@@ -1572,14 +1572,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             (key[:-1] + '"Y"', "R2"),
             (key[:-1] + r"\Y", "R2"),
             (oauth[:-1] + r"\N", "R1"),
-            ('"$NAME"', "unreadable name"),
-            ("'$NAME'", "unreadable name"),
-            ("$1", "unreadable name"),
-            ("$@", "unreadable name"),
-            ("${NAME}", "unreadable name"),
-            ('"${NAME:-fallback}"', "unreadable name"),
-            ("`printf NAME`", "unreadable name"),
-            ("$(printf NAME)", "unreadable name"),
+            ('"$NAME"', "unsupported authentication name form"),
+            ("'$NAME'", "unsupported authentication name form"),
+            ("$1", "unsupported authentication name form"),
+            ("$@", "unsupported authentication name form"),
+            ("${NAME}", "unsupported authentication name form"),
+            ('"${NAME:-fallback}"', "unsupported authentication name form"),
+            ("`printf NAME`", "unsupported authentication name form"),
+            ("$(printf NAME)", "unsupported authentication name form"),
         ):
             with self.subTest(name=name):
                 refused, stderr = check(home, f"export {name}=literal-value")
@@ -1666,6 +1666,235 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for line in (f"{key}=literal-value", oauth, 'export "$NAME"=literal-value'):
             self.assertTrue(check("home/fixture.md", f"```bash\n{line}\n```")[0])
 
+    def anthropic_a03_cases(self):
+        key = "ANTHROPIC_API_" + "KEY"
+        unsupported = "unsupported authentication name form"
+        dynamic = f'NAME={key}; export "$NAME"=literal-value'
+        cases = [
+            ("ansi", "api", "shell", r"export $'ANTHROPIC_API_\x4bEY'=literal-value", True, "R2"),
+            ("ansi", "oauth", "shell", r"export $'ANTHROPIC_OAUTH_\x54OKEN'=literal-value", True, "R1"),
+            ("ansi", "reference", "shell", r"export $'ANTHROPIC_API_\x4bEY'=$DEPLOYED_KEY", False, ""),
+            ("diagnostic", "json", "json", json.dumps({key + "=literal-value": "unused"}), True, "<redacted>"),
+            ("diagnostic", "toml", "toml", r'"ANTHROPIC_API_\u004bEY=literal-value" = "unused"', True, "<redacted>"),
+            (
+                "diagnostic",
+                "ancestor",
+                "json",
+                json.dumps({"parent=literal-value": {key: "literal-value"}}),
+                True,
+                "<redacted>",
+            ),
+            ("unsupported", "assembled", "shell", 'export "${x}EY"=literal-value', True, unsupported),
+            ("unsupported", "command", "shell", f"export $(echo {key})=literal-value", True, unsupported),
+            ("unsupported", "indirect", "shell", 'export "${!name}"=literal-value', True, unsupported),
+            ("unsupported", "variable", "shell", 'export "$NAME"=literal-value', True, unsupported),
+            ("other", "single-quoted-backslash", "shell", r"""printf '%s' '\'; """ + dynamic, True, unsupported),
+            ("other", "following-command", "shell", f"{key}=$DEPLOYED_KEY client", False, ""),
+            ("other", "following-operator", "shell", f'export {key}="$DEPLOYED_KEY"; exec client', False, ""),
+            ("other", "single-name", "shell", f"export '{key}'=literal-value", True, "R2"),
+            ("other", "double-name", "shell", f'export "{key}"=literal-value', True, "R2"),
+            ("other", "escaped-name", "shell", "export ANTHROPIC_API_\\KEY=literal-value", True, "R2"),
+            ("other", "locale-name", "shell", f'export $"{key}"=literal-value', True, "R2"),
+            ("other", "quoted-ordinary-literal", "shell", "printf '%s' 'ordinary literal'", False, ""),
+            ("other", "decoded-ordinary-name", "shell", r"export $'NOR\x4dAL'=ordinary-value", False, ""),
+            ("other", "ordinary-brace-name", "shell", "typeset -g POWERLEVEL9K_{OK,ERROR}_COLOR=76", False, ""),
+            ("other", "auth-brace-name", "shell", f"export {{{key},OTHER}}=literal-value", True, unsupported),
+            ("other", "conditional-substitution", "shell", "[[ x == x && $(printf x) == x ]]", False, ""),
+            (
+                "other",
+                "env-command",
+                "shell",
+                'env SKILL_DIR="$HOME" bash -c \'source "$1/helper"\' _ "$HOME/scripts"',
+                False,
+                "",
+            ),
+            ("other", "function-subshell-case", "shell", 'function f() ( case "$x" in 0) :;; esac )', False, ""),
+            (
+                "other",
+                "continued-case",
+                "shell",
+                'NAME=ANTHROPIC_API_KEY; out="$(ca\\\nse x in x) export "$NAME"=literal-value ;; esac)"',
+                True,
+                unsupported,
+            ),
+            ("unsupported", "env-variable", "shell", 'env "$NAME"=literal-value client', True, unsupported),
+            ("unsupported", "env-assembled", "shell", 'env "${x}EY"=literal-value client', True, unsupported),
+            (
+                "vanishing-prefix",
+                "env-vanishing-prefix",
+                "shell",
+                'NAME=ANTHROPIC_API_KEY; EMPTY=; env $EMPTY "$NAME"=literal-value client',
+                True,
+                unsupported,
+            ),
+            (
+                "option-prefix",
+                "env-option-prefix",
+                "shell",
+                'NAME=ANTHROPIC_API_KEY; OPTION=-i; env "$OPTION" "$NAME"=literal-value client',
+                True,
+                unsupported,
+            ),
+            ("other", "quoted-leading-blank", "shell", f'{key}=" $DEPLOYED_KEY"', True, "R2"),
+            ("other", "escaped-leading-blank", "shell", f"{key}=\\ $DEPLOYED_KEY", True, "R2"),
+            ("other", "trailing-empty-quote", "shell", f"{key}=$DEPLOYED_KEY''", True, "R2"),
+            ("other", "leading-empty-quote", "shell", f"{key}=''$DEPLOYED_KEY", True, "R2"),
+            ("other", "leading-empty-double", "shell", f'{key}="""$DEPLOYED_KEY"', True, "R2"),
+            ("other", "unclosed-reference", "shell", f'{key}="$DEPLOYED_KEY', True, "R2"),
+            ("other", "continued-reference", "shell", f'{key}="\\\n$DEPLOYED_KEY"', False, ""),
+            (
+                "diagnostic",
+                "encoded-equals",
+                "json",
+                json.dumps({key + r"$'\x3d'literal-value": "unused"}),
+                True,
+                "<redacted>",
+            ),
+            (
+                "diagnostic",
+                "encoded-colon",
+                "json",
+                json.dumps({key + r"$'\072'literal-value": "unused"}),
+                True,
+                "<redacted>",
+            ),
+            (
+                "diagnostic",
+                "encoded-ancestor",
+                "json",
+                json.dumps({r"parent$'\x3d'literal-value": {key: "literal-value"}}),
+                True,
+                "<redacted>",
+            ),
+            ("other", "yaml-complex-oauth", "yaml", "? [ANTHROPIC_OAUTH_TOKEN]\n: unused\n", True, "ValueError"),
+            (
+                "other",
+                "yaml-complex-escaped",
+                "yaml",
+                '? ["ANTHROPIC_OAUTH_\\x54OKEN"]\n: unused\n',
+                True,
+                "ValueError",
+            ),
+            ("other", "yaml-complex-assignment", "yaml", f"? [{key}=literal-value]\n: unused\n", True, "ValueError"),
+            ("other", "oauth-fence-header", "markdown", "```ANTHROPIC_OAUTH_TOKEN\nordinary\n```\n", True, "R1"),
+        ]
+        for prose in ("Don't store credentials.", "Never store credentials."):
+            cases.append(
+                ("markdown", prose, "markdown", prose + "\n\n```bash\n" + dynamic + "\n```\n", True, unsupported)
+            )
+        for separator in ("\u2028", "\u2029", "\v"):
+            line = f"{key}=$DEPLOYED_KEY{separator}literal-value"
+            cases.append(("lf", repr(separator), "shell", line, True, "R2"))
+            cases.append(("lf", "decoded-" + repr(separator), "json", json.dumps({"script": line}), True, "R2"))
+        for separator in (" ", "\t", "\n"):
+            cases.append(
+                ("lf", "allowed-" + repr(separator), "shell", f"{key}=$DEPLOYED_KEY{separator}client", False, "")
+            )
+        for prefix in ("env", "exec", "command", "nohup", "sudo", "xargs", "time"):
+            for name, arguments in (
+                ("unknown-expansion", "$opts NORMAL=literal-value client"),
+                ("special-expansion", '"$1" NORMAL=literal-value client'),
+                ("dynamic-name", '$opts "$NAME"=literal-value client'),
+                ("unknown-option", "--unknown NORMAL=literal-value client"),
+                ("unknown-attached-option", '--unknown=option "$NAME"=literal-value client'),
+                ("redirect-fd", '3>output "$NAME"=literal-value client'),
+                ("redirect-expansion", '>"$FILE" "$NAME"=literal-value client'),
+                ("brace-fd", '{fd}>output "$NAME"=literal-value client'),
+                ("duplicate-fd", '2>&1 "$NAME"=literal-value client'),
+                ("append-redirection", '2>>output "$NAME"=literal-value client'),
+                ("process-redirection", '< <(printf data) "$NAME"=literal-value client'),
+            ):
+                cases.append(("prefix", prefix + "-" + name, "shell", f"{prefix} {arguments}", True, unsupported))
+            for arguments in (
+                "client",
+                f"{key}=$DEPLOYED_KEY client",
+                "$opts; NORMAL=$DEPLOYED_KEY",
+                "'$opts' NORMAL=ordinary",
+            ):
+                cases.append(("prefix", prefix + "-ordinary-" + arguments, "shell", f"{prefix} {arguments}", False, ""))
+        for command in (
+            f"env -i {key}=$DEPLOYED_KEY client",
+            f"env -- {key}=$DEPLOYED_KEY client",
+            f"sudo -n env {key}=$DEPLOYED_KEY client",
+            f"sudo --preserve-env=http_proxy,https_proxy env {key}=$DEPLOYED_KEY client",
+            f"time -p env {key}=$DEPLOYED_KEY client",
+            'command -v "$NAME"',
+            'command_args=(exec -C "$repo")',
+            'exec 3>"$prefix-$run.md"',
+        ):
+            cases.append(("prefix", "known-" + command, "shell", command, False, ""))
+        cases.append(
+            ("prefix", "qualified-env", "shell", '/usr/bin/env $opts "$NAME"=literal-value client', True, unsupported)
+        )
+        cases.append(
+            ("prefix", "unresolved-path", "shell", '"$BIN/env" "$NAME"=literal-value client', True, unsupported)
+        )
+        for prefix in ("env", "exec", "command", "nohup", "sudo", "xargs", "time"):
+            cases.append(("prefix", "assignment-" + prefix, "shell", f"{key}=/usr/bin/{prefix}", True, "R2"))
+        for command in (
+            'env "$NAME"=/usr/bin/env client',
+            'env "$EMPTY" NORMAL=/usr/bin/env client',
+            f'NAME={key}; TOOL=env; "$TOOL" "$NAME"=literal-value client',
+            '"$TOOL" NORMAL=literal-value client',
+            '"$1" "$NAME"=literal-value client',
+            '"$(printf env)" "$NAME"=literal-value client',
+        ):
+            cases.append(("prefix", "review-" + command, "shell", command, True, unsupported))
+        for target in ("env", "export"):
+            command = f'NAME={key}; env >{target} "$NAME"=literal-value client'
+            cases.append(("prefix", "operand-" + target, "shell", command, True, unsupported))
+            command = f">{target} printf '%s' \"$NAME=data\""
+            cases.append(("prefix", "ordinary-operand-" + target, "shell", command, False, ""))
+        for command in ("NORMAL=$((1<(case + 1)))", '"$TOOL" client'):
+            cases.append(("prefix", "review-ordinary-" + command, "shell", command, False, ""))
+        return cases
+
+    def assert_anthropic_a03_cases(self, group: str = "") -> None:
+        files, check = self.anthropic_route_fixture(
+            "home/example.md", "home/key.json", "home/key.toml", "home/key.yaml"
+        )
+        paths = {
+            "shell": files[0],
+            "markdown": "home/example.md",
+            "json": "home/key.json",
+            "toml": "home/key.toml",
+            "yaml": "home/key.yaml",
+        }
+        for kind, name, source, text, expected, needle in self.anthropic_a03_cases():
+            if group and kind != group:
+                continue
+            with self.subTest(group=kind, case=name):
+                refused, stderr = check(paths[source], text, verbatim=source != "shell")
+                self.assertEqual(expected, refused, stderr)
+                self.assertIn(needle, stderr)
+                self.assertNotIn("literal-value", stderr)
+                if not expected:
+                    self.assertEqual("", stderr)
+
+    def test_anthropic_check_decodes_ansi_c_escaped_names(self) -> None:
+        self.assert_anthropic_a03_cases("ansi")
+
+    def test_anthropic_check_parses_each_fenced_example_with_a_fresh_quote_state(self) -> None:
+        self.assert_anthropic_a03_cases("markdown")
+
+    def test_anthropic_check_splits_shell_text_on_lf_only(self) -> None:
+        self.assert_anthropic_a03_cases("lf")
+
+    def test_anthropic_check_redacts_assignment_payloads_in_diagnostics(self) -> None:
+        self.assert_anthropic_a03_cases("diagnostic")
+
+    def test_anthropic_check_rejects_undecodable_name_forms(self) -> None:
+        self.assert_anthropic_a03_cases("unsupported")
+
+    def test_anthropic_check_refuses_an_unresolved_env_prefix_before_a_dynamic_assignment(self) -> None:
+        self.assert_anthropic_a03_cases("vanishing-prefix")
+
+    def test_anthropic_check_refuses_an_env_option_it_cannot_classify_before_an_assignment(self) -> None:
+        self.assert_anthropic_a03_cases("option-prefix")
+
+    def test_anthropic_check_bypass_corpus(self) -> None:
+        self.assert_anthropic_a03_cases()
+
     def test_anthropic_check_keeps_single_quote_semantics_for_backslashes(self) -> None:
         (home, *_), check = self.anthropic_route_fixture()
         fragment = r"""printf '%s' '\'; export "$NAME"=literal-value"""
@@ -1673,7 +1902,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             with self.subTest(line=line):
                 refused, stderr = check(home, "NAME=ANTHROPIC_API_" + "KEY; " + line)
                 self.assertTrue(refused)
-                self.assertIn("unreadable name", stderr)
+                self.assertIn("unsupported authentication name form", stderr)
                 self.assertNotIn("literal-value", stderr)
         for line in (r"printf '%s' '\'", r"""out=$(printf '%s' '\')""", r'''printf '%s' "\\\""'''):
             self.assertEqual((False, ""), check(home, line))
@@ -1767,14 +1996,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertEqual((False, ""), check(home, line))
 
-    def assert_parsed_refusals(self, check, cases, line_grammar_misses: bool) -> None:
+    def assert_parsed_refusals(self, check, cases) -> None:
         """Each (rel, text, rule, where) is refused naming the key path, never the literal value."""
         for rel, text, rule, where in cases:
             with self.subTest(rel=rel, text=text):
-                if line_grammar_misses:
-                    lines = text.splitlines()
-                    self.assertFalse(any(self.module.ANTHROPIC_API_KEY_LITERAL.search(line) for line in lines))
-                    self.assertFalse(any("ANTHROPIC_OAUTH_" + "TOKEN" in line for line in lines))
                 refused, stderr = check(rel, text, verbatim=True)
                 self.assertTrue(refused)
                 self.assertIn(f"ERROR: {rel}: {rule}: {where}:", stderr)
@@ -1823,7 +2048,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             (json_rel, f'{{"env": ["{escaped_key}=literal-value"]}}\n', "R2", "env[0]"),
             (toml_rel, f'"{escaped_oauth}" = "x"\n', "R1", oauth),
         )
-        self.assert_parsed_refusals(check, refused_by_the_parse_only, line_grammar_misses=True)
+        self.assert_parsed_refusals(check, refused_by_the_parse_only)
         self.assert_parsed_refusals(
             check,
             (
@@ -1832,7 +2057,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 # A key with a newline is printed escaped, so it cannot start a log line of its own.
                 (json_rel, f'{{"a\\n::error::x": {{"{key}": "literal-value"}}}}\n', "R2", f"a\\n::error::x.{key}"),
             ),
-            line_grammar_misses=False,
         )
         for rel, text in (
             (toml_rel, f'{key} = "${{{key}}}"\n'),
@@ -1862,12 +2086,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 (yaml_rel, f"env:\n  {key}:\n    literal-value\n", "R2", f"env.{key}"),
                 (yaml_rel, f"{key}:\n  literal-value\n", "R2", key),
             ),
-            line_grammar_misses=True,
         )
         self.assert_parsed_refusals(
             check,
             ((yaml_rel, f'"{escaped_key}": literal-value\n{key}: ${key}\n', "R2", key),),
-            line_grammar_misses=False,
         )
         for text in (f"{key}: ${key}\n", f"{key}:\n", f'{key}: "{{{{ .anthropic }}}}"\n', "a: &a [x]\nb: [*a, *a]\n"):
             with self.subTest(text=text):
@@ -1899,7 +2121,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         json_rel = "home/dot_config/fixture.json"
         _, check = self.anthropic_route_fixture(json_rel)
         text = f'{{"{key}": "${{{key}}}", "x": 1}}\n'
-        self.assertIsNotNone(self.module.ANTHROPIC_API_KEY_LITERAL.search(text))
+        self.assertEqual([], self.module.anthropic_parsed_findings(json_rel, "json", text))
         self.assertEqual((False, ""), check(json_rel, text, verbatim=True))
 
     def write_manifest(self, hook_command: str) -> None:

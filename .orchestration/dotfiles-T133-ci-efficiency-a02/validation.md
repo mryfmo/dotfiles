@@ -1,18 +1,18 @@
 ---
 task_id: dotfiles-T133-ci-efficiency-a02
 seat: claude-standard-dot-a011
-code_commit: 492e7e28
+code_commit: 3bd08848
 ---
 
 # Validation: dotfiles-T133-ci-efficiency-a02
 
-Every command ran from the worktree `.claude/worktrees/worker-d` on the branch `tools/ci-efficiency-a01` (PR #409) at `492e7e28`, inside the sandbox. The a02 commits are the test commit `1bb5d946` and the fix `fa66ad4d`, then the worker review round's test commit `72fcb93b` and fix `492e7e28`, on a01's last head `27613c0c` (base `origin/main` `99a4a80f`). `MAIN` names the main checkout, `T` the task id, `SCRATCH` the seat's scratchpad and `CHECK` the Check's three test modules. The output is verbatim, with the main checkout's, the home directory's and the scratchpad's paths replaced by `$MAIN`, `$HOME` and `$SCRATCH`, and each block ends with the exit status of the command shown. Evidence inherited from a01 (its measurement) is in `measure.md`, marked as inherited; everything here ran for a02.
+Every command ran from the worktree `.claude/worktrees/worker-d` on the branch `tools/ci-efficiency-a01` (PR #409) at `3bd08848`, inside the sandbox. The a02 commits are the test commit `1bb5d946` and the fix `fa66ad4d`, then the worker review round's test commit `72fcb93b` and fix `492e7e28`, then the orchestrator's revise round 1 (amendment 1): the test commit `eb4a0c34` and the fix `3bd08848`; on a01's last head `27613c0c` (base `origin/main` `99a4a80f`). `MAIN` names the main checkout, `T` the task id, `SCRATCH` the seat's scratchpad and `CHECK` the Check's three test modules. The output is verbatim, with the main checkout's, the home directory's and the scratchpad's paths replaced by `$MAIN`, `$HOME` and `$SCRATCH`, and each block ends with the exit status of the command shown. Evidence inherited from a01 (its measurement) is in `measure.md`, marked as inherited; everything here ran for a02.
 
-## 1. Task file (sha256 0695769b…) and task copy
+## 1. Task file (amendment 1, sha256 68425731…; dispatched at 0695769b…) and task copy
 ```console
 $ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
-0695769b8d3bb670629303e495102695f91b9545d573e2b72230a6192fdb46ed  $MAIN/.orchestration/tasks/dotfiles-T133-ci-efficiency-a02.md
-0695769b8d3bb670629303e495102695f91b9545d573e2b72230a6192fdb46ed  .orchestration/dotfiles-T133-ci-efficiency-a02/task.md
+684257319a5b9b5f5c67fe5852aedd76fd5b9db4bb4f5a1ff0b928a0ad61ab98  $MAIN/.orchestration/tasks/dotfiles-T133-ci-efficiency-a02.md
+684257319a5b9b5f5c67fe5852aedd76fd5b9db4bb4f5a1ff0b928a0ad61ab98  .orchestration/dotfiles-T133-ci-efficiency-a02/task.md
 byte-identical
 [exit 0]
 ```
@@ -36,12 +36,15 @@ on:
   workflow_dispatch:
   schedule:
 1
-0
+7
 [exit 0]
 ```
 ## 3. Branch
 ```console
 $ git log --oneline 27613c0c..HEAD; git log --oneline -1 27613c0c; git log --oneline -1 origin/main; git merge-base --is-ancestor origin/main HEAD && echo "origin/main is an ancestor of the head"
+3bd08848 fix(ci): the test, public-bootstrap and private-bootstrap matrices set fail-fast false (T133 ci-efficiency a02, amendment 1, revise round 1)
+eb4a0c34 test(ci): the test, public-bootstrap and private-bootstrap matrices do not fail fast (T133 ci-efficiency a02, amendment 1, revise round 1, red)
+6b2ff08f chore(orchestration): T133 ci-efficiency a02 records (report, validation, sandbox, learning, autoskill, the inherited measurement, worker review evidence)
 492e7e28 fix(ci): ci-rerun.sh refuses a run not completed yet and reports a reservation it cannot create as an error; the flake file's header says what is matched (T133 ci-efficiency a02, worker review P2 and P3)
 72fcb93b test(ci): ci-rerun.sh refuses a run still in progress; a missing log matches no signature; the stub runs the script's --jq on a pull_requests payload (T133 ci-efficiency a02, worker review, red)
 fa66ad4d fix(ci): ci-rerun.sh refuses superseded heads, needs a signature for every failed, timed-out or cancelled job, and reserves per run; home or install Markdown keeps macOS (T133 ci-efficiency a02)
@@ -75,7 +78,7 @@ unittest exit status: 1
   test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs (conclusion='cancelled', case='matched') ... FAIL
 test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs ... FAIL
 test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice ... FAIL
-Ran 32 tests in 17.041s
+Ran 32 tests in 17.890s
 FAILED (failures=16)
 [exit 0]
 ```
@@ -83,9 +86,19 @@ FAILED (failures=16)
 $ git worktree add --detach -q "$SCRATCH/va2-red2" 72fcb93b && uv run --directory "$SCRATCH/va2-red2" python -m unittest tests.unit.test_ci_rerun -v > "$SCRATCH/va2-red2.out" 2>&1; echo "unittest exit status: $?"; < "$SCRATCH/va2-red2.out" /usr/bin/grep -E " \\.\\.\\. (FAIL|ERROR)$|AssertionError|^Ran|^OK|^FAILED" | sed "s/ (tests\\.unit[^)]*)//" | cut -c1-200; git worktree remove --force "$SCRATCH/va2-red2"
 unittest exit status: 1
   test_ci_rerun_refuses_a_superseded_pull_request_head (case='a run still in progress') ... FAIL
-AssertionError: 2 != 0 : rerun: run 101, 2 job(s), recorded in $TMPDIR/tmplci7bk4d/repo/.orchestration/validation/ci-reruns.tsv
-Ran 7 tests in 13.196s
+AssertionError: 2 != 0 : rerun: run 101, 2 job(s), recorded in $TMPDIR/tmpx9vxznq3/repo/.orchestration/validation/ci-reruns.tsv
+Ran 7 tests in 12.329s
 FAILED (failures=1)
+[exit 0]
+```
+```console
+$ git worktree add --detach -q "$SCRATCH/va2-red3" eb4a0c34 && uv run --directory "$SCRATCH/va2-red3" python -m unittest tests.unit.test_workflow_orchestration_skip.WorkflowTriggerTest.test_the_matrices_do_not_fail_fast -v > "$SCRATCH/va2-red3.out" 2>&1; echo "unittest exit status: $?"; < "$SCRATCH/va2-red3.out" /usr/bin/grep -E " \.\.\. (FAIL|ERROR)$|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//"; git worktree remove --force "$SCRATCH/va2-red3"
+unittest exit status: 1
+  test_the_matrices_do_not_fail_fast (job='test') ... FAIL
+  test_the_matrices_do_not_fail_fast (job='public-bootstrap') ... FAIL
+  test_the_matrices_do_not_fail_fast (job='private-bootstrap') ... FAIL
+Ran 1 test in 0.001s
+FAILED (failures=3)
 [exit 0]
 ```
 ```console
@@ -106,6 +119,7 @@ test_no_required_contexts_job_has_a_job_level_if_or_needs (tests.unit.test_workf
 test_the_reader_fails_closed_on_unsupported_key_forms (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_the_reader_fails_closed_on_unsupported_key_forms) ... ok
 test_the_required_contexts_are_the_workflows_jobs (tests.unit.test_workflow_orchestration_skip.RequiredContextsTest.test_the_required_contexts_are_the_workflows_jobs) ... ok
 test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script (tests.unit.test_workflow_orchestration_skip.WorkflowTriggerTest.test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script) ... ok
+test_the_matrices_do_not_fail_fast (tests.unit.test_workflow_orchestration_skip.WorkflowTriggerTest.test_the_matrices_do_not_fail_fast) ... ok
 test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run (tests.unit.test_workflow_orchestration_skip.WorkflowTriggerTest.test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run) ... ok
 test_checkout_does_not_persist_credentials_without_explicit_exemption (tests.unit.test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
 test_checkout_rejects_duplicate_or_non_false_credential_settings (tests.unit.test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
@@ -124,7 +138,7 @@ test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice (tests.un
 test_the_production_flake_registry_matches_its_samples_and_no_real_failure (tests.unit.test_ci_rerun.CiRerunTest.test_the_production_flake_registry_matches_its_samples_and_no_real_failure) ... ok
 
 ----------------------------------------------------------------------
-Ran 32 tests in 21.407s
+Ran 33 tests in 20.992s
 
 OK
 [exit 0]
@@ -135,16 +149,16 @@ $ git worktree add --detach -q "$SCRATCH/va2-reg" HEAD && for mutation in "inval
 == invalid:   log_regex: '('
 unittest exit status: 1
 AssertionError: Lists differ: [1, 1] != [1, 2]
-Ran 1 test in 0.131s
+Ran 1 test in 0.114s
 FAILED (failures=1)
 == broad:   log_regex: '.*'
 unittest exit status: 1
 AssertionError: Lists differ: [1, 1] != [1, 0]
-Ran 1 test in 0.115s
+Ran 1 test in 0.110s
 FAILED (failures=1)
 == restored:   log_regex: 'cannot fetch assertion: got unexpected HTTP status code (408|5[0-9
 unittest exit status: 0
-Ran 1 test in 0.173s
+Ran 1 test in 0.161s
 OK
 [exit 0]
 ```
@@ -188,9 +202,9 @@ generated agent configs are up to date
 $ git diff --numstat origin/main...HEAD
 12	0	.github/flakes.yaml
 7	0	.github/workflows/agent-assets.yml
-101	0	.github/workflows/private-bootstrap.yaml
-12	90	.github/workflows/remote.yaml
-21	4	.github/workflows/test.yaml
+104	0	.github/workflows/private-bootstrap.yaml
+15	90	.github/workflows/remote.yaml
+24	4	.github/workflows/test.yaml
 26	0	.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-crit.json
 13	0	.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-review-receipt.md
 8	0	.orchestration/dotfiles-T133-ci-efficiency-a01/learning.md
@@ -200,43 +214,55 @@ $ git diff --numstat origin/main...HEAD
 27	0	.orchestration/dotfiles-T133-ci-efficiency-a01/sandbox.md
 130	0	.orchestration/dotfiles-T133-ci-efficiency-a01/task.md
 427	0	.orchestration/dotfiles-T133-ci-efficiency-a01/validation.md
-159	0	.orchestration/dotfiles-T133-ci-efficiency-a02/task.md
+3	0	.orchestration/dotfiles-T133-ci-efficiency-a02/autoskill.md
+26	0	.orchestration/dotfiles-T133-ci-efficiency-a02/dotfiles-T133-ci-efficiency-a02-worker-crit.json
+13	0	.orchestration/dotfiles-T133-ci-efficiency-a02/dotfiles-T133-ci-efficiency-a02-worker-review-receipt.md
+8	0	.orchestration/dotfiles-T133-ci-efficiency-a02/learning.md
+333	0	.orchestration/dotfiles-T133-ci-efficiency-a02/measure.md
+78	0	.orchestration/dotfiles-T133-ci-efficiency-a02/report.md
+6	0	.orchestration/dotfiles-T133-ci-efficiency-a02/revise.yaml
+25	0	.orchestration/dotfiles-T133-ci-efficiency-a02/sandbox.md
+163	0	.orchestration/dotfiles-T133-ci-efficiency-a02/task.md
+2692	0	.orchestration/dotfiles-T133-ci-efficiency-a02/validation.md
 150	0	scripts/orchestrator/ci-rerun.sh
 343	0	tests/unit/test_ci_rerun.py
-79	4	tests/unit/test_workflow_orchestration_skip.py
+87	4	tests/unit/test_workflow_orchestration_skip.py
 1	0	tests/unit/test_workflow_security.py
 [exit 0]
 ```
 ```console
 $ git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } $3 == ".github/workflows/private-bootstrap.yaml" { moved = $1; next } $3 == ".github/workflows/remote.yaml" { r = $1 + $2; next } { o += $1 + $2 } END { printf "remote.yaml changed lines %d, of which the moved job and its blank line removed from it: 86\noutside tests/, .orchestration/ and the moved job: %d (with the 86 removed lines: %d)\nprivate-bootstrap.yaml, the extracted job, counted separately: %d added\ntests/: %d\n", r, o + r - 86, o + r, moved, t }'
-remote.yaml changed lines 102, of which the moved job and its blank line removed from it: 86
-outside tests/, .orchestration/ and the moved job: 210 (with the 86 removed lines: 296)
-private-bootstrap.yaml, the extracted job, counted separately: 101 added
-tests/: 427
+remote.yaml changed lines 105, of which the moved job and its blank line removed from it: 86
+outside tests/, .orchestration/ and the moved job: 216 (with the 86 removed lines: 302)
+private-bootstrap.yaml, the extracted job, counted separately: 104 added
+tests/: 435
 [exit 0]
 ```
-## 9. The moved job: origin/main remote.yaml lines 112 to 196 against private-bootstrap.yaml lines 16 to 100
+## 9. The moved job: origin/main remote.yaml lines 112 to 196 against private-bootstrap.yaml from line 16 to its end
 ```console
-$ git show origin/main:.github/workflows/remote.yaml | sed -n 112,196p > "$SCRATCH/va2-old.txt"; sed -n 16,100p .github/workflows/private-bootstrap.yaml > "$SCRATCH/va2-new.txt"; diff "$SCRATCH/va2-old.txt" "$SCRATCH/va2-new.txt"
-52c52,53
+$ git show origin/main:.github/workflows/remote.yaml | sed -n 112,196p > "$SCRATCH/va2-old.txt"; sed -n '16,$p' .github/workflows/private-bootstrap.yaml > "$SCRATCH/va2-new.txt"; diff "$SCRATCH/va2-old.txt" "$SCRATCH/va2-new.txt"
+1a2,3
+>     # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
+>     # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
+2a5
+>       fail-fast: false
+52c55,56
 <           # non-ASCII paths raw. An empty diff runs the bootstrap.
 ---
 >           # non-ASCII paths raw. An empty diff runs the bootstrap, and so does a
 >           # path that can change what setup.sh installs or how this job runs it.
-54c55
+54c58
 <           if grep -qv '^\.orchestration/' <<< "${changed}"; then
 ---
 >           if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
-60c61
+60c64
 <       - name: Skip the bootstrap for an .orchestration-only diff
 ---
 >       - name: Skip the bootstrap when no bootstrap path changed
-62c63
+62c66
 <         run: echo "Only .orchestration/ files changed; the job reports success without bootstrapping."
 ---
 >         run: echo "No path the bootstrap reads changed; the job reports success without bootstrapping."
-85d85
-<             bash "${GITHUB_WORKSPACE}/setup.sh"
 [exit 1]
 ```
 ## 10. Item 12: the historical evidence counts of 27613c0c (the orchestrator's saved feedback JSON) and the seven required names
@@ -261,16 +287,16 @@ $ f="$MAIN/.orchestration/validation/dotfiles-T133-ci-efficiency-a01-pr-feedback
 required contexts successful on 27613c0c: 7 of 7
 [exit 0]
 ```
-## 11. `make unit-test`: the complete output at 492e7e28, and its failing tests compared with the unchanged base
+## 11. `make unit-test`: the complete output at 3bd08848 (after revise round 1), and its failing tests compared with the unchanged base
 
 Two settings, environment only, keep the sandbox's own limits out of the result (sandbox.md):
 - `GIT_CONFIG_GLOBAL=/dev/null`: the global SSH commit signing cannot read `~/.ssh` here, so fixture commits fail otherwise. The plain in-sandbox run and its base comparison are in a01's validation §4a.
 - The validation-only `mktemp` shim first on `PATH`: macOS `mktemp -d` without a template is denied here.
 
-The run is not green: 48 tests fail, all of them in four modules this PR does not touch, and the same 48 fail on `origin/main` `99a4a80f` under the same settings (below). The failures are reported as failures, never as passing.
+The run is not green: 48 tests fail, all of them in four modules this PR does not touch, and the same 48 fail on `origin/main` `99a4a80f` under the same settings (below). The failures are reported as failures, never as passing. The same comparison also held at `492e7e28`, before the revise round.
 ```console
-$ git rev-parse --short HEAD; GIT_CONFIG_GLOBAL=/dev/null PATH="$SCRATCH/shim:$PATH" make unit-test > "$SCRATCH/a02-unit-test-neutral.txt" 2>&1; echo "make unit-test (neutralized) rc=$?"; cat "$SCRATCH/a02-unit-test-neutral.txt"
-492e7e28
+$ git rev-parse --short HEAD; GIT_CONFIG_GLOBAL=/dev/null PATH="$SCRATCH/shim:$PATH" make unit-test > "$SCRATCH/a02r1-unit-test-neutral.txt" 2>&1; echo "make unit-test (neutralized) rc=$?"; cat "$SCRATCH/a02r1-unit-test-neutral.txt"
+3bd08848
 make unit-test (neutralized) rc=2
 uv run python -m unittest discover -s tests/unit -v
 test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
@@ -471,43 +497,43 @@ test_local_review_strips_a_worktree_path_holding_sed_syntax_literally (test_chai
 test_local_review_writes_no_file_when_the_review_binary_fails (test_chain_review_scripts.ChainReviewScriptsTest.test_local_review_writes_no_file_when_the_review_binary_fails) ... ok
 test_sandbox_scan_prints_the_unsandboxed_mutation_calls (test_chain_review_scripts.ChainReviewScriptsTest.test_sandbox_scan_prints_the_unsandboxed_mutation_calls) ... ok
 test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
-test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... <frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107a634c0>
+test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... <frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10a1834c0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x107a62c00>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10a182c00>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x102c27d80>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x104c9bd80>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856e0a0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10acce0a0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856d0e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accd0e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856e6c0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10acce6c0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856e340>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10acce340>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856e5e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10acce5e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856e500>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10acce500>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f060>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf060>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856de00>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accde00>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856dc40>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accdc40>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856d7e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accd7e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856da80>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accda80>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f140>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf140>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f220>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf220>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f300>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf300>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f3e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf3e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10856f840>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10accf840>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
 test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
@@ -851,64 +877,64 @@ test_add_worker_linkage_refuses_a_placement_conflict (test_herdr_agents.HerdrAge
 test_add_worker_linkage_refuses_several_orchestrator_identities (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_several_orchestrator_identities) ... FAIL
 test_add_worker_linkage_resolves_an_id_keyed_placement_record (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_resolves_an_id_keyed_placement_record) ... ERROR
 test_add_worker_linkage_survives_a_non_numeric_pong_wait (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait) ... FAIL
-test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh) ... $HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e7680>
+test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh) ... $HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa7680>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e7760>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa7760>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e7140>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa7140>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e7bc0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa7bc0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e50e0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa50e0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e57e0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa57e0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4d60>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4d60>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e59a0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa59a0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e6180>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa6180>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5a80>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5a80>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4660>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4660>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e6b20>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa6b20>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5380>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5380>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5d20>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5d20>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e58c0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa58c0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4040>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4040>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e65e0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa65e0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e75a0>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa75a0>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4820>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4820>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e6880>
+$HOME/.local/share/mise/installs/python/latest/lib/python3.15/ast.py:46: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa6880>
   return compile(source, filename, mode, flags,
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 FAIL
@@ -1448,65 +1474,65 @@ test_uses_path_pnpm_only_when_mise_is_absent (test_update_agent_assets_ua_core.U
 test_warns_and_continues_when_no_pnpm_is_resolvable (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_no_pnpm_is_resolvable) ... ok
 test_warns_and_continues_when_the_build_fails (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_the_build_fails) ... ok
 test_candidate_is_no_when_another_claude_family_is_larger (test_usage_review.UsageReviewTests.test_candidate_is_no_when_another_claude_family_is_larger) ... ok
-test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... <frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1085f4120>
+test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... <frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10ac54120>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1085f6880>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10ac56880>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1085f49e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10ac549e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e6880>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa6880>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4820>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4820>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e65e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa65e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4040>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4040>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e58c0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa58c0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5d20>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5d20>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5380>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5380>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e6b20>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa6b20>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e4660>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa4660>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e5a80>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa5a80>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e59a0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa59a0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e57e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa57e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e50e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa50e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1083e7bc0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10aaa7bc0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d000>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d000>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d0e0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d0e0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d2a0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d2a0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d380>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d380>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d540>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d540>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d700>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d700>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d8c0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d8c0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889d9a0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3d9a0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889da80>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3da80>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889db60>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3db60>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889dc40>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3dc40>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889dee0>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3dee0>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10889dd20>
+<frozen importlib._bootstrap>:549: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10af3dd20>
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 ok
 test_report_computes_share_ratio_and_baseline_deltas (test_usage_review.UsageReviewTests.test_report_computes_share_ratio_and_baseline_deltas) ... ok
@@ -1598,7 +1624,7 @@ test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.Vali
 test_recursive_scans_skip_gitignored_local_state (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
 test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
 test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
-test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: $TMPDIR/validate-agent-assets-test-27s7too1/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: $TMPDIR/validate-agent-assets-test-q2go4vio/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
 ok
 test_runner_homes_match_anywhere (test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
 test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
@@ -1627,6 +1653,7 @@ test_no_required_contexts_job_has_a_job_level_if_or_needs (test_workflow_orchest
 test_the_reader_fails_closed_on_unsupported_key_forms (test_workflow_orchestration_skip.RequiredContextsTest.test_the_reader_fails_closed_on_unsupported_key_forms) ... ok
 test_the_required_contexts_are_the_workflows_jobs (test_workflow_orchestration_skip.RequiredContextsTest.test_the_required_contexts_are_the_workflows_jobs) ... ok
 test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script (test_workflow_orchestration_skip.WorkflowTriggerTest.test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script) ... ok
+test_the_matrices_do_not_fail_fast (test_workflow_orchestration_skip.WorkflowTriggerTest.test_the_matrices_do_not_fail_fast) ... ok
 test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run (test_workflow_orchestration_skip.WorkflowTriggerTest.test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run) ... ok
 test_checkout_does_not_persist_credentials_without_explicit_exemption (test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
 test_checkout_rejects_duplicate_or_non_false_credential_settings (test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
@@ -1758,7 +1785,7 @@ Traceback (most recent call last):
   File "$HOME/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 970, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/runtime-health-test-ljjhzr91/agmsg-repo/commands.log'
+FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/runtime-health-test-r7bac1wb/agmsg-repo/commands.log'
 
 ======================================================================
 ERROR: test_agmsg_migration_reports_an_installer_that_mutates_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state)
@@ -1773,7 +1800,7 @@ Traceback (most recent call last):
   File "$HOME/.local/share/mise/installs/python/latest/lib/python3.15/pathlib/__init__.py", line 970, in open
     return io.open(self, mode, buffering, encoding, errors, newline)
            ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/runtime-health-test-3xi6me6b/agmsg-repo/commands.log'
+FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/runtime-health-test-_2ls45_9/agmsg-repo/commands.log'
 
 ======================================================================
 FAIL: test_character_device_placeholder_is_skipped (test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped)
@@ -1783,7 +1810,7 @@ Traceback (most recent call last):
     self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null", dev="0:7")), "")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '$MAIN/.claud[145 chars]&1\n' != ''
-- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 32728 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
+- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 19178 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
 
 
 ======================================================================
@@ -1794,7 +1821,7 @@ Traceback (most recent call last):
     self.assertEqual(self.assert_gate(self.main, 0), "")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '$MAIN/.claud[145 chars]&1\n' != ''
-- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 32871 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
+- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 19417 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
 
 
 ======================================================================
@@ -1805,7 +1832,7 @@ Traceback (most recent call last):
     self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '$MAIN/.claud[145 chars]&1\n' != ''
-- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 38060 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
+- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 21731 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
 
 
 ======================================================================
@@ -1816,7 +1843,7 @@ Traceback (most recent call last):
     self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: '$MAIN/.claud[145 chars]&1\n' != ''
-- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 38233 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
+- $MAIN/.claude/worktrees/worker-d/scripts/agent-stop-gate.sh: line 218: 21861 Terminated: 15          ( sleep "${remaining}"; kill "${child}" ) > /dev/null 2>&1
 
 
 ======================================================================
@@ -1839,7 +1866,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-65u419y0/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-gsuhw_2y/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1850,7 +1877,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2549, in test_add_worker_exits_zero_when_a_timed_out_spawn_still_links
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-c6ju1nzu/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-c7k3urta/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1864,7 +1891,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-yazl8uca/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-7tbwg8ku/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1875,7 +1902,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2765, in test_add_worker_linkage_failure_prints_the_invocation_and_the_query
     self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 4 : Codex loads the new hook in $TMPDIR/herdr-agents-test-jqb24avs/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 4 : Codex loads the new hook in $TMPDIR/herdr-agents-test-1vbh8ujq/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1886,7 +1913,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2639, in test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-fk2cakk4/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-bp3z9v2c/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1897,7 +1924,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2702, in test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-316n_7b1/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-i7z101kb/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1908,7 +1935,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2734, in test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-wrk4kcdv/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-dofr_5gz/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1919,7 +1946,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2753, in test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-wfgxcnzm/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-lfag48tn/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1930,7 +1957,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2716, in test_add_worker_linkage_ignores_a_placement_record_from_another_workspace
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-6ax_8eh0/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-l6d5isjh/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1941,7 +1968,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2794, in test_add_worker_linkage_ignores_a_pong_older_than_this_ping
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-uh0mcrap/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-2rq0xs6p/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1952,7 +1979,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2675, in test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-odi9eu23/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-o5v5yy63/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1973,7 +2000,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2659, in test_add_worker_linkage_survives_a_non_numeric_pong_wait
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-3pwyl331/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-lrdrvy8m/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -1984,7 +2011,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2570, in test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-wuyn5qlo/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-n30ewmgy/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2005,7 +2032,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2268, in test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-fek7m8bz/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-konrv7qx/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2026,7 +2053,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 3168, in test_add_worker_reports_a_failed_spawn
     self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 3 : Codex loads the new hook in $TMPDIR/herdr-agents-test-pwcgsszf/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 3 : Codex loads the new hook in $TMPDIR/herdr-agents-test-e0o0hs3h/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2037,7 +2064,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2505, in test_add_worker_reports_linkage_ok_after_a_ready_spawn
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-2s3337ff/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-ljqscq8w/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2048,7 +2075,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2532, in test_add_worker_reports_linkage_unreached_after_a_failed_spawn
     self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 3 : Codex loads the new hook in $TMPDIR/herdr-agents-test-iwtxvm23/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 3 : Codex loads the new hook in $TMPDIR/herdr-agents-test-k7vwebxl/project/.claude/worktrees/b1 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2062,7 +2089,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2208, in run_codex_add_worker
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-yfalivek/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-j0l16gdy/project/.claude/worktrees/b2 only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2103,7 +2130,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_herdr_agents.py", line 2119, in test_added_worker_boot_keeps_the_inherited_github_environment
     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-7u9hlnx6/project/.claude/worktrees/github-codex only after that project .codex layer is trusted; run /hooks or trust it in Codex.
+AssertionError: 1 != 0 : Codex loads the new hook in $TMPDIR/herdr-agents-test-g8ehhxoj/project/.claude/worktrees/github-codex only after that project .codex layer is trusted; run /hooks or trust it in Codex.
 mktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted
 
 
@@ -2130,7 +2157,7 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-AssertionError: 'seat_claim=failed status=held team=dotfiles owner=sid-stdin.326' not found in ['seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes']
+AssertionError: 'seat_claim=failed status=held team=dotfiles owner=sid-stdin.93289' not found in ['seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes']
 
 ======================================================================
 FAIL: test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes)
@@ -2139,7 +2166,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_runtime_health.py", line 1014, in test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes
     self.assertNotIn("installer failed", output)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-m0_prp5x/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: none); see the reason above.\n'
+AssertionError: 'installer failed' unexpectedly found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-9aaw4xj2/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: none); see the reason above.\n'
 
 ======================================================================
 FAIL: test_agmsg_checksum_mismatch_fails_closed (test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed)
@@ -2166,7 +2193,7 @@ Traceback (most recent call last):
   File "$MAIN/.claude/worktrees/worker-d/tests/unit/test_runtime_health.py", line 1063, in test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty
     self.assertIn("hashed fewer live-state files than exist", output)
     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: 'hashed fewer live-state files than exist' not found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-2ymqpghx/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
+AssertionError: 'hashed fewer live-state files than exist' not found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-g_e72y8e/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
 
 ======================================================================
 FAIL: test_agmsg_reports_an_installer_that_leaves_the_wrong_version (test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version)
@@ -2194,17 +2221,17 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-AssertionError: 'install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state' not found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-j3pst92q/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
+AssertionError: 'install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state' not found in '\n==> agmsg\nmktemp: mkstemp failed on <darwin-user-temp>: Operation not permitted\nagmsg: could not snapshot the live state under $TMPDIR/runtime-health-test-4bfr0pwq/agmsg-home/.agents/skills/agmsg; nothing was installed\nagmsg installer failed (installed: 1.0.0); see the reason above.\n'
 
 ----------------------------------------------------------------------
-Ran 1187 tests in 801.448s
+Ran 1188 tests in 691.871s
 
 FAILED (failures=38, errors=10, skipped=2)
 make: *** [unit-test] Error 1
 ```
 The failing tests by module, and the same modules on a scratch worktree of origin/main (removed afterwards), under the same settings:
 ```console
-$ grep -E "^(FAIL|ERROR): test_" "$SCRATCH/a02-unit-test-neutral.txt" | grep -oE "test_[a-z_]+\.[A-Z][A-Za-z]+Test" | sort | uniq -c
+$ grep -E "^(FAIL|ERROR): test_" "$SCRATCH/a02r1-unit-test-neutral.txt" | grep -oE "test_[a-z_]+\.[A-Z][A-Za-z]+Test" | sort | uniq -c
    4 test_agent_stop_gate.AgentStopGateTest
    5 test_gh_auth.GhAuthTest
   31 test_herdr_agents.HerdrAgentsTest
@@ -2214,17 +2241,17 @@ Ran 46 tests in 25.764s FAILED (failures=4, skipped=1)
 Ran 9 tests in 0.635s FAILED (errors=5) 
 Ran 193 tests in 238.173s FAILED (failures=28, errors=3) 
 Ran 55 tests in 43.400s FAILED (failures=6, errors=2) 
-$ grep -E "^(FAIL|ERROR): test_" <the head run> | sed "s/ (.*//" | sort > head.tests; <the same over the four base files> > base.tests; wc -l head.tests base.tests; diff base.tests head.tests && echo "identical failing tests on origin/main and at 492e7e28"
-      48 $SCRATCH/a02-fail-head.tests
+$ grep -E "^(FAIL|ERROR): test_" <the head run> | sed "s/ (.*//" | sort > head.tests; <the same over the four base files> > base.tests; wc -l head.tests base.tests; diff base.tests head.tests && echo "identical failing tests on origin/main and at 3bd08848"
+      48 $SCRATCH/a02r1-fail-head.tests
       48 $SCRATCH/a02-fail-base.tests
       96 total
-identical failing tests on origin/main and at 492e7e28
+identical failing tests on origin/main and at 3bd08848
 ```
-## 12. `make format`: the complete output and exit status
+## 12. `make format` at 3bd08848: the complete output and exit status
 
 The whole-tree shfmt step fails on 12 files, all unchanged from `origin/main` (10 `.orchestration/tasks/*-input/` records, `home/dot_claude/hooks/executable_project-map-reload.sh`, `tests/install/macos/common/brew.bats`), so make stops before its ruff and prettier steps. Those two run below on their own, as make runs them. CI's shfmt step (`install/**/*.sh`, `scripts/**/*.sh`, `-i 4 -sr`) is §6's form.
 ```console
-$ make format > "$SCRATCH/a02-make-format.txt" 2>&1; echo "make format rc=$?"; cat "$SCRATCH/a02-make-format.txt"
+$ make format > "$SCRATCH/a02r1-make-format.txt" 2>&1; echo "make format rc=$?"; cat "$SCRATCH/a02r1-make-format.txt"
 make format rc=2
 shfmt --indent 4 --space-redirects --diff .
 diff .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/pr-cost.sh.orig .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/pr-cost.sh
@@ -2669,7 +2696,8 @@ diff tests/install/macos/common/brew.bats.orig tests/install/macos/common/brew.b
      }
  
 make: *** [format] Error 1
-$ grep -E "^\+\+\+ " "$SCRATCH/a02-make-format.txt" | sed "s/^+++ //" | sort -u > flagged; git diff --quiet origin/main -- $(cat flagged) && echo "every flagged file is unchanged from origin/main"; git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check | tail -1; git ls-files -z "*.md" | xargs -0 prettier --check | tail -1
+$ grep -E "^\+\+\+ " "$SCRATCH/a02r1-make-format.txt" | sed "s/^+++ //" | sort -u > flagged; wc -l < flagged; git diff --quiet origin/main -- $(cat flagged) && echo "every flagged file is unchanged from origin/main"; git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check | tail -1; git ls-files -z "*.md" | xargs -0 prettier --check | tail -1
+12
 every flagged file is unchanged from origin/main
 62 files already formatted
 All matched files use Prettier code style!
@@ -2680,8 +2708,8 @@ $ git worktree add --detach -q "$SCRATCH/va2-guard" HEAD && sed -i "" 's/while \
 116:    while IFS=$'\t' read -r id job_regex log_regex; do
 unittest exit status: 1
 FAIL: test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs (case='a missing log matches no signature, however broad')
-AssertionError: 3 != 0 : rerun: run 101, 1 job(s), recorded in $TMPDIR/tmpy8f03blr/repo/.orchestration/validation/ci-reruns.tsv
-Ran 1 test in 2.900s
+AssertionError: 3 != 0 : rerun: run 101, 1 job(s), recorded in $TMPDIR/tmp6p5jw7x8/repo/.orchestration/validation/ci-reruns.tsv
+Ran 1 test in 3.160s
 FAILED (failures=1)
 [exit 0]
 ```
@@ -2690,3 +2718,6 @@ FAILED (failures=1)
 $ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T133 a02 (INV-6 reset of a01): ci-rerun.sh reruns a completed run once only when its pull request's current head is the run's headSha (checked before the log reads and again after the reservation), every failure, timed_out or cancelled job matches .github/flakes.yaml, and an atomic per-run ci-reruns.lock.d/<run-id> is created before the ledger rows and the rerun; only root-level Markdown lets a PR skip macOS. Open: fail-fast cancellations need a spec decision." 2>&1 | tail -1
 4a84814c-b3fe-43fc-ba6f-f0ed64dd4e34
 ```
+## 15. Revise round 1 (amendment 1, ACCEPTANCE revise of 08:03:45Z, previous_head 6b2ff08f)
+
+`check=tests/unit/test_workflow_orchestration_skip.py::test_the_matrices_do_not_fail_fast`: red on `eb4a0c34` (6b2ff08f plus the test) for the `test`, `public-bootstrap` and `private-bootstrap` matrices (§4, `unittest exit status: 1`), and green at `3bd08848` (§4, the Check's 33 tests). `.orchestration/dotfiles-T133-ci-efficiency-a02/revise.yaml` carries `previous_head` and the selector, and the task copy is amendment 1's text (§1). The round is pushed once, as a single command. The new head's CI, its feedback counts and the Bot state are reported in the RESULT, because a record cannot hold its own commit's CI.

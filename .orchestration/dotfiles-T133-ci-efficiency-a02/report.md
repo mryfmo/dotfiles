@@ -5,9 +5,9 @@ reset_of: dotfiles-T133-ci-efficiency-a01
 branch: tools/ci-efficiency-a01
 pr: 409
 base: 99a4a80f (origin/main)
-previous_head: 27613c0c1ea978de1f0250a4a254de07fa543e98 (a01's last head, audited incorrect)
-code_commit: 492e7e28 (the test commit 1bb5d946 and the fix fa66ad4d; the worker review round: the test commit 72fcb93b and the fix 492e7e28)
-task_sha256: 0695769b8d3bb670629303e495102695f91b9545d573e2b72230a6192fdb46ed
+previous_head: 6b2ff08f0b09d719eb3786fd032ce16786002257 (a02's first RESULT; the revise round 1 of 08:03:45Z, amendment 1)
+code_commit: 3bd08848 (the test commit 1bb5d946 and the fix fa66ad4d; the worker review round: 72fcb93b and 492e7e28; the orchestrator's revise round 1: eb4a0c34 and 3bd08848)
+task_sha256: 684257319a5b9b5f5c67fe5852aedd76fd5b9db4bb4f5a1ff0b928a0ad61ab98 (amendment 1; dispatched at 0695769b…)
 ---
 
 # Report: dotfiles-T133-ci-efficiency-a02
@@ -51,6 +51,15 @@ Red: on `1bb5d946` (= `27613c0c` plus the tests, no fix) the Check's command giv
   - The measured flake run 39046848147 attempt 1 has `public-bootstrap (macos-14, client)` and `public-bootstrap (ubuntu-24.04, server)` cancelled beside the failed job, so the helper exits 3 on the very run that justifies the only signature.
   - The remedy is a spec decision: `fail-fast: false` in `test.yaml` and `remote.yaml` (both in `allowed_files`; failing PRs would then run every matrix job to completion), or a rule for cancellations a sibling's failure caused.
 
+## Revise round 1 (amendment 1, ACCEPTANCE revise of 08:03:45Z, previous_head 6b2ff08f)
+
+The orchestrator decided the spec-level P2 this seat proposed in its 07:58Z RESULT:
+
+- **The change:** the `test` matrix in `test.yaml` and the `public-bootstrap` and moved `private-bootstrap` matrices set `strategy.fail-fast: false`, with a two-line comment above each `strategy:` that says why. Every matrix job now reports its own conclusion, so a required context is never cancelled by a sibling, and a cancellation `ci-rerun.sh` meets still needs its own signature.
+- **Test:** `tests/unit/test_workflow_orchestration_skip.py::test_the_matrices_do_not_fail_fast` reads the three strategy blocks. It is red on `eb4a0c34`, which is `6b2ff08f` plus the test, for all three jobs, and green at `3bd08848`.
+- **Records:** the task copy is amendment 1's text (`68425731…`), and `revise.yaml` carries `previous_head` and the selector. The Check's command passes 33 tests, and `make unit-test` and `make format` ran again at `3bd08848` (validation §4, §11 and §12).
+- **Caps:** 216 changed lines outside `tests/`, `.orchestration/` and the moved job (302 with the 86 lines the move removed from `remote.yaml`; cap 330). `private-bootstrap.yaml` counted separately: 104 added lines. `tests/`: 435 (cap 500).
+
 ## Item 12: evidence counts
 
 - My a01 RESULT's "CI 13/13" is withdrawn: it counted `gh pr checks` rows, which mix check runs and commit statuses.
@@ -59,16 +68,16 @@ Red: on `1bb5d946` (= `27613c0c` plus the tests, no fix) the Check's command giv
 
 ## The Check
 
-- `uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v`: 32 tests, green at the head (§4).
-- `make unit-test` (§11, complete output): 1187 tests, `rc=2`, with 38 failures and 10 errors. The run sets `GIT_CONFIG_GLOBAL=/dev/null` and puts the `mktemp` shim first on `PATH` to neutralize the sandbox's signing and `mktemp` limits. The 48 failing tests sit in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (31) and `test_runtime_health` (8), none touched by this PR. The same 48 fail on `origin/main` `99a4a80f` under the same settings, so they are reported as pre-existing failures, never as passing.
-- `make format` (§12, complete output): `rc=2`. Its whole-tree shfmt step flags 12 files, all unchanged from `origin/main`. ruff and prettier are clean.
+- `uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v`: 33 tests, green at `3bd08848` (§4); 32 at `492e7e28` before the revise round.
+- `make unit-test` (§11, complete output, at `3bd08848`): 1188 tests, `rc=2`, with 38 failures and 10 errors (the same at `492e7e28` with 1187 tests). The run sets `GIT_CONFIG_GLOBAL=/dev/null` and puts the `mktemp` shim first on `PATH` to neutralize the sandbox's signing and `mktemp` limits. The 48 failing tests sit in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (31) and `test_runtime_health` (8), none touched by this PR. The same 48 fail on `origin/main` `99a4a80f` under the same settings, so they are reported as pre-existing failures, never as passing.
+- `make format` (§12, complete output, at `3bd08848`): `rc=2`. Its whole-tree shfmt step flags 12 files, all unchanged from `origin/main`. ruff and prettier are clean.
 - `shellcheck scripts/orchestrator/ci-rerun.sh` is clean. `shfmt -d`: the repository form `shfmt -i 4 -sr -d` is clean. A bare `shfmt -d` asks for tabs on this file and on every tracked script, because `.editorconfig` sets `indent_size = 4` with no `indent_style`; `make format` and CI pass `-i 4 -sr` (§6).
-- Caps (§8): 210 changed lines outside `tests/`, `.orchestration/` and the moved job (296 if the 86 lines the move removed from `remote.yaml` count too; cap 330). `private-bootstrap.yaml`, the extracted job, counted separately: 101 added lines. `tests/`: 427 (cap 500).
+- Caps (§8, at `3bd08848`): 216 changed lines outside `tests/`, `.orchestration/` and the moved job (302 if the 86 lines the move removed from `remote.yaml` count too; cap 330). `private-bootstrap.yaml`, the extracted job, counted separately: 104 added lines. `tests/`: 435 (cap 500).
 - After the push: `gh run list --branch tools/ci-efficiency-a01 --json name,event,conclusion,headSha`, `gh pr checks 409 --required` and the final head's feedback counts go in the RESULT, because a record cannot hold its own commit's CI.
 
 ## Changed files
 
-`.github/workflows/test.yaml`, `.github/workflows/remote.yaml`, `.github/workflows/private-bootstrap.yaml` (the extracted workflow), `.github/workflows/agent-assets.yml`, `.github/flakes.yaml`, `scripts/orchestrator/ci-rerun.sh` (the new script), `tests/unit/test_workflow_orchestration_skip.py`, `tests/unit/test_ci_rerun.py` and `tests/unit/test_workflow_security.py`. In this round: `test.yaml`, `flakes.yaml`, `ci-rerun.sh` and the two test modules.
+`.github/workflows/test.yaml`, `.github/workflows/remote.yaml`, `.github/workflows/private-bootstrap.yaml` (the extracted workflow), `.github/workflows/agent-assets.yml`, `.github/flakes.yaml`, `scripts/orchestrator/ci-rerun.sh` (the new script), `tests/unit/test_workflow_orchestration_skip.py`, `tests/unit/test_ci_rerun.py` and `tests/unit/test_workflow_security.py`. In the first a02 round: `test.yaml`, `flakes.yaml`, `ci-rerun.sh` and the two test modules. In revise round 1: `test.yaml`, `remote.yaml`, `private-bootstrap.yaml` and `test_workflow_orchestration_skip.py`.
 
 ## Review, hook, cost
 

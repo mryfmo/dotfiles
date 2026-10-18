@@ -940,6 +940,12 @@ function update_omp() (
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
         return 1
     fi
+    # npm refuses with EEXIST to replace a bin link it does not own, so a dangling one left by an
+    # older install goes first; a live link, a file or a directory stays for npm to judge.
+    if [ -L "${HOME}/.local/bin/omp" ] && [ ! -e "${HOME}/.local/bin/omp" ]; then
+        printf 'Removing the dangling omp link %s (it pointed to %s).\n' "${HOME}/.local/bin/omp" "$(readlink "${HOME}/.local/bin/omp")"
+        rm "${HOME}/.local/bin/omp" || return
+    fi
     # Allow this reviewed pin before the default three-day cooldown expires.
     npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
     installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none

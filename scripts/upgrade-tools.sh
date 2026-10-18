@@ -415,13 +415,41 @@ function upgrade_mise_tools() {
 }
 
 #
-# @description Upgrade uv tool installations when uv is available.
+# @description Print the manifest pin of an asset installed from a wheel (an assets.<name>.files URL ending in .whl), or nothing.
+# @arg $1 string Asset name.
+#
+function manifest_wheel_pin() {
+    # shortcut: reads the unquoted block style of home/dot_agents/agent-config.yaml line by line, not as YAML; use a parser if assets: gains quotes or flow style.
+    awk -v name="$1" '
+        /^[^ #]/ { in_assets = ($0 ~ /^assets:/) }
+        in_assets && /^  [^ #]/ { asset = $1; sub(/:$/, "", asset) }
+        in_assets && asset == name && /^    pin:/ { pin = $2 }
+        in_assets && asset == name && /\.whl$/ { wheel = 1 }
+        END { if (wheel) print pin }
+    ' "${repo_root}/home/dot_agents/agent-config.yaml"
+}
+
+#
+# @description Upgrade uv tool installations when uv is available, except the ones the manifest pins from a wheel.
 #
 function upgrade_uv_tools() {
+    local tools tool pin failed=0
     has_command uv || return 1
 
     section "uv tools"
-    uv tool upgrade --all
+    # Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set (herdr-agents panes): uv colours tool names there.
+    tools="$(uv tool list --color never)" || return
+    # Tool lines read "<name> v<version>"; their entry points follow as "- <command>".
+    for tool in $(printf '%s\n' "${tools}" | awk '/^[^- ]/ { print $1 }'); do
+        pin="$(manifest_wheel_pin "${tool}")" || return
+        if [ -n "${pin}" ]; then
+            # uv's receipt names the local wheel, so an index upgrade has nothing to move; update-agent-assets.sh does.
+            printf 'skip: %s (manifest pins %s from a wheel)\n' "${tool}" "${pin}"
+        else
+            uv tool upgrade "${tool}" || failed=1
+        fi
+    done
+    return "${failed}"
 }
 
 #

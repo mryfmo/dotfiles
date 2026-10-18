@@ -45,6 +45,7 @@ TASK = (
     "## Check\n\nat most 3 changed lines outside `tests/` and `.orchestration/`, 2 under `tests/`.\n"
 )
 CODE = {"src/tool.sh": "a\nb\nc\n", "tests/unit/test_tool.py": "x = 1\ny = 2\n"}
+SKIPPED = f"regime-ci: warning: {T}: checker skipped: the copy is unverifiable, and the base's checker reads only the base's text"
 GIT_ENV = {f"GIT_{role}_{k}": v for role in ("AUTHOR", "COMMITTER") for k, v in (("NAME", "t"), ("EMAIL", "t@t"))}
 
 
@@ -158,6 +159,9 @@ class RegimeCiTest(unittest.TestCase):
                     self.assertIn(f"regime-ci: {T}: task-copy: ", result.stdout)
                 else:
                     self.assertIn(f"regime-ci: warning: {T}: checker skipped: the copy is unverifiable", result.stdout)
+                    self.assertIn(
+                        f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)", result.stdout
+                    )
 
     def test_regime_ci_keeps_an_authenticated_predecessor_a_head_only_successor_names(self):
         # Worker review P3: a successor with no dispatched text at the base cannot drop a dispatched task from the check.
@@ -166,6 +170,12 @@ class RegimeCiTest(unittest.TestCase):
         result = self.build(code=CODE | {"stray.sh": "x\n", ".orchestration/t1-a02/task.md": successor})
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn(f"regime-ci: {T}: allowed-files: stray.sh is outside allowed_files", result.stdout)
+        # a02 amendment 1: the chain counts only when both copies verify, so a verified successor does not drop an
+        # unverifiable predecessor either; that predecessor is checked as its own (unverifiable) task
+        verified = {".orchestration/tasks/t1-a02.md": successor}
+        result = self.build(dispatched=None, base=verified, code=CODE | {".orchestration/t1-a02/task.md": successor})
+        self.assertIn(f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)", result.stdout)
+        self.assertNotIn("predecessor copy", result.stdout)
 
     def test_regime_ci_exempts_records_only_heads_by_content_not_branch_name(self):
         # Bot P1 4308651013 (a02 item 7): a branch name grants nothing; only the changed paths decide records-only.
@@ -190,7 +200,8 @@ class RegimeCiTest(unittest.TestCase):
                 self.assertIn(warning, result.stdout)
                 if not extra:
                     self.assertEqual(
-                        (0, [warning, "regime-ci: ok 1 task(s)"]), (result.returncode, result.stdout.splitlines())
+                        (0, [warning, SKIPPED, "regime-ci: ok 1 task(s)"]),
+                        (result.returncode, result.stdout.splitlines()),
                     )
                 flagged = self.regime(REGIME_REQUIRE_DISPATCHED="1")
                 self.assertEqual(1, flagged.returncode, flagged.stdout)
@@ -295,7 +306,7 @@ class RegimeCiTest(unittest.TestCase):
         unverifiable = f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)"
         result = self.build(dispatched=None)
         self.assertEqual(
-            (0, [unverifiable, "regime-ci: ok 1 task(s)"]), (result.returncode, result.stdout.splitlines())
+            (0, [unverifiable, SKIPPED, "regime-ci: ok 1 task(s)"]), (result.returncode, result.stdout.splitlines())
         )
         result = self.build(dispatched=None, task_copy="0" * 64)
         self.assertEqual(1, result.returncode, result.stdout)
@@ -374,6 +385,7 @@ class RegimeCiTest(unittest.TestCase):
         result = self.build(dispatched=None, precheck_head="absent")
         warnings = [
             f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)",
+            SKIPPED,
             f"regime-ci: warning: {T}: precheck absent",
             "regime-ci: ok 1 task(s)",
         ]

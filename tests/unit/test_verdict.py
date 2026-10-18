@@ -229,8 +229,7 @@ class VerdictTest(unittest.TestCase):
                 self.audit(**finding)
                 (self.calls / "calls.log").unlink(missing_ok=True)
                 self.verdict(*apply, code=code)
-                self.assertNotIn("dispatch", self.calls_log())
-                self.assertNotIn("pr merge", self.calls_log())
+                self.assertNotRegex(self.calls_log(), "dispatch|pr merge")
         self.green()
         (self.calls / "calls.log").unlink()
         self.verdict(*apply, code=0)
@@ -269,8 +268,7 @@ class VerdictTest(unittest.TestCase):
         doc = self.verdict("--shadow", code=0)
         rows = (self.repo / f"{V}/verdict-shadow.tsv").read_text().splitlines()
         self.assertEqual([f"9\t{self.head}\taccept\t\t\t{doc['generated_at']}"], rows)
-        self.assertNotIn("dispatch", self.calls_log())
-        self.assertNotIn("pr merge", self.calls_log())
+        self.assertNotRegex(self.calls_log(), "dispatch|pr merge")
 
 
 if __name__ == "__main__":

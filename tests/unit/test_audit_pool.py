@@ -140,6 +140,7 @@ class AuditPoolTest(unittest.TestCase):
                 path = self.request(f"t{count}-a01", head)
                 self.run_script("audit-pool.sh", "--once")
                 self.assertTrue(path.with_suffix(outcome).exists())
+                self.assertNotIn("Too Many", (path.parent / f"{path.name}.log").read_text())  # no transcript text
                 delays = ["60", "120", "240"][: min(int(count), 3)]
                 self.assertEqual(delays, (self.calls / "sleep.log").read_text().split())
 

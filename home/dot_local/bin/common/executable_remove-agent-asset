@@ -438,12 +438,20 @@ function load_entry() {
 # @description Remove hcom: uv uninstalls its tool environment and receipt, then the recorded binary and wheel go.
 #
 function remove_hcom() {
-    has_command uv || {
+    local tools=""
+    if has_command uv; then
+        tools="$(uv tool dir)" || return 1
+    elif [ "${MODE}" = "yes" ]; then
         fail "uv command not found, so hcom's uv tool environment and receipt cannot be uninstalled; nothing was removed"
         return 1
-    }
+    fi
     preflight_deletion_paths "${RECORDED_PATHS[@]}"
-    run_operation uv tool uninstall hcom
+    # An hcom uv no longer has (uninstalled by hand or by an earlier run) must not stop the rest of the removal.
+    if [ -z "${tools}" ] || [ -d "${tools}/hcom" ]; then
+        run_operation uv tool uninstall hcom
+    else
+        printf 'SKIP: uv has no hcom tool environment under %s\n' "${tools}"
+    fi
     remove_recorded_paths "${RECORDED_PATHS[@]}"
 }
 

@@ -919,7 +919,7 @@ function update_terminal_browser() {
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside=""
+    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -941,11 +941,14 @@ function update_omp() (
         return 1
     fi
     # npm refuses with EEXIST to replace a bin entry it does not own, so a standalone file or a link outside this
-    # package (a mise or manual install, a dangling link included) moves aside, and comes back when the install fails.
-    if { [ -e "${entry}" ] || [ -L "${entry}" ]; } && [[ "$(readlink "${entry}")" != *lib/node_modules/@oh-my-pi/pi-coding-agent/* ]]; then
-        printf 'Moving %s aside for npm, which does not own it%s.\n' "${entry}" "$([ ! -L "${entry}" ] || printf ' (it points to %s)' "$(readlink "${entry}")")"
-        aside="${download_dir}/omp.previous"
-        mv "${entry}" "${aside}" || return
+    # prefix's package (a mise or manual install, a dangling link included) moves to a kept path, and comes back when
+    # the install fails; a directory stays for npm to judge.
+    link="$(readlink "${entry}")" || link=""
+    if { [ -f "${entry}" ] || [ -L "${entry}" ]; } && [[ "${link}" != ../lib/node_modules/@oh-my-pi/pi-coding-agent/* &&
+        "${link}" != "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/"* ]]; then
+        aside="${HOME}/.local/share/agent-assets/omp/omp.previous"
+        printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link})}"
+        mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
     fi
     # Allow this reviewed pin before the default three-day cooldown expires.
     npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" &&

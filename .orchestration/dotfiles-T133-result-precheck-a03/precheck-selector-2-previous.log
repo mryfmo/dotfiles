@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_pre_push_fails_closed_on_an_undecodable_blob (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_fails_closed_on_an_undecodable_blob)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.du2Mkc/previous/tests/unit/test_result_precheck.py", line 467, in test_pre_push_fails_closed_on_an_undecodable_blob
+    self.assertEqual(code, 1, err)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : To /private/tmp/claude-501/tmpqwhdhb1a/origin.git
+ * [new branch]      undecodable -> undecodable
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.593s
+
+FAILED (failures=1)

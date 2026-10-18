@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.du2Mkc/previous/tests/unit/test_result_precheck.py", line 459, in test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding
+    self.assertEqual(code, 1, err)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : To /private/tmp/claude-501/tmpyl9a12c8/origin.git
+ * [new branch]      json -> json
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.754s
+
+FAILED (failures=1)

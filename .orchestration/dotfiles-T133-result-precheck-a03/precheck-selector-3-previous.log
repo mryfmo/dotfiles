@@ -1,0 +1,21 @@
+F
+======================================================================
+FAIL: test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.du2Mkc/previous/tests/unit/test_result_precheck.py", line 350, in test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise
+    self.assertEqual((stale.returncode, sent, prefix in stale.stderr), (*outcome, True), stale.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, True, False) != (1, False, True)
+
+First differing element 0:
+0
+1
+
+- (0, True, False)
++ (1, False, True) : 
+
+----------------------------------------------------------------------
+Ran 1 test in 2.799s
+
+FAILED (failures=1)

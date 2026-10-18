@@ -1,0 +1,76 @@
+{
+  "head": "1ac3a1a674df895b541aff3a2fac8709b934abc9",
+  "tree": "5217cbc18db893a2f6987a096e419ee9832fa53b",
+  "generated_at": "2026-10-18T20:47:22Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "a6b1aaf56c0ff18497a5d737f2f69ad72d5e931a307d645102f5e23a02a7a474"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "487aa67922340408bfc8815a34545525710e2fd624adc3c040718db6bd95c922"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "95e07bf65aa34f2626bfa9c9be41e4b72eed3b567914f81a721ca2e1e1156d70",
+      "head_exit": 0,
+      "head_output_sha256": "365060747b52b559568b46e220ef0f44ec38a55d8ec64be1030e4f192e521035"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_push_fails_closed_on_an_undecodable_blob",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "0a3c59d6a4acc3a37e05e13534fcee279745e7897c8c41a0f76e0ec7f6014502",
+      "head_exit": 0,
+      "head_output_sha256": "1535d69cf677bb1092094ebdab9b3d996405c7cdd58153db87c21af483da3dc9"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "465ae980a96734240e4cb568ac485944438ce87190dace71bfaab7df5667a9b6",
+      "head_exit": 0,
+      "head_output_sha256": "f4363acfdd449447eee2cc9864db05419e46843dab97ebbd22ddd919e2a43561"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_push_reports_home_path_rewrites_only_under_orchestration",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "cdce6d5a112911dc51ab889517050e4ba4946854cf98f11ca5317a2c3f07a367",
+      "head_exit": 0,
+      "head_output_sha256": "4edeb2c9d41513a8d583f1508951fe517aabb75bb1b04ad0502c58c6541c2b99"
+    }
+  ]
+}

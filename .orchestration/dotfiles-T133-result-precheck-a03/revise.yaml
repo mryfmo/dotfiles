@@ -1,0 +1,10 @@
+task_id: dotfiles-T133-result-precheck-a03
+round: 1
+reset_of: dotfiles-T133-result-precheck-a02
+previous_head: 4ed1b27a666ba939db76051243143a7d7ed2aaa5
+check:
+  - tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding
+  - tests/unit/test_result_precheck.py::test_pre_push_fails_closed_on_an_undecodable_blob
+  - tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise
+  - tests/unit/test_result_precheck.py::test_pre_push_reports_home_path_rewrites_only_under_orchestration
+reason: the S1 redesign of a02 after the local review of 4ed1b27 (.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-4ed1b27.md); the four named regressions of items 5 to 7 run red against that production head with this head's test source and green here

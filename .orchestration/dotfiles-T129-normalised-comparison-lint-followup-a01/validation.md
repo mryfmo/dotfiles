@@ -1,7 +1,8 @@
 ---
 task_id: dotfiles-T129-normalised-comparison-lint-followup-a01
 seat: claude-standard-dot-a008
-head: 1219ab10
+head: 2554e954
+revise_1_previous_head: 6bea93a0125338f52ccd106196550d000faea2a8
 pre_rebase_head: bb60ee84
 ---
 
@@ -687,5 +688,45 @@ $ wc -l scripts/lint-comparisons.py; git diff --numstat origin/main...HEAD -- ":
 outside tests/ and .orchestration/, without the baseline: 200 of 200
 added under tests/: 271 of 1000
 the baseline (outside the count): 90
+[exit 0]
+```
+## 21. RED (revise 1): the check and the lint at the chain head b0479c87 (main 740772ef merged into 6bea93a0), in a scratch worktree; the three hits are main's lines
+```console
+$ git log --format="%h parents=%p %s" -1 b0479c87; cd "$R" && uv run python -m unittest tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_tracked_tree_is_clean_against_the_baseline 2>&1 | tail -n 1; uv run --no-project python -I scripts/lint-comparisons.py; echo "lint exit $?"; for hit in scripts/orchestrator/ci-rerun.sh:117 scripts/update-agent-assets.sh:950 scripts/update-agent-assets.sh:959; do f=${hit%:*}; n=${hit##*:}; echo "$hit $(git log --format=%h -1 -L"$n,$n:$f" | head -n 1): $(sed -n "${n}p" "$f" | sed "s/^ *//")"; done
+b0479c87 parents=6bea93a0 740772ef Merge branch 'main' into lint/normalised-comparisons-followup-a01
+FAILED (failures=1)
+scripts/orchestrator/ci-rerun.sh:117: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+scripts/update-agent-assets.sh:950: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+scripts/update-agent-assets.sh:959: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+lint exit 1
+scripts/orchestrator/ci-rerun.sh:117 3e41e36a: if grep -Eq -- "${job_regex}" <<< "${job}" && grep -Eq -- "${log_regex}" <<< "${log}"; then
+scripts/update-agent-assets.sh:950 740772ef: [[ -z "${link}" || "${link}" == /* ]] && part="${link}" || part="${entry%/*}/${link}"
+scripts/update-agent-assets.sh:959 740772ef: if { [ -f "${entry}" ] || [ -L "${entry}" ]; } && [[ "${resolved}" != "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/"* ]]; then
+[exit 0]
+```
+## 22. GREEN (revise 1) at the head: the rows 2554e954 adds, the Check's tests, the lint (exit 0, no output), ruff
+```console
+$ git rev-parse HEAD; git show --format= 2554e954 -- scripts/lint-comparisons-baseline.tsv | /usr/bin/grep "^[-+][^-+]"; git diff --quiet b0479c87 HEAD -- scripts/lint-comparisons.py tests && echo "script and tests unchanged since b0479c87"; uv run python -m unittest tests/unit/test_lint_comparisons.py 2>&1 | tail -n 1; uv run --no-project python -I scripts/lint-comparisons.py; echo "lint exit $?"; ruff check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py
+2554e954b14051948bf3419e986dfd489b3cb9bb
++scripts/orchestrator/ci-rerun.sh	R6	3aadbf84208a310a9e4a0bc9f240ebab87429b3ed15bd04a83a18607c0fd67f9
++scripts/update-agent-assets.sh	R1	1c780a546a27e0a65e2d6b2a6431df9c1fa1a84006a5cdf62579d97724ee8966
++scripts/update-agent-assets.sh	R1	1d5afafa1445dd075af19378727e3660a631287a1f251e19b0c9c450ca381e45
+script and tests unchanged since b0479c87
+OK
+lint exit 0
+All checks passed!
+[exit 0]
+```
+## 23. Caps against origin/main 740772ef
+```console
+$ git log --oneline -1 origin/main; wc -l scripts/lint-comparisons.py; git diff --numstat origin/main...HEAD -- ":!.orchestration"; git diff --numstat origin/main...HEAD | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1; next} \$3 == \"scripts/lint-comparisons-baseline.tsv\" {b += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/, without the baseline: %d of 200\nadded under tests/: %d of 1000\nthe baseline (outside the count): %d\n\", o, t, b}"
+740772ef fix(assets): uninstall hcom through uv, retry a failed hcom install, move an omp entry npm does not own aside (T129 assets-omp-hcom followup a02) (#416)
+     200 scripts/lint-comparisons.py
+93	0	scripts/lint-comparisons-baseline.tsv
+200	0	scripts/lint-comparisons.py
+271	0	tests/unit/test_lint_comparisons.py
+outside tests/ and .orchestration/, without the baseline: 200 of 200
+added under tests/: 271 of 1000
+the baseline (outside the count): 93
 [exit 0]
 ```

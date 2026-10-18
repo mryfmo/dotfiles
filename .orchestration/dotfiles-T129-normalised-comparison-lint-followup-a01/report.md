@@ -123,3 +123,18 @@ No `@codex review` was posted (the no-prompt rule).
 CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T129 normalised-comparison lint followup a01 (PR 415, supersedes 387): …'` printed `15f689eb-e1fa-4cd0-ab85-74cede1e7b0e`.
 
 cost: n/a
+
+## Revise round 1 (AGMSG-ACCEPTANCE status=revise, 2026-10-18T23:40:53Z; previous head 6bea93a0)
+
+- **Base:** the branch takes the chain's update-branch head `b0479c87`, the merge of `main` `740772ef` into `6bea93a0`. It is fetched from origin and fast-forwarded; there is no new merge and no rebase.
+- **The hits:** at `b0479c87` the check `tests/unit/test_lint_comparisons.py::test_the_tracked_tree_is_clean_against_the_baseline` fails on three hits, not one (validation §21; the CI run 39176861529 lists the same three on all four `test` jobs). All three are main's lines, merged after this branch was cut. None is in `scripts/lint-comparisons.py` or the tests.
+
+  | Hit | Rule | Merged by | Owner candidate (the assignment is the orchestrator's) |
+  |---|---|---|---|
+  | `scripts/orchestrator/ci-rerun.sh:117` (`grep -Eq -- "${job_regex}" <<< "${job}"`) | R6 | #409 (`3e41e36a`) | `dotfiles-T133-ci-efficiency-followup-a02` (lists the file; named by the revise) |
+  | `scripts/update-agent-assets.sh:950` (`[[ -z "${link}" \|\| "${link}" == /* ]]`) | R1 | #416 (`740772ef`) | `dotfiles-T129-assets-omp-hcom-followup-a03` (the #416 lineage's owner task; lists the file) |
+  | `scripts/update-agent-assets.sh:959` (`[[ "${resolved}" != "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/"* ]]`) | R1 | #416 (`740772ef`) | `dotfiles-T129-assets-omp-hcom-followup-a03` |
+
+- **The fix:** one content-hashed baseline row per hit, the rule of this task's item 2. The revise named only the first hit, because the CI assertion truncates its message after the first line (`[307 chars]`). The two #416 rows follow the same rule. They are in `2554e954`; no script changed.
+- **Green:** the check is green after `2554e954`. The lint exits 0 with no output, and the module passes (validation §22). Caps are in §23; the baseline stays outside the count.
+- **The PR description** still names the rebase's rows only. Editing it needs `gh pr edit`, a live ask rule, so this report carries the rows, as in the section above.

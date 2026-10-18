@@ -58,10 +58,10 @@
 #   never reads the message database, and it never passes an agent to
 #   history.sh, whose agent argument renames the caller's pane after it.
 #   Plan 024 P1-5: before an `AGMSG-ACCEPTANCE ... status=accepted` send, the task's newest `AGMSG-RESULT v1` in the
-#   pre-send window (none without a record) needs one `head=` (a commit here) and one `precheck=`, the sha256 of the
-#   head's `.orchestration/<task>/precheck.json`, whose `head` is the head or an ancestor whose diff to it is only under
-#   `.orchestration/<task>/`. A failure prints `precheck: <field> <reason>` (exit 1, nothing sent) under
-#   `PRECHECK_REQUIRED=1`, else `precheck: warning <field> <reason>`, and sends (plan 024 0d).
+#   pre-send window (none without a record), newer than its latest `status=revise` there, needs one `head=` (a commit
+#   here) and one `precheck=`, the sha256 of the head's `.orchestration/<task>/precheck.json`, whose `head` is the head
+#   or an ancestor whose diff to it is only under `.orchestration/<task>/`. A failure prints `precheck: <field>
+#   <reason>` (exit 1, nothing sent) under `PRECHECK_REQUIRED=1`, else `precheck: warning ...`, and sends (plan 024 0d).
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -171,9 +171,10 @@ def problem():
     found = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
     if not found: return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
     result = rows[found[-1]]
-    # The newest status=revise ACCEPTANCE before that RESULT names the selectors whose proofs the record must carry.
-    revises = [t for t in rows[: found[-1]] if t[:2] == ["AGMSG-ACCEPTANCE", "v1"] and f"task_id={task}" in t and "status=revise" in t]
-    requested = [t[6:] for t in revises[-1] if t.startswith("check=")] if revises else []
+    # The task's latest status=revise ACCEPTANCE, anywhere in the window, precedes that RESULT and names its proofs.
+    revises = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-ACCEPTANCE", "v1"] and f"task_id={task}" in t and "status=revise" in t]
+    if revises and revises[-1] > found[-1]: return f"result the newest RESULT for task_id={task} precedes its latest status=revise ACCEPTANCE"
+    requested = [t[6:] for t in rows[revises[-1]] if t.startswith("check=")] if revises else []
     if "status=ready_for_review" not in result: return "result the newest RESULT is not status=ready_for_review"
     heads = [t[5:] for t in result if t.startswith("head=")]
     wants = [t[9:] for t in result if t.startswith("precheck=")]

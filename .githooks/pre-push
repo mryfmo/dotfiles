@@ -4,12 +4,11 @@
 # @description
 #   For each stdin line `<local ref> <local sha> <remote ref> <remote sha>` whose local sha is not all zeros, every commit
 #   of `<remote sha>..<local sha>` (from `git merge-base origin/main <local sha>` when the remote sha is all zeros),
-#   merges included, appends the whole content of each blob it adds or changes to a `mktemp` file: `git cat-file blob
-#   <commit>:<path>`, the raw form of `git show <commit>:<path>` without textconv, so no binary attribute or NUL byte
-#   turns it into a summary, then a newline, so no token joins the last word of the blob before it. `result-precheck.sh --secrets` scans that file; a match prints its count and the range,
-#   never the text, and stops the push, as does a range git cannot read.
+#   merges included, has each blob it adds or changes scanned alone by `result-precheck.sh --blob <commit>:<path>` (the
+#   repository detector). A match stops the push with its count and the range, never the text; an undecodable or
+#   unreadable blob, a home path under `.orchestration/`, a failed scan or an unreadable range stops it with its line.
 # @stdin The ref lines git passes to a pre-push hook.
-# @exitcode 0 No pushed content holds a match. 1 A match, or a range that cannot be read.
+# @exitcode 0 No pushed blob holds a finding. 1 A finding, or a range or blob that cannot be read or scanned.
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/pre-push.XXXXXX")"
@@ -18,18 +17,20 @@ status=0
 while read -r ref sha _ remote; do
     [[ ! ${sha} =~ ^0+$ ]] || continue
     [[ ! ${remote} =~ ^0+$ ]] || remote="$(git merge-base origin/main "${sha}")"
-    : > "${work}/scan"
+    count=0
     git rev-list "${remote}..${sha}" > "${work}/commits"
     while read -r commit; do
         git diff-tree -r -m --root --no-commit-id --name-only -z --diff-filter=d "${commit}" > "${work}/paths"
         while IFS= read -r -d '' path; do
-            [[ "$(git cat-file -t "${commit}:${path}")" == blob ]] || continue
-            git cat-file blob "${commit}:${path}" >> "${work}/scan"
-            echo >> "${work}/scan" # a boundary: a blob's last word never joins the next blob's first
+            type="$(git cat-file -t "${commit}:${path}")"
+            [[ ${type} == blob ]] || continue
+            out="$(bash "${root}/scripts/orchestrator/result-precheck.sh" --blob "${commit}:${path}" < /dev/null)" && continue
+            status=1
+            [[ ! ${out} =~ secrets:\ ([0-9]+) ]] || count=$((count + BASH_REMATCH[1]))
+            [[ ${out} =~ (decoding|home-path|unreadable|secrets:\ [1-9]) ]] || out+=$'\n'"scan: ${commit:0:7}:${path} failed"
+            sed -e '/^secrets: /d' -e '/^$/d' -e 's/^/pre-push: /' <<< "${out}" >&2
         done < "${work}/paths"
     done < "${work}/commits"
-    count="$(bash "${root}/scripts/orchestrator/result-precheck.sh" --secrets "${work}/scan" < /dev/null)" && continue
-    echo "pre-push: ${count#secrets: } in ${remote}..${sha} (${ref}); the push is stopped" >&2
-    status=1
+    ((count == 0)) || echo "pre-push: ${count} match(es) in ${remote}..${sha} (${ref}); the push is stopped" >&2
 done
 exit "${status}"

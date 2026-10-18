@@ -1,0 +1,18 @@
+test_add_worker_passes_the_hooks_path_in_the_worker_environment_and_writes_no_git_config (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_the_hooks_path_in_the_worker_environment_and_writes_no_git_config) ... FAIL
+
+======================================================================
+FAIL: test_add_worker_passes_the_hooks_path_in_the_worker_environment_and_writes_no_git_config (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_the_hooks_path_in_the_worker_environment_and_writes_no_git_config)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2311, in test_add_worker_passes_the_hooks_path_in_the_worker_environment_and_writes_no_git_config
+    self.assertEqual(environment.read_text(), "1\tcore.hooksPath\t.githooks\n")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '\t\t\n' != '1\tcore.hooksPath\t.githooks\n'
+- 		
++ 1	core.hooksPath	.githooks
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.159s
+
+FAILED (failures=1)

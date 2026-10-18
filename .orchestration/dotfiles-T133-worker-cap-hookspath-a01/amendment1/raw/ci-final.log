@@ -1,0 +1,22 @@
+Final head: 982eeee02b22b0eae3cf5fc21fe48fd74791993e
+GitHub base: 99a4a80f5a5b32a70cf7eb4f4d0db5a02d113841
+CI watcher exit: 0
+validate SUCCESS
+public-bootstrap (ubuntu-24.04, client) SUCCESS
+test (ubuntu-24.04, client) SUCCESS
+public-bootstrap (ubuntu-24.04, server) SUCCESS
+test (ubuntu-24.04, server) SUCCESS
+public-bootstrap (macos-14, client) SUCCESS
+test (macos-14, client) SUCCESS
+test (ubuntu-26.04, client) SUCCESS
+private-bootstrap (ubuntu-24.04, client) SUCCESS
+private-bootstrap (ubuntu-24.04, server) SUCCESS
+private-bootstrap (macos-14, client) SUCCESS
+CodeRabbit SUCCESS
+GitGuardian Security Checks SUCCESS
+Bot feedback: 3 review events, 4 top-level inline findings, no review-body findings.
+4305767690 fixed:982eeee02b22b0eae3cf5fc21fe48fd74791993e
+4305767694 fixed:982eeee02b22b0eae3cf5fc21fe48fd74791993e
+4305769826 open:4305769826 (automatic Security Review, unchanged defect survives fix round)
+4305808095 proposed not-applicable:advisory P2 owned by dotfiles-T133-worker-cap-hookspath-followup-a01
+bot_rounds: 2; no third fix round; operator decision required.

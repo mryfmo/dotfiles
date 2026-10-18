@@ -1,0 +1,15 @@
+test_add_worker_writes_no_git_configuration (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_writes_no_git_configuration) ... FAIL
+
+======================================================================
+FAIL: test_add_worker_writes_no_git_configuration (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_writes_no_git_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2304, in test_add_worker_writes_no_git_configuration
+    self.assertFalse(any(" config " in call for call in calls), calls)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : ['-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project rev-parse --path-format=absolute --git-common-dir', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project rev-parse --path-format=absolute --git-dir', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project rev-parse --path-format=absolute --git-common-dir', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project worktree add --detach ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project/.claude/worktrees/hooks origin/main', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project config --get extensions.worktreeConfig', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project config --bool extensions.worktreeConfig true', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project/.claude/worktrees/hooks config --worktree core.hooksPath .githooks', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project/.claude/worktrees/hooks rev-parse --path-format=absolute --git-dir', '-C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-9qki6m4a/project/.claude/worktrees/hooks rev-parse --path-format=absolute --git-common-dir']
+
+----------------------------------------------------------------------
+Ran 1 test in 3.485s
+
+FAILED (failures=1)

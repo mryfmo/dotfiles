@@ -1,0 +1,45 @@
+id	kind	title	state	evidence	updated_jst
+P1-1	phase1	マージ経路の復旧（2 トグル、#401、直列マージ、SKIP_RESOLVE、#400 暫定、chezmoi verify）	in-progress	strict true and 3 live ask rules (gh pr merge/create/update-branch) at 16:17: no merge, no PR create, no boundary PR possible without a prompt; #398 and #405 audited and merge-ready; chains done for #390 (held), #389 (superseded), #405, #398, #409, #408, #411 (stopped at local P1)	2026-10-18 16:22
+P1-2	phase1	再ラウンド削減（#390、#387）	pushed-awaiting-pr	F1 follow-up pushed by a011 at eeaa1962 (R1+R2 done); PR creation held by the gh pr create ask rule	2026-10-18 16:22
+P1-3	phase1	CI 効率化 F5（concurrency、private-bootstrap、in-job skip）	reset-a02	INV-6 S2: a01 withdrawn 15:47; a02 (codex review redesign, 5 audit P2 as items) dispatched to a011 15:58; PR #409 continues	2026-10-18 16:22
+P1-4a	phase1	verdict.sh、audit-pool.sh、schemas/audit.json	revise-1	a008 RESULT 15:58 (#410 e88ffad9, CI 13); 2 Bot P2 -> orchestrator revise 1 at 16:0x (RFC 3339 offset; offline PyYAML read); chain after the revised RESULT	2026-10-18 16:22
+P1-4	phase1	integrate-seat-a02（席側統合）	not-started	#393 stop、材料のみ	2026-10-18 11:0x
+P1-5	phase1	result-precheck.sh と受け入れ側の拒否	reset-a02-pending	INV-6 S2: a01 withdrawn 16:1x; a02 redesign (local review P1 binary-marked text + 2 P2) running; PR #411 continues	2026-10-18 16:22
+P1-6	phase1	記録自動生成と dispatch.sh --next	not-started	-	2026-10-18 11:0x
+P1-7	phase1	席数上限の数値化	reset-a02	INV-6 S2: a01 withdrawn 16:0x; a02 (lock path from git-common-dir) dispatched to a010 16:1x; PR #408 continues; hooks path re-planned as dotfiles-T133-worker-hooks-path-a01 (undispatched)	2026-10-18 16:22
+P1-8	phase1	ルール文の縮小（委任しない条項）	not-started	-	2026-10-18 11:0x
+P1-9	phase1	orchestrator 運用（handoff、timeout、20 分）	in-progress	INV-6 overrun found by the audits (M-20261018-10): resets now applied at every S2 line via a codex review-profile redesign (C-69); project-map updates at milestones (C-70)	2026-10-18 16:22
+P1-10	phase1	所見 disposition の自動化（dispositions.py、second-opinion）	not-started	-	2026-10-18 12:3x
+P1-11	phase1	CI regime ジョブ（regime.yml、regime-ci.py）	not-started	-	2026-10-18 12:3x
+P1-12	phase1	タスク文生成とチェッカー拡張（task-from-plan.py、C11〜C15、plan-check.py）	not-started	-	2026-10-18 12:3x
+P1-13	phase1	hold playbook（classes.yaml remedy、hold-playbook.sh）	not-started	-	2026-10-18 12:3x
+P1-14	phase1	permission guard と ruleset 補助	ready-to-dispatch	task text dotfiles-T133-permission-guard-gate-a01 written and checked (brought forward under the autonomy directive 13:5x); a010 after P1-7 revise and #396	2026-10-18 14:35
+#400-interim	phase1	#400 の P1 ラウンド（T131-fix、D3 (a)/(d)）	closed-D3d	#400 closed 13:4x; gate rebuild is in P1-14 (deadline 10/19 12:00)	2026-10-18 14:35
+make-update-1	phase1	#400 マージ後の make update と再着席（0d 手順）	blocked-until-P1-14	no #400 merge (D3 (d)); make update waits for the P1-14 gate replacement	2026-10-18 13:29
+boundary-23	phase1	boundary 23 の記録 PR（D-024-01〜12 を含む）	blocked-on-ask-rule	records prepared (masked once at 15:2x; NUL and scratch files pruned); the boundary PR needs gh pr create, a live ask rule; waits for the operator s 3-line removal	2026-10-18 16:22
+PRECHECK_REQUIRED	phase1	precheck の強制旗	0	4 席の merge-base 確認待ち	2026-10-18 12:4x
+verdict-shadow	phase1	verdict の shadow 比較（一致 4 件で --apply）	0/4	-	2026-10-18 12:4x
+DoD-P1	gate	第 1 段階の退出条件 a〜p	not-met	-	2026-10-18 12:4x
+A	phase2	資産固定	merged	#388 00:04、#398/#405 未	2026-10-18 11:0x
+B-1	phase2	omp 設定生成 stage 1	parked	draft #406 (2e978db7)	2026-10-18 14:35
+B-2	phase2	omp hooks / permission	not-started	docs/hooks.md 確認済み	2026-10-18 11:0x
+C-1	phase2	hcom-dispatch とバス読み	parked	draft #407 (dfa9001b)	2026-10-18 14:35
+C-2	phase2	hcom 着席と移植	not-started	-	2026-10-18 11:0x
+D	phase2	認証検査	reset-a02	#412 (parser version on main): a01 at 3 amendments -> a02 (codex review redesign: case-pattern name refusal, real-entry test, template rendering) dispatched to a010 16:1x after its P1-7 a02	2026-10-18 16:22
+X	phase2	切替	not-started	-	2026-10-18 11:0x
+E	phase2	撤去	not-started	agmsg 参照 69 ファイル	2026-10-18 11:0x
+G	phase2	pstack	not-started	タスク文のみ	2026-10-18 11:0x
+H	phase2	H1〜H9	not-started	-	2026-10-18 11:0x
+spark	phase2	relay と 2 席目	not-started	chezmoi 1d418126	2026-10-18 11:0x
+D1	decision	strict up-to-date OFF	pending-user	strict_required_status_checks_policy=true at 14:4x	2026-10-18 14:35
+D2	decision	thread resolution OFF	default	no pull_request rule in ruleset 24397953 at 13:0x: thread resolution not required; glue SKIP_RESOLVE=1	2026-10-18 13:29
+D3	decision	#400 暫定マージ	default-(d)	S1 fired before the round; #400 closed; T131 review record carries the class table and re-plan line	2026-10-18 13:29
+D4	decision	#393 stop → P1-4/5/7	default	#393 closed 13:4x, branch kept; requirements in P1-4/P1-5/P1-7	2026-10-18 13:29
+D5	decision	#399 close	default	#399 closed 13:4x, branch kept	2026-10-18 13:29
+D6	decision	#383 #315 #317 #323 close	default	#383 #315 #317 #323 closed 13:4x, branches kept	2026-10-18 13:29
+D7	decision	#403 close、#395 hold	default	#403 closed 13:4x; #395 held open	2026-10-18 13:29
+D8	decision	F3 → P1-4/P1-6	default	F3 task text not dispatched; requirements in P1-4/P1-6	2026-10-18 13:29
+D9	decision	切替後の orchestrator provider と費用記録	default	recorded; applies at phase 2	2026-10-18 13:29
+D10	decision	席上限 4 → 6	default	cap 4 (P1-7 dispatched); 6 after spark	2026-10-18 13:29
+D11	decision	spark relay 私設ブローカー	default	phase 2	2026-10-18 13:29
+D12	decision	Grok Bot は報告のみ	default	Grok Bot reports only	2026-10-18 13:29

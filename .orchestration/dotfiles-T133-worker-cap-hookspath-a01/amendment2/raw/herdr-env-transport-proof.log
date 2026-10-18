@@ -1,0 +1,12 @@
+CLI explicit --env: False exit: 1 (fixture refusal expected)
+CLI explicit --env: True exit: 1 (fixture refusal expected)
+Method: tab.create params: ['cwd', 'focus', 'label', 'workspace_id']
+caller-only GIT_CONFIG_COUNT transported: False
+caller-only GIT_CONFIG_KEY_0 transported: False
+caller-only GIT_CONFIG_VALUE_0 transported: False
+Method: tab.create params: ['cwd', 'env', 'focus', 'label', 'workspace_id']
+explicit GIT_CONFIG_COUNT transported: True
+explicit GIT_CONFIG_KEY_0 transported: True
+explicit GIT_CONFIG_VALUE_0 transported: True
+CONFIRMED: caller environment alone is not transported; explicit tab-create --env is required.
+No live Herdr pane contacted/created; non-fixture environment values were neither forwarded nor retained.

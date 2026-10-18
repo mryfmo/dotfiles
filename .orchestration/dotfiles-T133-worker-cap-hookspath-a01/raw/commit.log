@@ -1,0 +1,4 @@
+error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
+[tools/worker-cap-hookspath-a01 ffd8454d] fix(agents): enforce worker cap and worktree hooks path
+ 5 files changed, 229 insertions(+), 2 deletions(-)
+ create mode 100644 .orchestration/dotfiles-T133-worker-cap-hookspath-a01/task.md

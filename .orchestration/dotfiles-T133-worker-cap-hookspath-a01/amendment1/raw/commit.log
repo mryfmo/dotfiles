@@ -1,0 +1,3 @@
+error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
+[tools/worker-cap-hookspath-a01 982eeee0] fix(agents): serialize worker cap through seat registration
+ 3 files changed, 92 insertions(+), 4 deletions(-)

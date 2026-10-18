@@ -1,0 +1,5 @@
+105	0	.orchestration/dotfiles-T133-worker-cap-hookspath-a01/task.md
+3	0	home/dot_agents/agent-config.yaml
+2	2	home/dot_agents/skills/agmsg-orchestration/SKILL.md
+29	0	home/dot_local/bin/common/executable_herdr-agents
+178	0	tests/unit/test_herdr_agents.py

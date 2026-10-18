@@ -1,0 +1,3 @@
+Combined requested modules: 250 tests, 249 pass, one existing live-process test fails as reproduced on unchanged base.
+Docs module: 53/53 pass, file unchanged.
+All four new focused tests pass; final full run also lists them as ok.

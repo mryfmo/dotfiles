@@ -1,0 +1,2 @@
+PROVED: Bash retains the inherited file-description lock after Python exits.
+PROVED: explicit unlock permits the next process to acquire the same lock.

@@ -1,0 +1,26 @@
+test_add_worker_cap_count_and_registration_are_serialized_under_one_lock (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_cap_count_and_registration_are_serialized_under_one_lock) ... FAIL
+
+======================================================================
+FAIL: test_add_worker_cap_count_and_registration_are_serialized_under_one_lock (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_cap_count_and_registration_are_serialized_under_one_lock)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2226, in test_add_worker_cap_count_and_registration_are_serialized_under_one_lock
+    self.assertEqual(sorted(result.returncode for _, result in results), [0, 2], results)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [0, 0] != [0, 2]
+
+First differing element 1:
+0
+2
+
+- [0, 0]
+?     ^
+
++ [0, 2]
+?     ^
+ : [('concurrent-b', CompletedProcess(args=['bash', '~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_herdr-agents', '--add-worker', '.claude/worktrees/concurrent-b', '~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-lf76imo6/project'], returncode=0, stdout='Herdr agents worker added: claude-standard-dot-a007 in workspace w-test (~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-lf76imo6/project/.claude/worktrees/concurrent-b)\nlinkage=ok read_at=2026-10-01T00:00:00Z pong=no\n', stderr='')), ('concurrent-a', CompletedProcess(args=['bash', '~/Workspace/dotfiles/.claude/worktrees/worker-e/home/dot_local/bin/common/executable_herdr-agents', '--add-worker', '.claude/worktrees/concurrent-a', '~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-lf76imo6/project'], returncode=0, stdout='Herdr agents worker added: claude-standard-dot-a007 in workspace w-test (~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-lf76imo6/project/.claude/worktrees/concurrent-a)\nlinkage=ok read_at=2026-10-01T00:00:00Z pong=no\n', stderr=''))]
+
+----------------------------------------------------------------------
+Ran 1 test in 9.830s
+
+FAILED (failures=1)

@@ -1,0 +1,8 @@
+task_id: dotfiles-T133-result-precheck-a01
+round: 1
+revise: 1
+acceptance: "AGMSG-ACCEPTANCE v1 status=revise of 2026-10-18T06:26:12Z (bus message 2135)"
+reason: "small own-change P2 4305945406 of the Bot's first review (C-50): the pre-commit hook and the staged checks read working-tree files, not the staged blobs"
+previous_head: 3f5177a944244f9eda6205c357df4b5b9f1d6eee
+check:
+  - tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree

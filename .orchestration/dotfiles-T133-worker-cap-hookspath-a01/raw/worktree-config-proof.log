@@ -1,0 +1,26 @@
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main init -q
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m fixture
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main worktree add -q --detach ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/seat HEAD
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/seat config --worktree core.hooksPath .githooks
+EXIT: 128
+fatal: --worktree cannot be used with multiple working trees unless the config
+extension worktreeConfig is enabled. Please read "CONFIGURATION FILE"
+section in "git help worktree" for details
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main config --get core.hooksPath
+EXIT: 1
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main config --bool extensions.worktreeConfig true
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/seat config --worktree core.hooksPath .githooks
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main config --get extensions.worktreeConfig
+EXIT: 0
+true
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/seat config --get core.hooksPath
+EXIT: 0
+.githooks
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-zafr397e/main config --get core.hooksPath
+EXIT: 1
+PROVED: --worktree refuses multiple worktrees until the extension is enabled; afterwards only the seat has .githooks and main has no hooksPath.

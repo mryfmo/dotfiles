@@ -70,5 +70,6 @@ One PR from a fresh branch off `origin/main` after PR #387 merges. The Completio
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-(pending: pasted at dispatch)
+dotfiles-T129-normalised-comparison-lint-followup-a01.md: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a01.md
 ```

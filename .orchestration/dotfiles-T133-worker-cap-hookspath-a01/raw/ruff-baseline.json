@@ -1,0 +1,943 @@
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 22
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport json\nimport os\nimport re\nimport shlex\nimport shutil\nimport socket\nimport sqlite3\nimport subprocess\nimport sys\nimport tempfile\nimport textwrap\nimport threading\nimport time\nimport tomllib\nimport unittest\nfrom pathlib import Path\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 24
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 525
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 523
+          },
+          "location": {
+            "column": 13,
+            "row": 523
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 524
+          },
+          "location": {
+            "column": 35,
+            "row": 523
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 16,
+      "row": 517
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 517,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 578
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 576
+          },
+          "location": {
+            "column": 13,
+            "row": 576
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 577
+          },
+          "location": {
+            "column": 35,
+            "row": 576
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 16,
+      "row": 569
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 569,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 597
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 595
+          },
+          "location": {
+            "column": 13,
+            "row": 595
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 596
+          },
+          "location": {
+            "column": 35,
+            "row": 595
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 16,
+      "row": 589
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 589,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 665
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 663
+          },
+          "location": {
+            "column": 13,
+            "row": 663
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 664
+          },
+          "location": {
+            "column": 35,
+            "row": 663
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 16,
+      "row": 657
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 657,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1161
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1159
+          },
+          "location": {
+            "column": 13,
+            "row": 1159
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 1160
+          },
+          "location": {
+            "column": 35,
+            "row": 1159
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1154
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1154,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1172
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1170
+          },
+          "location": {
+            "column": 13,
+            "row": 1170
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 1171
+          },
+          "location": {
+            "column": 35,
+            "row": 1170
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 19,
+      "row": 1165
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1165,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 1194
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 1192
+          },
+          "location": {
+            "column": 13,
+            "row": 1192
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 1193
+          },
+          "location": {
+            "column": 35,
+            "row": 1192
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 1186
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 1186,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 2822
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 2820
+          },
+          "location": {
+            "column": 13,
+            "row": 2820
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 2821
+          },
+          "location": {
+            "column": 35,
+            "row": 2820
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 16,
+      "row": 2814
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 2814,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "RUF059",
+    "end_location": {
+      "column": 13,
+      "row": 2825
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "_main",
+          "end_location": {
+            "column": 13,
+            "row": 2825
+          },
+          "location": {
+            "column": 9,
+            "row": 2825
+          }
+        }
+      ],
+      "message": "Prefix it with an underscore or any other dummy variable pattern"
+    },
+    "location": {
+      "column": 9,
+      "row": 2825
+    },
+    "message": "Unpacked variable `main` is never used",
+    "name": "unused-unpacked-variable",
+    "noqa_row": 2825,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-unpacked-variable"
+  },
+  {
+    "cell": null,
+    "code": "RUF059",
+    "end_location": {
+      "column": 30,
+      "row": 2838
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "_other",
+          "end_location": {
+            "column": 30,
+            "row": 2838
+          },
+          "location": {
+            "column": 25,
+            "row": 2838
+          }
+        }
+      ],
+      "message": "Prefix it with an underscore or any other dummy variable pattern"
+    },
+    "location": {
+      "column": 25,
+      "row": 2838
+    },
+    "message": "Unpacked variable `other` is never used",
+    "name": "unused-unpacked-variable",
+    "noqa_row": 2838,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-unpacked-variable"
+  },
+  {
+    "cell": null,
+    "code": "RUF059",
+    "end_location": {
+      "column": 30,
+      "row": 2855
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "_other",
+          "end_location": {
+            "column": 30,
+            "row": 2855
+          },
+          "location": {
+            "column": 25,
+            "row": 2855
+          }
+        }
+      ],
+      "message": "Prefix it with an underscore or any other dummy variable pattern"
+    },
+    "location": {
+      "column": 25,
+      "row": 2855
+    },
+    "message": "Unpacked variable `other` is never used",
+    "name": "unused-unpacked-variable",
+    "noqa_row": 2855,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-unpacked-variable"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 83,
+      "row": 3037
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3036
+          },
+          "location": {
+            "column": 17,
+            "row": 3036
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 83,
+            "row": 3037
+          },
+          "location": {
+            "column": 83,
+            "row": 3037
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3036
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3036,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 82,
+      "row": 3039
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3038
+          },
+          "location": {
+            "column": 17,
+            "row": 3038
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 82,
+            "row": 3039
+          },
+          "location": {
+            "column": 82,
+            "row": 3039
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3038
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3038,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 100,
+      "row": 3082
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3079
+          },
+          "location": {
+            "column": 17,
+            "row": 3079
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 100,
+            "row": 3082
+          },
+          "location": {
+            "column": 100,
+            "row": 3082
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3079
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3079,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 87,
+      "row": 3103
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3101
+          },
+          "location": {
+            "column": 17,
+            "row": 3101
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 87,
+            "row": 3103
+          },
+          "location": {
+            "column": 87,
+            "row": 3103
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3101
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3101,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 123,
+      "row": 3119
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3118
+          },
+          "location": {
+            "column": 17,
+            "row": 3118
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 123,
+            "row": 3119
+          },
+          "location": {
+            "column": 123,
+            "row": 3119
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3118
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3118,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 100,
+      "row": 3139
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3136
+          },
+          "location": {
+            "column": 17,
+            "row": 3136
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 100,
+            "row": 3139
+          },
+          "location": {
+            "column": 100,
+            "row": 3139
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3136
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3136,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 84,
+      "row": 3906
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 3905
+          },
+          "location": {
+            "column": 17,
+            "row": 3905
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 84,
+            "row": 3906
+          },
+          "location": {
+            "column": 84,
+            "row": 3906
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 3905
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 3905,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 4946
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 4944
+          },
+          "location": {
+            "column": 13,
+            "row": 4944
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 4945
+          },
+          "location": {
+            "column": 35,
+            "row": 4944
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 4935
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 4935,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 4965
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 4963
+          },
+          "location": {
+            "column": 13,
+            "row": 4963
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 35,
+            "row": 4964
+          },
+          "location": {
+            "column": 35,
+            "row": 4963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 4954
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 4954,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  }
+]

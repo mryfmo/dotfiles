@@ -1,0 +1,10 @@
+{
+  "branch": "tools/worker-cap-hookspath-a01",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/27c36f4d0e07/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

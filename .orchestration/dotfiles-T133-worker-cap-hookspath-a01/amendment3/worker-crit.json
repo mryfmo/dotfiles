@@ -1,0 +1,8 @@
+[
+  {
+    "id": "t133-amendment3-independent-approval",
+    "body": "Independent read-only reviewer /root/independent_t133 found no actionable issue in Amendment3. The hooks configuration writes and header are removed, the worker cap and registration lock remain, the no-configuration test checks both traced writes and actual Git values, and revise.yaml binds previous_head 982eeee02b22b0eae3cf5fc21fe48fd74791993e to the requested test. Source/test diff SHA256 37f4e02d2f2871ac4eadc52865ff488bf65e4cdb981b3efde6d032753d2b068d; task-inclusive diff SHA256 79a5ca2c0f85a9c02358d375345836f13fc4a45e513e58b3955210ff43c8ca10; revise.yaml SHA256 c33fef5d5b0498aa3d7033684ea6ebd50fa392d816fb9e0b3af7bf2edd478ea7. Known separate-git-dir advisory remains owned by the named follow-up; this is not integration acceptance or a security-profile audit.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -1,0 +1,15 @@
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/main init -q
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/main -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m fixture
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/main worktree add -q --detach ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/seat HEAD
+EXIT: 0
+COMMAND: git -C ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/seat config --worktree core.hooksPath .shared-before-extension
+EXIT: 128
+fatal: --worktree cannot be used with multiple working trees unless the config
+extension worktreeConfig is enabled. Please read "CONFIGURATION FILE"
+section in "git help worktree" for details
+Traceback (most recent call last):
+  File "<stdin>", line 24, in <module>
+  File "<stdin>", line 18, in git
+AssertionError: CompletedProcess(args=['git', '-C', '~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/git-config-proof-ooz2_6l_/seat', 'config', '--worktree', 'core.hooksPath', '.shared-before-extension'], returncode=128, stdout='', stderr='fatal: --worktree cannot be used with multiple working trees unless the config\nextension worktreeConfig is enabled. Please read "CONFIGURATION FILE"\nsection in "git help worktree" for details\n')

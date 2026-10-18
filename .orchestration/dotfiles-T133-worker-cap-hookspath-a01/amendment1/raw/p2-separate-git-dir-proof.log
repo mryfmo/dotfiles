@@ -1,0 +1,4 @@
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/separate-git.Ep5beF/admin.git
+~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/separate-git.Ep5beF/admin.git
+bash: line 5: .orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/separate-git.Ep5beF/project/.git/herdr-agents-seat.lock: Not a directory
+CONFIRMED: identical git-dir/common-dir passes is_main_checkout, but the literal .git/ lock path fails for this layout. Advisory P2; no third fix round.

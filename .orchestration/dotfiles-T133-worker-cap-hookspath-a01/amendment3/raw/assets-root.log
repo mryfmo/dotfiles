@@ -1,0 +1,3 @@
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+ERROR: .orchestration/dotfiles-T128-seat-launch-args-a01/commit-c50.log names a home directory; normalise it with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`
+make: *** [validate-agent-assets] Error 1

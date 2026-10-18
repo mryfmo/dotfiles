@@ -1,0 +1,21 @@
+test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude) ... FAIL
+
+======================================================================
+FAIL: test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (tests.unit.test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/clean-validation/tests/unit/test_herdr_agents.py", line 1733, in test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude
+    self.assertIn(
+    ~~~~~~~~~~~~~^
+        f"seat_claim=failed status=held team=dotfiles owner={live_owner}",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        result.stdout.splitlines(),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: 'seat_claim=failed status=held team=dotfiles owner=sid-stdin.34186' not found in ['seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes']
+
+----------------------------------------------------------------------
+Ran 1 test in 1.633s
+
+FAILED (failures=1)

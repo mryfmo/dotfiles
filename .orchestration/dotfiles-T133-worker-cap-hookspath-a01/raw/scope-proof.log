@@ -1,0 +1,5 @@
+Committed paths match allowed scope: 5
+Source changed lines: 31 / 120
+Test changed lines: 103 / 250
+Prior untracked inventory paths still present: 1422; missing: 0
+This checks path preservation only, not unchanged bytes.

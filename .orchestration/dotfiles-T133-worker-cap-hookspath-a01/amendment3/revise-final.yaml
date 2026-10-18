@@ -1,0 +1,6 @@
+task_id: dotfiles-T133-worker-cap-hookspath-a01
+round: 1
+amendment: 3
+revise: 1
+previous_head: 982eeee02b22b0eae3cf5fc21fe48fd74791993e
+check: tests/unit/test_herdr_agents.py::test_add_worker_writes_no_git_configuration

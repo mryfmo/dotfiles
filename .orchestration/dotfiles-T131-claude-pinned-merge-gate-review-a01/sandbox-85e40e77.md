@@ -1,0 +1,16 @@
+# Review isolation
+
+- Worker: codex-standard-dot-a010; repository/worktree: worker-e.
+- Task original read from the primary checkout; SHA256: 5ca901d3bb46477befc8cab6c692691ef7f1c4b5124e7f21e941648256befbdc.
+- Authorized fetch: `git fetch origin fix/claude-pinned-merge-gate`; FETCH_HEAD and origin/fix/claude-pinned-merge-gate both resolved to 85e40e77672ccd5b5d5d5a060a698d9e25fdf7ec.
+- Original tracked tree was clean. `git switch --detach 85e40e77672ccd5b5d5d5a060a698d9e25fdf7ec` refused with exit 128: `fatal: cannot switch branch while cherry-picking`. No abort/quit/reset, cherry-pick completion or original-branch change was attempted.
+- `git clone --shared --no-checkout . <this-task>/source`, then detached checkout of the exact assigned head, provided a clean source tree. No new shared worktree admin directory was required. Original HEAD remained the closed PR #399 head 99b5f862b0f6e69e324672dab598a79aaa0b7a5d.
+- Every created review artifact, clean clone, dry fixture, temporary test Git repository, uv environment/download/cache and test log is under `.orchestration/dotfiles-T131-claude-pinned-merge-gate-review-a01/`. No tracked file was edited, committed, pushed or applied. Tests' own temporary Git commit/worktree fixture remains confined to that directory; no repository task commit was made.
+- The explicit fetch necessarily updated authorized shared Git object/ref metadata; agmsg replies necessarily use the authorized bus store. Apart from those control operations, no successful write outside this task directory is claimed. Mise shims attempted to track the clone configuration in their usual user state path and were denied by the sandbox (warnings retained verbatim); no outside tracking file was created. Later commands redirected mise state/cache into this task directory.
+- No HOME/credential/auth file was read or changed. HOME was not repurposed. Temporary path and bytecode/cache controls were set for the checks; Git discovery was bounded at the task directory after the first environmentally contaminated test run. No local Bats, live hook request, GitHub write, browser, daemon or sandbox escape.
+- Dry tests invoke only the existing fixture gh stub for read-shaped queries. The shell-glob demonstration prints an argument vector and never invokes gh. External docs were read only to clarify API/runtime semantics unavailable through gh.
+- Original and clone tracked status were empty at the final checkpoint. All review conclusions are pinned to 85e40e77. A read-only PR checkpoint observed new head eb6af9e50c1448fc17f6efecab63107e56064e9b; review stopped immediately and requires re-tasking. No assessment of the new head was made.
+
+## Amendment and delivery checkpoint
+
+Amendment 1 was subsequently received through inbox: allowed_files is restricted to this evidence directory; the task was reread in full and copied byte-identically as task.md. Current task SHA256 is 4e61ab4beafdf7e80225c0a5ba35c3235bafe7a7ea0ae2255f9108d5e78c32ef. No reviewed-head or review-scope change was authorized. The existing PR-head mismatch therefore remains blocked. PONG message 2051 was sent once; agmsg-dispatch exited 1 with delivery failed or unread. Supported history lookup confirms the matching PONG is unread; no resend or read claim.

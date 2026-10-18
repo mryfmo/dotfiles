@@ -1,0 +1,5 @@
+uv run --with pyyaml scripts/generate-agent-configs.py --check
+   Building pyyaml==6.0.3
+      Built pyyaml==6.0.3
+Installed 1 package in 1ms
+generated agent configs are up to date

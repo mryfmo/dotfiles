@@ -1,0 +1,89 @@
+test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) ... 
+  test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) (manifest='') ... FAIL
+  test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) (manifest='worker_cap: invalid\n') ... FAIL
+test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) ... FAIL
+test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) ... 
+  test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) (run=0) ... ERROR
+  test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) (run=1) ... ERROR
+test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) ... FAIL
+test_the_skill_names_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_the_skill_names_the_manifest_worker_cap) ... ERROR
+
+======================================================================
+ERROR: test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) (run=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2232, in test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once
+    config = subprocess.run(
+        [real_git, "-C", str(directory), "config", "--get", key],
+        check=True, text=True, capture_output=True,
+    )
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/subprocess.py", line 692, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/opt/homebrew/bin/git', '-C', '~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-il1455k1/project', 'config', '--get', 'extensions.worktreeConfig']' returned non-zero exit status 1.
+
+======================================================================
+ERROR: test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once) (run=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2232, in test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once
+    config = subprocess.run(
+        [real_git, "-C", str(directory), "config", "--get", key],
+        check=True, text=True, capture_output=True,
+    )
+  File "~/.local/share/mise/installs/python/latest/lib/python3.15/subprocess.py", line 692, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/opt/homebrew/bin/git', '-C', '~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-il1455k1/project', 'config', '--get', 'extensions.worktreeConfig']' returned non-zero exit status 1.
+
+======================================================================
+ERROR: test_the_skill_names_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_the_skill_names_the_manifest_worker_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2248, in test_the_skill_names_the_manifest_worker_cap
+    [cap] = re.findall(r"^worker_cap: ([0-9]+)$", (ROOT / "home/dot_agents/agent-config.yaml").read_text(), re.M)
+    ^^^^^
+ValueError: not enough values to unpack (expected 1, got 0)
+
+======================================================================
+FAIL: test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) (manifest='')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2173, in test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap
+    self.assertIn(f"no worker_cap in {manifest}; no cap enforced.", result.stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'no worker_cap in ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-4sxu0kr2/home/.agents/agent-config.yaml; no cap enforced.' not found in ''
+
+======================================================================
+FAIL: test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap) (manifest='worker_cap: invalid\n')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2173, in test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap
+    self.assertIn(f"no worker_cap in {manifest}; no cap enforced.", result.stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'no worker_cap in ~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-4sxu0kr2/home/.agents/agent-config.yaml; no cap enforced.' not found in ''
+
+======================================================================
+FAIL: test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2198, in test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap
+    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 2 : Herdr agents worker added: claude-standard-dot-a007 in workspace w-test (~/Workspace/dotfiles/.claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-cap-hookspath-a01/tmp/herdr-agents-test-4sxu0kr2/project/.claude/worktrees/s5)
+linkage=ok read_at=2026-10-01T00:00:00Z pong=no
+
+
+======================================================================
+FAIL: test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once (tests.unit.test_herdr_agents.HerdrAgentsTest.test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-e/tests/unit/test_herdr_agents.py", line 2244, in test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once
+    self.assertEqual(calls.count(f"-C {main} config --bool extensions.worktreeConfig true"), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 3 tests in 8.901s
+
+FAILED (failures=4, errors=3)

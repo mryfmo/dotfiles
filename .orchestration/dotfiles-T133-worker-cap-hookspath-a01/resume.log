@@ -1,0 +1,5 @@
+git switch -c tools/worker-cap-hookspath-a01 --no-track origin/main
+exit: 0
+Switched to a new branch tools/worker-cap-hookspath-a01
+error: Unable to create shared .git/packed-refs.lock: Operation not permitted (twice)
+Read-back: branch tools/worker-cap-hookspath-a01, HEAD 99a4a80f5a5b32a70cf7eb4f4d0db5a02d113841, tracked clean, no diff from origin/main.

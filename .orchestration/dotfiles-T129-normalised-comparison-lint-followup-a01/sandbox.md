@@ -31,4 +31,6 @@ Amendment 1 (2026-10-18T09:08:00Z; seat pane `wJ:p3`): inside the sandbox ran `g
 | 7 | `gh pr create --draft --repo mryfmo/dotfiles --base main --head lint/normalised-comparisons-followup-a01 --title "…" --body-file .orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/pr-body.md`, then `gh pr ready <pr>`, each one command | `gh` |
 | 8 | `gh pr checks <pr>` reads and `gh pr checks <pr> --watch` (background); the Bot wait as `gh api` reads of the reviews and comments every 30 seconds for at most 15 minutes | `gh` |
 | 8a | after main moved to 61231cd9: `git fetch origin main` (inside the sandbox), the merge 5c2ef021 and the baseline commit 1219ab10 (inside), then one plain push of `3f58dfc5..` to the branch | `git push` |
+| 8b | `gh pr ready 415` (10:15:35Z, CI green on d14b4a06), one command; the Bot wait as `gh api` reads of the reviews every 30 seconds (the review arrived at 10:18:14Z), then reads of its four comments and the summary | `gh` |
+| 8c | the main checkout's CompactionDB `memory add` (the report's Bot section) | the main-checkout CompactionDB `memory add` |
 | 9 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T129-normalised-comparison-lint-followup-a01 …'` | `agmsg-dispatch` |

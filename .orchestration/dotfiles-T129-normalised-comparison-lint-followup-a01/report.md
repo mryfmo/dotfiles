@@ -109,6 +109,17 @@ The `gh pr create` stop of 2026-10-17 no longer matches a live ask rule (D-024-1
 
 PR #415 was opened as a draft at 3f58dfc5 with `pr-body.md` as its body. The body names the baseline rows of the rebase, not the two `executable_herdr-agents` rows that 1219ab10 added after `main` moved. Editing the body needs `gh pr edit`, which matches a live ask rule, so the body stays as opened and this report carries the rows.
 
-CompactionDB: the `memory add` runs at the RESULT, and its command goes into this report then.
+## Bot (one review: marked ready at 10:15:35Z on d14b4a06, CI green there; review 5562519536 at 10:18:14Z; the security review found nothing)
+
+Four P2 findings, all on `scripts/lint-comparisons.py`. Each reproducer is refused by neither this head nor #387's script (8950625c): the lint exits 0 with no hit on all four, with either script. So each is a gap #387's lint already had, not a regression of this task. None is fixed here: the script is at its 200-line cap (D-cap-F2), three are outside the owned rows, and the fourth is a declared residual. The proposed disposition for each is an advisory row of `dotfiles-T129-normalised-comparison-lint-followup-a02`, which the orchestrator writes when the first advisory P2 appears (Completion clause). The orchestrator decides.
+
+- 4306643800 (`:93`, R1/R2): a `[[ … ]]` test or a `case` split by a `\` continuation is tokenized per physical line, so `[[ "$path" == \` / `*/x ]]` gives no hit.
+- 4306643803 (`:70`, R3 location): a double-quoted jq program (`jq -r "select(.url == \"/x\")"`) is never scanned; only single-quoted programs are.
+- 4306643804 (`:145`, R6): `f"{re.escape(prefix) + name}"` is accepted. This is the residual "R6, within one formatted value" above.
+- 4306643808 (`:31`, R0): the allow marker is matched in raw text, so a `#` inside a string literal (`print("# lint-comparisons: allow reason")`) suppresses the line's hit.
+
+No `@codex review` was posted (the no-prompt rule).
+
+CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T129 normalised-comparison lint followup a01 (PR 415, supersedes 387): …'` printed `15f689eb-e1fa-4cd0-ab85-74cede1e7b0e`.
 
 cost: n/a

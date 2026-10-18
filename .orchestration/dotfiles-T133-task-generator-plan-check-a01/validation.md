@@ -355,3 +355,44 @@ F6 024-omp-cutover-and-corrective-order.md:70 cites dotfiles-T131-claude-pinned-
 F6 024-todo.md:9 cites dotfiles-T131-claude-pinned-merge-gate-fix-a01, which is not a task file
 exit=1
 ```
+
+## CI round 1: test (macos-14, client) on dfce34d7
+
+Run 39124313375, job 117666117287 (`gh run view --log-failed`); the two ubuntu client jobs were cancelled by fail-fast, every other check passed.
+
+```
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5523770Z FAIL: test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan (test_plan_check.PlanCheckTest.test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan)
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5524590Z ----------------------------------------------------------------------
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5525090Z Traceback (most recent call last):
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5550210Z   File "~/work/dotfiles/dotfiles/tests/unit/test_plan_check.py", line 78, in test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5556530Z     self.assertEqual(self.plan_check("--drift", "--invariants"), (0, []))
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5558150Z     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5559240Z AssertionError: Tuples differ: (1, ['F6 024-omp-cutover-and-corrective-or[46 chars]st']) != (0, [])
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5559780Z 
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5560060Z First differing element 0:
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5561350Z 1
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5561920Z 0
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5562350Z 
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5562530Z + (0, [])
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5562780Z - (1,
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5563130Z -  ['F6 024-omp-cutover-and-corrective-order.md:11 cites #77, which is not a '
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5563540Z -   'pull request'])
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5563740Z 
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5564050Z ----------------------------------------------------------------------
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5564540Z Ran 1198 tests in 380.499s
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5564810Z 
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.5565080Z FAILED (failures=1, skipped=3)
+test (macos-14, client)	Run Python unit tests	2026-10-18T11:49:40.6147570Z make: *** [unit-test] Error 1
+```
+
+The stub `gh` lost to the real one: `uv run` puts its base interpreter's bin directory before PATH (on the macOS runner Homebrew's, which holds `gh`). The fix puts the stub first inside `uv run`, as `test_task_checkers.py` does. The four modules on the fix head:
+
+```
+head=562e77f4bfb1cf43738d857cda7b672acf302b02
+$ uv run python -m unittest tests.unit.test_task_from_plan tests.unit.test_plan_check tests.unit.test_task_consistency_c11_c15 tests.unit.test_task_checkers
+Ran 12 tests in 9.435s
+OK (skipped=1)
+exit=0
+$ git diff --numstat origin/main...HEAD -- tests/unit/test_plan_check.py
+104	0	tests/unit/test_plan_check.py
+```

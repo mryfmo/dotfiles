@@ -6,7 +6,7 @@ status: result
 
 # Report
 
-Worker `claude-standard-dot-a009` (Claude Code, worker-c). Branch `tools/task-generator-plan-check-a01` from `origin/main` 68f8a70a, rebased onto `origin/main` de3b73cc after #413 merged; PR #417 (draft until CI is green); tested code head d7332ebb9cef85a440a0d7c6a0b8a35136ad0690 (the RESULT names the final evidence-only head). Task copy `.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md` is byte-identical to the amended dispatched file: sha256 `e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68`. INV-6: amendments=1 questions=1 revises=0.
+Worker `claude-standard-dot-a009` (Claude Code, worker-c). Branch `tools/task-generator-plan-check-a01` from `origin/main` 68f8a70a, rebased onto `origin/main` de3b73cc after #413 merged; PR #417 (draft until CI is green); tested code head d7332ebb9cef85a440a0d7c6a0b8a35136ad0690, then 562e77f4bfb1cf43738d857cda7b672acf302b02 after CI round 1 (a test-only fix, below; the RESULT names the final evidence-only head). Task copy `.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md` is byte-identical to the amended dispatched file: sha256 `e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68`. INV-6: amendments=1 questions=1 revises=0.
 
 ## What changed
 
@@ -55,7 +55,11 @@ Applied after the rebase onto #413's merge; the module's diff against `origin/ma
 - The four modules: 12 tests OK, 1 skipped (the green-set subtest above).
 - `make unit-test` exits 2 in the sandbox on this head (1198 tests) and on a pristine `origin/main` de3b73cc worktree (1195 tests); the 305 failing names are identical (`cmp`), none in this task's modules. CI's `make unit-test` decides the full suite.
 - `make format` exits 2 at `shfmt --diff` on both sides with the same twelve pre-existing files; ruff and prettier pass on the changed `.py` and `.md` files.
-- Caps (`git diff --numstat origin/main...HEAD`): 503 changed lines outside `tests/` and `.orchestration/` (cap 600), 373 under `tests/` (cap 700).
+- Caps (`git diff --numstat origin/main...HEAD`): 503 changed lines outside `tests/` and `.orchestration/` (cap 600), 373 under `tests/` (cap 700) on d7332ebb; 376 under `tests/` after CI round 1.
+
+## CI round 1
+
+On dfce34d7 `test (macos-14, client)` failed one test, `test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan`: the clean plan reported `F6 … cites #77, which is not a pull request` (the two ubuntu client jobs were cancelled by fail-fast; every other check passed). Root cause: `uv run` puts its base interpreter's bin directory before PATH, and on the macOS runner that is Homebrew's, which holds a real `gh`, so the test's stub, prepended to PATH outside `uv run`, lost; the real `gh pr view 77` in a non-repository directory exits nonzero. `test_task_checkers.py` records the same runner fact and puts its stub first inside `uv run`; 562e77f4 does the same in `test_plan_check.py` (3 lines; no production change). The local sandbox cannot reproduce the ordering (uv's interpreter directory here holds no `gh`), so CI on the next head is the green proof.
 
 ## Not done yet
 

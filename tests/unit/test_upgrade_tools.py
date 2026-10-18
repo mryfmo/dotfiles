@@ -9,9 +9,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UPGRADER = ROOT / "scripts/upgrade-tools.sh"
+# Like uv 0.13, the fake colours each tool line when FORCE_COLOR or CLICOLOR_FORCE is set, unless --color never.
 FAKE_UV = r"""#!/usr/bin/env bash
 printf '%s\n' "$*" >> "${CALLS}"
-if [ "$*" = "tool list" ]; then printf '%s' "${TOOLS}"; fi
+if [ "$1 $2" = "tool list" ] && [ -n "${TOOLS}" ]; then
+    while IFS= read -r line; do
+        case "${line}:$*" in
+        -* | :* | *--color\ never) printf '%s\n' "${line}" ;;
+        *) [ -z "${FORCE_COLOR:-}${CLICOLOR_FORCE:-}" ] && printf '%s\n' "${line}" || printf '\033[1m%s\033[0m\n' "${line}" ;;
+        esac
+    done <<< "${TOOLS}"
+fi
 [ "$*" != "${FAIL:-}" ]
 """
 TOOLS = "hcom v0.7.30\n- hcom\nruff v0.14.0\n- ruff\n"
@@ -50,6 +58,9 @@ class UpgradeUvToolsTest(unittest.TestCase):
                     "CALLS": str(calls),
                     "TOOLS": tools,
                     "FAIL": fail,
+                    # herdr-agents exports both in every pane it creates, where make update runs.
+                    "FORCE_COLOR": "1",
+                    "CLICOLOR_FORCE": "1",
                 },
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
@@ -63,22 +74,22 @@ class UpgradeUvToolsTest(unittest.TestCase):
         result, calls = self.run_phase(TOOLS)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("skip: hcom (manifest pins 0.7.30 from a wheel)", result.stdout)
-        self.assertEqual(["tool list", "tool upgrade ruff"], calls)
+        self.assertEqual(["tool list --color never", "tool upgrade ruff"], calls)
 
     def test_without_a_wheel_pin_every_tool_is_upgraded_and_one_failure_fails_the_phase(self):
         manifest = WHEEL_PINNED.split("    files:")[0]
         result, calls = self.run_phase(TOOLS, manifest)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("skip:", result.stdout)
-        self.assertEqual(["tool list", "tool upgrade hcom", "tool upgrade ruff"], calls)
+        self.assertEqual(["tool list --color never", "tool upgrade hcom", "tool upgrade ruff"], calls)
         result, calls = self.run_phase(TOOLS, manifest, fail="tool upgrade hcom")
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(["tool list", "tool upgrade hcom", "tool upgrade ruff"], calls)
+        self.assertEqual(["tool list --color never", "tool upgrade hcom", "tool upgrade ruff"], calls)
 
     def test_an_empty_tool_list_upgrades_nothing(self):
         result, calls = self.run_phase("")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(["tool list"], calls)
+        self.assertEqual(["tool list --color never"], calls)
 
     def test_the_repository_manifest_pins_hcom_from_a_wheel_at_the_rendered_pin(self):
         rendered = re.search(

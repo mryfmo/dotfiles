@@ -177,6 +177,18 @@ class RegimeCiTest(unittest.TestCase):
         self.assertIn(f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)", result.stdout)
         self.assertNotIn("predecessor copy", result.stdout)
 
+    def test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base(self):
+        # The task-level audit of f7d2c48 (P2): both base texts existing is not enough; an altered predecessor copy is a
+        # task-copy violation of its own task, never a skipped predecessor.
+        later = "t1-a02"
+        successor = TASK.replace(T, later).replace("allowed_files:", f"reset_of: [{T}]\nallowed_files:")
+        verified = {f".orchestration/tasks/{later}.md": successor}
+        code = CODE | {f".orchestration/{later}/task.md": successor}
+        result = self.build(copy=TASK + "altered\n", base=verified, code=code)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"regime-ci: {T}: task-copy: .orchestration/{T}/task.md differs from the base's", result.stdout)
+        self.assertNotIn("predecessor copy", result.stdout)
+
     def test_regime_ci_exempts_records_only_heads_by_content_not_branch_name(self):
         # Bot P1 4308651013 (a02 item 7): a branch name grants nothing; only the changed paths decide records-only.
         branch = "orchestration/x"

@@ -8,23 +8,33 @@ set -euo pipefail
 # @description Share the GET-only comparison with ruleset-verify.sh.
 # @arg $1 string Either request or verify, fixed by the calling script.
 # @option --expected <file> Read the expected JSON from a file.
+# @option --progress <file> In verify mode, timestamp an existing ledger after equality.
 compare_ruleset() {
-    local mode=$1 expected='' root repo live
+    local mode=$1 expected='' progress='' root repo live seen=' '
     shift
-    if (($#)); then
-        [[ $# == 2 && $1 == --expected ]] || return 2
-        expected=$2
-    fi
+    while (($#)); do
+        [[ $# -ge 2 && $seen != *" $1 "* ]] || return 2
+        seen+="$1 "
+        case $1 in
+        --expected) expected=$2 ;;
+        --progress)
+            [[ $mode == verify ]] || return 2
+            progress=$2
+            ;;
+        *) return 2 ;;
+        esac
+        shift 2
+    done
     root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
     repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
     [[ $repo =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 2
     live=$(gh api "repos/$repo/rulesets/24397953")
-    printf '%s\n' "$live" | python3 -I -B /dev/fd/3 "$mode" "$root" "$expected" 3<< 'PY'
+    printf '%s\n' "$live" | python3 -I -B /dev/fd/3 "$mode" "$root" "$expected" "$progress" 3<< 'PY'
 import difflib, json, os, stat, sys, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-mode, root, expected_file = sys.argv[1:]
+mode, root, expected_file, progress_file = sys.argv[1:]
 contexts = ['validate', 'test (ubuntu-24.04, server)', 'test (ubuntu-24.04, client)',
             'test (macos-14, client)', 'public-bootstrap (ubuntu-24.04, server)',
             'public-bootstrap (ubuntu-24.04, client)', 'public-bootstrap (macos-14, client)']
@@ -71,8 +81,11 @@ if mode == 'request':
 if diff:
     print('\n'.join(diff))
     raise SystemExit(1)
+if not progress_file or not Path(progress_file).exists():
+    print('verified ruleset 24397953; no progress updated')
+    raise SystemExit(0)
 root = Path(root)
-progress = root / '.orchestration/plans/024-progress.tsv'
+progress = Path(progress_file).absolute()
 assert progress.resolve().is_relative_to(root) and not progress.is_symlink(), 'unsafe progress path'
 original = progress.read_bytes()
 lines = original.decode().splitlines(keepends=True)

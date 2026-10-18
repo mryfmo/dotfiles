@@ -68,7 +68,9 @@ class RulesetScriptsTest(unittest.TestCase):
             RULESET_ARGS=str(self.root / "argv.jsonl"),
         )
 
-    def run_script(self, name: str, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_script(self, name: str, *args: str, progress: bool = True) -> subprocess.CompletedProcess[str]:
+        if name == "ruleset-verify.sh" and progress:
+            args = (*args, "--progress", str(self.progress))
         return subprocess.run(
             ["bash", str(self.scripts / name), *args],
             cwd=self.root,
@@ -97,6 +99,18 @@ class RulesetScriptsTest(unittest.TestCase):
         self.assertIn("--- expected", result.stdout)
         self.assertIn("+++ live", result.stdout)
         self.assertEqual(self.original, self.progress.read_text())
+        self.assert_get_only()
+
+    def test_progress_is_optional_and_missing_file_is_print_only(self) -> None:
+        for remove, supplied in ((False, False), (True, False), (False, True)):
+            with self.subTest(remove=remove, supplied=supplied):
+                if remove:
+                    self.progress.unlink()
+                before = self.progress.read_bytes() if self.progress.exists() else None
+                result = self.run_script("ruleset-verify.sh", progress=supplied)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("verified ruleset 24397953", result.stdout)
+                self.assertEqual(before, self.progress.read_bytes() if self.progress.exists() else None)
         self.assert_get_only()
 
     def test_ruleset_comparison_preserves_duplicate_rule_types(self) -> None:

@@ -83,7 +83,8 @@ def corpus() -> list[tuple[str, str, str, str]]:
         "default-empty record-body record-task record-pr record-status record-separator record-symlink "
         "record-missing audit-directory audit-missing audit-incorrect check-missing check-new-failure "
         "gh-failure parser-failure json-failure malformed-view payload-empty payload-bad "
-        "pr-head pr-base pr-state pr-draft rules-empty"
+        "pr-head pr-base pr-state pr-draft rules-empty record-json-list record-json-bad "
+        "compare-empty compare-incomplete compare-large compare-rename compare-tasks compare-removed compare-malformed"
     )
     rows += [(name, PINNED, "ask", name) for name in conditions.split()]
     rows += [
@@ -156,7 +157,7 @@ class GhMergeGateTest(unittest.TestCase):
             "runs", {"check_runs": [dict(run, id=i, name=name) for i, name in enumerate(("validate", "test"), 1)]}
         )
         self.write_json("statuses", {"statuses": []})
-        self.write_json("compare", {"files": [{"filename": ".orchestration/a"}]})
+        self.write_json("compare", {"files": [{"filename": ".orchestration/t/task.md", "status": "added"}]})
 
     def git(self, *args: str) -> None:
         subprocess.run(["git", *args], env=self.env, check=True, capture_output=True)
@@ -225,6 +226,8 @@ class GhMergeGateTest(unittest.TestCase):
             self.write_record(dispatch=self.record["dispatch"] + ["AGMSG-ACCEPTANCE v1 task_id=t status=revise"])
         if name == "record-separator":
             path.write_text(path.read_text().replace("\n---\n", "\n---invalid\n"))
+        if name.startswith("record-json"):
+            path.write_text("---\n" + ("[]" if name.endswith("list") else "{") + "\n---\n")
         if name == "record-missing":
             path.unlink()
         if name == "record-symlink":
@@ -252,7 +255,10 @@ class GhMergeGateTest(unittest.TestCase):
                 "compare-empty": [],
                 "compare-incomplete": None,
                 "compare-large": [{"filename": ".orchestration/a"}] * 300,
-                "compare-rename": [{"filename": ".orchestration/a", "previous_filename": "scripts/x"}],
+                "compare-rename": [dict(filename=".orchestration/a", previous_filename="scripts/x", status="renamed")],
+                "compare-tasks": [dict(filename=f".orchestration/{t}/task.md", status="added") for t in ("t", "u")],
+                "compare-removed": [{"filename": ".orchestration/t/task.md", "status": "removed"}],
+                "compare-malformed": [None],
             }
             self.write_json("compare", {"files": files[name]})
         if name in ("gh-failure", "parser-failure", "json-failure"):
@@ -291,6 +297,63 @@ class GhMergeGateTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertNotEqual("allow", self.decide(command))
 
+    def test_legacy_records_do_not_block_bound_acceptance(self) -> None:
+        path = self.repo / ".orchestration/acceptance/t.md"
+        path.parent.rename(self.repo / ".orchestration/previous-acceptance")
+        path.parent.mkdir()
+        records = [path.parent / f"legacy-{i}.md" for i in range(100)]
+        for text in (
+            "",
+            "legacy\n",
+            "---\nformat: 1\n---\n",
+            "---\n{\n---\n",
+            "---\n[]\n---\n",
+            "---\nnull\n---\n",
+            '---\n{"head":"other"}\n---\n',
+        ):
+            with self.subTest(legacy=text):
+                for record in records:
+                    record.write_text(text)
+                self.write_record()
+                self.assertGreater(list(path.parent.glob("*.md")).index(path), 0)
+                for command in (PINNED, DRAFT.replace("--draft ", "")):
+                    self.assertEqual("allow", self.decide(command), self.last_reason)
+        for record in records:
+            record.unlink()
+            record.symlink_to(self.tmp / "unrelated-missing-record")
+        self.assertEqual("allow", self.decide(PINNED), self.last_reason)
+        for status in ({}, {"status": None}, {"status": "unexpected"}):
+            with self.subTest(status=status):
+                self.write_json("compare", dict(files=[dict(filename=".orchestration/t/task.md", **status)]))
+                self.assertEqual("ask", self.decide(PINNED), self.last_reason)
+
+    def test_body_files_are_regular_and_bound_to_the_invoking_worktree(self) -> None:
+        body = self.repo / "body.md"
+        body.write_text("synthetic public PR body\n")
+        outside = self.tmp / "synthetic-private.txt"
+        outside.write_text("synthetic fixture, no real credentials\n")
+        (self.repo / "linked.md").symlink_to(outside)
+        (self.repo / "linked-dir").symlink_to(self.tmp, target_is_directory=True)
+        os.mkfifo(self.repo / "pipe")
+        paths = (
+            str(outside),
+            *"../synthetic-private.txt linked.md linked-dir/synthetic-private.txt linked-dir/../body.md "
+            "missing.md .orchestration .git/config pipe -".split(),
+        )
+        for command in (DRAFT, DRAFT.replace("--draft ", "")):
+            for flag in ("--body-file ", "-F ", "--body-file="):
+                for value in ("body.md", str(body), *paths):
+                    with self.subTest(command=command, flag=flag, path=value):
+                        expected = "allow" if value in ("body.md", str(body)) else "ask"
+                        self.assertEqual(expected, self.decide(command + f" {flag}{value}"), self.last_reason)
+        docs = self.repo / "docs"
+        docs.mkdir()
+        (docs / "body.md").write_text("")
+        self.assertEqual("allow", self.decide(DRAFT + " -F body.md", docs))
+        self.assertEqual("allow", self.decide(DRAFT + f" -F {body}", docs))
+        self.git("-C", str(self.repo), "init", "-q", "--separate-git-dir", str(self.repo / ".metadata"))
+        self.assertEqual("ask", self.decide(DRAFT + " -F .metadata/config"), self.last_reason)
+
     def test_anchor_and_worker_draft_operation_split(self) -> None:
         self.git("-C", str(self.repo), "commit", "--allow-empty", "-qm", "fixture")
         worker = self.tmp / "worker"
@@ -302,6 +365,9 @@ class GhMergeGateTest(unittest.TestCase):
             self.assertEqual("ask", self.decide(PINNED, cwd))
             self.assertEqual("ask", self.decide(DRAFT.replace("--draft ", ""), cwd))
         self.assertEqual("allow", self.decide(DRAFT, worker))
+        (worker / "body.md").write_text("synthetic worker PR body\n")
+        self.assertEqual("allow", self.decide(DRAFT + " -F body.md", worker))
+        self.assertEqual("ask", self.decide(DRAFT + f" -F {worker / 'body.md'}"), self.last_reason)
         self.assertEqual("allow", self.decide(DRAFT.replace("main", "stack/parent"), worker))
         self.assertEqual("allow", self.decide("gh pr update-branch 7", self.tmp))
         self.condition("boundary")

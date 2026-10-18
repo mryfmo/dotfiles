@@ -5,6 +5,7 @@
 #   Merge and ready creation require the protected orchestrator_checkout primary repository.
 #   Draft creation requires a pushed non-default head and a default or open-PR base; update-branch is bare.
 #   Boundary merges also require pinned open ready default-branch PRs and green required checks.
+#   Body files stay inside the invoking worktree; unrelated legacy acceptance formats supply no authority.
 #   test_gate_closes_each_of_the_seven_review_classes covers argv-text-mismatch, JSON encoding,
 #   fail-open-on-error and unbound-evidence; test_no_shell_metacharacter_input_is_allowed checks raw exclusions.
 #   Gated words in prose ask. Fully variable-assembled names can remain invisible; permgate and the
@@ -72,53 +73,60 @@ def canonical_checkout(cwd, selected):
     require(match and match[1].lower() == actual.lower() == selected.lower(), 'repository identity mismatch')
     return top
 
-def safe_file(top, path):
+def safe_file(top, path, allow_empty=False):
     require(path.is_relative_to(top), 'evidence outside checkout')
     require(all(not p.is_symlink() for p in (path, *path.parents) if p.is_relative_to(top)), 'symlink evidence path')
-    require(path.is_file() and path.stat().st_size > 0, 'missing regular evidence file')
+    require(path.is_file() and (allow_empty or path.stat().st_size > 0), 'missing regular evidence file')
     return path.read_text()
 
-def accepted(top, head, pr=None):
-    for path in (top / '.orchestration/acceptance').glob('*.md'):
-        text = safe_file(top, path)
-        pieces = re.split(r'(?m)^---\r?$', text, maxsplit=2)
-        require(len(pieces) == 3 and pieces[0] == '', 'invalid acceptance front matter')
-        record = json.loads(run('jq', '-ce', '.', data=pieces[1]))
-        if record.get('head') != head or (pr is not None and record.get('pr') != pr):
-            continue
-        task = record.get('task', '')
-        require(isinstance(task, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', task) and path.name == task + '.md', 'task identity mismatch')
-        require(type(record.get('pr')) is int and record['pr'] > 0, 'missing acceptance PR')
-        safe_file(top, top / '.orchestration/tasks' / (task + '.md'))
-        dispatch = record.get('dispatch')
-        require(isinstance(dispatch, list) and all(isinstance(line, str) for line in dispatch), 'invalid dispatch evidence')
-        events = [line.split() for line in dispatch if line.startswith('AGMSG-ACCEPTANCE v1 ')]
-        require(events and events[-1].count('task_id=' + task) == 1 and events[-1].count('status=accepted') == 1
-                and sum(x.startswith('status=') for x in events[-1]) == 1, 'latest acceptance is not accepted')
-        audit = top / f'.orchestration/validation/{task}-audit-{head[:7]}.md'
-        safe_file(top, audit)
-        last = safe_file(top, Path(str(audit) + '.last.md'))
-        verdict = last.rstrip().splitlines()[-1]
-        if verdict == 'Verdict: incorrect':
-            count = len(re.findall(r'^.*\[P[0-3]\].*$', last, re.M))
-            entries = record.get('audit_findings')
-            require(count > 0 and isinstance(entries, list) and len(entries) == count, 'audit dispositions missing')
-            numbers = []
-            for entry in entries:
-                require(isinstance(entry, dict) and set(entry) == {'n', 'reason', 'evidence'}
-                        and all(isinstance(v, str) and v.strip() for v in entry.values())
-                        and len(entry['reason'].strip()) >= 20, 'invalid audit disposition')
-                numbers.append(entry['n'])
-            require(sorted(numbers) == sorted(map(str, range(1, count + 1))), 'audit finding numbers mismatch')
-        else:
-            require(verdict == 'Verdict: correct', 'audit verdict is not correct')
-        return
-    raise Ask('no acceptance record binds this head and PR')
+def accepted(top, nwo, base, head, pr=None):
+    tasks = []
+    for entry in compared_files(nwo, base, head):
+        match = re.fullmatch(r'\.orchestration/([A-Za-z0-9][A-Za-z0-9._-]*)/task\.md', entry['filename'])
+        if match and entry.get('status') != 'removed':
+            tasks.append(match[1])
+    require(len(tasks) == 1, 'comparison must name exactly one task copy')
+    task = tasks[0]
+    text = safe_file(top, top / '.orchestration/acceptance' / (task + '.md'))
+    pieces = re.split(r'(?m)^---\r?$', text, maxsplit=2)
+    require(len(pieces) == 3 and pieces[0] == '', 'invalid acceptance front matter')
+    record = json.loads(run('jq', '-ce', '.', data=pieces[1]))
+    require(isinstance(record, dict) and record.get('task') == task and record.get('head') == head
+            and (pr is None or record.get('pr') == pr), 'acceptance identity mismatch')
+    require(type(record.get('pr')) is int and record['pr'] > 0, 'missing acceptance PR')
+    safe_file(top, top / '.orchestration/tasks' / (task + '.md'))
+    dispatch = record.get('dispatch')
+    require(isinstance(dispatch, list) and all(isinstance(line, str) for line in dispatch), 'invalid dispatch evidence')
+    events = [line.split() for line in dispatch if line.startswith('AGMSG-ACCEPTANCE v1 ')]
+    require(events and events[-1].count('task_id=' + task) == 1 and events[-1].count('status=accepted') == 1
+            and sum(x.startswith('status=') for x in events[-1]) == 1, 'latest acceptance is not accepted')
+    audit = top / f'.orchestration/validation/{task}-audit-{head[:7]}.md'
+    safe_file(top, audit)
+    last = safe_file(top, Path(str(audit) + '.last.md'))
+    verdict = last.rstrip().splitlines()[-1]
+    if verdict == 'Verdict: incorrect':
+        count = len(re.findall(r'^.*\[P[0-3]\].*$', last, re.M))
+        entries = record.get('audit_findings')
+        require(count > 0 and isinstance(entries, list) and len(entries) == count, 'audit dispositions missing')
+        numbers = []
+        for entry in entries:
+            require(isinstance(entry, dict) and set(entry) == {'n', 'reason', 'evidence'}
+                    and all(isinstance(v, str) and v.strip() for v in entry.values())
+                    and len(entry['reason'].strip()) >= 20, 'invalid audit disposition')
+            numbers.append(entry['n'])
+        require(sorted(numbers) == sorted(map(str, range(1, count + 1))), 'audit finding numbers mismatch')
+    else:
+        require(verdict == 'Verdict: correct', 'audit verdict is not correct')
 
-def records_only(nwo, base, head):
+def compared_files(nwo, base, head):
     files = api(f'repos/{nwo}/compare/{base}...{head}').get('files')
     require(isinstance(files, list) and 0 < len(files) < 300, 'records compare empty or incomplete')
-    for entry in files:
+    require(all(isinstance(entry, dict) and isinstance(entry.get('filename'), str) and entry['filename'] for entry in files), 'invalid comparison files')
+    require(all(entry.get('status') in ('added', 'removed', 'modified', 'renamed', 'copied', 'changed', 'unchanged') for entry in files), 'invalid comparison status')
+    return files
+
+def records_only(nwo, base, head):
+    for entry in compared_files(nwo, base, head):
         for key in ('filename', 'previous_filename'):
             value = entry.get(key)
             require((key == 'previous_filename' and value is None) or
@@ -196,6 +204,14 @@ def main():
     require(not selected or selected.lower() == nwo.lower(), 'selected repository mismatch')
     default = ref(gh('repo', 'view', nwo, '--json', 'defaultBranchRef', '--jq', '.defaultBranchRef.name'))
     if sub == 'create':
+        if 'body-file' in options:
+            body = Path(options['body-file'])
+            require(body != Path('-') and '..' not in body.parts and '.git' not in body.parts, 'unsafe body file path')
+            body = body if body.is_absolute() else Path.cwd() / body
+            top = Path(run('git', 'rev-parse', '--show-toplevel')).resolve(strict=True)
+            metadata = run('git', 'rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir').splitlines()
+            require(len(metadata) == 2 and all(not body.is_relative_to(Path(p).resolve(strict=True)) for p in metadata), 'body file is Git metadata')
+            safe_file(top, body, allow_empty=True)
         base, head = ref(options.get('base')), ref(options.get('head'))
         require(head != default, 'head is default branch')
         sha = api(f'repos/{nwo}/branches/{head}')['commit']['sha']
@@ -209,7 +225,7 @@ def main():
         if head.startswith('orchestration/'):
             records_only(nwo, base, head)
         else:
-            accepted(top, sha)
+            accepted(top, nwo, base, sha)
         return 'allow', 'ready creation with bound evidence'
     sha = options.get('sha', '')
     require(options.get('squash') and re.fullmatch(r'[0-9a-f]{40}', sha), 'requires pinned squash merge')
@@ -221,7 +237,7 @@ def main():
     if view['headRefName'].startswith('orchestration/boundary-'):
         records_only(nwo, default, sha)
     else:
-        accepted(top, sha, pr)
+        accepted(top, nwo, default, sha, pr)
     return 'allow', 'pinned green merge with bound evidence'
 
 try:

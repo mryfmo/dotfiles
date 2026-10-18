@@ -132,12 +132,18 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             artifact = Path(records[1]["argv"][-1])
             self.assertEqual(".tgz" if tool == "omp" else ".whl", artifact.suffix)
             self.assertEqual(digest, records[1]["sha256"])
-            self.assertFalse(artifact.exists())
-            self.assertFalse(artifact.parent.exists())
+            wheels = home / ".local/share/agent-assets/hcom"
+            if tool == "omp":
+                self.assertFalse(artifact.exists())
+                self.assertFalse(artifact.parent.exists())
+            else:
+                # uv's receipt names the wheel as hcom's source, so the verified wheel outlives the run (local:b49da6d:1).
+                self.assertEqual(wheels, artifact.parent)
+                self.assertEqual(digest, hashlib.sha256(artifact.read_bytes()).hexdigest())
             receipt_path = home / ".agents/.installed-manifest.json"
             receipt = json.loads(receipt_path.read_text())["steps"][f"update_{tool}"]
             self.assertEqual(pin, receipt["source_version"])
-            self.assertEqual([str(target)], receipt["paths"])
+            self.assertEqual([str(target)] + ([] if tool == "omp" else [str(artifact)]), receipt["paths"])
             repeated = update()
             self.assertEqual(0, repeated.returncode, repeated.stdout + repeated.stderr)
             self.assertIn("already installed", repeated.stdout)
@@ -145,6 +151,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
             reset()
             receipt_path.unlink()
+            for kept in wheels.glob("*"):
+                kept.unlink()
             bad_hash = "0" * 64
             drifted_hash = update(checksum=bad_hash)
             self.assertNotEqual(0, drifted_hash.returncode)
@@ -152,6 +160,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             self.assertIn(digest, drifted_hash.stdout + drifted_hash.stderr)
             self.assertEqual(["curl"], [row["tool"] for row in calls()])
             self.assertFalse(Path(calls()[0]["argv"][-1]).parent.exists())
+            self.assertEqual([], list(wheels.glob("*")))  # a wheel that fails its hash never reaches the managed path
             self.assertFalse(receipt_path.exists())
 
             reset()
@@ -160,7 +169,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             self.assertIn(pin, drifted_version.stdout + drifted_version.stderr)
             self.assertIn("0.0.1", drifted_version.stdout + drifted_version.stderr)
             self.assertEqual(2, len(calls()))
-            self.assertFalse(Path(calls()[1]["argv"][-1]).parent.exists())
+            # The omp tarball goes with its run; the hcom wheel stays where uv's receipt points.
+            self.assertEqual(tool == "hcom", Path(calls()[1]["argv"][-1]).exists())
             self.assertFalse(receipt_path.exists())
             reset()
             skipped = update(prefix="has_command() { return 1; }; ")
@@ -205,6 +215,53 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             with self.subTest(platform=platform):
                 self.exercise_update("hcom", platform)
         self.exercise_update("hcom", "Plan9/unknown", unsupported=True)
+
+    def test_update_hcom_keeps_the_wheel_uv_records_as_its_source(self):
+        # local:b49da6d:1: `uv tool upgrade` re-reads the wheel uv's receipt names, so the verified wheel stays at the
+        # managed path and the asset manifest lists it; exercise_update asserts the path, its hash and the entry.
+        self.exercise_update("hcom", "Darwin/arm64")
+
+    def test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel(self):
+        # The Bot's P2 4303212227: an hcom installed at the pin before the wheel was kept has a receipt that names a
+        # deleted temporary wheel, so the version alone does not skip it; once the wheel is retained it is skipped.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            hcom = home / ".local/bin/hcom"
+            hcom.parent.mkdir(parents=True)
+            hcom.write_text("#!/bin/sh\nprintf 'hcom 0.7.30\\n'\n")
+            hcom.chmod(0o755)
+            payload = "reproduced wheel bytes; no real package\n"
+            digest = hashlib.sha256(payload.encode()).hexdigest()
+            log = home / "calls"
+            wheel = home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            stubs = (
+                "HCOM_PIN_VERSION=0.7.30; HCOM_LINUX_AMD64_URL=https://fixture.invalid/hcom-0.7.30-py3-none-any.whl; "
+                f"HCOM_LINUX_AMD64_SHA256={digest}; has_command() {{ return 0; }}; manifest_record() {{ :; }}; "
+                'uname() { if [ "$1" = -s ]; then echo Linux; else echo x86_64; fi; }; '
+                'curl() { printf %s "$PAYLOAD" > "${@: -1}"; echo curl >> "$CALLS"; }; '
+                'uv() { echo "uv $*" >> "$CALLS"; }; '
+            )
+
+            def update():
+                return subprocess.run(
+                    ["bash", "-c", 'source "$1"; ' + stubs + "update_hcom", "bash", str(UPDATER)],
+                    env=os.environ | {"HOME": directory, "PAYLOAD": payload, "CALLS": str(log)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+
+            repaired = update()
+            self.assertEqual(0, repaired.returncode, repaired.stdout + repaired.stderr)
+            self.assertNotIn("already installed", repaired.stdout)
+            self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
+            self.assertEqual(digest, hashlib.sha256(wheel.read_bytes()).hexdigest())
+            log.write_text("")
+            skipped = update()
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn("hcom 0.7.30 is already installed", skipped.stdout)
+            self.assertEqual("", log.read_text())
 
     def test_updates_use_managed_binaries_when_path_is_shadowed(self):
         for tool in ("omp", "hcom"):

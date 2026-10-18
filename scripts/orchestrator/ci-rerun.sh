@@ -13,7 +13,7 @@
 #   read in the checkout this script lives in (`git rev-parse --show-toplevel` there).
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every failed job matched a signature; the run was rerun once and recorded.
-# @exitcode 1 A gh call or the signature file failed.
+# @exitcode 1 A gh or jq call, or the signature file, failed; gh's own exit codes never pass through.
 # @exitcode 2 Usage error, or the run has no failed job.
 # @exitcode 3 A failed job matched no signature (`real failure: <job>`); nothing was rerun.
 # @exitcode 4 The run is already in ci-reruns.tsv; nothing was rerun.
@@ -54,18 +54,19 @@ for entry in entries:
         uv run --no-project --quiet --with pyyaml python -I -c "${script}" "$1" < /dev/null
 }
 
-run="$(gh run view "${run_id}" --json jobs,status,conclusion,headSha,event)"
-head_sha="$(jq -r '.headSha' <<< "${run}")"
-failed="$(jq -r '.jobs[] | select(.conclusion == "failure") | [.databaseId, .name] | @tsv' <<< "${run}")"
+# A failed call exits 1: gh's and jq's own codes (gh 4 needs authentication, 2 cancelled) would read as this script's.
+run="$(gh run view "${run_id}" --json jobs,status,conclusion,headSha,event)" || exit 1
+head_sha="$(jq -r '.headSha' <<< "${run}")" || exit 1
+failed="$(jq -r '.jobs[] | select(.conclusion == "failure") | [.databaseId, .name] | @tsv' <<< "${run}")" || exit 1
 if [[ -z ${failed} ]]; then
     echo "run ${run_id} has no failed job" >&2
     exit 2
 fi
-known="$(signatures "${flakes}")"
+known="$(signatures "${flakes}")" || exit 1
 
 matched=() real=0
 while IFS=$'\t' read -r job_id job; do
-    log="$(gh run view "${run_id}" --job "${job_id}" --log-failed)"
+    log="$(gh run view "${run_id}" --job "${job_id}" --log-failed)" || exit 1
     signature=""
     while IFS=$'\t' read -r id job_regex log_regex; do
         if grep -Eq -- "${job_regex}" <<< "${job}" && grep -Eq -- "${log_regex}" <<< "${log}"; then
@@ -82,7 +83,7 @@ while IFS=$'\t' read -r job_id job; do
 done <<< "${failed}"
 ((real == 0)) || exit 3
 
-gh run rerun "${run_id}" --failed
+gh run rerun "${run_id}" --failed || exit 1
 mkdir -p "$(dirname -- "${ledger}")"
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 for row in "${matched[@]}"; do

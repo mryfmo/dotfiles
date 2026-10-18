@@ -26,7 +26,10 @@ jobs:
     # Run the same test suite on each target OS/system pair.
     # We intentionally keep macOS as `client` only because this repository
     # does not define a macOS `server` test target.
+    # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
+    # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-14]
         system: [client, server]

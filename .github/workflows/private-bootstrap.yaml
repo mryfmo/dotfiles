@@ -14,7 +14,10 @@ permissions:
 
 jobs:
   private-bootstrap:
+    # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
+    # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-24.04

@@ -21,6 +21,8 @@ args = sys.argv[1:]
 with open(os.environ["GH_LOG"], "a") as log:
     log.write(json.dumps(args) + "\\n")
 runs = json.load(open(os.environ["GH_RUNS"]))
+if os.environ.get("GH_EXIT"):
+    sys.exit(int(os.environ["GH_EXIT"]))
 if args[:2] == ["run", "view"] and "--json" in args:
     print(json.dumps(runs[args[2]]))
 elif args[:2] == ["run", "view"] and "--log-failed" in args:
@@ -92,7 +94,7 @@ class CiRerunTest(unittest.TestCase):
         (self.t / "runs.json").write_text(json.dumps(RUNS))
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
 
-    def run_script(self, run_id):
+    def run_script(self, run_id, gh_exit=""):
         log = self.t / "gh.log"
         log.write_text("")
         result = subprocess.run(
@@ -102,6 +104,7 @@ class CiRerunTest(unittest.TestCase):
                 "PATH": str(self.t / "bin") + os.pathsep + os.environ["PATH"],
                 "GH_LOG": str(log),
                 "GH_RUNS": str(self.t / "runs.json"),
+                "GH_EXIT": gh_exit,
             },
             stdin=subprocess.DEVNULL,
             capture_output=True,
@@ -136,6 +139,15 @@ class CiRerunTest(unittest.TestCase):
         self.assertNotIn("real failure: public-bootstrap", result.stdout)
         self.assertNotIn(["run", "rerun", "202", "--failed"], calls)
         self.assertEqual(before, self.ledger.read_text())
+
+    def test_a_failing_gh_exits_1_never_with_the_scripts_own_codes(self):
+        # gh exits 4 when it needs authentication and 2 when cancelled: neither may read as "already rerun" or usage.
+        for code in ("4", "2"):
+            with self.subTest(gh_exit=code):
+                result, calls = self.run_script("101", gh_exit=code)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertNotIn(["run", "rerun", "101", "--failed"], calls)
+                self.assertFalse(self.ledger.exists())
 
 
 if __name__ == "__main__":

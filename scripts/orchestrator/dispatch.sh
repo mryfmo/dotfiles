@@ -62,6 +62,7 @@
 #   here) and one `precheck=`, the sha256 of the head's `.orchestration/<task>/precheck.json`, whose `head` is the head
 #   or an ancestor whose diff to it is only under `.orchestration/<task>/`. A failure prints `precheck: <field>
 #   <reason>` (exit 1, nothing sent) under `PRECHECK_REQUIRED=1`, else `precheck: warning ...`, and sends (plan 024 0d).
+#   Each selector of the latest revise's `check=` (repeated or comma-separated) needs one passing proof of its `previous_head=`.
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -174,7 +175,9 @@ def problem():
     # The task's latest status=revise ACCEPTANCE, anywhere in the window, precedes that RESULT and names its proofs.
     revises = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-ACCEPTANCE", "v1"] and f"task_id={task}" in t and "status=revise" in t]
     if revises and revises[-1] > found[-1]: return f"result the newest RESULT for task_id={task} precedes its latest status=revise ACCEPTANCE"
-    requested = [t[6:] for t in rows[revises[-1]] if t.startswith("check=")] if revises else []
+    revise = rows[revises[-1]] if revises else []
+    requested = [s for t in revise if t.startswith("check=") for s in t[6:].split(",")]  # repeated or comma-separated
+    base = [t[14:] for t in revise if t.startswith("previous_head=")]
     if "status=ready_for_review" not in result: return "result the newest RESULT is not status=ready_for_review"
     heads = [t[5:] for t in result if t.startswith("head=")]
     wants = [t[9:] for t in result if t.startswith("precheck=")]
@@ -185,10 +188,8 @@ def problem():
     blob = git("cat-file", "blob", f"{head}:{path}")
     got = hashlib.sha256(blob.stdout).hexdigest() if blob.returncode == 0 else "nothing (no such file)"
     if got != want: return f"precheck mismatch: the RESULT has {want}, {path} at {head} hashes to {got}"
-    try:
-        doc = json.loads(blob.stdout)
-    except ValueError:
-        doc = None
+    try: doc = json.loads(blob.stdout)
+    except ValueError: doc = None
     field = doc.get("head") if isinstance(doc, dict) else None
     if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field): return f"precheck.json:head {path} has no 40-hex head"
     checks, selectors, required = doc.get("checks"), doc.get("selectors"), REQUIRED.split()
@@ -199,13 +200,13 @@ def problem():
     # Every executed check passed as the JSON boolean true; only the exact deferred local-review record is null.
     failed = [c["name"] for c in checks if c["ok"] is not True and c != {"name": "local-review", "ok": None, "deferred": "orchestrator"}]
     if failed: return f"precheck.json:checks {path} at {head} records checks that did not pass: {failed}"
-    if not isinstance(selectors, list) or not all(isinstance(s, dict) and isinstance(s.get("selector"), str) and s.get("ok") is True for s in selectors):
-        return f"precheck.json:selectors {path} at {head} is not a list of passing selector proofs"
+    if not isinstance(selectors, list) or not all(isinstance(s, dict) and isinstance(s.get("selector"), str) and s.get("ok") is True for s in selectors): return f"precheck.json:selectors {path} at {head} is not a list of passing selector proofs"
     missing = [r for r in requested if [s["selector"] for s in selectors].count(r) != 1]
     if missing: return f"precheck.json:selectors {path} at {head} lacks exactly one proof of the requested {missing}"
+    stale = [s["selector"] for s in selectors if s["selector"] in requested and [s.get("previous_head")] != base]  # bccb2de audit
+    if stale: return f"precheck.json:selectors {path} at {head} proves {stale} against another baseline than previous_head={base}"
     if field != head and git("merge-base", "--is-ancestor", field, head).returncode: return f"precheck.json:head {field} is not an ancestor of {head}"
-    if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode:
-        return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"
+    if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode: return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"
     return ""
 print(problem())
 PY

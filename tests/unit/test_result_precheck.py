@@ -41,6 +41,8 @@ CHECKS_OK = [
     {"name": n, "ok": True, "exit": 0} for n in ("unit-test", "render-check", "format", "shellcheck", "secrets")
 ]
 DEFERRED = {"name": "local-review", "ok": None, "deferred": "orchestrator"}
+SEL_A, SEL_B, BASE = "tests/unit/test_x.py::test_a", "tests/unit/test_x.py::test_b", "a" * 40
+PROOFS = [{"selector": s, "ok": True, "previous_head": BASE} for s in (SEL_A, SEL_B)]
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 
 
@@ -168,43 +170,15 @@ class ResultPrecheckTest(unittest.TestCase):
         self.write("scripts/dirty.sh", "echo dirty\n")
         self.assertEqual(self.precheck().returncode, 2)
 
-    def test_precheck_records_the_local_review_as_deferred_by_default(self):
-        result = self.precheck()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn({"name": "local-review", "ok": None, "deferred": "orchestrator"}, self.record()["checks"])
-        self.assertFalse((self.calls / "local-review.log").exists())
-        self.assertIn(
-            "# shortcut: a Claude seat cannot run codex inside its Bash sandbox (local-review.sh's header)",
-            PRECHECK.read_text(),
-        )
-
-    def test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head(self):
-        # The previous head runs this head's test source (revise 1 of a02), so the code under test is what changes.
-        case = "import unittest\n\nimport flag\n\n\nclass T(unittest.TestCase):\n    def test_a(self):\n"
-        case += "        self.assertTrue(flag.ON)\n\n    def test_b(self):\n        pass\n"
-        self.write("tests/unit/test_sel.py", case)
-        self.write("flag.py", "ON = False\n")
-        previous = self.commit("red")
-        self.write("flag.py", "ON = True\n")
-        self.commit("green")
-        green = self.precheck("--previous-head", previous, "--check", "tests/unit/test_sel.py::test_a")
-        self.assertEqual(green.returncode, 0, green.stdout + green.stderr)
-        selector = self.record()["selectors"][0]
-        self.assertEqual((selector["ok"], selector["head_exit"]), (True, 0))
-        self.assertNotEqual(selector["previous_head_exit"], 0)
-        always = self.precheck("--previous-head", previous, "--check", "tests/unit/test_sel.py::test_b")
-        self.assertEqual(always.returncode, 1, always.stdout + always.stderr)
-        self.assertFalse(self.record()["selectors"][0]["ok"])
-        self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)
-        self.assertNotIn("worktree prune", PRECHECK.read_text())
-
     def test_precheck_records_failed_commands_as_not_ok(self):
         # Local review of a5cb73b4 (P2, result-precheck.sh:173-174): a failed prerequisite never passes a check.
         self.git("switch", "-q", "-c", "feature")
         self.write("scripts/new.sh", "#!/usr/bin/env bash\necho new\n")
         self.commit("feature")
-        healthy = self.precheck()
+        healthy = self.precheck()  # by default the local review is recorded as deferred and never run (end of test)
         self.assertEqual(healthy.returncode, 0, healthy.stdout + healthy.stderr)
+        self.assertIn(DEFERRED, self.record()["checks"])
+        self.assertIn("# shortcut: a Claude seat cannot run codex inside its Bash sandbox", PRECHECK.read_text())
 
         def failed(*names, env=None):
             result = self.precheck(env=env)
@@ -242,17 +216,6 @@ class ResultPrecheckTest(unittest.TestCase):
         """`result-precheck.sh --secrets <path>` of this repository, with the real uv and the real detector."""
         return self.run_script(PRECHECK, "--secrets", str(path), env={"PATH": os.environ["PATH"]}, cwd=ROOT)
 
-    def test_precheck_secrets_mode_counts_and_never_prints_the_match(self):
-        diff = self.temp / "diff"
-        diff.write_text(f"diff --git a/x b/x\n+value={token()}\n")
-        result = self.scan(diff)
-        self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertEqual(result.stdout, "secrets: 1 match(es)\n")
-        self.assertNotIn(token(), result.stdout + result.stderr)
-        self.assertIn(token(), diff.read_text())
-        diff.write_text("diff --git a/x b/x\n+value=clean\n")
-        self.assertEqual(self.scan(diff).returncode, 0)
-
     def dispatch(self, result_line, required, revise=None, later=None):
         record = self.repo / ".orchestration/acceptance/t.md"
         record.parent.mkdir(parents=True, exist_ok=True)
@@ -268,6 +231,13 @@ class ResultPrecheckTest(unittest.TestCase):
         args = ("team", "orch", "worker", "w5:pA", str(line), str(record))
         result = self.run_script(script, *args, env={"PRECHECK_REQUIRED": required})
         return result, (self.calls / "agmsg-dispatch.log").exists()
+
+    def gated(self, line, field, revise=None, later=None):
+        """The gate refuses the RESULT line under PRECHECK_REQUIRED=1 and only warns under 0, naming the field."""
+        for required, outcome, prefix in (("1", (1, False), "precheck: "), ("0", (0, True), "precheck: warning ")):
+            result, sent = self.dispatch(line, required, revise, later)
+            self.assertEqual((result.returncode, sent), outcome, result.stderr)
+            self.assertIn(prefix + field, result.stderr)
 
     def test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required(self):
         line = self.evidence([*CHECKS_OK, DEFERRED])
@@ -290,12 +260,7 @@ class ResultPrecheckTest(unittest.TestCase):
         ]
         for field_name, result_line in cases:
             with self.subTest(field=field_name):
-                refused, sent = self.dispatch(result_line, "1")
-                self.assertEqual((refused.returncode, sent), (1, False), refused.stderr)
-                self.assertIn(f"precheck: {field_name}", refused.stderr)
-                warned, sent = self.dispatch(result_line, "0")
-                self.assertEqual((warned.returncode, sent), (0, True), warned.stderr)
-                self.assertIn(f"precheck: warning {field_name}", warned.stderr)
+                self.gated(result_line, field_name)
 
     def evidence(self, checks, selectors=()):
         """Commit a precheck.json of task t whose head is the current code, and return its ready RESULT line."""
@@ -309,9 +274,8 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_dispatch_rejects_malformed_checks_and_missing_requested_selectors(self):
         # Local review of a5cb73b4 (P2, dispatch.sh:188-190): the record proves all six checks and every requested proof.
-        sel_a, sel_b = "tests/unit/test_x.py::test_a", "tests/unit/test_x.py::test_b"
-        revise = f"AGMSG-ACCEPTANCE v1 task_id=t status=revise previous_head={'a' * 40} check={sel_a} check={sel_b}"
-        proofs, result = [{"selector": sel_a, "ok": True}, {"selector": sel_b, "ok": True}], self.evidence
+        revise = f"AGMSG-ACCEPTANCE v1 task_id=t status=revise previous_head={BASE} check={SEL_A} check={SEL_B}"
+        proofs, result = PROOFS, self.evidence
         unit = lambda ok: [{"name": "unit-test", **ok}, *CHECKS_OK[1:], DEFERRED]
         valid = result([*CHECKS_OK, DEFERRED], proofs)
         for required in ("1", "0"):
@@ -333,32 +297,39 @@ class ResultPrecheckTest(unittest.TestCase):
         }
         for name, (field_name, line) in malformed.items():
             with self.subTest(case=name):
-                refused, sent = self.dispatch(line, "1", revise)
-                self.assertEqual((refused.returncode, sent), (1, False), refused.stderr)
-                self.assertIn(f"precheck: precheck.json:{field_name} ", refused.stderr)
-                warned, sent = self.dispatch(line, "0", revise)
-                self.assertEqual((warned.returncode, sent), (0, True), warned.stderr)
-                self.assertIn(f"precheck: warning precheck.json:{field_name} ", warned.stderr)
+                self.gated(line, f"precheck.json:{field_name} ", revise)
 
     def test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise(self):
         # Local review of 4ed1b27 (P2, dispatch.sh:174-176): a revise after the newest RESULT outdates that RESULT.
-        sel_a, sel_b = "tests/unit/test_x.py::test_a", "tests/unit/test_x.py::test_b"
-        revise = lambda task, s: f"AGMSG-ACCEPTANCE v1 task_id={task} status=revise previous_head={'a' * 40} check={s}"
-        ready = self.evidence([*CHECKS_OK, DEFERRED], [{"selector": s, "ok": True} for s in (sel_a, sel_b)])
-        for required, outcome, prefix in (("1", (1, False), "precheck: result "), ("0", (0, True), "warning result ")):
-            stale, sent = self.dispatch(ready, required, revise("t", sel_a), later=revise("t", sel_b))
-            self.assertEqual((stale.returncode, sent, prefix in stale.stderr), (*outcome, True), stale.stderr)
+        revise = lambda task, s: f"AGMSG-ACCEPTANCE v1 task_id={task} status=revise previous_head={BASE} check={s}"
+        ready = self.evidence([*CHECKS_OK, DEFERRED], PROOFS)
+        self.gated(ready, "result ", revise("t", SEL_A), later=revise("t", SEL_B))
         # The same RESULT after the latest revise passes, as does one followed only by another task's revise.
-        for before, after in ((revise("t", sel_b), None), (revise("t", sel_a), revise("other", sel_b))):
+        for before, after in ((revise("t", SEL_B), None), (revise("t", SEL_A), revise("other", SEL_B))):
             passed, sent = self.dispatch(ready, "1", before, later=after)
             self.assertEqual((passed.returncode, sent), (0, True), passed.stderr)
 
-    def hooks(self):
-        self.git("config", "core.hooksPath", str(ROOT / ".githooks"))
+    def test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise(self):
+        # The audit of bccb2de (P2, dispatch.sh:177): a proof counts only against the latest revise's previous_head;
+        # that revise's check= may also list its selectors with commas.
+        revise = f"AGMSG-ACCEPTANCE v1 task_id=t status=revise previous_head={BASE} check={SEL_A} check={SEL_B}"
+        stale = self.evidence([*CHECKS_OK, DEFERRED], [{**p, "previous_head": "f" * 40} for p in PROOFS])
+        self.gated(stale, "precheck.json:selectors ", revise)
+        listed = revise.replace(f" check={SEL_B}", f",{SEL_B}")
+        passed, sent = self.dispatch(self.evidence([*CHECKS_OK, DEFERRED], PROOFS), "1", listed)
+        self.assertEqual((passed.returncode, sent), (0, True), passed.stderr)
+
+    def test_result_precheck_stops_when_the_clean_tree_query_fails(self):
+        # The audit of bccb2de (P2, result-precheck.sh:187): a failed git status stops the run before any check.
+        (self.repo / ".git/index").write_bytes(b"not an index")
+        result, evidence = self.precheck(), self.repo / f".orchestration/{TASK}"
+        self.assertEqual(
+            (result.returncode, evidence.exists(), "index" in result.stderr), (2, False, True), result.stderr
+        )
 
     def hooked_commit(self):
         """`git commit` through the repository's hooks, as a seat runs it."""
-        self.hooks()
+        self.git("config", "core.hooksPath", str(ROOT / ".githooks"))
         run = ["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "s"]
         return subprocess.run(run, cwd=self.repo, env=self.env, capture_output=True, text=True, check=False)
 
@@ -392,7 +363,7 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def push(self, branch, *commits):
         """Commit each {path: bytes} on a new branch from main, push it through the hooks and return (exit, stderr)."""
-        self.hooks()
+        self.git("config", "core.hooksPath", str(ROOT / ".githooks"))
         self.git("switch", "-q", "-c", branch, "main")
         for files in commits:
             for rel, data in files.items():
@@ -484,15 +455,17 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan(self):
         # Local review of 9cd5514 (P1, result-precheck.sh:85): UTF-16 with a BOM is decoded and its credential found;
-        # without a BOM the detector cannot decode it and refuses it, never claiming a match (a03 item 4).
-        blob, found = self.temp / "blob", r"^secrets: [1-9][0-9]* match\(es\)\n$"
-        for encoding, stdout in (("utf-16", found), ("utf-16-le", "^decoding: "), ("utf-16-be", "^decoding: ")):
+        # without a BOM the detector cannot decode it and refuses it, never claiming a match (a03 item 4). `--secrets`
+        # counts a plain UTF-8 file's match the same way, prints no matched text and leaves every input unchanged.
+        blob, found, refused = self.temp / "blob", r"^secrets: 1 match\(es\)\n$", "^decoding: "
+        for encoding, stdout in (("utf-8", found), ("utf-16", found), ("utf-16-le", refused), ("utf-16-be", refused)):
             with self.subTest(encoding=encoding):
                 blob.write_bytes(f"key={token()}\r\n".encode(encoding))
                 result = self.scan(blob)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertRegex(result.stdout, stdout)
                 self.assertNotIn(token(), result.stdout + result.stderr)
+                self.assertEqual(blob.read_bytes(), f"key={token()}\r\n".encode(encoding))
         blob.write_bytes("key=clean\r\n".encode("utf-16"))
         self.assertEqual(self.scan(blob).returncode, 0)
 
@@ -514,6 +487,30 @@ class ResultPrecheckTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
                 self.assertIs(self.record()["selectors"][0]["ok"], ok)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)
+        self.assertNotIn("worktree prune", PRECHECK.read_text())
+
+    def test_previous_head_proof_selects_tests_by_exact_id(self):
+        # The audit of bccb2de (P2) and amendment 1: `-k test_requested` also runs test_requested_extra, whose failure on
+        # the previous head proves nothing about test_requested; a name two classes define selects no test.
+        self.write("lib.py", "VALUE = 1\n")
+        previous = self.commit("previous code")
+        self.write("lib.py", "VALUE = 2\n")
+        case = "import unittest\n\nimport lib\n\n\nclass T(unittest.TestCase):\n    def test_requested(self):\n        pass\n\n"
+        case += (
+            "    def test_requested_extra(self):\n        self.assertEqual(lib.VALUE, 2)\n\n    def test_twice(self):\n"
+        )
+        case += "        pass\n\n\nclass U(unittest.TestCase):\n    def test_twice(self):\n        pass\n"
+        self.write("tests/unit/test_ids.py", case)
+        self.commit("this head")
+        for name, ok in (("test_requested", False), ("test_twice", False), ("test_requested_extra", True)):
+            with self.subTest(name=name):
+                result = self.precheck("--previous-head", previous, "--check", f"tests/unit/test_ids.py::{name}")
+                self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
+                self.assertIs(self.record()["selectors"][0]["ok"], ok)
+        proof = self.record()["selectors"][0]  # test_requested_extra's, by its exact id on both heads
+        keys = ("id", "previous_head", "previous_head_tests", "previous_head_exit", "head_tests", "head_exit")
+        want = ("tests.unit.test_ids.T.test_requested_extra", previous, 1, 1, 1, 0)
+        self.assertEqual(tuple(proof.get(k) for k in keys), want)
 
 
 if __name__ == "__main__":

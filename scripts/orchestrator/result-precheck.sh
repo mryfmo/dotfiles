@@ -13,10 +13,10 @@
 #     Run `shfmt`: git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
 #     Check Python and Markdown formatting: git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check
 #     Check Python and Markdown formatting: git ls-files -z "*.md" | xargs -0 prettier --check
-#   A `--check` selector (`uv run python -m unittest tests.unit.<module> -k <name>`) must pass here and fail in a
-#   detached worktree of `--previous-head` that runs this head's copy of the module: exit 1 after `Ran <n>` tests with
-#   n > 0 and `FAILED (failures=…)` without errors, so an import error or no test run is no proof (`selectors[]`); the
-#   worktree is removed with `git worktree remove --force`, never pruned. `precheck.json` (`{head, tree, generated_at, checks, selectors}`) and `result.txt` (the RESULT line) are
+#   A `--check tests/unit/<m>.py::<name>` runs only its exact id `tests.unit.<m>.<Class>.<name>` (amendment 1: one class
+#   defines the name), never `-k`: it must pass here and, in a detached worktree of `--previous-head` running this head's
+#   copy of the module, exit 1 after `Ran 1 test` with `FAILED (failures=…)` and no errors (`selectors[]` records the id,
+#   that baseline and both test counts); the worktree is removed with `git worktree remove --force`, never pruned. `precheck.json` (`{head, tree, generated_at, checks, selectors}`) and `result.txt` (the RESULT line) are
 #   written and `precheck=<sha256>` printed last; the seat commits them and the logs last and sends the RESULT with
 #   `head=` set to that commit. A masker failure removes the logs instead. `--secrets <file>`, `--blob <commit>:<path>`
 #   (the pre-push hook) and `--staged` (`format` and `shellcheck` on the staged blobs, the pre-commit hook) run only that.
@@ -31,7 +31,7 @@
 # @env PRECHECK_LOCAL_REVIEW `orchestrator` (the default) or `seat`.
 # @exitcode 0 Every check and selector that ran is ok (a deferred check is neither).
 # @exitcode 1 A check or a selector failed, or the masker failed.
-# @exitcode 2 Usage error, or the tree has changes outside the evidence directory.
+# @exitcode 2 Usage error, the tree has changes outside the evidence directory, or `git status` fails.
 # @example
 #   scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests/unit/test_result_precheck.py
 set -euo pipefail
@@ -74,8 +74,8 @@ cd -- "$(git rev-parse --show-toplevel)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/result-precheck.XXXXXX")"
 trap 'if [[ -e "${work}/previous" ]]; then git worktree remove --force "${work}/previous" || true; fi; rm -rf -- "${work}"' EXIT
 
-# The repository detector on one file, as validate_no_obvious_secrets reads a tracked one: read_scannable_text (UTF-8,
-# or UTF-16 with a BOM; a NUL or UTF-16 under .orchestration/ is refused), json_strings, the allowed placeholders and
+# The repository detector on one file, as validate_no_obvious_secrets reads a tracked one: read_scannable_text (UTF-8, or
+# UTF-16 with a BOM; a NUL or UTF-16 under .orchestration/ is refused), json_strings, the allowed placeholders and
 # SECRET_PATTERN, plus home_path_pattern for a path under .orchestration/ only. argv: validator, scan root, path.
 read -r -d '' detector << 'PY' || true
 import importlib.util, sys
@@ -106,8 +106,8 @@ scan_one() {
     }
     uv run --no-project python -I -c "${detector}" scripts/validate-agent-assets.py "${dir}" "$2"
 }
-# @description Run a command on the tracked (or `staged`) files of some pathspecs; nothing runs when none matches, and
-#   a listing that fails fails the call (errexit is off in a function run through `||`, so every failure is explicit).
+# @description Run a command on the tracked (or `staged`) files of some pathspecs; nothing runs when none matches, and a
+#   listing that fails fails the call (errexit is off in a function run through `||`, so every failure is explicit).
 # @arg $1 string `tracked` or `staged`; then the pathspecs, `--` and the command.
 on_files() {
     local list=(git ls-files -z --) specs=()
@@ -179,12 +179,13 @@ for s in ${selectors[@]+"${selectors[@]}"}; do
     [[ ${s} =~ ^tests/unit/[A-Za-z_][A-Za-z0-9_]*\.py::[A-Za-z_][A-Za-z0-9_]*$ ]] || usage
 done
 evidence=".orchestration/${task}"
+git status --porcelain=v1 -z --untracked-files=all --no-renames > "${work}/status" || exit 2 # unknown state (bccb2de audit)
 while IFS= read -r -d '' entry; do
     [[ ${entry:3} == "${evidence}/"* ]] || {
         echo "result-precheck: the tree has changes outside ${evidence}/ (${entry:3}); commit them first" >&2
         exit 2
     }
-done < <(git status --porcelain=v1 -z --untracked-files=all --no-renames)
+done < "${work}/status"
 mkdir -p -- "${evidence}" && rm -f -- "${evidence}"/precheck-*.log
 # @description Run one check (name, then command) with its output in its log; record `name<TAB>exit<TAB>log`.
 run_check() {
@@ -235,12 +236,14 @@ if ((${#selectors[@]})); then
     for s in "${selectors[@]}"; do
         n=$((${n:-0} + 1)) module=${s#tests/unit/} && module=${module%%.py::*}
         before="${evidence}/precheck-selector-${n}-previous.log" after="${evidence}/precheck-selector-${n}-head.log" prc=0 hrc=0
-        # The previous code runs this head's test source (the selector's test may be new), so its own failure counts.
-        { mkdir -p -- "${work}/previous/tests/unit" && cp -- "tests/unit/${module}.py" "${work}/previous/tests/unit/"; } \
-            > "${before}" 2>&1 || prc=$?
-        ((prc)) || (cd -- "${work}/previous" && uv run python -m unittest "tests.unit.${module}" -k "${s##*::}") > "${before}" 2>&1 || prc=$?
-        uv run python -m unittest "tests.unit.${module}" -k "${s##*::}" > "${after}" 2>&1 || hrc=$?
-        printf '%s\t%s\t%s\t%s\t%s\n' "${s}" "${prc}" "${before}" "${hrc}" "${after}" >> "${work}/selectors"
+        # Amendment 1: the one class defining the name (none or two: exit 2, no proof); both trees run this head's module.
+        cls="$(awk -v n="${s##*::}" '/^class / { c = $2; sub(/[(:].*/, "", c) } $0 ~ "^    def " n "\\(" { print c; k++ } END { exit k != 1 }' "tests/unit/${module}.py")" || prc=2 hrc=2
+        id="tests.unit.${module}.${cls//$'\n'/,}.${s##*::}"
+        echo "result-precheck: ${s} runs ${id}" | tee "${before}" > "${after}"
+        ((prc)) || { mkdir -p -- "${work}/previous/tests/unit" && cp -- "tests/unit/${module}.py" "${work}/previous/tests/unit/"; } >> "${before}" 2>&1 || prc=$?
+        ((prc)) || (cd -- "${work}/previous" && uv run python -m unittest "${id}") >> "${before}" 2>&1 || prc=$?
+        ((hrc)) || uv run python -m unittest "${id}" >> "${after}" 2>&1 || hrc=$?
+        printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${s}" "${id}" "${prc}" "${before}" "${hrc}" "${after}" >> "${work}/selectors"
         echo "result-precheck: ${s} previous head exit ${prc}, this head exit ${hrc}"
     done
 fi
@@ -253,37 +256,34 @@ uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secret
 read -r -d '' writer << 'PY' || true
 import hashlib, json, os, re, sys
 from datetime import UTC, datetime
-task, evidence, head, tree, rows, sel_rows = sys.argv[1:7]
+from pathlib import Path
+task, evidence, head, tree, previous, rows, sel_rows = sys.argv[1:8]
 digest = lambda path: hashlib.sha256(open(path, "rb").read()).hexdigest()
-def red(code, log):
-    # An executed test failing by assertion; an import or runner error, or no test run, proves no regression.
-    text = open(log, errors="replace").read()
-    ran, summary = re.search(r"^Ran (\d+) tests? in ", text, re.M), re.search(r"^FAILED \(([^)]*)\)$", text, re.M)
-    return code == "1" and bool(ran and int(ran[1]) and summary) and "failures=" in summary[1] and "errors=" not in summary[1]
+ran = lambda log: int((re.search(r"^Ran (\d+) tests? in ", open(log, errors="replace").read(), re.M) or [0, 0])[1])
+# One executed test failing by assertion; an import or runner error, or a run of no test or several, proves nothing.
+red = lambda code, log: code == "1" and ran(log) == 1 and bool(s := re.search(r"^FAILED \(([^)]*)\)$", open(log, errors="replace").read(), re.M)) and "failures=" in s[1] and "errors=" not in s[1]
 checks = [
     {"name": n, "ok": None, "deferred": "orchestrator"} if rc == "deferred"
     else {"name": n, "ok": rc == "0", "exit": int(rc), "output_sha256": digest(log)}
     for n, rc, log in (line.rstrip("\n").split("\t") for line in open(rows))
 ]
 selectors = [
-    {"selector": s, "ok": red(p, before) and h == "0", "previous_head_exit": int(p),
-     "previous_head_output_sha256": digest(before), "head_exit": int(h), "head_output_sha256": digest(after)}
-    for s, p, before, h, after in (line.rstrip("\n").split("\t") for line in open(sel_rows))
+    {"selector": s, "id": i, "previous_head": previous, "ok": red(p, before) and h == "0" and ran(after) == 1,
+     "previous_head_exit": int(p), "previous_head_tests": ran(before), "previous_head_output_sha256": digest(before),
+     "head_exit": int(h), "head_tests": ran(after), "head_output_sha256": digest(after)}
+    for s, i, p, before, h, after in (line.rstrip("\n").split("\t") for line in open(sel_rows))
 ]
 when = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 document = {"head": head, "tree": tree, "generated_at": when, "checks": checks, "selectors": selectors}
-with open(f"{evidence}/precheck.json", "w") as f:
-    f.write(json.dumps(document, indent=2) + "\n")
+Path(f"{evidence}/precheck.json").write_text(json.dumps(document, indent=2) + "\n")
 ok = all(c["ok"] is not False for c in checks) and all(s["ok"] for s in selectors)
 total = digest(f"{evidence}/precheck.json")
 fields = [f"task_copy={digest(f'{evidence}/task.md')}"] if os.path.isfile(f"{evidence}/task.md") else []
 fields += [f"{k}={evidence}/{k}.md" for k in ("report", "validation", "sandbox", "learning")]
-with open(f"{evidence}/result.txt", "w") as f:
-    state = "ready_for_review" if ok else "blocked"
-    f.write(f"AGMSG-RESULT v1 task_id={task} status={state} head={head} precheck={total} {' '.join(fields)}\n")
+Path(f"{evidence}/result.txt").write_text(f"AGMSG-RESULT v1 task_id={task} status={'ready_for_review' if ok else 'blocked'} head={head} precheck={total} {' '.join(fields)}\n")
 print(f"precheck={total}")
 sys.exit(0 if ok else 1)
 PY
 # Not exec: the EXIT trap still removes the work directory and the selector worktree.
 python3 -I -c "${writer}" "${task}" "${evidence}" "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" \
-    "${work}/rows" "${work}/selectors"
+    "${previous}" "${work}/rows" "${work}/selectors"

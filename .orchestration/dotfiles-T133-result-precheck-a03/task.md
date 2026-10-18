@@ -174,6 +174,10 @@ The live no-prompt rule governs review requests. No `@codex review` comment is p
 
 Until P1-14 lands, any string containing the words `gh pr merge` or `gh pr create` is written with the file-edit tool, never in a Bash heredoc or `echo`.
 
+## Amendment 1 (round 1, 2026-10-18T22:1xZ): exact test selection for the previous-head proof
+
+The task-level audit of bccb2de (P2, this text's line 101) found the prescribed `unittest -k <name>` form unsound: `-k` matches substrings, so a similarly named test can supply the previous-head failure while the requested test passes on both heads. Item 1's previous-head proof selects tests by exact id only: each `--check tests/<file>::<name>` runs as `uv run python -m unittest <module>.<Class>.<name>` (the class resolved from the module by the name, a name found in two classes refused), never through `-k`; the recorded proof names the exact id run on both heads and the run's test count, and a run with zero executed tests or more than one is a failed proof. This is INV-6's first amendment (C-61); the counters are pasted below.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

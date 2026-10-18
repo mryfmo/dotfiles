@@ -7,7 +7,8 @@
 #   review worktree, the record, a ready PR) it fetches the head into both checkouts, update-branches when the base
 #   moved (restarting at the fetch), waits for the required checks and the Bot (never gated), then runs the sandbox
 #   scan, the local review, the advisory rows, the sweep, the receipt, the record block and the audit, which an
-#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged. Each command
+#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged and a clean
+#   merge of its parents reproduces its tree. Each command
 #   goes to `.orchestration/validation/<task>-chain-<sha7>.log` as `<utc> <step> rc=<n>: <command>`, repository
 #   paths relative; a refusal before the head is known goes to stderr only. The repository scripts run from the main
 #   checkout, never the head, and the script never changes directory into the review worktree.
@@ -184,6 +185,10 @@ from=${v}/${task}-audit-${parent:0:7}
 if [[ -n ${parent} && -f ${from}.md && -f ${from}.md.last.md ]] && "${git}" -C "${main}" merge-base --is-ancestor "${head}^2" origin/main 2> /dev/null; then
     old=$(patch "${parent}") || old='' # computed outside the condition, so a failure is an empty id and a fresh audit
     new=$(patch "${head}") || new=''
+    # patch-id ignores hunk positions, so the head must also be the tree a clean merge of its parents writes: a
+    # conflict (merge-tree exits 1) or any edit made in the merge gets a fresh audit (re-plan R1).
+    tree=$("${git}" -C "${main}" merge-tree --write-tree "${head}^1" "${head}^2") || tree=''
+    [[ -n ${tree} && ${tree} == "$("${git}" -C "${main}" rev-parse "${head}^{tree}")" ]] || old=''
 fi
 if [[ -n ${old} && ${old%% *} == "${new%% *}" ]]; then
     for s in .md .md.last.md; do

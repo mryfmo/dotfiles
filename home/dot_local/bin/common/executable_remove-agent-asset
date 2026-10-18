@@ -440,7 +440,7 @@ function load_entry() {
 function remove_hcom() {
     local tools=""
     if has_command uv; then
-        tools="$(uv tool dir)" || return 1
+        tools="$(uv tool dir --color never)" || return 1 # herdr panes export FORCE_COLOR and CLICOLOR_FORCE
     elif [ "${MODE}" = "yes" ]; then
         fail "uv command not found, so hcom's uv tool environment and receipt cannot be uninstalled; nothing was removed"
         return 1

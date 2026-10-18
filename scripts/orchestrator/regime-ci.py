@@ -1,22 +1,15 @@
 """Check a pull request against its task copies: the regime CI job (plan 024 P1-11, programs item (6)).
 
 `uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha>
-[--root <dir>]`
-takes the tasks whose `.orchestration/<t>/` directory the diff `<base>...<head>` touches and that carry a `task.md` copy
-at `<head>`, and checks each one:
-
-- the copy passes the tracked task-consistency checker, run as a subprocess from the checkout at `<head>`;
-- the copy equals the dispatched `.orchestration/tasks/<t>.md`, or else result.txt's `task_copy=`;
-- `precheck.json` is bound to the head, and its sha256 to result.txt's `precheck=`;
-- every changed path is inside `allowed_files`;
-- the changed lines stay within the caps of the copy's `## Check` sentence.
-
-Output is one `regime-ci: <t>: <rule>: <detail>` line per violation and `regime-ci: warning: <t>: <detail>` lines.
-It exits 1 on any violation, else prints `regime-ci: ok <n> task(s)`. A diff without a task copy passes as
-`no target (records-only)` only when every path is under `.orchestration/` or the head branch is `orchestration/*`.
-
-Pull-request content is read as data only (git show, yaml.safe_load, json). The one program run from the checkout is
-the tracked checker, and a pull request that edits it shows the edit in its own diff.
+[--root <dir>]` checks each task whose `.orchestration/<t>/` the diff `<base>...<head>` touches and that has a `task.md`
+copy at `<head>` (of a reset_of lineage, only the latest copy): the tracked task-consistency checker on the copy (a
+subprocess from the checkout at `<head>`), the copy against the dispatched `.orchestration/tasks/<t>.md` or result.txt's
+`task_copy=`, precheck.json's binding to the head and to result.txt's `precheck=`, `allowed_files`, and the caps of the
+copy's `## Check` sentence. It prints one `regime-ci: <t>: <rule>: <detail>` line per violation and
+`regime-ci: warning: ...` lines, and exits 1 on any violation, 2 when git cannot list the diff, else 0 after
+`regime-ci: ok <n> task(s)`. A diff without a task copy passes as `no target (records-only)` only when every path is
+under `.orchestration/` or the head branch is `orchestration/*`. Pull-request content is read as data only (git show,
+yaml.safe_load, json); the one program run from the checkout is the tracked checker, whose edits show in the diff.
 """
 
 import argparse
@@ -105,7 +98,16 @@ def caps(text, numstat):
     return found, missing
 
 
-def precheck(root, head, t, result_text):
+def front(data):
+    """Return a copy's front matter mapping, or None when it is unreadable or not a mapping."""
+    try:
+        fm = yaml.safe_load(data.decode().split("\n---\n", 1)[0].lstrip("-\n"))
+    except (UnicodeDecodeError, yaml.YAMLError):
+        return None
+    return fm if isinstance(fm, dict) else None
+
+
+def precheck(root, head, t, result_text, exempt=()):
     """Return the violations of precheck.json's binding, or None when the task carries no precheck.json."""
     data = show(root, head, f".orchestration/{t}/precheck.json")
     if data is None:
@@ -124,7 +126,9 @@ def precheck(root, head, t, result_text):
         if git(root, "merge-base", "--is-ancestor", bound, head).returncode:
             found.append(f"precheck.json head {bound} is neither the head {head} nor its ancestor")
         elif other := [
-            p for p in listed(root, "diff", "--name-only", bound, head) if not p.startswith(f".orchestration/{t}/")
+            p
+            for p in listed(root, "diff", "--name-only", bound, head)
+            if not p.startswith((f".orchestration/{t}/", *exempt))
         ]:
             found.append(
                 f"precheck.json head {bound[:12]} differs from the head outside .orchestration/{t}/: {', '.join(other)}"
@@ -136,17 +140,13 @@ def precheck(root, head, t, result_text):
     return found
 
 
-def check_task(root, head, t, changed, numstat):
+def check_task(root, head, t, changed, numstat, exempt=()):
     """Return (violations, warnings) for one task, each violation a (rule, detail) pair."""
     copy_path = f".orchestration/{t}/task.md"
     copy = show(root, head, copy_path)
-    try:
-        text = copy.decode()
-        fm = yaml.safe_load(text.split("\n---\n", 1)[0].lstrip("-\n"))
-    except (UnicodeDecodeError, yaml.YAMLError) as error:
-        return [("front-matter", f"{copy_path} is unreadable: {error}")], []
-    if not isinstance(fm, dict):
-        return [("front-matter", f"{copy_path} has no front matter mapping")], []
+    if (fm := front(copy)) is None:
+        return [("front-matter", f"{copy_path} is unreadable or has no front matter mapping")], []
+    text = copy.decode()
     found, warnings = [], []
     if fm.get("task_id") != t:
         found.append(("task-id", f"the copy's task_id {fm.get('task_id')!r} is not its directory {t}"))
@@ -174,13 +174,15 @@ def check_task(root, head, t, changed, numstat):
             )
     else:
         warnings.append("task copy unverifiable (no dispatched text at head, no result.txt)")
-    bound = precheck(root, head, t, result_text)
+    bound = precheck(root, head, t, result_text, exempt)
     if bound is None:
         warnings.append("precheck absent")
     found += [("precheck", detail) for detail in bound or []]
     entries = [a for a in fm.get("allowed_files") or [] if isinstance(a, str)]
     found += [
-        ("allowed-files", f"{p} is outside allowed_files") for p in changed if not any(allowed(p, a) for a in entries)
+        ("allowed-files", f"{p} is outside allowed_files")
+        for p in changed
+        if not p.startswith(exempt) and not any(allowed(p, a) for a in entries)
     ]
     exceeded, cap_warnings = caps(text, numstat)
     found += [("caps", detail) for detail in exceeded]
@@ -230,10 +232,17 @@ def main(argv=None):
             f"regime-ci: no target: {len(stray)} changed path(s) outside .orchestration/ and no task copy, first {stray[0]}"
         )
         return 1
+    # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target
+    fronts = {t: front(show(root, head, f".orchestration/{t}/task.md")) or {} for t in targets}
+    later = {p: t for t in targets for p in fronts[t].get("reset_of") or [] if p in fronts and p != t}
+    exempt = tuple(f".orchestration/{p}/" for p in later)
+    for p, t in sorted(later.items()):
+        print(f"regime-ci: warning: {p}: predecessor copy .orchestration/{p}/task.md (reset_of of {t})")
+    targets = [t for t in targets if t not in later]
     failed = False
     for t in targets:
         try:
-            found, warnings = check_task(root, head, t, changed, numstat)
+            found, warnings = check_task(root, head, t, changed, numstat, exempt)
         except GitError as error:
             found, warnings = [("git", str(error))], []
         for detail in warnings:

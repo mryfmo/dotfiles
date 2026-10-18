@@ -12,6 +12,9 @@ redesign_commit: bcbd6949
 review_test_commits: [56ccbee1, 357ff237]
 review_fix_commit: 1ee15af1
 amendment_copy_commit: 3636fc05
+previous_head: f7d2c48dad9fcf37b7111003b609e80d320f666a
+revise_test_commit: 9ee208d5
+revise_fix_commit: 3d695ed1
 previous_task_sha256: 015a5e0f48f07cc12a2e7b65241de3f1e8547d89e091591fe1a7bbd7daf0aa90
 task_sha256: 807c6b7446b7bbf795aa2b6aa6db1c46b9543b8ac953e40b4309dfd735322219
 precheck: pending-411
@@ -120,8 +123,8 @@ precheck: pending-411
 
 ## Caps (validation §9)
 
-- Outside `tests/` and `.orchestration/`: 324 of 330 (regime.yml 42, regime-ci.py 282).
-- `tests/`: 405 of 480 (test_regime_ci.py 404, test_workflow_security.py 1, which differs from `origin/main` by the one `regime.yml` entry).
+- Outside `tests/` and `.orchestration/`: 325 of 330 (regime.yml 42, regime-ci.py 283).
+- `tests/`: 417 of 480 (test_regime_ci.py 416, test_workflow_security.py 1, which differs from `origin/main` by the one `regime.yml` entry).
 
 ## Worker review (the record and the receipt name every finding)
 
@@ -135,6 +138,19 @@ An independent read-only reviewer did the review: a fresh general-purpose subage
    - The P0, the C6 read and the lineage and rename P3s are closed. Its PoCs ran again against 1ee15af1: no marker, no out-of-checkout value, exit 1 for the lineage and rename cases.
    - 20 of its 21 mutants die. The survivor (caps read from the head copy) makes no difference while byte identity fails any differing copy.
    - Its one new P3 is the residual below on the window between merge and promotion.
+
+## Revise round (AGMSG-ACCEPTANCE status=revise, 2026-10-18T22:59:08Z, previous_head f7d2c48d; `revise.yaml`)
+
+The task-level audit of f7d2c48 returned `Verdict: incorrect`, with two P2 and one P3 and no P1.
+
+1. **P2 (`regime-ci.py:260`), supersession.** It checked only that both base texts existed, so an altered predecessor copy was skipped.
+   - Fixed in 3d695ed1: a predecessor is superseded only when both head copies equal their base dispatched texts byte for byte (`exact[t] and exact[p]`). An altered predecessor copy is now checked as its own task, a `task-copy` violation.
+   - Test: `test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base` (9ee208d5), red at f7d2c48's verifier (validation §4b).
+   - Two more mutants, supersession without byte equality and on the successor alone, are killed (§5a).
+2. **P2 (validation), the bootstrap on the final head.** It now runs against the round's last head before this paste (§6). This file's commit is the only change after that head, and regime-ci reads no evidence content. The RESULT reports the same run on the final head and its identical output.
+3. **P3 (the stale PR description).** It is an owner row, not this round: editing it needs `gh pr edit`, which matches a live ask rule.
+
+The a02 receipt's `reviewer:` field now holds the one allowlisted word `claude` (the F1 lineage's lesson audit:274a536:4), with the explanation moved into the receipt's body.
 
 ## Bot
 

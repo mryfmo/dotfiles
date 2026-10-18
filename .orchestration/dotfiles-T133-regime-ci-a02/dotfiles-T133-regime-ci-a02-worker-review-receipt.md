@@ -1,7 +1,9 @@
 review_surface: crit-data
-reviewer: claude (a fresh general-purpose subagent of the worker seat, not a01's reviewer, read-only, given the task file, the threat table and the commit range, not the worker's conclusions)
+reviewer: claude
 review_source: .orchestration/dotfiles-T133-regime-ci-a02/dotfiles-T133-regime-ci-a02-worker-crit.json
 review_outcome: addressed
+
+The reviewer was a fresh general-purpose subagent of the worker seat, not a01's reviewer, read-only, given the task file, the threat table and the commit range, not the worker's conclusions. The `reviewer:` field holds the one allowlisted word (the F1 lineage's lesson audit:274a536:4).
 
 Crit reports no review file or daemon in this worktree (no Plan Mode was used), so the AGENTS.md fallback applies: an independent read-only review in the crit-data shape.
 

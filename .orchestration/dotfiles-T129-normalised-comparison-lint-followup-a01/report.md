@@ -13,7 +13,9 @@ review_fix_commit: 514969d1
 rereview_test_commit: 10ea506c
 rereview_fix_commit: f78e5dbf
 baseline_commit: 7fa5d112
-pr: pending
+merge_commit: 5c2ef021
+merge_baseline_commit: 1219ab10
+pr: 415
 task_sha256: 78d582c861315b07f98dc173db1803a20f47e708409cfa4a0f922f82742a7334
 ---
 
@@ -30,6 +32,7 @@ task_sha256: 78d582c861315b07f98dc173db1803a20f47e708409cfa4a0f922f82742a7334
 2. Baseline (item 2): on the rebased tree the lint (with the pre-commit baseline) printed four hits and two stale rows (§12b). Commit 7fa5d112 replaces the two stale rows and adds one content-hashed row per hit; the lint then exits 0 with no output (§14) and the tracked-tree test passes (§13). The rows, per rule and per file:
    - `home/dot_claude/hooks/executable_project-map-reload.sh`: R1 at line 40 (`[[ "$event_path" == */.project-map/index.html ]]`), R3 at line 48 (`select(.url | strings | startswith("file://"))`), R1 at line 56 (`[[ "$tab_path" == "$event_path" ]]`). main changed the file after #387's baseline, so its two rows (R1, R3) were stale and are replaced by these three. `dotfiles-T128-project-map-pane-open-a01-followup-a02` lists the file in its allowed_files and has no acceptance record (an owner task written 2026-10-16; I found no dispatch of it), so the owner assignment of these rows is for the orchestrator.
    - `scripts/update-agent-assets.sh`: R2 at line 966 (`case "$(uname -s)/$(uname -m)" in`, from #405), the same content as the existing line-274 row, so the baseline now holds that hash twice (one row per hit). It is an OS/arch string, not a path: a false positive of R2 that the base script reports too. The tasks that list this file all have acceptance records (T129 assets-omp-hcom a01 and its follow-ups, pstack, T132), apart from the legacy T57 to T62b files.
+   - `home/dot_local/bin/common/executable_herdr-agents`: R1 at lines 1843 (`[[ ${seat_path} == "${workdir}/.claude/worktrees/"* ]]`) and 1846 (`[[ ${seat_path} != "${workdir}/${seat_worktree}" ]]`), added by #408 (`main` 61231cd9) after the rebase. PR 415's first CI run (the merge with 61231cd9) failed the tracked-tree test on them (four `test` jobs, run 39116683423). The branch took the new `main` by the merge 5c2ef021, not a second rebase, so the commits the dispositions below name stay, and 1219ab10 adds one row per hit (§18 to §20). Tasks without an acceptance record list this file, among them `dotfiles-T133-worker-cap-hookspath-followup-a01` (the #408 lineage) and `dotfiles-T133-worker-hooks-path-a01`, so the owner assignment of these two rows is for the orchestrator.
    - No hit is in `scripts/lint-comparisons.py` or the tests.
 3. The six Bot threads (item 3), each verified by running its fixture with the lint script of the fix commit's parent (red) and of the fix commit (green) in a scratch worktree at HEAD (§12c), and each thread's own reproducer refused by the lint at HEAD (lint exit 1, §12c):
 
@@ -42,7 +45,7 @@ task_sha256: 78d582c861315b07f98dc173db1803a20f47e708409cfa4a0f922f82742a7334
 | 4302629305 (d215e062) | a def name inside a string literal satisfies the side | `test_a_jq_normaliser_name_inside_a_string_literal_is_no_application` | `fixed:514969d1` (1b56dc2b): red at c5082855, green at c33c351f as at that commit; HEAD's fixture (plus the jq comment form) green from 514969d1 |
 | 4302629307 (d215e062) | one `re.escape` accepts every interpolation | `test_every_f_string_interpolation_in_a_regex_is_escaped` | `fixed:514969d1` (1b56dc2b): red at c5082855, green at c33c351f as at that commit; HEAD's fixture (plus `map(re.escape, names)`) green from 514969d1 |
 
-4. PR (item 4): see the PR section at the end; the caps hold against `origin/main` (§16): the script 200 of 200, `tests/` 271 added of 1000, the baseline outside the count.
+4. PR (item 4): #415 (see the PR section at the end); the caps hold against `origin/main` 61231cd9 (§20): the script 200 of 200, `tests/` 271 added of 1000, the baseline (90 lines) outside the count.
 
 ## The owned rows
 
@@ -103,6 +106,8 @@ Round 2 on `37bf6a51..1b56dc2b`, the same reviewer with its context kept: `Verdi
 ## PR (Amendment 1 item 4)
 
 The `gh pr create` stop of 2026-10-17 no longer matches a live ask rule (D-024-13). After the rebase, the branch is pushed in one command (`--force-with-lease` against 445c32dd), then `gh pr create --draft --repo mryfmo/dotfiles --base main --head lint/normalised-comparisons-followup-a01 --title "…" --body-file .orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/pr-body.md` and `gh pr ready <pr>`, each one command. Then CI and the Bot's automatic review are awaited (no `@codex review` comment; 15 minutes without a review is recorded as `bot: none`). PR #387 is closed by the orchestrator when the new PR merges.
+
+PR #415 was opened as a draft at 3f58dfc5 with `pr-body.md` as its body. The body names the baseline rows of the rebase, not the two `executable_herdr-agents` rows that 1219ab10 added after `main` moved. Editing the body needs `gh pr edit`, which matches a live ask rule, so the body stays as opened and this report carries the rows.
 
 CompactionDB: the `memory add` runs at the RESULT, and its command goes into this report then.
 

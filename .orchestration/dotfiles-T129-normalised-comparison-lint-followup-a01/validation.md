@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T129-normalised-comparison-lint-followup-a01
 seat: claude-standard-dot-a008
-head: 7fa5d112
+head: 1219ab10
 pre_rebase_head: bb60ee84
 ---
 
@@ -9,7 +9,7 @@ pre_rebase_head: bb60ee84
 
 Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `lint/normalised-comparisons-followup-a01` at `bb60ee84`, inside the sandbox, through `$TMPDIR/val.sh` (a generator that prints each command, its verbatim output and its exit status); `MAIN` names the main checkout, `T` the task id, `BASE` PR #387's head `7c8e7484`. The scratch worktrees (`$R`, `$V`, `$X`, `$Y`, `$B`, `$S`) live under `$TMPDIR` and are removed after their block with `git worktree remove --force`. A block's status is its last command's. The red tracked-tree test of §3 to §5 is the same with the base script and baseline (§5a); see the report.
 
-§1 to §11 ran before Amendment 1, at the pre-rebase head `bb60ee84` on PR #387's head, and name the pre-rebase commits. §12 to §17 ran after the rebase onto `origin/main` `68f8a70a`, at `7fa5d112` (the baseline commit), from the same worktree inside the sandbox, through `$TMPDIR/val129r.sh` (the same block form; `OLD` is the pre-rebase tip `445c32dd`). §12a maps each pre-rebase commit to its rebased commit. §12c and §12d use scratch worktrees under `$TMPDIR`, removed after each run.
+§1 to §11 ran before Amendment 1, at the pre-rebase head `bb60ee84` on PR #387's head, and name the pre-rebase commits. §12 to §17 ran after the rebase onto `origin/main` `68f8a70a`, at `7fa5d112` (the baseline commit), from the same worktree inside the sandbox, through `$TMPDIR/val129r.sh` (the same block form; `OLD` is the pre-rebase tip `445c32dd`). §12a maps each pre-rebase commit to its rebased commit. §18 to §20 ran after `main` moved to `61231cd9` (#408): the merge 5c2ef021, the two rows it needed, and the Check again at `1219ab10`, through `$TMPDIR/val129m.sh`. §12c and §12d use scratch worktrees under `$TMPDIR`, removed after each run.
 
 ## 1. Task file (sha256 ab92d008…) and task copy
 ```console
@@ -651,5 +651,41 @@ R4 Python compares a path or URL by its string form
 R5 a process is read as text (ps piped to grep, awk, cut or sed; pgrep -f on a variable)
 R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
 shortcut: the lint is statement-local, so a variable normalised on an earlier line and compared later is a hit (mark it with the marker and its reason); upgrade to a cross-line data-flow when a second such marker is needed
+[exit 0]
+```
+## 18. main moved to 61231cd9 after the rebase (#408): PR 415's CI failed the tracked-tree test on the merge; the branch takes main by a merge, so the commits the dispositions name stay
+```console
+$ git log --oneline -1 origin/main; git log --format="%h parents=%p %s" -1 5c2ef021; git show 5c2ef021~1:scripts/lint-comparisons-baseline.tsv > "$TMPDIR/base-merge.tsv"; git show 5c2ef021:scripts/lint-comparisons-baseline.tsv | cmp -s - "$TMPDIR/base-merge.tsv" && echo "the merge left the baseline unchanged"; uv run --no-project python -I scripts/lint-comparisons.py --baseline "$TMPDIR/base-merge.tsv"; echo "lint exit $?"; git show --format= 1219ab10 -- scripts/lint-comparisons-baseline.tsv | /usr/bin/grep "^[-+][^-+]"; for n in 1843 1846; do echo "executable_herdr-agents:$n: $(sed -n "${n}p" home/dot_local/bin/common/executable_herdr-agents | sed "s/^ *//")"; done
+61231cd9 fix(agents): enforce worker cap and worktree hooks path (#408)
+5c2ef021 parents=3f58dfc5 61231cd9 Merge remote-tracking branch 'origin/main' into lint/normalised-comparisons-followup-a01
+the merge left the baseline unchanged
+home/dot_local/bin/common/executable_herdr-agents:1843: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+home/dot_local/bin/common/executable_herdr-agents:1846: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+lint exit 1
++home/dot_local/bin/common/executable_herdr-agents	R1	3a6dd8d64e8edad0d422df00c90a9ed20ea7cf7d7ed50db196d8f0cc28929b20
++home/dot_local/bin/common/executable_herdr-agents	R1	5310bef745aaa4a3a1a2ddc2790f8fb98d90f4a4db51958541a25a4e88e15c8a
+executable_herdr-agents:1843: [[ ${seat_path} == "${workdir}/.claude/worktrees/"* ]] || continue
+executable_herdr-agents:1846: [[ ${seat_path} != "${workdir}/${seat_worktree}" ]] || seat_seated=true
+[exit 0]
+```
+## 19. GREEN at the head: the Check's tests, the lint (exit 0, no output), ruff
+```console
+$ git rev-parse HEAD; uv run python -m unittest tests/unit/test_lint_comparisons.py 2>&1 | tail -n 1; uv run --no-project python -I scripts/lint-comparisons.py; echo "lint exit $?"; ruff check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py
+1219ab1087ffd310167d9676ed16eb6de84f5f4d
+OK
+lint exit 0
+All checks passed!
+[exit 0]
+```
+## 20. Caps against origin/main 61231cd9
+```console
+$ wc -l scripts/lint-comparisons.py; git diff --numstat origin/main...HEAD -- ":!.orchestration"; git diff --numstat origin/main...HEAD | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1; next} \$3 == \"scripts/lint-comparisons-baseline.tsv\" {b += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/, without the baseline: %d of 200\nadded under tests/: %d of 1000\nthe baseline (outside the count): %d\n\", o, t, b}"
+     200 scripts/lint-comparisons.py
+90	0	scripts/lint-comparisons-baseline.tsv
+200	0	scripts/lint-comparisons.py
+271	0	tests/unit/test_lint_comparisons.py
+outside tests/ and .orchestration/, without the baseline: 200 of 200
+added under tests/: 271 of 1000
+the baseline (outside the count): 90
 [exit 0]
 ```

@@ -27,7 +27,8 @@ Amendment 1 (2026-10-18T09:08:00Z; seat pane `wJ:p3`): inside the sandbox ran `g
 | # | Command | Step 4 case |
 |--:|---|---|
 | 5 | `gh api repos/mryfmo/dotfiles/pulls/comments/<id>` for the six #387 threads (4302545078, 4302545082, 4302545085, 4302629300, 4302629305, 4302629307): reads | `gh` |
-| 6 | the push of the rebased branch, one command: `GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push --force-with-lease=lint/normalised-comparisons-followup-a01:445c32dd… origin lint/normalised-comparisons-followup-a01` | `git push` |
+| 6 | the push of the rebased branch, one command (the first attempt was refused as `stale info`: I had typed the lease's full sha from its 8-digit prefix instead of resolving it; `git rev-parse 445c32dd` and `git ls-remote` gave the real value, and the second attempt with it pushed `445c32dd...3f58dfc5`): `GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push --force-with-lease=lint/normalised-comparisons-followup-a01:445c32dd… origin lint/normalised-comparisons-followup-a01` | `git push` |
 | 7 | `gh pr create --draft --repo mryfmo/dotfiles --base main --head lint/normalised-comparisons-followup-a01 --title "…" --body-file .orchestration/dotfiles-T129-normalised-comparison-lint-followup-a01/pr-body.md`, then `gh pr ready <pr>`, each one command | `gh` |
 | 8 | `gh pr checks <pr>` reads and `gh pr checks <pr> --watch` (background); the Bot wait as `gh api` reads of the reviews and comments every 30 seconds for at most 15 minutes | `gh` |
+| 8a | after main moved to 61231cd9: `git fetch origin main` (inside the sandbox), the merge 5c2ef021 and the baseline commit 1219ab10 (inside), then one plain push of `3f58dfc5..` to the branch | `git push` |
 | 9 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T129-normalised-comparison-lint-followup-a01 …'` | `agmsg-dispatch` |

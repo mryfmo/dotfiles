@@ -114,7 +114,7 @@ class GhMergeGateTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.tmp = Path(self.temp.name)
+        self.tmp = Path(self.temp.name).resolve()
         self.bin = self.tmp / "bin"
         self.bin.mkdir()
         self.env = dict(

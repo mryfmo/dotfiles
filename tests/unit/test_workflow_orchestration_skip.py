@@ -36,6 +36,7 @@ REQUIRED_CONTEXTS = frozenset(
     }
 )
 BOOTSTRAP_DECISION = "Decide whether the diff needs a bootstrap"
+QUOTED_CHARS = {"double-quote": '"', "backslash": "\\", "tab": "\t", "newline": "\n"}
 TEST_DECISION = "Decide whether the diff needs the unit tests"
 # The jobs that skip their heavy steps, each with its own decision step and gate.
 DECIDING_JOBS = (
@@ -149,9 +150,9 @@ def decide_script(path: Path, name: str) -> str:
 
 
 def run_decision(script: str, env: dict[str, str], cwd: Path) -> str:
-    with tempfile.NamedTemporaryFile("r", suffix=".out", delete=False) as output:
-        path = Path(output.name)
-    try:
+    with tempfile.TemporaryDirectory() as runner_temp:  # the bootstrap decision writes its path list here
+        path = Path(runner_temp) / "github-output"
+        path.touch()
         result = subprocess.run(
             ["bash", "-c", script],
             cwd=cwd,
@@ -160,6 +161,7 @@ def run_decision(script: str, env: dict[str, str], cwd: Path) -> str:
                 "GIT_CONFIG_GLOBAL": os.devnull,
                 "GIT_CONFIG_NOSYSTEM": "1",
                 "GITHUB_OUTPUT": str(path),
+                "RUNNER_TEMP": runner_temp,
                 **env,
             },
             capture_output=True,
@@ -168,8 +170,6 @@ def run_decision(script: str, env: dict[str, str], cwd: Path) -> str:
         )
         assert result.returncode == 0, result.stderr
         return path.read_text()
-    finally:
-        path.unlink()
 
 
 def scratch_repository(temp: Path):
@@ -404,6 +404,19 @@ class DecisionTest(unittest.TestCase):
                     self.assertEqual(run_decision(script, env, clone), f"should_run={expected}\n")
             with self.subTest(case="push"):
                 self.assertEqual(run_decision(script, {"EVENT_NAME": "push"}, clone), "should_run=true\n")
+
+    def test_the_bootstrap_decision_reads_paths_that_git_quotes(self) -> None:
+        # audit:4fe2438:1: core.quotePath=false still quotes a name with a quote, backslash or control character.
+        script = decide_script(REMOTE, "public-bootstrap")
+        cases = {name: ([(f"home/a{char}b", "x\n")], "true") for name, char in QUOTED_CHARS.items()}
+        cases["orchestration-quote"] = ([('.orchestration/a"b', "x\n")], "false")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            for name, (writes, expected) in cases.items():
+                with self.subTest(case=name):
+                    head = pull_request_head(clone, git, f"q-{name}", writes)
+                    env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+                    self.assertEqual(run_decision(script, env, clone), f"should_run={expected}\n")
 
     def test_the_unit_test_decision_skips_macos_for_an_os_independent_diff_and_runs_it_otherwise(self) -> None:
         script = decide_script(TEST, "test")

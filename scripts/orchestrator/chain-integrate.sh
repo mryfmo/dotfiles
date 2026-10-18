@@ -7,8 +7,8 @@
 #   review worktree, the record, a ready PR) it fetches the head into both checkouts, update-branches when the base
 #   moved (restarting at the fetch), waits for the required checks and the Bot (never gated), then runs the sandbox
 #   scan, the local review, the advisory rows, the sweep, the receipt, the record block and the audit, which an
-#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged and a clean
-#   merge of its parents reproduces its tree. Each command
+#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged, a clean
+#   merge of its parents reproduces its tree and that head's audit ends with a verdict the gate accepts. Each command
 #   goes to `.orchestration/validation/<task>-chain-<sha7>.log` as `<utc> <step> rc=<n>: <command>`, repository
 #   paths relative; a refusal before the head is known goes to stderr only. The repository scripts run from the main
 #   checkout, never the head, and the script never changes directory into the review worktree.

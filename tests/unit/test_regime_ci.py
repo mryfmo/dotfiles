@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/orchestrator/regime-ci.py"
 CHECKER = "scripts/orchestrator/task-consistency-check.py"
+VERIFIER = "scripts/orchestrator/regime-ci.py"
 UV = [
     shutil.which("uv") or "uv",
     "run",
@@ -73,19 +74,21 @@ class RegimeCiTest(unittest.TestCase):
         """A base commit (the checker, the dispatched text), then a code commit and an evidence commit on a branch.
 
         more: `late` files committed after the code commit precheck.json names, `precheck_doc` as precheck.json's text,
-        `task_copy` as result.txt's token, `checker` as the base's checker, `base` as more base files; precheck_head
-        "side" names a commit on another branch.
+        `task_copy` as result.txt's token, `checker` as the base's checker, `base` as more base files, `branch` as the
+        head branch; precheck_head "side" names a commit on another branch. With `at_base` the base also holds the
+        verifier, the checkout returns to the base, and the base's verifier runs against the head commit (a02).
         """
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.repo = Path(temp.name).resolve()
         self.git("init", "-q", "-b", "main")
         base = {CHECKER: more.get("checker") or (ROOT / CHECKER).read_text(), "README": "base\n"} | more.get("base", {})
+        base |= {VERIFIER: (ROOT / VERIFIER).read_text()} if more.get("at_base") else {}
         self.commit(base | ({f".orchestration/tasks/{T}.md": dispatched} if dispatched else {}), "base")
         if precheck_head == "side":
             precheck_head = self.commit({"side.txt": "side\n"}, "side")
             self.git("reset", "-q", "--hard", "HEAD~1")
-        self.git("switch", "-q", "-c", "pr")
+        self.git("switch", "-q", "-c", more.get("branch", "pr"))
         code_head = self.commit(CODE if code is None else code, "code")
         if "late" in more:
             self.commit(more["late"], "a change after the precheck")
@@ -98,13 +101,112 @@ class RegimeCiTest(unittest.TestCase):
             if precheck_head != "absent":
                 files |= {f".orchestration/{T}/precheck.json": pre, f".orchestration/{T}/result.txt": result}
             self.commit(files, "evidence")
+        if more.get("at_base"):
+            self.head = self.git("rev-parse", "HEAD")
+            self.git("switch", "-q", "main")
+            return self.regime(self.head, self.repo / VERIFIER)
         return self.regime()
 
-    def regime(self, head="HEAD", **env):
-        cmd = [*UV, str(SCRIPT), "--base", "main", "--head", head, "--root", str(self.repo)]
+    def regime(self, head="HEAD", script=SCRIPT, **env):
+        cmd = [*UV, str(script), "--base", "main", "--head", head, "--root", str(self.repo)]
         return subprocess.run(
             cmd, cwd=self.repo, env=self.env | env, capture_output=True, text=True, timeout=120, check=False
         )
+
+    def test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier(self):
+        # Bot P1 4308651010 and 4308651011 (a02 items 5, 6): the head rewrites the verifier and the checker into programs
+        # that pass and leave markers, and forges a dispatched text with a matching result token; the base's policy,
+        # verifier and checker still decide, the checkout stays at the base, and no head program runs.
+        fake = 'import pathlib\npathlib.Path("head-program-ran").write_text("x")\nprint("{line}")\n'
+        scripts = {VERIFIER: fake.format(line="regime-ci: ok 1 task(s)"), CHECKER: fake.format(line="task.md: OK")}
+        rows = "".join(f"  - control: the PR edits {path}\n    disposition: residual\n" for path in scripts)
+        policy = TASK.replace("threat_table:\n", "threat_table:\n" + rows).replace("at most 3 ", "at most 99 ")
+        policy = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n" + "".join(f"  - {path}\n" for path in scripts))
+        forged = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n  - stray.sh\n")
+        cases = (  # head changes, expected exit, the violation's phrase
+            (CODE | scripts, 0, None),
+            (CODE | scripts | {"stray.sh": "x\n"}, 1, "allowed-files: stray.sh is outside allowed_files"),
+            (CODE | scripts | {"stray.sh": "x\n", f".orchestration/tasks/{T}.md": forged}, 1, "task-copy: "),
+        )
+        for code, expected, phrase in cases:
+            with self.subTest(expected=expected, phrase=phrase):
+                copy = forged if f".orchestration/tasks/{T}.md" in code else policy
+                result = self.build(copy=copy, dispatched=policy, code=code, at_base=True)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                self.assertFalse((self.repo / "head-program-ran").exists(), result.stdout)
+                self.assertEqual(self.git("rev-parse", "main"), self.git("rev-parse", "HEAD"))
+                if phrase:
+                    self.assertIn(f"regime-ci: {T}: {phrase}", result.stdout)
+                    self.assertIn(f"regime-ci: {T}: allowed-files: stray.sh is outside allowed_files", result.stdout)
+
+    def test_regime_ci_exempts_records_only_heads_by_content_not_branch_name(self):
+        # Bot P1 4308651013 (a02 item 7): a branch name grants nothing; only the changed paths decide records-only.
+        branch = "orchestration/x"
+        result = self.build(code={"src/tool.sh": "a\n"}, evidence=False, at_base=True, branch=branch)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("regime-ci: no target: 1 changed path(s) outside .orchestration/ and no task copy", result.stdout)
+        result = self.regime(self.head, self.repo / VERIFIER, GITHUB_HEAD_REF=branch)
+        self.assertEqual(1, result.returncode, result.stdout)
+        result = self.build(code={".orchestration/validation/note.md": "x\n"}, evidence=False, at_base=True)
+        self.assertEqual(
+            (0, "regime-ci: no target (records-only)\n"), (result.returncode, result.stdout), result.stderr
+        )
+
+    def test_regime_ci_unverifiable_copy_is_a_warning_until_the_flag(self):
+        # a02 item 6: without dispatched text at the base the copy is unverifiable, whatever the head claims (a matching
+        # result.txt token, a dispatched file of its own); a warning until REGIME_REQUIRE_DISPATCHED=1, then a violation.
+        warning = f"regime-ci: warning: {T}: task copy unverifiable (no dispatched text at base)"
+        for extra in ({}, {f".orchestration/tasks/{T}.md": TASK}):
+            with self.subTest(head_dispatched=bool(extra)):
+                result = self.build(dispatched=None, code=CODE | extra, at_base=True)
+                self.assertIn(warning, result.stdout)
+                if not extra:
+                    self.assertEqual(
+                        (0, [warning, "regime-ci: ok 1 task(s)"]), (result.returncode, result.stdout.splitlines())
+                    )
+                flagged = self.regime(self.head, self.repo / VERIFIER, REGIME_REQUIRE_DISPATCHED="1")
+                self.assertEqual(1, flagged.returncode, flagged.stdout)
+                self.assertIn(
+                    f"regime-ci: {T}: task-copy: task copy unverifiable (no dispatched text at base)", flagged.stdout
+                )
+
+    def test_the_regime_workflow_runs_base_code_only(self):
+        # Bot P1 4308651010 (a02 items 1, 5): pull_request_target runs the base's workflow and verifier; the head is a
+        # fetched ref read as data, never checked out or executed.
+        read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
+        cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
+        doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
+        types = ["opened", "synchronize", "reopened", "ready_for_review"]
+        self.assertEqual({"pull_request_target": {"types": types}}, doc.get("on", doc.get("true")))
+        self.assertEqual(({"contents": "read"}, ["regime"]), (doc["permissions"], list(doc["jobs"])))
+        job = doc["jobs"]["regime"]
+        self.assertEqual(("ubuntu-24.04", 10, None), (job["runs-on"], job["timeout-minutes"], job.get("permissions")))
+        group = doc["concurrency"]
+        self.assertEqual(
+            ("regime-pr-${{ github.event.pull_request.number }}", True), (group["group"], group["cancel-in-progress"])
+        )
+        steps = job["steps"]
+        pins = [
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
+        ]
+        self.assertEqual(pins, [s["uses"] for s in steps if "uses" in s])
+        base = "${{ github.event.pull_request.base.sha }}"
+        self.assertEqual({"fetch-depth": 0, "ref": base, "persist-credentials": False}, steps[0]["with"])
+        self.assertEqual({"enable-cache": False}, steps[1]["with"])
+        runs = [s for s in steps if "run" in s]
+        fetch, verify = runs
+        self.assertIn('git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"', fetch["run"])
+        self.assertIn('test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"', fetch["run"])
+        line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "${BASE_SHA}" --head "${HEAD_SHA}"'
+        self.assertEqual(line, verify["run"])
+        head = "${{ github.event.pull_request.head.sha }}"
+        self.assertEqual(({"BASE_SHA": base, "HEAD_SHA": head}, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        for step in steps:  # no step checks out, switches to or runs anything from the head
+            self.assertNotIn("${{", step.get("run", ""))
+            self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
+            self.assertNotIn("head", json.dumps(step.get("with", {})))
+            self.assertFalse(step.get("uses", "x").startswith("./"))
 
     def test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr(self):
         result = self.build()

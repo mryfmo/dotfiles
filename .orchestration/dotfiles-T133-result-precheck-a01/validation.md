@@ -6,7 +6,7 @@ amendment: 1
 
 # Validation
 
-Code head de167fa1 on base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox; the final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
+Base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox. The Check runner, the mutation check and the default precheck ran on code head de167fa1; 105e42cf (Amendment 2) changes only two comment lines of `result-precheck.sh` (the diff is in the last section), and the proof precheck ran on 105e42cf. The final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
 
 ## Item 0 (the parked PR)
 
@@ -224,9 +224,9 @@ mutate scripts/orchestrator/result-precheck.sh 'if [[ ${out} != '"'"'masker fail
 mutate .githooks/pre-commit 'set -euo pipefail' 'exit 0' test_pre_commit_hook_stops_a_commit_on_a_format_or_shellcheck_failure
 ```
 
-## The precheck on this head, default form (the Check's command)
+## The precheck on this head, default form (the Check's command before Amendment 2)
 
-`unit-test` (`make unit-test`) fails 296 tests inside the sandbox; the next block shows the identical 296 fail on a pristine `origin/main` worktree in the same sandbox, none in this task's modules. The record of this run is kept below (precheck.json verbatim); the committed record is the `--tests` run after it (option (a) of the question of message 2111, the default while it is unanswered).
+`unit-test` (`make unit-test`) fails 296 tests inside the sandbox; the next block shows the identical 296 fail on a pristine `origin/main` worktree in the same sandbox, none in this task's modules. The record of this run is kept below (precheck.json verbatim). Amendment 2 decided option (a) of the question of message 2111: the committed record is the `--tests` run in the last section.
 
 ```text
 $ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01
@@ -315,27 +315,28 @@ $ the failing set by module (this head)
    2 (test_aws_cli_acquisition.
 ```
 
-## The committed precheck: this task's two modules
+## The committed precheck (Amendment 2's form) on 105e42cf
 
 ```text
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
 result-precheck: unit-test exit 0
 result-precheck: render-check exit 0
 result-precheck: format exit 0
 result-precheck: shellcheck exit 0
 result-precheck: secrets exit 0
-precheck=8e6922eb46297b0b5be3c5ec6c8ccc00d27858c119c9220f2ee5f74506f031dc
+precheck=862c3566250a09767c00e329a4f47c7bee1f992cb128c6400a57a0c79f476f14
 exit=0
 $ cat precheck.json
 {
-  "head": "de167fa1f48d3f7d3653b3643c43b2f7acf7e149",
-  "tree": "2d0f51b1f5315c5fff7b55158718dcafb565bddc",
-  "generated_at": "2026-10-18T05:23:18Z",
+  "head": "105e42cf7f3ff4abc29eb5dfe66b90d1824321ee",
+  "tree": "73c6f1d642f11aceded624b933fba9607524bf28",
+  "generated_at": "2026-10-18T05:43:37Z",
   "checks": [
     {
       "name": "unit-test",
       "ok": true,
       "exit": 0,
-      "output_sha256": "ffacbe6cf2092f09153105008d38a8b5319ff3d7eea827f900cad6a05b74d64c"
+      "output_sha256": "edbc8833dc6523c75651dc8e0546e3d035fc876e681857db778b133a93667606"
     },
     {
       "name": "render-check",
@@ -370,7 +371,31 @@ $ cat precheck.json
   "selectors": []
 }
 $ cat result.txt
-AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a01 status=ready_for_review head=de167fa1f48d3f7d3653b3643c43b2f7acf7e149 precheck=8e6922eb46297b0b5be3c5ec6c8ccc00d27858c119c9220f2ee5f74506f031dc task_copy=247e7a44f764f3d939f18278c10e380a92909cce38583e28b1cd07d2d7a5a7a8 report=.orchestration/dotfiles-T133-result-precheck-a01/report.md validation=.orchestration/dotfiles-T133-result-precheck-a01/validation.md sandbox=.orchestration/dotfiles-T133-result-precheck-a01/sandbox.md learning=.orchestration/dotfiles-T133-result-precheck-a01/learning.md
+AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a01 status=ready_for_review head=105e42cf7f3ff4abc29eb5dfe66b90d1824321ee precheck=862c3566250a09767c00e329a4f47c7bee1f992cb128c6400a57a0c79f476f14 task_copy=05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f report=.orchestration/dotfiles-T133-result-precheck-a01/report.md validation=.orchestration/dotfiles-T133-result-precheck-a01/validation.md sandbox=.orchestration/dotfiles-T133-result-precheck-a01/sandbox.md learning=.orchestration/dotfiles-T133-result-precheck-a01/learning.md
+```
+
+```diff
+$ git diff de167fa1 105e42cf -- scripts .githooks tests
+diff --git a/scripts/orchestrator/result-precheck.sh b/scripts/orchestrator/result-precheck.sh
+index c5854818..864f8dbf 100755
+--- a/scripts/orchestrator/result-precheck.sh
++++ b/scripts/orchestrator/result-precheck.sh
+@@ -19,6 +19,7 @@
+ #   `head=` set to that commit. A masker failure removes the logs instead. `--secrets <file>` (the pre-push hook) and
+ #   `--staged` (`format` and `shellcheck` on the staged files, the pre-commit hook) run only those checks.
+ # shortcut: a Claude seat cannot run codex inside its Bash sandbox (local-review.sh's header), so the orchestrator's acceptance runs the local review on the head as today; upgrade to seat when the seats run omp (plan 024 phase 2 B)
++# shortcut: inside a Claude seat's sandbox the full suite fails on sandbox-denied operations, so a seat runs the precheck with --tests on its task's modules and CI runs the full suite; upgrade when the seats run omp (plan 024 phase 2 B)
+ # @arg $1 string Task id: letters, digits, `.`, `_` and `-`.
+ # @option --tests <module>... Unittest modules to run instead of `make unit-test`.
+ # @option --previous-head <sha40> The `previous_head=` of a `status=revise` ACCEPTANCE; needs `--check`.
+@@ -205,7 +206,6 @@ mask "${logs[@]}" > /dev/null || {
+     echo "result-precheck: the masker failed; the logs are removed and no record is written" >&2
+     exit 1
+ }
+-# Writes precheck.json and result.txt, prints the precheck= line, and exits 1 when a check or a selector failed.
+ read -r -d '' writer << 'PY' || true
+ import hashlib, json, os, sys
+ from datetime import UTC, datetime
 ```
 
 ## The runner

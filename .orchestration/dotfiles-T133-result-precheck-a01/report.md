@@ -1,13 +1,13 @@
 ---
 task_id: dotfiles-T133-result-precheck-a01
 round: 1
-amendment: 1
+amendment: 2
 status: precheck-recorded
 ---
 
 # Report
 
-Worker `claude-standard-dot-a009` (Claude Code, worker-c), branch `tools/result-precheck-a01` from `origin/main` 99a4a80f, code commit de167fa1. Task copy `.orchestration/dotfiles-T133-result-precheck-a01/task.md` is byte-identical to the amended dispatched file: sha256 `247e7a44f764f3d939f18278c10e380a92909cce38583e28b1cd07d2d7a5a7a8` (Amendment 1's `task_sha256`). Parked PR of item 0: #406 (`tools/omp-config-render`, head 2e978db7c4325f477630234a78a6f7701e45c92e).
+Worker `claude-standard-dot-a009` (Claude Code, worker-c), branch `tools/result-precheck-a01` from `origin/main` 99a4a80f, code commits de167fa1 and 105e42cf (Amendment 2's header line), PR #411. Task copy `.orchestration/dotfiles-T133-result-precheck-a01/task.md` is byte-identical to the twice-amended dispatched file: sha256 `05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f` (Amendment 2's `task_sha256`). Parked PR of item 0: #406 (`tools/omp-config-render`, head 2e978db7c4325f477630234a78a6f7701e45c92e).
 
 ## Item 0
 
@@ -21,7 +21,7 @@ Done before item 1: the two parked records of `dotfiles-T129-omp-config-render-a
 - `scripts/orchestrator/dispatch.sh` (+70/-1): item 3, one block (the `PRECHECK_REQUIRED` read, an embedded Python checker run under the script's allowlisted environment from the root, and `precheck_gate` called on both send paths) and one header paragraph plus the `@env` line.
 - `tests/unit/test_result_precheck.py` (new, 284 lines): the seven tests item 4 names.
 
-Caps: 350 changed lines outside `tests/` and `.orchestration/` (cap 350), 284 under `tests/` (cap 450).
+Caps: 350 changed lines outside `tests/` and `.orchestration/` (cap 350), 284 under `tests/` (cap 450); 105e42cf adds one header line and drops one comment line, so both stay.
 
 ## Choices the task text left open
 
@@ -37,14 +37,14 @@ Caps: 350 changed lines outside `tests/` and `.orchestration/` (cap 350), 284 un
 
 `uv run python -m unittest tests.unit.test_result_precheck tests.unit.test_orchestrator_tools -v`: 63 tests green (7 new, 56 existing; validation.md). The tests were written after the scripts, so a mutation check (validation.md) stands for the red run: each control disabled in turn made its test fail (the gate call in dispatch.sh: 5 failures; the pre-push refusal; the secrets comparison; the pre-commit hook), and every file was restored and its hash verified.
 
-## The precheck on this head (question of message 2111, default (a))
+## The precheck on this head (question of message 2111, decided as (a) by Amendment 2)
 
-The Check's command, `scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01`, exits 1 inside a Claude seat's sandbox: its `unit-test` check runs `make unit-test`, which fails 296 tests there (189 failures, 107 errors, in test_require_crit_review, test_herdr_agents, test_agent_stop_gate, test_ua_symbol_coverage, test_update_agent_assets, test_runtime_health, test_gh_auth, test_supply_chain_policy, test_aws_cli_acquisition). The identical 296 fail on a pristine `origin/main` 99a4a80f worktree in the same sandbox (`cmp` of the sorted names: equal), and none is in this task's modules; every other check of that run passed (`precheck=c9c80f1fde3fb65d0d0e8dd42cc73afc07a92cd6a31b60a5014124b4092fe9b1`, its precheck.json pasted in validation.md). I asked the orchestrator (message 2111) with three options and the default (a), unanswered when this record was written: the committed record is the `--tests` run on this task's two modules, `scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests/unit/test_result_precheck.py tests/unit/test_orchestrator_tools.py`, exit 0, `precheck=8e6922eb46297b0b5be3c5ec6c8ccc00d27858c119c9220f2ee5f74506f031dc`, with `head` de167fa1. CI's `make unit-test` is the authority for the full suite. Consequence for plan 024: no Claude seat can pass the default `unit-test` check in its sandbox until those tests stop depending on what the sandbox denies.
+The Check's command, `scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01`, exits 1 inside a Claude seat's sandbox: its `unit-test` check runs `make unit-test`, which fails 296 tests there (189 failures, 107 errors, in test_require_crit_review, test_herdr_agents, test_agent_stop_gate, test_ua_symbol_coverage, test_update_agent_assets, test_runtime_health, test_gh_auth, test_supply_chain_policy, test_aws_cli_acquisition). The identical 296 fail on a pristine `origin/main` 99a4a80f worktree in the same sandbox (`cmp` of the sorted names: equal), and none is in this task's modules; every other check of that run passed (`precheck=c9c80f1fde3fb65d0d0e8dd42cc73afc07a92cd6a31b60a5014124b4092fe9b1`, its precheck.json pasted in validation.md). I asked the orchestrator (message 2111) with three options; Amendment 2 decided (a) and added the header's second `shortcut:` line (105e42cf, which also drops one redundant comment line so the cap holds). The committed record is Amendment 2's form on 105e42cf, `scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools`: exit 0, 63 tests OK, `precheck=862c3566250a09767c00e329a4f47c7bee1f992cb128c6400a57a0c79f476f14`. An earlier `--tests` run with file paths on de167fa1 (`precheck=8e6922eb…`, commit 50b265d8) is superseded. CI's `make unit-test` is the authority for the full suite. Consequence for plan 024: no Claude seat can pass the default `unit-test` check in its sandbox until those tests stop depending on what the sandbox denies.
 
 [memory:failure] In a Claude seat's Bash sandbox `make unit-test` fails 296 tests that pass in CI (the same set on origin/main 99a4a80f), so result-precheck.sh's default `unit-test` check cannot be green there; a seat records a `--tests` run of its own modules and CI decides the full suite.
 
 ## Not done yet
 
-The push, the PR, CI, the Bot wait and the RESULT (`parked_pr=406`).
+CI on the final head, `gh pr ready 411`, the Bot's automatic review (no `@codex review` comment, per the no-prompt rule of 05:07Z; `bot: none` after 15 minutes) and the RESULT (`parked_pr=406`).
 
 cost: n/a

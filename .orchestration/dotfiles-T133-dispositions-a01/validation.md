@@ -130,3 +130,74 @@ $ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision 
 948b228f-b574-462e-99fc-c712602f8b98
 exit=0
 ```
+
+## CI round 1 on 74baf481: the four test jobs
+
+Run 39133431120, job 117693061093 (`test (ubuntu-24.04, server)`, `gh run view --log-failed`); the other three test jobs failed the same way, validate and public-bootstrap passed.
+
+```
+FAIL: test_orch_gate_restores_the_review_worktree_when_setup_fails (test_orchestrator_tools.OrchestratorToolsTest.test_orch_gate_restores_the_review_worktree_when_setup_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/work/dotfiles/dotfiles/tests/unit/test_orchestrator_tools.py", line 1621, in test_orch_gate_restores_the_review_worktree_when_setup_fails
+    self.assertIsNone(self.call("gate-python"))
+AssertionError: ['-I', '/tmp/tmp6ldsrudh/repo/scripts/orchestrator/dispositions.py', '9', '8c2fef6ff7279dd94903a7f4f1ec6d540de8c3df', '--feedback', '.orchestration/validation/t-a01-pr-feedback.json', '--out', '/dev/null'
+
+----------------------------------------------------------------------
+Ran 1211 tests in 280.833s
+
+FAILED (failures=1)
+make: *** [Makefile:186: unit-test] Error 1
+##[error]Process completed with exit code 2.
+```
+
+## Bot round 1 on 74baf481 (review 5563269439, 13:55:07Z)
+
+```
+4307288053 scripts/orchestrator/dispositions.py:162 [P1] Include badged review-body findings in validation
+4307288056 scripts/orchestrator/dispositions.py:51 [P2] Pass feedback paths as literal pathspecs
+```
+
+## The fix round: red, then green on dd567d77
+
+The new cases against the code of 74baf481 (both Bot cases red):
+
+```
+$ uv run python -m unittest tests.unit.test_dispositions
+ERROR: test_require_refutation_fails_without_a_form_and_accepts_each_of_the_three (tests.unit.test_dispositions.DispositionsTest.test_require_refutation_fails_without_a_form_and_accepts_each_of_the_three)
+KeyError: 'refutation'
+FAIL: test_dispositions_proposes_fixed_for_a_changed_hunk_and_demands_not_applicable_otherwise (tests.unit.test_dispositions.DispositionsTest.test_dispositions_proposes_fixed_for_a_changed_hunk_and_demands_not_applicable_otherwise
+AssertionError: Lists differ: ['fix[63 chars], None, None, None] != ['fix[63 chars], None, 'fixed:8edd6d42424838ec04b4f1174de6d120919c4516', None]
+Ran 3 tests in 1.903s
+FAILED (failures=1, errors=1)
+```
+
+After the review-location fix alone, the literal-pathspec case is still red: the diff: evidence on the file `:b.py` is accepted (the ninth entry True), because git read the name as magic for b.py:
+
+```
+FAIL: test_require_refutation_fails_without_a_form_and_accepts_each_of_the_three (tests.unit.test_dispositions.DispositionsTest.test_require_refutation_fails_without_a_form_and_accepts_each_of_the_three)
+AssertionError: Lists differ: [False, False, True, False, True, False, True, False, True, False] != [False, False, True, False, True, False, True, False, False, False]
+Ran 3 tests in 2.944s
+FAILED (failures=1)
+```
+
+```
+$ git log --oneline -1
+dd567d77 fix(orchestrator): the dispositions step runs right before the gate; badged review-body findings are threads located by their blob link; git reads thread paths as literal pathspecs (T133 disp
+$ uv run python -m unittest tests.unit.test_dispositions tests.unit.test_orch_gate_path tests.unit.test_orchestrator_tools
+Ran 64 tests in 53.279s
+OK
+$ shfmt -i 4 -sr -d scripts/orchestrator/orch-gate.sh; shellcheck -x scripts/orchestrator/orch-gate.sh
+shfmt=0
+shellcheck=0
+$ git diff --numstat origin/main...HEAD
+12	0	.orchestration/dotfiles-T133-dispositions-a01/learning.md
+85	0	.orchestration/dotfiles-T133-dispositions-a01/report.md
+30	0	.orchestration/dotfiles-T133-dispositions-a01/sandbox.md
+103	0	.orchestration/dotfiles-T133-dispositions-a01/task.md
+132	0	.orchestration/dotfiles-T133-dispositions-a01/validation.md
+228	0	scripts/orchestrator/dispositions.py
+14	1	scripts/orchestrator/orch-gate.sh
+161	0	tests/unit/test_dispositions.py
+32	3	tests/unit/test_orch_gate_path.py
+```

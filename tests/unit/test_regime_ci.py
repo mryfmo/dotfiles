@@ -12,7 +12,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/orchestrator/regime-ci.py"
 CHECKER = "scripts/orchestrator/task-consistency-check.py"
-UV = [shutil.which("uv") or "uv", "run", "--no-project", "--with", "pyyaml", "python", "-I"]
+UV = [
+    shutil.which("uv") or "uv",
+    "run",
+    "--no-config",
+    "--no-project",
+    "--with",
+    "pyyaml",
+    "python",
+    "-I",
+]  # as regime.yml
 T = "t1-a01"
 ROWS = "".join(
     f"  - control: {name}\n    disposition: residual\n"
@@ -51,9 +60,9 @@ class RegimeCiTest(unittest.TestCase):
         ).stdout.strip()
 
     def commit(self, files, message):
-        for rel, text in files.items():
+        for rel, text in files.items():  # None deletes the file
             (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
-            (self.repo / rel).write_text(text)
+            (self.repo / rel).unlink() if text is None else (self.repo / rel).write_text(text)
         self.git("add", "-A")
         self.git("commit", "-q", "--allow-empty", "-m", message)
         return self.git("rev-parse", "HEAD")
@@ -64,13 +73,14 @@ class RegimeCiTest(unittest.TestCase):
         """A base commit (the checker, the dispatched text), then a code commit and an evidence commit on a branch.
 
         more: `late` files committed after the code commit precheck.json names, `precheck_doc` as precheck.json's text,
-        `task_copy` as result.txt's token; precheck_head "side" names a commit on another branch.
+        `task_copy` as result.txt's token, `checker` as the base's checker, `base` as more base files; precheck_head
+        "side" names a commit on another branch.
         """
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.repo = Path(temp.name).resolve()
         self.git("init", "-q", "-b", "main")
-        base = {CHECKER: (ROOT / CHECKER).read_text(), "README": "base\n"}
+        base = {CHECKER: more.get("checker") or (ROOT / CHECKER).read_text(), "README": "base\n"} | more.get("base", {})
         self.commit(base | ({f".orchestration/tasks/{T}.md": dispatched} if dispatched else {}), "base")
         if precheck_head == "side":
             precheck_head = self.commit({"side.txt": "side\n"}, "side")
@@ -108,6 +118,10 @@ class RegimeCiTest(unittest.TestCase):
             "precheck head": ({"precheck_head": "0" * 40}, "is neither the head"),
             "precheck side": ({"precheck_head": "side"}, "is neither the head"),
             "precheck late": ({"late": {"src/tool.sh": "a\nb\nz\n"}}, "differs from the head outside .orchestration/"),
+            "precheck reverted": (  # the prechecked test change reverted to base: out of the net diff, not of the binding
+                {"late": {"tests/unit/test_tool.py": None}},
+                "differs from the head outside .orchestration/t1-a01/: tests/unit/test_tool.py",
+            ),
             "precheck symbolic": ({"precheck_doc": '{"head": "HEAD"}'}, "'HEAD' is not a 40-hex commit id"),
             "precheck none": ({"precheck_doc": "{}"}, "None is not a 40-hex commit id"),
             "precheck sha": ({"precheck_token": "0" * 64}, "is not result.txt's precheck=" + "0" * 64),
@@ -122,6 +136,10 @@ class RegimeCiTest(unittest.TestCase):
                 {"copy": no_row, "dispatched": no_row},
                 "C4 allowed path has no threat_table row naming it: src/tool.sh",
             ),
+            "checker exit": (
+                {"checker": 'print("task.md: OK")\nraise SystemExit(1)\n'},
+                "no verdict (exit 1): task.md: OK",
+            ),
             "checker crash": ({"copy": crash, "dispatched": crash}, "no verdict (exit 1)"),
         }
         for case, (change, phrase) in breaks.items():
@@ -132,6 +150,11 @@ class RegimeCiTest(unittest.TestCase):
                 self.assertEqual(1, len(found), result.stdout)
                 self.assertTrue(found[0].startswith(f"regime-ci: {T}: {case.split()[0]}: "), found)
                 self.assertIn(phrase, found[0])
+
+    def test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config(self):
+        # --no-config: a .python-version (or uv.toml) in the checkout cannot steer the checker's uv run
+        result = self.build(base={".python-version": "3.99\n"})
+        self.assertEqual((0, "regime-ci: ok 1 task(s)\n"), (result.returncode, result.stdout), result.stderr)
 
     def test_regime_ci_checks_the_copy_against_result_txt_without_dispatched_text(self):
         result = self.build(dispatched=None)
@@ -203,7 +226,9 @@ class RegimeCiTest(unittest.TestCase):
         self.assertEqual(head, steps[0]["with"]["ref"])
         run = [s for s in steps if "run" in s]
         self.assertEqual(1, len(run))
-        self.assertIn("scripts/orchestrator/regime-ci.py", run[0]["run"])
+        self.assertIn(
+            "uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py", run[0]["run"]
+        )
         self.assertIn("github.event.pull_request.head.sha", json.dumps(run[0]))
         self.assertNotIn("${{", run[0]["run"])  # every expression reaches the shell through env
         group = doc["concurrency"]

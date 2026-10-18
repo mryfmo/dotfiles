@@ -19,6 +19,7 @@ PATH and pasted with its exit code; the worktree is removed with `git worktree r
 """
 
 import argparse
+import hashlib
 import importlib.util
 import os
 import pathlib
@@ -213,8 +214,10 @@ One PR from a fresh branch off `origin/main`. The Completion clause of `{COMPLET
 """
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)
+    # The generator's own text, whose premises it has just run itself, is the trusted text C14 reruns.
+    sha = hashlib.sha256(out.read_bytes()).hexdigest()
     verdict = subprocess.run(
-        [sys.executable, "-I", checker.__file__, "--root", str(root), str(out)],
+        [sys.executable, "-I", checker.__file__, "--root", str(root), "--premises-sha", sha, str(out)],
         capture_output=True,
         text=True,
         check=False,

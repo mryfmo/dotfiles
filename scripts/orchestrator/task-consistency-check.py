@@ -1,6 +1,7 @@
 """Read-only cross-field check of a format-2 task file, before dispatch and at acceptance (plan 007 T704).
 
-`uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py [--root <repo>] <task.md>...`
+`uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py [--root <repo>]
+[--premises-sha <sha256>] <task.md>...`
 resolves the design path (C6) and probes origin/main with git (C8 to C10) under --root (default: the first file's git
 toplevel), prints `<file name>: OK` or `: FAIL` with one `  C<n> ...` line per finding, and exits 1 when any file fails.
 C14's notes and warnings, never findings, go to stderr as `<file name>: <note>`.
@@ -19,11 +20,14 @@ C11 a disposition's payload has its form's shape: closed: tests/<path>::<identif
 C12 a glob entry of an executed or applied kind (*.sh *.py *.yaml *.yml *.json *.toml, or under home/ scripts/ .githooks/ .github/) has a row per matched file.
 C13 every disposition is exactly one of closed:, residual: or out-of-scope: followed by a space.
 C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr/bin:/bin, prints its pasted output with whitespace runs
-    collapsed (gh, curl and URLs skipped; a tool absent from that PATH is a `C14: tool absent <name>` warning).
+    collapsed (gh, curl and URLs skipped; a tool absent from that PATH is a `C14: tool absent <name>` warning). It runs
+    only for a file whose sha256 is --premises-sha, the dispatched text; any other file gets `C14: not run (no trusted
+    sha)` and nothing is executed.
 C15 with invariants and design_review.design, each invariant equals the design's on origin/main byte for byte.
 """
 
 import argparse
+import hashlib
 import os
 import pathlib
 import re
@@ -46,6 +50,7 @@ FORMS = ("closed: ", "residual: ", "out-of-scope: ")
 APPLIED = (".sh", ".py", ".yaml", ".yml", ".json", ".toml")
 SKIPPED = "C14 skipped network premise"  # a note, never a failure
 ABSENT = "C14: tool absent"  # a warning, never a failure (Amendment 1)
+UNTRUSTED = "C14: not run (no trusted sha)"  # a note: the file is not the text --premises-sha names (revise 1)
 
 
 def front(text):
@@ -79,8 +84,8 @@ def rerun(cmd, cwd, path=None):
     return run.stdout, run.returncode, run.stderr
 
 
-def check(p, root):
-    fm = front(text := p.read_text())
+def check(p, root, premises_sha=None):
+    fm = front(text := (data := p.read_bytes()).decode())
     tid = fm.get("task_id")
     suffix = tid.rsplit("-", 1)[-1]
     fails = []
@@ -181,7 +186,13 @@ def check(p, root):
             for f in filter(None, git(root, "ls-files", "-z", "--", f":(glob){a}").stdout.split("\0")):
                 if not any(re.search(re.escape(f) + r"(?=$|[ /\"'(),])", r.get("control") or "") for r in rows):
                     fails.append(f"C12 the glob {a} matches {f}, which no threat_table row names")
-    for pre in fm.get("premises") or []:  # C14
+    premises = fm.get("premises") or []
+    # C14 executes premise commands only for the orchestrator's dispatched text, the bytes whose sha256 the caller
+    # passes (dispatch.sh: the TASK line's task_sha256); a branch copy at acceptance passes none, so nothing runs.
+    if premises and hashlib.sha256(data).hexdigest() != premises_sha:
+        fails.append(UNTRUSTED)
+        premises = []
+    for pre in premises:  # C14
         cmd, want = str(pre.get("command") or ""), str(pre.get("output") if pre.get("output") is not None else "")
         if re.search(r"\b(?:gh|curl)\b|https?://", cmd):
             fails.append(f"{SKIPPED}: {cmd[:60]}")
@@ -207,6 +218,7 @@ def check(p, root):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=pathlib.Path, help="the repository (default: the first file's git toplevel)")
+    parser.add_argument("--premises-sha", metavar="sha256", help="the dispatched file's sha256; C14 runs only for it")
     parser.add_argument("tasks", nargs="+", type=pathlib.Path, metavar="task.md")
     args = parser.parse_args()
     if args.root is None:
@@ -216,8 +228,8 @@ def main():
         args.root = pathlib.Path(top.stdout.strip())
     rc = 0
     for p in args.tasks:
-        fails = check(p, args.root)
-        notes = [f for f in fails if f.startswith((SKIPPED, ABSENT))]
+        fails = check(p, args.root, args.premises_sha)
+        notes = [f for f in fails if f.startswith((SKIPPED, ABSENT, UNTRUSTED))]
         bad = [f for f in fails if f not in notes]
         print(f"{p.name}: {'FAIL' if bad else 'OK'}", *bad, sep="\n  ")
         print(*(f"{p.name}: {n}" for n in notes), sep="\n", file=sys.stderr, end="\n" if notes else "")

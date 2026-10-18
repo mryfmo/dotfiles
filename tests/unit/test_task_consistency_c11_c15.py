@@ -4,6 +4,7 @@ The fixtures are task files in a temporary repository whose origin is a bare rep
 checker runs through uv with PyYAML, which make unit-test does not provide to this process.
 """
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -95,10 +96,14 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         for args in (("remote", "add", "origin", bare), ("push", "-q", "origin", "main"), ("fetch", "-q", "origin")):
             subprocess.run(["git", *args], cwd=self.repo, env=env, check=True)
 
-    def check(self, *tasks, root=None):
+    def check(self, *tasks, root=None, sha=True):
+        """Run the checker; `sha` True passes the first file's sha256 as --premises-sha, as for the dispatched text."""
+        if sha is True:
+            sha = hashlib.sha256(Path(tasks[0]).read_bytes()).hexdigest()
         run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I", str(CHECKER)]
+        trusted = ["--premises-sha", sha] if sha else []
         result = subprocess.run(
-            [*run, "--root", str(root or self.repo), *map(str, tasks)], capture_output=True, text=True
+            [*run, "--root", str(root or self.repo), *trusted, *map(str, tasks)], capture_output=True, text=True
         )
         return result.returncode, result.stdout + result.stderr
 
@@ -133,10 +138,30 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         with self.subTest(green="the current dotfiles-T133 task files"):
             if not current:
                 self.skipTest("no dotfiles-T133 task file in this tree yet (they land with a boundary records PR)")
-            code, out = self.check(*current, root=ROOT)
+            code, out = self.check(*current, root=ROOT, sha=None)
             others = [l for l in out.splitlines() if l.startswith("  ") and not l.strip().startswith("C14")]
-            # C14 reruns write-time premises, so the current set is held to C1 to C13 and C15.
+            # Without a trusted sha C14 runs nothing, so the current set is held to C1 to C13 and C15.
             self.assertEqual(others, [], out)
+
+    def test_c14_executes_premise_commands_only_for_the_dispatched_sha(self):
+        # Revise 1 (the Bot's P1 4306960622): a premise command runs only when the file is the orchestrator's dispatched
+        # text, whose sha256 the caller passes; for any other file C14 notes it and executes nothing.
+        marker = self.repo / "marker"
+        path = self.task(BASE.replace("command: printf base", f"command: touch {marker}; printf base"))
+        for sha in (None, "0" * 64):
+            with self.subTest(sha=sha):
+                code, out = self.check(path, sha=sha)
+                self.assertEqual((code, marker.exists()), (0, False), out)
+                self.assertEqual(
+                    out, "dotfiles-T9-base-a01.md: OK\ndotfiles-T9-base-a01.md: C14: not run (no trusted sha)\n"
+                )
+        self.assertEqual(self.check(path), (0, "dotfiles-T9-base-a01.md: OK\n"))
+        self.assertTrue(marker.exists())
+        marker.unlink()
+        edited = self.task(BASE.replace("command: printf base", f"command: touch {marker}; printf edited"))
+        code, out = self.check(edited)
+        self.assertEqual((code, marker.exists()), (1, True), out)
+        self.assertIn("C14 premise output differs from its rerun", out)
 
 
 if __name__ == "__main__":

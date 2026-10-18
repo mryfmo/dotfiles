@@ -36,7 +36,7 @@ class AuditPoolTest(unittest.TestCase):
             shutil.copy(ROOT / "scripts/orchestrator" / name, self.repo / "scripts/orchestrator")
         shutil.copytree(ROOT / ".schemas", self.repo / ".schemas")
         (self.repo / "scripts/orchestrator/ledger-check.py").write_text("print('ledger ok')\n")
-        (self.repo / "scripts/validate-agent-assets.py").write_text("")
+        shutil.copy(ROOT / "scripts/validate-agent-assets.py", self.repo / "scripts")  # the real masker
         (self.repo / "scripts/orchestrator/fail-check.py").write_text("raise SystemExit(1)\n")
         for name, text in (("uv", UV), ("codex", CODEX), ("sleep", SLEEP)):
             (bin_dir / name).write_text(text)
@@ -95,9 +95,23 @@ class AuditPoolTest(unittest.TestCase):
         self.run_script("audit-pool.sh", "--once", "--max", "2")
         self.assertEqual([True, True, False], [p.with_suffix(".done").exists() for p in paths])
         self.assertTrue(paths[2].with_suffix(".request").exists())
-        self.assertTrue((self.repo / ".claude/worktrees/orchestrator-review-2").is_dir())
+        self.assertTrue((self.repo / ".claude/worktrees/orchestrator-audit-2").is_dir())
         self.run_script("audit-pool.sh", "--once", "--max", "2")
         self.assertTrue(paths[2].with_suffix(".done").exists())
+
+    def test_pool_slots_never_use_the_integration_worktree(self):
+        self.request("t1-a01", self.head("t1-a01"))
+        self.run_script("audit-pool.sh", "--once")
+        self.assertIn(f"-C {self.repo}/.claude/worktrees/orchestrator-audit-1 ", (self.calls / "codex.log").read_text())
+
+    def test_pool_rejects_a_malformed_request_name_and_never_evaluates_it(self):
+        request = self.request("t1-a01", self.head("t1-a01"))
+        bad = request.with_name("t BASH_VERSINFO[$(touch evaluated)0]+")  # arithmetic on it would run touch
+        request.with_suffix(".request").rename(bad.with_suffix(".request"))
+        self.run_script("audit-pool.sh", "--once")
+        self.assertFalse((self.repo / "evaluated").exists())
+        self.assertFalse((self.calls / "codex.log").exists())
+        self.assertTrue(bad.with_suffix(".blocked").exists())
 
     def test_pool_retries_a_429_three_times_then_blocks(self):
         for count, outcome in (("2", ".done"), ("4", ".blocked")):
@@ -158,6 +172,14 @@ class AuditPoolTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 setup()
                 self.assertIn(expected, self.run_script("orch-audit.sh", "t1-a01", "--head", *args, code=code).stderr)
+
+    def test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it(self):
+        head, out, token = self.head("t1-a01"), self.validation / "out.json", "ghp_" + "a1" * 18
+        doc = record(head, "t1-a01")
+        doc["findings"][0]["rationale"] = f"leaked {token}"  # \u-escaped below, so the Markdown masker misses it
+        (self.calls / "message-t1-a01").write_text(message(doc).replace("ghp_", "\\u0067hp_"))
+        self.run_script("orch-audit.sh", "t1-a01", "--head", head, 9, "--json", out)
+        self.assertNotIn(token, out.read_text())
 
     def test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset(self):
         doc = self.validation / "doc.json"  # the checker --json extracts through, run alone

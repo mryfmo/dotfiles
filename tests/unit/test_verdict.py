@@ -13,7 +13,7 @@ FAKES = {  # $CALLS becomes the calls directory: verdict.sh runs its tools under
     "scripts/orchestrator/dispatch.sh": '#!/usr/bin/env bash\necho "dispatch $* $(cat "$5")" >> "$CALLS/calls.log"\n',
     "scripts/pr-feedback.py": 'import shutil, sys\nshutil.copy("$CALLS/sweep.json", sys.argv[-1])\n',
     "scripts/regime-counters.sh": '#!/usr/bin/env bash\n[[ " $* " == *" --history-only "* ]] && exec grep -v "^S1:" "$CALLS/counters.txt"\ncat "$CALLS/counters.txt"\n',
-    "../bin/gh": '#!/usr/bin/env bash\necho "gh $*" >> "$CALLS/calls.log"\ncase "$1 $2" in "pr view") cat "$CALLS/view.json" ;; "pr checks") cat "$CALLS/checks.json" ;; esac\n',
+    "../bin/gh": '#!/usr/bin/env bash\necho "gh $*" >> "$CALLS/calls.log"\ncase "$1 $2" in "pr view") cat "$CALLS/view.json" ;; "pr checks") cat "$CALLS/checks.json" ;; "pr list") cat "$CALLS/list.txt" ;; "pr merge") git push -q origin next:main 2> /dev/null || : ;; esac\n',
     "../bin/mise": "#!/bin/sh\nexit 1\n",  # no mise answer: every tool resolves through PATH, these fakes first
 }
 COPIES = ("orchestrator/verdict.sh", "orchestrator/orch-audit.sh", "require-crit-review.py", "validate-agent-assets.py")
@@ -31,6 +31,8 @@ S1 = f"task={TASK} revises=1 x\nS1: class=scope count=3\n"
 class VerdictTest(unittest.TestCase):
     failed = staticmethod(lambda doc: [c["id"] for c in doc["conditions"] if not c["ok"]])
     calls_log = lambda self: (self.calls / "calls.log").read_text() if (self.calls / "calls.log").exists() else ""  # noqa: E731
+    replace = lambda self, rel, old, new: self.write(rel, (self.repo / rel).read_text().replace(old, new))  # noqa: E731
+    git = lambda self, *args: self.run_in_repo("git", "-c", "commit.gpgsign=false", *args).stdout.strip()  # noqa: E731
 
     def setUp(self):
         self.temp = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
@@ -68,15 +70,9 @@ class VerdictTest(unittest.TestCase):
         path.write_text(text)
         return path
 
-    def replace(self, rel, old, new):
-        self.write(rel, (self.repo / rel).read_text().replace(old, new))
-
     def run_in_repo(self, *cmd, env=None):
         env = {**self.env, **(env or {})}
         return subprocess.run(cmd, cwd=self.repo, env=env, capture_output=True, text=True, timeout=60)
-
-    def git(self, *args):
-        return self.run_in_repo("git", "-c", "commit.gpgsign=false", *args).stdout.strip()
 
     def audit(self, verdict="correct", **finding):
         doc = {"head": self.head, "task_id": TASK, "auditor": "codex", "generated_at": AT, "verdict": verdict}
@@ -233,6 +229,19 @@ class VerdictTest(unittest.TestCase):
             with self.subTest(env=env):
                 first = self.verdict(code=code, env=env)["conditions"][0]
                 self.assertEqual((code == 0, code == 0), (first["ok"], first["evidence"].startswith("warning:")))
+
+    def test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge(self):
+        self.git("branch", "next", self.git("commit-tree", "-p", "main", "-m", "n", "main^{tree}"))  # PR 9's merge
+        (self.calls / "list.txt").write_text(f"9 {self.head}\n")
+        self.write(f"{V}/verdict-shadow.tsv", "".join(f"{n}\th\taccept\taccept\tyes\tt\n" for n in range(1, 5)))
+        result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "--loop", *APPLY)
+        self.assertEqual((0, True), (result.returncode, "gh pr merge 9" in self.calls_log()), result.stderr)
+        self.assertEqual(
+            self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD")
+        )  # the next PR's guard passes
+        self.git("commit", "-q", "--allow-empty", "-m", "local")  # diverged from the next merge: the loop holds
+        self.git("branch", "-f", "next", self.git("commit-tree", "-p", "origin/main", "-m", "n", "origin/main^{tree}"))
+        self.assertEqual(20, self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "--loop", *APPLY).returncode)
 
     def test_verdict_shadow_appends_the_machine_column_only(self):
         doc = self.verdict("--shadow", code=0)

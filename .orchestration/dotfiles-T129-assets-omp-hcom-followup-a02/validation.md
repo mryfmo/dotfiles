@@ -1,12 +1,13 @@
 ---
 task_id: dotfiles-T129-assets-omp-hcom-followup-a02
 seat: claude-standard-dot-a008
-head: 8ea9bf8a
+head: 8ab946a6
+first_result_head: 8ea9bf8a
 ---
 
 # Validation: dotfiles-T129-assets-omp-hcom-followup-a02
 
-Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/assets-omp-hcom-followup-a02` at `8ea9bf8a`, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's). §1 to §7a ran inside the sandbox; §8 to §9 ran outside it, because macOS `mktemp -d` ignores `TMPDIR` inside this sandbox (§5), so `tests/unit/test_update_agent_assets.py` cannot run there. `MAIN` names the main checkout and `T` the task id. The scratch worktrees (`$R`, `$Q`, `$O` under `$TMPDIR`; `$R`, `$P` under the session scratchpad, shown as `<scratchpad>`) are removed after their block with `git worktree remove --force`. ESC bytes of uv's colour codes are shown as `\e`. §6 exits 1 only on its last command, the origin/main comparison of the two pre-existing ruff errors.
+Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/assets-omp-hcom-followup-a02` at `8ea9bf8a`, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's). §1 to §7a ran inside the sandbox; §8 to §9 ran outside it, because macOS `mktemp -d` ignores `TMPDIR` inside this sandbox (§5), so `tests/unit/test_update_agent_assets.py` cannot run there. `MAIN` names the main checkout and `T` the task id. The scratch worktrees (`$R`, `$Q`, `$O` under `$TMPDIR`; `$R`, `$P` under the session scratchpad, shown as `<scratchpad>`) are removed after their block with `git worktree remove --force`. ESC bytes of uv's colour codes are shown as `\e`. §10 to §13 are the revise round of 12:51:20Z (previous_head 49d04349), run outside the sandbox at `8ab946a6` through a third generator; `$R` and the bash 3.2 shim live under the session scratchpad. §6 exits 1 only on its last command, the origin/main comparison of the two pre-existing ruff errors.
 
 ## 1. Task file (sha256 4d2f3013…) and task copy
 ```console
@@ -264,5 +265,80 @@ test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_
 test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
 Ran 29 tests in 31.853s
 OK
+[exit 0]
+```
+## 10. RED (revise): the check at 8c0dbe64 (49d04349's updater), in a scratch worktree
+```console
+$ git -C "$R" diff --quiet 49d04349 -- scripts/update-agent-assets.sh && echo "updater identical to 49d04349"; cd "$R" && uv run python -m unittest tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_a_link_target_escaping_the_npm_prefix_is_refused 2>&1 | /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|EEXIST|^Ran|^(OK|FAILED)" | sed -E "s|/var/folders/[^ ]*/T/tmp[^/]*|<tmp>|g" | cut -c1-200
+updater identical to 49d04349
+FAIL: test_a_link_target_escaping_the_npm_prefix_is_refused (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_a_link_target_escaping_the_npm_prefix_is_refused)
+AssertionError: 0 != 1 : 
+npm error code EEXIST: <tmp>/.local/bin/omp
+Ran 1 test in 0.172s
+FAILED (failures=1)
+[exit 0]
+```
+## 11. GREEN (revise): the Check's unit-test command at HEAD
+```console
+$ git rev-parse --short=8 HEAD; uv run python -m unittest tests/unit/test_remove_agent_asset.py tests/unit/test_update_agent_assets.py -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"
+8ab946a6
+test_all_paths_are_preflighted_before_any_deletion (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_all_paths_are_preflighted_before_any_deletion) ... ok
+test_brew_refuses_ambiguous_formula (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_brew_refuses_ambiguous_formula) ... ok
+test_brew_uses_uninstall_for_unambiguous_formula (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_brew_uses_uninstall_for_unambiguous_formula) ... ok
+test_crit_plugin_falls_back_to_data_path_but_not_config (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_crit_plugin_falls_back_to_data_path_but_not_config) ... ok
+test_default_and_explicit_dry_run_print_without_mutating (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_default_and_explicit_dry_run_print_without_mutating) ... ok
+test_hcom_dry_run_without_uv_prints_the_plan (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_dry_run_without_uv_prints_the_plan) ... ok
+test_hcom_removal_deletes_the_recorded_binary (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_deletes_the_recorded_binary) ... ok
+test_hcom_removal_deletes_the_retained_wheel (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_deletes_the_retained_wheel) ... ok
+test_hcom_removal_skips_the_uninstall_when_uv_has_no_hcom_and_removes_the_rest (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_skips_the_uninstall_when_uv_has_no_hcom_and_removes_the_rest) ... ok
+test_hcom_removal_uninstalls_the_uv_receipt (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_uninstalls_the_uv_receipt) ... ok
+test_hcom_removal_uninstalls_the_uv_tool_environment (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_uninstalls_the_uv_tool_environment) ... ok
+test_hcom_removal_without_uv_reports_and_removes_nothing (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_hcom_removal_without_uv_reports_and_removes_nothing) ... ok
+test_integration_uses_verified_herdr_uninstall (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_integration_uses_verified_herdr_uninstall) ... ok
+test_invalid_manifest_is_rejected (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected) ... ok
+test_parameterized_step_removal_preserves_sibling_identity (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity) ... ok
+test_plugin_uses_verified_claude_uninstall (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_claude_uninstall) ... ok
+test_plugin_uses_verified_codex_remove (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_codex_remove) ... ok
+test_recorded_symlink_is_removed_without_following_target (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_recorded_symlink_is_removed_without_following_target) ... ok
+test_tampered_manifest_outside_safe_roots_is_refused (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_tampered_manifest_outside_safe_roots_is_refused) ... ok
+test_unknown_step_lists_known_steps_without_guessing (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_unknown_step_lists_known_steps_without_guessing) ... ok
+test_yes_removes_only_recorded_path_and_preserves_other_steps (tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_yes_removes_only_recorded_path_and_preserves_other_steps) ... ok
+test_a_link_target_escaping_the_npm_prefix_is_refused (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_a_link_target_escaping_the_npm_prefix_is_refused) ... ok
+test_omp_version_check_accepts_the_branded_omp_slash_version_form (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_omp_version_check_accepts_the_branded_omp_slash_version_form) ... ok
+test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_downloads_verifies_the_wheel_hash_and_installs_at_the_pin) ... ok
+test_update_hcom_drops_the_retained_wheel_when_uv_fails_so_the_next_run_retries (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_drops_the_retained_wheel_when_uv_fails_so_the_next_run_retries) ... ok
+test_update_hcom_keeps_the_wheel_uv_records_as_its_source (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_keeps_the_wheel_uv_records_as_its_source) ... ok
+test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel) ... ok
+test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin) ... ok
+test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails) ... ok
+test_updates_use_managed_binaries_when_path_is_shadowed (tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_updates_use_managed_binaries_when_path_is_shadowed) ... ok
+Ran 30 tests in 36.150s
+OK
+[exit 0]
+```
+## 12. The two omp tests with bash resolving to macOS /bin/bash 3.2, and the empty-array guard the fold needs there
+```console
+$ mkdir -p "$S/bash32" && ln -sf /bin/bash "$S/bash32/bash"; PATH="$S/bash32:$PATH" bash --version | head -n 1; PATH="$S/bash32:$PATH" uv run python -m unittest tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_a_link_target_escaping_the_npm_prefix_is_refused tests.unit.test_update_agent_assets.UpdateAgentAssetsTest.test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails 2>&1 | tail -n 3; /bin/bash -c "set -u; a=(); for x in \"\${a[@]}\"; do :; done; echo plain-ok"; /bin/bash -c "set -u; a=(); for x in \${a[@]+\"\${a[@]}\"}; do :; done; echo guarded-ok"
+GNU bash, version 3.2.57(1)-release (arm64-apple-darwin26)
+Ran 2 tests in 4.001s
+
+OK
+/bin/bash: a[@]: unbound variable
+guarded-ok
+[exit 0]
+```
+## 13. shellcheck -x and shfmt -d on both scripts, /bin/bash -n, ruff on the updater test, and the caps against origin/main
+```console
+$ shellcheck -x scripts/update-agent-assets.sh home/dot_local/bin/common/executable_remove-agent-asset && echo "shellcheck clean"; shfmt --indent 4 --space-redirects -d scripts/update-agent-assets.sh home/dot_local/bin/common/executable_remove-agent-asset && echo "shfmt clean"; /bin/bash -n scripts/update-agent-assets.sh && echo "bash 3.2 parses the updater"; ruff check --config ruff.toml tests/unit/test_update_agent_assets.py; git diff --numstat origin/main...HEAD -- scripts home tests; git diff --numstat origin/main...HEAD | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/: %d of 120\nunder tests/ (changed): %d of 400\n\", o, t}"
+shellcheck clean
+shfmt clean
+bash 3.2 parses the updater
+All checks passed!
+30	3	home/dot_local/bin/common/executable_remove-agent-asset
+29	9	scripts/update-agent-assets.sh
+72	0	tests/unit/test_remove_agent_asset.py
+136	71	tests/unit/test_update_agent_assets.py
+outside tests/ and .orchestration/: 71 of 120
+under tests/ (changed): 279 of 400
 [exit 0]
 ```

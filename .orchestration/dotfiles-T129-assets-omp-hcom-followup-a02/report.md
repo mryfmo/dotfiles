@@ -10,6 +10,9 @@ review_test_commit: 91653681
 review_fix_commit: 5f1f3846
 rereview_test_commit: c47f5c7a
 rereview_fix_commit: 8ea9bf8a
+revise_test_commit: 8c0dbe64
+revise_fix_commit: 8ab946a6
+previous_head: 49d04349b22a95771d53155012d694f591736a89
 task_sha256: 4d2f30139cf6a4a738c6b5b6ef05d1574d083a5dc39a53c09f5dae34f4761bb5
 ---
 
@@ -50,6 +53,20 @@ An independent read-only reviewer was used: a fresh general-purpose subagent of 
    - The two P3 are residuals, listed below.
 3. Round 3 on `c47f5c7a..8ea9bf8a`, same reviewer: `Verdict: correct`, no new finding. It confirmed the P1 is closed with the real uv under forced colour and the regression test red without the fix. It agreed with both residuals and asked that the kept `omp.previous` be named here; the Residuals section names it.
 
+## Revise round (AGMSG-ACCEPTANCE status=revise, 2026-10-18T12:51:20Z, previous_head 49d04349; `revise.yaml`)
+
+- `update_omp` resolves the link the way npm does before its ownership check (bin-links `check-bin.js` uses `path.resolve`):
+  - A relative target is joined to `~/.local/bin`, then `.` and `..` fold in plain bash. There is no `realpath`, so a dangling target resolves too.
+  - Only a resolved target under `~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/` is npm's own.
+  - Any other link, for example the Bot's `../lib/node_modules/@oh-my-pi/pi-coding-agent/../../outside`, is refused as npm's own: it moves to the kept `omp.previous` like any entry npm does not own, and the output names the target and what it resolves to.
+- My reading of the next_action's "refuse otherwise with the path named": the link is refused as npm's own and handled like every other entry npm does not own. The update does not fail. Failing there would bring back the abort that row local:fbbc6d9:1 removes.
+- The loop over the path parts uses `${parts[@]+"${parts[@]}"}`. Under `set -u`, bash before 4.4 (macOS `/bin/bash` 3.2) treats an empty `"${parts[@]}"` as unbound, and a plain file at the omp path gives an empty list (§12 shows both forms on `/bin/bash`).
+- Test: `test_a_link_target_escaping_the_npm_prefix_is_refused` is red at 8c0dbe64 with 49d04349's updater (EEXIST, §10) and green at 8ab946a6 (§11). It and the existing omp test also pass with `bash` resolved to `/bin/bash` 3.2 (§12).
+  - The fixture npm resolves the link before its ownership check, as bin-links does.
+  - `update_omp_in` is the omp run both omp tests now share.
+- Caps after the round (§13): 71 changed lines of 120 outside `tests/` and `.orchestration/`, 279 of 400 under `tests/`.
+- The round is one push. No `@codex review` was posted, so 8ab946a6 has no Bot re-review (`bot: none`).
+
 ## Residuals (for the orchestrator's disposition)
 
 - `update_omp` keeps one generation: an earlier `omp.previous` is replaced before the install, so a failed install restores the new entry and the earlier kept copy is gone.
@@ -64,8 +81,8 @@ An independent read-only reviewer was used: a fresh general-purpose subagent of 
 
 ## Caps (§7)
 
-- Outside `tests/` and `.orchestration/`: 60 changed lines of 120 (the remover 30 added and 3 deleted; the updater 18 and 9).
-- Under `tests/`: 256 changed lines of 400 (test_remove_agent_asset.py 72; test_update_agent_assets.py 113 and 71).
+- Outside `tests/` and `.orchestration/`: 71 changed lines of 120 (the remover 30 added and 3 deleted; the updater 29 and 9), after the revise round (§13).
+- Under `tests/`: 279 changed lines of 400 (test_remove_agent_asset.py 72; test_update_agent_assets.py 136 and 71).
 
 ## PR
 
@@ -74,7 +91,7 @@ PR #416 was opened as a draft from this worktree with the plain create command a
 ## Bot (one review: marked ready at 12:30Z on 2233f721, CI green there after one rerun; review 5563005388 at 12:33:58Z; the security review found nothing)
 
 - CI on 2233f721 first failed `public-bootstrap (ubuntu-24.04, client)` on an external error: the snap store answered HTTP 408 for the `gnome-46-2404` assertion. The server and macOS bootstrap jobs were cancelled by fail-fast. `gh run rerun 39126085089 --failed` turned all 13 checks green.
-- 4307029052, P2 (`scripts/update-agent-assets.sh:948`, row local:fbbc6d9:1, on this PR's own change): a link that starts with the allowed prefix but escapes it with `..` (for example `../lib/node_modules/@oh-my-pi/pi-coding-agent/../../../../foreign/omp`) passes the plain pattern as npm's own and stays. npm resolves the target and refuses it with EEXIST. Reproduced. Proposed disposition: `fix in a revise round (C-50)`. The fix is a few lines inside allowed_files: treat a link whose target contains a `..` segment after the prefix as not npm's own, or normalise the target before the check. Add one fixture case, the Bot's link, red before and green after.
+- 4307029052, P2 (`scripts/update-agent-assets.sh:948`, row local:fbbc6d9:1, on this PR's own change): a link that starts with the allowed prefix but escapes it with `..` (for example `../lib/node_modules/@oh-my-pi/pi-coding-agent/../../../../foreign/omp`) passes the plain pattern as npm's own and stays. npm resolves the target and refuses it with EEXIST. Reproduced. `fixed:8ab946a6` in the revise round below.
 - No `@codex review` was posted, under the no-prompt rule.
 
 CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T129 assets-omp-hcom followup a02 (PR 416): …'` printed `e79d449c-0758-4295-b5a2-dbf1d9fe35e2`.

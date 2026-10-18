@@ -29,6 +29,7 @@ Calls outside the sandbox, each through the permission gate (Worker Playbook ste
 | 5a | `gh run rerun 39126085089 --failed`, one command (the snap store's HTTP 408 in public-bootstrap on 2233f721, an external error; the other two bootstrap jobs had been cancelled by fail-fast) | `gh` |
 | 6 | `gh pr ready 416`, one command, then the Bot wait as `gh api` reads of the reviews and comments every 30 seconds for at most 15 minutes | `gh` |
 | 7 | the main checkout's CompactionDB `memory add` | the main-checkout CompactionDB `memory add` |
+| 7a | revise round (12:51:20Z): the updater test runs and the generator of validation §10 to §13 (a scratch worktree at 8c0dbe64, and the omp tests with `bash` shimmed to macOS `/bin/bash` 3.2), for the reason of row 3; then one push of 8c0dbe64, 8ab946a6 and the evidence | sandbox-incompatible test; `git push` |
 | 8 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T129-assets-omp-hcom-followup-a02 …'` | `agmsg-dispatch` |
 
 Rows 6 to 8 are added here as planned. The report and the RESULT state what each one returned.

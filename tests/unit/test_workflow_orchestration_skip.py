@@ -380,6 +380,9 @@ class DecisionTest(unittest.TestCase):
             "python-script": ([("scripts/x.py", "x\n")], "false"),
             "home": ([("home/x", "x\n")], "true"),
             "install": ([("install/x.sh", "x\n")], "true"),
+            # chezmoi reads .chezmoiroot; update-agent-assets.sh resolves its source root through vendor/compactiondb.
+            "chezmoiroot": ([(".chezmoiroot", "home\n")], "true"),
+            "vendor": ([("vendor/compactiondb/x", "x\n")], "true"),
             "orchestration": ([(".orchestration/y.md", "y\n")], "false"),
             "empty": ([], "true"),
         }

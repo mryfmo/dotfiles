@@ -23,6 +23,8 @@ with open(os.environ["GH_LOG"], "a") as log:
 runs = json.load(open(os.environ["GH_RUNS"]))
 if os.environ.get("GH_EXIT"):
     sys.exit(int(os.environ["GH_EXIT"]))
+if args[:2] == ["run", "rerun"] and os.environ.get("GH_RERUN_EXIT"):
+    sys.exit(int(os.environ["GH_RERUN_EXIT"]))
 if args[:2] == ["run", "view"] and "--json" in args:
     print(json.dumps(runs[args[2]]))
 elif args[:2] == ["run", "view"] and "--log-failed" in args:
@@ -94,7 +96,7 @@ class CiRerunTest(unittest.TestCase):
         (self.t / "runs.json").write_text(json.dumps(RUNS))
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
 
-    def run_script(self, run_id, gh_exit=""):
+    def run_script(self, run_id, gh_exit="", rerun_exit=""):
         log = self.t / "gh.log"
         log.write_text("")
         result = subprocess.run(
@@ -105,6 +107,7 @@ class CiRerunTest(unittest.TestCase):
                 "GH_LOG": str(log),
                 "GH_RUNS": str(self.t / "runs.json"),
                 "GH_EXIT": gh_exit,
+                "GH_RERUN_EXIT": rerun_exit,
             },
             stdin=subprocess.DEVNULL,
             capture_output=True,
@@ -139,6 +142,24 @@ class CiRerunTest(unittest.TestCase):
         self.assertNotIn("real failure: public-bootstrap", result.stdout)
         self.assertNotIn(["run", "rerun", "202", "--failed"], calls)
         self.assertEqual(before, self.ledger.read_text())
+
+    def test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice(self):
+        # The rows are written before `gh run rerun`, so a failed or interrupted rerun can never be repeated.
+        result, calls = self.run_script("101", rerun_exit="1")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(1, calls.count(["run", "rerun", "101", "--failed"]))
+        self.assertEqual(["101", "101"], [line.split("\t")[1] for line in self.ledger.read_text().splitlines()])
+        result, calls = self.run_script("101")
+        self.assertEqual(4, result.returncode, result.stdout + result.stderr)
+        self.assertEqual([], calls)
+        lock = self.ledger.with_name("ci-reruns.lock")
+        self.assertFalse(lock.exists())
+        # A held lock (a concurrent call, or one a killed call left) stops the next call before any gh call.
+        lock.mkdir()
+        result, calls = self.run_script("202")
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn(str(lock), result.stderr)
+        self.assertEqual([], calls)
 
     def test_a_failing_gh_exits_1_never_with_the_scripts_own_codes(self):
         # gh exits 4 when it needs authentication and 2 when cancelled: neither may read as "already rerun" or usage.

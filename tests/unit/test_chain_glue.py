@@ -404,6 +404,52 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
             f"inherited-from: {p7}\n{summary}", (self.v / f"{TASK}-audit-{again[:7]}.md.last.md").read_text()
         )
 
+    def test_inheritance_requires_the_merge_tree_reproduction_to_equal_the_head_tree(self):
+        # Re-plan R1 (the local review P1 of 741e242): patch-id ignores hunk positions, so a merge that moves the PR's
+        # edit into an identical block keeps the patch-id; only a head whose tree a clean merge reproduces inherits.
+        block = "L\nL\nL\nM\nL\nL\nL\n"
+
+        def to_main(name, text=None):
+            self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+            self.commit(self.seed, name, text)
+            self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+            self.git("pull", "-q", "--ff-only")
+
+        def merge(audited, relocate=False):
+            self.git("checkout", "-q", "--detach", audited, cwd=self.seed)
+            self.git("merge", "-q", "--no-ff", "--no-edit", "--no-commit", "origin/main", cwd=self.seed)
+            if relocate:
+                (self.seed / "r.txt").write_text(block + block.replace("M\n", "M\nNEW\n"))
+                self.git("add", "r.txt", cwd=self.seed)
+            self.git("commit", "-q", "--no-edit", cwd=self.seed)
+            self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+            (self.calls / "head").write_text(self.git("rev-parse", "HEAD", cwd=self.seed) + "\n")
+            return self.git("rev-parse", "HEAD", cwd=self.seed)
+
+        def patch_id(rev):
+            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --verbatim'
+            run = subprocess.run(
+                ["bash", "-c", command, "-", rev], cwd=self.seed, capture_output=True, text=True, check=True
+            )
+            return run.stdout.split()[0]
+
+        to_main("r.txt", block * 2)
+        (self.seed / "r.txt").write_text(block.replace("M\n", "M\nNEW\n") + block)
+        self.git("commit", "-q", "-am", "the PR edits the first block", cwd=self.seed)
+        audited = self.git("rev-parse", "HEAD", cwd=self.seed)
+        for suffix in (".md", ".md.last.md"):
+            (self.v / f"{TASK}-audit-{audited[:7]}{suffix}").write_text("Verdict: correct\n")
+        to_main("c.txt")
+        clean = merge(audited)
+        self.chain()
+        self.assertEqual([], self.calls_of("orch-audit"))
+        self.assertTrue((self.v / f"{TASK}-audit-{clean[:7]}.md.last.md").exists())
+        relocated = merge(audited, relocate=True)
+        self.assertEqual(patch_id(audited), patch_id(relocated))
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{relocated[:7]}.md*")))
+
     def test_integrate_restores_the_review_worktree_after_the_audit(self):
         # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at
         # origin/main; the chain puts it back at the audited head, which the gate reads next.

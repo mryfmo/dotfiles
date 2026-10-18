@@ -20,7 +20,10 @@
 #   gate or the collector and gh it starts (the audits of a06c874e and 6847aa9f). A trap set before the private
 #   directory is made removes it whatever fails or the gate says, and once the head's checkout has started restores
 #   the review worktree to origin/main; a refusal before that leaves the review worktree as it was (the audit of
-#   a235637).
+#   a235637). Before the head is checked out, `dispositions.py <pr> <head> --feedback <sweep>` re-validates the
+#   sweep's dispositions under the same `env -i` and private PATH (plan 024 P1-10): with
+#   DISPOSITIONS_REQUIRE_REFUTATION=1 it runs with `--require-refutation` and any failure refuses; otherwise its lines
+#   are printed as a report.
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the gated head).
 # @arg $3 int PR number.
@@ -72,6 +75,15 @@ for name in gh git; do
     [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"
     ln -s -- "${found}" "${bin}/${name}"
 done
+# Plan 024 P1-10: the saved dispositions are re-validated here, in this checkout with the private PATH, before the review
+# worktree moves; under DISPOSITIONS_REQUIRE_REFUTATION=1 a failure refuses, otherwise the lines are a report.
+check=("${python}" -I "${root}/scripts/orchestrator/dispositions.py" "${pr}" "${head}" --feedback "${sweep}" --out /dev/null)
+if [[ ${DISPOSITIONS_REQUIRE_REFUTATION:-} == 1 ]]; then
+    env -i PATH="${bin}" HOME="${HOME}" "${check[@]}" --require-refutation ||
+        refuse "the dispositions of ${sweep} fail dispositions.py --require-refutation"
+else
+    env -i PATH="${bin}" HOME="${HOME}" "${check[@]}" || true
+fi
 moved=1
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do

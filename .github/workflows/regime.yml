@@ -1,0 +1,36 @@
+name: regime
+
+# The regime job (plan 024 P1-11): a pull request that carries a task copy is checked against it (the copy, the precheck
+# binding, allowed_files, the caps and the checker's threat-table rules) by scripts/orchestrator/regime-ci.py.
+# It is an optional check until the operator adds `regime` to the ruleset's required contexts.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: regime-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # The pull request's head commit, not github.sha (the merge commit on pull_request events), with every branch
+      # so origin/<base> resolves.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - name: Check the pull request against its task copies
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: uv run --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "origin/${BASE_REF}" --head "${HEAD_SHA}"

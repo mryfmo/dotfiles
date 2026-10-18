@@ -148,6 +148,10 @@ This task is `security: true` because workflow decisions governing required chec
 
 No `@codex review` comment is posted. The automatic-review state and any bounded-wait outcome are recorded against the relevant head. Every `gh` write and `git` write runs as a single command, with no chained local mutation. The RESULT names the final head, base, branch, changed files, new script and workflow, every Bot thread and proposed disposition, test selectors, red and green evidence, cap totals, feedback-derived check counts, task-copy hash and evidence paths.
 
+## Amendment 1 (round 1, 2026-10-18T08:01Z) and the orchestrator's revise round 1
+
+a011's RESULT (07:58:12Z, PR #409 at 6b2ff08f): the proposal that the test and bootstrap matrices keep GitHub's default `fail-fast: true`, so one failing matrix job cancels its siblings and `ci-rerun.sh`'s item (every failure conclusion needs a signature) refuses the measured flake run 39046848147 attempt 1 because of cancelled siblings. Decided by the orchestrator by default (a spec-level P2 on this PR's own change, inside `allowed_files`): the `test` matrix in `test.yaml` and the `public-bootstrap` matrix in `remote.yaml` (and the moved `private-bootstrap` matrix) set `strategy.fail-fast: false`, so every matrix job reports its own conclusion, a required context is never cancelled by a sibling, and a cancelled job remains a signature-needing failure for the rerun script; one test `test_the_matrices_do_not_fail_fast` in `tests/unit/test_workflow_orchestration_skip.py` reads the three strategies (red on 6b2ff08f). INV-6 for this task: amendments 1, revises 1 after the next RESULT (below S2); a further amendment or revise is a stop and a reset. `check=tests/unit/test_workflow_orchestration_skip.py::test_the_matrices_do_not_fail_fast`. Copy this text as task.md, push once as single commands, wait for CI and the automatic review (no `@codex review` comment), then RESULT with `previous_head=6b2ff08f0b09d719eb3786fd032ce16786002257`.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

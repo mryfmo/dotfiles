@@ -422,6 +422,14 @@ class DecisionTest(unittest.TestCase):
 
 
 class WorkflowTriggerTest(unittest.TestCase):
+    def test_the_matrices_do_not_fail_fast(self) -> None:
+        # Amendment 1: a failing matrix job never cancels its siblings, so each required context reports its own
+        # conclusion and ci-rerun.sh never meets a cancellation that only a sibling's failure caused.
+        for path, name in ((TEST, "test"), (REMOTE, "public-bootstrap"), (PRIVATE, "private-bootstrap")):
+            with self.subTest(job=name):
+                block = path.read_text().split(f"\n  {name}:\n", 1)[1].split("\n    runs-on:", 1)[0]
+                self.assertIn("\n    strategy:\n      fail-fast: false\n      matrix:\n", block)
+
     def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
         for path in (TEST, REMOTE, AGENT_ASSETS):
             with self.subTest(workflow=path.name):

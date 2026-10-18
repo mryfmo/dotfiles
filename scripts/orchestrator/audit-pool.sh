@@ -2,19 +2,18 @@
 # @file audit-pool.sh
 # @brief Run queued task-level audits, at most --max at a time, and keep only schema-valid audit records.
 # @description
-#   Plan 024 5.12 (2) (T133). A request is `<queue>/<task>-<sha7>.request`, `key=value` lines: pr, head, base,
-#   task and optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` (python -I; macOS ships no
-#   flock command) a pick renames the oldest request to `<task>-<sha7>.running-<n>`, n a free slot of --max: slot 1
-#   audits in `.claude/worktrees/orchestrator-review`, slot n > 1 in `.claude/worktrees/orchestrator-review-<n>`
-#   (added detached at origin/main when missing), passed to orch-audit.sh as ORCH_REVIEW_WORKTREE. A run is
-#   `orch-audit.sh <task> --head <head> <pr> --json <v>/<task>-audit-<sha7>.json`, with `--previous-head` and
-#   `--previous-findings <v>/<task>-audit-<prev7>.json` only once `<v>/audit-shadow.tsv` holds two rows whose last
-#   field (the finding difference between the full and the differential audit) is 0 (plan 024 5.11 Q-C); until then
-#   a request with previous_head is audited in full and its differential prompt is written to
-#   `<json>.differential-prompt.txt`. A zero exit whose json passes `orch-audit.sh --validate` against
-#   .schemas/audit.json renames the request to `.done`; anything else writes the reason to `<request>.rejected` and
-#   renames it to `.blocked`. A 429 (as orch-audit.sh reports it) is retried after 60, 120 and 240 s, then blocked. A
-#   killed pool's `.running-<n>` files hold their slots until removed; `--once` names them when requests wait.
+#   Plan 024 5.12 (2) (T133). A request `<queue>/<task>-<sha7>.request` holds `key=value` lines pr, head, base, task
+#   and optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` (python -I; macOS has no flock
+#   command) a pick renames the oldest request to `<task>-<sha7>.running-<n>`, n a free slot of --max, audited in
+#   `.claude/worktrees/orchestrator-review` (slot 1) or `orchestrator-review-<n>` (added detached at origin/main when
+#   missing), passed as ORCH_REVIEW_WORKTREE to `orch-audit.sh <task> --head <head> <pr> --json
+#   <v>/<task>-audit-<sha7>.json`. `--previous-head` and `--previous-findings <v>/<task>-audit-<prev7>.json` follow only
+#   once `<v>/audit-shadow.tsv` holds two rows whose last field (full versus differential finding difference) is 0 (plan
+#   024 5.11 Q-C); until then the audit is full and the differential prompt goes to `<json>.differential-prompt.txt`.
+#   A zero exit whose json passes `orch-audit.sh --validate .schemas/audit.json` makes the request `.done`; otherwise
+#   `<request>.rejected` holds the reason and it becomes `.blocked`. A 429 (as orch-audit.sh reports it) is retried
+#   after 60, 120 and 240 s, then blocked. A killed pool's `.running-<n>` files hold their slots until removed;
+#   `--once` names them when requests wait.
 # @option --once Start what the free slots allow, then wait for those runs.
 # @option --loop Pick every 30 seconds until `<queue>/.stop` exists.
 # @option --max <n> Concurrent audits, 1 to 9 (default 2).
@@ -22,11 +21,7 @@
 # @exitcode 0 The pass or the loop ended; each request's outcome is its .done or .blocked file.
 # @exitcode 2 Usage error.
 set -euo pipefail
-
-usage() {
-    echo "usage: audit-pool.sh [--once|--loop] [--max <n>] [--queue <dir>]" >&2
-    exit 2
-}
+usage() { echo "usage: audit-pool.sh [--once|--loop] [--max <n>] [--queue <dir>]" >&2 && exit 2; }
 mode=once max=2 queue=.orchestration/validation/audit-queue
 while (($#)); do
     case $1 in
@@ -57,7 +52,6 @@ with open(os.path.join(q, ".lock"), "a") as lock:
         os.rename(todo[0], f"{todo[0][:-len('.request')]}.running-{free[0]}")
         print(todo[0][: -len(".request")], free[0])
 PY
-
 # @description Audit one picked request and leave it `.done` or `.blocked`.
 # @arg $1 path The request path without `.request`.
 # @arg $2 int Its slot.
@@ -106,7 +100,6 @@ run_one() {
         mv -- "${running}" "${base}.blocked"
     fi
 }
-
 # @description Start a background run for every request the free slots allow.
 start_free() {
     local line req slot wt
@@ -118,7 +111,6 @@ start_free() {
         run_one "${req}" "${slot}" "${wt}" &
     done
 }
-
 if [[ ${mode} == once ]]; then
     start_free
     wait

@@ -13,12 +13,11 @@
 #   the transcript written to `<out>`. Codex's own exit status decides, never a pipe's. After a zero exit with a
 #   non-empty `.last.md` newer than the run's start, both files are copied to `.orchestration/validation/` here
 #   and masked with this checkout's masker; the review worktree is restored.
-#   T133 (plan 024 5.12 (2)): `--head` must be a commit of this checkout; ORCH_REVIEW_WORKTREE replaces the review
-#   worktree; a failed run whose transcript mentions 429 says so on stderr (audit-pool.sh retries on it; no transcript text leaves); `--json`
-#   asks for one fenced json block of `.schemas/audit.json`'s record just before the Verdict line (the gate reads the
-#   verdict from the last line), then extracts it, checks it with the stdlib checker below and against this head, task
-#   and Verdict line, and writes it; `--previous-head` with `--previous-findings` makes the audit differential;
-#   `--validate <schema> <json>` runs the checker alone.
+#   T133 (plan 024 5.12 (2)): `--head` must be a commit here; ORCH_REVIEW_WORKTREE replaces the review worktree; a
+#   failed run whose transcript mentions 429 says so on stderr (no transcript text leaves); `--json` asks for one fenced
+#   json block of `.schemas/audit.json`'s record just before the Verdict line (the gate reads the last line), checks it
+#   with the stdlib checker below and against this head, task and Verdict line, and writes it; `--previous-head` with
+#   `--previous-findings` makes the audit differential; `--validate <schema> <json>` runs the checker alone (python3 -I).
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the audited head).
 # @arg $3 int PR number.
@@ -97,7 +96,7 @@ if len(sys.argv) > 3:
 PY
 if [[ ${1:-} == --validate ]]; then
     (($# == 3)) || usage
-    exec uv run --no-project python -I -c "${checker}" "$2" "$3"
+    exec python3 -I -c "${checker}" "$2" "$3" # stdlib only: PATH's python3, which verdict.sh pins
 fi
 (($# >= 3)) || usage
 task=$1 json="" prev="" prev_findings="" check=$(cd -- "$(dirname -- "$0")" && pwd)/ledger-check.py

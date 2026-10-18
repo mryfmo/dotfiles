@@ -3,20 +3,23 @@
 # @brief Decide accept, revise or hold for one PR from its nine acceptance conditions and write the verdict JSON.
 # @description
 #   Plan 024 5.12 (1) (T133). Every condition `{id, ok, evidence}` is ok only on a positive check of a read input:
-#   (1) `.orchestration/<task>/precheck.json` at the head hashes to the record's `precheck:` and names the head or an
+#   (1) the head's `.orchestration/<task>/precheck.json` hashes to the record's `precheck:` and names the head or an
 #   ancestor the head changes only under `.orchestration/<task>/` (a warning while PRECHECK_REQUIRED is unset or 0);
-#   (2) gh's checks name the seven required ones SUCCESS; (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`,
-#   names this task and head, and is correct or leaves only records findings unfixed (blocked holds); (4) every item of
-#   a fresh `scripts/pr-feedback.py` sweep has a `fixed:<sha>` or `not-applicable:…; evidence=…` disposition in
-#   `<task>-pr-feedback.json`, by url; (5) the merge-base diff stays in the front matter's allowed_files and the Check
-#   caps (`at most <n> changed lines outside <paths>`, `<n> under tests/`); (6) `regime-counters.sh <task> --pr <pr>`
-#   prints no `S1:` line and revises below 2; (7) no P0/P1 finding is unfixed; (8) a security task's review ends
-#   `Verdict: correct`; (9) the record has sha256 lines and each matches its file. accept when all hold; hold when (6)
-#   or (7) fails or an input is missing, unreadable or fails its schema; revise otherwise, with the revise line. The
-#   verdict JSON (`<task>-verdict-<sha7>.json`) is checked against `.schemas/verdict.json`. --apply (accept only, from a
-#   checkout the PR does not control, after four agreeing machine and human rows of verdict-shadow.tsv) sends the
-#   ACCEPTANCE line through dispatch.sh and merges with --match-head-commit; --admin or --auto anywhere is refused first.
-#   --shadow appends `pr head machine human agree at` and never sends or merges. --loop runs each ready PR in order.
+#   (2) the seven required checks are SUCCESS; (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`, names this
+#   task and head, counts no open P0/P1, and is correct or leaves only records findings open (blocked holds); (4) the
+#   fresh `scripts/pr-feedback.py` sweep and `<task>-pr-feedback.json` name the head, and require-crit-review.py's own
+#   missing_feedback, parse_disposition and commit_in_range (merge base..head) give each fresh item its own validly
+#   dispositioned saved item; (5) the merge-base diff keeps to allowed_files and the Check caps; (6) regime-counters.sh
+#   prints no `S1:` line and revises below 2; (7) no P0/P1 finding is new, still-open or status-less (counted: no id
+#   or scope exempts one); (8) a security task's review ends `Verdict: correct`; (9) the record's sha256 lines exist
+#   and match. accept when all hold; hold when (6) or (7) fails or an input is missing, unreadable or schema-invalid;
+#   revise otherwise, with the revise line. Before reading any checkout it re-runs itself under `env -i` (HOME,
+#   TMPDIR, PRECHECK_REQUIRED) with PATH links to bash, uv, python3, gh, git and jq (agmsg-dispatch, herdr if present)
+#   resolved from / (`mise which` under env -i, else `command -v`; a shims or relative path holds), then /usr/bin:/bin.
+#   Python is that python3 -I; uv reads the front matter offline with --no-config and that --python. So no checkout's
+#   `.python-version`, `.venv`, uv or mise file, nor UV_PYTHON or VIRTUAL_ENV, picks a tool. --apply (accept only;
+#   scripts/, .schemas/ and task files equal origin/main; four distinct agreeing PRs end verdict-shadow.tsv) sends the
+#   ACCEPTANCE line through dispatch.sh, then merges with --match-head-commit; --admin or --auto anywhere is refused.
 # @arg $1 int PR number (none with --loop).
 # @option --task <id> The task, when no record's block names the PR.
 # @option --apply With --team, --from, --to and --pane: send the ACCEPTANCE line and merge, on accept only.
@@ -29,16 +32,22 @@
 # @exitcode 2 Usage or internal error (treated as hold).
 set -Eeuo pipefail
 shopt -s nullglob
-for a in "$@"; do
-    [[ ${a} != *--admin* && ${a} != *--auto* ]] || {
-        echo "verdict: ${a} is refused" >&2
-        exit 2
-    }
-done
-usage() {
-    echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...]" >&2
-    exit 2
-}
+for a in "$@"; do [[ ${a} != *--admin* && ${a} != *--auto* ]] || { echo "verdict: ${a} is refused" >&2 && exit 2; }; done
+trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
+usage() { echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...]" >&2 && exit 2; }
+stop() { echo "verdict: $1: hold" >&2 && exit 20; }
+if [[ -z ${VERDICT_BIN:-} ]]; then # the pinned tools, then this script again, before any checkout is read
+    bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0
+    for t in bash uv python3 gh git jq agmsg-dispatch herdr; do
+        p="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${t}" 2> /dev/null || command -v "${t}")" || p=""
+        [[ ${p} == /* && ${p} != */shims/* ]] && ln -s -- "${p}" "${bin}/${t}" && continue
+        [[ ${t} == agmsg-dispatch || ${t} == herdr ]] || { rm -rf -- "${bin}" && stop "no ${t} outside a shims directory ('${p}')"; }
+    done
+    env -i HOME="${HOME}" TMPDIR="${TMPDIR:-/tmp}" PATH="${bin}:/usr/bin:/bin" VERDICT_BIN="${bin}" \
+        PRECHECK_REQUIRED="${PRECHECK_REQUIRED:-0}" "${bin}/bash" "${BASH_SOURCE[0]}" "$@" || rc=$?
+    rm -rf -- "${bin}"
+    exit "${rc}"
+fi
 pr="" task="" team="" from="" to="" pane="" apply=false shadow=false loop=false
 while (($#)); do
     case $1 in
@@ -58,10 +67,9 @@ done
 [[ (${loop} == true || -n ${pr}) && ! (${apply} == true && ${shadow} == true) ]] || usage
 [[ ${apply} == false || (-n ${team} && -n ${from} && -n ${to} && -n ${pane}) ]] || usage
 [[ -z ${task} || ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || usage
-trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
 here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd -- "$(git -C "${here}" rev-parse --show-toplevel)"
-v=.orchestration/validation
+v=.orchestration/validation uvy=(uv run --no-config --no-project --offline --python "${VERDICT_BIN}/python3" --with pyyaml)
 block() { awk 'NR == 1 { if ($0 != "---") exit; next } $0 == "---" { exit } { print }' "$1"; }
 if [[ ${loop} == true ]]; then
     opts=()
@@ -79,10 +87,6 @@ if [[ ${loop} == true ]]; then
     done <<< "${list}"
     exit 0
 fi
-stop() {
-    echo "verdict: $1: hold" >&2
-    exit 20
-}
 view="$(gh pr view "${pr}" --json headRefOid,isDraft,baseRefName,state,number)" || stop "gh pr view ${pr} failed"
 head="$(jq -r .headRefOid <<< "${view}")"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || stop "PR ${pr} has no head"
@@ -109,7 +113,6 @@ trap 'rm -f -- "${fresh}" "${line_file}"' EXIT
 [[ "$(block "${rec}" 2> /dev/null | jq -r '"\(.task) \(.pr) \(.head) \(.ledger | type)"' 2> /dev/null)" == "${task} ${pr} ${head} array" ]] ||
     lack "the record ${rec} is not this task's at the head"
 [[ "$(jq -r '"\(.state) \(.baseRefName) \(.isDraft)"' <<< "${view}")" == "OPEN main false" ]] || lack "PR ${pr} is not open, non-draft, on main"
-
 want="$(sed -n 's/^precheck: \([0-9a-f]\{64\}\)$/\1/p' "${rec}" 2> /dev/null | tail -n 1 || true)" got="" ph=""
 if git cat-file -e "${head}:.orchestration/${task}/precheck.json" 2> /dev/null; then
     got="$(git show "${head}:.orchestration/${task}/precheck.json" | shasum -a 256)" got=${got%% *}
@@ -123,7 +126,6 @@ elif [[ ${PRECHECK_REQUIRED:-0} == 0 ]]; then
 else
     cond 1 false "precheck.json does not hash to the record's precheck: or names neither the head nor an evidence-only ancestor"
 fi
-
 required='["validate", "test (ubuntu-24.04, server)", "test (ubuntu-24.04, client)", "test (macos-14, client)",
   "public-bootstrap (ubuntu-24.04, server)", "public-bootstrap (ubuntu-24.04, client)", "public-bootstrap (macos-14, client)"]'
 checks="$(gh pr checks "${pr}" --json name,state 2> /dev/null)" || true
@@ -133,34 +135,45 @@ if miss="$(jq -er --argjson req "${required}" 'if type != "array" or length == 0
 else
     lack "gh pr checks ${pr}" && cond 2 false "gh pr checks is unreadable"
 fi
-
 if [[ -f ${audit} ]] && "${here}/orch-audit.sh" --validate .schemas/audit.json "${audit}" > /dev/null 2>&1; then
-    a3="$(jq -r --arg h "${head}" --arg t "${task}" '[.findings[] | select((.status // "new") != "fixed")] as $open
+    a7="$(jq '[.findings[] | select(.priority == "P0" or .priority == "P1") | select(.status // "new" | . == "new" or . == "still-open")] | length' "${audit}")" # counted, never named: no empty id hides one
+    a3="$(jq -r --arg h "${head}" --arg t "${task}" --argjson n "${a7}" '[.findings[] | select((.status // "new") != "fixed")] as $open
         | if [.head, .task_id] != [$h, $t] then "the audit is of \(.task_id) at \(.head[0:7])" elif .verdict == "blocked" then "blocked: not assessed"
-        elif .verdict == "correct" or ($open | length > 0 and all(.[]; .scope == "records")) then "" else "verdict \(.verdict), unfixed \($open | map(.scope))" end' "${audit}")"
+        elif $n > 0 then "\($n) open P0/P1 findings" elif .verdict == "correct" or ($open | length > 0 and all(.[]; .scope == "records")) then ""
+        else "verdict \(.verdict), unfixed \($open | map(.scope))" end' "${audit}")"
     [[ ${a3} != blocked:* ]] || lack "the audit ${audit} is blocked"
-    a7="$(jq -r '[.findings[] | select(.priority == "P0" or .priority == "P1") | select((.status // "new") != "fixed") | .id] | join(",")' "${audit}")"
     cond 3 "$([[ -z ${a3} ]] && echo true || echo false)" "${a3:-the audit of the head is correct or leaves only records findings}"
-    cond 7 "$([[ -z ${a7} ]] && echo true || echo false)" "unfixed P0/P1 findings: ${a7:-none}"
+    cond 7 "$([[ ${a7} == 0 ]] && echo true || echo false)" "open P0/P1 findings: ${a7}"
 else
     lack "${audit} is missing or fails .schemas/audit.json" && cond 3 false "no valid audit ${audit}" && cond 7 false "no valid audit"
 fi
-
-if uv run --offline --no-project python -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 && [[ -f ${fb} ]] &&
-    a4="$(jq -rn --slurpfile f "${fresh}" --slurpfile d "${fb}" '([$d[0].items[] | {key: (.url // ""), value: (.disposition // "")}] | from_entries)
-      as $m | [$f[0].items[] | (.url // "") as $u | select(($m[$u] // "") | test("^fixed:[0-9a-f]{7,40}$") or (startswith("not-applicable:")
-      and contains("; evidence=")) | not) | $u] | join(" ")' 2> /dev/null)"; then
-    cond 4 "$([[ -z ${a4} ]] && echo true || echo false)" "items without a disposition or evidence: ${a4:-none}"
+base="$(git merge-base origin/main "${head}" 2> /dev/null)" || base=""
+read -r -d '' gaps << 'PY' || true # condition 4 by the gate's helpers: a gap per line; a url only labels it
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("gate", "scripts/require-crit-review.py")
+spec.loader.exec_module(gate := importlib.util.module_from_spec(spec))
+(fresh, saved), head, base = (json.load(open(p)) for p in sys.argv[1:3]), sys.argv[3], sys.argv[4]
+for name, doc in (("fresh sweep", fresh), ("saved document", saved)):
+    doc.get("head_sha") == head or print(f"the {name} names head {doc.get('head_sha')}, not {head[:7]}")
+for key, n in gate.missing_feedback(fresh["items"], saved["items"]).items():
+    print(f"{n} fresh item(s) without a saved one: {key[0]} {key[1] or ''}")
+for item in saved["items"]:
+    commit, reason = gate.parse_disposition(item.get("disposition")) or (None, None)
+    short = not commit and item.get("level") in gate.STRICT_REASON_LEVELS and len(reason or "") < gate.FAILURE_REASON_MIN_CHARS
+    if reason is None and not commit or short or commit and not gate.commit_in_range(gate.Path("."), commit, base, head):
+        print(f"no valid disposition: {item.get('source')} {item.get('url') or ''}")
+PY
+if [[ -n ${base} && -f ${fb} ]] && python3 -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 &&
+    a4="$(python3 -I -B -c "${gaps}" "${fresh}" "${fb}" "${head}" "${base}" 2> /dev/null)"; then
+    cond 4 "$([[ -z ${a4} ]] && echo true || echo false)" "feedback gaps: ${a4:-none}"
 else
-    lack "the fresh sweep or ${fb}" && cond 4 false "no fresh sweep or no ${fb}"
+    lack "the fresh sweep, ${fb} or the merge base" && cond 4 false "no fresh sweep, no ${fb} or no merge base"
 fi
-
 read_front='import json, sys, yaml; t = open(sys.argv[1]).read(); f = yaml.safe_load(t.split("\n---\n", 1)[0][4:]) if t.startswith("---\n") else 0
 print(json.dumps(f if isinstance(f, dict) else {}))'
-# Offline only: a cold cache leaves front empty, which holds (conditions 5 and 8); never an online resolution.
-front="$(uv run --offline --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null)" || front=""
-if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array ]] &&
-    base="$(git merge-base origin/main "${head}")" && numstat="$(git diff --numstat --no-renames "${base}" "${head}")"; then
+front="$("${uvy[@]}" python -I -c "${read_front}" "${tf}" 2> /dev/null)" || front="" # offline: a cold cache holds
+if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array && -n ${base} ]] &&
+    numstat="$(git diff --numstat --no-renames "${base}" "${head}")"; then
     allowed=() stray="" outside=0 under=0 excluded=()
     cap_out="$(sed -n 's/.*at most \([0-9][0-9]*\) changed lines outside.*/\1/p' "${tf}" | head -n 1)"
     cap_tests="$(sed -n 's/.* \([0-9][0-9]*\) under .\{0,1\}tests\/.*/\1/p' "${tf}" | head -n 1)"
@@ -193,7 +206,6 @@ if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array 
 else
     lack "the task file ${tf} or the merge-base diff" && cond 5 false "no readable front matter in ${tf} or no merge-base diff"
 fi
-
 if counters="$(scripts/regime-counters.sh "${task}" --pr "${pr}" 2> /dev/null)" &&
     revises="$(sed -n '1s/.* revises=\([0-9][0-9]*\) .*/\1/p' <<< "${counters}")" && [[ -n ${revises} ]]; then
     s1="$(grep '^S1:' <<< "${counters}" | tr '\n' ' ' || true)"
@@ -201,7 +213,6 @@ if counters="$(scripts/regime-counters.sh "${task}" --pr "${pr}" 2> /dev/null)" 
 else
     lack "regime-counters.sh ${task}" && cond 6 false "the counters are unreadable"
 fi
-
 if [[ -z ${front} ]]; then
     cond 8 false "no front matter, so no security reading"
 elif [[ "$(jq -r '.security' <<< "${front}")" != true ]]; then
@@ -212,14 +223,12 @@ elif [[ -f ${sec} ]]; then
 else
     lack "${sec}" && cond 8 false "no security review ${sec}"
 fi
-
 bad="" n=0
 while read -r want_sum path; do
     [[ -n ${path} ]] && n=$((n + 1))
     [[ -z ${path} || "$(shasum -a 256 -- "${path}" 2> /dev/null)" == "${want_sum}  ${path}" ]] || bad+=" ${path}"
 done <<< "$(sed -n 's/^sha256:\([0-9a-f]\{64\}\) \(.*\)$/\1 \2/p' "${rec}" 2> /dev/null || true)"
 cond 9 "$([[ -z ${bad} && ${n} -gt 0 ]] && echo true || echo false)" "${n} sha256 lines; mismatches:${bad:- none}"
-
 inputs='{}'
 for f in "${rec}" "${tf}" "${audit}" "${fb}" "${sec}" "${fresh}"; do
     [[ -s ${f} ]] || continue

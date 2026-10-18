@@ -36,7 +36,7 @@ for a in "$@"; do [[ ${a} != *--admin* && ${a} != *--auto* ]] || { echo "verdict
 trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
 usage() { echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...]" >&2 && exit 2; }
 stop() { echo "verdict: $1: hold" >&2 && exit 20; }
-if [[ -z ${VERDICT_BIN:-} ]]; then # the pinned tools, then this script again, before any checkout is read
+if [[ -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts
     bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0
     for t in bash uv python3 gh git jq agmsg-dispatch herdr; do
         p="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${t}" 2> /dev/null || command -v "${t}")" || p=""
@@ -163,8 +163,8 @@ for item in saved["items"]:
     if reason is None and not commit or short or commit and not gate.commit_in_range(gate.Path("."), commit, base, head):
         print(f"no valid disposition: {item.get('source')} {item.get('url') or ''}")
 PY
-if [[ -n ${base} && -f ${fb} ]] && python3 -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 &&
-    a4="$(python3 -I -B -c "${gaps}" "${fresh}" "${fb}" "${head}" "${base}" 2> /dev/null)"; then
+if [[ -n ${base} && -f ${fb} ]] && "${VERDICT_BIN}/python3" -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 &&
+    a4="$("${VERDICT_BIN}/python3" -I -B -c "${gaps}" "${fresh}" "${fb}" "${head}" "${base}" 2> /dev/null)"; then
     cond 4 "$([[ -z ${a4} ]] && echo true || echo false)" "feedback gaps: ${a4:-none}"
 else
     lack "the fresh sweep, ${fb} or the merge base" && cond 4 false "no fresh sweep, no ${fb} or no merge base"

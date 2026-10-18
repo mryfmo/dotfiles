@@ -71,6 +71,12 @@ An independent read-only reviewer was used: a fresh general-purpose subagent of 
 
 PR #416 was opened as a draft from this worktree with the plain create command and `--body-file .orchestration/dotfiles-T129-assets-omp-hcom-followup-a02/pr-body.md`, then marked ready after CI. The Bot's automatic review at ready is the only one; no `@codex review` comment is posted.
 
+## Bot (one review: marked ready at 12:30Z on 2233f721, CI green there after one rerun; review 5563005388 at 12:33:58Z; the security review found nothing)
+
+- CI on 2233f721 first failed `public-bootstrap (ubuntu-24.04, client)` on an external error: the snap store answered HTTP 408 for the `gnome-46-2404` assertion. The server and macOS bootstrap jobs were cancelled by fail-fast. `gh run rerun 39126085089 --failed` turned all 13 checks green.
+- 4307029052, P2 (`scripts/update-agent-assets.sh:948`, row local:fbbc6d9:1, on this PR's own change): a link that starts with the allowed prefix but escapes it with `..` (for example `../lib/node_modules/@oh-my-pi/pi-coding-agent/../../../../foreign/omp`) passes the plain pattern as npm's own and stays. npm resolves the target and refuses it with EEXIST. Reproduced. Proposed disposition: `fix in a revise round (C-50)`. The fix is a few lines inside allowed_files: treat a link whose target contains a `..` segment after the prefix as not npm's own, or normalise the target before the check. Add one fixture case, the Bot's link, red before and green after.
+- No `@codex review` was posted, under the no-prompt rule.
+
 CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T129 assets-omp-hcom followup a02 (PR 416): …'` printed `e79d449c-0758-4295-b5a2-dbf1d9fe35e2`.
 
 cost: n/a

@@ -26,6 +26,7 @@ Calls outside the sandbox, each through the permission gate (Worker Playbook ste
 | 3 | `uv run python -m unittest tests/unit/test_update_agent_assets.py` (and the Check's two-module command) at the red and green heads, and the generator of validation §8 to §9 that runs them in scratch worktrees under the scratchpad: macOS `mktemp -d` ignores `TMPDIR` inside this sandbox (§5). The tests write only temporary directories. | sandbox-incompatible test (the failure in §5) |
 | 4 | the create command for draft PR #416 (`--draft --repo mryfmo/dotfiles --base main --head tools/assets-omp-hcom-followup-a02 --body-file …/pr-body.md`), one command | `gh` |
 | 5 | `gh pr checks 416` reads (a bounded loop; macOS has no `timeout`) and `gh pr view 416 --json headRefOid` | `gh` |
+| 5a | `gh run rerun 39126085089 --failed`, one command (the snap store's HTTP 408 in public-bootstrap on 2233f721, an external error; the other two bootstrap jobs had been cancelled by fail-fast) | `gh` |
 | 6 | `gh pr ready 416`, one command, then the Bot wait as `gh api` reads of the reviews and comments every 30 seconds for at most 15 minutes | `gh` |
 | 7 | the main checkout's CompactionDB `memory add` | the main-checkout CompactionDB `memory add` |
 | 8 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T129-assets-omp-hcom-followup-a02 …'` | `agmsg-dispatch` |

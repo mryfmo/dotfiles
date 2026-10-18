@@ -2285,7 +2285,7 @@ awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {se
         self.assertNotIn("worker_cap", result.stderr)
         self.assertIn(f"workspace create --cwd {main}/.claude/worktrees/s1 ", self.calls_path.read_text())
 
-    def test_add_worker_sets_the_worktree_hooks_path_and_enables_worktree_config_once(self) -> None:
+    def test_add_worker_writes_no_git_configuration(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()
         main = self.workdir.resolve()
@@ -2297,33 +2297,21 @@ awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {se
             "git", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> {git_calls}\nexec {shlex.quote(real_git)} "$@"\n'
         )
 
-        for run in range(2):
-            with self.subTest(run=run):
-                self.pane_list_path.write_text('{"result":{"panes":[]}}')
-                result = self.run_helper("--add-worker", ".claude/worktrees/hooks")
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                for directory, key, expected in (
-                    (main, "extensions.worktreeConfig", "true\n"),
-                    (worktree, "core.hooksPath", ".githooks\n"),
-                ):
-                    config = subprocess.run(
-                        [real_git, "-C", str(directory), "config", "--get", key],
-                        check=True,
-                        text=True,
-                        capture_output=True,
-                    )
-                    self.assertEqual(config.stdout, expected)
+        result = self.run_helper("--add-worker", ".claude/worktrees/hooks")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = git_calls.read_text().splitlines()
+        self.assertFalse(any(" config " in call for call in calls), calls)
+        for directory in (main, worktree):
+            for key in ("extensions.worktreeConfig", "core.hooksPath"):
                 config = subprocess.run(
-                    [real_git, "-C", str(main), "config", "--get", "core.hooksPath"],
+                    [real_git, "-C", str(directory), "config", "--get", key],
                     check=False,
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(config.returncode, 1)
+                self.assertEqual(config.returncode, 1, config.stdout + config.stderr)
                 self.assertEqual(config.stdout, "")
-        calls = git_calls.read_text().splitlines()
-        self.assertEqual(calls.count(f"-C {main} config --bool extensions.worktreeConfig true"), 1)
-        self.assertEqual(calls.count(f"-C {worktree} config --worktree core.hooksPath .githooks"), 2)
 
     def test_the_skill_names_the_manifest_worker_cap(self) -> None:
         [cap] = re.findall(

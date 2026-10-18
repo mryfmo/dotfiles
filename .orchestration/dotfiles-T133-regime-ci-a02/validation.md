@@ -1,12 +1,20 @@
 ---
 task_id: dotfiles-T133-regime-ci-a02
 seat: claude-standard-dot-a008
-head: 1ee15af1
+head: b5af2030
+previous_head: f7d2c48dad9fcf37b7111003b609e80d320f666a
 ---
 
 # Validation: dotfiles-T133-regime-ci-a02
 
-Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/regime-ci-a01` (PR #418) at `1ee15af1` (the code head after amendment 1), inside the sandbox, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's), except §11 (premise 5, through gh outside the sandbox). `MAIN` names the main checkout and `T` the task id. The scratch worktrees (`$R`, `$Q`, `$M`, and the bootstrap's isolated base checkout under `$TMPDIR`) are removed after their block with `git worktree remove --force`. §0's exit 128 is premise 6 holding (the base has no regime.yml). §6 is item 8's local bootstrap: this first PR cannot run its own `pull_request_target` job, so the job's command line runs in an isolated checkout of the base sha with the candidate verifier installed for that run only and the base's checker; the head is data (its sha). The a01 records under `.orchestration/dotfiles-T133-regime-ci-a01/` (blocks there and their `regime` runs on this PR) are historical evidence of the withdrawn design.
+- Every command ran inside the sandbox through a generator that prints each command, its verbatim output and its exit status. A block's status is its last command's.
+  - It ran from a worktree of the branch `tools/regime-ci-a01` (PR #418) at `b5af2030`, the revise round's last head before this file. This file's own commit is the only change after `b5af2030`.
+  - §11 is the exception: premise 5, through gh outside the sandbox.
+- `MAIN` names the main checkout, and `T` the task id. The scratch worktrees under `$TMPDIR` are removed after their block with `git worktree remove --force`.
+- §0's exit 128 is premise 6 holding: the base has no `regime.yml`.
+- §6 is item 8's local bootstrap of the job's command line. It ran in an isolated checkout of the base sha, with the candidate verifier installed for that run only and the base's checker; the head is data. It ran against `b5af2030`.
+  - regime-ci reads no content of this file, which lives in `.orchestration/dotfiles-T133-regime-ci-a02/` and is excluded from the caps. The same run on the final head (this file's commit) is reported in the RESULT with its output.
+- The a01 records under `.orchestration/dotfiles-T133-regime-ci-a01/` are historical evidence of the withdrawn design.
 
 ## 0. Premise 6: the base has no regime.yml, so this first PR cannot run its own pull_request_target job
 ```console
@@ -45,8 +53,12 @@ absent-on-main
 ```console
 $ git branch --show-current; git rev-parse HEAD origin/main; git log --oneline 4a921414..HEAD
 tools/regime-ci-a01
-1ee15af1a159b45baefcd5505f816f9bbcccef98
+b5af20309f7417e8ee2f6db6d3268895fdf5b98b
 3e41e36abc949acd7e6b4859c1a22df9e665c8d4
+b5af2030 docs(orchestration): T133 regime-ci a02 revise: the round's records (revise.yaml, the report, the receipt's one-word reviewer)
+3d695ed1 fix(orchestrator): a reset_of predecessor is superseded only when both head copies equal their base texts (T133 regime-ci a02 revise, audit of f7d2c48 P2)
+9ee208d5 test(orchestrator): a predecessor copy is superseded only when both copies are byte-equal to their base texts (T133 regime-ci a02 revise, audit of f7d2c48 P2)
+f7d2c48d docs(orchestration): T133 regime-ci a02: the evidence at 1ee15af1
 1ee15af1 fix(orchestrator): the base checker reads only the base's dispatched bytes (T133 regime-ci a02 amendment 1; worker review P0 of bcbd6949)
 357ff237 test(orchestrator): the checker-skipped warning, the unverifiable report of a hostile copy, and a chain that counts only when both copies verify (T133 regime-ci a02 amendment 1)
 3636fc05 docs(orchestration): T133 regime-ci a02: the task copy at amendment 1 (807c6b74)
@@ -68,7 +80,7 @@ FAIL: test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (expected
 FAIL: test_regime_ci_exempts_records_only_heads_by_content_not_branch_name
 FAIL: test_regime_ci_unverifiable_copy_is_a_warning_until_the_flag (head_dispatched=False)
 FAIL: test_regime_ci_unverifiable_copy_is_a_warning_until_the_flag (head_dispatched=True)
-Ran 4 tests in 4.726s
+Ran 4 tests in 3.155s
 FAILED (failures=7)
 [exit 0]
 ```
@@ -80,14 +92,24 @@ FAIL: test_regime_ci_keeps_an_authenticated_predecessor_a_head_only_successor_na
 FAIL: test_regime_ci_never_feeds_a_pull_request_s_text_to_the_base_checker (dispatched=False)
 FAIL: test_regime_ci_never_feeds_a_pull_request_s_text_to_the_base_checker (dispatched=True)
 FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (case='precheck renamed')
-Ran 14 tests in 32.486s
+Ran 14 tests in 52.685s
 FAILED (failures=4)
+[exit 0]
+```
+## 4b. RED for the revise (the task-level audit of f7d2c48, P2): the supersession test at 9ee208d5, whose regime-ci.py is f7d2c48's, in a scratch worktree
+```console
+$ git -C "$P" diff --quiet f7d2c48d -- scripts/orchestrator/regime-ci.py && echo "regime-ci.py identical to f7d2c48d"; cd "$P" && uv run python -m unittest tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base 2>&1 | /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^(OK|FAILED)" | cut -c1-220
+regime-ci.py identical to f7d2c48d
+FAIL: test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base)
+AssertionError: "regime-ci: t1-a01: task-copy: .orchestration/t1-a01/task.md differs from the base's" not found in 'regime-ci: warning: t1-a01: predecessor copy .orchestration/t1-a01/task.md (reset_of of t1-a02)\nregime-
+Ran 1 test in 2.540s
+FAILED (failures=1)
 [exit 0]
 ```
 ## 5. GREEN: the Check's unit-test commands on HEAD
 ```console
 $ git rev-parse --short=8 HEAD; uv run python -m unittest tests.unit.test_regime_ci -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"; uv run python -m unittest tests.unit.test_workflow_security -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"
-1ee15af1
+b5af2030
 test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) ... ok
 test_regime_ci_checks_the_copy_against_result_txt_without_dispatched_text (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_the_copy_against_result_txt_without_dispatched_text) ... ok
 test_regime_ci_exempts_records_only_heads_by_content_not_branch_name (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_exempts_records_only_heads_by_content_not_branch_name) ... ok
@@ -99,10 +121,11 @@ test_regime_ci_refuses_a_checkout_not_at_the_base_and_a_diff_git_cannot_list (te
 test_regime_ci_reports_a_copy_whose_task_id_is_not_its_directory (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_reports_a_copy_whose_task_id_is_not_its_directory) ... ok
 test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr) ... ok
 test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config) ... ok
+test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_supersedes_a_predecessor_only_when_both_copies_are_byte_equal_to_base) ... ok
 test_regime_ci_unverifiable_copy_is_a_warning_until_the_flag (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_unverifiable_copy_is_a_warning_until_the_flag) ... ok
 test_regime_ci_warns_without_precheck_and_without_dispatched_text (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_warns_without_precheck_and_without_dispatched_text) ... ok
 test_the_regime_workflow_runs_base_code_only (tests.unit.test_regime_ci.RegimeCiTest.test_the_regime_workflow_runs_base_code_only) ... ok
-Ran 14 tests in 32.018s
+Ran 15 tests in 87.521s
 OK
 test_checkout_does_not_persist_credentials_without_explicit_exemption (tests.unit.test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
 test_checkout_rejects_duplicate_or_non_false_credential_settings (tests.unit.test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
@@ -112,7 +135,7 @@ test_quoted_unnamed_checkout_is_detected (tests.unit.test_workflow_security.Work
 test_unnamed_checkout_setting_does_not_leak_from_the_next_step (tests.unit.test_workflow_security.WorkflowSecurityTest.test_unnamed_checkout_setting_does_not_leak_from_the_next_step) ... ok
 test_workflows_have_exact_top_level_permissions (tests.unit.test_workflow_security.WorkflowSecurityTest.test_workflows_have_exact_top_level_permissions) ... ok
 test_workflows_have_no_job_level_permission_overrides (tests.unit.test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
-Ran 8 tests in 0.003s
+Ran 8 tests in 0.005s
 OK
 [exit 0]
 ```
@@ -150,7 +173,8 @@ MUTANTS = [
     ("git listing", "    if out.returncode:", "    if False:"),
     ("C1 filter", r' if not re.fullmatch(r"C1 task_id .* != file task", ln)', ""),
     ("checker fed the head copy", "found += checker(root, data) if dispatched else []", "found += checker(root, copy)"),
-    ("chain counts with the successor alone", "if p in policies and p != t and authentic and policies[p][2]", "if p in policies and p != t and authentic"),
+    ("supersede without byte equality", "if p in policies and p != t and exact[t] and exact[p]", "if p in policies and p != t and policies[t][2] and policies[p][2]"),
+    ("supersede on the successor alone", "if p in policies and p != t and exact[t] and exact[p]", "if p in policies and p != t and exact[t]"),
     ("precheck with renames", '"--name-only", "--no-renames", bound, head', '"--name-only", bound, head'),
     ("self-touch warning", "for path in sorted(set(changed) & set(RUNS)):", "for path in []:"),
     ("reset_of lineage", "    targets = [t for t in targets if t not in later]\n", ""),
@@ -163,7 +187,7 @@ for name, old, new in MUTANTS:
     print(f"{name}: {run.stderr.strip().splitlines()[-1]}")
 script.write_text(original)
 --- run
-task-copy (base dispatched): FAILED (failures=3)
+task-copy (base dispatched): FAILED (failures=4)
 task-copy (result.txt): FAILED (failures=1)
 dispatched read at the base: FAILED (failures=2)
 REGIME_REQUIRE_DISPATCHED: FAILED (failures=2)
@@ -185,7 +209,8 @@ task-id: FAILED (failures=1)
 git listing: FAILED (failures=1)
 C1 filter: FAILED (failures=6)
 checker fed the head copy: FAILED (failures=2)
-chain counts with the successor alone: FAILED (failures=1)
+supersede without byte equality: FAILED (failures=1)
+supersede on the successor alone: FAILED (failures=2)
 precheck with renames: FAILED (failures=1)
 self-touch warning: FAILED (failures=1)
 reset_of lineage: FAILED (failures=1)
@@ -218,9 +243,9 @@ exit $rc
 premise 6: git cat-file -e origin/main:.github/workflows/regime.yml
 fatal: path '.github/workflows/regime.yml' exists on disk, but not in 'origin/main'
 exit 128
-base checkout 3e41e36abc949acd7e6b4859c1a22df9e665c8d4 (BASE_SHA=3e41e36abc949acd7e6b4859c1a22df9e665c8d4); head HEAD_SHA=1ee15af1a159b45baefcd5505f816f9bbcccef98
-candidate verifier: scripts/orchestrator/regime-ci.py at 1ee15af1a159 sha256 1ea737bab4ca1d17f51683b3c758a26f1af7caf8597171f9c1062c63f31861cd
-base checker: 3e41e36abc94:scripts/orchestrator/task-consistency-check.py sha256 0f84a229bced899c51bfcb7b627aea8c98879b72fd14d7f2556f1e96f7d63234
+base checkout 740772efb9d7928e810a7d799f2bd32a88d9b8ff (BASE_SHA=740772efb9d7928e810a7d799f2bd32a88d9b8ff); head HEAD_SHA=b5af20309f7417e8ee2f6db6d3268895fdf5b98b
+candidate verifier: scripts/orchestrator/regime-ci.py at b5af20309f74 sha256 efbf1b818faf7bb7c5805445a8d80c0223a19972b70e27f9f1ddd0f7a6eb5e31
+base checker: 740772efb9d7:scripts/orchestrator/task-consistency-check.py sha256 0f84a229bced899c51bfcb7b627aea8c98879b72fd14d7f2556f1e96f7d63234
 $ uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "${BASE_SHA}" --head "${HEAD_SHA}"
 regime-ci: warning: the diff changes .github/workflows/regime.yml; this run executed the base's version, the audit reads the change
 regime-ci: warning: the diff changes scripts/orchestrator/regime-ci.py; this run executed the base's version, the audit reads the change
@@ -283,12 +308,19 @@ $ git diff --numstat origin/main...HEAD; git diff --numstat origin/main...HEAD |
 134	0	.orchestration/dotfiles-T133-regime-ci-a01/report.md
 35	0	.orchestration/dotfiles-T133-regime-ci-a01/sandbox.md
 250	0	.orchestration/dotfiles-T133-regime-ci-a01/validation.md
+51	0	.orchestration/dotfiles-T133-regime-ci-a02/dotfiles-T133-regime-ci-a02-worker-crit.json
+18	0	.orchestration/dotfiles-T133-regime-ci-a02/dotfiles-T133-regime-ci-a02-worker-review-receipt.md
+15	0	.orchestration/dotfiles-T133-regime-ci-a02/learning.md
+164	0	.orchestration/dotfiles-T133-regime-ci-a02/report.md
+5	0	.orchestration/dotfiles-T133-regime-ci-a02/revise.yaml
+28	0	.orchestration/dotfiles-T133-regime-ci-a02/sandbox.md
 193	0	.orchestration/dotfiles-T133-regime-ci-a02/task.md
-282	0	scripts/orchestrator/regime-ci.py
-404	0	tests/unit/test_regime_ci.py
+300	0	.orchestration/dotfiles-T133-regime-ci-a02/validation.md
+283	0	scripts/orchestrator/regime-ci.py
+416	0	tests/unit/test_regime_ci.py
 1	0	tests/unit/test_workflow_security.py
-outside tests/ and .orchestration/: 324 of 330
-under tests/: 405 of 480
+outside tests/ and .orchestration/: 325 of 330
+under tests/: 417 of 480
 [exit 0]
 ```
 ## 11. Premise 5, replayed through gh (outside the sandbox): the ruleset's required contexts do not include regime

@@ -180,6 +180,10 @@ No `@codex review` comment is issued. Commands for every `gh` and Git write run 
 
 Local Bats and production promotion are outside this task. Unverifiable policy remains a warning until the operator enables `REGIME_REQUIRE_DISPATCHED=1`.
 
+## Amendment 1 (round 1, 2026-10-18T21:4xZ): the checker never reads a pull request's text
+
+a008's review of 4a921414..bcbd6949 (21:37:56Z) found a P0 of the class trust-boundary-pr-input in this text: item 2's sentence that the checks against the claimed copy still run feeds the head's task copy to the base checker, whose C10 runs `git grep -qF <backticked literal>` unquoted, so a literal `--open-files-in-pager=CMD` in a PR's copy runs CMD inside the pull_request_target job. That sentence is withdrawn. The base checker (`task-consistency-check.py` from the base commit) reads only the dispatched text at the base (`.orchestration/tasks/<t>.md` on the base sha) and never a byte of the head's copy; when the base lacks the dispatched text the copy is unverifiable, the checker is skipped with the warning line, and only the pure-Python reads of the copy (yaml.safe_load for allowed_files and the Check sentence, with no subprocess given any string from it) still run; an authenticated predecessor copy is superseded only by an authenticated successor (a reset_of chain is honoured only when both copies verify against the base); the precheck diff uses `--no-renames`. The checker's own hardening (`git grep -e` for literals, C6 path containment) belongs to P1-12 (`dotfiles-T133-task-generator-plan-check-a02`) and lands before `regime` is promoted. Regression tests: a head copy whose backticked literal is `--open-files-in-pager=<marker command>` runs nothing (the marker is never written) and the copy is reported unverifiable; a verified copy reaches the checker from base bytes only. This is INV-6's first amendment (C-61); the counters are pasted below.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

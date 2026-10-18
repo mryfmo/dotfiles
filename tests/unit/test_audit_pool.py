@@ -1,21 +1,13 @@
 """Exercise audit-pool.sh, orch-audit.sh's json mode and .schemas/ with fake codex, sleep and uv on PATH."""
 
-import json
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
-import unittest
+import json, os, shutil, subprocess, sys, tempfile, unittest  # noqa: E401 (one line: the test cap)
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UV = f'#!/usr/bin/env bash\nshift\nwhile [[ $1 == --* ]]; do [[ $1 == --with ]] && shift; shift; done\n[[ $1 == python ]] && shift\n[[ -f $CALLS/mask-fails && "$*" == *--mask-secrets* ]] && exit 1\nexec "{sys.executable}" "$@"\n'
 CODEX = """#!/usr/bin/env bash
-task=$(grep -o 'Audit task [^ ]*' <<< "$*" | cut -d' ' -f3)
-printf '%s\\n' "$*" >> "$CALLS/codex.log"
-while (($#)); do [[ $1 == -o ]] && out=$2; shift; done
-n=$(cat "$CALLS/fail-$task" 2> /dev/null || echo 0)
+task=$(grep -o 'Audit task [^ ]*' <<< "$*" | cut -d' ' -f3); printf '%s\\n' "$*" >> "$CALLS/codex.log"
+while (($#)); do [[ $1 == -o ]] && out=$2; shift; done; n=$(cat "$CALLS/fail-$task" 2> /dev/null || echo 0)
 if ((n > 0)); then echo $((n - 1)) > "$CALLS/fail-$task"; echo "error: 429 Too Many Requests"; exit 1; fi
 cp "$CALLS/message-$task" "$out"
 """
@@ -25,11 +17,9 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAM
 
 def record(head, task, verdict="correct", cls="string-form-comparison"):
     finding = {"id": "1", "priority": "P2", "confidence": "high", "file": "a.sh", "line": 3, "class": cls}
+    finding |= {"scope": "code", "rationale": "a path by its string form", "status": "new"}
     meta = {"head": head, "task_id": task, "auditor": "codex --profile audit", "generated_at": "2026-10-18T05:00:00Z"}
-    return meta | {
-        "verdict": verdict,
-        "findings": [finding | {"scope": "code", "rationale": "a path by its string form", "status": "new"}],
-    }
+    return meta | {"verdict": verdict, "findings": [finding]}
 
 
 def message(doc, verdict=None):
@@ -38,9 +28,7 @@ def message(doc, verdict=None):
 
 class AuditPoolTest(unittest.TestCase):
     def setUp(self):
-        temp = tempfile.TemporaryDirectory()
-        self.addCleanup(temp.cleanup)
-        self.temp = Path(temp.name).resolve()
+        self.temp = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.repo, self.calls, bin_dir = self.temp / "repo", self.temp / "calls", self.temp / "bin"
         for d in (self.repo / "scripts/orchestrator", self.calls, bin_dir):
             d.mkdir(parents=True)
@@ -95,14 +83,11 @@ class AuditPoolTest(unittest.TestCase):
         (self.calls / "message-t2-a01").write_text(message(record(bad, "t2-a01", cls="no-such-class")))
         done, blocked = self.request("t1-a01", good), self.request("t2-a01", bad)
         self.run_script("audit-pool.sh", "--once")
+        saved, rejected = self.validation / f"t1-a01-audit-{good[:7]}.json", Path(f"{blocked}.request.rejected")
         self.assertTrue(done.with_suffix(".done").exists())
-        self.assertEqual(
-            record(good, "t1-a01"), json.loads((self.validation / f"t1-a01-audit-{good[:7]}.json").read_text())
-        )
+        self.assertEqual(record(good, "t1-a01"), json.loads(saved.read_text()))
         self.assertTrue(blocked.with_suffix(".blocked").exists())
-        self.assertIn(
-            "orch-audit exited 3", (self.validation / f"audit-queue/t2-a01-{bad[:7]}.request.rejected").read_text()
-        )
+        self.assertIn("orch-audit exited 3", rejected.read_text())
         self.assertFalse((self.validation / f"t2-a01-audit-{bad[:7]}.json").exists())
 
     def test_pool_runs_at_most_max_audits_and_the_third_request_waits(self):
@@ -124,8 +109,7 @@ class AuditPoolTest(unittest.TestCase):
                 self.run_script("audit-pool.sh", "--once")
                 self.assertTrue(path.with_suffix(outcome).exists())
                 self.assertNotIn("Too Many", (path.parent / f"{path.name}.log").read_text())  # no transcript text
-                delays = ["60", "120", "240"][: min(int(count), 3)]
-                self.assertEqual(delays, (self.calls / "sleep.log").read_text().split())
+                self.assertEqual(["60", "120", "240"][: int(count)], (self.calls / "sleep.log").read_text().split())
 
     def test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree(self):
         prev = self.head("t1-a01")
@@ -138,8 +122,7 @@ class AuditPoolTest(unittest.TestCase):
                 (self.calls / "codex.log").unlink(missing_ok=True)
                 self.request("t1-a01", head, previous_head=prev)
                 self.run_script("audit-pool.sh", "--once")
-                prompt = (self.calls / "codex.log").read_text()
-                self.assertEqual(differential, "This audit is differential" in prompt)
+                self.assertEqual(differential, "This audit is differential" in (self.calls / "codex.log").read_text())
                 text = (self.validation / f"t1-a01-audit-{head[:7]}.json.differential-prompt.txt").read_text()
                 self.assertIn(f"git diff {prev} {head}", text)
 
@@ -203,18 +186,11 @@ class AuditPoolTest(unittest.TestCase):
         for name, entry in classes.items():
             with self.subTest(name=name):
                 self.assertEqual({"remedy", "blast_radius"}, set(entry))
-                self.assertTrue(entry["remedy"] and all(isinstance(g, str) and g for g in entry["blast_radius"]))
-                self.assertTrue(entry["blast_radius"])
+                self.assertTrue(entry["remedy"] and entry["blast_radius"])
+                self.assertTrue(all(isinstance(g, str) and g for g in entry["blast_radius"]))
 
     def classes(self):
         read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
         command = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I", "-c", read]
-        return json.loads(
-            subprocess.run(
-                [*command, ROOT / ".schemas/classes.yaml"], check=True, capture_output=True, text=True
-            ).stdout
-        )
-
-
-if __name__ == "__main__":
-    unittest.main()
+        out = subprocess.run([*command, ROOT / ".schemas/classes.yaml"], check=True, capture_output=True, text=True)
+        return json.loads(out.stdout)

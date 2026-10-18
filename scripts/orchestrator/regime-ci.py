@@ -33,11 +33,25 @@ except ImportError:
     sys.exit(2)
 
 CHECKER = "scripts/orchestrator/task-consistency-check.py"
-CHECKER_RUN = ["uv", "run", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
+# --no-config: a uv.toml or pyproject.toml the pull request adds cannot steer this run
+CHECKER_RUN = ["uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
+RUNS = (CHECKER, "scripts/orchestrator/regime-ci.py", ".github/workflows/regime.yml")
+
+
+class GitError(Exception):
+    pass
 
 
 def git(root, *args):
     return subprocess.run(["git", *args], cwd=root, capture_output=True, check=False)
+
+
+def listed(root, *args):
+    """Return the NUL-separated output of a git listing command, or raise GitError: no listing passes by being empty."""
+    out = git(root, *args, "-z")
+    if out.returncode:
+        raise GitError(f"git {' '.join(args)} failed: {out.stderr.decode(errors='replace').strip()[:200]}")
+    return [item for item in out.stdout.decode().split("\0") if item]
 
 
 def show(root, head, path):
@@ -66,10 +80,13 @@ def allowed(path, entry):
 def caps(text, numstat):
     """Return (violations, warnings) for the `## Check` sentence's caps against the numstat rows."""
     check = text.split("\n## Check", 1)[1].split("\n## ", 1)[0] if "\n## Check" in text else ""
-    outside = re.search(r"at most (\d+) changed lines outside ([^(\n]*)", check)
+    outside = re.search(r"at most (\d+) changed lines(?: \([^)]*\))? outside ([^(\n]*)", check)
     tests = re.search(r"(\d+)\s+(?:added\s+|changed\s+)?(?:lines\s+)?under\s+`?tests/", check)
-    if not outside and not tests:
-        return [], ["no cap sentence in the copy's ## Check section"]
+    missing = [
+        f"no {name} cap in the copy's ## Check section"
+        for name, m in (("outside", outside), ("tests/", tests))
+        if not m
+    ]
     excluded = ["tests/", ".orchestration/"]
     if outside:
         excluded = re.findall(r"`([^`]+)`", re.split(r",\s*(?:and\s+)?\d", outside.group(2))[0]) or excluded
@@ -84,10 +101,10 @@ def caps(text, numstat):
         found.append(f"{out_lines} changed lines outside {', '.join(excluded)} exceed {outside.group(1)}")
     if tests and test_lines > int(tests.group(1)):
         found.append(f"{test_lines} changed lines under tests/ exceed {tests.group(1)}")
-    return found, []
+    return found, missing
 
 
-def precheck(root, head, t, changed, result_text):
+def precheck(root, head, t, result_text):
     """Return the violations of precheck.json's binding, or None when the task carries no precheck.json."""
     data = show(root, head, f".orchestration/{t}/precheck.json")
     if data is None:
@@ -98,19 +115,19 @@ def precheck(root, head, t, changed, result_text):
         return [f"precheck.json is not JSON: {error}"]
     found = []
     bound = doc.get("head") if isinstance(doc, dict) else None
-    resolved = git(root, "rev-parse", "--verify", "--quiet", f"{bound}^{{commit}}").stdout.decode().strip()
-    if bound and resolved != head:
+    if not isinstance(bound, str) or not re.fullmatch(r"[0-9a-f]{40}", bound):
+        found.append(f"precheck.json head {bound!r} is not a 40-hex commit id")
+    elif bound != head:
         # precheck.json cannot name the commit that adds it: it names the code commit, and the head may add only
         # this task's evidence on top (the evidence-only ancestor rule of verdict.sh condition 1)
-        own = [p for p in changed if not p.startswith(f".orchestration/{t}/")]
-        if not resolved or git(root, "merge-base", "--is-ancestor", resolved, head).returncode:
+        if git(root, "merge-base", "--is-ancestor", bound, head).returncode:
             found.append(f"precheck.json head {bound} is neither the head {head} nor its ancestor")
-        elif own and (moved := git(root, "diff", "--name-only", "-z", resolved, head, "--", *own).stdout.decode()):
+        elif other := [
+            p for p in listed(root, "diff", "--name-only", bound, head) if not p.startswith(f".orchestration/{t}/")
+        ]:
             found.append(
-                f"precheck.json head {bound[:12]} differs from the head in {', '.join(filter(None, moved.split(chr(0))))}"
+                f"precheck.json head {bound[:12]} differs from the head outside .orchestration/{t}/: {', '.join(other)}"
             )
-    elif not bound:
-        found.append("precheck.json names no head")
     if token(result_text, "precheck") != sha256(data):
         found.append(
             f"precheck.json sha256 {sha256(data)} is not result.txt's precheck={token(result_text, 'precheck')}"
@@ -136,14 +153,13 @@ def check_task(root, head, t, changed, numstat):
         [*CHECKER_RUN, "--root", root, copy_path], cwd=root, capture_output=True, text=True, check=False
     )
     # the copy is named task.md, so the checker's C1 compares task_id with `task`; task-id above checks the directory
-    lines = [
-        ln.strip()
-        for ln in run.stdout.splitlines()[1:]
-        if ln.strip() and not re.fullmatch(r"C1 task_id .* != file task", ln.strip())
-    ]
-    found += [("checker", ln) for ln in lines]
-    if run.returncode not in (0, 1):
-        found.append(("checker", f"exit {run.returncode}: {(run.stdout + run.stderr).strip()[-300:]}"))
+    out = run.stdout.splitlines()
+    lines = [ln.strip() for ln in out[1:] if ln.strip() and not re.fullmatch(r"C1 task_id .* != file task", ln.strip())]
+    # only the checker's own verdict line with its exit code counts; a crash also exits 1, with no verdict line
+    if (out[:1], run.returncode) not in ((["task.md: OK"], 0), (["task.md: FAIL"], 1)):
+        found.append(("checker", f"no verdict (exit {run.returncode}): {(run.stdout + run.stderr).strip()[-300:]}"))
+    else:
+        found += [("checker", ln) for ln in lines]
     dispatched = show(root, head, f".orchestration/tasks/{t}.md")
     result = show(root, head, f".orchestration/{t}/result.txt")
     result_text = result.decode(errors="replace") if result is not None else ""
@@ -157,7 +173,7 @@ def check_task(root, head, t, changed, numstat):
             )
     else:
         warnings.append("task copy unverifiable (no dispatched text at head, no result.txt)")
-    bound = precheck(root, head, t, changed, result_text)
+    bound = precheck(root, head, t, result_text)
     if bound is None:
         warnings.append("precheck absent")
     found += [("precheck", detail) for detail in bound or []]
@@ -185,22 +201,23 @@ def main(argv=None):
         print(f"regime-ci: cannot resolve --base {args.base} or --head {args.head} in {root}")
         return 2
     base, head = shas
-    at = git(root, "rev-parse", "HEAD").stdout.decode().strip()
+    at = git(root, "rev-parse", "HEAD").stdout.decode().strip()  # the checker reads the working tree
     if at != head:
         print(
             f"regime-ci: checkout: {root} is at {at[:12]}, not the head {head[:12]}, so the checker would read other files"
         )
         return 1
-    changed = [
-        p
-        for p in git(root, "diff", "--name-only", "--no-renames", "-z", f"{base}...{head}").stdout.decode().split("\0")
-        if p
-    ]
-    numstat = []
-    for row in git(root, "diff", "--numstat", "--no-renames", "-z", f"{base}...{head}").stdout.decode().split("\0"):
-        if row.count("\t") == 2:
-            added, deleted, path = row.split("\t")
+    try:
+        changed = listed(root, "diff", "--name-only", "--no-renames", f"{base}...{head}")
+        numstat = []
+        for row in listed(root, "diff", "--numstat", "--no-renames", f"{base}...{head}"):
+            added, deleted, path = row.split("\t", 2)  # a path may hold a tab; a binary file counts 0 lines
             numstat.append((int(added) if added.isdigit() else 0, int(deleted) if deleted.isdigit() else 0, path))
+    except GitError as error:
+        print(f"regime-ci: {error}")
+        return 2
+    for path in sorted(set(changed) & set(RUNS)):
+        print(f"regime-ci: warning: the diff changes {path}, which this job runs; the audit reads that change")
     dirs = sorted({m.group(1) for p in changed if (m := re.match(r"\.orchestration/([^/]+)/", p))})
     targets = [t for t in dirs if show(root, head, f".orchestration/{t}/task.md") is not None]
     if not targets:
@@ -214,7 +231,10 @@ def main(argv=None):
         return 1
     failed = False
     for t in targets:
-        found, warnings = check_task(root, head, t, changed, numstat)
+        try:
+            found, warnings = check_task(root, head, t, changed, numstat)
+        except GitError as error:
+            found, warnings = [("git", str(error))], []
         for detail in warnings:
             print(f"regime-ci: warning: {t}: {detail}")
         for rule, detail in found:

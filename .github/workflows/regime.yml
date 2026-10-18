@@ -33,4 +33,4 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: uv run --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "origin/${BASE_REF}" --head "${HEAD_SHA}"
+        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "origin/${BASE_REF}" --head "${HEAD_SHA}"

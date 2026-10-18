@@ -10,6 +10,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
+# A pull request's newer head cancels its older run; a main push, schedule or
+# dispatch run has a group of its own and always completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -99,16 +106,25 @@ jobs:
           # home/ into .orchestration/ still runs the tests.
           changed="$(git -c core.quotePath=false diff --no-renames --name-only "${diff_range}")"
           relevant="$(grep -v '^\.orchestration/' <<< "${changed}" || true)"
-          if grep -Eq '^(\.github/workflows/|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
-            echo "should_test=true" >> "${GITHUB_OUTPUT}"
-          else
+          if ! grep -Eq '^(\.github/workflows/|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
+            echo "skip_reason=unrelated" >> "${GITHUB_OUTPUT}"
+          # macOS adds nothing to a pull request whose every relevant path is Python, docs or records: a shell,
+          # install, home, bats, Makefile or workflow change keeps it, and a push to main runs the full matrix.
+          elif [ "${OS:-}" = macos-14 ] && [ "${EVENT_NAME}" = pull_request ] &&
+            ! grep -Evq '^(scripts/.*\.py$|tests/unit/.*\.py$|docs/|plans/|\.orchestration/|.*\.md$|ruff\.toml$|\.prettierignore$)' <<< "${relevant}"; then
+            echo "should_test=false" >> "${GITHUB_OUTPUT}"
+            echo "skip_reason=os-independent on macos-14" >> "${GITHUB_OUTPUT}"
+          else
+            echo "should_test=true" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Skip full unit test run for unrelated changes
         if: ${{ steps.decide.outputs.should_test != 'true' }}
+        env:
+          SKIP_REASON: ${{ steps.decide.outputs.skip_reason }}
         run: |
-          echo "No unit-test-relevant files changed."
+          echo "Skipped the unit tests: ${SKIP_REASON}."
           echo "Compared diff range: ${{ steps.decide.outputs.diff_range }}"
 
       - name: Install tools

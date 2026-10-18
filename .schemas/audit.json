@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["head", "task_id", "auditor", "generated_at", "verdict", "findings"],
+  "properties": {
+    "head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "auditor": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "verdict": {"enum": ["correct", "incorrect", "blocked"]},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "priority", "confidence", "file", "line", "class", "scope", "rationale"],
+        "properties": {
+          "id": {"type": "string"},
+          "priority": {"enum": ["P0", "P1", "P2", "P3"]},
+          "confidence": {"enum": ["high", "medium", "low"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "class": {"enum": ["acceptance-dispositions", "acceptance-order", "acceptance-record-binding", "action-cdp-omission", "advisory-deferral", "advisory-deferral-objection", "advisory-owner-misassignment", "advisory-p2", "advisory-policy-reading", "advisory-read-as-deferral", "argv-diagnostic-disclosure", "argv-text-mismatch", "bot-rounds-count", "boundary-cadence-vs-skill", "boundary-checker-overclaim", "c50-clause-skipped", "closed-row-coverage", "collision-key-order", "consumer-half", "contract-type-mismatch", "counter-evidence", "counters-not-pasted", "counters-unknown-components", "cross-script-grammar", "deleted-path-handling", "dispatch-evidence", "disposition-backtick-truncation", "disposition-key", "disposition-range", "docs-role-efforts", "duplicate-managed-flags", "env-s-quoting", "environment-inheritance", "equals-form-flag", "evidence-checkpoint", "evidence-claim", "evidence-command-null-url", "evidence-command-unlanded-owner", "evidence-diagnosis", "evidence-layout", "evidence-not-committed", "evidence-shell-interpolation", "evidence-stale", "evidence-url-interpolation", "evidence-validation-stale", "fail-open-on-error", "filename-suffix-parse", "fixture-missing", "graphql-id-interpolation", "hand-parser", "input-validation", "install-receipt-artifact", "interpreter-discovery", "inv3-overlay-reading", "inv6-count", "inv6-counts-amendments", "inv6-counts-reseat", "inv6-waiver-mechanism", "inv6-waiver-missing", "inv7-review-effort", "invariants-key-absent-short-form", "json-interpolation", "ledger-completeness", "ledger-fidelity", "ledger-id-type", "live-verification", "match-any-part", "mise-config-steer", "missing-counter-evidence", "missing-owner-task", "nested-command-exclusion", "nul-delimited-paths", "owner-not-on-main", "owner-row-location", "owner-scope-unexecutable", "owner-section-location", "path-coverage", "path-form-normalisation", "path-shadowed-binary", "path-shim-discovery", "path-traversal", "pathspec-globbing", "precheck-trusts-pr-controlled-input", "predicate-shape-overmatch", "procedure-migration", "process-visibility", "profile-name-grammar", "ps-output-parsing", "record-copy-drops-rows", "record-counting", "record-decision-missing", "records-form", "replan-word-boundary", "reply-template-unparseable", "report-base-sha", "resolve-response-unchecked", "restore-trap", "result-selection", "reuse-keyed-by-sha7", "review-binary-shim", "review-body-findings", "revise-check-not-discriminating", "revise-line-contract", "routing-boundary", "s6-search-missing", "sandbox-count-understated", "sandbox-record-incomplete", "scope", "search-command-scan", "search-procedure", "sed-path-interpolation", "stale-audit-dispositions", "stale-dir-order", "stale-evidence", "stale-no-identity-rows", "stale-path-cleanup-failure", "stale-record-block", "stale-review-file-on-error", "stale-security-docs", "stale-threat-row", "string-form-comparison", "synthetic-id-namespace", "sys-path-shadowing", "tab-url-not-matched-to-event", "target-id-validation", "task-arg-traversal", "task-scope-amended", "test-order-unproven", "threat-row-missing", "threat-rows-per-path", "tool-environment", "trap-restores-on-refusal", "trust-boundary-dispositions", "trusted-checkout", "unbound-evidence", "unsupported-claim", "worker-sandbox-discipline"]},
+          "scope": {"enum": ["code", "records"]},
+          "rationale": {"type": "string", "maxLength": 400},
+          "status": {"enum": ["new", "fixed", "still-open"]}
+        }
+      }
+    }
+  }
+}

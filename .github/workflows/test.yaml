@@ -113,7 +113,7 @@ jobs:
           # macOS adds nothing to a pull request whose every relevant path is Python, docs or records: a shell,
           # install, home, bats, Makefile or workflow change keeps it, and a push to main runs the full matrix.
           elif [ "${OS:-}" = macos-14 ] && [ "${EVENT_NAME}" = pull_request ] &&
-            ! grep -Evq '^(scripts/.*\.py$|tests/unit/.*\.py$|docs/|plans/|\.orchestration/|.*\.md$|ruff\.toml$|\.prettierignore$)' <<< "${relevant}"; then
+            ! grep -Evq '^(scripts/.*\.py$|tests/unit/.*\.py$|docs/|plans/|\.orchestration/|[^/]+\.md$|ruff\.toml$|\.prettierignore$)' <<< "${relevant}"; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
             echo "skip_reason=os-independent on macos-14" >> "${GITHUB_OUTPUT}"
           else

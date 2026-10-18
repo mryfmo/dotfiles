@@ -95,7 +95,8 @@ function path_is_in_safe_root() {
         "${HOME}/.claude/plugins/cache" \
         "${CODEX_ASSET_ROOT}/plugins/cache" \
         "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins" \
-        "${HOME}/.local/share/mise/installs"; do
+        "${HOME}/.local/share/mise/installs" \
+        "${HOME}/.local/share/agent-assets"; do
         root="$(normalize_root_path "${root}")" || return 1
         if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
             return 0
@@ -113,7 +114,8 @@ function path_is_in_safe_root() {
 
     for root in \
         "${HOME}/.claude/hooks/herdr-agent-state.sh" \
-        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh"; do
+        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh" \
+        "${HOME}/.local/bin/hcom"; do
         [ "${candidate}" = "$(normalize_action_path "${root}")" ] && return 0
     done
     return 1
@@ -433,6 +435,19 @@ function load_entry() {
 }
 
 #
+# @description Remove hcom: uv uninstalls its tool environment and receipt, then the recorded binary and wheel go.
+#
+function remove_hcom() {
+    has_command uv || {
+        fail "uv command not found, so hcom's uv tool environment and receipt cannot be uninstalled; nothing was removed"
+        return 1
+    }
+    preflight_deletion_paths "${RECORDED_PATHS[@]}"
+    run_operation uv tool uninstall hcom
+    remove_recorded_paths "${RECORDED_PATHS[@]}"
+}
+
+#
 # @description Parse arguments and perform the selected inverse operation.
 # @arg $@ string Command-line arguments.
 #
@@ -463,7 +478,11 @@ function main() {
             fail "manifest step has no removal paths: ${STEP}"
             return 1
         }
-        remove_recorded_paths "${RECORDED_PATHS[@]}"
+        if [ "${STEP}" = "update_hcom" ]; then
+            remove_hcom
+        else
+            remove_recorded_paths "${RECORDED_PATHS[@]}"
+        fi
         ;;
     brew)
         remove_brew

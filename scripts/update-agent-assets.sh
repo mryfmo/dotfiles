@@ -919,7 +919,7 @@ function update_terminal_browser() {
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual
+    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside=""
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -940,17 +940,19 @@ function update_omp() (
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
         return 1
     fi
-    # npm refuses with EEXIST to replace a bin link it does not own, so a dangling one left by an
-    # older install goes first; a live link, a file or a directory stays for npm to judge.
-    if [ -L "${HOME}/.local/bin/omp" ] && [ ! -e "${HOME}/.local/bin/omp" ]; then
-        printf 'Removing the dangling omp link %s (it pointed to %s).\n' "${HOME}/.local/bin/omp" "$(readlink "${HOME}/.local/bin/omp")"
-        rm "${HOME}/.local/bin/omp" || return
+    # npm refuses with EEXIST to replace a bin entry it does not own, so a standalone file or a link outside this
+    # package (a mise or manual install, a dangling link included) moves aside, and comes back when the install fails.
+    if { [ -e "${entry}" ] || [ -L "${entry}" ]; } && [[ "$(readlink "${entry}")" != *lib/node_modules/@oh-my-pi/pi-coding-agent/* ]]; then
+        printf 'Moving %s aside for npm, which does not own it%s.\n' "${entry}" "$([ ! -L "${entry}" ] || printf ' (it points to %s)' "$(readlink "${entry}")")"
+        aside="${download_dir}/omp.previous"
+        mv "${entry}" "${aside}" || return
     fi
     # Allow this reviewed pin before the default three-day cooldown expires.
-    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
-    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" &&
+        installed="$("${entry}" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     installed="${installed#omp/}"
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+        [ -z "${aside}" ] || { rm -f "${entry}" && mv "${aside}" "${entry}" && printf 'Put the previous %s back.\n' "${entry}"; }
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
@@ -998,7 +1000,11 @@ function update_hcom() (
     fi
     mkdir -p "${wheel_dir}" && mv -f "${wheel}" "${wheel_dir}/" || return
     wheel="${wheel_dir}/${url##*/}"
-    uv tool install --force "${wheel}" || return
+    # A failed install drops the retained wheel, so the next run retries instead of skipping on it (4303338055).
+    uv tool install --force "${wheel}" || {
+        rm -f "${wheel}"
+        return 1
+    }
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2

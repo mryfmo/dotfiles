@@ -83,6 +83,9 @@ worker_profile: standard
 # HERDR_AGENTS_WORKER_WORKTREE; herdr-agents creates it from origin/main when
 # missing, registers the worker identity there, and sets delivery on it.
 worker_worktree: .claude/worktrees/worker-c
+# Number of seated worker worktrees herdr-agents --add-worker allows.
+# Read from the deployed ~/.agents/agent-config.yaml.
+worker_cap: 4
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml

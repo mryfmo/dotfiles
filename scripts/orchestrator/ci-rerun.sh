@@ -6,14 +6,17 @@
 #   `--log-failed` output of each job whose conclusion is `failure`, and the signatures of
 #   `.github/flakes.yaml` (a list of `{id, job, log_regex, note}`; `job` and `log_regex` are
 #   extended regular expressions, matched with `grep -E` against the job name and its log).
-#   When every failed job matches a signature it runs `gh run rerun <run-id> --failed` once and
-#   appends `<utc>\t<run-id>\t<headSha>\t<job>\t<signature id>` per job to
-#   `.orchestration/validation/ci-reruns.tsv`. A failed job that matches nothing is a real
-#   failure: nothing is rerun. A run already in that file is never rerun again. Both files are
-#   read in the checkout this script lives in (`git rev-parse --show-toplevel` there).
+#   When every failed job matches a signature it first reserves the run, appending
+#   `<utc>\t<run-id>\t<headSha>\t<job>\t<signature id>` per job to
+#   `.orchestration/validation/ci-reruns.tsv`, and then runs `gh run rerun <run-id> --failed`
+#   once. A failed job that matches nothing is a real failure: nothing is rerun. A run already
+#   in that file is never rerun again, even when its rerun failed or was interrupted. One call
+#   at a time holds the lock directory `ci-reruns.lock` beside the file (an atomic `mkdir`); a
+#   lock a killed call left behind stops every later call until it is removed by hand. All of
+#   these live in the checkout this script lives in (`git rev-parse --show-toplevel` there).
 # @arg $1 int The workflow run id.
-# @exitcode 0 Every failed job matched a signature; the run was rerun once and recorded.
-# @exitcode 1 A gh or jq call, or the signature file, failed; gh's own exit codes never pass through.
+# @exitcode 0 Every failed job matched a signature; the run was reserved and rerun once.
+# @exitcode 1 A gh or jq call or the signature file failed (never gh's own codes), the lock is held, or the reserved rerun failed.
 # @exitcode 2 Usage error, or the run has no failed job.
 # @exitcode 3 A failed job matched no signature (`real failure: <job>`); nothing was rerun.
 # @exitcode 4 The run is already in ci-reruns.tsv; nothing was rerun.
@@ -29,6 +32,14 @@ run_id=$1
 root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 flakes="${root}/.github/flakes.yaml"
 ledger="${root}/.orchestration/validation/ci-reruns.tsv"
+lock="${root}/.orchestration/validation/ci-reruns.lock"
+
+mkdir -p "$(dirname -- "${ledger}")"
+if ! mkdir "${lock}" 2> /dev/null; then
+    echo "ci-rerun: ${lock} is held by another call, or was left by a killed one (remove it when none runs)" >&2
+    exit 1
+fi
+trap 'rmdir -- "${lock}"' EXIT
 
 if [[ -f ${ledger} ]] && awk -F '\t' -v id="${run_id}" '$2 == id { found = 1 } END { exit !found }' "${ledger}"; then
     echo "already rerun once: run ${run_id} is in ${ledger}" >&2
@@ -83,10 +94,13 @@ while IFS=$'\t' read -r job_id job; do
 done <<< "${failed}"
 ((real == 0)) || exit 3
 
-gh run rerun "${run_id}" --failed || exit 1
-mkdir -p "$(dirname -- "${ledger}")"
+# Reserve before rerunning: a rerun that fails or is interrupted stays recorded and is never repeated.
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 for row in "${matched[@]}"; do
     printf '%s\t%s\t%s\t%s\n' "${now}" "${run_id}" "${head_sha}" "${row}" >> "${ledger}"
 done
+if ! gh run rerun "${run_id}" --failed; then
+    echo "ci-rerun: gh run rerun failed; run ${run_id} stays reserved in ${ledger}" >&2
+    exit 1
+fi
 printf 'rerun: run %s, %d failed job(s), recorded in %s\n' "${run_id}" "${#matched[@]}" "${ledger}"

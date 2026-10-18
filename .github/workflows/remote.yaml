@@ -72,7 +72,7 @@ jobs:
           # non-ASCII paths raw. An empty diff runs the bootstrap, and so does a
           # path that can change what setup.sh installs or how this job runs it.
           changed="$(git -c core.quotePath=false diff --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}")"
-          if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
+          if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"

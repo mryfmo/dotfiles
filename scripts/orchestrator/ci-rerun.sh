@@ -10,7 +10,7 @@
 #   pull request whose current head is the run's `headSha`, checked before the logs are read and
 #   again right before the rerun: a superseded head's rerun would re-enter `pr-<N>` and cancel the
 #   newest head's run. When every such job matches a signature, the run is reserved by an atomic
-#   `mkdir .orchestration/validation/ci-reruns.lock.d/<run-id>`, one
+#   mkdir(2) of `.orchestration/validation/ci-reruns.lock.d/<run-id>` (through python3's os.mkdir), one
 #   `<utc>\t<run-id>\t<headSha>\t<job>\t<signature id>` row per job is appended to
 #   `.orchestration/validation/ci-reruns.tsv`, and only then `gh run rerun <run-id> --failed`
 #   runs. The reservation stays after success, failure or interruption, so a run is rerun at most
@@ -129,14 +129,21 @@ done <<< "${candidates}"
 ((real == 0)) || exit 3
 
 # Reserve before rerunning: the directory and the rows outlive a rerun that fails, is refused or is interrupted.
+# The claim is mkdir(2) itself: uutils' mkdir (Ubuntu 26.04) returned 0 for a directory another call had just created,
+# until uutils bf423f388d (2026-08-28), so the mkdir binary cannot decide which of two concurrent calls wins.
 mkdir -p "${reservation%/*}"
-if ! mkdir "${reservation}" 2> /dev/null; then
-    [[ -d ${reservation} ]] || {
-        echo "ci-rerun: cannot create ${reservation}" >&2
-        exit 1
-    }
+claim=0
+python3 -I -c 'import os, sys
+try:
+    os.mkdir(sys.argv[1])
+except FileExistsError:
+    sys.exit(4)' "${reservation}" 2> /dev/null || claim=$?
+if ((claim == 4)); then
     echo "already rerun once: run ${run_id} was reserved by a concurrent call" >&2
     exit 4
+elif ((claim != 0)); then
+    echo "ci-rerun: cannot create ${reservation}" >&2
+    exit 1
 fi
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 for row in "${matched[@]}"; do

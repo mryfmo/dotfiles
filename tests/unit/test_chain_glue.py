@@ -478,8 +478,17 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         # the gate refuses, so the merged head takes the fresh-audit path instead of inheriting it.
         p7 = self.head[:7]
         (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {self.head} Verdict: blocked\n")
-        for n, summary in enumerate(("transcript\nVerdict: blocked\n", "", "no finding\nVerdict: incorrect\n"), 1):
+        summaries = (
+            "transcript\nVerdict: blocked\n",
+            "",
+            "no finding\nVerdict: incorrect\n",
+            "Verdict: correct\ntrailing\n",
+        )
+        for n, summary in enumerate(
+            summaries, 1
+        ):  # the last: the verdict must be the last non-blank line, as the gate reads it
             with self.subTest(summary=summary):
+                audits = len(self.calls_of("orch-audit"))
                 for suffix in (".md", ".md.last.md"):
                     (self.v / f"{TASK}-audit-{p7}{suffix}").write_text(summary)
                 self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
@@ -492,7 +501,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
                 merged = self.git("rev-parse", "HEAD", cwd=self.seed)
                 (self.calls / "head").write_text(merged + "\n")
                 self.chain()
-                self.assertEqual(n, len(self.calls_of("orch-audit")))
+                self.assertEqual(audits + 1, len(self.calls_of("orch-audit")))  # this case's own fresh audit
                 self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
 
     def test_integrate_restores_the_review_worktree_after_the_audit(self):

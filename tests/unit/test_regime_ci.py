@@ -182,6 +182,38 @@ class RegimeCiTest(unittest.TestCase):
         self.assertIn(f"regime-ci: {T}: task-id: the copy's task_id 't9-a01' is not its directory {T}", result.stdout)
         self.assertNotIn("C1 ", result.stdout)
 
+    def test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage(self):
+        # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target; the earlier copy
+        # warns, and its own .orchestration/ paths are no stray of the later one. Without reset_of, both are targets.
+        later = "t1-a02"
+        rows = f"  - control: the predecessor copy .orchestration/{T}/task.md\n    disposition: residual\n"
+        rows += f"  - control: the task copy .orchestration/{later}/task.md\n    disposition: residual\n"
+        reset = TASK.replace(T, later).replace("allowed_files:", f"reset_of: [{T}]\nallowed_files:")
+        for text, expected in (
+            (reset.replace("threat_table:\n", "threat_table:\n" + rows), 0),
+            (TASK.replace(T, later), 1),
+        ):
+            with self.subTest(reset_of="reset_of" in text):
+                self.build(evidence=False, base={f".orchestration/tasks/{later}.md": text})
+                pre = json.dumps({"head": self.git("rev-parse", "HEAD")})
+                token, copy = hashlib.sha256(pre.encode()).hexdigest(), hashlib.sha256(text.encode()).hexdigest()
+                evidence = {f".orchestration/{later}/precheck.json": pre, f".orchestration/{later}/task.md": text}
+                evidence[f".orchestration/{later}/result.txt"] = f"AGMSG-RESULT v1 precheck={token} task_copy={copy}\n"
+                self.commit(
+                    evidence | {f".orchestration/{T}/task.md": TASK, f".orchestration/{T}/note.md": "x\n"}, "two"
+                )
+                result = self.regime()
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if expected == 0:
+                    warning = (
+                        f"regime-ci: warning: {T}: predecessor copy .orchestration/{T}/task.md (reset_of of {later})"
+                    )
+                    self.assertEqual([warning, "regime-ci: ok 1 task(s)"], result.stdout.splitlines())
+                else:
+                    self.assertIn(
+                        f"regime-ci: {T}: allowed-files: .orchestration/{later}/task.md is outside", result.stdout
+                    )
+
     def test_regime_ci_passes_a_records_only_pr_with_no_target(self):
         result = self.build(code={".orchestration/validation/note.md": "a record\n"}, evidence=False)
         self.assertEqual(

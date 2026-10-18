@@ -3,8 +3,8 @@ task_id: dotfiles-T129-audit-inherit-replan-json-followup-a01
 seat: claude-standard-dot-a011
 branch: tools/audit-inherit-replan-json-followup-a01
 base: 741e24272fd64b6a36c0d6725c53265de1c94982 (PR #390's head; the PR's base is main)
-code_commit: d3891c0b (the test commit 598ca1f9 and the fix d3891c0b)
-pr: not yet (gh pr create waits for the orchestrator's PING, as the dispatch note says)
+code_commit: c0fe9a13 (the test commit 598ca1f9 and the fix d3891c0b; the Bot P1 round of PR #413: the test commit c8afed77 and the fix c0fe9a13)
+pr: 413 (opened as a draft by the orchestrator at 07:32Z; marked ready by this seat at 07:42:37Z)
 task_sha256: 1f6b90f40470d02455fbd2424a01b1e9cb40a03c0b5f5f7f135d645295dbf3bb
 ---
 
@@ -31,12 +31,21 @@ task_sha256: 1f6b90f40470d02455fbd2424a01b1e9cb40a03c0b5f5f7f135d645295dbf3bb
   - Inside the sandbox, 201 tests, with 136 failures in `test_require_crit_review`. At `741e242` the same command runs 200 tests with the same 136 failures, the same tests by name.
   - The cause is this machine's global git config (SSH commit signing that cannot read `~/.ssh` in the sandbox). With `GIT_CONFIG_GLOBAL=/dev/null`, a failing test passes alone, and the whole command is green (§6a). CI is the authority.
 - shellcheck and `shfmt -i 4 -sr -d` are clean on `chain-integrate.sh`; `ruff format --check` and `ruff check` are clean on the changed Python files (§6).
-- Caps (§7): against `741e242`, 17 changed lines outside `tests/` and `.orchestration/` (cap 60) and 58 under `tests/` (cap 120). Against `origin/main`, 113 and 366 (the a01 caps 200 and 1000).
+- Caps (§7, after the Bot P1 round): against `741e242`, 21 changed lines outside `tests/` and `.orchestration/` (cap 60) and 81 under `tests/` (cap 120). Against `origin/main`, 117 and 389 (the a01 caps 200 and 1000).
+
+## The Bot P1 round on PR #413
+
+The Codex Bot's review 5561998601 of `eeaa1962` (code review; its security review completed with no findings) left one P1, thread 4306231809, `Bind inherited receipts to the full parent SHA` (`chain-integrate.sh:184`). It is the gap the worker review had declared as a P2 outside R1/R2. A Bot P1 gets the one worker-side fix round:
+
+- Red in `c8afed77`: `tests/unit/test_chain_glue.py::test_inheritance_requires_the_parent_chain_log_to_name_its_full_sha`. A receipt for the parent's 7-character prefix whose chain log names a different full sha must not be inherited; before the fix it was.
+- Fixed in `c0fe9a13`: inside the inheritance block, `/usr/bin/awk` requires the parent's chain log (`<task>-chain-<parent sha7>.log`) to hold the verdict line `chain-integrate: <task> <full parent sha> …`, which the chain writes only for the exact head it audited or inherited for. Otherwise `old` is emptied and the head gets a fresh audit. An audit made outside the chain has no chain log, so it falls back to a fresh audit, which fails safe.
+- The two honest-inheritance tests now write that verdict line, as the audited head's chain run does. The re-plan's command passes 81 tests and the a01 Check 202 (validation §5 and §6b). Caps against `741e242`: 21 of 60 and 81 of 120.
+- Disposition: `4306231809` is `fixed:c0fe9a13`.
 
 ## Declared
 
-- Worker review P2, outside R1/R2: F1's audit link from the merge's first parent to the audited head is the 7-character short sha in the file name (`chain-integrate.sh:183-185`). A deliberately hostile worker could grind a commit with a colliding prefix and inherit another head's audit; it cannot happen by accident. Proposed owner: `dotfiles-T129-audit-inherit-replan-json-followup-a02`. Fix direction: bind the full sha.
-- Worker review P3: `ledger-check.py` prints the findings of an inherited summary twice when its parent's summary is also passed. Only the printed totals are affected; the exit code is right and the gate uses a set. Same proposed owner.
+- The worker review's P2 on the short-sha parent link is closed by the Bot P1 round above.
+- Worker review P3: `ledger-check.py` prints the findings of an inherited summary twice when its parent's summary is also passed. Only the printed totals are affected; the exit code is right and the gate uses a set. Proposed owner: `dotfiles-T129-audit-inherit-replan-json-followup-a02`.
 - R1 compares against a local `git merge-tree`. On GitHub's real update-branch merge `741e242` it reproduces the head's tree (premise 3), so the honest case still inherits. A rename or criss-cross case where GitHub's merge differs would only cost a fresh audit.
 
 ## Review, hook, cost

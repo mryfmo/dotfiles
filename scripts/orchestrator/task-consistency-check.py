@@ -14,9 +14,15 @@ C7b no row other than a non-path control names two allowed_files entries (one ro
 C8 (code tasks) every *_EVIDENCE input the body names and origin/main does not read yet has a threat row.
 C9 (docs tasks) a quoted rule sentence naming a script, *_EVIDENCE, a check id or classes: finds it on origin/main or says once/until.
 C10 (docs tasks) a quoted rule sentence naming a script on origin/main has no `=` or `[...]` literal absent from the script and its test.
+C11 a disposition's payload has its form's shape: closed: tests/<path>::<identifier>, out-of-scope: an existing task id, residual: 20+ characters.
+C12 a glob entry of an executed or applied kind (*.sh *.py *.yaml *.yml *.json *.toml, or under home/ scripts/ .githooks/ .github/) has a row per matched file.
+C13 every disposition is exactly one of closed:, residual: or out-of-scope: followed by a space.
+C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr/bin:/bin, prints its pasted output (gh, curl and URLs skipped).
+C15 with invariants and design_review.design, each invariant equals the design's on origin/main byte for byte.
 """
 
 import argparse
+import os
 import pathlib
 import re
 import subprocess
@@ -34,6 +40,9 @@ NONPATH = ("in-process effects", "task metadata", "metadata separators", "workfl
 NONPATH += ("new or renamed scripts", "orchestrator effect")
 C9_NAMES = r"(scripts/[\w./-]+|\b[A-Z][A-Z_]{3,}_EVIDENCE\b|task-consistency-check C\d|\bC\d\b of the task-consistency check|\bclasses:)"
 CHECKER = "scripts/orchestrator/task-consistency-check.py"  # where `task-consistency-check C<n>` lands
+FORMS = ("closed: ", "residual: ", "out-of-scope: ")
+APPLIED = (".sh", ".py", ".yaml", ".yml", ".json", ".toml")
+SKIPPED = "C14 skipped network premise"  # a note, never a failure
 
 
 def front(text):
@@ -42,6 +51,29 @@ def front(text):
 
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+
+
+def rerun(cmd, cwd, path=None):
+    """Run a premise or Check command as C14 does; return (stdout, exit status), stdout None on a timeout.
+
+    The command is bash's script argument (`bash -c`, pipefail on), never spliced into another shell line; premises
+    get PATH <root>/bin:/usr/bin:/bin so a rerun prints what the pasted output says, and task-from-plan.py runs its
+    premises through this same function.
+    """
+    env = {"PATH": path or f"{cwd}/bin:/usr/bin:/bin", "HOME": os.environ.get("HOME", "/")}
+    try:
+        run = subprocess.run(
+            ["bash", "-c", "set -o pipefail\n" + cmd],
+            cwd=cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None, 124
+    return run.stdout, run.returncode
 
 
 def check(p, root):
@@ -125,6 +157,42 @@ def check(p, root):
             if not ok:
                 why = "it is not on origin/main and the sentence has no landing condition"
                 fails.append(f'C9 rule sentence names {n} as present but {why}: "{sent[:70]}…"')
+    for r in rows:  # C13, then C11 on the form it found
+        d = str(r.get("disposition") or "")
+        form = next((f for f in FORMS if d.startswith(f)), None)
+        if form is None:
+            fails.append(f"C13 disposition is not closed:, residual: or out-of-scope: and a space: {d[:60]}")
+            continue
+        load = d[len(form) :]
+        if form == "closed: " and not re.fullmatch(r"tests/[\w./-]+::[A-Za-z_]\w*", load):
+            fails.append(f"C11 closed: payload is not tests/<path>::<identifier>: {load[:60]}")
+        tid_ok = re.fullmatch(r"[A-Za-z0-9][\w.-]*", load) and (root / f".orchestration/tasks/{load}.md").is_file()
+        if form == "out-of-scope: " and not tid_ok:
+            fails.append(f"C11 out-of-scope: {load[:60]} is not a task under .orchestration/tasks/")
+        if form == "residual: " and len(load) < 20:
+            fails.append(f"C11 residual: payload is shorter than 20 characters: {load}")
+    for a in allowed:  # C12
+        last = a.rsplit("/", 1)[-1]
+        glob = re.search(r"[*?\[]", a) and not a.startswith(("tests/fixtures/", own_dir))
+        if glob and (last.endswith(APPLIED) or a.startswith(("home/", "scripts/", ".githooks/", ".github/"))):
+            for f in filter(None, git(root, "ls-files", "-z", "--", f":(glob){a}").stdout.split("\0")):
+                if not any(re.search(re.escape(f) + r"(?=$|[ /\"'(),])", r.get("control") or "") for r in rows):
+                    fails.append(f"C12 the glob {a} matches {f}, which no threat_table row names")
+    for pre in fm.get("premises") or []:  # C14
+        cmd, want = str(pre.get("command") or ""), str(pre.get("output") if pre.get("output") is not None else "")
+        if re.search(r"\b(?:gh|curl)\b|https?://", cmd):
+            fails.append(f"{SKIPPED}: {cmd[:60]}")
+            continue
+        got, _ = rerun(cmd, root)
+        if got is None or got.rstrip("\n") != want.rstrip("\n"):  # YAML's |- drops the final newline
+            fails.append(f"C14 premise output differs from its rerun: {cmd[:60]}")
+    inv, design = fm.get("invariants"), dr.get("design")
+    if isinstance(inv, dict) and design:  # C15; a design task carrying its own invariants names no design
+        shown = git(root, "show", f"origin/main:{design}")
+        canon = (front(shown.stdout).get("invariants") or {}) if shown.returncode == 0 else None
+        for k, v in inv.items():
+            if canon is None or canon.get(k) != v:
+                fails.append(f"C15 invariant {k} is not byte-equal to {design} on origin/main")
     return fails
 
 
@@ -141,8 +209,9 @@ def main():
     rc = 0
     for p in args.tasks:
         fails = check(p, args.root)
-        print(f"{p.name}: {'FAIL' if fails else 'OK'}", *fails, sep="\n  ")
-        rc |= bool(fails)
+        bad = [f for f in fails if not f.startswith(SKIPPED)]
+        print(f"{p.name}: {'FAIL' if bad else 'OK'}", *fails, sep="\n  ")
+        rc |= bool(bad)
     return rc
 
 

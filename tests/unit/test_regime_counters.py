@@ -510,6 +510,22 @@ class RegimeCountersTest(unittest.TestCase):
                     ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
                 )
 
+    def test_s1_applies_the_gate_s_exact_replan_schema(self):
+        # Owned row audit:274a536:1 (= local:274a536:1): the gate's record_field_errors() and the front-matter writer
+        # accept replans only as {<class slug>: exactly the four keys, each a string with text after str.strip()}, the
+        # whole object at once; the counters read the same object and report a re-plan only where the gate accepts it.
+        for label, replans in (
+            ("an extra key", {"bookkeeping": {**REPLAN, "notes": "n"}}),
+            ("a malformed entry under another class", {"bookkeeping": REPLAN, "other": {"design": "d"}}),
+            ("a class that is no slug", {"bookkeeping": REPLAN, "Other Class": REPLAN}),
+            ("a part only str.strip() empties", {"bookkeeping": {**REPLAN, "design": "\x1c"}}),
+        ):
+            with self.subTest(label):
+                self.assertEqual(
+                    self.s1_record_lines("bookkeeping", replans=replans),
+                    ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
+                )
+
     def test_s1_excludes_advisory_p2_at_three_rows(self):
         self.assertEqual(self.s1_record_lines("advisory-p2", replans={"advisory-p2": REPLAN}), [])
 

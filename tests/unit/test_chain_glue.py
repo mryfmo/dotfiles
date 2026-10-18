@@ -473,6 +473,28 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
         self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
 
+    def test_inheritance_requires_a_parent_verdict_the_gate_accepts(self):
+        # Owned row audit:274a536:2 (= local:274a536:2): a blocked, empty or finding-less incorrect parent audit is one
+        # the gate refuses, so the merged head takes the fresh-audit path instead of inheriting it.
+        p7 = self.head[:7]
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {self.head} Verdict: blocked\n")
+        for n, summary in enumerate(("transcript\nVerdict: blocked\n", "", "no finding\nVerdict: incorrect\n"), 1):
+            with self.subTest(summary=summary):
+                for suffix in (".md", ".md.last.md"):
+                    (self.v / f"{TASK}-audit-{p7}{suffix}").write_text(summary)
+                self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+                self.commit(self.seed, f"c{n}.txt")
+                self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+                self.git("pull", "-q", "--ff-only")
+                self.git("checkout", "-q", "--detach", self.head, cwd=self.seed)
+                self.git("merge", "-q", "--no-ff", "--no-edit", "origin/main", cwd=self.seed)
+                self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+                merged = self.git("rev-parse", "HEAD", cwd=self.seed)
+                (self.calls / "head").write_text(merged + "\n")
+                self.chain()
+                self.assertEqual(n, len(self.calls_of("orch-audit")))
+                self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
+
     def test_integrate_restores_the_review_worktree_after_the_audit(self):
         # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at
         # origin/main; the chain puts it back at the audited head, which the gate reads next.

@@ -16,8 +16,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "scripts/orchestrator/dispositions.py"
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
-STUB_TEST = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_pass(self):\n        pass\n\n"
+# A local run of test_pass would leave its marker: amendment 1 reads test: refutations from the head's CI log only.
+STUB_TEST = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_pass(self):\n        open('ran-locally', 'w').close()\n\n"
 STUB_TEST += "    def test_fail(self):\n        self.fail('the stub fails')\n"
+CI_LOG = "".join(
+    f"test (ubuntu-24.04, client)\tRun Python unit tests\t2026-10-18T00:00:00.0Z {name} (test_stub.T.{name}) ... {state}\n"
+    for name, state in (("test_pass", "ok"), ("test_fail", "FAIL"), ("test_skip", "skipped 'not on this runner'"))
+)
 REASON = "not-applicable:the finding does not reach this line"
 
 
@@ -64,13 +69,15 @@ class DispositionsTest(unittest.TestCase):
         self.git("commit", "-q", "-m", message)
         return self.git("rev-parse", "HEAD")
 
-    def run_tool(self, items, *args, commits=None, path=None):
-        sweep = {"repo": "o/r", "pr": 7, "head_sha": self.head, "base_sha": self.base, "items": items}
+    def run_tool(self, items, *args, commits=None, path=None, head=None, base=None):
+        head, base = head or self.head, base or self.base
+        sweep = {"repo": "o/r", "pr": 7, "head_sha": head, "base_sha": base, "items": items}
         (self.temp / "sweep.json").write_text(json.dumps(sweep))
+        (self.temp / "ci.log").write_text(CI_LOG)
         if commits is not None:
             (self.temp / "commits.json").write_text(json.dumps(commits))
             args = (*args, "--commits", str(self.temp / "commits.json"))
-        run = [sys.executable, "-I", str(TOOL), "7", self.head, "--feedback", str(self.temp / "sweep.json"), *args]
+        run = [sys.executable, "-I", str(TOOL), "7", head, "--feedback", str(self.temp / "sweep.json"), *args]
         env = {**os.environ, "PATH": path or os.environ["PATH"]}
         result = subprocess.run(run, cwd=self.repo, env=env, capture_output=True, text=True, timeout=300, check=False)
         return result.returncode, result.stdout, result.stderr
@@ -122,7 +129,9 @@ class DispositionsTest(unittest.TestCase):
             badged | {"body": "**![P1 Badge](x)** finding", "disposition": REASON + "; evidence=grep -c x a.py"}
         )
         commits = {item["url"]: self.thread_commit for item in items}
-        code, out, err = self.run_tool(items, "--require-refutation", commits=commits)
+        code, out, err = self.run_tool(
+            items, "--require-refutation", "--ci-log", str(self.temp / "ci.log"), commits=commits
+        )
         self.assertEqual(code, 1, err)
         result = json.loads(out)["items"]
         self.assertEqual([i["refutation"]["ok"] for i in result], [ok for _, _, ok in forms.values()] + [False], err)
@@ -131,11 +140,66 @@ class DispositionsTest(unittest.TestCase):
             ["none", "legacy-evidence", "test", "test", "source", "source", "diff", "diff", "diff", "legacy-evidence"],
         )
         self.assertEqual(err.count(" FAIL: "), 7, err)
-        self.assertTrue(result[2]["refutation"]["record"].endswith("OK"), result[2])
+        self.assertIn("test_pass (test_stub.T.test_pass) ... ok", result[2]["refutation"]["record"])
         self.assertEqual(result[4]["refutation"]["record"], f"sha256={hashlib.sha256(page.read_bytes()).hexdigest()}")
         # Without the flag the same failures are a report: exit 0, nothing marked FAIL.
-        code, _, err = self.run_tool(items, commits=commits)
+        code, _, err = self.run_tool(items, "--ci-log", str(self.temp / "ci.log"), commits=commits)
         self.assertEqual((code, err.count(" FAIL: "), err.count(" unverified: ")), (0, 0, 7), err)
+
+    def test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test(self):
+        # The audit of fa47987 (P1, orch-gate.sh:87; P2, dispositions.py:132): a test: refutation is read from the head's
+        # CI unit-test log, never run here, and only an executed `... ok` line counts (amendment 1 (a) and (d)).
+        names = ("test_pass", "test_skip", "test_fail", "test_absent")
+        items = [
+            thread(n, 25, f"{REASON}; evidence=test:tests/unit/test_stub.py::{name}") for n, name in enumerate(names)
+        ]
+        commits = {item["url"]: self.thread_commit for item in items}
+        stub = self.temp / "stub"
+        stub.mkdir()
+        (stub / "gh").write_text("#!/bin/sh\necho 'gh: offline' >&2\nexit 1\n")
+        (stub / "gh").chmod(0o755)
+        offline = self.run_tool(
+            items[:1], "--require-refutation", commits=commits, path=f"{stub}{os.pathsep}{os.environ['PATH']}"
+        )
+        self.assertEqual((offline[0], (self.repo / "ran-locally").exists()), (1, False), offline[2])
+        code, out, err = self.run_tool(
+            items, "--require-refutation", "--ci-log", str(self.temp / "ci.log"), commits=commits
+        )
+        self.assertEqual(code, 1, err)
+        self.assertEqual([i["refutation"]["ok"] for i in json.loads(out)["items"]], [True, False, False, False])
+        self.assertFalse((self.repo / "ran-locally").exists())
+
+    def test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim(self):
+        # The audit of fa47987 (P1, task item 1): the caller does not choose the range, <head>..<head> proves nothing, the
+        # reason must be named, a P0/P1 finding waits for item (16)'s second opinion, and a pass is a claim (amendment 1 (b)).
+        fixed = f"diff:{self.thread_commit}..{self.head}"
+        items = [
+            thread(1, 25, f"{REASON}; evidence={fixed}"),
+            thread(2, 25, f"{REASON}; evidence=diff:{self.head}..{self.head}"),
+            thread(3, 25, f"{REASON}; evidence=diff:{self.base}..{self.head}"),
+            thread(4, 25, f"not-applicable:unreachable; evidence={fixed}"),
+            {**thread(5, 25, f"{REASON}; evidence={fixed}"), "body": "**![P1 Badge](x)** finding"},
+        ]
+        commits = {item["url"]: self.thread_commit for item in items}
+        code, out, err = self.run_tool(items, "--require-refutation", commits=commits)
+        result = [i["refutation"] for i in json.loads(out)["items"]]
+        self.assertEqual((code, [r["ok"] for r in result]), (1, [True, False, False, False, False]), err)
+        self.assertTrue(result[0]["record"].startswith("claim-recorded"), result[0])
+        self.assertIn("second opinion", result[4]["record"])
+
+    def test_upstream_only_hunk_changes_demand_not_applicable(self):
+        # The audit of fa47987 (P2, dispositions.py:102): when only a merge of the base changed the thread's hunk, no
+        # branch commit fixed it, so the proposal is the not-applicable demand, not a hold (amendment 1 (c)).
+        lines = [f"line {n}\n" for n in range(1, 31)]
+        self.git("switch", "-q", "-c", "upstream", self.base)
+        upstream = self.commit(lines[:19] + ["line 20 upstream\n"] + lines[20:], "upstream")
+        self.git("switch", "-q", "-c", "pr", self.thread_commit)
+        self.git("merge", "-q", "--no-edit", "upstream")
+        merged, url = self.git("rev-parse", "HEAD"), thread(1, 20)["url"]
+        code, out, err = self.run_tool([thread(1, 20)], commits={url: self.thread_commit}, head=merged, base=upstream)
+        self.assertEqual(
+            (code, json.loads(out or "{}").get("items", [{}])[0].get("proposal")), (0, "not-applicable:"), err
+        )
 
     def test_dispositions_holds_on_an_unreadable_sweep_or_a_missing_commit(self):
         (self.temp / "sweep.json").write_text("{not json")

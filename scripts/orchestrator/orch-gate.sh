@@ -21,7 +21,8 @@
 #   directory is made removes it whatever fails or the gate says, and once the head's checkout has started restores
 #   the review worktree to origin/main; a refusal before that leaves the review worktree as it was (the audit of
 #   a235637). Right before the gate, `dispositions.py <pr> <head> --feedback <sweep>` re-validates the sweep's
-#   dispositions from this checkout under the same `env -i` and private PATH (plan 024 P1-10): with
+#   dispositions from this checkout under the same `env -i` and private PATH (plan 024 P1-10; a `test:` refutation is
+#   read from the head's CI log through the private `gh`, never run on this host): with
 #   DISPOSITIONS_REQUIRE_REFUTATION=1 it runs with `--require-refutation` and any failure refuses; otherwise its lines
 #   are printed as a report.
 # @arg $1 string Task id.

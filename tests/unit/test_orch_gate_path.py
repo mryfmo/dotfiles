@@ -140,6 +140,25 @@ class OrchGatePathTest(unittest.TestCase):
         self.assertIn(f"{url} refutation none unverified: no refutation form", self.stderr)
         self.assertTrue((self.t / "calls/gate-env").exists())
 
+    def test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests(self):
+        # The audit of fa47987 (P1, orch-gate.sh:87): the step names the gated head, and a test: refutation is read from
+        # the head's CI log, never run in this trusted checkout (amendment 1 (a)); a local run would leave the marker.
+        (self.root / "tests/unit").mkdir(parents=True)
+        marker = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_writes(self):\n        open('ran', 'w').close()\n"
+        (self.root / "tests/unit/test_marker.py").write_text(marker)
+        evidence = "test:tests/unit/test_marker.py::test_writes"
+        reason = f"not-applicable:the finding names a path the head never reaches; evidence={evidence}"
+        item = {"source": "review_comment", "path": "a.py", "line": None, "url": "u", "disposition": reason}
+        (self.root / ".orchestration/validation/t-a01-pr-feedback.json").write_text(
+            json.dumps({"pr": 9, "items": [item]})
+        )
+        with mock.patch.dict(os.environ):
+            os.environ.pop("DISPOSITIONS_REQUIRE_REFUTATION", None)
+            log = self.run_gate(0)
+        self.assertIn(HEAD, next(command for command, _ in log if "dispositions.py" in command).split())
+        self.assertFalse((self.root / "ran").exists())
+        self.assertIn("u refutation test unverified", self.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

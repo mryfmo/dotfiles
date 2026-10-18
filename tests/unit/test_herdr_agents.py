@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
@@ -2157,6 +2158,80 @@ exit {despawn_exit}
         self.assertIn(
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
         )
+
+    def test_add_worker_cap_count_and_registration_are_serialized_under_one_lock(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        main = self.workdir.resolve()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_cap: 4\n")
+        seated = scripts / "seated.tsv"
+        seated.write_text(
+            "".join(
+                f"{self.add_seat_worktree(f'existing{n}')}\tclaude-code\tdotfiles\tworker-a00{n}\n" for n in range(3)
+            )
+        )
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+if [[ $1 == {main} ]]; then
+    [[ $2 != claude-code ]] || printf 'dotfiles\\tclaude-remediation-dot\\n'
+    exit 0
+fi
+printf 'seat-read %s\\n' "$*" >> {self.calls_path}
+sleep 0.05
+awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {seated}
+"""
+        )
+        spawn = scripts / "spawn.sh"
+        spawn.write_text(
+            spawn.read_text() + f'\nsleep 0.6\nprintf "%s\\t%s\\t%s\\t%s\\n" "$4" "$1" "$6" "$2" >> {seated}\n'
+        )
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        self.write_executable(
+            "git",
+            f"""#!/usr/bin/env bash
+if [[ $* == '-C {main} rev-parse --path-format=absolute --git-dir' ]]; then
+    printf 'main-check %s\\n' "$*" >> {self.calls_path}
+fi
+exec {shlex.quote(real_git)} "$@"
+""",
+        )
+        results = []
+        start = threading.Barrier(3)
+
+        def add(name: str) -> None:
+            start.wait()
+            results.append((name, self.run_helper("--add-worker", f".claude/worktrees/{name}")))
+
+        threads = [threading.Thread(target=add, args=(name,), daemon=True) for name in ("concurrent-a", "concurrent-b")]
+        self.calls_path.write_text("")
+        with (main / ".git/herdr-agents-seat.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            for thread in threads:
+                thread.start()
+            start.wait()
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline and self.calls_path.read_text().count("main-check ") < 2:
+                time.sleep(0.01)
+            time.sleep(1)
+            held_calls = self.calls_path.read_text()
+            held_waiting = all(thread.is_alive() for thread in threads)
+            fcntl.flock(lock, fcntl.LOCK_UN)
+        for thread in threads:
+            thread.join(timeout=20)
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertGreaterEqual(held_calls.count("main-check "), 2, held_calls)
+        self.assertTrue(held_waiting)
+        self.assertNotIn("seat-read ", held_calls)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(sorted(result.returncode for _, result in results), [0, 2], results)
+        [refused] = [result for _, result in results if result.returncode == 2]
+        self.assertIn("worker_cap is 4 and 4 worker seats are registered", refused.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(sum(call.startswith("workspace create ") for call in calls), 1, calls)
+        self.assertEqual(sum(call.startswith("spawn ") for call in calls), 1, calls)
+        self.assertEqual(len(seated.read_text().splitlines()), 4)
 
     def test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")

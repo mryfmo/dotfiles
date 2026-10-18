@@ -137,7 +137,9 @@ def check_task(root, head, t, changed, numstat):
     )
     # the copy is named task.md, so the checker's C1 compares task_id with `task`; task-id above checks the directory
     lines = [
-        ln.strip() for ln in run.stdout.splitlines()[1:] if ln.strip() and ln.strip() != f"C1 task_id {t} != file task"
+        ln.strip()
+        for ln in run.stdout.splitlines()[1:]
+        if ln.strip() and not re.fullmatch(r"C1 task_id .* != file task", ln.strip())
     ]
     found += [("checker", ln) for ln in lines]
     if run.returncode not in (0, 1):

@@ -19,7 +19,7 @@
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every candidate job matched a signature; the run was reserved and rerun once.
 # @exitcode 1 A gh or jq call or the signature file failed (never gh's own codes), or the reserved rerun failed.
-# @exitcode 2 Usage error, or the run has no failed, timed-out or cancelled job.
+# @exitcode 2 Usage error, a run not completed yet, or a run with no failed, timed-out or cancelled job.
 # @exitcode 3 A job matched no signature (`real failure: <job>`) or the head is superseded (`superseded: run <id>`).
 # @exitcode 4 The run is already reserved or in ci-reruns.tsv; nothing was rerun.
 # @example
@@ -87,6 +87,12 @@ function require_current_head() {
 run="$(gh run view "${run_id}" --json jobs,status,conclusion,headSha,event)" || exit 1
 head_sha="$(jq -r '.headSha // empty' <<< "${run}")" || exit 1
 event="$(jq -r '.event // empty' <<< "${run}")" || exit 1
+status="$(jq -r '.status // empty' <<< "${run}")" || exit 1
+# A run in progress has jobs that are not final yet: --failed would rerun ones no signature checked.
+if [[ ${status} != completed ]]; then
+    echo "run ${run_id} is not completed (${status:-unknown}); nothing is rerun before it ends" >&2
+    exit 2
+fi
 [[ ${head_sha} =~ ^[0-9a-f]{40}$ ]] || {
     echo "ci-rerun: run ${run_id} has no head sha" >&2
     exit 1
@@ -125,6 +131,10 @@ done <<< "${candidates}"
 # Reserve before rerunning: the directory and the rows outlive a rerun that fails, is refused or is interrupted.
 mkdir -p "${reservation%/*}"
 if ! mkdir "${reservation}" 2> /dev/null; then
+    [[ -d ${reservation} ]] || {
+        echo "ci-rerun: cannot create ${reservation}" >&2
+        exit 1
+    }
     echo "already rerun once: run ${run_id} was reserved by a concurrent call" >&2
     exit 4
 fi

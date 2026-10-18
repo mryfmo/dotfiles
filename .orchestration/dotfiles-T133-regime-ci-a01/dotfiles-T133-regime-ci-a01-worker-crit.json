@@ -17,7 +17,7 @@
   "id": "r1-p2-two-task-dirs",
   "scope": "file",
   "path": "scripts/orchestrator/regime-ci.py",
-  "body": "Round 1, P2 high, a gap in the spec: a PR carrying two task directories (#408 reset_of lineage, #413 follow-up with a predecessor's records) fails each copy. Proposed advisory for dotfiles-T133-regime-ci-followup-a01 in report.md (skip a target another names in reset_of; allow every target's own evidence paths), before regime becomes required; the owner task file is the orchestrator's to write.",
+  "body": "Round 1, P2 high, a gap in the spec: a PR carrying two task directories (#408 reset_of lineage, #413 follow-up with a predecessor's records) failed each copy. Settled by amendment 1 (2026-10-18T20:04:25Z) and implemented in 26c50932: of a reset_of lineage only the latest copy is checked, each predecessor copy prints a warning, and its own .orchestration/<t>/ paths are no stray or precheck drift of the later copy; test in e88480c2, red at 7e8851f0 (validation 4b).",
   "resolved": true
  },
  {

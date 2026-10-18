@@ -1,18 +1,18 @@
 ---
 task_id: dotfiles-T133-regime-ci-a01
 seat: claude-standard-dot-a008
-head: 7e8851f0
+head: afd044f5
 ---
 
 # Validation: dotfiles-T133-regime-ci-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/regime-ci-a01` at `7e8851f0`, inside the sandbox, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's), except §11 (premise 5, through gh outside the sandbox, pasted from its saved output) and §10 (the PR's own `regime` job, from `gh run view`). `MAIN` names the main checkout and `T` the task id. The scratch worktrees (`$R`, `$Q`, `$M` under `$TMPDIR`) are removed after their block with `git worktree remove --force`. §6 runs the Check's command as the task states it (without `--no-config`, which only the workflow and the checker's run need).
+Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/regime-ci-a01` at `afd044f5` (the merge of `origin/main` 3e41e36a after amendment 1), inside the sandbox, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's), except §11 (premise 5, through gh outside the sandbox, pasted from its saved output) and §10 (the PR's own `regime` job, from `gh run view`). `MAIN` names the main checkout and `T` the task id. The scratch worktrees (`$R`, `$Q`, `$P`, `$M` under `$TMPDIR`) are removed after their block with `git worktree remove --force`. §6 runs the Check's command as the task states it (without `--no-config`, which only the workflow and the checker's run need).
 
-## 1. Task file (sha256 da3965e6…) and task copy
+## 1. Task file (amendment 1, sha256 0bca9954…) and task copy
 ```console
 $ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
-da3965e6b10fd3fe743f2aee8849ee67b1cc1d55924357407485f7ca41610fbf  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-a01.md
-da3965e6b10fd3fe743f2aee8849ee67b1cc1d55924357407485f7ca41610fbf  .orchestration/dotfiles-T133-regime-ci-a01/task.md
+0bca9954f0cefdc21c289249b9130d41d566c4eaadaf495565874868f04a402d  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-a01.md
+0bca9954f0cefdc21c289249b9130d41d566c4eaadaf495565874868f04a402d  .orchestration/dotfiles-T133-regime-ci-a01/task.md
 byte-identical
 [exit 0]
 ```
@@ -37,8 +37,14 @@ absent-on-main
 ```console
 $ git branch --show-current; git rev-parse HEAD origin/main; git log --oneline origin/main..HEAD
 tools/regime-ci-a01
-7e8851f03676137e5ea522897d4d44f6ee6907f0
+afd044f5de3f2400e9ef20188ad66987fc53c168
 3e41e36abc949acd7e6b4859c1a22df9e665c8d4
+afd044f5 Merge branch 'main' of https://github.com/mryfmo/dotfiles into tools/regime-ci-a01
+a060b4a2 docs(orchestration): T133 regime-ci a01: the task copy at amendment 1 (0bca9954)
+26c50932 feat(orchestrator): regime-ci checks only the latest copy of a reset_of lineage (T133 regime-ci a01 amendment 1)
+521516f4 test(ci): the workflow-security allowlist names regime.yml with contents: read (T133 regime-ci a01 amendment 1)
+e88480c2 test(orchestrator): regime-ci checks only the latest copy of a reset_of lineage (T133 regime-ci a01 amendment 1)
+a8eccfc7 docs(orchestration): T133 regime-ci a01: the worker evidence at 7e8851f0
 7e8851f0 docs(orchestrator): regime-ci's usage line names --no-config (T133 regime-ci a01, worker re-review P3)
 9a787b13 test(orchestrator): regime-ci's round-2 review cases: a reverted prechecked change, a verdict line with the wrong exit code, the checkout's uv config (T133 regime-ci a01)
 a1c90c78 fix(orchestrator): regime-ci fails closed on every input it cannot validate (T133 regime-ci a01, worker review)
@@ -61,7 +67,7 @@ ERROR: test_the_regime_workflow_pins_its_actions_runs_on_the_pr_head_and_cancels
 FAIL: test_regime_ci_passes_a_records_only_pr_with_no_target (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_passes_a_records_only_pr_with_no_target)
 FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr)
 FAIL: test_regime_ci_warns_without_precheck_and_without_dispatched_text (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_warns_without_precheck_and_without_dispatched_text)
-Ran 4 tests in 0.980s
+Ran 4 tests in 0.900s
 FAILED (failures=3, errors=1)
 [exit 0]
 ```
@@ -76,14 +82,32 @@ FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (cas
 FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (case='caps worded')
 FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (case='checker crash')
 FAIL: test_regime_ci_warns_without_precheck_and_without_dispatched_text
-Ran 7 tests in 14.638s
+Ran 7 tests in 15.391s
 FAILED (failures=7)
+[exit 0]
+```
+## 4b. RED for amendment 1: the lineage test at e88480c2 against 7e8851f0's regime-ci.py (before the reset_of rule), in a scratch worktree
+```console
+$ git -C "$P" diff --quiet 7e8851f0 -- scripts/orchestrator/regime-ci.py && echo "regime-ci.py identical to 7e8851f0"; cd "$P" && uv run python -m unittest tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage 2>&1 | /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^(OK|FAILED)" | cut -c1-220
+regime-ci.py identical to 7e8851f0
+FAIL: test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True)
+AssertionError: 0 != 1 : regime-ci: warning: t1-a01: precheck absent
+Ran 1 test in 2.040s
+FAILED (failures=1)
+[exit 0]
+```
+## 4c. Amendment 1: tests/unit/test_workflow_security.py differs from origin/main by exactly the one EXPECTED_PERMISSIONS entry, and its tests pass with regime.yml
+```console
+$ git diff origin/main...HEAD -- tests/unit/test_workflow_security.py | /usr/bin/grep "^[+-][^+-]"; uv run python -m unittest tests.unit.test_workflow_security 2>&1 | tail -n 1
++    "regime.yml": {"contents": "read"},
+OK
 [exit 0]
 ```
 ## 5. GREEN: the Check's unit-test command on HEAD
 ```console
 $ git rev-parse --short=8 HEAD; uv run python -m unittest tests.unit.test_regime_ci -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"
-7e8851f0
+afd044f5
+test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) ... ok
 test_regime_ci_checks_the_copy_against_result_txt_without_dispatched_text (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_checks_the_copy_against_result_txt_without_dispatched_text) ... ok
 test_regime_ci_passes_a_records_only_pr_with_no_target (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_passes_a_records_only_pr_with_no_target) ... ok
 test_regime_ci_refuses_a_checkout_not_at_the_head_and_a_diff_git_cannot_list (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_refuses_a_checkout_not_at_the_head_and_a_diff_git_cannot_list) ... ok
@@ -92,7 +116,7 @@ test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (tests.uni
 test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config) ... ok
 test_regime_ci_warns_without_precheck_and_without_dispatched_text (tests.unit.test_regime_ci.RegimeCiTest.test_regime_ci_warns_without_precheck_and_without_dispatched_text) ... ok
 test_the_regime_workflow_pins_its_actions_runs_on_the_pr_head_and_cancels_superseded_runs (tests.unit.test_regime_ci.RegimeCiTest.test_the_regime_workflow_pins_its_actions_runs_on_the_pr_head_and_cancels_superseded_runs) ... ok
-Ran 8 tests in 16.922s
+Ran 9 tests in 21.594s
 OK
 [exit 0]
 ```
@@ -113,7 +137,7 @@ MUTANTS = [
     ("precheck sha", 'if token(result_text, "precheck") != sha256(data):', "if False:"),
     ("precheck 40-hex", 'if not isinstance(bound, str) or not re.fullmatch(r"[0-9a-f]{40}", bound):', "if not bound:"),
     ("precheck non-ancestor", 'if git(root, "merge-base", "--is-ancestor", bound, head).returncode:', "if False:"),
-    ("precheck evidence-only", 'if not p.startswith(f".orchestration/{t}/")', "if False"),
+    ("precheck evidence-only", 'if not p.startswith((f".orchestration/{t}/", *exempt))', "if False"),
     ("allowed-files", "return re.fullmatch(rx, path) is not None", "return True"),
     ("caps outside", "if outside and out_lines > int(outside.group(1)):", "if False:"),
     ("caps tests", "if tests and test_lines > int(tests.group(1)):", "if False:"),
@@ -127,6 +151,8 @@ MUTANTS = [
     ("git listing", "    if out.returncode:", "    if False:"),
     ("C1 filter", r'and not re.fullmatch(r"C1 task_id .* != file task", ln.strip())', ""),
     ("self-touch warning", "for path in sorted(set(changed) & set(RUNS)):", "for path in []:"),
+    ("reset_of lineage", "    targets = [t for t in targets if t not in later]\n", ""),
+    ("lineage exempt", "not p.startswith(exempt) and ", ""),
 ]
 for name, old, new in MUTANTS:
     assert original.count(old) == 1, name
@@ -141,7 +167,7 @@ precheck sha: FAILED (failures=1)
 precheck 40-hex: FAILED (failures=1)
 precheck non-ancestor: FAILED (failures=2)
 precheck evidence-only: FAILED (failures=2)
-allowed-files: FAILED (failures=1)
+allowed-files: FAILED (failures=2)
 caps outside: FAILED (failures=2)
 caps tests: FAILED (failures=1)
 caps wording: FAILED (failures=1)
@@ -152,8 +178,10 @@ records-only: FAILED (failures=1)
 orchestration/ head: FAILED (failures=1)
 checkout: FAILED (failures=1)
 git listing: FAILED (failures=1)
-C1 filter: FAILED (failures=5)
+C1 filter: FAILED (failures=6)
 self-touch warning: FAILED (failures=1)
+reset_of lineage: FAILED (failures=1)
+lineage exempt: FAILED (failures=1)
 [exit 0]
 ```
 ## 6. The Check: regime-ci on this branch (its own task copy is the target; the precheck warning is expected until PR #411 merges)
@@ -198,12 +226,19 @@ All checks passed!
 ```console
 $ git diff --numstat origin/main...HEAD; git diff --numstat origin/main...HEAD | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/: %d of 300\nunder tests/: %d of 450\n\", o, t}"
 36	0	.github/workflows/regime.yml
-29	0	.orchestration/dotfiles-T133-regime-ci-a01/pr-body.md
-96	0	.orchestration/dotfiles-T133-regime-ci-a01/task.md
-250	0	scripts/orchestrator/regime-ci.py
-242	0	tests/unit/test_regime_ci.py
-outside tests/ and .orchestration/: 286 of 300
-under tests/: 242 of 450
+107	0	.orchestration/dotfiles-T133-regime-ci-a01/dotfiles-T133-regime-ci-a01-worker-crit.json
+16	0	.orchestration/dotfiles-T133-regime-ci-a01/dotfiles-T133-regime-ci-a01-worker-review-receipt.md
+16	0	.orchestration/dotfiles-T133-regime-ci-a01/learning.md
+38	0	.orchestration/dotfiles-T133-regime-ci-a01/pr-body.md
+128	0	.orchestration/dotfiles-T133-regime-ci-a01/report.md
+34	0	.orchestration/dotfiles-T133-regime-ci-a01/sandbox.md
+103	0	.orchestration/dotfiles-T133-regime-ci-a01/task.md
+215	0	.orchestration/dotfiles-T133-regime-ci-a01/validation.md
+259	0	scripts/orchestrator/regime-ci.py
+274	0	tests/unit/test_regime_ci.py
+1	0	tests/unit/test_workflow_security.py
+outside tests/ and .orchestration/: 295 of 300
+under tests/: 275 of 450
 [exit 0]
 ```
 ## 11. Premise 5, replayed through gh (outside the sandbox): the ruleset's required contexts do not include regime

@@ -27,7 +27,8 @@ Calls outside the sandbox, each through the permission gate (Worker Playbook ste
 | 2 | the create command for draft PR #418 (`--draft --repo mryfmo/dotfiles --base main --head tools/regime-ci-a01 --body-file …/pr-body.md`), one command | `gh` |
 | 3 | `gh pr checks 418` reads (a bounded loop) and `gh run view <run> --job <job> --log-failed` for the failed `test` jobs | `gh` |
 | 4 | premise 5: `gh api repos/mryfmo/dotfiles/rulesets/24397953 --jq …` (a read; validation §11) | `gh` |
-| 5 | `agmsg-dispatch … 'AGMSG-PONG v1 task_id=dotfiles-T133-regime-ci-a01 status=blocked …'` (message 2235, 13:36:50Z: the workflow-security allowlist amendment) | `agmsg-dispatch` |
+| 5 | `agmsg-dispatch … 'AGMSG-PONG v1 task_id=dotfiles-T133-regime-ci-a01 status=blocked …'` (message 2235, 13:36:50Z: the workflow-security allowlist amendment; answered by amendment 1 at 20:04:25Z) | `agmsg-dispatch` |
+| 5a | after amendment 1: `git fetch origin main` (inside the sandbox), the merge of 3e41e36a with its one conflict resolved (inside), then one push | `git push` |
 | 6 | `gh run view` of the `regime` job on the final head (validation §10), `gh pr ready 418`, and the Bot wait (`gh api` reads) | `gh` |
 | 7 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T133-regime-ci-a01 …'` | `agmsg-dispatch` |
 

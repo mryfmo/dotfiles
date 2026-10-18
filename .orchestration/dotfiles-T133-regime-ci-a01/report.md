@@ -9,7 +9,10 @@ feature_commit: 811dd3ce
 review_test_commit: 7311f004
 review_fix_commit: a1c90c78
 rereview_test_commit: 9a787b13
-task_sha256: da3965e6b10fd3fe743f2aee8849ee67b1cc1d55924357407485f7ca41610fbf
+amendment_commits: [e88480c2, 521516f4, 26c50932, a060b4a2]
+merge_commit: afd044f5
+previous_task_sha256: da3965e6b10fd3fe743f2aee8849ee67b1cc1d55924357407485f7ca41610fbf
+task_sha256: 0bca9954f0cefdc21c289249b9130d41d566c4eaadaf495565874868f04a402d
 precheck: pending-411
 ---
 
@@ -74,7 +77,7 @@ An independent read-only reviewer did the review: a fresh general-purpose subage
 1. Round 1 on `de3b73cc..811dd3ce` returned `Verdict: incorrect`: one P1, four P2 and seven P3.
    - The P1: a checker crash passed as clean.
    - Most P2 and P3 were fixed in a1c90c78 after the re-plan above, with tests in 7311f004 that are red at 69a3128f (§4a).
-   - P2-2, a PR with two task directories, is the spec gap below.
+   - P2-2, a PR with two task directories, was a spec gap; amendment 1 settles it (below).
    - P3-6 (the `orchestration/` head) is what the spec requires.
    - P3-5 was fixed earlier, in 69a3128f.
 2. Round 2 on `811dd3ce..a1c90c78`, the same reviewer with its context kept, returned `Verdict: correct`. Every fix claim held, and it found no new fail-open path. Its three surviving mutants are closed in 9a787b13: a prechecked change reverted to base, a verdict line with the wrong exit code, and the checkout's uv config. Its stale PR body (P3-d) is refreshed in `pr-body.md`.
@@ -92,15 +95,7 @@ An independent read-only reviewer did the review: a fresh general-purpose subage
 
 ## The operator's promotion step
 
-`regime` starts optional: the ruleset's seven required contexts do not include it (premise 5, §11). Making it required is the operator's ruleset step, through `ruleset-request.sh` once P1-14 lands. P2-2 (below) should be fixed before that step.
-
-## Proposed advisory (P2), for `dotfiles-T133-regime-ci-followup-a01`
-
-- P2-2: a PR that carries two task directories (a `reset_of` lineage such as #408, or a follow-up carrying a predecessor's records such as #413) fails each copy.
-  - Each copy's `allowed_files` and precheck are checked against the other task's paths.
-  - The reviewer's runs against #408 and #413 exit 1.
-  - Proposed: skip a target that another target names in `reset_of`, and allow every target's own `.orchestration/<t>/` paths for the others.
-  - It is outside Files item 2's per-copy rules. Its owner task file is the orchestrator's to write, under the Completion clause.
+`regime` starts optional: the ruleset's seven required contexts do not include it (premise 5, §11). Making it required is the operator's ruleset step, through `ruleset-request.sh` once P1-14 lands. P2-2 (two task copies) is settled by amendment 1 before that step.
 
 ## Residuals
 
@@ -110,14 +105,25 @@ An independent read-only reviewer did the review: a fresh general-purpose subage
 - The caps count additions plus deletions; a binary file counts 0 lines.
 - `allowed_files` globs: `/**` takes its prefix, and `*` and `?` stay within one segment. A `[...]` class is taken literally; none appears in the tree's task files.
 
-## Blocked: the workflow-security allowlist (an amendment requested)
+## Amendment 1 (AGMSG-TASK 2026-10-18T20:04:25Z, `task_sha256=0bca9954…`, `previous_task_sha256=da3965e6…`)
 
-PR #418's CI `test` jobs fail on `tests/unit/test_workflow_security.py::test_workflows_have_exact_top_level_permissions`. Its `EXPECTED_PERMISSIONS` allowlist names every workflow file, by design, and lacks `regime.yml`. The fix is one line, `"regime.yml": {"contents": "read"}`, in a file outside `allowed_files`. `AGMSG-PONG v1 … status=blocked` (message 2235, 13:36:50Z) asks for the amendment. The job `regime` itself passes on the PR (§10).
+- **The allowlist line.** My blocked PONG of 13:36:50Z (message 2235) reported that PR #418's `test` jobs failed only on `tests/unit/test_workflow_security.py::test_workflows_have_exact_top_level_permissions`.
+  - Its `EXPECTED_PERMISSIONS` allowlist names every workflow, by design.
+  - The amendment adds that module to `allowed_files` for exactly one line. 521516f4 adds `"regime.yml": {"contents": "read"}`, and the module differs from `origin/main` by that line alone (validation §4c).
+- **The merge of main.** `origin/main` moved to 3e41e36a (#409), which inserted `private-bootstrap.yaml` at the same place in that dict.
+  - The branch took it by the merge afd044f5. The one conflict was that hunk, resolved by keeping both entries in order.
+  - The workflow tests of #409 (`test_workflow_orchestration_skip`, `test_ci_rerun`) and `test_workflow_security` pass on the merged tree.
+- **The two-copies gap** (round 1's P2-2) is settled in the text.
+  - When a later copy's `reset_of` names an earlier copy in the same pull request, regime-ci checks only the latest copy and prints `regime-ci: warning: <t>: predecessor copy <path> (reset_of of <later>)` for each earlier one (26c50932).
+  - My reading, which the lineage needs in order to pass ("checks only the latest copy"): the predecessor's own `.orchestration/<t>/` paths are neither a stray of the later copy nor precheck drift for it.
+  - A copy that no later copy names is still its own target.
+  - Test: `test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage` (e88480c2) is red at 7e8851f0's script (§4b), and two more mutants are killed (§5a, 21 in all).
+- **The cap.** The docstring is condensed so the script stays within the 300-line cap (295).
 
 ## Caps (§9)
 
-- Outside `tests/` and `.orchestration/`: regime.yml and regime-ci.py against the cap of 300 (the counts are in §9).
-- `tests/`: test_regime_ci.py against the cap of 450.
+- Outside `tests/` and `.orchestration/`: 295 of 300 (regime.yml 36, regime-ci.py 259).
+- `tests/`: 275 of 450 (test_regime_ci.py 274, test_workflow_security.py 1).
 
 ## PR
 

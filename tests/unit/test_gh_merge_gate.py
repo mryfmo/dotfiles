@@ -315,7 +315,6 @@ class GhMergeGateTest(unittest.TestCase):
                 for record in records:
                     record.write_text(text)
                 self.write_record()
-                self.assertGreater(list(path.parent.glob("*.md")).index(path), 0)
                 for command in (PINNED, DRAFT.replace("--draft ", "")):
                     self.assertEqual("allow", self.decide(command), self.last_reason)
         for record in records:

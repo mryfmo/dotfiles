@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import subprocess
 import tempfile
 import time
@@ -28,7 +29,8 @@ EXPECTED_TOOLS = {
 class StatuslineToolsTest(unittest.TestCase):
     def commands(self) -> tuple[str, str]:
         ccusage = json.loads(CCUSAGE_SETTINGS.read_text())["lines"][0][0]["commandPath"]
-        ccstatusline = json.loads(CLAUDE_SETTINGS.read_text())["statusLine"]["command"]
+        render = runpy.run_path(str(ROOT / "home/dot_claude/modify_private_settings.json"))["render_managed_template"]
+        ccstatusline = json.loads(render(CLAUDE_SETTINGS.read_text()))["statusLine"]["command"]
         return ccusage, ccstatusline
 
     def test_mise_config_declares_the_statusline_tools_behind_the_cooldown(self) -> None:

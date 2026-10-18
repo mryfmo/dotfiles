@@ -19,6 +19,7 @@
 #   `head=` set to that commit. A masker failure removes the logs instead. `--secrets <file>` (the pre-push hook) and
 #   `--staged` (`format` and `shellcheck` on the staged files, the pre-commit hook) run only those checks.
 # shortcut: a Claude seat cannot run codex inside its Bash sandbox (local-review.sh's header), so the orchestrator's acceptance runs the local review on the head as today; upgrade to seat when the seats run omp (plan 024 phase 2 B)
+# shortcut: inside a Claude seat's sandbox the full suite fails on sandbox-denied operations, so a seat runs the precheck with --tests on its task's modules and CI runs the full suite; upgrade when the seats run omp (plan 024 phase 2 B)
 # @arg $1 string Task id: letters, digits, `.`, `_` and `-`.
 # @option --tests <module>... Unittest modules to run instead of `make unit-test`.
 # @option --previous-head <sha40> The `previous_head=` of a `status=revise` ACCEPTANCE; needs `--check`.
@@ -205,7 +206,6 @@ mask "${logs[@]}" > /dev/null || {
     echo "result-precheck: the masker failed; the logs are removed and no record is written" >&2
     exit 1
 }
-# Writes precheck.json and result.txt, prints the precheck= line, and exits 1 when a check or a selector failed.
 read -r -d '' writer << 'PY' || true
 import hashlib, json, os, sys
 from datetime import UTC, datetime

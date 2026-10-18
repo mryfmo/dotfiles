@@ -189,6 +189,10 @@ if [[ -n ${parent} && -f ${from}.md && -f ${from}.md.last.md ]] && "${git}" -C "
     # conflict (merge-tree exits 1) or any edit made in the merge gets a fresh audit (re-plan R1).
     tree=$("${git}" -C "${main}" merge-tree --write-tree "${head}^1" "${head}^2") || tree=''
     [[ -n ${tree} && ${tree} == "$("${git}" -C "${main}" rev-parse "${head}^{tree}")" ]] || old=''
+    # The receipt names its head by 7 characters only: the parent's chain log must name the parent's full sha in its
+    # verdict line, so a commit ground to the same prefix never loads another head's audit (PR #413 thread 4306231809).
+    /usr/bin/awk -v t="${task}" -v p="${parent}" '$1 == "chain-integrate:" && $2 == t && $3 == p { f = 1 } END { exit !f }' \
+        "${v}/${task}-chain-${parent:0:7}.log" 2> /dev/null || old=''
 fi
 if [[ -n ${old} && ${old%% *} == "${new%% *}" ]]; then
     for s in .md .md.last.md; do

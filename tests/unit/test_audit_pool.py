@@ -1,7 +1,4 @@
-"""Exercise audit-pool.sh, orch-audit.sh's json mode, .schemas/audit.json and .schemas/classes.yaml in a temporary repository.
-
-Fakes on PATH: codex (answers `$CALLS/message-<task>`; a 429 while `$CALLS/fail-<task>` counts down), sleep, and uv
-(runs this interpreter). No model, sleep or network is reached."""
+"""Exercise audit-pool.sh, orch-audit.sh's json mode and .schemas/ with fake codex, sleep and uv on PATH."""
 
 import json
 import os
@@ -13,7 +10,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-UV = f'#!/usr/bin/env bash\nshift\nwhile [[ $1 == --* ]]; do [[ $1 == --with ]] && shift; shift; done\n[[ $1 == python ]] && shift\nexec "{sys.executable}" "$@"\n'
+UV = f'#!/usr/bin/env bash\nshift\nwhile [[ $1 == --* ]]; do [[ $1 == --with ]] && shift; shift; done\n[[ $1 == python ]] && shift\n[[ -f $CALLS/mask-fails && "$*" == *--mask-secrets* ]] && exit 1\nexec "{sys.executable}" "$@"\n'
 CODEX = """#!/usr/bin/env bash
 task=$(grep -o 'Audit task [^ ]*' <<< "$*" | cut -d' ' -f3)
 printf '%s\\n' "$*" >> "$CALLS/codex.log"
@@ -60,6 +57,7 @@ class AuditPoolTest(unittest.TestCase):
         shutil.copytree(ROOT / ".schemas", self.repo / ".schemas")
         (self.repo / "scripts/orchestrator/ledger-check.py").write_text("print('ledger ok')\n")
         (self.repo / "scripts/validate-agent-assets.py").write_text("")
+        (self.repo / "scripts/orchestrator/fail-check.py").write_text("raise SystemExit(1)\n")
         for name, text in (("uv", UV), ("codex", CODEX), ("sleep", SLEEP)):
             (bin_dir / name).write_text(text)
             (bin_dir / name).chmod(0o755)
@@ -85,7 +83,6 @@ class AuditPoolTest(unittest.TestCase):
         return out.stdout.strip()
 
     def head(self, task):
-        """A new commit on the PR branch, the task's sweep with no gap, and the fake codex's answer for it."""
         self.git("commit", "-q", "--allow-empty", "-m", task, cwd=self.temp / "pr")
         head = self.git("rev-parse", "HEAD", cwd=self.temp / "pr")
         (self.validation / f"{task}-pr-feedback.json").write_text('{"items": []}')
@@ -177,15 +174,26 @@ class AuditPoolTest(unittest.TestCase):
                 result = self.run_script("orch-audit.sh", "t1-a01", "--head", head, 9, "--json", out, code=3)
                 self.assertIn("json block is missing or invalid", result.stderr)
                 self.assertFalse(out.exists())
-        main = self.git("rev-parse", "HEAD")
-        self.assertIn(
-            "at the audited head", self.run_script("orch-audit.sh", "t1-a01", "--head", main, 9, code=2).stderr
+        v, mask = "scripts/validate-agent-assets.py", self.calls / "mask-fails"
+        sweep = self.validation / "t1-a01-pr-feedback.json"
+        refusals = (  # every refusal kept, in an order that restores the state each one changed
+            (lambda: None, "at the audited head", 2, (self.git("rev-parse", "HEAD"), 9)),
+            (lambda: None, "not a commit", 2, ("1" * 40, 9)),
+            (lambda: (self.repo / v).write_text("x = 1\n"), "the validator differs from HEAD", 2, (head, 9)),
+            (lambda: (self.git("checkout", v), self.git("rm", "-q", "--cached", v)), "is untracked", 2, (head, 9)),
+            (
+                lambda: self.git("add", v),
+                "incomplete",
+                3,
+                (head, 9, "--ledger-check", "scripts/orchestrator/fail-check.py"),
+            ),
+            (lambda: mask.write_text(""), "the masker failed", 3, (head, 9)),
+            (lambda: (mask.unlink(), sweep.write_text('{"items": [{"url": "u"}]}')), "sweep has gaps", 3, (head, 9)),
         )
-        self.assertIn("not a commit", self.run_script("orch-audit.sh", "t1-a01", "--head", "1" * 40, 9, code=2).stderr)
-        (self.validation / "t1-a01-pr-feedback.json").write_text('{"items": [{"url": "u"}]}')
-        self.assertIn(
-            "the sweep has gaps", self.run_script("orch-audit.sh", "t1-a01", "--head", head, 9, code=3).stderr
-        )
+        for setup, expected, code, args in refusals:
+            with self.subTest(expected=expected):
+                setup()
+                self.assertIn(expected, self.run_script("orch-audit.sh", "t1-a01", "--head", *args, code=code).stderr)
 
     def test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class(self):
         schema = json.loads((ROOT / ".schemas/audit.json").read_text())

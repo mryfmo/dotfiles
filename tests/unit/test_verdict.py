@@ -1,8 +1,4 @@
-"""Exercise scripts/orchestrator/verdict.sh on a fixture repository where every condition holds, then break one.
-
-Fakes answer from `$CALLS`: gh, dispatch.sh, pr-feedback.py and regime-counters.sh (which, like the real one, prints no
-S1 line under --history-only); orch-audit.sh's --validate and uv are real. The PR head adds precheck.json naming its parent.
-"""
+"""Exercise verdict.sh where all nine conditions hold, then break each; gh, dispatch, sweep and counters are fakes."""
 
 import hashlib
 import json

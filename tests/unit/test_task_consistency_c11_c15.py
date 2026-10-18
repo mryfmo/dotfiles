@@ -100,7 +100,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         result = subprocess.run(
             [*run, "--root", str(root or self.repo), *map(str, tasks)], capture_output=True, text=True
         )
-        return result.returncode, result.stdout
+        return result.returncode, result.stdout + result.stderr
 
     def task(self, text):
         path = self.repo / ".orchestration/tasks/dotfiles-T9-base-a01.md"
@@ -126,7 +126,9 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         for cmd in ("no-such-tool-a01 --list", "no-such-tool-a01 --help | /usr/bin/grep -c x"):
             code, out = self.check(self.task(BASE.replace("command: printf base", f"command: {cmd}")))
             self.assertEqual(code, 0, out)
-            self.assertIn("C14: tool absent no-such-tool-a01", out)
+            # stdout holds the verdict alone; the warning is stderr's, so no finding parser reads it.
+            warning = "dotfiles-T9-base-a01.md: OK\ndotfiles-T9-base-a01.md: C14: tool absent no-such-tool-a01: "
+            self.assertTrue(out.startswith(warning), out)
         current = sorted((ROOT / ".orchestration/tasks").glob("dotfiles-T133-*.md"))
         with self.subTest(green="the current dotfiles-T133 task files"):
             if not current:

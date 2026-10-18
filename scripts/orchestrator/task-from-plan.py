@@ -216,7 +216,7 @@ One PR from a fresh branch off `origin/main`. The Completion clause of `{COMPLET
         text=True,
         check=False,
     )
-    print(verdict.stdout, end="")
+    print(verdict.stdout + verdict.stderr, end="")
     return 0 if verdict.returncode == 0 else 1
 
 

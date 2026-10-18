@@ -3,6 +3,7 @@
 `uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py [--root <repo>] <task.md>...`
 resolves the design path (C6) and probes origin/main with git (C8 to C10) under --root (default: the first file's git
 toplevel), prints `<file name>: OK` or `: FAIL` with one `  C<n> ...` line per finding, and exits 1 when any file fails.
+C14's notes and warnings, never findings, go to stderr as `<file name>: <note>`.
 C1 task_id equals the file name.
 C2 allowed_files covers .orchestration/<task_id>/** and names no other task's .orchestration/<id>/ directory.
 C3 when reset_of is non-empty, a threat_table row names every reset_of id's task.md and the task's own.
@@ -216,8 +217,10 @@ def main():
     rc = 0
     for p in args.tasks:
         fails = check(p, args.root)
-        bad = [f for f in fails if not f.startswith((SKIPPED, ABSENT))]
-        print(f"{p.name}: {'FAIL' if bad else 'OK'}", *fails, sep="\n  ")
+        notes = [f for f in fails if f.startswith((SKIPPED, ABSENT))]
+        bad = [f for f in fails if f not in notes]
+        print(f"{p.name}: {'FAIL' if bad else 'OK'}", *bad, sep="\n  ")
+        print(*(f"{p.name}: {n}" for n in notes), sep="\n", file=sys.stderr, end="\n" if notes else "")
         rc |= bool(bad)
     return rc
 

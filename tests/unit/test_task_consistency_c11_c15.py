@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CHECKER = ROOT / "scripts/orchestrator/task-consistency-check.py"
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+UNTRUSTED = "dotfiles-T9-base-a01.md: warning: C14: not run (no trusted sha)\n"  # the checker's stderr line
 NONPATH = "".join(
     f'  - control: {name}\n    disposition: "residual: the fixture\'s control for {name}"\n'
     for name in (
@@ -103,7 +104,10 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I", str(CHECKER)]
         trusted = ["--premises-sha", sha] if sha else []
         result = subprocess.run(
-            [*run, "--root", str(root or self.repo), *trusted, *map(str, tasks)], capture_output=True, text=True
+            [*run, "--root", str(root or self.repo), *trusted, *map(str, tasks)],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         return result.returncode, result.stdout + result.stderr
 
@@ -132,7 +136,9 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             code, out = self.check(self.task(BASE.replace("command: printf base", f"command: {cmd}")))
             self.assertEqual(code, 0, out)
             # stdout holds the verdict alone; the warning is stderr's, so no finding parser reads it.
-            warning = "dotfiles-T9-base-a01.md: OK\ndotfiles-T9-base-a01.md: C14: tool absent no-such-tool-a01: "
+            warning = (
+                "dotfiles-T9-base-a01.md: OK\ndotfiles-T9-base-a01.md: warning: C14: tool absent no-such-tool-a01: "
+            )
             self.assertTrue(out.startswith(warning), out)
         current = sorted((ROOT / ".orchestration/tasks").glob("dotfiles-T133-*.md"))
         with self.subTest(green="the current dotfiles-T133 task files"):
@@ -152,9 +158,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             with self.subTest(sha=sha):
                 code, out = self.check(path, sha=sha)
                 self.assertEqual((code, marker.exists()), (0, False), out)
-                self.assertEqual(
-                    out, "dotfiles-T9-base-a01.md: OK\ndotfiles-T9-base-a01.md: C14: not run (no trusted sha)\n"
-                )
+                self.assertEqual(out, f"dotfiles-T9-base-a01.md: OK\n{UNTRUSTED}")
         self.assertEqual(self.check(path), (0, "dotfiles-T9-base-a01.md: OK\n"))
         self.assertTrue(marker.exists())
         marker.unlink()
@@ -162,6 +166,95 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         code, out = self.check(edited)
         self.assertEqual((code, marker.exists()), (1, True), out)
         self.assertIn("C14 premise output differs from its rerun", out)
+
+    def publish(self, files):
+        """Commit files and push them, so origin/main carries them as C10, C12 and C15 read it."""
+        for rel, text in files.items():
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / rel).write_text(text)
+        for args in (("add", "-A"), ("commit", "-q", "-m", "publish"), ("push", "-q", "origin", "main")):
+            subprocess.run(
+                ["git", "-c", "commit.gpgsign=false", *args], cwd=self.repo, env={**os.environ, **GIT_ENV}, check=True
+            )
+        subprocess.run(["git", "fetch", "-q", "origin"], cwd=self.repo, check=True)
+
+    def test_c14_without_a_trusted_sha_reports_an_explicit_warning(self):
+        # The audit of 9da0ed3 (P2, item 8): with no trusted sha C14 runs nothing and says so as a warning, so a
+        # structural OK is never read as premises that passed.
+        marker = self.repo / "marker"
+        path = self.task(BASE.replace("command: printf base", f"command: touch {marker}; printf base"))
+        code, out = self.check(path, sha=None)
+        self.assertEqual((code, marker.exists(), out), (0, False, f"dotfiles-T9-base-a01.md: OK\n{UNTRUSTED}"))
+
+    def test_c15_requires_the_design_assigned_invariant_id_set(self):
+        # The audit of 9da0ed3 (P2, item 9): the design's implementing_tasks fixes the task's invariant ids, so an
+        # omitted map, a missing or an extra id is a finding as much as a changed sentence.
+        one, two = '"the tool prints one line per finding"', '"the tool exits 1 on a finding"'
+        design = (
+            f"implementing_tasks:\n  dotfiles-T9-base-a01: [INV-1, INV-2]\ninvariants:\n  INV-1: {one}\n  INV-2: {two}"
+        )
+        self.publish({".orchestration/tasks/dotfiles-T9-design-a01.md": f"---\nformat: 2\n{design}\n---\n\n# design\n"})
+        block, d = f"invariants:\n  INV-1: {one}\n", ".orchestration/tasks/dotfiles-T9-design-a01.md"
+        missing = f"C15 invariant {{}} that {d} assigns to dotfiles-T9-base-a01 is missing"
+        cases = {
+            "only INV-1": (block, [missing.format("INV-2")]),
+            "no map": ("", [missing.format("INV-1"), missing.format("INV-2")]),
+            "an extra id": (
+                block + f"  INV-2: {two}\n  INV-3: {two}\n",
+                [f"C15 invariant INV-3 is not one {d} assigns to dotfiles-T9-base-a01"],
+            ),
+            "a changed sentence": (
+                block + '  INV-2: "the tool exits 2"\n',
+                [f"C15 invariant INV-2 is not byte-equal to {d} on origin/main"],
+            ),
+            "the whole assignment": (block + f"  INV-2: {two}\n", []),
+        }
+        for name, (invariants, want) in cases.items():
+            with self.subTest(case=name):
+                _, out = self.check(self.task(BASE.replace(block, invariants)))
+                self.assertEqual([l.strip() for l in out.splitlines() if l.strip().startswith("C15")], want, out)
+
+    def test_c12_classifies_concrete_glob_matches_before_the_glob_spelling(self):
+        # The audit of 9da0ed3 (P2, items 10 and 19): install/** spells no applied kind, but the shell script it matches
+        # is executed, so it needs its concrete row; a tests/fixtures/ glob stays exempt.
+        self.publish({"install/setup.sh": "echo setup\n", "tests/fixtures/x/run.sh": "echo x\n"})
+        rows = '  - control: "install/** (the installers)"\n    disposition: "residual: the C12 case\'s glob entry"\n'
+        rows += (
+            '  - control: "tests/fixtures/x/** (fixtures)"\n    disposition: "residual: the C12 case\'s exempt glob"\n'
+        )
+        task = BASE.replace("  - scripts/tool.py\n", "  - scripts/tool.py\n  - install/**\n  - tests/fixtures/x/**\n")
+        task = task.replace("threat_table:\n", "threat_table:\n" + rows)
+        code, out = self.check(self.task(task))
+        self.assertEqual(
+            (code, out.splitlines()[1:]),
+            (1, ["  C12 the glob install/** matches install/setup.sh, which no threat_table row names"]),
+        )
+        named = '  - control: "install/setup.sh (the setup script)"\n    disposition: "residual: the C12 case\'s concrete row"\n'
+        self.assertEqual(
+            self.check(self.task(task.replace("threat_table:\n", "threat_table:\n" + named))),
+            (0, "dotfiles-T9-base-a01.md: OK\n"),
+        )
+
+    def test_c10_never_passes_a_literal_as_a_git_grep_option(self):
+        # PR #418's review (item 20): a backticked literal reaches git grep after -e, so `--open-files-in-pager=<cmd>` is
+        # searched for and never run; the old call ran it as soon as the working tree held a match for origin/main.
+        marker = self.repo.parent / "pager-ran"
+        (self.repo / "scripts/tool.py").write_text("print('origin/main')\n")
+        literal = f"--open-files-in-pager=touch {marker}"
+        rule = f'\nThe rule: "scripts/tool.py reads `{literal}` before every run of the gate".\n'
+        _, out = self.check(self.task(BASE.replace("kind: code", "kind: docs") + rule))
+        self.assertFalse(marker.exists(), out)
+        self.assertIn(f"C10 rule sentence names scripts/tool.py beside the literal `{literal}`", out)
+
+    def test_c6_confines_design_paths_to_the_checkout(self):
+        # PR #418's review (item 20): a design path that leaves --root is a finding and is never opened.
+        outside = self.repo.parent / "outside/design.md"
+        outside.parent.mkdir()
+        outside.write_text("---\ndesign_review:\n  receipt: r9-outside\n---\n")
+        task = BASE.replace("design: .orchestration/tasks/dotfiles-T9-design-a01.md", "design: ../outside/design.md")
+        _, out = self.check(self.task(task))
+        self.assertIn("C6 design path ../outside/design.md is outside the checkout", out)
+        self.assertNotIn("r9-outside", out)
 
 
 if __name__ == "__main__":

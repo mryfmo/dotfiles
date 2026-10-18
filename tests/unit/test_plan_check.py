@@ -68,7 +68,9 @@ class PlanCheckTest(unittest.TestCase):
         # real gh), so the stub goes first inside uv run, as in test_task_checkers.py.
         stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
         run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first, str(PLAN_CHECK)]
-        result = subprocess.run([*run, "--root", str(self.root), *args], env=self.env, capture_output=True, text=True)
+        result = subprocess.run(
+            [*run, "--root", str(self.root), *args], env=self.env, capture_output=True, text=True, check=False
+        )
         return result.returncode, result.stdout.splitlines()
 
     def edit(self, rel, old, new):
@@ -98,10 +100,61 @@ class PlanCheckTest(unittest.TestCase):
             self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\nrun gh pr merge 77 --admin\n")
             code, lines = self.plan_check("--invariants")
             self.assertEqual((code, lines), (1, ["invariant: 024-execution.md:3 gh pr merge --admin or --auto"]))
-        with self.subTest(rule="F2 glob"):  # a glob entry overlaps the concrete path it matches
+        with self.subTest(rule="F2 glob"):  # a glob entry overlaps the literal path it matches, named concretely
             self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", "scripts/*.py")
-            want = "F2 024-omp-cutover-and-corrective-order.md:11 P-W0 P1-1 and P1-2 share scripts/*.py"
+            want = "F2 024-omp-cutover-and-corrective-order.md:11 P-W0 P1-1 and P1-2 share scripts/two.py"
             self.assertEqual(self.plan_check(), (1, [want]))
+
+    def test_f2_detects_intersecting_globs_through_concrete_tree_matches(self):
+        # The audit of 9da0ed3 (P2, item 11): two globs overlap through a file both match in the tree; their spellings
+        # never decide disjointness.
+        self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", "scripts/test_*.py")
+        self.edit(".orchestration/tasks/dotfiles-T2-two-a01.md", "scripts/two.py", "scripts/*_check.py")
+        (self.root / "scripts").mkdir()
+        (self.root / "scripts/test_other.py").write_text("")
+        self.assertEqual(self.plan_check(), (0, []))
+        (self.root / "scripts/test_check.py").write_text("")
+        want = "F2 024-omp-cutover-and-corrective-order.md:11 P-W0 P1-1 and P1-2 share scripts/test_check.py"
+        self.assertEqual(self.plan_check(), (1, [want]))
+
+    def test_drift_uses_the_latest_timestamped_acceptance_for_the_same_task(self):
+        # The audit of 9da0ed3 (P2, item 16): the task's latest event by timestamp decides, not the last textual match,
+        # and another task's event never does.
+        line = "[2026-10-18T{}:00:00Z] o → w: AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-{}-a01 status={}\n"
+        record = self.root / ".orchestration/acceptance/dotfiles-T1-one-a01.md"
+        record.parent.mkdir(parents=True)
+        events = (("05", "one", "accepted"), ("04", "one", "revise"), ("06", "other", "withdrawn"))
+        record.write_text("".join(line.format(*e) for e in events))
+        progress = PLANS + "024-progress.tsv"
+        self.edit(progress, "updated_jst\n", "updated_jst\ndotfiles-T1-one-a01\ttask\tone\taccepted\te\tt\n")
+        self.assertEqual(self.plan_check("--drift"), (0, []))
+        self.edit(progress, "\taccepted\t", "\trevise\t")
+        want = "drift: 024-progress.tsv:2 dotfiles-T1-one-a01 revise != accepted"
+        self.assertEqual(self.plan_check("--drift"), (1, [want]))
+
+    def test_drift_checks_every_sha_and_state_for_each_pr_occurrence(self):
+        # The audit of 9da0ed3 (P2, item 17): every sha and state near one #<pr> is compared on its own, so a matching
+        # head never hides a conflicting state; association stops at the next #<pr>.
+        self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\n#77 abc1234 merged; #78 abc1234 def4567\n")
+        code, lines = self.plan_check("--drift")
+        live = "abc1234" + "0" * 5
+        want = ["drift: 024-execution.md:3 #77 merged != OPEN", f"drift: 024-execution.md:3 #78 def4567 != {live}"]
+        self.assertEqual((code, lines), (1, want))
+
+    def test_invariants_reject_nonempty_quoted_oauth_token_assignments(self):
+        # The audit of 9da0ed3 (P2, item 18): quoted and unquoted non-empty values are refused, an empty one is not, and
+        # no diagnostic carries the value (built at run time).
+        name, value = "ANTHROPIC_OAUTH_" + "TOKEN", "fixture-" + "x" * 8
+        self.edit(
+            PLANS + "024-execution.md",
+            "# x\n",
+            f'# x\n\n{name}="{value}"\n{name}=\'{value}\'\n{name}={value}\n{name}=""\n',
+        )
+        code, lines = self.plan_check("--invariants")
+        self.assertEqual(
+            (code, lines), (1, [f"invariant: 024-execution.md:{n} {name} with a value" for n in (3, 4, 5)])
+        )
+        self.assertNotIn(value, "\n".join(lines))
 
 
 if __name__ == "__main__":

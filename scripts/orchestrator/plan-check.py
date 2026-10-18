@@ -5,20 +5,27 @@ reads the eleven `.orchestration/plans/024-*` files under --root (default: the c
 violation on its own line and exits 1 when there is one, 0 otherwise. It writes nothing.
 F1 every 024-todo.md table row has a non-empty completion (last) column.
 F2 the tasks one wave row of the plan's section 6 names have pairwise-disjoint allowed_files once their task files
-   exist (a task file belongs to the todo id its `# ` title line names).
+   exist (a task file belongs to the todo id its `# ` title line names): each glob entry stands for the tree files it
+   matches, a literal entry for itself, and two lists overlap where a path is in both or inside the other's directory,
+   or where a literal matches the other's glob; the finding names the first shared path. Glob spellings are never
+   compared with each other.
 F3 every P1-<n> row names a bottleneck id: a B<n> row of 024-design-mechanism.md or an M<n> row of 024-design-quality.md.
 F4 every DoD row of 024-checklists.md holds a backtick command or a file path.
 F5 every decision row of the plan's section 2 has a bold default.
 F6 every cited dotfiles-T<n>-... id is a task file, every D-... id a row of .orchestration/decisions.tsv, and with
    --drift every #<pr> a pull request.
---drift: a #<pr> followed on its line within 40 characters by a head sha or a state word (CLEAN, BEHIND, draft, merged,
-   closed) against `gh pr view`, and every 024-progress.tsv row naming a task against the latest AGMSG-ACCEPTANCE
-   status of its acceptance record: `drift: <file>:<line> <cited> != <live>`.
---invariants: ANTHROPIC_OAUTH_TOKEN= with a value, `git push origin main`, `gh pr merge` with --admin or --auto in the
+--drift: every head sha or state word (CLEAN, BEHIND, draft, merged, closed) that starts within 40 characters after a
+   #<pr> on its line, before the next #, each compared on its own against `gh pr view`; and every 024-progress.tsv row
+   naming a task against the status of that task's latest AGMSG-ACCEPTANCE event (task_id=<task>) in its acceptance
+   record, latest by the last timestamp before the event on its line, then by line (an untimed event ranks below every
+   timed one): `drift: <file>:<line> <cited> != <live>`.
+--invariants: ANTHROPIC_OAUTH_TOKEN= with a value (bare, single- or double-quoted; an empty "" or '' is none),
+   `git push origin main`, `gh pr merge` with --admin or --auto in the
    plan files, and a claude.permissions.ask entry home/dot_agents/agent-config.yaml adds against origin/main.
 """
 
 import argparse
+import glob
 import json
 import pathlib
 import re
@@ -35,10 +42,11 @@ except ImportError:
 PLANS = ".orchestration/plans"
 TASK_ID = r"\bdotfiles-T\d+(?:-[a-z0-9]+)+"
 DECISION_ID = r"\bD-(?!W\d)[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
+GLOB = re.compile(r"[*?[]")
 STATES = {"CLEAN": ("mergeStateStatus", "CLEAN"), "BEHIND": ("mergeStateStatus", "BEHIND"), "draft": ("isDraft", True)}
 STATES |= {"merged": ("state", "MERGED"), "closed": ("state", "CLOSED")}
 FORBIDDEN = {
-    "ANTHROPIC_OAUTH_TOKEN with a value": r"ANTHROPIC_OAUTH_TOKEN=[^\s`'\")<]",
+    "ANTHROPIC_OAUTH_TOKEN with a value": r"ANTHROPIC_OAUTH_TOKEN=(?:\"[^\"\n]+\"|'[^'\n]+'|[^\s`'\")<])",
     "git push origin main": r"git push origin main\b",
     "gh pr merge --admin or --auto": r"gh pr merge\b[^\n]*?--(?:admin|auto)\b",
 }
@@ -70,6 +78,35 @@ def section(lines, number):
     return [""] * (start + 1) + lines[start + 1 : end]  # keeps the file's line numbers
 
 
+def scope(root, entries):
+    """(paths, globs) of an allowed_files list: its literals and the tree files each glob matches, and its globs."""
+    globs = {e for e in entries if GLOB.search(e)}
+    paths = {e.rstrip("/") for e in entries if e not in globs}
+    for g in globs:
+        paths |= {p for p in glob.glob(g, root_dir=root, recursive=True, include_hidden=True) if (root / p).is_file()}
+    return paths, globs
+
+
+def shared(a, b):
+    (pa, ga), (pb, gb) = a, b
+    out = {x for x in pa for y in pb if x == y or x.startswith(y + "/")}
+    out |= {y for x in pa for y in pb if y.startswith(x + "/")}
+    # A literal not yet in the tree overlaps a glob it matches (fnmatch's * also crosses /, which errs toward a report).
+    out |= {x for x in pa for g in gb if fnmatchcase(x, g)} | {y for y in pb for g in ga if fnmatchcase(y, g)}
+    return sorted(out)
+
+
+def latest(text, tid):
+    """The status of tid's latest AGMSG-ACCEPTANCE event, or none."""
+    events = []
+    for i, line in enumerate(text.splitlines()):
+        m = re.search(rf"AGMSG-ACCEPTANCE v1 (?=.*\btask_id={re.escape(tid)}(?![\w-])).*?\bstatus=(\S+)", line)
+        if m:
+            stamps = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?", line[: m.start()])
+            events.append((stamps[-1] if stamps else "", i, m.group(1)))
+    return max(events)[2] if events else "none"
+
+
 def form(root, files):
     out = []
     todo, plan = files["024-todo.md"], files["024-omp-cutover-and-corrective-order.md"]
@@ -86,20 +123,14 @@ def form(root, files):
         title = next((l for l in p.read_text().splitlines() if l.startswith("# ")), "")
         for tid in set(re.findall(r"\bP1-\d+[a-z]?\b", title)):
             allowed = (yaml.safe_load(p.read_text().split("\n---\n", 1)[0].lstrip("-\n")) or {}).get("allowed_files")
-            tasks.setdefault(tid, set()).update(re.sub(r"(/\*\*|/\*|\*)$", "", a) for a in allowed or [])
+            tasks.setdefault(tid, set()).update(allowed or [])
+    tasks = {tid: scope(root, entries) for tid, entries in tasks.items()}
     for n, c in table_rows(section(plan, 6)):  # F2
         wave = sorted(set(re.findall(r"\bP1-\d+[a-z]?\b", " ".join(c[1:]))) & set(tasks))
         for i, a in enumerate(wave):
             for b in wave[i + 1 :]:
-                # A glob entry overlaps whatever it matches (fnmatch's * also crosses /, which errs toward a report).
-                shared = sorted(
-                    x
-                    for x in tasks[a]
-                    for y in tasks[b]
-                    if x.startswith(y + "/") or y.startswith(x + "/") or fnmatchcase(x, y) or fnmatchcase(y, x)
-                )
-                if shared:
-                    out.append(f"F2 024-omp-cutover-and-corrective-order.md:{n} {c[0]} {a} and {b} share {shared[0]}")
+                if both := shared(tasks[a], tasks[b]):
+                    out.append(f"F2 024-omp-cutover-and-corrective-order.md:{n} {c[0]} {a} and {b} share {both[0]}")
     for n, c in table_rows(files["024-checklists.md"]):  # F4
         if not re.search(r"`[^`]+`|[\w.~-]*/[\w./-]+|\b\w+\.(?:md|json|tsv|ya?ml|sh|py)\b", " ".join(c[1:])):
             out.append(f"F4 024-checklists.md:{n} {c[0]} holds no backtick command or file path")
@@ -134,30 +165,28 @@ def drift(root, files):
             for number in dict.fromkeys(re.findall(r"#(\d{2,6})\b", line)):
                 if pr(number) is None:
                     out.append(f"F6 {name}:{n} cites #{number}, which is not a pull request")
-            for m in re.finditer(
-                r"#(\d{2,6})\b([^#\n]{0,40}?)\b([0-9a-f]{7,40}|CLEAN|BEHIND|draft|merged|closed)\b", line
-            ):
+            found = {}
+            for m in re.finditer(r"#(\d{2,6})\b([^#\n]*)", line):
                 state = pr(m.group(1))
                 if state is None:
                     continue
-                cited = m.group(3)
-                if cited in STATES:
-                    key, want = STATES[cited]
-                    if state.get(key) != want:
-                        out.append(f"drift: {name}:{n} #{m.group(1)} {cited} != {state.get(key)}")
-                elif not state.get("headRefOid", "").startswith(cited):
-                    out.append(f"drift: {name}:{n} #{m.group(1)} {cited} != {state.get('headRefOid', '')[:12]}")
+                tokens = re.finditer(r"\b([0-9a-f]{7,40}|CLEAN|BEHIND|draft|merged|closed)\b", m.group(2))
+                for cited in dict.fromkeys(t.group() for t in tokens if t.start() <= 40):
+                    if cited in STATES:
+                        key, want = STATES[cited]
+                        if state.get(key) != want:
+                            found[f"drift: {name}:{n} #{m.group(1)} {cited} != {state.get(key)}"] = None
+                    elif not state.get("headRefOid", "").startswith(cited):
+                        found[f"drift: {name}:{n} #{m.group(1)} {cited} != {state.get('headRefOid', '')[:12]}"] = None
+            out += found
     for n, line in enumerate(files["024-progress.tsv"][1:], 2):
         tid, *rest = line.split("\t")
         record = root / f".orchestration/acceptance/{tid}.md"
         if not rest or not (root / f".orchestration/tasks/{tid}.md").is_file():
             continue
-        statuses = (
-            re.findall(r"AGMSG-ACCEPTANCE v1 \S.*?\bstatus=(\S+)", record.read_text()) if record.is_file() else []
-        )
-        latest = statuses[-1] if statuses else "none"
-        if len(rest) > 2 and rest[2] != latest:
-            out.append(f"drift: 024-progress.tsv:{n} {tid} {rest[2]} != {latest}")
+        live = latest(record.read_text(), tid) if record.is_file() else "none"
+        if len(rest) > 2 and rest[2] != live:
+            out.append(f"drift: 024-progress.tsv:{n} {tid} {rest[2]} != {live}")
     return out
 
 

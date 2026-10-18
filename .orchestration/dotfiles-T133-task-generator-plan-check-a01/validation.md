@@ -424,3 +424,58 @@ $ sandbox-exec -p '(version 1)(allow default)(deny file-write*)(allow file-write
 sandbox-exec: sandbox_apply: Operation not permitted
 exit=71
 ```
+
+## CompactionDB memory
+
+```
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 P1-12: task-consistency-check.py C14 reruns premises … refuses a checkout missing its regime records by name.'
+038a7ed7-35bc-4906-a75e-9a0c41a6eb3a
+exit=0
+```
+
+## Branch, PR and CI
+
+```
+$ git log --oneline origin/main..HEAD
+5f770f22 docs(orchestration): T133 task-generator-plan-check a01 Bot round 1 evidence (b3c6b7ea)
+b3c6b7ea fix(orchestrator): task-from-plan refuses a checkout without its records by name; plan-check F2 treats glob entries as overlapping what they match (T133 task-generator-plan-check a01, Bot round 1)
+35c66022 docs(orchestration): T133 task-generator-plan-check a01 CI round 1 evidence (562e77f4)
+562e77f4 test(orchestrator): put plan-check's stub gh first inside uv run, as on the macOS runner uv's base bin precedes PATH (T133 task-generator-plan-check a01)
+dfce34d7 docs(orchestration): T133 task-generator-plan-check a01 evidence (d7332ebb)
+d7332ebb test(orchestrator): the two expected-set edits of test_task_checkers.py for C11 to C15 (T133 task-generator-plan-check a01, amendment 1)
+63a089e5 fix(orchestrator): C14 notes and warnings go to stderr, so stdout holds one line per finding (T133 task-generator-plan-check a01)
+4c181fab fix(orchestrator): C14 collapses whitespace runs and warns on an absent tool (T133 task-generator-plan-check a01, amendment 1)
+747602cd feat(orchestrator): task-from-plan.py, checker C11 to C15 and plan-check.py (T133 task-generator-plan-check a01)
+```
+
+The draft PR (its create command run once, 11:41Z), `gh pr ready 417` (12:07:32Z) and the Bot window on 35c66022 (closed 12:22:43Z), as printed:
+
+```
+https://github.com/mryfmo/dotfiles/pull/417
+✓ Pull request mryfmo/dotfiles#417 is marked as "ready for review"
+reviews=1 comments=3
+review chatgpt-codex-connector COMMENTED 2026-10-18T12:11:04Z
+inline=3
+4306960622 chatgpt-codex-connector[bot] scripts/orchestrator/task-consistency-check.py:70 [P1] Sandbox premise commands before executing them
+4306960626 chatgpt-codex-connector[bot] scripts/orchestrator/task-from-plan.py:127 [P1] Bundle the required task template
+4306960630 chatgpt-codex-connector[bot] scripts/orchestrator/plan-check.py:88 [P2] Resolve globs before checking wave overlaps
+```
+
+`gh pr checks 417` on 35c66022 (after CI round 1):
+
+```
+CodeRabbit	pass	0
+GitGuardian Security Checks	pass	1s
+private-bootstrap (macos-14, client)	pass	11s
+private-bootstrap (ubuntu-24.04, client)	pass	9s
+private-bootstrap (ubuntu-24.04, server)	pass	10s
+public-bootstrap (macos-14, client)	pass	9m26s
+public-bootstrap (ubuntu-24.04, client)	pass	10m15s
+public-bootstrap (ubuntu-24.04, server)	pass	8m0s
+test (macos-14, client)	pass	8m21s
+test (ubuntu-24.04, client)	pass	8m56s
+test (ubuntu-24.04, server)	pass	6m10s
+test (ubuntu-26.04, client)	pass	7m40s
+validate	pass	1m40s
+35c660222ffd7af143842d310ae8cf3b15db61c5
+```

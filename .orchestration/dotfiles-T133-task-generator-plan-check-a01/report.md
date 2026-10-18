@@ -50,6 +50,8 @@ Applied after the rebase onto #413's merge; the module's diff against `origin/ma
 
 [memory:decision] T133 P1-12: task-consistency-check.py C14 reruns premises under bash -c with pipefail and PATH <root>/bin:/usr/bin:/bin (env PATH and HOME only), compares after collapsing whitespace runs, and prints its skip notes and `C14: tool absent <name>` warnings on stderr, so stdout holds one `  C<n>` line per finding.
 
+CompactionDB (this worktree's, disposable with it): `uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<the decision above, plus the generator's refusal>'` returned memory id `038a7ed7-35bc-4906-a75e-9a0c41a6eb3a` (validation.md); the orchestrator consolidates adopted decisions into the main checkout's DB at acceptance.
+
 ## Check (validation.md)
 
 - The four modules: 12 tests OK, 1 skipped (the green-set subtest above).

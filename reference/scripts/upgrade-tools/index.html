@@ -4259,6 +4259,7 @@
 <li><code>is_linux</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
+<li><code>manifest_wheel_pin</code></li>
 <li><code>parse_args</code></li>
 <li><code>rebuild_mise_npm_tool</code></li>
 <li><code>reinstall_mise_npm_tools</code></li>
@@ -4694,13 +4695,41 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Upgrade uv tool installations when uv is available.</span>
+<span class="c1"># @description Print the manifest pin of an asset installed from a wheel (an assets.&lt;name&gt;.files URL ending in .whl), or nothing.</span>
+<span class="c1"># @arg $1 string Asset name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>manifest_wheel_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="c1"># shortcut: reads the unquoted block style of home/dot_agents/agent-config.yaml line by line, not as YAML; use a parser if assets: gains quotes or flow style.</span>
+<span class="w">    </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s1">'</span>
+<span class="s1">        /^[^ #]/ { in_assets = ($0 ~ /^assets:/) }</span>
+<span class="s1">        in_assets &amp;&amp; /^  [^ #]/ { asset = $1; sub(/:$/, "", asset) }</span>
+<span class="s1">        in_assets &amp;&amp; asset == name &amp;&amp; /^    pin:/ { pin = $2 }</span>
+<span class="s1">        in_assets &amp;&amp; asset == name &amp;&amp; /\.whl$/ { wheel = 1 }</span>
+<span class="s1">        END { if (wheel) print pin }</span>
+<span class="s1">    '</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/home/dot_agents/agent-config.yaml"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Upgrade uv tool installations when uv is available, except the ones the manifest pins from a wheel.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_uv_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tools<span class="w"> </span>tool<span class="w"> </span>pin<span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
 <span class="w">    </span>has_command<span class="w"> </span>uv<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"uv tools"</span>
-<span class="w">    </span>uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>--all
+<span class="w">    </span><span class="c1"># Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set (herdr-agents panes): uv colours tool names there.</span>
+<span class="w">    </span><span class="nv">tools</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uv<span class="w"> </span>tool<span class="w"> </span>list<span class="w"> </span>--color<span class="w"> </span>never<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="c1"># Tool lines read "&lt;name&gt; v&lt;version&gt;"; their entry points follow as "- &lt;command&gt;".</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tools</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'/^[^- ]/ { print $1 }'</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>manifest_wheel_pin<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># uv's receipt names the local wheel, so an index upgrade has nothing to move; update-agent-assets.sh does.</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'skip: %s (manifest pins %s from a wheel)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span>uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

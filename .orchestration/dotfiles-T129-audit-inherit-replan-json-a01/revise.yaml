@@ -1,0 +1,5 @@
+task_id: dotfiles-T129-audit-inherit-replan-json-a01
+round: 1
+previous_head: 199afeaa867dec0b938e446856dfff6af91a7e72
+check: tests/unit/test_require_crit_review.py::test_a_malformed_replans_entry_is_refused_at_any_threshold
+reason: the Bot's P2 4302490297 on c1011dfa (require-crit-review.py:803), C-50, the second fix round of INV-6; the gate checked only that each replans entry was an object, so an incomplete entry below three rows or one with extra keys passed while acceptance-front-matter.py refused both

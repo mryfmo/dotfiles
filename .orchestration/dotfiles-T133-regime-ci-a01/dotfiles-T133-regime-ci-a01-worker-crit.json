@@ -1,0 +1,107 @@
+[
+ {
+  "id": "r1-p1-checker-crash",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1 (de3b73cc..811dd3ce), P1 high: a checker crash exits 1 with no stdout, like a FAIL, so no line was reported and rules (a)/(f) were skipped (a bare-string threat row or a mapping in allowed_files gave ok). Fixed in a1c90c78: the checker counts only with its verdict line and matching exit code, else 'checker: no verdict (exit N)'; subtests 'checker crash' (7311f004) and 'checker exit' (9a787b13), red before the fix (validation 4a).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-cap-wording",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P2 high: the outside cap regex missed the '(added plus deleted)' wording that 18 of 61 copies on main use, with no warning. Fixed in a1c90c78 (optional parenthetical; a warning per missing cap); subtest 'caps worded' and the missing-cap warnings in 7311f004.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-two-task-dirs",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P2 high, a gap in the spec: a PR carrying two task directories (#408 reset_of lineage, #413 follow-up with a predecessor's records) fails each copy. Proposed advisory for dotfiles-T133-regime-ci-followup-a01 in report.md (skip a target another names in reset_of; allow every target's own evidence paths), before regime becomes required; the owner task file is the orchestrator's to write.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-precheck-net-diff",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P2 high: the ancestor rule compared only the PR's net paths, so a prechecked change reverted to base was invisible. Fixed in a1c90c78: every path of git diff --name-only <precheck head> <head> must be under .orchestration/<t>/; subtests 'precheck late' (7311f004) and 'precheck reverted' (9a787b13).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-test-gaps",
+  "scope": "file",
+  "path": "tests/unit/test_regime_ci.py",
+  "body": "Round 1, P2 high: most mutants survived (the ancestor branch, non-ancestor, no head, task_copy=, tests cap, checker exit, orchestration/ head, checkout, task-id). Closed in 467004a2, 7311f004 and 9a787b13: one subtest per rule branch with its phrase; nineteen single-rule mutants are each killed (validation 5a).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-symbolic-head",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3 high: a precheck head of HEAD or @ resolved to the head. Fixed in a1c90c78: the head must be 40 hex; subtests 'precheck symbolic' and 'precheck none'.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-pathspec",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3: PR file names reached git diff as pathspecs with the exit code ignored. Gone in a1c90c78: the precheck diff takes no pathspec and every listing checks its exit code.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-git-failures",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3: a failed git diff (no merge base) gave an empty list and a records-only pass. Fixed in a1c90c78: listed() raises on a nonzero exit and the job exits 2; test '…_refuses_a_checkout_not_at_the_head_and_a_diff_git_cannot_list'.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-tab-path",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3: a numstat row whose path holds a tab was dropped. Fixed in a1c90c78 with split('\\t', 2).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-two-lines",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3: a task_id mismatch gave the task-id line and the unfiltered C1 line. Fixed in 69a3128f (the C1 file-name line is dropped for any task_id); test in 467004a2.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-orchestration-head",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3: an orchestration/* head passes a code change without a task copy. Kept: Files item 2 requires it; now tested (7311f004).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-pr-code-runs",
+  "scope": "file",
+  "path": ".github/workflows/regime.yml",
+  "body": "Round 1, P3: under pull_request the PR controls regime.yml, regime-ci.py, the checker and a root uv.toml. Hardened in a1c90c78: --no-config on both uv runs and a warning when the diff changes a file the job runs; the residual (the edit is in the PR's own diff, read by the audit) is in report.md; test '…_runs_the_checker_without_the_checkout_s_uv_config' (9a787b13).",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-survivors",
+  "scope": "file",
+  "path": "tests/unit/test_regime_ci.py",
+  "body": "Round 2 (811dd3ce..a1c90c78), same reviewer: Verdict: correct; every fix claim held, no new fail-open path. Its three surviving mutants (net-diff precheck, verdict line without its exit code, --no-config) are killed by 9a787b13's cases; the usage line names --no-config (7e8851f0).",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-pr-body",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T133-regime-ci-a01/pr-body.md",
+  "body": "Round 2, P3 high: the PR body described round 1's precheck rule and omitted the fail-closed changes. pr-body.md is refreshed; the GitHub body stays as opened (gh pr edit matches a live ask rule), so report.md carries the change.",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-update-branch",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T133-regime-ci-a01/report.md",
+  "body": "Round 2, informational: with the strict rule, gh pr update-branch turns regime red until a new precheck names the merge head. Stated in report.md (design corrections).",
+  "resolved": true
+ }
+]

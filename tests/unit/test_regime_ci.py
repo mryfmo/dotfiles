@@ -107,6 +107,13 @@ class RegimeCiTest(unittest.TestCase):
                 self.assertTrue(found[0].startswith(f"regime-ci: {T}: {case.split()[0]}: "), found)
         self.assertIn("C4 allowed path has no threat_table row naming it: src/tool.sh", found[0])
 
+    def test_regime_ci_reports_a_copy_whose_task_id_is_not_its_directory(self):
+        # The checker's C1 compares task_id with the file name, `task` for every copy; regime-ci checks the directory.
+        result = self.build(copy=TASK.replace(f"task_id: {T}", "task_id: t9-a01"))
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"regime-ci: {T}: task-id: the copy's task_id 't9-a01' is not its directory {T}", result.stdout)
+        self.assertNotIn("C1 ", result.stdout)
+
     def test_regime_ci_passes_a_records_only_pr_with_no_target(self):
         result = self.build(code={".orchestration/validation/note.md": "a record\n"}, evidence=False)
         self.assertEqual(

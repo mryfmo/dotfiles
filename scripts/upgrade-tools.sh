@@ -419,7 +419,7 @@ function upgrade_mise_tools() {
 # @arg $1 string Asset name.
 #
 function manifest_wheel_pin() {
-    # shortcut: reads the block style of home/dot_agents/agent-config.yaml line by line, not as YAML; use a parser if assets: gains flow style.
+    # shortcut: reads the unquoted block style of home/dot_agents/agent-config.yaml line by line, not as YAML; use a parser if assets: gains quotes or flow style.
     awk -v name="$1" '
         /^[^ #]/ { in_assets = ($0 ~ /^assets:/) }
         in_assets && /^  [^ #]/ { asset = $1; sub(/:$/, "", asset) }
@@ -437,7 +437,8 @@ function upgrade_uv_tools() {
     has_command uv || return 1
 
     section "uv tools"
-    tools="$(uv tool list)" || return
+    # Plain text even where FORCE_COLOR or CLICOLOR_FORCE is set (herdr-agents panes): uv colours tool names there.
+    tools="$(uv tool list --color never)" || return
     # Tool lines read "<name> v<version>"; their entry points follow as "- <command>".
     for tool in $(printf '%s\n' "${tools}" | awk '/^[^- ]/ { print $1 }'); do
         pin="$(manifest_wheel_pin "${tool}")" || return

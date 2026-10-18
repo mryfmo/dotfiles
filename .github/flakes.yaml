@@ -1,0 +1,12 @@
+# Known CI flakes. scripts/orchestrator/ci-rerun.sh reruns a completed run's
+# failed jobs once, and only when every job concluded failure, timed_out or
+# cancelled matches one of these: `job` against the job name and `log_regex`
+# against its log (`gh run view --log-failed`, or the whole `--log` of a
+# timed-out or cancelled job), both extended regular expressions (grep -E). A
+# job with no log matches nothing. Add a signature only with the log line of a
+# measured failed run beside it in the task's records, and its sample in
+# tests/unit/test_ci_rerun.py.
+- id: snapcraft-assertion-timeout
+  job: '^public-bootstrap \(ubuntu-'
+  log_regex: 'cannot fetch assertion: got unexpected HTTP status code (408|5[0-9][0-9]) via GET to "https://api\.snapcraft\.io/'
+  note: snap install timed out fetching an assertion from the Snap Store (run 39046848147 attempt 1, 2026-10-17); the rerun passed.

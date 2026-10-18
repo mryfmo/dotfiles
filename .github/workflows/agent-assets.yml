@@ -10,6 +10,13 @@ on:
     # Keep agent, MCP, plugin, and skill metadata from drifting silently.
     - cron: "23 20 * * 0"
 
+# A pull request's newer head cancels its older run. A main push, schedule or
+# dispatch run is grouped by its commit, never with a pull request, and is never
+# cancelled while it runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 

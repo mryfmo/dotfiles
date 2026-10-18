@@ -196,6 +196,11 @@ class VerdictTest(unittest.TestCase):
         (self.repo / f"{V}/{TASK}-verdict-{self.head[:7]}.json").unlink()
         self.write(f".orchestration/acceptance/{TASK}.md", "---\nnot json\n---\n")
         self.assertIsNone(self.verdict(code=20))
+        (self.repo / f".orchestration/acceptance/{TASK}.md").unlink()
+        self.assertEqual("hold", self.verdict("--task", TASK, code=20)["verdict"])
+        view = json.loads((self.calls / "view.json").read_text()) | {"headRefOid": "f" * 40}
+        (self.calls / "view.json").write_text(json.dumps(view))
+        self.assertIn("not in this checkout", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9").stderr)
 
     def test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto(self):
         apply = ("--apply", "--team", "dot", "--from", "orch", "--to", "w", "--pane", "herdr:s:wJ:p3")

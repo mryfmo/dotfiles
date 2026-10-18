@@ -33,6 +33,7 @@
 # @exitcode 20 hold.
 # @exitcode 2 Usage or internal error (treated as hold).
 set -euo pipefail
+shopt -s nullglob
 for a in "$@"; do
     [[ ${a} != *--admin* && ${a} != *--auto* ]] || {
         echo "verdict: ${a} is refused" >&2
@@ -90,6 +91,8 @@ stop() {
 view="$(gh pr view "${pr}" --json headRefOid,isDraft,baseRefName,state,number)" || stop "gh pr view ${pr} failed"
 head="$(jq -r .headRefOid <<< "${view}")"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || stop "PR ${pr} has no head"
+git cat-file -e "${head}^{commit}" 2> /dev/null || git fetch -q origin "pull/${pr}/head" 2> /dev/null || true
+git cat-file -e "${head}^{commit}" 2> /dev/null || stop "the head ${head} is not in this checkout"
 for f in .orchestration/acceptance/*.md; do
     [[ -z ${task} ]] || break
     task="$(block "${f}" | jq -r --argjson p "${pr}" 'select(.pr == $p) | .task' 2> /dev/null)" || task=""
@@ -106,7 +109,7 @@ trap 'rm -f -- "${fresh}" "${line_file}"' EXIT
     lack "the record ${rec} is not this task's at the head"
 [[ "$(jq -r '"\(.state) \(.baseRefName) \(.isDraft)"' <<< "${view}")" == "OPEN main false" ]] || lack "PR ${pr} is not open, non-draft, on main"
 
-want="$(sed -n 's/^precheck: \([0-9a-f]\{64\}\)$/\1/p' "${rec}" 2> /dev/null | tail -n 1)" got="" ph=""
+want="$(sed -n 's/^precheck: \([0-9a-f]\{64\}\)$/\1/p' "${rec}" 2> /dev/null | tail -n 1 || true)" got="" ph=""
 if git cat-file -e "${head}:.orchestration/${task}/precheck.json" 2> /dev/null; then
     got="$(git show "${head}:.orchestration/${task}/precheck.json" | shasum -a 256)" got=${got%% *}
     ph="$(git show "${head}:.orchestration/${task}/precheck.json" | jq -r '.head // empty' 2> /dev/null)" || ph=""
@@ -153,7 +156,8 @@ read_front='import json, sys, yaml; t = open(sys.argv[1]).read(); f = yaml.safe_
 print(json.dumps(f if isinstance(f, dict) else {}))'
 front="$(uv run --offline --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null ||
     uv run --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null)" || front=""
-if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array ]]; then
+if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array ]] &&
+    base="$(git merge-base origin/main "${head}")" && numstat="$(git diff --numstat --no-renames "${base}" "${head}")"; then
     allowed=() stray="" outside=0 under=0 excluded=()
     cap_out="$(sed -n 's/.*at most \([0-9][0-9]*\) changed lines outside.*/\1/p' "${tf}" | head -n 1)"
     cap_tests="$(sed -n 's/.* \([0-9][0-9]*\) under tests\/.*/\1/p' "${tf}" | head -n 1)"
@@ -178,13 +182,13 @@ if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array 
         done
         [[ ${path} != tests/* ]] || under=$((under + add + del))
         [[ ${counted} == no ]] || outside=$((outside + add + del))
-    done <<< "$(git diff --numstat --no-renames "$(git merge-base origin/main "${head}")" "${head}")"
+    done <<< "${numstat}"
     over=""
     [[ -z ${cap_out} ]] || ((outside <= cap_out)) || over+=" ${outside}>${cap_out} outside tests/"
     [[ -z ${cap_tests} ]] || ((under <= cap_tests)) || over+=" ${under}>${cap_tests} under tests/"
     cond 5 "$([[ -z ${stray}${over} ]] && echo true || echo false)" "outside allowed_files:${stray:- none}; over the caps:${over:- none}"
 else
-    lack "the task file ${tf}" && cond 5 false "no readable front matter in ${tf}"
+    lack "the task file ${tf} or the merge-base diff" && cond 5 false "no readable front matter in ${tf} or no merge-base diff"
 fi
 
 if counters="$(scripts/regime-counters.sh "${task}" --history-only 2> /dev/null)" &&
@@ -195,7 +199,9 @@ else
     lack "regime-counters.sh ${task}" && cond 6 false "the counters are unreadable"
 fi
 
-if [[ "$(jq -r '.security' <<< "${front:-null}")" != true ]]; then
+if [[ -z ${front} ]]; then
+    cond 8 false "no front matter, so no security reading"
+elif [[ "$(jq -r '.security' <<< "${front}")" != true ]]; then
     cond 8 true "not a security task"
 elif [[ -f ${sec} ]]; then
     last="$(grep -v '^[[:space:]]*$' "${sec}" | tail -n 1)"
@@ -207,7 +213,7 @@ fi
 bad=""
 while read -r want_sum path; do
     [[ -z ${path} || "$(shasum -a 256 -- "${path}" 2> /dev/null)" == "${want_sum}  ${path}" ]] || bad+=" ${path}"
-done <<< "$(sed -n 's/^sha256:\([0-9a-f]\{64\}\) \(.*\)$/\1 \2/p' "${rec}" 2> /dev/null)"
+done <<< "$(sed -n 's/^sha256:\([0-9a-f]\{64\}\) \(.*\)$/\1 \2/p' "${rec}" 2> /dev/null || true)"
 cond 9 "$([[ -z ${bad} ]] && echo true || echo false)" "sha256 mismatches:${bad:- none}"
 
 inputs='{}'

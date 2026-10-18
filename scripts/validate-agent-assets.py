@@ -1606,39 +1606,295 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-# R2: an assignment (`=`, `:` or Bash's `+=`, the name bare or in matching quotes as a JSON, YAML or TOML key) whose
-# whole value, up to the end of the line or a `#` comment after whitespace, is not one `$NAME`/`${NAME}` reference,
-# one `{{ }}` template or empty, each optionally quoted. Anything else is a literal Bash could assign: `$'...'`,
-# `$"..."`, `$(...)`, `${NAME:-...}`, or a reference with more after it.
+# R2 accepts a whole-value environment reference (bare/double-quoted), template or empty.
+# Single quotes never expand an environment reference; suffixes and shell expansions are literals.
 ANTHROPIC_API_KEY_LITERAL = re.compile(
     r"""(?P<k>["']?)ANTHROPIC_API_KEY(?P=k)\s*(?:\+?=|:)(?!\s*(?:"""
-    r"""(?P<q>["']?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
+    r"""(?P<q>"?)\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?P=q)"""
     r"""|(?P<t>["']?)\{\{(?:(?!\}\}).)*\}\}(?P=t)|""|'')?\s*(?:(?<=\s)#.*)?$)"""
 )
+ANTHROPIC_API_KEY_DATA = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})|\{\{(?:(?!\}\}).)*\}\}|")
+CHEZMOI_FILE_ATTRIBUTES = {
+    *("after", "before", "create", "dot", "empty", "encrypted", "executable", "literal"),
+    *("modify", "once", "onchange", "private", "readonly", "remove", "run", "symlink"),
+}
+# A chezmoi source with one of these holds a script, a link target or ciphertext, not the target's data.
+CHEZMOI_NOT_DATA = frozenset({"encrypted", "modify", "run", "symlink"})
+PARSED_SUFFIXES = {".json": "json", ".toml": "toml", ".yaml": "yaml", ".yml": "yaml"}
+
+
+class JsonPairs(list):
+    """A JSON object as its (key, value) pairs, so a duplicate key cannot hide behind the last one."""
+
+
+def applied_file_format(name: str) -> str | None:
+    base = name.rsplit("/", 1)[-1]
+    while "_" in base and (attribute := base.split("_", 1)[0]) in CHEZMOI_FILE_ATTRIBUTES:
+        if attribute in CHEZMOI_NOT_DATA:
+            return None
+        base = base.split("_", 1)[1]
+        if attribute == "literal":
+            break
+    return PARSED_SUFFIXES.get(Path(base).suffix)
+
+
+def parsed_entry(node: Any) -> tuple[str, Any]:
+    if yaml is not None and isinstance(node, yaml.Node):
+        if isinstance(node, yaml.MappingNode):
+            return "map", [(key.value if isinstance(key, yaml.ScalarNode) else "", value) for key, value in node.value]
+        if isinstance(node, yaml.SequenceNode):
+            return "seq", node.value
+        tag = node.tag.rsplit(":", 1)[-1]
+        return ("str", node.value) if tag == "str" else ("null" if tag == "null" else "other", None)
+    if isinstance(node, (JsonPairs, dict)):
+        return "map", list(node.items()) if isinstance(node, dict) else list(node)
+    if isinstance(node, list):
+        return "seq", node
+    if isinstance(node, str):
+        return "str", node
+    return ("null" if node is None else "other"), None
+
+
+def normalize_auth_names(line: str, arithmetic: bool = False) -> str:
+    heredoc = re.compile(r"""<<<[ \t]*|<<(-)?[ \t]*(['"]?)(\w+)\2[ \t]*\n((?:.*?\n)?)(?(1)\t*)\3(?=\n|$)""", re.DOTALL)
+    before = [match[0] for match in heredoc.finditer(line)]  # Preserve literal here-document boundaries.
+    line = line.replace("\\\n", "")
+    if before != [match[0] for match in heredoc.finditer(line)]:
+        raise ValueError
+    fragments = r"""['"\\]*"""
+    pattern = "|".join(fragments.join(key) for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN"))
+
+    def canonical(match: re.Match[str]) -> str:
+        raw, operator = match.groups()
+        quote = '"' if raw.count('"') % 2 else "'" if raw.count("'") % 2 else ""
+        return re.sub(fragments, "", raw) + operator + quote
+
+    line = re.sub(rf"({fragments}(?:{pattern}){fragments})([ \t]*(?:\+?=|:))", canonical, line)
+    line = re.sub(fragments.join("ANTHROPIC_OAUTH_TOKEN"), "ANTHROPIC_OAUTH_TOKEN", line)
+
+    def expansion_end(start: int) -> int:
+        if line[start : start + 2] == "<<":
+            match = heredoc.match(line, start)
+            if match is None or (match[2] == "" and re.search(r"\$\(|`", match[4])):
+                raise ValueError
+            return match.end()
+        opening = line[start]
+        closing = {"(": ")", "{": "}", "`": "`"}[opening]
+        depth, quote, pos = 1, "", start + 1
+        shell = opening != "{" and not (
+            opening == "(" and "(" in (line[start - 1 : start], line[start + 1 : start + 2])
+        )
+        command_start, conditional = True, False
+        prefixes = {"if", "then", "else", "elif", "do", "while", "until", "!", "time", "-p", "{", "}"}
+        unsupported = {"case", "function", "coproc"}
+        while pos < len(line):
+            char = line[pos]
+            if char == "\\":
+                if not quote:
+                    command_start = False
+                pos += 2
+                continue
+            if quote != "'" and line[pos : pos + 2] in ("$(", "${"):
+                if not quote:
+                    command_start = False
+                pos = expansion_end(pos + 1)
+                continue
+            if quote != "'" and char == "`" and opening != "`":
+                if not quote:
+                    command_start = False
+                pos = expansion_end(pos)
+                continue
+            if char in "'\"" and (not quote or quote == char):
+                if not quote:
+                    command_start = False
+                quote = "" if quote else char
+            elif not quote:
+                if shell:
+                    if opening == "(" and char == "#" and (pos == start + 1 or line[pos - 1] in " \t\r\n;|&()"):
+                        end = line.find("\n", pos)
+                        pos = len(line) if end < 0 else end
+                        command_start = True
+                        continue
+                    if line[pos : pos + 2] == "]]" or (
+                        command_start and line[pos : pos + 2] == "[[" and line[pos + 2 : pos + 3].isspace()
+                    ):
+                        conditional = line[pos : pos + 2] == "[["
+                        command_start = False
+                        pos += 2
+                        continue
+                    if not conditional:
+                        if line[pos : pos + 2] == "<<":
+                            pos = expansion_end(pos)
+                            continue
+                        if line[pos : pos + 2] == "((":
+                            pos = expansion_end(pos + 1) + 1
+                            command_start = False
+                            continue
+                        word = re.match(r"[\w!-]+|[{}](?=\s|$)", line[pos:])
+                        if word:
+                            token = word[0]
+                            end = pos + len(token)
+                            # These constructs cannot safely delimit a substitution in this line grammar.
+                            if command_start and token in unsupported and line[end : end + 1].isspace():
+                                raise ValueError
+                            command_start = command_start and token in prefixes
+                            pos = end
+                            continue
+                        if char in ";|&()\n":
+                            command_start = True
+                        elif not char.isspace():
+                            command_start = False
+                if char == closing:
+                    depth -= 1
+                    if not depth:
+                        return pos + 1
+                elif char == opening:
+                    depth += 1
+            pos += 1
+        return len(line)
+
+    operator, pos, quote, name, dynamic = None, 0, "", [], False
+    while pos <= len(line):
+        char = line[pos] if pos < len(line) else ""
+        pair = line[pos : pos + 2]
+        if not char or (not quote and char in " \t\r\n;|&()" and pair != "(("):
+            if dynamic and operator == "=" and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", "".join(name)):
+                raise ValueError
+            operator, name, dynamic = None, [], False
+        elif char == "#" and not quote and operator is None and not name:
+            end = line.find("\n", pos)
+            pos = len(line) if end < 0 else end
+            continue
+        elif not quote and not arithmetic and pair == "<<":
+            pos = expansion_end(pos)
+            name.append("?")
+            continue
+        elif quote != "'" and (pair in ("$(", "${") or char == "`" or (not quote and pair == "((")):
+            if operator is None and char != "(":
+                name.append("X")
+                dynamic = True
+            end = expansion_end(pos if char == "`" else pos + 1)
+            is_arithmetic = pair == "((" or line.startswith("$((", pos)
+            normalize_auth_names(line[pos + (1 if char == "`" else 2) : end - 1], is_arithmetic)
+            pos = end
+            continue
+        elif char == "\\" and pos + 1 < len(line):
+            pos += 1
+            if operator is None and line[pos] not in "'\"":
+                name.append("X" if line[pos] == "$" else line[pos])
+                dynamic |= line[pos] == "$"
+        elif char in "'\"":
+            if not quote or quote == char:
+                quote = "" if quote else char
+        elif char == "$" and pos + 1 < len(line) and line[pos + 1] in "@*?#$!-0123456789":
+            if operator is None:
+                name.append("X")
+                dynamic = True
+            pos += 1
+        elif operator is None:
+            if char in "=:" and quote != "'":
+                operator = char
+                if char == "=" and name[-1:] == ["+"]:
+                    name.pop()
+            else:
+                name.append("X" if char == "$" else char)
+                dynamic |= char == "$"
+        pos += 1
+    return line
+
+
+def anthropic_text_findings(text: str, where: str) -> list[tuple[str, str, str]]:
+    found = []
+    try:
+        text = normalize_auth_names(text)
+    except ValueError:
+        return [("R2", where, "unreadable name in an assignment; use a literal variable name")]
+    if "ANTHROPIC_OAUTH_TOKEN" in text:
+        found.append(("R1", where, "names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"))
+    if any(ANTHROPIC_API_KEY_LITERAL.search(line) for line in text.splitlines()):
+        found.append(("R2", where, "a string assigns ANTHROPIC_API_KEY a literal; reference the environment"))
+    return found
+
+
+def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, str, str]]:
+    if fmt == "yaml" and yaml is None:
+        fail("PyYAML is required")
+    errors = (ValueError, RecursionError) + ((yaml.YAMLError,) if yaml is not None else ())
+    try:
+        if fmt == "json":
+            roots = [json.loads(text, object_pairs_hook=JsonPairs)]
+        elif fmt == "toml":
+            roots = [tomllib.loads(text)]
+        else:
+            roots = list(yaml.compose_all(text, Loader=yaml.SafeLoader))
+    except errors as error:
+        # The type only: a parser's message can quote the file, and the file may hold a key.
+        fail(f"{rel}: cannot be parsed as {fmt} ({type(error).__name__}); the Anthropic auth route check refuses it")
+    found, seen, stack = [], set(), [(root, "") for root in roots]
+    while stack:
+        node, where = stack.pop()
+        kind, payload = parsed_entry(node)
+        if kind in ("map", "seq"):
+            # Each container once: a YAML alias shares its node, so anchors cannot multiply the walk.
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
+        if kind == "map":
+            for key, child in payload:
+                here = f"{where}.{key}" if where else str(key)
+                found += anthropic_text_findings(str(key), here)
+                child_kind, child_text = parsed_entry(child)
+                # Only null or an allowed string passes: a number, a boolean, a mapping or a list is no reference.
+                allowed = child_kind == "null" or (
+                    child_kind == "str" and ANTHROPIC_API_KEY_DATA.fullmatch(child_text) is not None
+                )
+                if str(key).endswith("ANTHROPIC_API_KEY") and not allowed:
+                    found.append(("R2", here, "assigns ANTHROPIC_API_KEY a literal; reference the environment"))
+                stack.append((child, here))
+        elif kind == "seq":
+            stack.extend((child, f"{where}[{index}]") for index, child in enumerate(payload))
+        elif kind == "str":
+            found += anthropic_text_findings(payload, where)
+    return found
 
 
 def validate_anthropic_auth_route() -> None:
-    """Plan 023 PR D: the applied files reach Anthropic through ANTHROPIC_API_KEY from the environment only."""
     listed = subprocess.run(
         ["git", "-C", str(ROOT), "ls-files", "-z", "--", "home", "install"], capture_output=True, check=False
     )
     if listed.returncode != 0:
         fail(f"git ls-files failed, so the Anthropic auth route check cannot run: {os.fsdecode(listed.stderr).strip()}")
     for name in filter(None, listed.stdout.split(b"\0")):
-        path = ROOT / os.fsdecode(name)
+        rel = os.fsdecode(name)
+        path = ROOT / rel
         # A tracked symlink is not followed: on a PR checkout it could point at a device and hang the run.
         if path.is_symlink() or not path.is_file():
             continue
-        for number, line in enumerate(path.read_bytes().decode("utf-8", errors="replace").splitlines(), 1):
-            # The file, the line number and the rule only: the line itself may hold a real key, and CI logs are public.
-            if "ANTHROPIC_OAUTH_TOKEN" in line:
-                fail(
-                    f"{os.fsdecode(name)}:{number}: R1: names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"
-                )
-            if ANTHROPIC_API_KEY_LITERAL.search(line):
-                fail(
-                    f"{os.fsdecode(name)}:{number}: R2: assigns ANTHROPIC_API_KEY a literal; reference the environment"
-                )
+        parsed = applied_file_format(rel)
+        try:
+            text = path.read_bytes().decode("utf-8", errors="strict" if parsed else "replace")
+        except UnicodeDecodeError:
+            fail(f"{rel}: cannot be decoded as UTF-8 (UnicodeDecodeError); the Anthropic auth route check refuses it")
+        texts = [text]
+        if parsed and rel.startswith("home/.chezmoitemplates/") and "{{" in text:
+            texts = [render_template_text(path, os_name) for os_name in ("darwin", "linux")]
+        for text in texts:
+            if parsed is None:
+                # Markdown fences delimit examples, not shell substitutions.
+                text = re.sub(r"(?m)^[ \t]*`{3,}", "", text) if path.suffix == ".md" else text
+                try:
+                    text = normalize_auth_names(text)
+                except ValueError:
+                    fail(f"{rel}: R2: unreadable name in an assignment; use a literal variable name")
+            for number, line in enumerate(text.splitlines(), 1):
+                if "ANTHROPIC_OAUTH_TOKEN" in line:
+                    fail(f"{rel}:{number}: R1: names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only")
+                if parsed is None and ANTHROPIC_API_KEY_LITERAL.search(line):
+                    fail(f"{rel}:{number}: R2: a string assigns ANTHROPIC_API_KEY a literal; reference the environment")
+            if parsed is not None:
+                # Escape the key path so PR text cannot forge a CI log line. Never print values.
+                for rule, where, reason in anthropic_parsed_findings(rel, parsed, text):
+                    fail(f"{rel}: {rule}: {where.encode('unicode_escape').decode('ascii')}: {reason}")
 
 
 def validate_compactiondb_project_copy() -> None:

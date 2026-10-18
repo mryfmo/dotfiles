@@ -1735,8 +1735,11 @@ def validate_anthropic_auth_route() -> None:
         # A tracked symlink is not followed: on a PR checkout it could point at a device and hang the run.
         if path.is_symlink() or not path.is_file():
             continue
-        text = path.read_bytes().decode("utf-8", errors="replace")
         parsed = applied_file_format(rel)
+        try:
+            text = path.read_bytes().decode("utf-8", errors="strict" if parsed else "replace")
+        except UnicodeDecodeError:
+            fail(f"{rel}: cannot be decoded as UTF-8 (UnicodeDecodeError); the Anthropic auth route check refuses it")
         for number, line in enumerate(text.splitlines(), 1):
             # The file, the line number and the rule only: the line itself may hold a real key, and CI logs are public.
             if "ANTHROPIC_OAUTH_TOKEN" in line:

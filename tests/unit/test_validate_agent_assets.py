@@ -1630,6 +1630,32 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn(f"ERROR: {rel}: {rule}: {where}:", stderr)
                 self.assertNotIn("literal-value", stderr)
 
+    def test_anthropic_auth_route_check_refuses_malformed_utf8_in_a_structured_source(self) -> None:
+        cases = (
+            ("home/dot_config/fixture.json", b'{"unused": "\xff"}'),
+            ("home/dot_config/fixture.toml", b'unused = "\xff"'),
+            ("home/dot_config/fixture.yaml", b'unused: "\xff"'),
+        )
+        script = "home/dot_config/modify_private_fixture.json"
+        (text, *_), _ = self.anthropic_route_fixture(*(rel for rel, _ in cases), script)
+        for rel, data in cases:
+            with self.subTest(rel=rel):
+                path = self.temp_dir / rel
+                path.write_bytes(data)
+                stderr, refused = io.StringIO(), False
+                with contextlib.redirect_stderr(stderr):
+                    try:
+                        self.module.validate_anthropic_auth_route()
+                    except SystemExit:
+                        refused = True
+                path.write_text("{}" if rel.endswith(".json") else "")
+                self.assertTrue(refused)
+                self.assertIn(f"ERROR: {rel}: cannot be decoded as UTF-8 (UnicodeDecodeError)", stderr.getvalue())
+                self.assertNotIn("unused", stderr.getvalue())
+        for rel in (text, script):
+            (self.temp_dir / rel).write_bytes(b"# invalid text byte: \xff\n")
+        self.module.validate_anthropic_auth_route()
+
     def test_anthropic_auth_route_reads_json_and_toml_through_their_parsers(self) -> None:
         # The re-plan of 4302758230 (escaped-name): a parsed format's key names are decoded and its values are data, so
         # escapes, key quoting and line breaks no longer hide an assignment the line grammar cannot see.

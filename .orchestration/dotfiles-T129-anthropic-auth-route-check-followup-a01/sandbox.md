@@ -23,3 +23,7 @@ Calls outside the sandbox: `gh` through the permission gate (`dangerouslyDisable
 | 6 | `gh pr view` and `gh api` reads of the head, its checks and its comments | `gh` |
 | 7 | after a P0/P1 fix round only: the push (inside, as above), then `gh pr comment <pr> --body '@codex review'` and the same Bot wait for the re-review (`bot_rounds=2`) | `gh` |
 | 8 | `agmsg-dispatch … AGMSG-PONG v1 …` (the question of 13:53Z and the progress lines) and `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T129-anthropic-auth-route-check-followup-a01 …` | `agmsg-dispatch` |
+
+## a010 UTF8 revise
+
+T133 revise committed/pushed and locally complete before this source work; its read-only external watchers continued. Safely switched to tools/anthropic-auth-route-structured at dea816; command0 with two optional packed-refs.lock cleanup denials, branch/head verified, no cleanup retry. No escalation/live state change. Only two allowed source/test paths and this task evidence changed. No gh edit/comment/review/close, gh issue or API write for this revision. Main-target draft/ready/push each standalone.

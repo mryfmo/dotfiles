@@ -66,11 +66,14 @@ jobs:
           # A full fetch: a shallow one cuts the history of a base tip that
           # moved after the checkout, and the diff then has no merge base.
           git fetch --no-tags origin "${BASE_REF}"
-          # --no-renames lists both sides of a rename; core.quotePath off keeps
-          # non-ASCII paths raw. An empty diff runs the bootstrap, and so does a
-          # path that can change what setup.sh installs or how this job runs it.
-          changed="$(git -c core.quotePath=false diff --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}")"
-          if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
+          # --no-renames lists both sides of a rename, and -z lists every path raw:
+          # even with core.quotePath off, Git quotes a name holding a quote, a
+          # backslash or a control character, and "home/... would miss the pattern.
+          # An empty diff runs the bootstrap, and so does a path that can change
+          # what setup.sh installs or how this job runs it.
+          changed="${RUNNER_TEMP}/changed-paths"
+          git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
+          if [ ! -s "${changed}" ] || grep -zEq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' "${changed}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"

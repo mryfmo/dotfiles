@@ -1829,7 +1829,8 @@ if [[ ${add_worker_mode} == true ]]; then
         exit 2
     fi
     # Bash retains this inherited flock until spawn.sh registers the identity.
-    exec 9>> "${workdir}/.git/herdr-agents-seat.lock"
+    seat_git_common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir)"
+    exec 9>> "${seat_git_common_dir}/herdr-agents-seat.lock"
     python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
     # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as
     # the Stop checklist counts them; re-seating a seated worktree adds none.

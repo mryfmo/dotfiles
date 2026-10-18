@@ -16,9 +16,9 @@ F6 every cited dotfiles-T<n>-... id is a task file, every D-... id a row of .orc
    --drift every #<pr> a pull request.
 --drift: every head sha or state word (CLEAN, BEHIND, draft, merged, closed) that starts within 40 characters after a
    #<pr> on its line, before the next #, each compared on its own against `gh pr view`; and every 024-progress.tsv row
-   naming a task against the status of that task's latest AGMSG-ACCEPTANCE event (task_id=<task>) in its acceptance
-   record, latest by the last timestamp before the event on its line, then by line (an untimed event ranks below every
-   timed one): `drift: <file>:<line> <cited> != <live>`.
+   naming a task against the status of that task's latest AGMSG-ACCEPTANCE event (task_id=<task>, each event read up
+   to the next one on its line) in its acceptance record, latest by the last timestamp before the event on its line (an
+   untimed event carries the latest timestamp above it), then by position: `drift: <file>:<line> <cited> != <live>`.
 --invariants: ANTHROPIC_OAUTH_TOKEN= with a value (bare, single- or double-quoted; an empty "" or '' is none),
    `git push origin main`, `gh pr merge` with --admin or --auto in the
    plan files, and a claude.permissions.ask entry home/dot_agents/agent-config.yaml adds against origin/main.
@@ -98,13 +98,15 @@ def shared(a, b):
 
 def latest(text, tid):
     """The status of tid's latest AGMSG-ACCEPTANCE event, or none."""
-    events = []
+    events, carried, stamp = [], "", r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?"
     for i, line in enumerate(text.splitlines()):
-        m = re.search(rf"AGMSG-ACCEPTANCE v1 (?=.*\btask_id={re.escape(tid)}(?![\w-])).*?\bstatus=(\S+)", line)
-        if m:
-            stamps = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?", line[: m.start()])
-            events.append((stamps[-1] if stamps else "", i, m.group(1)))
-    return max(events)[2] if events else "none"
+        for m in re.finditer(r"AGMSG-ACCEPTANCE v1 (.*?)(?=AGMSG-ACCEPTANCE v1 |$)", line):  # one event at a time
+            status = re.search(r"\bstatus=([\w-]+)", m[1])
+            if status and re.search(rf"\btask_id={re.escape(tid)}(?![\w-])", m[1]):
+                stamps = re.findall(stamp, line[: m.start()])
+                events.append((stamps[-1] if stamps else carried, i, m.start(), status[1]))
+        carried = max([carried, *re.findall(stamp, line)])
+    return max(events)[3] if events else "none"
 
 
 def form(root, files):

@@ -26,9 +26,10 @@ C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr
     collapsed (gh, curl and URLs skipped; a tool absent from that PATH is a `C14: tool absent <name>` warning). It runs
     only for a file whose sha256 is --premises-sha, the dispatched text; any other file gets `C14: not run (no trusted
     sha)` as a warning and nothing is executed: a structural OK is then no claim that the premises pass.
-C15 with design_review.design, the design on origin/main exists; when its implementing_tasks maps this task to invariant
-    ids, the task carries exactly those ids, an omitted map included, and each sentence equals the design's byte for
-    byte (without a map, every invariant the task carries does; a design task compares its own definitions).
+C15 with design_review.design, the design on origin/main exists (unless the task carries no invariants and the design is
+    in this checkout, still in flight; a path naming no design anywhere is always one); when its implementing_tasks maps this task to invariant ids, the task carries
+    exactly those ids, an omitted map included, and each sentence equals the design's byte for byte (a list form
+    assigns no ids, so every invariant the task carries does; a design task compares its own definitions).
 """
 
 import argparse
@@ -89,6 +90,7 @@ def rerun(cmd, cwd, path=None):
     try:
         run = subprocess.run(
             ["bash", "-c", "set -o pipefail\n" + cmd],
+            stdin=subprocess.DEVNULL,  # a command that reads stdin (`head`, `cat`) never waits on the caller's
             cwd=cwd,
             env=env,
             capture_output=True,
@@ -230,11 +232,15 @@ def check(p, root, premises_sha=None):
         if got is None or " ".join(got.split()) != " ".join(want.split()):
             fails.append(f"C14 premise output differs from its rerun: {cmd[:60]}")
     design, mine = dr.get("design"), fm.get("invariants") if isinstance(fm.get("invariants"), dict) else {}
-    shown = git(root, "show", f"origin/main:{design}") if inside else None
-    if shown and shown.returncode:  # C15; a design missing from main assigns nothing, so it matters to invariants
-        fails += [f"C15 design {design} is not on origin/main"] if mine else []
+    present = inside and not git(root, "cat-file", "-e", f"origin/main:{design}").returncode  # C8's probe
+    shown = git(root, "show", f"origin/main:{design}") if present else None
+    # C15: a design main cannot give leaves a task's invariants unchecked, and a path naming no design on main or in
+    # this checkout is a typo for any task; a design still in flight here assigns nothing yet to a task without any.
+    if inside and (not shown or shown.returncode):
+        fails += [f"C15 design {design} is not on origin/main"] if mine or not (present or inside.exists()) else []
     elif shown:  # the design's assignment fixes the ids; a design task compares its own definitions
-        dfm = front(shown.stdout) if isinstance(front(shown.stdout), dict) else {}
+        dfm = front(shown.stdout) if shown.stdout.startswith("---\n") else None
+        dfm = dfm if isinstance(dfm, dict) else {}
         canon, assigned = dfm.get("invariants") or {}, dfm.get("implementing_tasks")
         ids = (assigned.get(tid) or []) if isinstance(assigned, dict) and fm.get("kind") != "design" else None
         if ids is not None:

@@ -167,9 +167,10 @@ class TaskFromPlanTest(unittest.TestCase):
 
     def test_generator_preserves_wildcard_scopes_and_their_threat_rows(self):
         # The audit of 9da0ed3 (P2, item 13): `scripts/*.py` and `home/dot_config/**` stay scopes, and every applied file
-        # they match gets its concrete row, so the generated task passes C4 and C12.
+        # they match gets its concrete row, so the generated task passes C4 and C12; a match that is itself an entry
+        # (scripts/demo.sh under `scripts/*.sh`) keeps its one row, so C7b passes too (the pre-push review of eb20d063).
         program = FILES[PROGRAMS].replace(
-            "`scripts/demo.sh`**", "`scripts/demo.sh`**, `scripts/*.py`, `home/dot_config/**`"
+            "`scripts/demo.sh`**", "`scripts/demo.sh`**, `scripts/*.py`, `scripts/*.sh`, `home/dot_config/**`"
         )
         self.commit({PROGRAMS: program, "scripts/tool.py": "print(1)\n", "home/dot_config/x.toml": "a = 1\n"}, "scopes")
         code, out, front, _ = self.generate()

@@ -153,7 +153,7 @@ def main():
     rows_out = [{"control": f"{p} ({title})", "disposition": f"residual: {completion}"} for p in allowed[:-1]]
     for g in (a for a in allowed[:-1] if re.search(GLOB, a)):  # C12: every executed or applied file a glob matches
         for f in filter(None, git(root, "ls-files", "-z", "--", f":(glob){g}").stdout.split("\0")):
-            if checker.applied(f) and not f.startswith("tests/fixtures/"):
+            if checker.applied(f) and f not in allowed and not f.startswith("tests/fixtures/"):  # an entry has its row
                 rows_out.append({"control": f"{f} (matched by {g})", "disposition": f"residual: {completion}"})
     rows_out += bundled.get("threat_table") or []
 

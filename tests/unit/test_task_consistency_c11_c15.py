@@ -209,15 +209,19 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             ),
             "the whole assignment": (block + f"  INV-2: {two}\n", []),
         }
+        typo = ".orchestration/tasks/dotfiles-T9-typo-a01.md"  # the pre-push review of eb20d063: no skip by a typo
+        cases["a mistyped design"] = ("", [f"C15 design {typo} is not on origin/main"])
         for name, (invariants, want) in cases.items():
             with self.subTest(case=name):
-                _, out = self.check(self.task(BASE.replace(block, invariants)))
+                task = BASE.replace(block, invariants).replace(d, typo if name == "a mistyped design" else d)
+                _, out = self.check(self.task(task))
                 self.assertEqual([l.strip() for l in out.splitlines() if l.strip().startswith("C15")], want, out)
 
     def test_c12_classifies_concrete_glob_matches_before_the_glob_spelling(self):
         # The audit of 9da0ed3 (P2, items 10 and 19): install/** spells no applied kind, but the shell script it matches
-        # is executed, so it needs its concrete row; a tests/fixtures/ glob stays exempt.
-        self.publish({"install/setup.sh": "echo setup\n", "tests/fixtures/x/run.sh": "echo x\n"})
+        # is executed, so it needs its concrete row; a tests/fixtures/ glob and the task's own directory stay exempt.
+        own = ".orchestration/dotfiles-T9-base-a01/run.sh"
+        self.publish({"install/setup.sh": "echo setup\n", "tests/fixtures/x/run.sh": "echo x\n", own: "echo own\n"})
         rows = '  - control: "install/** (the installers)"\n    disposition: "residual: the C12 case\'s glob entry"\n'
         rows += (
             '  - control: "tests/fixtures/x/** (fixtures)"\n    disposition: "residual: the C12 case\'s exempt glob"\n'

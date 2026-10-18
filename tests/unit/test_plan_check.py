@@ -124,7 +124,11 @@ class PlanCheckTest(unittest.TestCase):
         record = self.root / ".orchestration/acceptance/dotfiles-T1-one-a01.md"
         record.parent.mkdir(parents=True)
         events = (("05", "one", "accepted"), ("04", "one", "revise"), ("06", "other", "withdrawn"))
-        record.write_text("".join(line.format(*e) for e in events))
+        # The pre-push review of eb20d063: each event of a two-event line has its own status, another task's coming
+        # first included, and the untimed last line carries 07:00, so its event for one is the latest.
+        two = "`AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-other-a01 status={}` `AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-one-a01 status={}`\n"
+        shared = "[2026-10-18T07:00:00Z] " + two.format("withdrawn", "revise") + two.format("revise", "accepted")
+        record.write_text("".join(line.format(*e) for e in events) + shared)
         progress = PLANS + "024-progress.tsv"
         self.edit(progress, "updated_jst\n", "updated_jst\ndotfiles-T1-one-a01\ttask\tone\taccepted\te\tt\n")
         self.assertEqual(self.plan_check("--drift"), (0, []))
@@ -134,11 +138,12 @@ class PlanCheckTest(unittest.TestCase):
 
     def test_drift_checks_every_sha_and_state_for_each_pr_occurrence(self):
         # The audit of 9da0ed3 (P2, item 17): every sha and state near one #<pr> is compared on its own, so a matching
-        # head never hides a conflicting state; association stops at the next #<pr>.
-        self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\n#77 abc1234 merged; #78 abc1234 def4567\n")
+        # head never hides a conflicting state; association stops at the next #<pr>, so a repeated PR's second
+        # occurrence carries its own sha and state assertions.
+        self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\n#77 abc1234 merged; #77 def4567 abc1234 CLEAN\n")
         code, lines = self.plan_check("--drift")
         live = "abc1234" + "0" * 5
-        want = ["drift: 024-execution.md:3 #77 merged != OPEN", f"drift: 024-execution.md:3 #78 def4567 != {live}"]
+        want = ["drift: 024-execution.md:3 #77 merged != OPEN", f"drift: 024-execution.md:3 #77 def4567 != {live}"]
         self.assertEqual((code, lines), (1, want))
 
     def test_invariants_reject_nonempty_quoted_oauth_token_assignments(self):

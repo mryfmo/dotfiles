@@ -4,10 +4,10 @@ seat: claude-standard-dot-a011
 reset_of: dotfiles-T133-verdict-audit-pool-a01
 branch: tools/verdict-audit-pool-a01
 pr: 410
-base: 68f8a70a (the merge base with origin/main)
-previous_head: 85a472294d0c10835bd7235e3c76d045846a6ed9 (a01's revise-1 head, locally reviewed: 2 P1, 4 P2)
-code_commit: e2092549 (the red tests f760acff, the fix dc83dabd, the refinement e2092549)
-task_sha256: 6d2e0a42995f2cdb3a290d61c5a32c36ddf8360a33dc21ad409e799f2f298505
+base: 3e41e36a (the merge base with origin/main since the chain's update-branch; round 1 ran on 68f8a70a)
+previous_head: cfeca64a46426acb927c6e7b83958055c35df6d7 (revise 1; round 1 started from 85a47229)
+code_commit: d0fd7859 (revise 1: the red tests b179e9c2, the fixes d0fd7859; round 1: f760acff, dc83dabd, e2092549)
+task_sha256: 5873f85a9910fb77644f06140ee9b9092f8fe17c9b909b01e8f29385a963ab10 (amendment 1; round 1 ran under 6d2e0a42…)
 ---
 
 # Report: dotfiles-T133-verdict-audit-pool-a02
@@ -77,13 +77,48 @@ A fresh read-only subagent was given the commit range and the task file, not my 
 
 Live `--apply`, `--loop` and dispatch were not exercised, as the task states.
 
+## Revise 1: the orchestrator's local review of cfeca64 (1 P1, 3 P2)
+
+The orchestrator's revise ACCEPTANCE of 2026-10-18T20:40:19Z cites `.orchestration/validation/dotfiles-T133-verdict-audit-pool-a02-local-review-cfeca64.md` in the main checkout. `cfeca64a` is the chain's update-branch head over `82b99ed7` (with `origin/main` `3e41e36a`). The follow-up task's work in progress was committed on its own branch first. This branch was then fast-forwarded to `cfeca64a`. Amendment 1 (`5873f85a…`, answering my question PONG of 21:10Z) raised the test cap for this round to 550; the code cap stays 500.
+
+1. **P1, `audit-pool.sh`: request names.**
+   - Under the queue lock, the picker renames every request not named `<task-id>-<sha7>.request` to `.blocked` without reading it, and writes `<request>.rejected` with the reason.
+   - It prints the slot first. Bash accepts the slot only as `^[1-9]$` and uses it only as a path suffix. No arithmetic on any name is left, and a file name never becomes an argument.
+   - Test: `tests/unit/test_audit_pool.py::test_pool_rejects_a_malformed_request_name_and_never_evaluates_it`. A request named `t BASH_VERSINFO[$(touch evaluated)0]+.request` must leave no `evaluated` file, call no codex, and become `.blocked` with its reason.
+2. **P2, `orch-audit.sh`: the extracted record is masked.**
+   - After the checker writes the record, `validate-agent-assets.py --mask-secrets` masks it as JSON, which decodes a `\u`-escaped secret. The stdlib checker then validates it again.
+   - Any failure removes it and refuses with exit 3. Since `f75cdc1f` the refusal no longer depends on `rm` succeeding.
+   - Test: `…::test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it`. The fenced block carries `ghp_…`, and the kept record must not contain the token. setUp now copies the real masker instead of an empty stub.
+3. **P2, `audit-pool.sh`: pool-only worktrees.** Every slot, slot 1 included, audits in `.claude/worktrees/orchestrator-audit-<n>`, never the integration worktree `orchestrator-review`.
+   - Test: `…::test_pool_slots_never_use_the_integration_worktree` (codex runs with `-C …/orchestrator-audit-1`).
+   - The task text's item 2 still names `orchestrator-review` and `orchestrator-review-2`. The revise ACCEPTANCE supersedes that sentence, which the acceptance record should note.
+4. **P2, `verdict.sh`: `--loop --apply` refreshes the trusted checkout.** After each child, the loop fetches and runs `git merge --ff-only origin/main`; if that fails, it holds with exit 20.
+   - Test: `tests/unit/test_verdict.py::test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge`. The fake `gh pr merge` moves `origin/main`. After the loop, HEAD equals `origin/main`, and a diverged checkout makes the loop exit 20.
+
+Red and green (validation §R2): on `b179e9c2`, whose scripts are cfeca64's, the four tests fail, each for its named cause. On `94a9345e` (the scripts of `d0fd7859`), the reason-file assertion fails with `FileNotFoundError`. At the head, all 25 tests pass: 21 retained, including round 1's six, plus the four new ones.
+
+Worker review of `d0fd7859` (a fresh read-only subagent): `Verdict: correct`, with four P3.
+- **Fixed in this round before any push** (red `94a9345e`, fix `f75cdc1f`):
+  - the missing reason file of a blocked name;
+  - `rm && refuse` became `rm || true` followed by `refuse`;
+  - the `--json` documentation.
+  The reviewer's `--json <directory>` case reaches the earlier cleanup at line 153, which already exits 1, so it was not kept as a test.
+- **Declared:** the record is unmasked for the moment between the checker's write and the masker's rewrite. Owner for any advisory follow-up: `dotfiles-T133-verdict-audit-pool-followup-a01`.
+
+Check for revise 1:
+- `shellcheck`, `shfmt -i 4 -sr -d`, `ruff format --check` and `make render-check` are clean.
+- `make format` exits 2 only because its whole-tree shfmt step flags 12 files that are unchanged from `3e41e36a`. ruff (65 files) and prettier are clean.
+- `make unit-test`, with the sandbox's commit-signing and `mktemp` limits neutralized on both sides: 1232 tests at the head and 1207 at the base `3e41e36a`. Both have the same 44 failures and 10 errors, in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (37) and `test_runtime_health` (8). No test fails at the head that does not fail at the base (§R5).
+- Caps: code 500 of 500 (verdict.sh 260, audit-pool.sh 126, orch-audit.sh 103 + 11). The doc prose was tightened to stay there; no check or case was removed. Tests: 531 of 550 under amendment 1 (test_verdict.py 312, test_audit_pool.py 219). No retained case or assertion was dropped. Measured at the head against cfeca64: `self.assert` calls went from 35 to 38 in test_verdict.py and from 25 to 31 in test_audit_pool.py, exactly the new tests' assertions, and `subTest(` stayed at 12 and 7 (§R6).
+- The Check's shadow run is not repeated in this round, which changes no input it reads. Round 1's run is §10.
+
 ## Changed files (cumulative PR diff against the merge base)
 
 `scripts/orchestrator/verdict.sh`, `scripts/orchestrator/audit-pool.sh`, `scripts/orchestrator/orch-audit.sh`, `.schemas/audit.json`, `.schemas/verdict.json`, `.schemas/classes.yaml`, `tests/unit/test_verdict.py`, `tests/unit/test_audit_pool.py`, and `.orchestration/dotfiles-T133-verdict-audit-pool-a02/**` (this task's copy and records). The a01 records under `.orchestration/dotfiles-T133-verdict-audit-pool-a01/` came from earlier rounds; this task did not change them. In this task: the three scripts, the two test modules and this task's directory.
 
 ## Evidence, review, cost
 
-- Evidence in `.orchestration/dotfiles-T133-verdict-audit-pool-a02/`: `task.md`, `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `dotfiles-T133-verdict-audit-pool-a02-worker-crit.json` and `dotfiles-T133-verdict-audit-pool-a02-worker-review-receipt.md`. No `revise.yaml`: this is the first round of a02.
+- Evidence in `.orchestration/dotfiles-T133-verdict-audit-pool-a02/`: `task.md`, `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `dotfiles-T133-verdict-audit-pool-a02-worker-crit.json` and `dotfiles-T133-verdict-audit-pool-a02-worker-review-receipt.md`. `revise.yaml` (revise 1, previous head `cfeca64a`).
 - PR feedback: this task posted no `@codex review` comment. The final head's feedback, its dispositions and the Bot window (`bot: none` if nothing arrives in 15 minutes) are in the RESULT.
 - No Understand-Anything hook prompt fired, and no Plan Mode was used.
 - cost: n/a (the runtime exposes no token or cost figure to the seat).

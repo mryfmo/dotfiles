@@ -215,6 +215,10 @@ The live no-prompt rule governs the inherited Bot workflow. No `@codex review` c
 
 Live dispatch, merge and audit-service behavior are not exercised by the fixtures, and local Bats remain unrun. A killed audit pool can leave running-slot files that block those slots until explicit cleanup.
 
+## Amendment 1 (round 1, 2026-10-18T21:1xZ): the test cap for revise 1
+
+a011's question PONG (21:10:38Z). The four fixes of revise 1 and their four named tests measure code 506 of 500 and tests 543 of 500 against the merge-base 3e41e36a, both files having been compacted to 499 in round 1. For this revise round the Check's test cap is 550 under `tests/`; the code cap stays 500 (reached by trimming documentation prose, never a check or a case); honest compaction (three asserts instead of a formatted tuple, commit-tree instead of a branch switch, helpers as class lambdas) is welcome but no retained case is dropped or merged, as the Check already says. The record notes the raised cap as a records-form fact of this PR. This is INV-6's first amendment (C-61); the counters are pasted below.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

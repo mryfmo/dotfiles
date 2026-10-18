@@ -1322,3 +1322,211 @@ $ jq . "$SCRATCH/dotfiles-T133-verdict-audit-pool-a02-verdict-85a4722.json"; cat
 410	85a472294d0c10835bd7235e3c76d045846a6ed9	hold			2026-10-18T11:02:38Z
 [exit 0]
 ````
+
+# Revise 1 (the orchestrator's local review of cfeca64)
+
+Everything above ran in round 1 at `e2092549` and is kept as that round's evidence. Everything below ran for revise 1 at `f75cdc1f`. Revise 1 started from `cfeca64a`, the chain's update-branch head (`82b99ed7` merged with `origin/main` `3e41e36a`). Its commits are the red tests `b179e9c2` (only `tests/` changed; the scripts are cfeca64's) and the fixes `d0fd7859`, then, from the worker review of d0fd7859, the red test `94a9345e` (the reason file of a blocked name) and the fix `f75cdc1f`. Amendment 1 raised the test cap to 550 for this round. `NEW` names the four revise tests, `CHECK` the Check's two modules and `PREV` the previous head. Every status line captures `rc=$?` before any command substitution.
+
+## R1. The round's commits and the unchanged scripts of the red commit
+
+````console
+$ git log --oneline "$PREV"..HEAD; git merge-base origin/main HEAD; git diff --quiet "$PREV" "$RED" -- scripts .schemas && echo "the red commit changes no script or schema of ${PREV:0:8}"; git diff --stat "$PREV" "$RED"; git diff --stat "$RED" HEAD; git diff --quiet d0fd7859 94a9345e -- scripts && echo "94a9345e changes no script of d0fd7859"
+f75cdc1f fix(orchestrator): a blocked request name leaves its reason; the json refusal never depends on rm (T133 verdict-audit-pool a02 revise 1, worker review)
+94a9345e test(orchestrator): a blocked request name leaves its reason (T133 verdict-audit-pool a02 revise 1, worker review)
+d0fd7859 fix(orchestrator): strict request names, pool-only worktrees, masked audit json and a refreshed loop checkout (T133 verdict-audit-pool a02 revise 1)
+b179e9c2 test(orchestrator): four red regressions for the local review of cfeca64 (T133 verdict-audit-pool a02 revise 1)
+3e41e36abc949acd7e6b4859c1a22df9e665c8d4
+the red commit changes no script or schema of cfeca64a
+ tests/unit/test_audit_pool.py | 26 ++++++++++++++++++++++++--
+ tests/unit/test_verdict.py    | 23 ++++++++++++++++-------
+ 2 files changed, 40 insertions(+), 9 deletions(-)
+ scripts/orchestrator/audit-pool.sh | 36 +++++++++++++++++++-----------------
+ scripts/orchestrator/orch-audit.sh | 16 +++++++++-------
+ scripts/orchestrator/verdict.sh    | 36 ++++++++++++++++--------------------
+ tests/unit/test_audit_pool.py      |  1 +
+ 4 files changed, 45 insertions(+), 44 deletions(-)
+94a9345e changes no script of d0fd7859
+[exit 0]
+````
+
+## R2. Red: the four revise tests on the red commit (a scratch worktree), green at the head
+
+````console
+$ git worktree add --detach -q "$SCRATCH/rv-red" "$RED" && uv run --directory "$SCRATCH/rv-red" python -m unittest $NEW -v > "$SCRATCH/rv-red.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/rv-red.out" /usr/bin/grep -E " \.\.\. (ok|FAIL|ERROR)$|^(FAIL|ERROR):|^AssertionError|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit\.[a-z_]*\.[A-Za-z]*\.[a-z0-9_]*)//" | cut -c1-240; git worktree remove --force "$SCRATCH/rv-red"
+unittest exit status: 1
+test_pool_rejects_a_malformed_request_name_and_never_evaluates_it ... FAIL
+test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it ... FAIL
+test_pool_slots_never_use_the_integration_worktree ... FAIL
+test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge ... FAIL
+FAIL: test_pool_rejects_a_malformed_request_name_and_never_evaluates_it
+AssertionError: True is not false
+FAIL: test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it
+AssertionError: '<redacted:secret-pattern>' unexpectedly found in '{\n  "auditor": "codex --profile audit",\n  "findings": [\n    {\n      "class": "string-form-comparison",\n      "confidence": "high",\n      "file": "a.sh",
+FAIL: test_pool_slots_never_use_the_integration_worktree
+AssertionError: '-C $TMPDIR/tmpp8p_if7p/repo/.claude/worktrees/orchestrator-audit-1 ' not found in "--profile audit exec --sandbox read-only -C $TMPDIR/tmpp8p_if7p/repo/.claude/worktrees/orchestrator-review -
+FAIL: test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge
+AssertionError: '3c31cfc93dada1c623614a66b5af306bbe935c6a' != 'f894491c52d04c8c1f29f6d029fe9d2f4ef191c7'
+Ran 4 tests in 8.450s
+FAILED (failures=4)
+[exit 0]
+````
+
+````console
+$ uv run python -m unittest $CHECK -v
+test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (tests.unit.test_verdict.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) ... ok
+test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto (tests.unit.test_verdict.VerdictTest.test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto) ... ok
+test_verdict_condition_1_is_a_warning_under_precheck_required_0 (tests.unit.test_verdict.VerdictTest.test_verdict_condition_1_is_a_warning_under_precheck_required_0) ... ok
+test_verdict_condition_4_preserves_complete_item_identity_and_multiplicity (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_preserves_complete_item_identity_and_multiplicity) ... ok
+test_verdict_condition_4_rejects_an_undispositioned_status_with_a_null_url (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_rejects_an_undispositioned_status_with_a_null_url) ... ok
+test_verdict_condition_4_requires_saved_and_fresh_heads_to_equal_the_accepted_head (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_requires_saved_and_fresh_heads_to_equal_the_accepted_head) ... ok
+test_verdict_condition_4_uses_the_existing_disposition_and_commit_validators (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_uses_the_existing_disposition_and_commit_validators) ... ok
+test_verdict_counts_open_p0_p1_findings_even_when_the_id_is_empty (tests.unit.test_verdict.VerdictTest.test_verdict_counts_open_p0_p1_findings_even_when_the_id_is_empty) ... ok
+test_verdict_holds_on_a_missing_or_schema_failing_input (tests.unit.test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) ... ok
+test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge (tests.unit.test_verdict.VerdictTest.test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge) ... ok
+test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold (tests.unit.test_verdict.VerdictTest.test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold) ... ok
+test_verdict_pins_tools_interpreter_and_environment_before_reading_a_pr_checkout (tests.unit.test_verdict.VerdictTest.test_verdict_pins_tools_interpreter_and_environment_before_reading_a_pr_checkout) ... ok
+test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (tests.unit.test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable) ... ok
+test_verdict_shadow_appends_the_machine_column_only (tests.unit.test_verdict.VerdictTest.test_verdict_shadow_appends_the_machine_column_only) ... ok
+test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class (tests.unit.test_audit_pool.AuditPoolTest.test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class) ... ok
+test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius (tests.unit.test_audit_pool.AuditPoolTest.test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius) ... ok
+test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal) ... ok
+test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_masks_the_extracted_document_before_retaining_it) ... ok
+test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) ... ok
+test_pool_rejects_a_malformed_request_name_and_never_evaluates_it (tests.unit.test_audit_pool.AuditPoolTest.test_pool_rejects_a_malformed_request_name_and_never_evaluates_it) ... ok
+test_pool_retries_a_429_three_times_then_blocks (tests.unit.test_audit_pool.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) ... ok
+test_pool_runs_at_most_max_audits_and_the_third_request_waits (tests.unit.test_audit_pool.AuditPoolTest.test_pool_runs_at_most_max_audits_and_the_third_request_waits) ... ok
+test_pool_saves_only_schema_valid_audit_json_and_blocks_a_rejected_request (tests.unit.test_audit_pool.AuditPoolTest.test_pool_saves_only_schema_valid_audit_json_and_blocks_a_rejected_request) ... ok
+test_pool_slots_never_use_the_integration_worktree (tests.unit.test_audit_pool.AuditPoolTest.test_pool_slots_never_use_the_integration_worktree) ... ok
+test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree (tests.unit.test_audit_pool.AuditPoolTest.test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 141.676s
+
+OK
+[exit 0]
+````
+
+````console
+$ git worktree add --detach -q "$SCRATCH/rv-red2" 94a9345e && uv run --directory "$SCRATCH/rv-red2" python -m unittest tests.unit.test_audit_pool.AuditPoolTest.test_pool_rejects_a_malformed_request_name_and_never_evaluates_it > "$SCRATCH/rv-red2.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/rv-red2.out" /usr/bin/grep -E "^(FAIL|ERROR):|Error:|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//" | cut -c1-240; git worktree remove --force "$SCRATCH/rv-red2"
+unittest exit status: 1
+ERROR: test_pool_rejects_a_malformed_request_name_and_never_evaluates_it
+FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/tmpe40zffq7/repo/.orchestration/validation/audit-queue/t BASH_VERSINFO[$(touch evaluated)0]+.request.rejected'
+Ran 1 test in 0.679s
+FAILED (errors=1)
+[exit 0]
+````
+
+## R3. Lint
+
+````console
+$ shellcheck $SCRIPTS && echo shellcheck-clean; shfmt -i 4 -sr -d $SCRIPTS && echo "shfmt -i 4 -sr -d (the repository form): clean"; ruff format --config ruff.toml --check tests/unit/test_verdict.py tests/unit/test_audit_pool.py
+shellcheck-clean
+shfmt -i 4 -sr -d (the repository form): clean
+2 files already formatted
+[exit 0]
+````
+
+## R4. make format and make render-check
+
+````console
+$ make format > "$SCRATCH/rv-format.out" 2>&1; rc=$?; echo "make format exit status: ${rc}"; base="$(git merge-base origin/main HEAD)"; sed -n "s/^diff \([^ ]*\)\.orig .*/\1/p" "$SCRATCH/rv-format.out" > "$SCRATCH/rv-flagged.txt"; echo "files the whole-tree shfmt step flags: $(wc -l < "$SCRATCH/rv-flagged.txt" | tr -d " ")"; while read -r f; do git diff --quiet "$base" HEAD -- "$f" && echo "unchanged from ${base:0:8}: $f" || echo "CHANGED by this PR: $f"; done < "$SCRATCH/rv-flagged.txt"
+make format exit status: 2
+files the whole-tree shfmt step flags: 12
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/pr-cost.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/resolve-threads.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-advisory.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-review.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/sandbox-scan.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/boundary.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/ff-main.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/orch-audit.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/orch-gate.sh
+unchanged from 3e41e36a: .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/t717-prep.sh
+unchanged from 3e41e36a: home/dot_claude/hooks/executable_project-map-reload.sh
+unchanged from 3e41e36a: tests/install/macos/common/brew.bats
+[exit 0]
+````
+
+````console
+$ git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check; git ls-files -z "*.md" | xargs -0 prettier --check
+65 files already formatted
+Checking formatting...
+All matched files use Prettier code style!
+[exit 0]
+````
+
+````console
+$ make render-check
+uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+[exit 0]
+````
+
+## R5. make unit-test with the sandbox limits neutralized, at the head and at the merge base
+
+As in §8a: `GIT_CONFIG_GLOBAL=/dev/null` and the validation-only `mktemp` shim, identically on both sides.
+
+````console
+$ GIT_CONFIG_GLOBAL=/dev/null PATH="$SCRATCH/shim:$PATH" make unit-test > "$SCRATCH/rv-unit-head.out" 2>&1; rc=$?; echo "make unit-test at the head exit status: ${rc}"; < "$SCRATCH/rv-unit-head.out" /usr/bin/grep -E "^(Ran|OK|FAILED)"; < "$SCRATCH/rv-unit-head.out" /usr/bin/grep -E "^(FAIL|ERROR): " | sed "s/.*(\([a-z_]*\)\..*/\1/" | sort | uniq -c
+make unit-test at the head exit status: 2
+Ran 1232 tests in 1504.629s
+FAILED (failures=44, errors=10, skipped=2)
+   1 ERROR: model profile standard.claude.model must be a launcher-safe string
+   1 ERROR: model_profiles must define the express profile
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+   4 test_agent_stop_gate
+   5 test_gh_auth
+  37 test_herdr_agents
+   8 test_runtime_health
+[exit 0]
+````
+
+````console
+$ base="$(git merge-base origin/main HEAD)"; git worktree add --detach -q "$SCRATCH/rv-base" "$base" && GIT_CONFIG_GLOBAL=/dev/null PATH="$SCRATCH/shim:$PATH" make -C "$SCRATCH/rv-base" unit-test > "$SCRATCH/rv-unit-base.out" 2>&1; rc=$?; echo "make unit-test at ${base:0:8} exit status: ${rc}"; < "$SCRATCH/rv-unit-base.out" /usr/bin/grep -E "^(Ran|OK|FAILED)"; < "$SCRATCH/rv-unit-base.out" /usr/bin/grep -E "^(FAIL|ERROR): " | sed "s/.*(\([a-z_]*\)\..*/\1/" | sort | uniq -c; git worktree remove --force "$SCRATCH/rv-base"
+make unit-test at 3e41e36a exit status: 2
+Ran 1207 tests in 946.883s
+FAILED (failures=44, errors=10, skipped=2)
+   1 ERROR: model profile standard.claude.model must be a launcher-safe string
+   1 ERROR: model_profiles must define the express profile
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+   1 ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+   4 test_agent_stop_gate
+   5 test_gh_auth
+  37 test_herdr_agents
+   8 test_runtime_health
+[exit 0]
+````
+
+````console
+$ comm -3 <(/usr/bin/grep -E "^(FAIL|ERROR): " "$SCRATCH/rv-unit-head.out" | sort) <(/usr/bin/grep -E "^(FAIL|ERROR): " "$SCRATCH/rv-unit-base.out" | sort) | sed "s/^/only on one side: /"; n="$(comm -23 <(/usr/bin/grep -E "^(FAIL|ERROR): " "$SCRATCH/rv-unit-head.out" | sort) <(/usr/bin/grep -E "^(FAIL|ERROR): " "$SCRATCH/rv-unit-base.out" | sort) | wc -l | tr -d " ")"; echo "failing at the head but not at the base: ${n}"
+failing at the head but not at the base: 0
+[exit 0]
+````
+
+## R6. Caps against the merge base
+
+````console
+$ git diff --numstat origin/main...HEAD -- scripts tests .schemas
+33	0	.schemas/audit.json
+140	0	.schemas/classes.yaml
+29	0	.schemas/verdict.json
+126	0	scripts/orchestrator/audit-pool.sh
+103	11	scripts/orchestrator/orch-audit.sh
+260	0	scripts/orchestrator/verdict.sh
+219	0	tests/unit/test_audit_pool.py
+312	0	tests/unit/test_verdict.py
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.(orchestration|schemas)\// { next } { c += $1 + $2 } END { printf "outside tests/, .orchestration/ and .schemas/: %d of 500\ntests/: %d of 550 (amendment 1)\n", c, t }'
+outside tests/, .orchestration/ and .schemas/: 500 of 500
+tests/: 531 of 550 (amendment 1)
+[exit 0]
+````
+

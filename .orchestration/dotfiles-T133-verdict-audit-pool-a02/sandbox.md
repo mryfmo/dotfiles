@@ -15,3 +15,11 @@ Every command ran inside the Claude Code sandbox from `.claude/worktrees/worker-
 | 4 | `cat <shadow output>; git status …; for f in …; do jq . "$f"; done; cat …/verdict-shadow.tsv` (reading row 3's outputs) | sandbox | Refused by the auto-mode classifier ("Safety Bypass Flag", exit n/a). The same three files were read with the Read tool instead; nothing else depended on the command. |
 
 Git writes (`git add`, `git commit`, the push) and every `gh` command ran as single commands, with no shell chaining. `git fetch` ran on its own. No `@codex review` comment was posted.
+
+## Revise 1
+
+Every command ran inside the sandbox, and none was refused.
+
+- Order of work: the parked follow-up task's draft records were committed on their own branch (`tools/ci-efficiency-followup-a01`, `5df527dd`). Then `git fetch origin tools/verdict-audit-pool-a01` ran on its own, and `verdict-audit-pool-a02-a011` was fast-forwarded to `cfeca64a`.
+- One local, unpushed commit was undone with `git reset --soft d0fd7859`, which kept every change: the first version of the worker-review red test, whose directory case was not discriminating. It was recommitted as `94a9345e`.
+- The push and the gh reads after it are stated in the RESULT.

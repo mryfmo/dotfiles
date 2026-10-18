@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 STUB = """#!@PYTHON@
-import json, os, sys, time
+import json, os, subprocess, sys, time
 from pathlib import Path
 args, runs = sys.argv[1:], json.load(open(os.environ["GH_RUNS"]))
 entry = {"argv": args}
@@ -39,8 +39,10 @@ if args[:2] == ["run", "view"] and "--json" in args:
 elif args[:2] == ["run", "view"]:
     time.sleep(float(os.environ.get("GH_LOG_DELAY") or 0))
     print(runs["logs"].get(args[args.index("--job") + 1], ""))
-elif args[0] == "api":
-    print(runs["prs"][args[1].rsplit("/", 1)[1]])
+elif args[0] == "api":  # the script's own --jq filter, run on the run's pull_requests payload
+    payload = {"pull_requests": [{"number": n} for n in runs["prs"][args[1].rsplit("/", 1)[1]]]}
+    jq = ["jq", "-r", args[args.index("--jq") + 1]]
+    sys.exit(subprocess.run(jq, input=json.dumps(payload), text=True, check=False).returncode)
 elif args[:2] == ["pr", "view"] and args[2] in runs["heads"]:
     turn = Path(os.environ["GH_LOG"] + "." + args[2])
     seen = len(turn.read_text()) if turn.exists() else 0
@@ -145,7 +147,7 @@ class CiRerunTest(unittest.TestCase):
                 "5": "FAIL: test_something\nAssertionError: 1 != 2",
                 "6": SNAP,
             },
-            "prs": {"101": "9", "202": "10", "303": "11"},
+            "prs": {"101": [9], "202": [10], "303": [11]},
             "heads": {"9": [HEAD], "10": [NEWER], "11": [HEAD]},
         }
 
@@ -256,12 +258,12 @@ class CiRerunTest(unittest.TestCase):
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.
         for name, prs, heads, code in (
-            ("current", "9", [HEAD], 0),
-            ("superseded", "9", [NEWER], 3),
-            ("advances during the log reads", "9", [HEAD, NEWER], 3),
-            ("no pull request", "", [HEAD], 1),
-            ("two pull requests", "9 12", [HEAD], 1),
-            ("unreadable head", "12", [HEAD], 1),
+            ("current", [9], [HEAD], 0),
+            ("superseded", [9], [NEWER], 3),
+            ("advances during the log reads", [9], [HEAD, NEWER], 3),
+            ("no pull request (a fork's run)", [], [HEAD], 1),
+            ("two pull requests", [9, 12], [HEAD], 1),
+            ("unreadable head", [12], [HEAD], 1),
         ):
             with self.subTest(case=name):
                 self.runs["prs"]["101"], self.runs["heads"]["9"] = prs, heads
@@ -273,10 +275,16 @@ class CiRerunTest(unittest.TestCase):
                 # Only a refusal by the second comparison, after the reservation, leaves the run reserved.
                 self.assertEqual(name in ("current", "advances during the log reads"), self.reservation("101").is_dir())
         with self.subTest(case="a push run has no pull request to compare"):
-            self.runs["101"]["event"], self.runs["prs"]["101"] = "push", ""
+            self.runs["101"]["event"], self.runs["prs"]["101"] = "push", []
             result, calls = self.run_script("101", fresh=True)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertFalse([call for call in calls if call[0] in ("api", "pr")])
+        with self.subTest(case="a run still in progress"):  # worker review P2: its jobs are not final yet
+            self.runs["101"]["event"], self.runs["101"]["status"] = "pull_request", "in_progress"
+            self.runs["prs"]["101"], self.runs["heads"]["9"] = [9], [HEAD]
+            result, _ = self.run_script("101", fresh=True)
+            self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(([], False), (self.reruns(), self.reservation("101").is_dir()))
 
     def test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs(self):
         # a01 audit P2: `gh run rerun --failed` also reruns timed-out and cancelled jobs, so each needs a signature too.
@@ -299,6 +307,12 @@ class CiRerunTest(unittest.TestCase):
                     else:
                         self.assertEqual("snap-timeout", self.ledger.read_text().rstrip("\n").split("\t")[-1])
                         self.assertIn(["run", "view", "101", "--job", "8", "--log"], calls)
+        with self.subTest(case="a missing log matches no signature, however broad"):
+            (self.repo / ".github/flakes.yaml").write_text("- {id: any, job: '.*', log_regex: '^', note: fixture}\n")
+            self.runs["101"]["jobs"] = [job(9, "test (ubuntu-24.04, server)", "cancelled")]
+            result, _ = self.run_script("101", fresh=True)
+            self.assertEqual(3, result.returncode, result.stdout + result.stderr)
+            self.assertEqual([], self.reruns())
 
     def test_the_production_flake_registry_matches_its_samples_and_no_real_failure(self):
         # a01 audit P2: the checked-in signatures, not a fixture, against their measured samples and real failures.
@@ -307,8 +321,9 @@ class CiRerunTest(unittest.TestCase):
         for entry in entries:
             job_name, line = SAMPLES[entry["id"]]
             with self.subTest(signature=entry["id"]):
-                # Each expression compiles (grep -E exits 2 otherwise) and matches no empty log: a missing log is no flake.
-                self.assertEqual([1, 1], [egrep(entry[key], "") for key in ("job", "log_regex")])
+                # Each expression compiles (grep -E exits 2 otherwise) and matches no empty line, which a here-string of
+                # an empty log is: a missing log is no flake.
+                self.assertEqual([1, 1], [egrep(entry[key], "\n") for key in ("job", "log_regex")])
                 self.assertEqual([0, 0], [egrep(entry["job"], job_name), egrep(entry["log_regex"], line)])
                 # The sample's own job name satisfies `job`, so only the log expression can refuse a real failure.
                 for log in REAL_FAILURES:

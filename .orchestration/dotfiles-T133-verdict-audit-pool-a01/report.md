@@ -5,8 +5,9 @@ branch: tools/verdict-audit-pool-a01
 base: 99a4a80f
 pr: 410
 parked_pr: 407
-head_code: 7462e180
-commits: [beb0b0c7, fada8070, 2ff92578, f2d1ffd2, be70b5c8, f6adaea8, 7462e180]
+head_code: d15ab116
+previous_head: e88ffad953128c777f6356d91fc85740e86fca7b
+commits: [beb0b0c7, fada8070, 2ff92578, f2d1ffd2, be70b5c8, f6adaea8, 7462e180, d15ab116]
 task_sha256: 2919563b9f8d47825cf13e251055c7955f5fc975b28896058acd5568ba2d6f59
 ---
 
@@ -43,7 +44,7 @@ My PONG of 04:37Z asked for the D-cap-F2 form: `.schemas/classes.yaml` is 140 li
 ## Residuals (each fails closed)
 
 - `audit-pool.sh`: a killed pool's `.running-<n>` files keep their slots until removed; `--once` names them when requests wait (no PID reclaim).
-- The stdlib checker accepts a date-only `generated_at` for `format: date-time` and ignores keywords the schemas do not use.
+- The stdlib checker ignores keywords the schemas do not use. Its `format: date-time` check takes the RFC 3339 form with an uppercase `T` and `Z` only: a lowercase `t` or `z`, which RFC 3339 allows, is refused (stricter, so it fails closed).
 - A stop-path hold (no head, no record naming the PR) writes no verdict JSON or shadow row, since there is no head or task to name it by.
 - `--apply` sends the ACCEPTANCE line before the merge (the task's order); it does not run the step-10 gate (`require-crit-review`, out of scope), so the threat row's "after the gate" stays a procedure.
 - The differential prompt file is a one-line statement of the differential audit, not the full prompt orch-audit would send.
@@ -57,7 +58,7 @@ My PONG of 04:37Z asked for the D-cap-F2 form: `.schemas/classes.yaml` is 140 li
 ## Caps (Amendment 1; validation §11)
 
 - Scripts (outside `tests/`, `.orchestration/`, `.schemas/`): 500 of 500 (verdict.sh 255, audit-pool.sh 132, orch-audit.sh 102 added and 11 deleted).
-- `tests/`: 497 of 500. `.schemas/` (data, outside the count): audit.json 33, classes.yaml 140, verdict.json 29.
+- `tests/`: 494 of 500. `.schemas/` (data, outside the count): audit.json 33, classes.yaml 140, verdict.json 29.
 
 ## The Check's --shadow run (validation §12)
 
@@ -66,8 +67,18 @@ My PONG of 04:37Z asked for the D-cap-F2 form: `.schemas/classes.yaml` is 140 li
 ## Bot (one review: marked ready at 06:11:34Z on 0f96b967, reviewed 06:17:12Z, review 5561714626)
 
 - 4305981902, P1 (`.orchestration/dotfiles-T133-verdict-audit-pool-a01/task.md:23`, the closed threat row of orch-audit.sh's refusals): the cited test did not exercise the validator untracked or modified, the ledger check failing or the masker failing. `fixed:7462e180`: the cited test now runs all seven refusals (the two validator checks, the ledger check through a tracked failing `--ledger-check` script, the masker through the fake uv), each restoring the state it changed. This is the one worker-side P0/P1 fix round; the no-prompt rule relayed at 05:09:30Z forbids posting `@codex review`, so the fix head has no Bot re-review (`bot: none` for 7462e180).
-- 4305981903, P2 (`scripts/orchestrator/orch-audit.sh:68`, a date-only or zoneless `generated_at` passes the checker): proposed `fix in a revise round (C-50)`: one line, the date-time check as an RFC 3339 pattern with an offset, plus one schema-test case; within allowed_files (it was a declared residual above).
-- 4305981908, P2 (`scripts/orchestrator/verdict.sh:161`, the front-matter read falls back to an online uv resolution): proposed `fix in a revise round (C-50)`: drop the online fallback (a cold cache then holds, fail-closed), net minus one line; within allowed_files.
+- 4305981903, P2 (`scripts/orchestrator/orch-audit.sh:68`, a date-only or zoneless `generated_at` passes the checker): `fixed:d15ab116` in the revise round below.
+- 4305981908, P2 (`scripts/orchestrator/verdict.sh:161`, the front-matter read falls back to an online uv resolution): `fixed:d15ab116` in the revise round below.
+
+## Revise round (AGMSG-ACCEPTANCE status=revise, 2026-10-18T07:02:07Z, previous_head e88ffad9; `revise.yaml`)
+
+- `orch-audit.sh`: the checker's `format: date-time` branch takes only `re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:\d\d)", v)`, and `datetime.fromisoformat` still checks the ranges (so `2026-02-30T05:00:00Z` fails). A non-match raises `TypeError` at `[0]`, caught with the `ValueError`, which keeps the branch at four lines. A date-only or naive `generated_at` now fails `--validate` (exit 1), so json mode refuses the block (exit 3) and the pool blocks the request.
+- `verdict.sh`: the front matter is read with `uv run --offline --no-project --with pyyaml` only. A cold cache leaves `front` empty, which holds through conditions 5 and 8 (exit 20). No online resolution runs. The removed line became a one-line comment, so the scripts stay at 500.
+- Tests, both red at e88ffad9's scripts and green at d15ab116 (validation §5d, §6):
+  - `test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset` runs the checker that json mode extracts through: `+09:00` with a fraction gives 0, while date-only and naive give 1.
+  - `test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable` uses a fake `uv` on PATH. It logs and fails any pyyaml call without `--offline`, and fails the offline one once `no-pyyaml` exists. The verdict accepts, then holds with condition 5 failed, and the online log stays absent. At e88ffad9 the fallback wrote the log.
+- To keep `tests/` within 500, the audit-pool tests were compacted with no case dropped: the `record()` finding dict, the setUp git loop, `run_script` and the ledger-check refusal row now take fewer lines each.
+- The fix ran as one push. No `@codex review` was posted (the no-prompt rule), so d15ab116 has no Bot re-review (`bot: none`).
 
 CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T133 verdict-audit-pool a01 (PR 410): every verdict.sh condition is ok only on a positive check of a parsed, non-empty, validated input (empty gh checks, a blocked audit, a record without a ledger or sha256 lines, an unreadable task file all hold); --apply runs only from a checkout whose scripts/, .schemas/ and tracked task files equal origin/main, after four agreeing machine/human rows of distinct PRs in verdict-shadow.tsv; audit-pool.sh locks with python fcntl because macOS ships no flock(1); the audit json block sits before the Verdict line because the gate reads the verdict from the last line.'` printed `236b14b8-7859-4cc9-91fd-ea518a11e8ef` (validation §13).
 

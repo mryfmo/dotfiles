@@ -28,7 +28,12 @@ Calls outside the sandbox, each through the permission gate (Worker Playbook ste
 | 9 | the Bot wait: `gh api --paginate repos/mryfmo/dotfiles/pulls/410/reviews` and `…/comments` reads every 30 seconds (the review arrived at 06:17:12Z), then `gh api repos/mryfmo/dotfiles/pulls/comments/<id>` reads of the three comments | `gh` |
 | 10 | the push of 7462e180 and the evidence commit, one command | `git push` |
 | 11 | the main checkout's CompactionDB `memory add` (validation §13) | the task's main-checkout CompactionDB `memory add` |
+| 12 | revise round: one push of d15ab116 and the evidence commit, in the boundary form of row 4 | `git push` |
+| 13 | revise round: `gh pr checks 410` reads (CI on the new head) | `gh` |
+| 14 | `agmsg-dispatch … AGMSG-RESULT v1 …` (the first RESULT, 06:58:14Z) | `agmsg-dispatch` |
 
 Under the no-prompt rule relayed at 2026-10-18T05:09:30Z (the user's directive): no command matching a live ask rule runs (no `gh pr comment`, so no `@codex review`; the Bot's automatic review at ready is the only one, and 15 minutes without it is recorded as `bot: none`), and `git fetch`, `git push`, `gh pr ready` and `gh pr create --draft` each run as one command, never chained. Before that message, rows 1 to 6 ran as single commands except the pushes, which were followed by `git ls-remote` in the same call.
 
-Still to run: `agmsg-dispatch … AGMSG-RESULT v1 …`.
+The revise round (2026-10-18T07:02:07Z) ran its edits, tests, commit, the red run of §5d (a scratch worktree at e88ffad9 under `$TMPDIR`, removed with `git worktree remove --force`) and the validation generator inside the sandbox.
+
+Still to run: `agmsg-dispatch … AGMSG-RESULT v1 … previous_head=e88ffad9…` for the revise round.

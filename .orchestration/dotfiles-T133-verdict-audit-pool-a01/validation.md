@@ -1,12 +1,13 @@
 ---
 task_id: dotfiles-T133-verdict-audit-pool-a01
 seat: claude-standard-dot-a008
-head: 7462e180
+head: d15ab116
+previous_head: e88ffad953128c777f6356d91fc85740e86fca7b
 ---
 
 # Validation: dotfiles-T133-verdict-audit-pool-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/verdict-audit-pool-a01` at `7462e180`, inside the sandbox, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's), except §12 (the Check's one --shadow run, at f6adaea8, outside the sandbox for gh, pasted from its saved output), §7a (assembled from §7's output and the origin/main run of the same modules) and §13 (outside the sandbox through the permission gate). `MAIN` names the main checkout and `T` the task id. The scratch worktrees of §5 to §5c live under `$TMPDIR` and are removed after their block with `git worktree remove --force`. §7 and §9 fail on files and modules this PR does not touch, the same on origin/main (§7a, §9).
+Every command ran from the worktree `.claude/worktrees/worker-f` on the branch `tools/verdict-audit-pool-a01` at `d15ab116` (the revise round's code head), inside the sandbox, through a generator that prints each command, its verbatim output and its exit status (a block's status is its last command's), except §12 (the Check's one --shadow run, at f6adaea8, outside the sandbox for gh, pasted from its saved output) and §13 (outside the sandbox through the permission gate). §7a reads §7's output and the saved per-module summary of the same modules run on a scratch worktree at origin/main. `MAIN` names the main checkout and `T` the task id. The scratch worktrees of §5 to §5d live under `$TMPDIR` and are removed after their block with `git worktree remove --force`. §5d is the revise round's red run: its two new tests against e88ffad9's scripts. §7 and §9 fail on files and modules this PR does not touch, the same on origin/main (§7a, §9).
 
 ## 1. Task file (Amendment 1, sha256 2919563b…) and task copy
 ```console
@@ -36,8 +37,10 @@ origin/main=99a4a80f5a5b32a70cf7eb4f4d0db5a02d113841
 ```console
 $ git branch --show-current; git rev-parse HEAD origin/main; git log --oneline origin/main..HEAD
 tools/verdict-audit-pool-a01
-7462e180b93abf8fb81028f88c15f4196215045b
+d15ab116eac44b83965f0c466388d0e272bd3cbc
 99a4a80f5a5b32a70cf7eb4f4d0db5a02d113841
+d15ab116 fix(orchestrator): RFC 3339 date-time with an offset, the front-matter read offline only (T133 verdict-audit-pool a01 revise, Bot P2 4305981903 4305981908)
+e88ffad9 docs(orchestration): T133 verdict-audit-pool a01: the Bot round and the evidence at 7462e180
 7462e180 test(orchestrator): the json-mode test covers every orch-audit refusal its closed threat row claims (T133 verdict-audit-pool a01, Bot P1 4305981902)
 0f96b967 docs(orchestration): T133 verdict-audit-pool a01: the worker evidence at f6adaea8
 f6adaea8 fix(orchestrator): --apply needs scripts and task files equal to origin/main, a record ledger is required (T133 verdict-audit-pool a01 worker re-review)
@@ -68,20 +71,22 @@ echo "--- tracked-record classes missing from classes.yaml:"; comm -23 "$TMPDIR/
 echo "--- classes.yaml keys beyond the main-checkout seed (the named extras):"; comm -13 "$TMPDIR/seed-main.txt" "$TMPDIR/keys.txt"
 echo "--- the seed list:"; tr '\n' ' ' < "$TMPDIR/seed-main.txt"; echo
 --- run
-classes in the main checkout's records:      139; in the tracked records:      120; keys of classes.yaml:      137
+classes in the main checkout's records:      143; in the tracked records:      120; keys of classes.yaml:      137
 --- main-checkout classes missing from classes.yaml:
 completion-order-unmet
 install-receipt-repair
+path-gate-gap
 pin-guard-early-return
+race-unserialized-count
 receipt-form
+rerun-race
 uninstall-leaves-tool-env
 --- tracked-record classes missing from classes.yaml:
 --- classes.yaml keys beyond the main-checkout seed (the named extras):
 ps-output-parsing
-records-form
 string-form-comparison
 --- the seed list:
-acceptance-dispositions acceptance-order acceptance-record-binding action-cdp-omission advisory-deferral advisory-deferral-objection advisory-owner-misassignment advisory-p2 advisory-policy-reading advisory-read-as-deferral argv-diagnostic-disclosure argv-text-mismatch bot-rounds-count boundary-cadence-vs-skill boundary-checker-overclaim c50-clause-skipped closed-row-coverage collision-key-order completion-order-unmet consumer-half contract-type-mismatch counter-evidence counters-not-pasted counters-unknown-components cross-script-grammar deleted-path-handling dispatch-evidence disposition-backtick-truncation disposition-key disposition-range docs-role-efforts duplicate-managed-flags env-s-quoting environment-inheritance equals-form-flag evidence-checkpoint evidence-claim evidence-command-null-url evidence-command-unlanded-owner evidence-diagnosis evidence-layout evidence-not-committed evidence-shell-interpolation evidence-stale evidence-url-interpolation evidence-validation-stale fail-open-on-error filename-suffix-parse fixture-missing graphql-id-interpolation hand-parser input-validation install-receipt-artifact install-receipt-repair interpreter-discovery inv3-overlay-reading inv6-count inv6-counts-amendments inv6-counts-reseat inv6-waiver-mechanism inv6-waiver-missing inv7-review-effort invariants-key-absent-short-form json-interpolation ledger-completeness ledger-fidelity ledger-id-type live-verification match-any-part mise-config-steer missing-counter-evidence missing-owner-task nested-command-exclusion nul-delimited-paths owner-not-on-main owner-row-location owner-scope-unexecutable owner-section-location path-coverage path-form-normalisation path-shadowed-binary path-shim-discovery path-traversal pathspec-globbing pin-guard-early-return precheck-trusts-pr-controlled-input predicate-shape-overmatch procedure-migration process-visibility profile-name-grammar receipt-form record-copy-drops-rows record-counting record-decision-missing replan-word-boundary reply-template-unparseable report-base-sha resolve-response-unchecked restore-trap result-selection reuse-keyed-by-sha7 review-binary-shim review-body-findings revise-check-not-discriminating revise-line-contract routing-boundary s6-search-missing sandbox-count-understated sandbox-record-incomplete scope search-command-scan search-procedure sed-path-interpolation stale-audit-dispositions stale-dir-order stale-evidence stale-no-identity-rows stale-path-cleanup-failure stale-record-block stale-review-file-on-error stale-security-docs stale-threat-row synthetic-id-namespace sys-path-shadowing tab-url-not-matched-to-event target-id-validation task-arg-traversal task-scope-amended test-order-unproven threat-row-missing threat-rows-per-path tool-environment trap-restores-on-refusal trust-boundary-dispositions trusted-checkout unbound-evidence uninstall-leaves-tool-env unsupported-claim worker-sandbox-discipline 
+acceptance-dispositions acceptance-order acceptance-record-binding action-cdp-omission advisory-deferral advisory-deferral-objection advisory-owner-misassignment advisory-p2 advisory-policy-reading advisory-read-as-deferral argv-diagnostic-disclosure argv-text-mismatch bot-rounds-count boundary-cadence-vs-skill boundary-checker-overclaim c50-clause-skipped closed-row-coverage collision-key-order completion-order-unmet consumer-half contract-type-mismatch counter-evidence counters-not-pasted counters-unknown-components cross-script-grammar deleted-path-handling dispatch-evidence disposition-backtick-truncation disposition-key disposition-range docs-role-efforts duplicate-managed-flags env-s-quoting environment-inheritance equals-form-flag evidence-checkpoint evidence-claim evidence-command-null-url evidence-command-unlanded-owner evidence-diagnosis evidence-layout evidence-not-committed evidence-shell-interpolation evidence-stale evidence-url-interpolation evidence-validation-stale fail-open-on-error filename-suffix-parse fixture-missing graphql-id-interpolation hand-parser input-validation install-receipt-artifact install-receipt-repair interpreter-discovery inv3-overlay-reading inv6-count inv6-counts-amendments inv6-counts-reseat inv6-waiver-mechanism inv6-waiver-missing inv7-review-effort invariants-key-absent-short-form json-interpolation ledger-completeness ledger-fidelity ledger-id-type live-verification match-any-part mise-config-steer missing-counter-evidence missing-owner-task nested-command-exclusion nul-delimited-paths owner-not-on-main owner-row-location owner-scope-unexecutable owner-section-location path-coverage path-form-normalisation path-gate-gap path-shadowed-binary path-shim-discovery path-traversal pathspec-globbing pin-guard-early-return precheck-trusts-pr-controlled-input predicate-shape-overmatch procedure-migration process-visibility profile-name-grammar race-unserialized-count receipt-form record-copy-drops-rows record-counting record-decision-missing records-form replan-word-boundary reply-template-unparseable report-base-sha rerun-race resolve-response-unchecked restore-trap result-selection reuse-keyed-by-sha7 review-binary-shim review-body-findings revise-check-not-discriminating revise-line-contract routing-boundary s6-search-missing sandbox-count-understated sandbox-record-incomplete scope search-command-scan search-procedure sed-path-interpolation stale-audit-dispositions stale-dir-order stale-evidence stale-no-identity-rows stale-path-cleanup-failure stale-record-block stale-review-file-on-error stale-security-docs stale-threat-row synthetic-id-namespace sys-path-shadowing tab-url-not-matched-to-event target-id-validation task-arg-traversal task-scope-amended test-order-unproven threat-row-missing threat-rows-per-path tool-environment trap-restores-on-refusal trust-boundary-dispositions trusted-checkout unbound-evidence uninstall-leaves-tool-env unsupported-claim worker-sandbox-discipline 
 [exit 0]
 ```
 ## 5. RED: test_audit_pool.py against origin/main's orch-audit.sh (no --head, --json or --validate), in a scratch worktree at HEAD
@@ -93,6 +98,10 @@ test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_clas
   test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class (__main__.AuditPoolTest.test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class) (cls='no-such-class') ... FAIL
 test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius (__main__.AuditPoolTest.test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius) ... ok
 test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal (__main__.AuditPoolTest.test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal) ... FAIL
+test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) ... 
+  test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18T14:00:00.5+09:00') ... FAIL
+  test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18') ... FAIL
+  test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18T05:00:00') ... FAIL
 test_pool_retries_a_429_three_times_then_blocks (__main__.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) ... 
   test_pool_retries_a_429_three_times_then_blocks (__main__.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) (failures='2') ... FAIL
   test_pool_retries_a_429_three_times_then_blocks (__main__.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) (failures='4') ... ERROR
@@ -101,8 +110,8 @@ test_pool_saves_only_schema_valid_audit_json_and_blocks_a_rejected_request (__ma
 test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree (__main__.AuditPoolTest.test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree) ... 
   test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree (__main__.AuditPoolTest.test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree) (rows=1) ... ERROR
   test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree (__main__.AuditPoolTest.test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree) (rows=2) ... ERROR
-Ran 7 tests in 6.507s
-FAILED (failures=6, errors=3)
+Ran 8 tests in 9.593s
+FAILED (failures=9, errors=3)
 [exit 0]
 ```
 ## 5a. RED: test_verdict.py at HEAD against fada8070's verdict.sh (before the missing-record and unfetched-head fixes), in a scratch worktree
@@ -122,27 +131,30 @@ test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.te
   test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) (condition=3) ... FAIL
 test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) ... FAIL
 test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold (__main__.VerdictTest.test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold) ... ok
+test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (__main__.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable) ... FAIL
 test_verdict_shadow_appends_the_machine_column_only (__main__.VerdictTest.test_verdict_shadow_appends_the_machine_column_only) ... ok
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=2, condition=2)
-AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-7d1e546.json
+AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8ed5dbd.json
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=5, condition=4)
-AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-7d1e546.json
+AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8ed5dbd.json
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=8, condition=5)
-AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-7d1e546.json
+AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8ed5dbd.json
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=9, condition=6)
-AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-7d1e546.json
+AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8ed5dbd.json
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=13, condition=9)
-AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-7d1e546.json
+AssertionError: 10 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8ed5dbd.json
 FAIL: test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto (__main__.VerdictTest.test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto)
 AssertionError: 'four agreeing' not found in ''
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) (condition=2)
-AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-f8a915d.json
+AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8cb81dd.json
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) (condition=3)
-AssertionError: 20 != 10 : verdict: revise .orchestration/validation/t1-a01-verdict-f8a915d.json
+AssertionError: 20 != 10 : verdict: revise .orchestration/validation/t1-a01-verdict-8cb81dd.json
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input)
-AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-f8a915d.json
-Ran 6 tests in 42.479s
-FAILED (failures=9)
+AssertionError: 20 != 0 : verdict: accept .orchestration/validation/t1-a01-verdict-8cb81dd.json
+FAIL: test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (__main__.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable)
+AssertionError: True is not false
+Ran 7 tests in 64.541s
+FAILED (failures=10)
 [exit 0]
 ```
 ## 5b. RED: both test files at HEAD against 2ff92578's three scripts (before the worker review's re-plan), in a scratch worktree
@@ -160,11 +172,14 @@ FAIL: test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto 
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) (condition=2)
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) (condition=3)
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input)
-Ran 6 tests in 38.669s
-FAILED (failures=9)
+FAIL: test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable)
+Ran 7 tests in 53.074s
+FAILED (failures=10)
+FAIL: test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18')
+FAIL: test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (__main__.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18T05:00:00')
 FAIL: test_pool_retries_a_429_three_times_then_blocks (__main__.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) (failures='4')
-Ran 7 tests in 16.803s
-FAILED (failures=1)
+Ran 8 tests in 17.882s
+FAILED (failures=3)
 [exit 0]
 ```
 ## 5c. RED: test_verdict.py at HEAD against f2d1ffd2's verdict.sh (before the worker re-review's fixes), in a scratch worktree
@@ -174,7 +189,23 @@ $ git -C "$O" status --short; uv run --no-project python -I "$O/tests/unit/test_
 FAIL: test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (__main__.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) (case=2, condition=2)
 FAIL: test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto (__main__.VerdictTest.test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto)
 FAIL: test_verdict_holds_on_a_missing_or_schema_failing_input (__main__.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input)
-Ran 6 tests in 37.541s
+FAIL: test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (__main__.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable)
+Ran 7 tests in 39.505s
+FAILED (failures=4)
+[exit 0]
+```
+## 5d. RED: the revise's two tests at HEAD against e88ffad9's orch-audit.sh and verdict.sh (the previous head, before the Bot P2 fixes), in a scratch worktree
+```console
+$ git -C "$N" status --short; cd "$N" && uv run python -m unittest tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset tests.unit.test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable 2>&1 | /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^(OK|FAILED)"
+ M scripts/orchestrator/orch-audit.sh
+ M scripts/orchestrator/verdict.sh
+FAIL: test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18')
+AssertionError: 1 != 0 : 
+FAIL: test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) (at='2026-10-18T05:00:00')
+AssertionError: 1 != 0 : 
+FAIL: test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (tests.unit.test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable)
+AssertionError: True is not false
+Ran 2 tests in 4.270s
 FAILED (failures=3)
 [exit 0]
 ```
@@ -186,22 +217,24 @@ test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto (tests
 test_verdict_condition_1_is_a_warning_under_precheck_required_0 (tests.unit.test_verdict.VerdictTest.test_verdict_condition_1_is_a_warning_under_precheck_required_0) ... ok
 test_verdict_holds_on_a_missing_or_schema_failing_input (tests.unit.test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) ... ok
 test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold (tests.unit.test_verdict.VerdictTest.test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold) ... ok
+test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (tests.unit.test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable) ... ok
 test_verdict_shadow_appends_the_machine_column_only (tests.unit.test_verdict.VerdictTest.test_verdict_shadow_appends_the_machine_column_only) ... ok
 test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class (tests.unit.test_audit_pool.AuditPoolTest.test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class) ... ok
 test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius (tests.unit.test_audit_pool.AuditPoolTest.test_classes_file_holds_every_ledger_class_of_the_records_and_each_has_remedy_and_blast_radius) ... ok
 test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_extracts_the_final_json_block_and_keeps_every_refusal) ... ok
+test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset (tests.unit.test_audit_pool.AuditPoolTest.test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset) ... ok
 test_pool_retries_a_429_three_times_then_blocks (tests.unit.test_audit_pool.AuditPoolTest.test_pool_retries_a_429_three_times_then_blocks) ... ok
 test_pool_runs_at_most_max_audits_and_the_third_request_waits (tests.unit.test_audit_pool.AuditPoolTest.test_pool_runs_at_most_max_audits_and_the_third_request_waits) ... ok
 test_pool_saves_only_schema_valid_audit_json_and_blocks_a_rejected_request (tests.unit.test_audit_pool.AuditPoolTest.test_pool_saves_only_schema_valid_audit_json_and_blocks_a_rejected_request) ... ok
 test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree (tests.unit.test_audit_pool.AuditPoolTest.test_pool_writes_the_differential_prompt_but_audits_in_full_until_two_shadow_rows_agree) ... ok
-Ran 13 tests in 56.565s
+Ran 15 tests in 72.277s
 OK
 [exit 0]
 ```
 ## 7. make unit-test on HEAD (its last lines, and every FAIL or ERROR test line)
 ```console
 $ make unit-test > "$TMPDIR/unit-final.txt" 2>&1; rc=$?; tail -n 4 "$TMPDIR/unit-final.txt"; /usr/bin/grep -E "^(FAIL|ERROR): " "$TMPDIR/unit-final.txt"; exit $rc
-Ran 1189 tests in 735.554s
+Ran 1191 tests in 735.026s
 
 FAILED (failures=189, errors=107, skipped=2)
 make: *** [unit-test] Error 1
@@ -511,8 +544,8 @@ FAIL: test_updates_use_managed_binaries_when_path_is_shadowed (test_update_agent
 ```
 ## 7a. The failing modules of §7 at HEAD against the same modules on a scratch worktree at origin/main (99a4a80f), same sandbox
 ```console
-$ for m in <the nine modules>; do grep -c "^(FAIL|ERROR): test.*(<m>." unit-final.txt; done; cat main-modules.txt
---- HEAD (7462e180), FAIL plus ERROR per module:
+$ echo "--- HEAD, FAIL plus ERROR per module:"; for m in test_require_crit_review test_herdr_agents test_agent_stop_gate test_ua_symbol_coverage test_update_agent_assets test_runtime_health test_gh_auth test_supply_chain_policy test_aws_cli_acquisition; do echo "$m $(/usr/bin/grep -cE "^(FAIL|ERROR): test.*\($m\." "$TMPDIR/unit-final.txt")"; done; echo "--- every module with a FAIL or ERROR at HEAD:"; /usr/bin/grep -oE "^(FAIL|ERROR): test[^ ]* \([a-z_0-9]+\." "$TMPDIR/unit-final.txt" | sed -E "s/.*\(//; s/\.$//" | sort | uniq -c; echo "--- origin/main, the unittest summary per module (saved from the scratch worktree run):"; cat "$TMPDIR/main-modules.txt"
+--- HEAD, FAIL plus ERROR per module:
 test_require_crit_review 136
 test_herdr_agents 82
 test_agent_stop_gate 28
@@ -532,7 +565,8 @@ test_aws_cli_acquisition 2
    4 test_supply_chain_policy
   19 test_ua_symbol_coverage
   12 test_update_agent_assets
---- origin/main, the unittest summary per module:
+--- origin/main, the unittest summary per module (saved from the scratch worktree run):
+99a4a80f feat(doctor): make doctor fails on a Mac that may sleep (T129 doctor-sleep-disabled a01) (#394)
 test_require_crit_review main: FAILED (failures=136)
 test_herdr_agents main: FAILED (failures=1, errors=81)
 test_agent_stop_gate main: FAILED (failures=28, skipped=1)
@@ -542,6 +576,7 @@ test_runtime_health main: FAILED (failures=6, errors=2)
 test_gh_auth main: FAILED (errors=5)
 test_supply_chain_policy main: FAILED (failures=4)
 test_aws_cli_acquisition main: FAILED (failures=2)
+done
 [exit 0]
 ```
 ## 8. make render-check
@@ -551,7 +586,7 @@ uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
 generated agent configs are up to date
 [exit 0]
 ```
-## 9. make format: the shfmt step fails on 12 tracked files (10 task inputs, project-map-reload.sh, brew.bats), the same on origin/main; none is this branch's (the `$` entry is a diff body line beginning `diff `)
+## 9. make format: the shfmt step fails on 12 tracked files under .orchestration/tasks/*-input/, the same on origin/main; none is this branch's
 ```console
 $ make format > "$TMPDIR/fmt.txt" 2>&1; echo "make format exit $?"; /usr/bin/grep -E "^diff " "$TMPDIR/fmt.txt" | awk "{print \$3}" | sort -u; echo "--- the same files on origin/main:"; for f in $(/usr/bin/grep -E "^diff " "$TMPDIR/fmt.txt" | awk "{print \$3}" | sort -u); do git show "origin/main:$f" > "$TMPDIR/m.sh"; shfmt --indent 4 --space-redirects -d "$TMPDIR/m.sh" > /dev/null; echo "$f origin/main shfmt exit $?"; done; echo "--- the steps after shfmt, run on their own:"; git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check | tail -n 1; git ls-files -z "*.md" | xargs -0 prettier --check 2>&1 | tail -n 1
 make format exit 2
@@ -600,20 +635,20 @@ $ git diff --numstat origin/main...HEAD; git diff --numstat origin/main...HEAD |
 13	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/dotfiles-T133-verdict-audit-pool-a01-worker-review-receipt.md
 9	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/learning.md
 14	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/pr-body.md
-72	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/report.md
-30	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/sandbox.md
+74	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/report.md
+34	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/sandbox.md
 117	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/task.md
-673	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/validation.md
+693	0	.orchestration/dotfiles-T133-verdict-audit-pool-a01/validation.md
 33	0	.schemas/audit.json
 140	0	.schemas/classes.yaml
 29	0	.schemas/verdict.json
 132	0	scripts/orchestrator/audit-pool.sh
 102	11	scripts/orchestrator/orch-audit.sh
 255	0	scripts/orchestrator/verdict.sh
-232	0	tests/unit/test_audit_pool.py
-265	0	tests/unit/test_verdict.py
+220	0	tests/unit/test_audit_pool.py
+274	0	tests/unit/test_verdict.py
 scripts (outside tests/, .orchestration/, .schemas/): 500 of 500
-tests/: 497 of 500
+tests/: 494 of 500
 .schemas/ (data, outside the count): 202
 [exit 0]
 ```

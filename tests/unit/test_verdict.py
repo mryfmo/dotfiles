@@ -1,9 +1,7 @@
 """Exercise scripts/orchestrator/verdict.sh on a fixture repository where every condition holds, then break one.
 
-verdict.sh runs as a subprocess from its copy in a temporary git repository with a bare `origin`. `gh`,
-`scripts/orchestrator/dispatch.sh`, `scripts/pr-feedback.py` and `scripts/regime-counters.sh` are fakes that answer
-from `$CALLS` and log their argv; orch-audit.sh (its --validate checker) and uv are the real ones. The PR head C
-adds `.orchestration/t1-a01/precheck.json` naming its parent P, the code commit.
+Fakes answer from `$CALLS`: gh, dispatch.sh, pr-feedback.py and regime-counters.sh (which, like the real one, prints no
+S1 line under --history-only); orch-audit.sh's --validate and uv are real. The PR head adds precheck.json naming its parent.
 """
 
 import hashlib
@@ -18,23 +16,30 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TASK, V = "t1-a01", ".orchestration/validation"
+TASK_MD, RECORD, FEEDBACK = (
+    f".orchestration/tasks/{TASK}.md",
+    f".orchestration/acceptance/{TASK}.md",
+    f"{V}/{TASK}-pr-feedback.json",
+)
 OSES = ("ubuntu-24.04, server", "ubuntu-24.04, client", "macos-14, client")
 REQUIRED = ["validate"] + [f"{job} ({o})" for job in ("test", "public-bootstrap") for o in OSES]
 GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$CALLS/calls.log"
 case "$1 $2" in "pr view") cat "$CALLS/view.json" ;; "pr checks") cat "$CALLS/checks.json" ;; esac
 """
+COUNTERS = (
+    '[[ " $* " == *" --history-only "* ]] && exec grep -v "^S1:" "$CALLS/counters.txt"\ncat "$CALLS/counters.txt"\n'
+)
 FAKES = {
     "scripts/orchestrator/dispatch.sh": '#!/usr/bin/env bash\necho "dispatch $* $(cat "$5")" >> "$CALLS/calls.log"\n',
     "scripts/pr-feedback.py": 'import shutil, sys, os\nshutil.copy(os.environ["CALLS"] + "/sweep.json", sys.argv[-1])\n',
-    "scripts/regime-counters.sh": '#!/usr/bin/env bash\ncat "$CALLS/counters.txt"\n',
+    "scripts/regime-counters.sh": "#!/usr/bin/env bash\n" + COUNTERS,
 }
-AT = "2026-10-18T05:00:00Z"
+AT, URL = "2026-10-18T05:00:00Z", "https://github.test/pull/9#discussion_r1"
 FINDING = {"id": "1", "priority": "P2", "confidence": "high", "file": "x.sh", "line": 1, "class": "records-form"}
 INCORRECT, P0 = {"verdict": "incorrect", "scope": "code"}, {"priority": "P0", "scope": "code"}
-GIT_ENV = dict.fromkeys(("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"), "t") | dict.fromkeys(
-    ("GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"), "t@t"
-)
+GIT_ENV = {f"GIT_{role}_{k}": v for role in ("AUTHOR", "COMMITTER") for k, v in (("NAME", "t"), ("EMAIL", "t@t"))}
+CAP = "500 changed lines outside `tests/` and `.orchestration/`"
 
 
 class VerdictTest(unittest.TestCase):
@@ -48,17 +53,15 @@ class VerdictTest(unittest.TestCase):
         for name in ("verdict.sh", "orch-audit.sh"):
             shutil.copy(ROOT / "scripts/orchestrator" / name, self.repo / "scripts/orchestrator")
         shutil.copytree(ROOT / ".schemas", self.repo / ".schemas")
-        for path, text in FAKES.items():
+        for path, text in [*FAKES.items(), (str(bin_dir / "gh"), GH)]:
             self.write(path, text).chmod(0o755)
-        (bin_dir / "gh").write_text(GH)
-        (bin_dir / "gh").chmod(0o755)
+        path = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
         self.env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if k != "PRECHECK_REQUIRED"},
             **GIT_ENV,
             "CALLS": str(self.calls),
-            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "PATH": path,
         }
-        self.env.pop("PRECHECK_REQUIRED", None)
         origin = str(self.temp / "origin.git")
         for args in (
             ("init", "-q", "-b", "main"),
@@ -71,6 +74,7 @@ class VerdictTest(unittest.TestCase):
             self.git(*args)
         self.git("switch", "-q", "-c", "pr")
         self.write("scripts/orchestrator/x.sh", "echo x\n")
+        self.write("tests/unit/t.py", "x = 1\n")
         self.git("add", ".")
         self.git("commit", "-q", "-m", "code")
         self.precheck = json.dumps({"head": self.git("rev-parse", "HEAD")})
@@ -86,6 +90,9 @@ class VerdictTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
         return path
+
+    def replace(self, rel, old, new):
+        self.write(rel, (self.repo / rel).read_text().replace(old, new))
 
     def run_in_repo(self, *cmd, env=None):
         env = {**self.env, **(env or {})}
@@ -106,22 +113,25 @@ class VerdictTest(unittest.TestCase):
         (self.calls / "view.json").write_text(json.dumps(view))
         self.checks("SUCCESS")
         (self.calls / "counters.txt").write_text(f"task={TASK} tasks=1 revises=1 results=2 source=live\ndetail: pr=9\n")
-        url = "https://github.test/pull/9#discussion_r1"
-        (self.calls / "sweep.json").write_text(json.dumps({"items": [{"url": url}]}))
-        disposition = "not-applicable:a reason long enough; evidence=git show"
-        self.write(f"{V}/{TASK}-pr-feedback.json", json.dumps({"items": [{"url": url, "disposition": disposition}]}))
-        check = "at most 500 changed lines outside `tests/` and `.orchestration/`, 500 under `tests/`."
-        front = f'allowed_files: ["scripts/orchestrator/x.sh", ".orchestration/{TASK}/**"]\nsecurity: {str(security).lower()}'
-        self.write(f".orchestration/tasks/{TASK}.md", f"---\n{front}\n---\n\n{check}\n")
+        (self.calls / "sweep.json").write_text(json.dumps({"items": [{"url": URL}]}))
+        self.disposition("not-applicable:a reason long enough; evidence=git show")
+        allowed = f'["scripts/orchestrator/x.sh", "tests/**", ".orchestration/{TASK}/**"]'
+        self.write(
+            TASK_MD,
+            f"---\nallowed_files: {allowed}\nsecurity: {str(security).lower()}\n---\n\nat most {CAP}, 500 under `tests/`.\n",
+        )
         audit = self.audit()
         block = json.dumps({"task": TASK, "pr": 9, "head": self.head, "format": 1})
         prose = f"precheck: {hashlib.sha256(self.precheck.encode()).hexdigest()}\n"
         prose += f"sha256:{hashlib.sha256(audit.read_bytes()).hexdigest()} {V}/{TASK}-audit-{self.head[:7]}.json\n"
-        self.write(f".orchestration/acceptance/{TASK}.md", f"---\n{block}\n---\n\n{prose}")
+        self.write(RECORD, f"---\n{block}\n---\n\n{prose}")
         self.write(f"{V}/{TASK}-security-{self.head[:7]}.md.last.md", "x\nVerdict: correct\n")
 
     def checks(self, state):
         (self.calls / "checks.json").write_text(json.dumps([{"name": n, "state": state} for n in REQUIRED]))
+
+    def disposition(self, text):
+        self.write(FEEDBACK, json.dumps({"items": [{"url": URL, "disposition": text}]}))
 
     def verdict(self, *args, code, env=None):
         result = self.run_in_repo("bash", str(self.repo / "scripts/orchestrator/verdict.sh"), "9", *args, env=env)
@@ -131,10 +141,10 @@ class VerdictTest(unittest.TestCase):
 
     def record_lines(self, precheck=None, extra=""):
         """Rewrite the record's precheck: line, or add prose lines."""
-        path = self.repo / f".orchestration/acceptance/{TASK}.md"
-        text = path.read_text()
-        path.write_text(
-            re.sub(r"^precheck: .*$", f"precheck: {precheck}", text, flags=re.MULTILINE) if precheck else text + extra
+        text = (self.repo / RECORD).read_text()
+        self.write(
+            RECORD,
+            re.sub(r"^precheck: .*$", f"precheck: {precheck}", text, flags=re.MULTILINE) if precheck else text + extra,
         )
 
     def calls_log(self):
@@ -147,27 +157,30 @@ class VerdictTest(unittest.TestCase):
     def test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds(self):
         doc = self.verdict(code=0)
         self.assertEqual(
-            ("accept", [], list(range(1, 10))), (doc["verdict"], self.failed(doc), [c["id"] for c in doc["conditions"]])
+            ("accept", list(range(1, 10))), (doc["verdict"], [c["id"] for c in doc["conditions"] if c["ok"]])
         )
         security = f"{V}/{TASK}-security-{self.head[:7]}.md.last.md"
-        breaks = {
-            1: lambda: self.record_lines(precheck="0" * 64),
-            2: lambda: self.checks("FAILURE"),
-            3: lambda: self.audit("incorrect", scope="code"),
-            4: lambda: self.write(
-                f"{V}/{TASK}-pr-feedback.json", '{"items": [{"url": "u", "disposition": "fixed:abc"}]}'
+        breaks = [
+            (1, lambda: self.record_lines(precheck="0" * 64)),
+            (2, lambda: self.checks("FAILURE")),
+            (3, lambda: self.audit("incorrect", scope="code")),
+            (4, lambda: self.write(FEEDBACK, '{"items": [{"url": "u", "disposition": "fixed:abc1234"}]}')),
+            (4, lambda: self.disposition("later")),
+            (5, lambda: self.write(TASK_MD, '---\nallowed_files: ["other"]\nsecurity: false\n---\n')),
+            (5, lambda: self.replace(TASK_MD, CAP, "0 changed lines outside `tests/` and `.orchestration/`")),
+            (5, lambda: self.replace(TASK_MD, "500 under", "0 under")),
+            (
+                6,
+                lambda: (self.calls / "counters.txt").write_text(f"task={TASK} revises=1 x\nS1: class=scope count=3\n"),
             ),
-            5: lambda: self.write(
-                f".orchestration/tasks/{TASK}.md", '---\nallowed_files: ["other"]\nsecurity: false\n---\n'
-            ),
-            6: lambda: (self.calls / "counters.txt").write_text(f"task={TASK} revises=1 x\nS1: class=scope count=3\n"),
-            7: lambda: self.audit("correct", priority="P1", scope="code", status="still-open"),
-            8: lambda: (self.green(security=True), self.write(security, "Verdict: incorrect\n")),
-            9: lambda: self.record_lines(extra="sha256:" + "0" * 64 + f" .orchestration/tasks/{TASK}.md\n"),
-        }
+            (7, lambda: self.audit("correct", priority="P1", scope="code", status="still-open")),
+            (8, lambda: (self.green(security=True), self.write(security, "Verdict: incorrect\n"))),
+            (9, lambda: self.record_lines(extra="sha256:" + "0" * 64 + f" .orchestration/tasks/{TASK}.md\n")),
+            (9, lambda: self.replace(RECORD, "sha256:", "sha:")),
+        ]
         revise = f"AGMSG-ACCEPTANCE v1 task_id={TASK} status=revise previous_head={self.head} reason=conditions-"
-        for condition, breaker in breaks.items():
-            with self.subTest(condition=condition):
+        for n, (condition, breaker) in enumerate(breaks):
+            with self.subTest(case=n, condition=condition):
                 self.green()
                 breaker()
                 code = 20 if condition in (6, 7) else 10
@@ -175,16 +188,10 @@ class VerdictTest(unittest.TestCase):
                 self.assertIn(condition, self.failed(doc))
                 self.assertEqual("hold" if code == 20 else "revise", doc["verdict"])
                 self.assertEqual(code == 10, doc.get("revise_line", "").startswith(revise))
-        # Condition 5's caps leave out every path the Check sentence lists after "outside" (Amendment 1's .schemas/).
-        task, old = (
-            self.repo / f".orchestration/tasks/{TASK}.md",
-            "500 changed lines outside `tests/` and `.orchestration/`",
-        )
-        for listed, code in (("`tests/` and `.orchestration/`", 10), ("`tests/`, `.orchestration/` and `scripts/`", 0)):
-            with self.subTest(listed=listed):
-                self.green()
-                task.write_text(task.read_text().replace(old, f"0 changed lines outside {listed} (data)"))
-                self.assertEqual(code == 10, 5 in self.failed(self.verdict(code=code)))
+        # Every path the Check sentence lists after "outside" leaves the count (Amendment 1's .schemas/).
+        self.green()
+        self.replace(TASK_MD, CAP, "0 changed lines outside `tests/`, `.orchestration/` and `scripts/` (data)")
+        self.assertEqual("accept", self.verdict(code=0)["verdict"])
 
     def test_verdict_holds_on_a_missing_or_schema_failing_input(self):
         audit = self.repo / f"{V}/{TASK}-audit-{self.head[:7]}.json"
@@ -193,10 +200,18 @@ class VerdictTest(unittest.TestCase):
         self.green()
         audit.write_text(audit.read_text().replace('"findings": []', '"findings": [{"class": "no-such-class"}]'))
         self.assertIn(3, self.failed(self.verdict(code=20)))
+        for breaker, condition in (
+            (lambda: (self.calls / "checks.json").write_text(""), 2),
+            (lambda: self.audit("blocked"), 3),
+        ):
+            with self.subTest(condition=condition):
+                self.green()
+                breaker()
+                self.assertIn(condition, self.failed(self.verdict(code=20)))
         (self.repo / f"{V}/{TASK}-verdict-{self.head[:7]}.json").unlink()
-        self.write(f".orchestration/acceptance/{TASK}.md", "---\nnot json\n---\n")
+        self.write(RECORD, "---\nnot json\n---\n")
         self.assertIsNone(self.verdict(code=20))
-        (self.repo / f".orchestration/acceptance/{TASK}.md").unlink()
+        (self.repo / RECORD).unlink()
         self.assertEqual("hold", self.verdict("--task", TASK, code=20)["verdict"])
         view = json.loads((self.calls / "view.json").read_text()) | {"headRefOid": "f" * 40}
         (self.calls / "view.json").write_text(json.dumps(view))
@@ -204,6 +219,10 @@ class VerdictTest(unittest.TestCase):
 
     def test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto(self):
         apply = ("--apply", "--team", "dot", "--from", "orch", "--to", "w", "--pane", "herdr:s:wJ:p3")
+        shadow = self.repo / f"{V}/verdict-shadow.tsv"
+        shadow.write_text("9\th\taccept\taccept\tyes\tt\n" * 3)
+        self.assertIn("four agreeing", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *apply).stderr)
+        shadow.write_text("9\th\taccept\taccept\tyes\tt\n" * 4)
         for code, finding in ((10, INCORRECT), (20, P0)):
             with self.subTest(code=code):
                 self.green()
@@ -215,33 +234,27 @@ class VerdictTest(unittest.TestCase):
         self.green()
         (self.calls / "calls.log").unlink()
         self.verdict(*apply, code=0)
-        calls = self.calls_log().splitlines()
-        accepted = (
-            f"AGMSG-ACCEPTANCE v1 task_id={TASK} status=accepted reason=verdict-{self.head[:7]} next_action=merge"
-        )
-        self.assertTrue(
-            calls[-2].startswith("dispatch dot orch w herdr:s:wJ:p3 ") and calls[-2].endswith(accepted), calls
-        )
+        calls, line = self.calls_log().splitlines(), f"status=accepted reason=verdict-{self.head[:7]} next_action=merge"
+        self.assertTrue(calls[-2].startswith("dispatch dot orch w herdr:s:wJ:p3 ") and calls[-2].endswith(line), calls)
         self.assertEqual(f"gh pr merge 9 --squash --match-head-commit {self.head}", calls[-1])
         for args in (("--admin",), (*apply, "--auto"), ("--task=--admin-x",)):
             with self.subTest(args=args):
                 (self.calls / "calls.log").unlink(missing_ok=True)
                 self.verdict(*args, code=2)
                 self.assertEqual("", self.calls_log())
+        self.git("switch", "-q", "pr")  # a checkout at the PR head never merges it
+        self.assertIn("not the PR's", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *apply).stderr)
+        self.assertNotIn("pr merge", self.calls_log())
 
     def test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold(self):
         out = self.repo / f"{V}/{TASK}-verdict-{self.head[:7]}.json"
-        for code, finding in (
-            (0, {}),
-            (10, INCORRECT),
-            (20, P0),
-        ):
+        for code, finding in ((0, {}), (10, INCORRECT), (20, P0)):
             with self.subTest(code=code):
                 self.green()
                 self.audit(**finding) if finding else None
                 self.verdict(code=code)
                 check = self.run_in_repo(
-                    "bash", "scripts/orchestrator/orch-audit.sh", "--validate", ".schemas/verdict.json", str(out)
+                    "bash", "scripts/orchestrator/orch-audit.sh", "--validate", ".schemas/verdict.json", out
                 )
                 self.assertEqual(0, check.returncode, check.stderr)
 

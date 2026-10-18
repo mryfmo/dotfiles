@@ -1,10 +1,7 @@
-"""Exercise scripts/orchestrator/audit-pool.sh, orch-audit.sh's json mode, .schemas/audit.json and .schemas/classes.yaml.
+"""Exercise audit-pool.sh, orch-audit.sh's json mode, .schemas/audit.json and .schemas/classes.yaml in a temporary repository.
 
-Each script runs as a subprocess from its copy in a temporary git repository with a bare `origin`; `codex`, `sleep`
-and `uv` are fakes on PATH (`uv run [options] [python] <args>` runs this interpreter), so no model, sleep or network
-is reached. The fake codex answers with `$CALLS/message-<task>` and fails with a 429 transcript while
-`$CALLS/fail-<task>` holds a count above zero.
-"""
+Fakes on PATH: codex (answers `$CALLS/message-<task>`; a 429 while `$CALLS/fail-<task>` counts down), sleep, and uv
+(runs this interpreter). No model, sleep or network is reached."""
 
 import json
 import os
@@ -30,16 +27,19 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAM
 
 
 def record(head, task, verdict="correct", cls="string-form-comparison"):
-    finding = {"id": "1", "priority": "P2", "confidence": "high", "file": "a.sh", "line": 3, "class": cls}
-    finding |= {"scope": "code", "rationale": "compares a path by its string form", "status": "new"}
-    return {
-        "head": head,
-        "task_id": task,
-        "auditor": "codex --profile audit",
-        "generated_at": "2026-10-18T05:00:00Z",
-    } | {
+    finding = {
+        "id": "1",
+        "priority": "P2",
+        "confidence": "high",
+        "file": "a.sh",
+        "line": 3,
+        "class": cls,
+        "scope": "code",
+    }
+    meta = {"head": head, "task_id": task, "auditor": "codex --profile audit", "generated_at": "2026-10-18T05:00:00Z"}
+    return meta | {
         "verdict": verdict,
-        "findings": [finding],
+        "findings": [finding | {"rationale": "a path by its string form", "status": "new"}],
     }
 
 
@@ -63,33 +63,26 @@ class AuditPoolTest(unittest.TestCase):
         for name, text in (("uv", UV), ("codex", CODEX), ("sleep", SLEEP)):
             (bin_dir / name).write_text(text)
             (bin_dir / name).chmod(0o755)
-        self.env = {
-            **os.environ,
-            **GIT_ENV,
-            "CALLS": str(self.calls),
-            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-        }
-        self.git("init", "-q", "-b", "main")
-        self.git("add", ".")
-        self.git("commit", "-q", "-m", "init")
-        self.git("init", "-q", "--bare", str(self.temp / "origin.git"))
-        self.git("remote", "add", "origin", str(self.temp / "origin.git"))
-        self.git("push", "-q", "origin", "main")
-        self.git("fetch", "-q", "origin")
+        path, origin = f"{bin_dir}{os.pathsep}{os.environ['PATH']}", str(self.temp / "origin.git")
+        self.env = {**os.environ, **GIT_ENV, "CALLS": str(self.calls), "PATH": path}
+        for args in (
+            ("init", "-q", "-b", "main"),
+            ("add", "."),
+            ("commit", "-q", "-m", "init"),
+            ("init", "-q", "--bare", origin),
+        ):
+            self.git(*args)
+        for args in (("remote", "add", "origin", origin), ("push", "-q", "origin", "main"), ("fetch", "-q", "origin")):
+            self.git(*args)
         self.git("worktree", "add", "-q", "--detach", ".claude/worktrees/orchestrator-review", "origin/main")
         self.git("worktree", "add", "-q", "-b", "pr", str(self.temp / "pr"), "main")
         self.validation = self.repo / ".orchestration/validation"
         self.validation.mkdir(parents=True)
 
     def git(self, *args, cwd=None):
-        return subprocess.run(
-            ["git", "-c", "commit.gpgsign=false", *args],
-            cwd=cwd or self.repo,
-            env=self.env,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
+        cmd = ["git", "-c", "commit.gpgsign=false", *args]
+        out = subprocess.run(cmd, cwd=cwd or self.repo, env=self.env, check=True, capture_output=True, text=True)
+        return out.stdout.strip()
 
     def head(self, task):
         """A new commit on the PR branch, the task's sweep with no gap, and the fake codex's answer for it."""
@@ -100,14 +93,9 @@ class AuditPoolTest(unittest.TestCase):
         return head
 
     def run_script(self, name, *args, code=0):
+        cmd = ["bash", str(self.repo / "scripts/orchestrator" / name), *map(str, args)]
         result = subprocess.run(
-            ["bash", str(self.repo / "scripts/orchestrator" / name), *map(str, args)],
-            cwd=self.repo,
-            env=self.env,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
+            cmd, cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=60, check=False
         )
         self.assertEqual(code, result.returncode, result.stdout + result.stderr)
         return result

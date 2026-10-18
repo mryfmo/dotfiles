@@ -2,26 +2,21 @@
 # @file verdict.sh
 # @brief Decide accept, revise or hold for one PR from its nine acceptance conditions and write the verdict JSON.
 # @description
-#   Plan 024 5.12 (1) (T133). Inputs: gh (the PR's head, state and base; its checks); the acceptance record whose JSON
-#   block `pr` is the PR (or `<task>.md` with --task), its block `head` (the PR head, else hold), its prose lines
-#   `precheck: <sha256>` and `sha256:<hex> <path>`; `.orchestration/validation/<task>-audit-<sha7>.json`; a fresh
-#   `scripts/pr-feedback.py <pr> --json` sweep against `<task>-pr-feedback.json`'s dispositions; the task file's front
-#   matter (allowed_files, security; PyYAML) and its Check caps (`at most <n> changed lines outside`, `<n> under
-#   tests/`); `scripts/regime-counters.sh <task> --history-only`; the merge-base diff; for `security: true`
-#   `<task>-security-<sha7>.md.last.md`. Conditions `{id, ok, evidence}`: (1) `.orchestration/<task>/precheck.json`
-#   at the head hashes to `precheck:` and names the head, or an ancestor the head changes only under
-#   `.orchestration/<task>/` (a warning while PRECHECK_REQUIRED is unset or 0); (2) the seven required checks are
-#   SUCCESS; (3) the audit passes `.schemas/audit.json`, is of the head, and is correct or leaves only records findings
-#   unfixed; (4) every fresh sweep item has a disposition by url and every not-applicable carries `; evidence=`; (5)
-#   every changed file matches allowed_files and the caps hold; (6) no `S1:` line and revises below 2; (7) no P0 or P1
-#   finding is unfixed; (8) a security task's verdict line is `Verdict: correct`; (9) every sha256 line matches its
-#   file. accept when all hold; hold when (6) or (7) fails or an input is missing, unreadable or fails its schema;
-#   revise otherwise, with the revise line (its check= selectors are the orchestrator's). The verdict JSON, checked
-#   against `.schemas/verdict.json` with `orch-audit.sh --validate`, is `<validation>/<task>-verdict-<sha7>.json`.
-#   --apply acts on accept only: the ACCEPTANCE line through dispatch.sh, then `gh pr merge --squash
-#   --match-head-commit`; an argument holding --admin or --auto is refused before anything runs. --shadow appends
-#   `pr head machine human agree at` (human and agree empty) to verdict-shadow.tsv and never sends or merges. --loop
-#   runs every open non-draft PR on main whose record's head is its head, in number order, fetching between them.
+#   Plan 024 5.12 (1) (T133). Every condition `{id, ok, evidence}` is ok only on a positive check of a read input:
+#   (1) `.orchestration/<task>/precheck.json` at the head hashes to the record's `precheck:` and names the head or an
+#   ancestor the head changes only under `.orchestration/<task>/` (a warning while PRECHECK_REQUIRED is unset or 0);
+#   (2) gh's checks name the seven required ones SUCCESS; (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`,
+#   names this task and head, and is correct or leaves only records findings unfixed (blocked holds); (4) every item of
+#   a fresh `scripts/pr-feedback.py` sweep has a `fixed:<sha>` or `not-applicable:…; evidence=…` disposition in
+#   `<task>-pr-feedback.json`, by url; (5) the merge-base diff stays in the front matter's allowed_files and the Check
+#   caps (`at most <n> changed lines outside <paths>`, `<n> under tests/`); (6) `regime-counters.sh <task> --pr <pr>`
+#   prints no `S1:` line and revises below 2; (7) no P0/P1 finding is unfixed; (8) a security task's review ends
+#   `Verdict: correct`; (9) the record has sha256 lines and each matches its file. accept when all hold; hold when (6)
+#   or (7) fails or an input is missing, unreadable or fails its schema; revise otherwise, with the revise line. The
+#   verdict JSON (`<task>-verdict-<sha7>.json`) is checked against `.schemas/verdict.json`. --apply (accept only, from a
+#   checkout the PR does not control, after four agreeing machine and human rows of verdict-shadow.tsv) sends the
+#   ACCEPTANCE line through dispatch.sh and merges with --match-head-commit; --admin or --auto anywhere is refused first.
+#   --shadow appends `pr head machine human agree at` and never sends or merges. --loop runs each ready PR in order.
 # @arg $1 int PR number (none with --loop).
 # @option --task <id> The task, when no record's block names the PR.
 # @option --apply With --team, --from, --to and --pane: send the ACCEPTANCE line and merge, on accept only.
@@ -32,7 +27,7 @@
 # @exitcode 10 revise.
 # @exitcode 20 hold.
 # @exitcode 2 Usage or internal error (treated as hold).
-set -euo pipefail
+set -Eeuo pipefail
 shopt -s nullglob
 for a in "$@"; do
     [[ ${a} != *--admin* && ${a} != *--auto* ]] || {
@@ -72,7 +67,7 @@ if [[ ${loop} == true ]]; then
     opts=()
     [[ ${apply} == false ]] || opts=(--apply --team "${team}" --from "${from}" --to "${to}" --pane "${pane}")
     [[ ${shadow} == false ]] || opts=(--shadow)
-    list="$(gh pr list --base main --state open --json number,headRefOid,isDraft \
+    list="$(gh pr list --base main --state open --limit 200 --json number,headRefOid,isDraft \
         --jq '.[] | select(.isDraft | not) | "\(.number) \(.headRefOid)"' | sort -n)"
     while read -r n h; do
         for f in .orchestration/acceptance/*.md; do
@@ -93,6 +88,12 @@ head="$(jq -r .headRefOid <<< "${view}")"
 [[ ${head} =~ ^[0-9a-f]{40}$ ]] || stop "PR ${pr} has no head"
 git cat-file -e "${head}^{commit}" 2> /dev/null || git fetch -q origin "pull/${pr}/head" 2> /dev/null || true
 git cat-file -e "${head}^{commit}" 2> /dev/null || stop "the head ${head} is not in this checkout"
+if [[ ${apply} == true ]]; then # a merge: only from a checkout the PR does not control, after Q-C's four agreeing rows
+    { [[ $(git rev-parse HEAD) != "${head}" ]] && ! git merge-base --is-ancestor "${head}" HEAD && git diff --quiet HEAD -- scripts .schemas &&
+        [[ -z $(git ls-files --others --exclude-standard -- scripts .schemas) ]]; } || stop "--apply runs only from a checkout that is not the PR's"
+    [[ "$(tail -n 4 "${v}/verdict-shadow.tsv" 2> /dev/null | awk -F '\t' '$3 == $4 && $4 != ""' | wc -l)" -eq 4 ]] ||
+        stop "--apply waits for four agreeing machine and human rows at the end of ${v}/verdict-shadow.tsv"
+fi
 for f in .orchestration/acceptance/*.md; do
     [[ -z ${task} ]] || break
     task="$(block "${f}" | jq -r --argjson p "${pr}" 'select(.pr == $p) | .task' 2> /dev/null)" || task=""
@@ -126,16 +127,18 @@ fi
 required='["validate", "test (ubuntu-24.04, server)", "test (ubuntu-24.04, client)", "test (macos-14, client)",
   "public-bootstrap (ubuntu-24.04, server)", "public-bootstrap (ubuntu-24.04, client)", "public-bootstrap (macos-14, client)"]'
 checks="$(gh pr checks "${pr}" --json name,state 2> /dev/null)" || true
-if miss="$(jq -r --argjson req "${required}" '. as $c | [$req[] | select(. as $n | any($c[]; .name == $n and .state == "SUCCESS") | not)]
-    | join(", ")' <<< "${checks}" 2> /dev/null)"; then
+if miss="$(jq -er --argjson req "${required}" 'if type != "array" or length == 0 then error("no checks") else . as $c
+    | [$req[] | select(. as $n | any($c[]; .name == $n and .state == "SUCCESS") | not)] | join(", ") end' <<< "${checks}" 2> /dev/null)"; then
     cond 2 "$([[ -z ${miss} ]] && echo true || echo false)" "required checks not SUCCESS: ${miss:-none}"
 else
     lack "gh pr checks ${pr}" && cond 2 false "gh pr checks is unreadable"
 fi
 
 if [[ -f ${audit} ]] && "${here}/orch-audit.sh" --validate .schemas/audit.json "${audit}" > /dev/null 2>&1; then
-    a3="$(jq -r --arg h "${head}" 'if .head != $h then "the audit is of \(.head[0:7])" elif .verdict == "correct" or
-        all(.findings[]; .status == "fixed" or .scope == "records") then "" else "verdict \(.verdict) with code findings unfixed" end' "${audit}")"
+    a3="$(jq -r --arg h "${head}" --arg t "${task}" '[.findings[] | select((.status // "new") != "fixed")] as $open
+        | if [.head, .task_id] != [$h, $t] then "the audit is of \(.task_id) at \(.head[0:7])" elif .verdict == "blocked" then "blocked: not assessed"
+        elif .verdict == "correct" or ($open | length > 0 and all(.[]; .scope == "records")) then "" else "verdict \(.verdict), unfixed \($open | map(.scope))" end' "${audit}")"
+    [[ ${a3} != blocked:* ]] || lack "the audit ${audit} is blocked"
     a7="$(jq -r '[.findings[] | select(.priority == "P0" or .priority == "P1") | select((.status // "new") != "fixed") | .id] | join(",")' "${audit}")"
     cond 3 "$([[ -z ${a3} ]] && echo true || echo false)" "${a3:-the audit of the head is correct or leaves only records findings}"
     cond 7 "$([[ -z ${a7} ]] && echo true || echo false)" "unfixed P0/P1 findings: ${a7:-none}"
@@ -145,8 +148,8 @@ fi
 
 if uv run --offline --no-project python -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 && [[ -f ${fb} ]] &&
     a4="$(jq -rn --slurpfile f "${fresh}" --slurpfile d "${fb}" '([$d[0].items[] | {key: (.url // ""), value: (.disposition // "")}] | from_entries)
-      as $m | [$f[0].items[] | (.url // "") as $u | select(($m[$u] // "") as $x | $x == "" or ($x | startswith("not-applicable:")
-      and (contains("; evidence=") | not))) | $u] | join(" ")' 2> /dev/null)"; then
+      as $m | [$f[0].items[] | (.url // "") as $u | select(($m[$u] // "") | test("^fixed:[0-9a-f]{7,40}$") or (startswith("not-applicable:")
+      and contains("; evidence=")) | not) | $u] | join(" ")' 2> /dev/null)"; then
     cond 4 "$([[ -z ${a4} ]] && echo true || echo false)" "items without a disposition or evidence: ${a4:-none}"
 else
     lack "the fresh sweep or ${fb}" && cond 4 false "no fresh sweep or no ${fb}"
@@ -160,7 +163,7 @@ if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array 
     base="$(git merge-base origin/main "${head}")" && numstat="$(git diff --numstat --no-renames "${base}" "${head}")"; then
     allowed=() stray="" outside=0 under=0 excluded=()
     cap_out="$(sed -n 's/.*at most \([0-9][0-9]*\) changed lines outside.*/\1/p' "${tf}" | head -n 1)"
-    cap_tests="$(sed -n 's/.* \([0-9][0-9]*\) under tests\/.*/\1/p' "${tf}" | head -n 1)"
+    cap_tests="$(sed -n 's/.* \([0-9][0-9]*\) under .\{0,1\}tests\/.*/\1/p' "${tf}" | head -n 1)"
     # The paths the Check sentence lists after "outside", up to "(" or ", <n> under", leave the outside count.
     listed="$(sed -n 's/.*at most [0-9][0-9]* changed lines outside \([^(]*\).*/\1/p' "${tf}" | head -n 1)"
     # shellcheck disable=SC2016 # the backticks are literal: the sentence quotes each path in them
@@ -191,7 +194,7 @@ else
     lack "the task file ${tf} or the merge-base diff" && cond 5 false "no readable front matter in ${tf} or no merge-base diff"
 fi
 
-if counters="$(scripts/regime-counters.sh "${task}" --history-only 2> /dev/null)" &&
+if counters="$(scripts/regime-counters.sh "${task}" --pr "${pr}" 2> /dev/null)" &&
     revises="$(sed -n '1s/.* revises=\([0-9][0-9]*\) .*/\1/p' <<< "${counters}")" && [[ -n ${revises} ]]; then
     s1="$(grep '^S1:' <<< "${counters}" | tr '\n' ' ' || true)"
     cond 6 "$([[ -z ${s1} && ${revises} -lt 2 ]] && echo true || echo false)" "revises=${revises}; ${s1:-no S1 line}"
@@ -210,11 +213,12 @@ else
     lack "${sec}" && cond 8 false "no security review ${sec}"
 fi
 
-bad=""
+bad="" n=0
 while read -r want_sum path; do
+    [[ -n ${path} ]] && n=$((n + 1))
     [[ -z ${path} || "$(shasum -a 256 -- "${path}" 2> /dev/null)" == "${want_sum}  ${path}" ]] || bad+=" ${path}"
 done <<< "$(sed -n 's/^sha256:\([0-9a-f]\{64\}\) \(.*\)$/\1 \2/p' "${rec}" 2> /dev/null || true)"
-cond 9 "$([[ -z ${bad} ]] && echo true || echo false)" "sha256 mismatches:${bad:- none}"
+cond 9 "$([[ -z ${bad} && ${n} -gt 0 ]] && echo true || echo false)" "${n} sha256 lines; mismatches:${bad:- none}"
 
 inputs='{}'
 for f in "${rec}" "${tf}" "${audit}" "${fb}" "${sec}" "${fresh}"; do

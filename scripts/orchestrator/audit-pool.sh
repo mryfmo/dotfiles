@@ -13,9 +13,8 @@
 #   a request with previous_head is audited in full and its differential prompt is written to
 #   `<json>.differential-prompt.txt`. A zero exit whose json passes `orch-audit.sh --validate` against
 #   .schemas/audit.json renames the request to `.done`; anything else writes the reason to `<request>.rejected` and
-#   renames it to `.blocked`. A run whose output mentions 429 is retried after 60, 120 and 240 seconds, then
-#   blocked. `--once` (the default) starts what the free slots allow and waits; `--loop` picks every 30 seconds
-#   until `<queue>/.stop` exists.
+#   renames it to `.blocked`. A 429 (as orch-audit.sh reports it) is retried after 60, 120 and 240 s, then blocked. A
+#   killed pool's `.running-<n>` files hold their slots until removed; `--once` names them when requests wait.
 # @option --once Start what the free slots allow, then wait for those runs.
 # @option --loop Pick every 30 seconds until `<queue>/.stop` exists.
 # @option --max <n> Concurrent audits, 1 to 9 (default 2).
@@ -90,7 +89,7 @@ run_one() {
         rc=0
         ORCH_REVIEW_WORKTREE="${wt}" "${here}/orch-audit.sh" "${task}" --head "${head}" "${pr}" --json "${json}" \
             ${extra[@]+"${extra[@]}"} > "${base}.log" 2>&1 || rc=$?
-        if ((rc == 0 || attempt >= 3)) || ! grep -q 429 "${base}.log"; then
+        if ((rc == 0 || attempt >= 3)) || ! grep -q 'transcript mentions 429' "${base}.log"; then
             break
         fi
         sleep "${delays[attempt]}"
@@ -123,6 +122,7 @@ start_free() {
 if [[ ${mode} == once ]]; then
     start_free
     wait
+    [[ -z $(compgen -G "${queue}/*.request") ]] || echo "audit-pool: requests wait; the held slots are:" "${queue}"/*.running-* >&2
     exit 0
 fi
 until [[ -e ${queue}/.stop ]]; do

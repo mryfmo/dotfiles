@@ -14,7 +14,7 @@
 #   non-empty `.last.md` newer than the run's start, both files are copied to `.orchestration/validation/` here
 #   and masked with this checkout's masker; the review worktree is restored.
 #   T133 (plan 024 5.12 (2)): `--head` must be a commit of this checkout; ORCH_REVIEW_WORKTREE replaces the review
-#   worktree; a failed run prints the transcript's last lines to stderr (audit-pool.sh reads a 429 there); `--json`
+#   worktree; a failed run whose transcript mentions 429 says so on stderr (audit-pool.sh retries on it; no transcript text leaves); `--json`
 #   asks for one fenced json block of `.schemas/audit.json`'s record just before the Verdict line (the gate reads the
 #   verdict from the last line), then extracts it, checks it with the stdlib checker below and against this head, task
 #   and Verdict line, and writes it; `--previous-head` with `--previous-findings` makes the audit differential;
@@ -160,7 +160,7 @@ if ((rc == 0)) && [[ -s ${review}/${out}.last.md && -n $(find "${review}/${out}.
     cp -- "${review}/${out}" "${review}/${out}.last.md" "${v}/"
     ok=yes
 else
-    tail -n 5 -- "${review}/${out}" >&2 2> /dev/null || true
+    ! grep -q 429 -- "${review}/${out}" 2> /dev/null || echo "orch-audit: the codex transcript mentions 429" >&2
 fi
 git -C "${review}" checkout -q -- .
 git -C "${review}" clean -fdq -- .orchestration .schemas

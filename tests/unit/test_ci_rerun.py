@@ -129,6 +129,10 @@ class CiRerunTest(unittest.TestCase):
         gh = self.t / "bin/gh"
         gh.write_text(STUB.replace("@PYTHON@", sys.executable))
         gh.chmod(0o755)
+        (self.t / "bin/mise").write_text(
+            "#!/bin/sh\nexit 1\n"
+        )  # no mise answer: tools resolve through PATH, stubs first
+        (self.t / "bin/mise").chmod(0o755)
         self.log = self.t / "gh.log"
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
         self.runs = {
@@ -162,9 +166,10 @@ class CiRerunTest(unittest.TestCase):
             turn.unlink()
         (self.t / "runs.json").write_text(json.dumps(self.runs))
 
-    def start(self, run_id, **env):
+    def start(self, run_id, cwd=None, **env):
         return subprocess.Popen(
             ["bash", str(self.repo / "scripts/orchestrator/ci-rerun.sh"), run_id],
+            cwd=cwd,
             env=os.environ
             | {
                 "PATH": str(self.t / "bin") + os.pathsep + os.environ["PATH"],
@@ -264,6 +269,22 @@ class CiRerunTest(unittest.TestCase):
         self.assertEqual([], calls)
         result, _ = self.run_script("303")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment(self):
+        # security:4fe2438:1: run from a PR checkout, uv took its .python-version (or .venv, UV_PYTHON, VIRTUAL_ENV).
+        checkout, marker = self.t / "checkout", self.t / "planted.log"
+        python = checkout / ".venv/bin/python"
+        python.parent.mkdir(parents=True)
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{sys.executable}" "$@"\n')  # works, leaves a mark
+        python.chmod(0o755)
+        (checkout / ".venv/pyvenv.cfg").write_text(f"home = {Path(sys.executable).parent}\n")
+        (checkout / ".python-version").write_text(f"{python}\n")
+        self.reset()
+        selectors = {"UV_PYTHON": str(python), "VIRTUAL_ENV": str(checkout / ".venv")}
+        result = self.finish(self.start("101", cwd=checkout, **selectors))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(1, len(self.reruns()))
+        self.assertFalse(marker.exists(), "a checkout or inherited selector ran the planted interpreter")
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.

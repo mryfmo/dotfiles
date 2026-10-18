@@ -351,6 +351,15 @@ class DecisionTest(unittest.TestCase):
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                     self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
 
+    def test_the_unit_test_decision_runs_the_registry_test_for_a_flakes_only_diff(self) -> None:
+        # audit:4fe2438:2: test_ci_rerun.py validates .github/flakes.yaml, so a change to it alone must run the tests.
+        script = decide_script(TEST, "test")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            head = pull_request_head(clone, git, "t-flakes", [(".github/flakes.yaml", "- {id: x}\n")])
+            env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+            self.assertIn("should_test=true\n", run_decision(script, env, clone))
+
     def test_the_unit_test_decision_ignores_renames(self) -> None:
         # Audit of d6343494: rename detection listed only the .orchestration/ side of home/a's move.
         script = decide_script(TEST, "test")

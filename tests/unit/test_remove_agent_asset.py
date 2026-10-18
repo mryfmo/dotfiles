@@ -16,9 +16,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REMOVER = ROOT / "home/dot_local/bin/common/executable_remove-agent-asset"
+# uv colours its output under FORCE_COLOR or CLICOLOR_FORCE, which herdr panes export (the worker review's round 2).
 UV_STUB = """
 case "$*" in
-"tool dir") printf '%s\\n' "$HOME/.local/share/uv/tools" ;;
+"tool dir --color never") printf '%s\\n' "$HOME/.local/share/uv/tools" ;;
+"tool dir") printf '\\033[36m%s\\033[39m\\n' "$HOME/.local/share/uv/tools" ;;
 "tool uninstall hcom")
     [ -d "$HOME/.local/share/uv/tools/hcom" ] || { echo 'error: `hcom` is not installed' >&2; exit 2; }
     rm -rf "$HOME/.local/share/uv/tools/hcom" ;;

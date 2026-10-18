@@ -1,0 +1,43 @@
+{
+  "head": "de167fa1f48d3f7d3653b3643c43b2f7acf7e149",
+  "tree": "2d0f51b1f5315c5fff7b55158718dcafb565bddc",
+  "generated_at": "2026-10-18T05:23:18Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ffacbe6cf2092f09153105008d38a8b5319ff3d7eea827f900cad6a05b74d64c"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "f170e34f5d9c464c7dd7be27fb8f87bb26969019903d50b6636103c97a779796"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ec427b4abbf24ab3958dd1498e28cc76113d99c85519521cfc6951635053f42a"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": []
+}

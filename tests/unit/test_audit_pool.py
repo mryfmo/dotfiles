@@ -112,6 +112,7 @@ class AuditPoolTest(unittest.TestCase):
         self.assertFalse((self.repo / "evaluated").exists())
         self.assertFalse((self.calls / "codex.log").exists())
         self.assertTrue(bad.with_suffix(".blocked").exists())
+        self.assertIn("<task-id>-<sha7>.request", Path(f"{bad}.request.rejected").read_text())
 
     def test_pool_retries_a_429_three_times_then_blocks(self):
         for count, outcome in (("2", ".done"), ("4", ".blocked")):

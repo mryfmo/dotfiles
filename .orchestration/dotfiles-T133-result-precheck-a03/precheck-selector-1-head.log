@@ -1,5 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.641s
+Ran 1 test in 2.850s
 
 OK

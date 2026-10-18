@@ -1,13 +1,13 @@
 ---
 task_id: dotfiles-T133-result-precheck-a03
-round: 1
-code_head: 1ac3a1a674df895b541aff3a2fac8709b934abc9
-base: de3b73cc4f8874a30be6adc47a0f07575869d0df
+round: revise-1
+code_head: 024ba0eb9f7019a0758e87efdff5572355c07f87
+base: 3e41e36abc949acd7e6b4859c1a22df9e665c8d4
 ---
 
 # Validation
 
-Every block is the command's own output, in the seat's sandbox (sandbox.md), on the code head above unless a block names another commit.
+Every block is the command's own output, in the seat's sandbox (sandbox.md), on round 1's code head 1ac3a1a674df895b541aff3a2fac8709b934abc9 (merge base de3b73cc) unless a block names another commit; the section `## Revise 1` ran on the code head above.
 
 ## Task copy and the reset bookkeeping
 
@@ -316,5 +316,109 @@ exit=0 seconds=0.19
 ```
 $ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 P1-5 a03 (S1 redesign of a02): result-precheck.sh scan_one feeds each blob unchanged … the task latest status=revise.'
 67366379-780e-431d-8764-2b1f46cf95dc
+exit=0
+```
+
+## Revise 1 (code head 024ba0eb, on bccb2dea, the merge of origin/main 3e41e36a)
+
+### Task copy (amendment 1)
+
+```
+$ shasum -a 256 .orchestration/dotfiles-T133-result-precheck-a03/task.md
+d8048ef508676f65c5eaee82cc69a9f83f04b4418ed3e61bb9e4803d5c0a32ba  .orchestration/dotfiles-T133-result-precheck-a03/task.md
+```
+
+### Caps (`git diff --numstat origin/main...HEAD`, outside `.orchestration/`)
+
+```
+13	0	.githooks/pre-commit
+36	0	.githooks/pre-push
+81	1	scripts/orchestrator/dispatch.sh
+289	0	scripts/orchestrator/result-precheck.sh
+517	0	tests/unit/test_result_precheck.py
+outside tests/ and .orchestration/: 420 (cap 420); under tests/: 517 (cap 520)
+```
+
+### shfmt, shellcheck, ruff and prettier on the changed files
+
+```
+shfmt=0
+shellcheck=0
+1 file already formatted
+Checking formatting...
+All matched files use Prettier code style!
+exit=0
+```
+
+### Red: this head's test module against bccb2dea, by exact id (scratch worktree, removed)
+
+The replayed source is the committed module: `git show 024ba0eb:tests/unit/test_result_precheck.py | shasum -a 256` gives `dbc751b36678ad409debc099659ce9f689ec39d866d5def092a16046a30044ff`.
+
+```
+production=bccb2deabdf95bc558add6a5e56e4405a6a61b43, test sources from the working tree of bccb2dea:
+  dbc751b36678ad409debc099659ce9f689ec39d866d5def092a16046a30044ff  tests/unit/test_result_precheck.py
+$ uv run python -m unittest tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
+exit=1
+FAIL: test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
+AssertionError: Tuples differ: (0, True) != (1, False)
+Ran 1 test in 1.963s
+FAILED (failures=1)
+$ uv run python -m unittest tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails
+exit=1
+FAIL: test_result_precheck_stops_when_the_clean_tree_query_fails
+AssertionError: Tuples differ: (1, True, True) != (2, False, True)
+Ran 1 test in 1.784s
+FAILED (failures=1)
+$ uv run python -m unittest tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id
+exit=1
+FAIL: test_previous_head_proof_selects_tests_by_exact_id (name='test_requested')
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+FAIL: test_previous_head_proof_selects_tests_by_exact_id
+AssertionError: Tuples differ: (None, None, None, 1, None, 0) != ('tests.unit.test_ids.T.test_requested_ext[55 chars]1, 0)
+Ran 1 test in 7.164s
+FAILED (failures=2)
+removed=0
+```
+
+### Green and the proof
+
+```
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a03 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools --previous-head bccb2deabdf95bc558add6a5e56e4405a6a61b43 --check tests/unit/test_result_precheck.py::<each of the three revise.yaml selectors>
+code head=024ba0eb9f7019a0758e87efdff5572355c07f87
+result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_result_precheck_stops_when_the_clean_tree_query_fails previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_previous_head_proof_selects_tests_by_exact_id previous head exit 1, this head exit 0
+precheck=3b06c13b3a5f582af38198b519387444e1ae07ccc56c46c1f79fcc90f8f97e82
+$ the unit-test log's summary (both modules)
+Ran 75 tests in 171.030s
+OK
+$ the record: checks, then each selector's id, baseline, test counts and exits, then each previous-head summary
+head 024ba0eb9f7019a0758e87efdff5572355c07f87
+unit-test True
+render-check True
+format True
+shellcheck True
+secrets True
+local-review None
+test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise ok=True id=tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise previous_head=bccb2deabdf95bc558add6a5e56e4405a6a61b43 previous_head_tests=1 previous_head_exit=1 head_tests=1 head_exit=0
+test_result_precheck_stops_when_the_clean_tree_query_fails ok=True id=tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails previous_head=bccb2deabdf95bc558add6a5e56e4405a6a61b43 previous_head_tests=1 previous_head_exit=1 head_tests=1 head_exit=0
+test_previous_head_proof_selects_tests_by_exact_id ok=True id=tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id previous_head=bccb2deabdf95bc558add6a5e56e4405a6a61b43 previous_head_tests=1 previous_head_exit=1 head_tests=1 head_exit=0
+precheck-selector-1-previous.log: Ran 1 test in 0.874s FAILED (failures=1)
+precheck-selector-2-previous.log: Ran 1 test in 1.036s FAILED (failures=1)
+precheck-selector-3-previous.log: Ran 1 test in 13.991s FAILED (failures=2)
+$ shasum -a 256 .orchestration/dotfiles-T133-result-precheck-a03/precheck.json
+3b06c13b3a5f582af38198b519387444e1ae07ccc56c46c1f79fcc90f8f97e82  .orchestration/dotfiles-T133-result-precheck-a03/precheck.json
+```
+
+### CompactionDB memory
+
+```
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 P1-5 a03 revise 1: result-precheck.sh proves a --check selector only by its exact unittest id …'
+b33cf845-0e1e-4ed6-bccf-7e0437961b22
 exit=0
 ```

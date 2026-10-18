@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T133-result-precheck-a03
-round: 1
+round: revise-1
 ---
 
 # Sandbox
@@ -29,3 +29,13 @@ Claude Code seat `claude-standard-dot-a009` in its own worktree `.claude/worktre
 `make unit-test` fails tests that fail identically on a pristine `origin/main` worktree in the same sandbox (validation.md). So the final proof uses `--tests` on this task's two modules, and CI decides the full suite.
 
 effects=none
+
+## Revise 1
+
+The same seat and sandbox. Everything ran inside it:
+- the edits;
+- the exact-id red replays in a scratch worktree of bccb2dea, removed with `git worktree remove --force`;
+- the module run;
+- the proof, whose selector worktree the script adds and removes.
+
+The push, `gh` and `agmsg-dispatch` follow round 1's rules above. effects=none

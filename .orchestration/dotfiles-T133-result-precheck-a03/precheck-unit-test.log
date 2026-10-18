@@ -1,3 +1,4 @@
+test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise) ... ok
 test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_requires_a_result_newer_than_the_latest_revise) ... ok
 test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required) ... ok
 test_dispatch_rejects_malformed_checks_and_missing_requested_selectors (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_rejects_malformed_checks_and_missing_requested_selectors) ... ok
@@ -11,11 +12,10 @@ test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding (tests.unit.tes
 test_pre_push_scans_each_blob_on_its_own_boundary (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_scans_each_blob_on_its_own_boundary) ... ok
 test_precheck_exits_1_and_records_ok_false_for_each_failing_check (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_exits_1_and_records_ok_false_for_each_failing_check) ... ok
 test_precheck_records_failed_commands_as_not_ok (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_records_failed_commands_as_not_ok) ... ok
-test_precheck_records_the_local_review_as_deferred_by_default (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_records_the_local_review_as_deferred_by_default) ... ok
-test_precheck_secrets_mode_counts_and_never_prints_the_match (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_secrets_mode_counts_and_never_prints_the_match) ... ok
-test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head) ... ok
 test_previous_head_proof_requires_an_executed_failing_test (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_requires_an_executed_failing_test) ... ok
+test_previous_head_proof_selects_tests_by_exact_id (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id) ... ok
 test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) ... ok
+test_result_precheck_stops_when_the_clean_tree_query_fails (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails) ... ok
 test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_binds_head_and_pr_and_keeps_the_record) ... ok
 test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_acceptance_front_matter_takes_audit_findings_only_for_an_incorrect_audit) ... ok
 test_boundary_commits_pushes_and_queues_the_pr (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_boundary_commits_pushes_and_queues_the_pr) ... ok
@@ -75,6 +75,6 @@ test_three_repeat_prints_the_records_search_line (tests.unit.test_orchestrator_t
 test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout) ... ok
 
 ----------------------------------------------------------------------
-Ran 75 tests in 114.386s
+Ran 75 tests in 171.030s
 
 OK

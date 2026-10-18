@@ -1,16 +1,25 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
 F
 ======================================================================
-FAIL: test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding)
+FAIL: test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.du2Mkc/previous/tests/unit/test_result_precheck.py", line 459, in test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding
-    self.assertEqual(code, 1, err)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
-AssertionError: 0 != 1 : To /private/tmp/claude-501/tmpyl9a12c8/origin.git
- * [new branch]      json -> json
+  File "/private/tmp/claude-501/result-precheck.1r3vTL/previous/tests/unit/test_result_precheck.py", line 317, in test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
+    self.gated(stale, "precheck.json:selectors ", revise)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/result-precheck.1r3vTL/previous/tests/unit/test_result_precheck.py", line 239, in gated
+    self.assertEqual((result.returncode, sent), outcome, result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, True) != (1, False)
 
+First differing element 0:
+0
+1
+
+- (0, True)
++ (1, False) : 
 
 ----------------------------------------------------------------------
-Ran 1 test in 1.754s
+Ran 1 test in 0.874s
 
 FAILED (failures=1)

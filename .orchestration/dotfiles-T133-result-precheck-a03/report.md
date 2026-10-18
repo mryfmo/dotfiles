@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T133-result-precheck-a03
-round: 1
+round: revise-1
 reset_of: dotfiles-T133-result-precheck-a02
 status: precheck-recorded
 ---
@@ -13,7 +13,8 @@ Worker `claude-standard-dot-a009` (Claude Code, worker-c).
 - Merge base with `origin/main`: de3b73cc. `origin/main` itself is now 3e41e36a.
 - Tested code head: 1ac3a1a674df895b541aff3a2fac8709b934abc9. The RESULT names the final evidence-only head.
 - Task copy `.orchestration/dotfiles-T133-result-precheck-a03/task.md` is byte-identical to the dispatched file: sha256 `f416aee0dd314b3dbb33db7ef71da78f261f06bb822ed684adc685ad77034e39`.
-- INV-6 for a03: amendments=0, questions=0, revises=0.
+- INV-6 for a03: amendments=1, questions=0, revises=1 after revise 1 below (no further round).
+- Revise 1: code head 024ba0eb on bccb2dea; the task copy is amendment 1's text, sha256 `d8048ef508676f65c5eaee82cc69a9f83f04b4418ed3e61bb9e4803d5c0a32ba`.
 - Parked PR of a01's item 0: #406.
 
 Inherited, not re-derived here: the a01 and a02 records, their stopped history and counters, and the historical red baseline a5cb73b4 of the a02 regressions. Fresh: everything in this directory.
@@ -152,8 +153,42 @@ Green on 1ac3a1a6:
 
 [memory:decision] T133 P1-5 a03: result-precheck.sh scan_one feeds each blob unchanged to validate-agent-assets.py's own read_scannable_text, json_strings, strip_allowed_secret_placeholders and SECRET_PATTERN (home_path_pattern only under .orchestration/); an undecodable blob fails closed; pre-push calls --blob <commit>:<path> per blob; dispatch.sh requires the newest RESULT to follow the task's latest status=revise. Recorded with `uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '…'` as memory `67366379-780e-431d-8764-2b1f46cf95dc` (validation.md).
 
+## Revise 1 (the task-level audit of bccb2de and amendment 1)
+
+The ACCEPTANCE `status=revise` of 22:16:07Z named three items, each with a `check=` test. Code commit 024ba0eb on bccb2dea:
+
+1. **The proof baseline (audit P2, `dispatch.sh:177`).** Each selector proof in `precheck.json` now records its `previous_head`. The acceptance check reads the latest revise's `previous_head=` and refuses (`PRECHECK_REQUIRED=1`) or warns about a requested proof whose `previous_head` differs: `precheck: precheck.json:selectors … proves […] against another baseline than previous_head=[…]`.
+   - The revise's `check=` is read both as repeated tokens and as one comma-separated list, the form the orchestrator's revise lines use, this round's own included. Before, a comma list was one selector that no proof could match, so such a revise could never be accepted under `PRECHECK_REQUIRED=1`.
+2. **The clean-tree query (audit P2, `result-precheck.sh:187`).** `git status` writes to a work file, and a failure exits 2 before any check runs; git's own message says why.
+3. **Exact test selection (audit P2 on the task text, amendment 1).** A selector runs as `tests.unit.<module>.<Class>.<name>`, never `-k`.
+   - An awk scan of this head's module finds the one top-level class defining `def <name>(`. None or two gives exit 2 on both sides and no proof.
+   - A red proof needs `Ran 1 test` with failures and no errors; a green one needs `Ran 1 test` and exit 0.
+   - `selectors[]` records `id`, `previous_head`, `previous_head_tests` and `head_tests` beside the existing fields.
+
+Tests: `test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise`, `test_result_precheck_stops_when_the_clean_tree_query_fails` and `test_previous_head_proof_selects_tests_by_exact_id`. Each is red against bccb2dea with this head's test source, by exact id: `Ran 1 test`, failures only, no error. Each is green on 024ba0eb (validation.md).
+
+Consolidation for the caps. Round 1 left 419 of 420 lines outside `tests/` and 520 of 520 under `tests/`:
+- **Production:** 420 of 420.
+  - Denser wording for the header's selector paragraph and for two comments.
+  - `Path.write_text` for the two record writes.
+  - One-line `if …: return` forms in the prechecker.
+  - The red predicate as a lambda beside `digest` and `ran`.
+- **Tests:** 517 of 520, every case kept.
+  - `test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head` is removed; the task does not name it. Its red-and-green and no-prune cases are in `test_previous_head_proof_requires_an_executed_failing_test`, and its exit-code checks are in the new exact-id test.
+  - `test_precheck_records_the_local_review_as_deferred_by_default` becomes the healthy run of `test_precheck_records_failed_commands_as_not_ok`: the deferred record, no local-review run, and the shortcut line.
+  - `test_precheck_secrets_mode_counts_and_never_prints_the_match` becomes the UTF-8 case of `test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan`: an exact count of 1, no matched text, and the input unchanged.
+  - One `gated()` helper replaces four copies of the refuse-or-warn pair.
+  - `PROOFS`, `SEL_A`, `SEL_B` and `BASE` are shared fixtures, and the one-line `hooks()` helper is inlined.
+  - The existing dispatch fixtures' proofs now carry `previous_head`.
+
+The audit's two orchestration findings are not this round's:
+- **Finding 1, the stale precheck after the update-branch merge:** it goes to the owner task, as the ACCEPTANCE says. This round's proof is regenerated on 024ba0eb, after that merge.
+- **Finding 5, the deferral:** this round answers it.
+
+[memory:decision] T133 P1-5 a03 revise 1: result-precheck.sh proves a --check selector only by its exact unittest id (the one class defining the name; none or two is no proof), with Ran 1 test on both sides, and records id, previous_head and both counts in selectors[]. dispatch.sh reads a revise's check= repeated or comma-separated and refuses or warns about a requested proof whose previous_head differs from the latest revise's previous_head=. A failed git status exits 2 before any check.
+
 ## Not done yet
 
-The evidence commit, the one push, CI on the final head, the Bot window and the RESULT (`precheck=6701ae4f…`, `task_copy=f416aee0…`, `parked_pr=406`).
+The evidence commit, the one push, CI on the final head, the Bot window and the RESULT `round=revise-1` (`precheck=3b06c13b3a5f582af38198b519387444e1ae07ccc56c46c1f79fcc90f8f97e82`, `task_copy=d8048ef5…`, `previous_head=bccb2deabdf95bc558add6a5e56e4405a6a61b43`).
 
 cost: n/a

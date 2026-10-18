@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
@@ -2157,6 +2158,253 @@ exit {despawn_exit}
         self.assertIn(
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
         )
+
+    def test_add_worker_cap_count_and_registration_are_serialized_under_one_lock(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        main = self.workdir.resolve()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_cap: 4\n")
+        seated = scripts / "seated.tsv"
+        seated.write_text(
+            "".join(
+                f"{self.add_seat_worktree(f'existing{n}')}\tclaude-code\tdotfiles\tworker-a00{n}\n" for n in range(3)
+            )
+        )
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+if [[ $1 == {main} ]]; then
+    [[ $2 != claude-code ]] || printf 'dotfiles\\tclaude-remediation-dot\\n'
+    exit 0
+fi
+printf 'seat-read %s\\n' "$*" >> {self.calls_path}
+sleep 0.05
+awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {seated}
+"""
+        )
+        spawn = scripts / "spawn.sh"
+        spawn.write_text(
+            spawn.read_text() + f'\nsleep 0.6\nprintf "%s\\t%s\\t%s\\t%s\\n" "$4" "$1" "$6" "$2" >> {seated}\n'
+        )
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        self.write_executable(
+            "git",
+            f"""#!/usr/bin/env bash
+if [[ $* == '-C {main} rev-parse --path-format=absolute --git-dir' ]]; then
+    printf 'main-check %s\\n' "$*" >> {self.calls_path}
+fi
+exec {shlex.quote(real_git)} "$@"
+""",
+        )
+        results = []
+        start = threading.Barrier(3)
+
+        def add(name: str) -> None:
+            start.wait()
+            results.append((name, self.run_helper("--add-worker", f".claude/worktrees/{name}")))
+
+        threads = [threading.Thread(target=add, args=(name,), daemon=True) for name in ("concurrent-a", "concurrent-b")]
+        self.calls_path.write_text("")
+        common = Path(
+            subprocess.check_output(
+                ["git", "-C", str(main), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True
+            ).strip()
+        )
+        with (common / "herdr-agents-seat.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            for thread in threads:
+                thread.start()
+            start.wait()
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline and self.calls_path.read_text().count("main-check ") < 2:
+                time.sleep(0.01)
+            time.sleep(1)
+            held_calls = self.calls_path.read_text()
+            held_waiting = all(thread.is_alive() for thread in threads)
+            fcntl.flock(lock, fcntl.LOCK_UN)
+        for thread in threads:
+            thread.join(timeout=20)
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertGreaterEqual(held_calls.count("main-check "), 2, held_calls)
+        self.assertTrue(held_waiting)
+        self.assertNotIn("seat-read ", held_calls)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(sorted(result.returncode for _, result in results), [0, 2], results)
+        [refused] = [result for _, result in results if result.returncode == 2]
+        self.assertIn("worker_cap is 4 and 4 worker seats are registered", refused.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(sum(call.startswith("workspace create ") for call in calls), 1, calls)
+        self.assertEqual(sum(call.startswith("spawn ") for call in calls), 1, calls)
+        self.assertEqual(len(seated.read_text().splitlines()), 4)
+
+    def test_add_worker_uses_git_common_dir_for_the_seat_lock(self) -> None:
+        common = self.temp_dir / "separate.git"
+        subprocess.run(
+            ["git", "init", "-q", "--separate-git-dir", str(common), str(self.workdir)],
+            check=True,
+            capture_output=True,
+        )
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        main = self.workdir.resolve()
+        self.assertTrue((main / ".git").is_file())
+        resolved = Path(
+            subprocess.check_output(
+                ["git", "-C", str(main), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True
+            ).strip()
+        )
+        self.assertTrue(resolved.is_absolute())
+        self.assertEqual(resolved, common.resolve())
+        (self.home_dir / ".agents/agent-config.yaml").write_text("worker_cap: 1\n")
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        seated = scripts / "seated.tsv"
+        seated.write_text("")
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+if [[ $1 == {main} ]]; then
+    [[ $2 != claude-code ]] || printf 'dotfiles\\tclaude-remediation-dot\\n'
+    exit 0
+fi
+printf 'seat-read %s\\n' "$*" >> {self.calls_path}
+awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {seated}
+"""
+        )
+        spawn = scripts / "spawn.sh"
+        spawn.write_text(spawn.read_text() + f'\nprintf "%s\\t%s\\t%s\\t%s\\n" "$4" "$1" "$6" "$2" >> {seated}\n')
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        self.write_executable(
+            "git",
+            f"""#!/usr/bin/env bash
+if [[ $* == '-C {main} rev-parse --path-format=absolute --git-dir' ]]; then
+    printf 'main-check\\n' >> {self.calls_path}
+fi
+exec {shlex.quote(real_git)} "$@"
+""",
+        )
+        results = []
+        thread = threading.Thread(
+            target=lambda: results.append(self.run_helper("--add-worker", ".claude/worktrees/separate")), daemon=True
+        )
+        self.calls_path.write_text("")
+        with (resolved / "herdr-agents-seat.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            thread.start()
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline and "main-check" not in self.calls_path.read_text():
+                time.sleep(0.01)
+            time.sleep(0.2)
+            held_calls = self.calls_path.read_text()
+            held_waiting = thread.is_alive()
+            fcntl.flock(lock, fcntl.LOCK_UN)
+        thread.join(timeout=20)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].returncode, 0, results[0].stdout + results[0].stderr)
+        self.assertIn("main-check", held_calls)
+        self.assertTrue(held_waiting)
+        self.assertNotIn("seat-read", held_calls)
+        self.assertNotIn("spawn ", held_calls)
+        self.assertEqual(len(seated.read_text().splitlines()), 1)
+        self.pane_list_path.write_text('{"result":{"panes":[]}}')
+        self.calls_path.write_text("")
+        refused = self.run_helper("--add-worker", ".claude/worktrees/excess")
+        self.assertEqual(refused.returncode, 2, refused.stdout + refused.stderr)
+        self.assertIn("worker_cap is 1 and 1 worker seats are registered", refused.stderr)
+        self.assertFalse((main / ".claude/worktrees/excess").exists())
+        self.assertNotIn("spawn ", self.calls_path.read_text())
+
+    def test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        scripts, main = self.home_dir / ".agents/skills/agmsg/scripts", self.workdir.resolve()
+        manifest = self.home_dir / ".agents/agent-config.yaml"
+        for value in ("", "worker_cap: invalid\n"):
+            with self.subTest(manifest=value):
+                manifest.write_text(value)
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                self.calls_path.write_text("")
+                result = self.run_helper("--add-worker", ".claude/worktrees/s0")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(f"no worker_cap in {manifest}; no cap enforced.", result.stderr)
+                self.assertIn(f"workspace create --cwd {main}/.claude/worktrees/s0 ", self.calls_path.read_text())
+        manifest.write_text("worker_kind: claude\nworker_cap: 4\n")
+        rows = []
+        for n in range(1, 5):
+            path = self.add_seat_worktree(f"s{n}")
+            kind = "claude-code" if n % 2 else "codex"
+            rows.append(f"{path}\t{kind}\tdotfiles\tworker-a00{n}\n")
+        seated = scripts / "seated.tsv"
+        seated.write_text("".join(rows))
+        (scripts / "identities.sh").write_text(
+            f"""#!/usr/bin/env bash
+printf 'identities %s\\n' "$*" >> {self.calls_path}
+if [[ $1 == {main} ]]; then
+    [[ $2 != claude-code ]] || printf 'dotfiles\\tclaude-remediation-dot\\n'
+    exit 0
+fi
+awk -F'\\t' -v p="$1" -v k="$2" '$1 == p && $2 == k {{ print $3 "\\t" $4 }}' {seated}
+"""
+        )
+        self.pane_list_path.write_text('{"result":{"panes":[]}}')
+        self.calls_path.write_text("")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/s5")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(
+            "worker_cap is 4 and 4 worker seats are registered; remove one with --remove-worker first.", result.stderr
+        )
+        self.assertFalse((main / ".claude/worktrees/s5").exists())
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(
+            any(c.startswith(("join ", "spawn ", "delivery ", "workspace create", "tab create")) for c in calls)
+        )
+        self.calls_path.write_text("")
+        result = self.run_helper("--add-worker", ".claude/worktrees/s1")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("worker_cap", result.stderr)
+        self.assertIn(f"workspace create --cwd {main}/.claude/worktrees/s1 ", self.calls_path.read_text())
+
+    def test_add_worker_writes_no_git_configuration(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        main = self.workdir.resolve()
+        worktree = main / ".claude/worktrees/hooks"
+        git_calls = self.temp_dir / "git-calls.txt"
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        self.write_executable(
+            "git", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> {git_calls}\nexec {shlex.quote(real_git)} "$@"\n'
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/hooks")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = git_calls.read_text().splitlines()
+        self.assertFalse(any(" config " in call for call in calls), calls)
+        for directory in (main, worktree):
+            for key in ("extensions.worktreeConfig", "core.hooksPath"):
+                config = subprocess.run(
+                    [real_git, "-C", str(directory), "config", "--get", key],
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(config.returncode, 1, config.stdout + config.stderr)
+                self.assertEqual(config.stdout, "")
+
+    def test_the_skill_names_the_manifest_worker_cap(self) -> None:
+        [cap] = re.findall(
+            r"^worker_cap: ([0-9]+)$", (ROOT / "home/dot_agents/agent-config.yaml").read_text(), re.MULTILINE
+        )
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        counts = [line for line in skill.splitlines() if "at most `worker_cap` workers" in line]
+        self.assertEqual(len(counts), 2, counts)
+        for line in counts:
+            self.assertIn(f"({cap} in the manifest today", line)
+        self.assertNotRegex(skill, r"about three concurrent workers|at most three workers")
 
     def test_add_worker_names_the_seat_from_a_codex_orchestrator_identity(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tcodex-deep-dot")

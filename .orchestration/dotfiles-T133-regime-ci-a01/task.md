@@ -7,6 +7,7 @@ allowed_files:
   - .github/workflows/regime.yml
   - scripts/orchestrator/regime-ci.py
   - tests/unit/test_regime_ci.py
+  - tests/unit/test_workflow_security.py
   - .orchestration/dotfiles-T133-regime-ci-a01/**
 after: []
 threat_table:
@@ -16,6 +17,8 @@ threat_table:
     disposition: "closed: tests/unit/test_regime_ci.py::test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr"
   - control: "tests/unit/test_regime_ci.py (temporary repositories with a task copy, precheck.json and result.txt; one fixture per rule; the workflow-shape test)"
     disposition: "residual: fixtures are temporary repositories built by the test; the audit reads each case and its assertion"
+  - control: "tests/unit/test_workflow_security.py (amendment 1: one line, the EXPECTED_PERMISSIONS entry \"regime.yml\": {\"contents\": \"read\"})"
+    disposition: "residual: the diff of that module holds exactly the one entry; the task-level audit compares the diff against amendment 1"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T133-regime-ci-a01/task.md)
     disposition: "residual: byte-identical to the dispatched file (its sha256 is in the TASK line); the orchestrator compares at acceptance"
   - control: "the branch evidence records under .orchestration/dotfiles-T133-regime-ci-a01/ (report.md, validation.md, sandbox.md, learning.md)"
@@ -86,6 +89,10 @@ Making `regime` a required check (the operator's ruleset step), `scripts/orchest
 ## Completion
 
 One PR from a fresh branch off `origin/main`. The Completion clause of `.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md` applies as written, with `dotfiles-T133-regime-ci-followup-a01` as the owner of any advisory P2 (written by the orchestrator when the first one appears) and `task_copy=<sha256 of .orchestration/dotfiles-T133-regime-ci-a01/task.md>` in the RESULT; the RESULT also carries `precheck=` when `scripts/orchestrator/result-precheck.sh` has merged (PR #411), else `precheck=pending-411`. `security: true`: the orchestrator runs the task-level audit and the security-profile review on the final head. No `@codex review` comment; single commands for every gh and git write; a classifier denial is a blocked PONG. Until P1-14 lands, any string containing the words gh pr merge or gh pr create is written with the file-edit tool, never in a Bash heredoc or echo.
+
+## Amendment 1 (round 1, 2026-10-18T20:0xZ): the workflow-security allowlist and a lineage's two task copies
+
+a008's blocked PONG (13:36:50Z). `tests/unit/test_workflow_security.py` joins `allowed_files` for exactly one line: `EXPECTED_PERMISSIONS` gains `"regime.yml": {"contents": "read"}`, and `regime.yml` declares that top-level `permissions:` block (the guard's design: every new workflow is added to the allowlist by hand). Nothing else in that module changes. The spec gap a008 found is settled here, not deferred: when a pull request carries several task copies and a later copy's `reset_of` names an earlier one, regime-ci.py checks only the latest copy of that lineage and prints `regime-ci: warning: <t>: predecessor copy <path> (reset_of of <later task>)` for each earlier copy; a copy that no later copy names is checked as its own task. The a03 texts of this regime already make the worker delete the predecessor copy in its first push (C-74), so the warning is transitional. This is INV-6's first amendment (C-61); the counters are pasted below.
 
 ## Checks (pasted by the orchestrator before each send)
 

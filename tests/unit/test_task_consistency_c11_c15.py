@@ -118,6 +118,15 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
                 self.assertEqual(code, 1, out)
                 self.assertEqual(len(findings), 1, out)
                 self.assertTrue(findings[0].strip().startswith(check + " "), out)
+        # Amendment 1: C14 collapses whitespace runs (a padded count equals its pasted number) and warns on an absent tool.
+        padded = BASE.replace(
+            "command: printf base\n    output: |-\n      base", "command: printf '%8s' 1\n    output: |-\n      1"
+        )
+        self.assertEqual(self.check(self.task(padded)), (0, "dotfiles-T9-base-a01.md: OK\n"))
+        for cmd in ("no-such-tool-a01 --list", "no-such-tool-a01 --help | /usr/bin/grep -c x"):
+            code, out = self.check(self.task(BASE.replace("command: printf base", f"command: {cmd}")))
+            self.assertEqual(code, 0, out)
+            self.assertIn("C14: tool absent no-such-tool-a01", out)
         current = sorted((ROOT / ".orchestration/tasks").glob("dotfiles-T133-*.md"))
         with self.subTest(green="the current dotfiles-T133 task files"):
             if not current:

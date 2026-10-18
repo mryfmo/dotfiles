@@ -17,7 +17,8 @@ C10 (docs tasks) a quoted rule sentence naming a script on origin/main has no `=
 C11 a disposition's payload has its form's shape: closed: tests/<path>::<identifier>, out-of-scope: an existing task id, residual: 20+ characters.
 C12 a glob entry of an executed or applied kind (*.sh *.py *.yaml *.yml *.json *.toml, or under home/ scripts/ .githooks/ .github/) has a row per matched file.
 C13 every disposition is exactly one of closed:, residual: or out-of-scope: followed by a space.
-C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr/bin:/bin, prints its pasted output (gh, curl and URLs skipped).
+C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr/bin:/bin, prints its pasted output with whitespace runs
+    collapsed (gh, curl and URLs skipped; a tool absent from that PATH is a `C14: tool absent <name>` warning).
 C15 with invariants and design_review.design, each invariant equals the design's on origin/main byte for byte.
 """
 
@@ -43,6 +44,7 @@ CHECKER = "scripts/orchestrator/task-consistency-check.py"  # where `task-consis
 FORMS = ("closed: ", "residual: ", "out-of-scope: ")
 APPLIED = (".sh", ".py", ".yaml", ".yml", ".json", ".toml")
 SKIPPED = "C14 skipped network premise"  # a note, never a failure
+ABSENT = "C14: tool absent"  # a warning, never a failure (Amendment 1)
 
 
 def front(text):
@@ -54,7 +56,7 @@ def git(cwd, *args):
 
 
 def rerun(cmd, cwd, path=None):
-    """Run a premise or Check command as C14 does; return (stdout, exit status), stdout None on a timeout.
+    """Run a premise or Check command as C14 does; return (stdout, exit status, stderr), stdout None on a timeout.
 
     The command is bash's script argument (`bash -c`, pipefail on), never spliced into another shell line; premises
     get PATH <root>/bin:/usr/bin:/bin so a rerun prints what the pasted output says, and task-from-plan.py runs its
@@ -72,8 +74,8 @@ def rerun(cmd, cwd, path=None):
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return None, 124
-    return run.stdout, run.returncode
+        return None, 124, ""
+    return run.stdout, run.returncode, run.stderr
 
 
 def check(p, root):
@@ -183,8 +185,13 @@ def check(p, root):
         if re.search(r"\b(?:gh|curl)\b|https?://", cmd):
             fails.append(f"{SKIPPED}: {cmd[:60]}")
             continue
-        got, _ = rerun(cmd, root)
-        if got is None or got.rstrip("\n") != want.rstrip("\n"):  # YAML's |- drops the final newline
+        got, code, err = rerun(cmd, root)
+        # bash's own line, not exit 127: under pipefail `absent | grep -c` exits with grep's 1.
+        if absent := re.search(r"^bash: line \d+: ([^\s:]+): command not found$", err, re.M):
+            fails.append(f"{ABSENT} {absent.group(1)}: {cmd[:60]}")
+            continue
+        # Runs of whitespace collapse (BSD wc pads its counts; YAML's |- drops the final newline).
+        if got is None or " ".join(got.split()) != " ".join(want.split()):
             fails.append(f"C14 premise output differs from its rerun: {cmd[:60]}")
     inv, design = fm.get("invariants"), dr.get("design")
     if isinstance(inv, dict) and design:  # C15; a design task carrying its own invariants names no design
@@ -209,7 +216,7 @@ def main():
     rc = 0
     for p in args.tasks:
         fails = check(p, args.root)
-        bad = [f for f in fails if not f.startswith(SKIPPED)]
+        bad = [f for f in fails if not f.startswith((SKIPPED, ABSENT))]
         print(f"{p.name}: {'FAIL' if bad else 'OK'}", *fails, sep="\n  ")
         rc |= bool(bad)
     return rc

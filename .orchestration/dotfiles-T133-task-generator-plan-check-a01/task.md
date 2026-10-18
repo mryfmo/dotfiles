@@ -10,6 +10,7 @@ allowed_files:
   - tests/unit/test_task_from_plan.py
   - tests/unit/test_plan_check.py
   - tests/unit/test_task_consistency_c11_c15.py
+  - tests/unit/test_task_checkers.py
   - .orchestration/dotfiles-T133-task-generator-plan-check-a01/**
 after: []
 threat_table:
@@ -25,6 +26,8 @@ threat_table:
     disposition: "residual: fixtures only; no live GitHub"
   - control: "tests/unit/test_task_consistency_c11_c15.py (new; one red fixture per new check and the current task files as the green set)"
     disposition: "residual: the fixtures are task files in a temporary directory; the audit reads each case"
+  - control: "tests/unit/test_task_checkers.py (amendment 1: two expected-set edits only, the C4 fixture's disposition and the historical expectation's new ids, after PR #413 merges)"
+    disposition: "residual: the diff of that module against origin/main after the rebase holds exactly the two edits named in amendment 1, each justified in report.md; the task-level audit compares the diff against them"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md)
     disposition: "residual: byte-identical to the dispatched file (its sha256 is in the TASK line); the orchestrator compares at acceptance"
   - control: "the branch evidence records under .orchestration/dotfiles-T133-task-generator-plan-check-a01/ (report.md, validation.md, sandbox.md, learning.md)"
@@ -94,6 +97,10 @@ A task text is generated from its todo row with every premise and Check command 
 ## Completion
 
 One PR from a fresh branch off `origin/main`. The Completion clause of `.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md` applies as written, with `dotfiles-T133-task-generator-plan-check-followup-a01` as the owner of any advisory P2 (written by the orchestrator when the first one appears) and `task_copy=<sha256 of .orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md>` in the RESULT; the RESULT also carries `precheck=` when `scripts/orchestrator/result-precheck.sh` has merged (PR #411), else `precheck=pending-411`. `security: true`: the orchestrator runs the task-level audit and the security-profile review on the final head. No `@codex review` comment; single commands for every gh and git write; a classifier denial is a blocked PONG.
+
+## Amendment 1 (round 1, 2026-10-18T10:3xZ): the two exact-set tests of tests/unit/test_task_checkers.py
+
+a009's question PONG (10:13:51Z). Option (a) applies. `tests/unit/test_task_checkers.py` joins `allowed_files` for exactly two edits: the C4 boundary test's fixture gets a well-formed disposition (one of the three forms), so C13 leaves its expected set, and the ten-historical-files test's expected sets gain the ids among C11, C14 and C15 that the new checks report on those files, each added id justified in report.md by the check's finding on that file. No other line of that module changes. That file is in flight in PR #413 (`dotfiles-T129-audit-inherit-replan-json-followup-a01`), so this branch takes #413's merge first: commit and push everything else now (the generator, plan-check.py, C11 to C15, the three new modules; no PR yet), hold the two test edits uncommitted, and when the orchestrator's `AGMSG-PING … reason=413-merged sha=<main sha>` arrives, rebase onto `origin/main` (single commands), apply the two edits, run `uv run python -m unittest tests.unit.test_task_checkers -v` and the task's modules, push, open the PR and send the RESULT. Two clarifications from the real-run results, not new items: C14 compares the recorded premise output with the rerun after collapsing runs of whitespace (BSD `wc` pads its counts), and a premise whose command needs a tool absent from the mandated PATH (`uv`, `codex`) reports `C14: tool absent <name>` as a warning, never as a failure; a premise that differs because a merge moved the repository is a real C14 finding and stays one. The six plan-check violations are findings for report.md, not fixes in this task. This is INV-6's first amendment (C-61); the counters are pasted below.
 
 ## Checks (pasted by the orchestrator before each send)
 

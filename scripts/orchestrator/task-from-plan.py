@@ -141,7 +141,7 @@ def main():
                 }
             )
             continue
-        stdout, code = checker.rerun(cmd, root)
+        stdout, code, _ = checker.rerun(cmd, root)
         claim = f"the program item quotes `{cmd}`" if code == 0 else f"verify: `{cmd}` exits {code}"
         premises.append({"claim": claim, "command": cmd, "output": (stdout or "").rstrip("\n")})
 

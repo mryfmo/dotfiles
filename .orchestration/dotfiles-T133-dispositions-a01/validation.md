@@ -201,3 +201,129 @@ $ git diff --numstat origin/main...HEAD
 161	0	tests/unit/test_dispositions.py
 32	3	tests/unit/test_orch_gate_path.py
 ```
+
+## Revise 1: the task copy (amendment 1)
+
+```
+$ shasum -a 256 .orchestration/dotfiles-T133-dispositions-a01/task.md
+05ad23ef39f646e384a390ae2414d41587ad83673ba9dc65b38ae4a03095e0ad  .orchestration/dotfiles-T133-dispositions-a01/task.md
+```
+
+## Revise 1: red against fa47987b with this head's test sources
+
+```
+production=fa47987b408927c507bfadec6115ebdfceb0a110, test sources from 9e97732a:
+  11f4f62913e63c7833ac8575c2f09dd9786cae5400ac640dc259e0e0de2a002a  tests/unit/test_dispositions.py
+  d69802db99223daf1bf116126111dbedbf6119c09bfcf50cc7649629950c4e98  tests/unit/test_orch_gate_path.py
+$ uv run python -m unittest tests.unit.test_dispositions -k test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test
+exit=1
+FAIL: test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test
+AssertionError: Tuples differ: (0, True) != (1, False)
+Ran 1 test in 0.873s
+FAILED (failures=1)
+$ uv run python -m unittest tests.unit.test_dispositions -k test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim
+exit=1
+FAIL: test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim
+AssertionError: Tuples differ: (0, [True, True, True, True, True]) != (1, [True, False, False, False, False])
+Ran 1 test in 1.375s
+FAILED (failures=1)
+$ uv run python -m unittest tests.unit.test_dispositions -k test_upstream_only_hunk_changes_demand_not_applicable
+exit=1
+FAIL: test_upstream_only_hunk_changes_demand_not_applicable
+AssertionError: Tuples differ: (2, None) != (0, 'not-applicable:')
+Ran 1 test in 3.117s
+FAILED (failures=1)
+$ uv run python -m unittest tests.unit.test_orch_gate_path -k test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests
+exit=1
+FAIL: test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests
+AssertionError: True is not false
+Ran 1 test in 3.789s
+FAILED (failures=1)
+removed=0
+```
+
+## Revise 1: green on 9e97732a
+
+```
+$ git log --oneline -1
+9e97732a fix(orchestrator): test: refutations are read from the head's CI log, diff: is a claim on the fixed <thread commit>..<head> range, upstream-only hunks demand not-applicable (T133 dispositions
+$ uv run python -m unittest tests.unit.test_dispositions tests.unit.test_orch_gate_path -v
+exit=0
+test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim ... ok
+test_dispositions_holds_on_an_unreadable_sweep_or_a_missing_commit ... ok
+test_dispositions_proposes_fixed_for_a_changed_hunk_and_demands_not_applicable_otherwise ... ok
+test_require_refutation_fails_without_a_form_and_accepts_each_of_the_three ... ok
+test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test ... ok
+test_upstream_only_hunk_changes_demand_not_applicable ... ok
+test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests ... ok
+test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory ... ok
+test_orch_gate_removes_the_private_bin_on_exit ... ok
+test_orch_gate_revalidates_the_dispositions_before_the_gate ... ok
+test_orch_gate_runs_the_gate_with_a_private_path_of_resolved_binaries ... ok
+Ran 11 tests in 20.794s
+OK
+$ uv run python -m unittest tests.unit.test_orchestrator_tools
+exit=0
+Ran 57 tests in 146.814s
+OK
+code head=9e97732ac2816ab70522ef362182ff4085d0f725 origin/main=3e41e36abc949acd7e6b4859c1a22df9e665c8d4 merge-base=3e41e36abc949acd7e6b4859c1a22df9e665c8d4
+$ shellcheck -x scripts/orchestrator/orch-gate.sh
+exit=0
+$ shfmt -d -i 4 -sr scripts/orchestrator/orch-gate.sh
+exit=0
+$ ruff format --check (changed .py)
+3 files already formatted
+exit=0
+make format exit=2
+shfmt diff files: head 12, origin/main 3e41e36a 12
+cmp format: identical file lists
+$ git diff --numstat origin/main...HEAD (scripts and tests)
+268	0	scripts/orchestrator/dispositions.py
+15	1	scripts/orchestrator/orch-gate.sh
+225	0	tests/unit/test_dispositions.py
+51	3	tests/unit/test_orch_gate_path.py
+outside tests/ and .orchestration/: 284 (cap 350); tests/: 279 (cap 450)
+```
+
+The twelve files `shfmt --diff .` lists here and on `origin/main` 3e41e36a:
+
+```
+--- .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/pr-cost.sh.orig
+--- .orchestration/tasks/dotfiles-T128-chain-github-scripts-a01-input/resolve-threads.sh.orig
+--- .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-advisory.sh.orig
+--- .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/local-review.sh.orig
+--- .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01-input/sandbox-scan.sh.orig
+--- .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/boundary.sh.orig
+--- .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/ff-main.sh.orig
+--- .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/orch-audit.sh.orig
+--- .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/orch-gate.sh.orig
+--- .orchestration/tasks/dotfiles-T128-orchestrator-tools-a01-input/t717-prep.sh.orig
+--- home/dot_claude/hooks/executable_project-map-reload.sh.orig
+--- tests/install/macos/common/brew.bats.orig
+```
+
+## Revise 1: the real run redone (gh outside the sandbox, the helper inside)
+
+```
+$ gh api repos/mryfmo/dotfiles/pulls/comments/4305896433 --jq .original_commit_id   # outside the sandbox
+7779e78b529b87aa52638a20456393f48407d409
+$ gh api repos/mryfmo/dotfiles/pulls/comments/4305896435 --jq .original_commit_id   # outside the sandbox
+7779e78b529b87aa52638a20456393f48407d409
+$ uv run --no-project python -I scripts/orchestrator/dispositions.py 409 4fe243803971bd5ba8ab45f8ede5cfb4dd37f719 --feedback <main checkout>/.orchestration/validation/dotfiles-T133-ci-efficiency-a02-pr-feedback.json --commits <commits409.json>   # inside the sandbox
+$ cat <commits409.json>
+{"https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896433": "7779e78b529b87aa52638a20456393f48407d409", "https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896435": "7779e78b529b87aa52638a20456393f48407d409"}
+dispositions: https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896433 proposal fixed:99b07d2b1b6b2643d8dcdcf7cfb22c0ca89641be
+dispositions: https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896435 proposal fixed:492e7e28f5db46e84aa680f14f978ca57e5485f1
+exit=0
+$ the proposals of the written JSON, beside the hand dispositions
+https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896433 .github/workflows/remote.yaml:75 disposition=fixed:99b07d2b proposal=fixed:99b07d2b1b6b2643d8dcdcf7cfb22c0ca89641be
+https://github.com/mryfmo/dotfiles/pull/409#discussion_r4305896435 scripts/orchestrator/ci-rerun.sh:90 disposition=fixed:99b07d2b proposal=fixed:492e7e28f5db46e84aa680f14f978ca57e5485f1
+```
+
+## Revise 1: CompactionDB memory
+
+```
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 P1-10 revise 1 (amendment 1): dispositions.py verifies a test: refutation only from the head … demands not-applicable.'
+8cc73ac7-a7ab-4742-811e-bb6451f400b5
+exit=0
+```

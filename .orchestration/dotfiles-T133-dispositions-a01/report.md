@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T133-dispositions-a01
-round: 1
+round: 2
 status: result
 ---
 
@@ -96,8 +96,55 @@ Programs item (16), `audit-pool.sh --second-opinion`, confirms these proposals. 
 
 [memory:decision] T133 P1-10 part 1: dispositions.py proposes fixed:<newest non-merge commit in thread-commit..head ^base touching the covering hunk> or demands not-applicable; the refutation form travels as the gate's evidence= payload (test:, source:{url,fetched_at,quote}, diff:<range>), other evidence is legacy-evidence; orch-gate.sh re-validates before the review worktree moves and refuses only under DISPOSITIONS_REQUIRE_REFUTATION=1. Recorded with `uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '…'` as memory `948b228f-b574-462e-99fc-c712602f8b98` (validation.md).
 
+## Round 1 close
+
+RESULT round 1 was sent with head 97a0820d (code head dd567d77). The orchestrator merged `main` into the branch (fa47987b), ran the task-level audit of fa47987 (`Verdict: incorrect`, 2 P1 and 4 P2) and sent amendment 1 (task sha256 `05ad23ef39f646e384a390ae2414d41587ad83673ba9dc65b38ae4a03095e0ad`, the copy updated here) and revise 1 (21:06:34Z), after the result-precheck a03 RESULT.
+
+The sections above describe round 1. Where they disagree with this section (the `test:` form ran the selector locally, the `diff:` form took the caller's range, an upstream-only hunk was a hold), this section is current.
+
+## Revise 1 (round 2; `revise.yaml`)
+
+INV-6 after this round: amendments=1, revises=1. No further round exists. The branch was fast-forwarded to fa47987b. Code head: 9e97732ac2816ab70522ef362182ff4085d0f725.
+
+- **(1) Audit P1 `orch-gate.sh:87` and P2 `dispositions.py:132` (amendment 1 (a), (d)), fixed:9e97732a.**
+  - `test:` is never run on this host. `dispositions.py` reads the log of the head's `test (ubuntu-24.04, client)` check:
+    - by default, the check-run id comes from `gh api repos/<repo>/commits/<head>/check-runs`, then the log from `gh run view --repo <repo> --job <id> --log`, fetched once and only when a `test:` form needs it;
+    - in tests, `--ci-log <file>` replaces both.
+  - The form is accepted only when the log has `<name> (<module>.<Class>.<name>) ... ok` for the selector. A skipped line (`... skipped '...'`), a failure or an absent selector is refused, so `OK (skipped=1)` alone proves nothing.
+  - With no `gh` or no log, the form is refused with the reason, never verified another way.
+  - `orch-gate.sh`'s step already passes the gated head. Its header now says the form is read from the head's CI through the private `gh`.
+- **(2) Audit P1 `task.md:80` (amendment 1 (b)), fixed:9e97732a.** `diff:` accepts only the tool's range `<thread commit>..<head>`. It requires:
+  - both sides of the caller's range to resolve to exactly those commits, so `<head>..<head>` and any other range are refused;
+  - the thread's line to be unchanged over that range;
+  - the reason to have 20 or more characters (the gate's minimum).
+
+  It is recorded as `claim-recorded: <path>:<line> unchanged over <a>..<b>`. A P0 or P1 badged finding resting on it is refused with "needs programs item (16)'s second opinion" until item (16) lands.
+- **(3) Audit P2 `dispositions.py:102` (amendment 1 (c)), fixed:9e97732a.** A covering hunk with no branch commit in `git log --no-merges <thread>..<head> ^<base>`, because only merges of the base changed it, now proposes `not-applicable:` instead of holding. A failing `git log` is still a hold.
+- **(4) Audit P2 `sandbox.md:22`, fixed by the redo below.** The real run is redone:
+  - `gh api repos/mryfmo/dotfiles/pulls/comments/<id> --jq .original_commit_id` outside the sandbox, one command per thread (both answer 7779e78b);
+  - the helper inside the sandbox with `--commits`.
+
+  The proposals are unchanged: `fixed:99b07d2b` (equal to the hand disposition) and `fixed:492e7e28` (the newer commit touching the same hunk).
+- **Audit P2 `acceptance/…md:31` (the record's INV-6 count):** the orchestrator's record, outside this task's files; noted, not changed here.
+
+Tests, written first, each red against fa47987b with this head's test source (sha256 `11f4f629…` for `test_dispositions.py`, `d69802db…` for `test_orch_gate_path.py`) and green here:
+- `test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test`: on fa47987b the selector ran locally and was accepted, `(0, True) != (1, False)`, its marker file written.
+- `test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim`: on fa47987b `<head>..<head>`, a caller range, a short reason and a P1 finding were all accepted, `[True, True, True, True, True]`.
+- `test_upstream_only_hunk_changes_demand_not_applicable`: on fa47987b the change was a hold, `(2, None)`.
+- `test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests`: on fa47987b the step ran a test in the trusted checkout (`True is not false`, its marker written). It now names the head and runs nothing.
+
+The round-1 refutation test now reads its `test:` forms from a CI-log fixture holding `ok`, `FAIL` and `skipped` lines; its other cases are unchanged.
+
+Check (validation.md):
+- The two modules: 11 tests OK. `tests/unit/test_orchestrator_tools.py`, the other module that drives `orch-gate.sh`: 57 OK.
+- `shellcheck` and `shfmt` on `orch-gate.sh`: clean. ruff passes on the changed files.
+- `make format` exits 2 at shfmt, with the same twelve files as `origin/main` 3e41e36a.
+- Caps: 284 of 350 and 279 of 450.
+
+[memory:decision] T133 P1-10 revise 1: test: refutations come only from the head's CI log (an executed `... ok` line), never a local run; diff: accepts only <thread commit>..<head> with the line unchanged and a 20+ character reason, recorded as claim-recorded and refused for P0/P1 until item (16); a hunk changed only by merges of the base demands not-applicable. Memory `8cc73ac7-a7ab-4742-811e-bb6451f400b5` (validation.md).
+
 ## Not done yet
 
-The evidence commit, the push, CI on the final head, the Bot window from that push and the RESULT (`task_copy=5ed78fc9…`, `precheck=pending-411`, `bot_rounds=2`).
+The evidence commit, the one push, CI on the final head, the Bot window and the RESULT (`round=revise-1`, `task_copy=05ad23ef…`, `precheck=pending-411`).
 
 cost: n/a

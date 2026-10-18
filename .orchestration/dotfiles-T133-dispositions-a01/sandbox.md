@@ -27,4 +27,6 @@ Outside the sandbox, each as a single command:
 
 `origin/main` moved to 3e41e36a (#409) during the task, so the caps are read three-dot against the merge base de3b73cc.
 
+Revise 1 (round 2): `git switch tools/dispositions-a01` and `git merge --ff-only origin/tools/dispositions-a01` (to the orchestrator's fa47987b), each a single command; the red replay in a scratch worktree of fa47987b and the Check inside the sandbox. The real run is redone per the audit: the two `gh api .../pulls/comments/<id>` reads outside the sandbox, one command each, and `dispositions.py --commits` inside it, so the helper itself never leaves the sandbox. A first replay attempt passed zsh's `$T:test_...`, which zsh reads as the `:t` modifier; it mangled the arguments and was discarded and rerun with `${T}`.
+
 effects=none

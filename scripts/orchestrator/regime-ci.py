@@ -253,11 +253,12 @@ def main(argv=None):
         return 1
     # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target, when both verify
     policies = {t: policy(root, base, head, t) for t in targets}
+    exact = {t: policies[t][2] and show(root, head, f".orchestration/{t}/task.md") == policies[t][0] for t in targets}
     later = {
         p: t
-        for t, (_, rules, authentic) in policies.items()
+        for t, (_, rules, _) in policies.items()
         for p in (rules or {}).get("reset_of") or []
-        if p in policies and p != t and authentic and policies[p][2]
+        if p in policies and p != t and exact[t] and exact[p]  # both head copies equal their base texts
     }
     for p, t in sorted(later.items()):
         print(f"regime-ci: warning: {p}: predecessor copy .orchestration/{p}/task.md (reset_of of {t})")

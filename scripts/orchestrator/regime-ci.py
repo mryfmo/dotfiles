@@ -1,6 +1,7 @@
 """Check a pull request against its task copies: the regime CI job (plan 024 P1-11, programs item (6)).
 
-`uv run --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha> [--root <dir>]`
+`uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha>
+[--root <dir>]`
 takes the tasks whose `.orchestration/<t>/` directory the diff `<base>...<head>` touches and that carry a `task.md` copy
 at `<head>`, and checks each one:
 

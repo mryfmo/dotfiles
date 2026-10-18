@@ -1,15 +1,16 @@
-"""Check a pull request against its task copies: the regime CI job (plan 024 P1-11, programs item (6)).
+"""Check a pull request against its task copies with the base's verifier: the regime CI job (plan 024 P1-11, T133 a02).
 
 `uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha>
-[--root <dir>]` checks each task whose `.orchestration/<t>/` the diff `<base>...<head>` touches and that has a `task.md`
-copy at `<head>` (of a reset_of lineage, only the latest copy): the tracked task-consistency checker on the copy (a
-subprocess from the checkout at `<head>`), the copy against the dispatched `.orchestration/tasks/<t>.md` or result.txt's
-`task_copy=`, precheck.json's binding to the head and to result.txt's `precheck=`, `allowed_files`, and the caps of the
-copy's `## Check` sentence. It prints one `regime-ci: <t>: <rule>: <detail>` line per violation and
+[--root <base checkout>]` runs from the base checkout and reads the head only through `git show`: it never checks out,
+imports or executes head content. Each task whose `.orchestration/<t>/` the diff `<base>...<head>` touches and that has a
+`task.md` copy at the head (of a reset_of lineage, only the latest copy) is checked: the base's task-consistency checker
+on a temporary copy, the copy against the dispatched `.orchestration/tasks/<t>.md` at the base, whose text is the policy
+(allowed_files, caps, reset_of), precheck.json's binding, allowed_files and the caps. Without dispatched text at the base
+the copy is unverifiable, a warning until REGIME_REQUIRE_DISPATCHED=1 makes it a violation; result.txt and precheck.json
+are the pull request's own claims. It prints one `regime-ci: <t>: <rule>: <detail>` line per violation and
 `regime-ci: warning: ...` lines, and exits 1 on any violation, 2 when git cannot list the diff, else 0 after
-`regime-ci: ok <n> task(s)`. A diff without a task copy passes as `no target (records-only)` only when every path is
-under `.orchestration/` or the head branch is `orchestration/*`. Pull-request content is read as data only (git show,
-yaml.safe_load, json); the one program run from the checkout is the tracked checker, whose edits show in the diff.
+`regime-ci: ok <n> task(s)`. A diff without a task copy passes as `no target (records-only)` only when every changed path
+is under `.orchestration/`; no branch name grants anything.
 """
 
 import argparse
@@ -19,6 +20,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 try:
     import yaml
@@ -140,19 +143,34 @@ def precheck(root, head, t, result_text, exempt=()):
     return found
 
 
-def check_task(root, head, t, changed, numstat, exempt=()):
+def policy(root, base, head, t):
+    """Return (the policy bytes, its front matter or None, whether the base's dispatched text is the policy)."""
+    dispatched = show(root, base, f".orchestration/tasks/{t}.md")
+    data = show(root, head, f".orchestration/{t}/task.md") if dispatched is None else dispatched
+    return data, front(data), dispatched is not None
+
+
+def check_task(root, base, head, t, changed, numstat):
     """Return (violations, warnings) for one task, each violation a (rule, detail) pair."""
     copy_path = f".orchestration/{t}/task.md"
     copy = show(root, head, copy_path)
     if (fm := front(copy)) is None:
         return [("front-matter", f"{copy_path} is unreadable or has no front matter mapping")], []
-    text = copy.decode()
+    data, rules, dispatched = policy(root, base, head, t)
+    if rules is None:
+        return [("front-matter", f"the base's .orchestration/tasks/{t}.md has no front matter mapping")], []
     found, warnings = [], []
     if fm.get("task_id") != t:
         found.append(("task-id", f"the copy's task_id {fm.get('task_id')!r} is not its directory {t}"))
-    run = subprocess.run(
-        [*CHECKER_RUN, "--root", root, copy_path], cwd=root, capture_output=True, text=True, check=False
-    )
+    with tempfile.TemporaryDirectory() as scratch:  # the head's copy as data for the base's checker
+        Path(scratch, "task.md").write_bytes(copy)
+        run = subprocess.run(
+            [*CHECKER_RUN, "--root", root, str(Path(scratch, "task.md"))],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     # the copy is named task.md, so the checker's C1 compares task_id with `task`; task-id above checks the directory
     out = run.stdout.splitlines()
     lines = [ln.strip() for ln in out[1:] if ln.strip() and not re.fullmatch(r"C1 task_id .* != file task", ln.strip())]
@@ -161,30 +179,31 @@ def check_task(root, head, t, changed, numstat, exempt=()):
         found.append(("checker", f"no verdict (exit {run.returncode}): {(run.stdout + run.stderr).strip()[-300:]}"))
     else:
         found += [("checker", ln) for ln in lines]
-    dispatched = show(root, head, f".orchestration/tasks/{t}.md")
     result = show(root, head, f".orchestration/{t}/result.txt")
     result_text = result.decode(errors="replace") if result is not None else ""
-    if dispatched is not None:
-        if dispatched != copy:
-            found.append(("task-copy", f"{copy_path} differs from the dispatched .orchestration/tasks/{t}.md"))
-    elif result is not None:
-        if token(result_text, "task_copy") != sha256(copy):
+    if dispatched:
+        if data != copy:
+            found.append(("task-copy", f"{copy_path} differs from the base's dispatched .orchestration/tasks/{t}.md"))
+    else:  # the copy's own policy is provisional: a head file or a result.txt token is a claim, never authentication
+        unverifiable = "task copy unverifiable (no dispatched text at base)"
+        found += [("task-copy", unverifiable)] if os.environ.get("REGIME_REQUIRE_DISPATCHED") == "1" else []
+        warnings += [] if os.environ.get("REGIME_REQUIRE_DISPATCHED") == "1" else [unverifiable]
+        if result is not None and token(result_text, "task_copy") != sha256(copy):
             found.append(
                 ("task-copy", f"sha256 {sha256(copy)} is not result.txt's task_copy={token(result_text, 'task_copy')}")
             )
-    else:
-        warnings.append("task copy unverifiable (no dispatched text at head, no result.txt)")
+    exempt = tuple(f".orchestration/{p}/" for p in rules.get("reset_of") or [] if isinstance(p, str))
     bound = precheck(root, head, t, result_text, exempt)
     if bound is None:
         warnings.append("precheck absent")
     found += [("precheck", detail) for detail in bound or []]
-    entries = [a for a in fm.get("allowed_files") or [] if isinstance(a, str)]
+    entries = [a for a in rules.get("allowed_files") or [] if isinstance(a, str)]
     found += [
         ("allowed-files", f"{p} is outside allowed_files")
         for p in changed
         if not p.startswith(exempt) and not any(allowed(p, a) for a in entries)
     ]
-    exceeded, cap_warnings = caps(text, numstat)
+    exceeded, cap_warnings = caps(data.decode(errors="replace"), numstat)
     found += [("caps", detail) for detail in exceeded]
     return found, warnings + cap_warnings
 
@@ -193,7 +212,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", required=True, help="the base ref, such as origin/main")
     parser.add_argument("--head", required=True, help="the pull request's head commit")
-    parser.add_argument("--root", help="the checkout at the head (default: the current git toplevel)")
+    parser.add_argument("--root", help="the base checkout (default: the current git toplevel)")
     args = parser.parse_args(argv)
     root = args.root or git(".", "rev-parse", "--show-toplevel").stdout.decode().strip() or "."
     shas = [
@@ -204,10 +223,10 @@ def main(argv=None):
         print(f"regime-ci: cannot resolve --base {args.base} or --head {args.head} in {root}")
         return 2
     base, head = shas
-    at = git(root, "rev-parse", "HEAD").stdout.decode().strip()  # the checker reads the working tree
-    if at != head:
+    at = git(root, "rev-parse", "HEAD").stdout.decode().strip()  # the verifier and the checker must be the base's
+    if at != base:
         print(
-            f"regime-ci: checkout: {root} is at {at[:12]}, not the head {head[:12]}, so the checker would read other files"
+            f"regime-ci: checkout: {root} is at {at[:12]}, not the base {base[:12]}, so the code run would not be the base's"
         )
         return 1
     try:
@@ -220,12 +239,14 @@ def main(argv=None):
         print(f"regime-ci: {error}")
         return 2
     for path in sorted(set(changed) & set(RUNS)):
-        print(f"regime-ci: warning: the diff changes {path}, which this job runs; the audit reads that change")
+        print(
+            f"regime-ci: warning: the diff changes {path}; this run executed the base's version, the audit reads the change"
+        )
     dirs = sorted({m.group(1) for p in changed if (m := re.match(r"\.orchestration/([^/]+)/", p))})
     targets = [t for t in dirs if show(root, head, f".orchestration/{t}/task.md") is not None]
     if not targets:
         stray = [p for p in changed if not p.startswith(".orchestration/")]
-        if not stray or os.environ.get("GITHUB_HEAD_REF", "").startswith("orchestration/"):
+        if not stray:  # content alone decides: a branch name is the pull request's own claim
             print("regime-ci: no target (records-only)")
             return 0
         print(
@@ -233,16 +254,15 @@ def main(argv=None):
         )
         return 1
     # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target
-    fronts = {t: front(show(root, head, f".orchestration/{t}/task.md")) or {} for t in targets}
+    fronts = {t: policy(root, base, head, t)[1] or {} for t in targets}
     later = {p: t for t in targets for p in fronts[t].get("reset_of") or [] if p in fronts and p != t}
-    exempt = tuple(f".orchestration/{p}/" for p in later)
     for p, t in sorted(later.items()):
         print(f"regime-ci: warning: {p}: predecessor copy .orchestration/{p}/task.md (reset_of of {t})")
     targets = [t for t in targets if t not in later]
     failed = False
     for t in targets:
         try:
-            found, warnings = check_task(root, head, t, changed, numstat, exempt)
+            found, warnings = check_task(root, base, head, t, changed, numstat)
         except GitError as error:
             found, warnings = [("git", str(error))], []
         for detail in warnings:

@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_pre_push_scans_each_blob_on_its_own_boundary (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_scans_each_blob_on_its_own_boundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 457, in test_pre_push_scans_each_blob_on_its_own_boundary
+    self.assertNotEqual(result.returncode, 0, result.stderr)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0 : To /private/tmp/claude-501/tmpktrm490h/origin.git
+ * [new branch]      joined -> joined
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.840s
+
+FAILED (failures=1)

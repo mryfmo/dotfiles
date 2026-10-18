@@ -565,3 +565,64 @@ grep -v '^masked 0 match' "${t}.out" | sed 's/^masked //' | sort -k1,1nr | head 
 rm -rf -- "${t}" "${t}.out" "${t}.err"
 ```
 
+
+## Revise 1: red on 9cd5514a, green on 56a734cd
+
+The three new tests run against the code of 9cd5514a (the working tree before the fixes):
+
+```
+$ uv run python -m unittest tests.unit.test_result_precheck -k test_pre_push_scans_each_blob_on_its_own_boundary -k test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan -k test_previous_head_proof_requires_an_executed_failing_test
+FAIL: test_pre_push_scans_each_blob_on_its_own_boundary (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_scans_each_blob_on_its_own_boundary)
+AssertionError: 0 == 0 : To /private/tmp/claude-501/tmpyferb36x/origin.git
+FAIL: test_previous_head_proof_requires_an_executed_failing_test (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_requires_an_executed_failing_test) (name='test_always')
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+FAIL: test_previous_head_proof_requires_an_executed_failing_test (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_requires_an_executed_failing_test) (name='test_helper')
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16')
+AssertionError: 0 != 1 : secrets: 0 match(es)
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16-le')
+AssertionError: 0 != 1 : secrets: 0 match(es)
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16-be')
+AssertionError: 0 != 1 : secrets: 0 match(es)
+Ran 3 tests in 6.791s
+FAILED (failures=6)
+```
+
+```
+$ git log --oneline -2
+56a734cd fix(orchestrator): pre-push ends each scanned blob with a newline, the secret scan decodes UTF-16 NUL-interleaved text, and a previous-head proof needs an executed assertion failure of this head's test (T133 result-precheck a02 revise 1)
+9cd5514a Merge branch 'main' into tools/result-precheck-a01
+$ uv run python -m unittest tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
+Ran 71 tests in 86.780s
+OK
+```
+
+## Revise 1: the precheck with the three selectors on 56a734cd
+
+```
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a02 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools --previous-head 9cd5514a790f6993136f5e74aaf3f3afa31b23d8 --check <each of the three revise.yaml selectors>
+result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_boundary previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_previous_head_proof_requires_an_executed_failing_test previous head exit 1, this head exit 0
+precheck=1bca4a11624de2132b5125680cf87630c205e4de29c6ae5b6084f78e88d1ef35
+exit=0
+$ shasum -a 256 .orchestration/dotfiles-T133-result-precheck-a02/precheck.json
+1bca4a11624de2132b5125680cf87630c205e4de29c6ae5b6084f78e88d1ef35  .orchestration/dotfiles-T133-result-precheck-a02/precheck.json
+$ the previous-head summary line of each selector log
+precheck-selector-1-previous.log: Ran 1 test in 0.840s FAILED (failures=1) 
+precheck-selector-2-previous.log: Ran 1 test in 0.746s FAILED (failures=3) 
+precheck-selector-3-previous.log: Ran 1 test in 3.293s FAILED (failures=2) 
+```
+
+## Revise 1: CompactionDB memory
+
+```
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 a02 revise 1: pre-push ends each scanned blob with a newline; … (exit 1, Ran n>0, failures and no errors).'
+ec314184-6ca4-4df5-a763-02a3c62c9e15
+exit=0
+```

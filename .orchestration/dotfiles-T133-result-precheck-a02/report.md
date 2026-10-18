@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T133-result-precheck-a02
-round: 1
+round: 2
 reset_of: dotfiles-T133-result-precheck-a01
 status: precheck-recorded
 ---
@@ -39,8 +39,28 @@ Item 5 scans whole blobs, so content already in a touched file counts too. 13 of
 
 [memory:decision] T133 a02: pre-push scans the whole content of every blob each pushed commit adds or changes with git cat-file blob, and dispatch.sh's precheck gate requires the six checks once with ok true (only the exact deferred local-review record is null) plus one passing proof per selector the newest revise ACCEPTANCE requested.
 
+## Round 1 close
+
+Sent as RESULT round 1 with head 40a053e9 (code head 38b9178b); the orchestrator merged `main` into the branch (9cd5514a) and sent revise 1 (11:19:48Z).
+
+## Revise 1 (round 2; `revise.yaml`)
+
+The orchestrator's local review of 9cd5514a (`.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-9cd5514.md`) found 2 P1 and 1 P2. This is revise 1 of a02, the last round INV-6 allows (amendments 0, questions 0, revises 1). Branch `tools/result-precheck-a01` was fast-forwarded to 9cd5514a; code head 56a734cdc2b03fdda7d386895c104d83ccdba8cd.
+
+- (1) P1 `.githooks/pre-push:27`: fixed:56a734cd. Each blob appended to the scan file is followed by a newline. A blob ending in a word character (`word`, no newline) followed by a blob that opens with a token produced `wordghp_…`, which the masker's word boundary missed and the push went through. Selector `test_pre_push_scans_each_blob_on_its_own_boundary`: the push of those two blobs is stopped.
+- (2) P1 `scripts/orchestrator/result-precheck.sh:85`: fixed:56a734cd. `secrets_in` keeps its NUL-to-newline view and, when the file holds a NUL byte, appends a second view with the NUL bytes deleted. That decodes the ASCII of UTF-16LE and UTF-16BE text, BOM or not, where a credential's characters sit between NULs. Undecodable binary still passes through the first view, so a binary blob is not refused. A NUL-free file has no second view, so its count stays exact; a match in both views counts twice, and the count is reported, never relied on. Selector `test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan`: `key=<token>` in `utf-16` (BOM), `utf-16-le` and `utf-16-be` each give `secrets: <n> match(es)` with exit 1; a clean UTF-16 file gives 0.
+- (3) P2 `scripts/orchestrator/result-precheck.sh:250`: fixed:56a734cd. Before the previous-head run, the selector's module at this head is copied into the previous worktree (creating `tests/unit/` when that head lacks it). The proof is `ok` only when that run exits 1 after `Ran <n>` tests with n > 0 and `FAILED (…)` lists `failures=` and no `errors=`. An import error, a runner error or `Ran 0 tests` (the a01 record's `previous_head_exit: 5`) is no longer a proof. Selector `test_previous_head_proof_requires_an_executed_failing_test`:
+  - a new module whose test fails on the previous code by assertion is `ok`;
+  - one that passes on both, one that errors on an import, and a selector naming no test are each `ok: false` with exit 1.
+
+  `test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head` now changes the code under test (`flag.py`) rather than the test source, since the previous head runs this head's source.
+
+Red and green (validation.md): the three tests against the code of 9cd5514a failed by assertion (6 failures, no error). On 56a734cd both modules give 71 tests OK. The precheck with the three selectors exits 0: `precheck=1bca4a11624de2132b5125680cf87630c205e4de29c6ae5b6084f78e88d1ef35`, record `head` 56a734cd, each selector `ok` with the previous head's copy failing by assertion (failures 1, 3 and 2, no errors). `--tests` runs the two modules; CI's `make unit-test` decides the full suite.
+
+[memory:decision] T133 a02 revise 1: pre-push ends each scanned blob with a newline; secrets_in adds a NUL-deleted view when the input holds NUL bytes (UTF-16 ASCII); a --check proof runs this head's test module on the previous code and counts only an executed assertion failure (exit 1, Ran n>0, failures and no errors).
+
 ## Not done yet
 
-The evidence commit, the one push, CI on the final head, the Bot window and the RESULT (`parked_pr=406`).
+The evidence commit, the one push, CI on the final head, the Bot window and the RESULT (`round=revise-1`, `parked_pr=406`).
 
 cost: n/a

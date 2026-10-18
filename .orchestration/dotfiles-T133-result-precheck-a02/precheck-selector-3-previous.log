@@ -1,0 +1,37 @@
+FF
+======================================================================
+FAIL: test_previous_head_proof_requires_an_executed_failing_test (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_requires_an_executed_failing_test) (name='test_always')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 491, in test_previous_head_proof_requires_an_executed_failing_test
+    self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_new.py::test_always previous head exit 1, this head exit 0
+precheck=fbb2c4e27b01e1434ccb07de879613971f9d038c2dd3b7d6c7f7d381be79bfc9
+
+
+======================================================================
+FAIL: test_previous_head_proof_requires_an_executed_failing_test (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_requires_an_executed_failing_test) (name='test_helper')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 491, in test_previous_head_proof_requires_an_executed_failing_test
+    self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_new.py::test_helper previous head exit 1, this head exit 0
+precheck=5d4f035f76e74897a84fa1b112661b5ecc9115c332786c39ea10e5d97cf64f4a
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.293s
+
+FAILED (failures=2)

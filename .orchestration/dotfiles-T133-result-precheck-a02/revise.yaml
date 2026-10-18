@@ -1,0 +1,8 @@
+task_id: dotfiles-T133-result-precheck-a02
+round: 2
+previous_head: 9cd5514a790f6993136f5e74aaf3f3afa31b23d8
+check:
+  - tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_boundary
+  - tests/unit/test_result_precheck.py::test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan
+  - tests/unit/test_result_precheck.py::test_previous_head_proof_requires_an_executed_failing_test
+reason: the orchestrator's local review of 9cd5514 (.orchestration/validation/dotfiles-T133-result-precheck-a02-local-review-9cd5514.md), revise 1 of a02 and its last round under INV-6; (1) P1 .githooks/pre-push:27 concatenated blobs let a word ending one blob hide a token opening the next; (2) P1 result-precheck.sh:85 NUL-to-newline split a UTF-16 token; (3) P2 result-precheck.sh:250 any nonzero previous-head exit counted as a red proof

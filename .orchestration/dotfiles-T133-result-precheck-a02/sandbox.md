@@ -14,4 +14,6 @@ Permission-gated or outside the sandbox: `gh pr checks`, the Bot listing and `gh
 
 Known sandbox effect: `make unit-test` fails tests that fail identically on a pristine `origin/main` worktree in the same sandbox (validation.md), so the final proof uses `--tests` on this task's two modules (Amendment 2 of a01, item 1 here) and CI decides the full suite.
 
+Revise 1 (round 2), after the P1-12 RESULT as the ACCEPTANCE ordered: `git switch tools/result-precheck-a01` and `git merge --ff-only origin/tools/result-precheck-a01` (to the orchestrator's 9cd5514a), each a single command in the sandbox; the fixes, the red and green runs and the precheck with `--previous-head 9cd5514a… --check` ×3 (its selector worktree added and removed by the script) inside the sandbox; `contextdb_cli.py memory add` into this worktree's ledger; then one evidence commit, one push, CI and the Bot window as in round 1.
+
 effects=none

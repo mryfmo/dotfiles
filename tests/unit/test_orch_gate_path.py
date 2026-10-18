@@ -124,11 +124,16 @@ class OrchGatePathTest(unittest.TestCase):
         sweep = self.root / ".orchestration/validation/t-a01-pr-feedback.json"
         sweep.write_text(json.dumps({"pr": 9, "items": [item]}))
         with mock.patch.dict(os.environ, {"DISPOSITIONS_REQUIRE_REFUTATION": "1"}):
-            self.run_gate(2)
+            log = self.run_gate(2)
         self.assertIn(f"{url} refutation none FAIL: no refutation form", self.stderr)
         self.assertIn("fail dispositions.py --require-refutation; refused", self.stderr)
         self.assertFalse((self.t / "calls/gate-env").exists())  # the gate never ran
-        self.assertEqual([], os.listdir(self.review))
+        # The step runs from the trusted root right before the gate, and the trap puts the review worktree back.
+        step = next(i for i, (command, _) in enumerate(log) if "dispositions.py" in command)
+        self.assertEqual(str(self.root), log[step][1])
+        restore = log.index((f"git -C {self.review} checkout -qf --detach origin/main", str(self.root)))
+        self.assertLess(log.index((f"git -C {self.review} checkout -q --detach {HEAD}", str(self.root))), step)
+        self.assertLess(step, restore)
         with mock.patch.dict(os.environ):
             os.environ.pop("DISPOSITIONS_REQUIRE_REFUTATION", None)
             self.run_gate(0)

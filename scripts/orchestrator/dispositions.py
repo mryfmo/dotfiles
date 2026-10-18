@@ -3,9 +3,11 @@
 `uv run --no-project python -I scripts/orchestrator/dispositions.py <pr> <head> --feedback <sweep.json> [--out <json>]
 [--require-refutation] [--commits <json>]` (plan 024 P1-10, programs item (5)), run in the repository's checkout. A
 thread is a `review_comment` item of the scripts/pr-feedback.py sweep, or a `review` item whose body carries a P0 to P3
-badge and that names a path and a line. Its commit is the item's `original_commit_id` (or `commit`), else the
-`--commits` map (url -> commit), else `gh api repos/<repo>/pulls/comments/<id> --jq .original_commit_id`; a gh failure,
-or a commit git cannot read, is a hold, never a guess. When `git diff <commit>..<head> -- <path>` has a hunk whose old
+badge; its path and line are the item's, else its body's first `/blob/<sha>/<path>#L<n>` link, and a thread without
+them gets the not-applicable demand with no commit needed. Its commit is the item's `original_commit_id` (or `commit`),
+else the `--commits` map (url -> commit), else `gh api repos/<repo>/pulls/comments/<id> --jq .original_commit_id`; a
+gh failure, or a commit git cannot read, is a hold, never a guess. Every path reaches git as `:(literal)<path>`, so
+the PR's file names are never pathspec magic. When `git diff <commit>..<head> -- <path>` has a hunk whose old
 or new range covers the line, the proposal is `fixed:<c>`, c the newest non-merge commit of `git log <commit>..<head>
 ^<base_sha> -- <path>` whose own hunks overlap that hunk; otherwise it is `not-applicable:` with the reason to fill.
 A thread's not-applicable disposition (the gate's `not-applicable:<reason>; evidence=<form>`) is verified when its
@@ -28,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -48,7 +51,8 @@ def git(*args):
 
 def hunks(revs, path):
     """The (old start, old count, new start, new count) of each hunk of `git diff <revs> -- <path>`."""
-    out = git("diff", "--no-ext-diff", "--no-textconv", "--no-color", "-U3", revs, "--", path)
+    # The path is the PR's text: a literal pathspec, so a leading `:` is never magic (Bot 4307288056).
+    out = git("diff", "--no-ext-diff", "--no-textconv", "--no-color", "-U3", revs, "--", f":(literal){path}")
     if out.returncode:
         raise Hold(f"git diff {revs} -- {path} failed: {out.stderr.strip()[:120]}")
     return [(int(a), int(b or 1), int(c), int(d or 1)) for a, b, c, d in HUNK.findall(out.stdout)]
@@ -93,7 +97,8 @@ def propose(commit, head, base, path, line):
     target = next((h for h in hunks(f"{commit}..{head}", path) if covers(h, line)), None)
     if target is None:
         return "not-applicable:"
-    log = git("log", "--no-merges", "--format=%H", f"{commit}..{head}", *([f"^{base}"] if base else []), "--", path)
+    exclude = [f"^{base}"] if base else []
+    log = git("log", "--no-merges", "--format=%H", f"{commit}..{head}", *exclude, "--", f":(literal){path}")
     if log.returncode or not log.stdout.split():
         raise Hold(f"git log {commit[:7]}..{head[:7]} -- {path} names no commit: {log.stderr.strip()[:120]}")
     for c in log.stdout.split():  # newest first
@@ -142,7 +147,7 @@ def refute(evidence, item):
         found = bool(quote.split()) and " ".join(quote.split()) in text
         return form, found, f"sha256={hashlib.sha256(data).hexdigest()}" + ("" if found else "; the quote is not in it")
     if form == "diff":
-        path, line = item.get("path"), item.get("line")
+        path, line = location(item)
         if not RANGE.fullmatch(value):
             return form, False, "not a <rev>..<rev> range"
         if not path or not isinstance(line, int):
@@ -156,10 +161,16 @@ def refute(evidence, item):
 
 
 def is_thread(item):
-    if item.get("source") == "review_comment":
-        return True
     badged = re.search(r"!\[P[0-3] Badge\]", item.get("body") or "")
-    return item.get("source") == "review" and bool(badged and item.get("path") and item.get("line"))
+    return item.get("source") == "review_comment" or (item.get("source") == "review" and bool(badged))
+
+
+def location(item):
+    """The thread's path and line: the item's own, else its body's first blob link (a review-body finding)."""
+    if isinstance(item.get("path"), str) and item["path"] and isinstance(item.get("line"), int):
+        return item["path"], item["line"]
+    link = re.search(r"/blob/[0-9a-f]{7,40}/([^\s#)]+)#L(\d+)", item.get("body") or "")
+    return (urllib.parse.unquote(link[1]), int(link[2])) if link else (None, None)
 
 
 def main():
@@ -186,10 +197,10 @@ def main():
     base = sweep.get("base_sha") if re.fullmatch(r"[0-9a-f]{40}", str(sweep.get("base_sha"))) else None
     holds = failed = 0
     for item in filter(lambda i: isinstance(i, dict) and is_thread(i), sweep["items"]):
-        url, path, line = item.get("url") or "-", item.get("path"), item.get("line")
+        url, (path, line) = item.get("url") or "-", location(item)
         try:
             # A thread without a line has no hunk to cover: the demand needs no commit.
-            located = isinstance(path, str) and path and isinstance(line, int)
+            located = path is not None
             commit = thread_commit(item, sweep.get("repo"), commits) if located else None
             item["proposal"] = propose(commit, args.head, base, path, line) if located else "not-applicable:"
             print(f"dispositions: {url} proposal {item['proposal']}", file=sys.stderr)

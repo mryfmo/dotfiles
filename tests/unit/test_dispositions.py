@@ -21,11 +21,11 @@ STUB_TEST += "    def test_fail(self):\n        self.fail('the stub fails')\n"
 REASON = "not-applicable:the finding does not reach this line"
 
 
-def thread(n, line, disposition=""):
+def thread(n, line, disposition="", path="a.py"):
     url = f"https://github.com/o/r/pull/7#discussion_r{n}"
     return {
         "source": "review_comment",
-        "path": "a.py",
+        "path": path,
         "line": line,
         "url": url,
         "body": "b",
@@ -42,9 +42,12 @@ class DispositionsTest(unittest.TestCase):
         (self.repo / "tests/unit").mkdir(parents=True)
         (self.repo / "tests/unit/test_stub.py").write_text(STUB_TEST)
         lines = [f"line {n}\n" for n in range(1, 31)]
+        # A legal name that git's pathspec magic would read as b.py (Bot 4307288056); it changes with the fix.
+        (self.repo / ":b.py").write_text("".join(lines))
         self.git("init", "-q", "-b", "main")
         self.base = self.commit(lines, "base")
         self.thread_commit = self.commit(lines, "the thread's commit", extra="b.py")
+        (self.repo / ":b.py").write_text("".join(lines[:9] + ["line 10 fixed\n"] + lines[10:]))
         self.fix = self.commit(lines[:9] + ["line 10 fixed\n"] + lines[10:], "fix line 10")
         self.head = self.commit(["line 1 renamed\n"] + lines[1:9] + ["line 10 fixed\n"] + lines[10:], "touch line 1")
 
@@ -74,12 +77,18 @@ class DispositionsTest(unittest.TestCase):
 
     def test_dispositions_proposes_fixed_for_a_changed_hunk_and_demands_not_applicable_otherwise(self):
         comment = {"source": "issue_comment", "url": "https://github.com/o/r/pull/7#issuecomment-1", "disposition": ""}
-        items = [thread(1, 10), thread(2, 25, REASON + "; evidence=grep -c x a.py"), comment]
+        # A badged review-body finding has no path or line in the sweep; its blob link locates it (Bot 4307288053).
+        link = f"[a.py](https://github.com/o/r/blob/{self.thread_commit}/a.py#L10-L10)"
+        badged = {"source": "review", "url": "https://github.com/o/r/pull/7#pullrequestreview-5", "path": None}
+        badged |= {"line": None, "commit": self.thread_commit, "disposition": "", "body": f"**![P1 Badge](x)** {link}"}
+        summary = {**badged, "url": "https://github.com/o/r/pull/7#pullrequestreview-6", "body": "Codex Review"}
+        items = [thread(1, 10), thread(2, 25, REASON + "; evidence=grep -c x a.py"), comment, badged, summary]
         commits = {item["url"]: self.thread_commit for item in items[:2]}
         code, out, err = self.run_tool(items, commits=commits)
         self.assertEqual(code, 0, err)
         result = json.loads(out)["items"]
-        self.assertEqual([i.get("proposal") for i in result], [f"fixed:{self.fix}", "not-applicable:", None])
+        proposals = [f"fixed:{self.fix}", "not-applicable:", None, f"fixed:{self.fix}", None]
+        self.assertEqual([i.get("proposal") for i in result], proposals)
         self.assertEqual([i["disposition"] for i in result], [i["disposition"] for i in items])
         self.assertIn(f"discussion_r1 proposal fixed:{self.fix}", err)
 
@@ -99,26 +108,34 @@ class DispositionsTest(unittest.TestCase):
             "source-missing": (25, source("a sentence the page lacks"), False),
             "diff-untouched": (25, f"diff:{self.thread_commit}..{self.head}", True),
             "diff-touched": (10, f"diff:{self.thread_commit}..{self.head}", False),
+            # The literal file :b.py changed at line 10; read as pathspec magic it would be the untouched b.py.
+            "diff-literal": (10, f"diff:{self.thread_commit}..{self.head}", False),
         }
         items = [
-            thread(n, line, REASON + (f"; evidence={ev}" if ev else ""))
-            for n, (line, ev, _) in enumerate(forms.values())
+            thread(n, line, REASON + (f"; evidence={ev}" if ev else ""), ":b.py" if key == "diff-literal" else "a.py")
+            for n, (key, (line, ev, _)) in enumerate(forms.items())
         ]
+        # A badged review-body finding without a location still needs a form (Bot 4307288053).
+        url = "https://github.com/o/r/pull/7#pullrequestreview-5"
+        badged = {"source": "review", "url": url, "path": None, "line": None, "commit": self.thread_commit}
+        items.append(
+            badged | {"body": "**![P1 Badge](x)** finding", "disposition": REASON + "; evidence=grep -c x a.py"}
+        )
         commits = {item["url"]: self.thread_commit for item in items}
         code, out, err = self.run_tool(items, "--require-refutation", commits=commits)
         self.assertEqual(code, 1, err)
         result = json.loads(out)["items"]
-        self.assertEqual([i["refutation"]["ok"] for i in result], [ok for _, _, ok in forms.values()], err)
+        self.assertEqual([i["refutation"]["ok"] for i in result], [ok for _, _, ok in forms.values()] + [False], err)
         self.assertEqual(
             [i["refutation"]["form"] for i in result],
-            ["none", "legacy-evidence", "test", "test", "source", "source", "diff", "diff"],
+            ["none", "legacy-evidence", "test", "test", "source", "source", "diff", "diff", "diff", "legacy-evidence"],
         )
-        self.assertEqual(err.count(" FAIL: "), 5, err)
+        self.assertEqual(err.count(" FAIL: "), 7, err)
         self.assertTrue(result[2]["refutation"]["record"].endswith("OK"), result[2])
         self.assertEqual(result[4]["refutation"]["record"], f"sha256={hashlib.sha256(page.read_bytes()).hexdigest()}")
         # Without the flag the same failures are a report: exit 0, nothing marked FAIL.
         code, _, err = self.run_tool(items, commits=commits)
-        self.assertEqual((code, err.count(" FAIL: "), err.count(" unverified: ")), (0, 0, 5), err)
+        self.assertEqual((code, err.count(" FAIL: "), err.count(" unverified: ")), (0, 0, 7), err)
 
     def test_dispositions_holds_on_an_unreadable_sweep_or_a_missing_commit(self):
         (self.temp / "sweep.json").write_text("{not json")

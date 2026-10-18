@@ -34,8 +34,14 @@ else:
     entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     tool = "omp" if name == "npm" else "hcom"
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
-    if name == "npm" and target.is_symlink():
-        sys.exit("npm error code EEXIST: " + str(target))
+    if name == "npm":  # npm links its own bin and refuses with EEXIST to replace an entry it does not own
+        own = "lib/node_modules/@oh-my-pi/pi-coding-agent/"
+        if (target.exists() or target.is_symlink()) and own not in (os.readlink(target) if target.is_symlink() else ""):
+            sys.exit("npm error code EEXIST: " + str(target))
+        target.unlink(missing_ok=True)
+        target.symlink_to("../" + own + "bin/omp")
+        target = target.parent.parent / own / "bin/omp"
+        target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + ("/" if tool == "omp" else " ") + os.environ["FIXTURE_VERSION"]) + "\n")
     target.chmod(0o755)
 with open(os.environ["CALLS"], "a") as log:
@@ -183,49 +189,57 @@ class UpdateAgentAssetsTest(unittest.TestCase):
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
 
-    def test_update_omp_removes_only_a_dangling_symlink_at_the_install_path(self):
-        # The fixture npm fails with EEXIST over any symlink, as npm does over a bin link it does not own.
-        for link in ("dangling", "live", None):
-            with self.subTest(link=link), tempfile.TemporaryDirectory() as directory:
-                home = Path(directory)
-                binary = home / ".local/bin"
-                binary.mkdir(parents=True)
-                for name in ("curl", "npm"):
-                    (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
-                    (binary / name).chmod(0o755)
-                target, old = binary / "omp", home / "tern/bin/omp"
-                if link == "live":
+    def test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails(self):
+        # local:fbbc6d9:1: a standalone file or a link outside the package, a dangling one included, makes npm fail
+        # with EEXIST; npm's own link stays for npm to replace.
+        npm_link = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp")
+        for entry in ("dangling", "external", "file", "npm", None):
+            for version in ("18.11.3", "0.0.1"):
+                with self.subTest(entry=entry, version=version), tempfile.TemporaryDirectory() as directory:
+                    home = Path(directory)
+                    binary = home / ".local/bin"
+                    binary.mkdir(parents=True)
+                    for name in ("curl", "npm"):
+                        (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
+                        (binary / name).chmod(0o755)
+                    target, old = binary / "omp", home / "tern/bin/omp"
                     old.parent.mkdir(parents=True)
                     old.write_text("#!/bin/sh\necho omp/0.0.1\n")
-                    old.chmod(0o755)
-                if link:
-                    target.symlink_to(old)
-                payload = home / "payload"
-                payload.write_bytes(b"fixture omp tarball\n")
-                result = subprocess.run(
-                    ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
-                    + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
-                    env=os.environ
-                    | {
-                        "HOME": directory,
-                        "PATH": str(binary) + os.pathsep + os.environ["PATH"],
-                        "CALLS": str(home / "calls.jsonl"),
-                        "PAYLOAD": str(payload),
-                        "FIXTURE_VERSION": "18.11.3",
-                    },
-                    stdin=subprocess.DEVNULL,
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    check=False,
-                )
-                output = result.stdout + result.stderr
-                self.assertEqual(link == "live", result.returncode != 0, output)
-                self.assertEqual(link == "live", target.is_symlink())
-                self.assertEqual(link == "dangling", str(old) in result.stdout, output)
-                if link == "live":
-                    self.assertIn("EEXIST", output)
-                    self.assertEqual(old, target.readlink())
+                    if entry == "external":
+                        old.chmod(0o755)
+                    links = {"dangling": home / "gone/omp", "external": old, "npm": npm_link}
+                    if entry in links:
+                        target.symlink_to(links[entry])
+                    elif entry == "file":
+                        target.write_text("#!/bin/sh\necho omp/0.0.1\n")
+                    payload = home / "payload"
+                    payload.write_bytes(b"fixture omp tarball\n")
+                    result = subprocess.run(
+                        ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+                        + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
+                        env=os.environ
+                        | {
+                            "HOME": directory,
+                            "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                            "CALLS": str(home / "calls.jsonl"),
+                            "PAYLOAD": str(payload),
+                            "FIXTURE_VERSION": version,
+                        },
+                        stdin=subprocess.DEVNULL,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    output = result.stdout + result.stderr
+                    self.assertEqual(version == "0.0.1", result.returncode != 0, output)
+                    self.assertNotIn("EEXIST", output)
+                    if version == "18.11.3" or entry in ("npm", None):
+                        self.assertEqual(npm_link, target.readlink(), output)
+                    elif entry == "file":  # the failed install puts the previous entry back as it was
+                        self.assertEqual("#!/bin/sh\necho omp/0.0.1\n", target.read_text(), output)
+                    else:
+                        self.assertEqual(links[entry], target.readlink(), output)
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (
@@ -267,47 +281,61 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         # managed path and the asset manifest lists it; exercise_update asserts the path, its hash and the entry.
         self.exercise_update("hcom", "Darwin/arm64")
 
+    def update_pinned_hcom(self, home, uv=":"):
+        # update_hcom over an hcom installed at the pin; curl, uv and uname are shell functions that log to $CALLS.
+        hcom = home / ".local/bin/hcom"
+        hcom.parent.mkdir(parents=True, exist_ok=True)
+        hcom.write_text("#!/bin/sh\nprintf 'hcom 0.7.30\\n'\n")
+        hcom.chmod(0o755)
+        payload = "reproduced wheel bytes; no real package\n"
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        stubs = (
+            "HCOM_PIN_VERSION=0.7.30; HCOM_LINUX_AMD64_URL=https://fixture.invalid/hcom-0.7.30-py3-none-any.whl; "
+            f"HCOM_LINUX_AMD64_SHA256={digest}; has_command() {{ return 0; }}; manifest_record() {{ :; }}; "
+            'uname() { if [ "$1" = -s ]; then echo Linux; else echo x86_64; fi; }; '
+            'curl() { printf %s "$PAYLOAD" > "${@: -1}"; echo curl >> "$CALLS"; }; '
+            f'uv() {{ echo "uv $*" >> "$CALLS"; {uv}; }}; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + stubs + "update_hcom", "bash", str(UPDATER)],
+            env=os.environ | {"HOME": str(home), "PAYLOAD": payload, "CALLS": str(home / "calls")},
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        return result, digest
+
     def test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel(self):
         # The Bot's P2 4303212227: an hcom installed at the pin before the wheel was kept has a receipt that names a
         # deleted temporary wheel, so the version alone does not skip it; once the wheel is retained it is skipped.
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            hcom = home / ".local/bin/hcom"
-            hcom.parent.mkdir(parents=True)
-            hcom.write_text("#!/bin/sh\nprintf 'hcom 0.7.30\\n'\n")
-            hcom.chmod(0o755)
-            payload = "reproduced wheel bytes; no real package\n"
-            digest = hashlib.sha256(payload.encode()).hexdigest()
-            log = home / "calls"
-            wheel = home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
-            stubs = (
-                "HCOM_PIN_VERSION=0.7.30; HCOM_LINUX_AMD64_URL=https://fixture.invalid/hcom-0.7.30-py3-none-any.whl; "
-                f"HCOM_LINUX_AMD64_SHA256={digest}; has_command() {{ return 0; }}; manifest_record() {{ :; }}; "
-                'uname() { if [ "$1" = -s ]; then echo Linux; else echo x86_64; fi; }; '
-                'curl() { printf %s "$PAYLOAD" > "${@: -1}"; echo curl >> "$CALLS"; }; '
-                'uv() { echo "uv $*" >> "$CALLS"; }; '
-            )
-
-            def update():
-                return subprocess.run(
-                    ["bash", "-c", 'source "$1"; ' + stubs + "update_hcom", "bash", str(UPDATER)],
-                    env=os.environ | {"HOME": directory, "PAYLOAD": payload, "CALLS": str(log)},
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    check=False,
-                )
-
-            repaired = update()
+            log, wheel = home / "calls", home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            repaired, digest = self.update_pinned_hcom(home)
             self.assertEqual(0, repaired.returncode, repaired.stdout + repaired.stderr)
             self.assertNotIn("already installed", repaired.stdout)
             self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
             self.assertEqual(digest, hashlib.sha256(wheel.read_bytes()).hexdigest())
             log.write_text("")
-            skipped = update()
+            skipped, _ = self.update_pinned_hcom(home)
             self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
             self.assertIn("hcom 0.7.30 is already installed", skipped.stdout)
             self.assertEqual("", log.read_text())
+
+    def test_update_hcom_drops_the_retained_wheel_when_uv_fails_so_the_next_run_retries(self):
+        # The Bot's P2 4303338055 (local:9842d91:1, audit:9842d91:1): when `uv tool install --force` fails after the
+        # verified wheel moved into place, the next run retries instead of skipping on the wheel its guard reads.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            log, wheel = home / "calls", home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            failed, _ = self.update_pinned_hcom(home, uv="false")
+            self.assertNotEqual(0, failed.returncode)
+            self.assertFalse(wheel.exists(), failed.stdout + failed.stderr)
+            log.write_text("")
+            retried, _ = self.update_pinned_hcom(home)
+            self.assertEqual(0, retried.returncode, retried.stdout + retried.stderr)
+            self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
 
     def test_updates_use_managed_binaries_when_path_is_shadowed(self):
         for tool in ("omp", "hcom"):

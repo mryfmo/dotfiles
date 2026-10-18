@@ -343,6 +343,52 @@ class RemoveAgentAssetTest(unittest.TestCase):
         )
         self.assertEqual({}, self.manifest()["steps"])
 
+    def remove_hcom(self, *, uv: bool = True) -> tuple[subprocess.CompletedProcess[str], dict[str, Path]]:
+        # The Bot's P2 4303212235 and the audit of #398 (finding 2): the hcom step leaves its binary, its retained
+        # wheel, uv's tool environment and its receipt behind.
+        tools = self.home / ".local/share/uv/tools/hcom"
+        paths = {
+            "binary": self.home / ".local/bin/hcom",
+            "wheel": self.home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl",
+            "environment": tools / "bin/hcom",
+            "receipt": tools / "uv-receipt.toml",
+        }
+        for path in paths.values():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x")
+        if uv:  # the stub uninstalls uv's own state only; the remover deletes the recorded binary and wheel itself
+            self.executable(
+                "uv", '[ "$*" = "tool uninstall hcom" ] || exit 2\nrm -rf "$HOME/.local/share/uv/tools/hcom"\n'
+            )
+        recorded = [paths["binary"], paths["wheel"]]
+        self.write_manifest({"update_hcom": self.step("installer", recorded, ["uv tool install --force <wheel>"])})
+        return self.run_remover("update_hcom", "--yes"), paths
+
+    def assert_hcom_removal_deletes(self, name: str) -> None:
+        removed, paths = self.remove_hcom()
+        self.assertEqual(0, removed.returncode, removed.stdout + removed.stderr)
+        self.assertFalse(paths[name].exists(), removed.stdout)
+        self.assertEqual({}, self.manifest()["steps"])
+
+    def test_hcom_removal_deletes_the_recorded_binary(self) -> None:
+        self.assert_hcom_removal_deletes("binary")
+
+    def test_hcom_removal_deletes_the_retained_wheel(self) -> None:
+        self.assert_hcom_removal_deletes("wheel")
+
+    def test_hcom_removal_uninstalls_the_uv_tool_environment(self) -> None:
+        self.assert_hcom_removal_deletes("environment")
+
+    def test_hcom_removal_uninstalls_the_uv_receipt(self) -> None:
+        self.assert_hcom_removal_deletes("receipt")
+
+    def test_hcom_removal_without_uv_reports_and_removes_nothing(self) -> None:
+        removed, paths = self.remove_hcom(uv=False)
+        self.assertNotEqual(0, removed.returncode)
+        self.assertIn("uv command not found", removed.stderr)
+        self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
+        self.assertIn("update_hcom", self.manifest()["steps"])
+
     def executable(self, name: str, body: str) -> None:
         path = self.bin_dir / name
         path.write_text("#!/usr/bin/env bash\n" + textwrap.dedent(body))

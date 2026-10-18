@@ -84,6 +84,7 @@ class RegimeCiTest(unittest.TestCase):
         base = {CHECKER: more.get("checker") or (ROOT / CHECKER).read_text(), "README": "base\n"} | more.get("base", {})
         base |= {VERIFIER: (ROOT / VERIFIER).read_text()}
         self.commit(base | ({f".orchestration/tasks/{T}.md": dispatched} if dispatched else {}), "base")
+        self.git("update-ref", "refs/remotes/origin/main", "HEAD")  # the checker's C8 to C10 probe origin/main
         if precheck_head == "side":
             precheck_head = self.commit({"side.txt": "side\n"}, "side")
             self.git("reset", "-q", "--hard", "HEAD~1")
@@ -141,6 +142,30 @@ class RegimeCiTest(unittest.TestCase):
                 if phrase:
                     self.assertIn(f"regime-ci: {T}: {phrase}", result.stdout)
                     self.assertIn(f"regime-ci: {T}: allowed-files: stray.sh is outside allowed_files", result.stdout)
+
+    def test_regime_ci_never_feeds_a_pull_request_s_text_to_the_base_checker(self):
+        # Worker review P0 of bcbd6949: the checker's C10 passes a backticked literal of the text to `git grep`, so a
+        # literal that is a git option runs a command; the base's checker reads only the base's dispatched text.
+        marker = Path(tempfile.mkdtemp()) / "pager-ran"
+        self.addCleanup(lambda: marker.unlink(missing_ok=True))
+        sentence = f'"This names {CHECKER} beside `--open-files-in-pager=touch {marker};:` for the C10 rule."\n'
+        hostile = TASK.replace("kind: code", "kind: docs") + sentence
+        for dispatched in (None, TASK):
+            with self.subTest(dispatched=bool(dispatched)):
+                result = self.build(copy=hostile, dispatched=dispatched)
+                self.assertFalse(marker.exists(), result.stdout + result.stderr)
+                if dispatched:
+                    self.assertIn(f"regime-ci: {T}: task-copy: ", result.stdout)
+                else:
+                    self.assertIn(f"regime-ci: warning: {T}: checker skipped: the copy is unverifiable", result.stdout)
+
+    def test_regime_ci_keeps_an_authenticated_predecessor_a_head_only_successor_names(self):
+        # Worker review P3: a successor with no dispatched text at the base cannot drop a dispatched task from the check.
+        successor = TASK.replace(T, "t1-a02").replace("allowed_files:", f"reset_of: [{T}]\nallowed_files:")
+        successor = successor.replace("  - src/tool.sh\n", "  - src/tool.sh\n  - stray.sh\n")
+        result = self.build(code=CODE | {"stray.sh": "x\n", ".orchestration/t1-a02/task.md": successor})
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"regime-ci: {T}: allowed-files: stray.sh is outside allowed_files", result.stdout)
 
     def test_regime_ci_exempts_records_only_heads_by_content_not_branch_name(self):
         # Bot P1 4308651013 (a02 item 7): a branch name grants nothing; only the changed paths decide records-only.
@@ -226,6 +251,10 @@ class RegimeCiTest(unittest.TestCase):
             "precheck reverted": (  # the prechecked test change reverted to base: out of the net diff, not of the binding
                 {"late": {"tests/unit/test_tool.py": None}},
                 "differs from the head outside .orchestration/t1-a01/: tests/unit/test_tool.py",
+            ),
+            "precheck renamed": (  # a prechecked code file moved into the evidence directory is still drift
+                {"late": {"src/tool.sh": None, f".orchestration/{T}/tool.sh": "a\nb\nc\n"}},
+                "differs from the head outside .orchestration/t1-a01/: src/tool.sh",
             ),
             "precheck symbolic": ({"precheck_doc": '{"head": "HEAD"}'}, "'HEAD' is not a 40-hex commit id"),
             "precheck none": ({"precheck_doc": "{}"}, "None is not a 40-hex commit id"),

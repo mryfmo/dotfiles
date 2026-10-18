@@ -348,6 +348,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         p7, summary = self.head[:7], "[P3] low a.txt:1 nit\nVerdict: correct\n"
         (self.v / f"{TASK}-audit-{p7}.md").write_text("transcript\n")
         (self.v / f"{TASK}-audit-{p7}.md.last.md").write_text(summary)
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {self.head} Verdict: correct\n")
 
         def move_main(name):  # on origin/main, since the seed's own main also holds the PR commit
             self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
@@ -439,6 +440,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         audited = self.git("rev-parse", "HEAD", cwd=self.seed)
         for suffix in (".md", ".md.last.md"):
             (self.v / f"{TASK}-audit-{audited[:7]}{suffix}").write_text("Verdict: correct\n")
+        (self.v / f"{TASK}-chain-{audited[:7]}.log").write_text(f"chain-integrate: {TASK} {audited} Verdict: correct\n")
         to_main("c.txt")
         clean = merge(audited)
         self.chain()
@@ -449,6 +451,27 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.chain()
         self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
         self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{relocated[:7]}.md*")))
+
+    def test_inheritance_requires_the_parent_chain_log_to_name_its_full_sha(self):
+        # PR #413 thread 4306231809 (Bot P1): a receipt is named by 7 characters only, so a commit ground to the same
+        # prefix could load another head's audit; the parent's chain log binds the receipt to the parent's full sha.
+        p7 = self.head[:7]
+        for suffix in (".md", ".md.last.md"):
+            (self.v / f"{TASK}-audit-{p7}{suffix}").write_text("Verdict: correct\n")
+        other = p7 + ("1" if self.head[7] == "0" else "0") * 33
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {other} Verdict: correct\n")
+        self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+        self.commit(self.seed, "c.txt")
+        self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+        self.git("pull", "-q", "--ff-only")
+        self.git("checkout", "-q", "--detach", self.head, cwd=self.seed)
+        self.git("merge", "-q", "--no-ff", "--no-edit", "origin/main", cwd=self.seed)
+        self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+        merged = self.git("rev-parse", "HEAD", cwd=self.seed)
+        (self.calls / "head").write_text(merged + "\n")
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
 
     def test_integrate_restores_the_review_worktree_after_the_audit(self):
         # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at

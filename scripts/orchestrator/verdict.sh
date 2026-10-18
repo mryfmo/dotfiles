@@ -58,7 +58,7 @@ done
 [[ (${loop} == true || -n ${pr}) && ! (${apply} == true && ${shadow} == true) ]] || usage
 [[ ${apply} == false || (-n ${team} && -n ${from} && -n ${to} && -n ${pane}) ]] || usage
 [[ -z ${task} || ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || usage
-trap 'echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
+trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
 here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd -- "$(git -C "${here}" rev-parse --show-toplevel)"
 v=.orchestration/validation
@@ -89,9 +89,9 @@ head="$(jq -r .headRefOid <<< "${view}")"
 git cat-file -e "${head}^{commit}" 2> /dev/null || git fetch -q origin "pull/${pr}/head" 2> /dev/null || true
 git cat-file -e "${head}^{commit}" 2> /dev/null || stop "the head ${head} is not in this checkout"
 if [[ ${apply} == true ]]; then # a merge: only from a checkout the PR does not control, after Q-C's four agreeing rows
-    { [[ $(git rev-parse HEAD) != "${head}" ]] && ! git merge-base --is-ancestor "${head}" HEAD && git diff --quiet HEAD -- scripts .schemas &&
-        [[ -z $(git ls-files --others --exclude-standard -- scripts .schemas) ]]; } || stop "--apply runs only from a checkout that is not the PR's"
-    [[ "$(tail -n 4 "${v}/verdict-shadow.tsv" 2> /dev/null | awk -F '\t' '$3 == $4 && $4 != ""' | wc -l)" -eq 4 ]] ||
+    { git diff --quiet origin/main -- scripts .schemas .orchestration/tasks && [[ -z $(git ls-files -o --exclude-standard -- scripts .schemas) ]]; } ||
+        stop "--apply runs only from a checkout whose scripts/, .schemas/ and tracked task files equal origin/main"
+    [[ "$(tail -n 4 "${v}/verdict-shadow.tsv" 2> /dev/null | awk -F '\t' '$3 == $4 && $4 != "" {print $1}' | sort -u | wc -l)" -eq 4 ]] ||
         stop "--apply waits for four agreeing machine and human rows at the end of ${v}/verdict-shadow.tsv"
 fi
 for f in .orchestration/acceptance/*.md; do
@@ -106,7 +106,7 @@ cond() { conds+=("$(jq -cn --argjson id "$1" --argjson ok "$2" --arg e "$3" '{id
 lack() { hold+="${hold:+; }$1"; }
 fresh="$(mktemp "${TMPDIR:-/tmp}/verdict-sweep.XXXXXX")" line_file=""
 trap 'rm -f -- "${fresh}" "${line_file}"' EXIT
-[[ "$(block "${rec}" 2> /dev/null | jq -r '"\(.task) \(.pr) \(.head)"' 2> /dev/null)" == "${task} ${pr} ${head}" ]] ||
+[[ "$(block "${rec}" 2> /dev/null | jq -r '"\(.task) \(.pr) \(.head) \(.ledger | type)"' 2> /dev/null)" == "${task} ${pr} ${head} array" ]] ||
     lack "the record ${rec} is not this task's at the head"
 [[ "$(jq -r '"\(.state) \(.baseRefName) \(.isDraft)"' <<< "${view}")" == "OPEN main false" ]] || lack "PR ${pr} is not open, non-draft, on main"
 
@@ -128,7 +128,7 @@ required='["validate", "test (ubuntu-24.04, server)", "test (ubuntu-24.04, clien
   "public-bootstrap (ubuntu-24.04, server)", "public-bootstrap (ubuntu-24.04, client)", "public-bootstrap (macos-14, client)"]'
 checks="$(gh pr checks "${pr}" --json name,state 2> /dev/null)" || true
 if miss="$(jq -er --argjson req "${required}" 'if type != "array" or length == 0 then error("no checks") else . as $c
-    | [$req[] | select(. as $n | any($c[]; .name == $n and .state == "SUCCESS") | not)] | join(", ") end' <<< "${checks}" 2> /dev/null)"; then
+    | [$req[] | select(. as $n | [$c[] | select(.name == $n) | .state] | length > 0 and all(. == "SUCCESS") | not)] | join(", ") end' <<< "${checks}" 2> /dev/null)"; then
     cond 2 "$([[ -z ${miss} ]] && echo true || echo false)" "required checks not SUCCESS: ${miss:-none}"
 else
     lack "gh pr checks ${pr}" && cond 2 false "gh pr checks is unreadable"

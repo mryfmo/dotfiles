@@ -122,7 +122,7 @@ start_free() {
 if [[ ${mode} == once ]]; then
     start_free
     wait
-    [[ -z $(compgen -G "${queue}/*.request") ]] || echo "audit-pool: requests wait; the held slots are:" "${queue}"/*.running-* >&2
+    [[ -z $(compgen -G "${queue}/*.request") ]] || echo "audit-pool: requests wait; held slots: $(compgen -G "${queue}/*.running-*" | tr '\n' ' ')" >&2
     exit 0
 fi
 until [[ -e ${queue}/.stop ]]; do

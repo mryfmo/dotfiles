@@ -160,7 +160,7 @@ if ((rc == 0)) && [[ -s ${review}/${out}.last.md && -n $(find "${review}/${out}.
     cp -- "${review}/${out}" "${review}/${out}.last.md" "${v}/"
     ok=yes
 else
-    ! grep -q 429 -- "${review}/${out}" 2> /dev/null || echo "orch-audit: the codex transcript mentions 429" >&2
+    ! grep -qw 429 -- "${review}/${out}" 2> /dev/null || echo "orch-audit: the codex transcript mentions 429" >&2
 fi
 git -C "${review}" checkout -q -- .
 git -C "${review}" clean -fdq -- .orchestration .schemas

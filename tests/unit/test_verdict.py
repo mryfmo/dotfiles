@@ -16,20 +16,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TASK, V = "t1-a01", ".orchestration/validation"
-TASK_MD, RECORD, FEEDBACK = (
-    f".orchestration/tasks/{TASK}.md",
-    f".orchestration/acceptance/{TASK}.md",
-    f"{V}/{TASK}-pr-feedback.json",
-)
+TASK_MD, RECORD = f".orchestration/tasks/{TASK}.md", f".orchestration/acceptance/{TASK}.md"
+FEEDBACK = f"{V}/{TASK}-pr-feedback.json"
 OSES = ("ubuntu-24.04, server", "ubuntu-24.04, client", "macos-14, client")
 REQUIRED = ["validate"] + [f"{job} ({o})" for job in ("test", "public-bootstrap") for o in OSES]
 GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$CALLS/calls.log"
 case "$1 $2" in "pr view") cat "$CALLS/view.json" ;; "pr checks") cat "$CALLS/checks.json" ;; esac
 """
-COUNTERS = (
-    '[[ " $* " == *" --history-only "* ]] && exec grep -v "^S1:" "$CALLS/counters.txt"\ncat "$CALLS/counters.txt"\n'
-)
+COUNTERS = '[[ " $* " == *" --history-only "* ]] && exec grep -v "^S1:" "$CALLS/counters.txt"\n'
+COUNTERS += 'cat "$CALLS/counters.txt"\n'
 FAKES = {
     "scripts/orchestrator/dispatch.sh": '#!/usr/bin/env bash\necho "dispatch $* $(cat "$5")" >> "$CALLS/calls.log"\n',
     "scripts/pr-feedback.py": 'import shutil, sys, os\nshutil.copy(os.environ["CALLS"] + "/sweep.json", sys.argv[-1])\n',
@@ -63,12 +59,8 @@ class VerdictTest(unittest.TestCase):
             "PATH": path,
         }
         origin = str(self.temp / "origin.git")
-        for args in (
-            ("init", "-q", "-b", "main"),
-            ("add", "."),
-            ("commit", "-q", "-m", "init"),
-            ("init", "-q", "--bare", origin),
-        ):
+        steps = (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-q", "-m", "init"))
+        for args in (*steps, ("init", "-q", "--bare", origin)):
             self.git(*args)
         for args in (("remote", "add", "origin", origin), ("push", "-q", "origin", "main"), ("fetch", "-q", "origin")):
             self.git(*args)
@@ -108,7 +100,6 @@ class VerdictTest(unittest.TestCase):
         return self.write(f"{V}/{TASK}-audit-{self.head[:7]}.json", json.dumps(doc))
 
     def green(self, security=False):
-        """Every input of a run where all nine conditions hold."""
         view = {"headRefOid": self.head, "isDraft": False, "baseRefName": "main", "state": "OPEN", "number": 9}
         (self.calls / "view.json").write_text(json.dumps(view))
         self.checks("SUCCESS")
@@ -116,19 +107,18 @@ class VerdictTest(unittest.TestCase):
         (self.calls / "sweep.json").write_text(json.dumps({"items": [{"url": URL}]}))
         self.disposition("not-applicable:a reason long enough; evidence=git show")
         allowed = f'["scripts/orchestrator/x.sh", "tests/**", ".orchestration/{TASK}/**"]'
-        self.write(
-            TASK_MD,
-            f"---\nallowed_files: {allowed}\nsecurity: {str(security).lower()}\n---\n\nat most {CAP}, 500 under `tests/`.\n",
-        )
+        front = f"allowed_files: {allowed}\nsecurity: {str(security).lower()}"
+        self.write(TASK_MD, f"---\n{front}\n---\n\nat most {CAP}, 500 under `tests/`.\n")
         audit = self.audit()
-        block = json.dumps({"task": TASK, "pr": 9, "head": self.head, "format": 1})
+        block = json.dumps({"task": TASK, "pr": 9, "head": self.head, "format": 1, "ledger": []})
         prose = f"precheck: {hashlib.sha256(self.precheck.encode()).hexdigest()}\n"
         prose += f"sha256:{hashlib.sha256(audit.read_bytes()).hexdigest()} {V}/{TASK}-audit-{self.head[:7]}.json\n"
         self.write(RECORD, f"---\n{block}\n---\n\n{prose}")
         self.write(f"{V}/{TASK}-security-{self.head[:7]}.md.last.md", "x\nVerdict: correct\n")
 
-    def checks(self, state):
-        (self.calls / "checks.json").write_text(json.dumps([{"name": n, "state": state} for n in REQUIRED]))
+    def checks(self, state, *failed):
+        rows = [{"name": n, "state": state} for n in REQUIRED] + [{"name": n, "state": "FAILURE"} for n in failed]
+        (self.calls / "checks.json").write_text(json.dumps(rows))
 
     def disposition(self, text):
         self.write(FEEDBACK, json.dumps({"items": [{"url": URL, "disposition": text}]}))
@@ -140,7 +130,6 @@ class VerdictTest(unittest.TestCase):
         return json.loads(out.read_text()) if out.exists() else None
 
     def record_lines(self, precheck=None, extra=""):
-        """Rewrite the record's precheck: line, or add prose lines."""
         text = (self.repo / RECORD).read_text()
         self.write(
             RECORD,
@@ -163,6 +152,7 @@ class VerdictTest(unittest.TestCase):
         breaks = [
             (1, lambda: self.record_lines(precheck="0" * 64)),
             (2, lambda: self.checks("FAILURE")),
+            (2, lambda: self.checks("SUCCESS", "validate")),
             (3, lambda: self.audit("incorrect", scope="code")),
             (4, lambda: self.write(FEEDBACK, '{"items": [{"url": "u", "disposition": "fixed:abc1234"}]}')),
             (4, lambda: self.disposition("later")),
@@ -211,6 +201,9 @@ class VerdictTest(unittest.TestCase):
         (self.repo / f"{V}/{TASK}-verdict-{self.head[:7]}.json").unlink()
         self.write(RECORD, "---\nnot json\n---\n")
         self.assertIsNone(self.verdict(code=20))
+        self.green()
+        self.replace(RECORD, ', "ledger": []', "")  # no ledger: no S1 source for condition 6
+        self.assertEqual("hold", self.verdict(code=20)["verdict"])
         (self.repo / RECORD).unlink()
         self.assertEqual("hold", self.verdict("--task", TASK, code=20)["verdict"])
         view = json.loads((self.calls / "view.json").read_text()) | {"headRefOid": "f" * 40}
@@ -220,9 +213,9 @@ class VerdictTest(unittest.TestCase):
     def test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto(self):
         apply = ("--apply", "--team", "dot", "--from", "orch", "--to", "w", "--pane", "herdr:s:wJ:p3")
         shadow = self.repo / f"{V}/verdict-shadow.tsv"
-        shadow.write_text("9\th\taccept\taccept\tyes\tt\n" * 3)
+        shadow.write_text("9\th\taccept\taccept\tyes\tt\n" * 4)  # four rows of one PR are not four PRs
         self.assertIn("four agreeing", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *apply).stderr)
-        shadow.write_text("9\th\taccept\taccept\tyes\tt\n" * 4)
+        shadow.write_text("".join(f"{n}\th\taccept\taccept\tyes\tt\n" for n in range(1, 5)))
         for code, finding in ((10, INCORRECT), (20, P0)):
             with self.subTest(code=code):
                 self.green()
@@ -241,8 +234,9 @@ class VerdictTest(unittest.TestCase):
                 (self.calls / "calls.log").unlink(missing_ok=True)
                 self.verdict(*args, code=2)
                 self.assertEqual("", self.calls_log())
-        self.git("switch", "-q", "pr")  # a checkout at the PR head never merges it
-        self.assertIn("not the PR's", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *apply).stderr)
+        self.git("switch", "-q", "--detach", "pr~1")  # a checkout of the PR's code never merges it
+        result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *apply)
+        self.assertIn("equal origin/main", result.stderr)
         self.assertNotIn("pr merge", self.calls_log())
 
     def test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold(self):
@@ -266,8 +260,8 @@ class VerdictTest(unittest.TestCase):
 
     def test_verdict_shadow_appends_the_machine_column_only(self):
         doc = self.verdict("--shadow", code=0)
-        rows = (self.repo / f"{V}/verdict-shadow.tsv").read_text().splitlines()
-        self.assertEqual([f"9\t{self.head}\taccept\t\t\t{doc['generated_at']}"], rows)
+        row = f"9\t{self.head}\taccept\t\t\t{doc['generated_at']}"
+        self.assertEqual([row], (self.repo / f"{V}/verdict-shadow.tsv").read_text().splitlines())
         self.assertNotRegex(self.calls_log(), "dispatch|pr merge")
 
 

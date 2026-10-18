@@ -166,8 +166,9 @@ git -C "${review}" clean -fdq -- .orchestration .schemas
 rm -f -- "${start}"
 [[ ${ok} == yes ]] || refuse "codex exited ${rc} or wrote no new ${out}.last.md: no audit" 3
 uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${out}" "${out}.last.md" > /dev/null || refuse "the masker failed, so the audit is not usable" 3
-if [[ -n ${json} ]]; then
-    uv run --no-project python -I -c "${checker}" .schemas/audit.json "${out}.last.md" "${json}" "${head}" "${task}" ||
-        refuse "the audit's json block is missing or invalid" 3
+if [[ -n ${json} ]] && ! { uv run --no-project python -I -c "${checker}" .schemas/audit.json "${out}.last.md" "${json}" "${head}" "${task}" &&
+    uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${json}" > /dev/null &&
+    python3 -I -c "${checker}" .schemas/audit.json "${json}"; }; then # masked as JSON too: a \u-escaped secret decodes only now
+    rm -f -- "${json}" && refuse "the audit's json block is missing or invalid" 3
 fi
 echo "orch-audit: ${out} (+ .last.md): $(tail -n 1 -- "${out}.last.md")"

@@ -2,29 +2,25 @@
 # @file verdict.sh
 # @brief Decide accept, revise or hold for one PR from its nine acceptance conditions and write the verdict JSON.
 # @description
-#   Plan 024 5.12 (1) (T133). Every condition `{id, ok, evidence}` is ok only on a positive check of a read input:
+#   Plan 024 5.12 (1) (T133). Each condition `{id, ok, evidence}` is ok only on a positive check of a read input:
 #   (1) the head's `.orchestration/<task>/precheck.json` hashes to the record's `precheck:` and names the head or an
-#   ancestor the head changes only under `.orchestration/<task>/` (a warning while PRECHECK_REQUIRED is unset or 0);
-#   (2) the seven required checks are SUCCESS; (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`, names this
-#   task and head, counts no open P0/P1, and is correct or leaves only records findings open (blocked holds); (4) the
-#   fresh `scripts/pr-feedback.py` sweep and `<task>-pr-feedback.json` name the head, and require-crit-review.py's own
-#   missing_feedback, parse_disposition and commit_in_range (merge base..head) give each fresh item its own validly
-#   dispositioned saved item; (5) the merge-base diff keeps to allowed_files and the Check caps; (6) regime-counters.sh
-#   prints no `S1:` line and revises below 2; (7) no P0/P1 finding is new, still-open or status-less (counted: no id
-#   or scope exempts one); (8) a security task's review ends `Verdict: correct`; (9) the record's sha256 lines exist
-#   and match. accept when all hold; hold when (6) or (7) fails or an input is missing, unreadable or schema-invalid;
-#   revise otherwise, with the revise line. Before reading any checkout it re-runs itself under `env -i` (HOME,
-#   TMPDIR, PRECHECK_REQUIRED) with PATH links to bash, uv, python3, gh, git and jq (agmsg-dispatch, herdr if present)
-#   resolved from / (`mise which` under env -i, else `command -v`; a shims or relative path holds), then /usr/bin:/bin.
-#   Python is that python3 -I; uv reads the front matter offline with --no-config and that --python. So no checkout's
-#   `.python-version`, `.venv`, uv or mise file, nor UV_PYTHON or VIRTUAL_ENV, picks a tool. --apply (accept only;
-#   scripts/, .schemas/ and task files equal origin/main; four distinct agreeing PRs end verdict-shadow.tsv) sends the
-#   ACCEPTANCE line through dispatch.sh, then merges with --match-head-commit; --admin or --auto anywhere is refused.
+#   evidence-only ancestor (a warning while PRECHECK_REQUIRED is unset or 0); (2) the seven required checks succeed;
+#   (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`, names this task and head, has no open P0/P1, and is
+#   correct or leaves only records findings open; (4) the fresh pr-feedback.py sweep and `<task>-pr-feedback.json` name
+#   the head, and require-crit-review.py's helpers give each fresh item its own validly dispositioned saved item; (5)
+#   the merge-base diff keeps to allowed_files and the Check caps; (6) regime-counters.sh prints no `S1:` and revises
+#   below 2; (7) no P0/P1 finding is new, still-open or status-less, whatever its id or scope; (8) a security task's
+#   review ends `Verdict: correct`; (9) the record's sha256 lines exist and match. accept when all hold; hold when (6)
+#   or (7) fails or an input is missing or invalid; revise otherwise. It first re-runs itself under `env -i`, PATH =
+#   links to bash, uv, python3, gh, git and jq resolved from / (mise which, else command -v; a shim holds) then
+#   /usr/bin:/bin, Python = that python3 -I, uv offline with --no-config and --python: no checkout file and no
+#   inherited UV_PYTHON or VIRTUAL_ENV picks a tool. --apply (accept only; scripts/, .schemas/ and task files equal
+#   origin/main; four distinct agreeing shadow PRs) dispatches, then merges --match-head-commit; --admin/--auto refused.
 # @arg $1 int PR number (none with --loop).
 # @option --task <id> The task, when no record's block names the PR.
 # @option --apply With --team, --from, --to and --pane: send the ACCEPTANCE line and merge, on accept only.
 # @option --shadow Write the verdict and its machine column only.
-# @option --loop Run every ready PR.
+# @option --loop Run every ready PR; with --apply, fast-forward this checkout to origin/main after each, or hold.
 # @env PRECHECK_REQUIRED 1 makes condition 1 a failure; unset or 0, a warning.
 # @exitcode 0 accept.
 # @exitcode 10 revise.
@@ -81,7 +77,8 @@ if [[ ${loop} == true ]]; then
         for f in .orchestration/acceptance/*.md; do
             [[ -n ${n} && "$(block "${f}" | jq -r --argjson p "${n}" 'select(.pr == $p) | .head' 2> /dev/null)" == "${h}" ]] || continue
             "${here}/verdict.sh" "${n}" ${opts[@]+"${opts[@]}"} || true
-            git fetch -q origin
+            git fetch -q origin # a merge moved origin/main: the trusted checkout follows it, or the loop holds
+            [[ ${apply} == false ]] || git merge -q --ff-only origin/main || stop "this checkout cannot fast-forward to origin/main"
             break
         done
     done <<< "${list}"

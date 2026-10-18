@@ -3,17 +3,16 @@
 # @brief Run queued task-level audits, at most --max at a time, and keep only schema-valid audit records.
 # @description
 #   Plan 024 5.12 (2) (T133). A request `<queue>/<task>-<sha7>.request` holds `key=value` lines pr, head, base, task
-#   and optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` (python -I; macOS has no flock
-#   command) a pick renames the oldest request to `<task>-<sha7>.running-<n>`, n a free slot of --max, audited in
-#   `.claude/worktrees/orchestrator-review` (slot 1) or `orchestrator-review-<n>` (added detached at origin/main when
-#   missing), passed as ORCH_REVIEW_WORKTREE to `orch-audit.sh <task> --head <head> <pr> --json
-#   <v>/<task>-audit-<sha7>.json`. `--previous-head` and `--previous-findings <v>/<task>-audit-<prev7>.json` follow only
+#   and optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` (python -I; macOS has no flock) a
+#   pick blocks, unread, every request not named `<task-id>-<sha7>.request`, then renames the oldest to `.running-<n>`,
+#   n a free slot of --max, audited in the pool's own `.claude/worktrees/orchestrator-audit-<n>` (added at origin/main
+#   when missing; never the integration worktree) as ORCH_REVIEW_WORKTREE of `orch-audit.sh <task> --head <head> <pr>
+#   --json <v>/<task>-audit-<sha7>.json`, with `--previous-head` and `--previous-findings <v>/<task>-audit-<prev7>.json`
 #   once `<v>/audit-shadow.tsv` holds two rows whose last field (full versus differential finding difference) is 0 (plan
 #   024 5.11 Q-C); until then the audit is full and the differential prompt goes to `<json>.differential-prompt.txt`.
 #   A zero exit whose json passes `orch-audit.sh --validate .schemas/audit.json` makes the request `.done`; otherwise
-#   `<request>.rejected` holds the reason and it becomes `.blocked`. A 429 (as orch-audit.sh reports it) is retried
-#   after 60, 120 and 240 s, then blocked. A killed pool's `.running-<n>` files hold their slots until removed;
-#   `--once` names them when requests wait.
+#   `<request>.rejected` holds the reason and it becomes `.blocked`. A 429 is retried after 60, 120 and 240 s, then
+#   blocked. A killed pool's `.running-<n>` files hold their slots until removed; `--once` names them when they wait.
 # @option --once Start what the free slots allow, then wait for those runs.
 # @option --loop Pick every 30 seconds until `<queue>/.stop` exists.
 # @option --max <n> Concurrent audits, 1 to 9 (default 2).
@@ -41,16 +40,19 @@ cd -- "$(git -C "${here}" rev-parse --show-toplevel)"
 v=.orchestration/validation
 mkdir -p -- "${queue}"
 read -r -d '' pick << 'PY' || true
-import fcntl, glob, os, sys
+import fcntl, glob, os, re, sys
 q, mx = sys.argv[1], int(sys.argv[2])
 with open(os.path.join(q, ".lock"), "a") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     used = {p.rsplit("-", 1)[1] for p in glob.glob(os.path.join(q, "*.running-*"))}
     free = [n for n in range(1, mx + 1) if str(n) not in used]
     todo = sorted(glob.glob(os.path.join(q, "*.request")))
+    for bad in [p for p in todo if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*-[0-9a-f]{7}\.request", os.path.basename(p))]:
+        os.rename(bad, f"{bad[:-len('.request')]}.blocked")  # never a slot, a path or an argument
+    todo = [p for p in todo if os.path.exists(p)]
     if free and todo:
         os.rename(todo[0], f"{todo[0][:-len('.request')]}.running-{free[0]}")
-        print(todo[0][: -len(".request")], free[0])
+        print(free[0], todo[0][: -len(".request")])
 PY
 # @description Audit one picked request and leave it `.done` or `.blocked`.
 # @arg $1 path The request path without `.request`.
@@ -104,9 +106,9 @@ run_one() {
 start_free() {
     local line req slot wt
     while line="$(uv run --no-project python -I -c "${pick}" "${queue}" "${max}")" && [[ -n ${line} ]]; do
-        read -r req slot <<< "${line}"
-        wt="${PWD}/.claude/worktrees/orchestrator-review"
-        ((slot == 1)) || wt+="-${slot}"
+        read -r slot req <<< "${line}"
+        [[ ${slot} =~ ^[1-9]$ ]] || break # a plain number before any use; the pool never shares integration's worktree
+        wt="${PWD}/.claude/worktrees/orchestrator-audit-${slot}"
         [[ -d ${wt} ]] || git worktree add -q --detach "${wt}" origin/main
         run_one "${req}" "${slot}" "${wt}" &
     done

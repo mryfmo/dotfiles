@@ -2,10 +2,10 @@
 # @file pre-push
 # @brief Stop a push whose pushed diff holds a secret-like match (plan 024 P1-5).
 # @description
-#   For each stdin line `<local ref> <local sha> <remote ref> <remote sha>` whose local sha is not all zeros, the diff
-#   `<remote sha>..<local sha>` (from `git merge-base origin/main <local sha>` when the remote sha is all zeros) goes
-#   to a `mktemp` file and through `result-precheck.sh --secrets`; a match prints its count and the range, never the
-#   text, and stops the push, as does a range git cannot diff.
+#   For each stdin line `<local ref> <local sha> <remote ref> <remote sha>` whose local sha is not all zeros, the patch
+#   of every commit in `<remote sha>..<local sha>` (`git log -p --cc`; from `git merge-base origin/main <local sha>` for
+#   an all-zero remote sha) goes to a `mktemp` file and through `result-precheck.sh --secrets`; a match prints its count
+#   and the range, never the text, and stops the push, as does a range git cannot read.
 # @stdin The ref lines git passes to a pre-push hook.
 # @exitcode 0 No pushed range holds a match. 1 A match, or a range that cannot be diffed.
 set -euo pipefail
@@ -16,7 +16,7 @@ status=0
 while read -r ref sha _ remote; do
     [[ ! ${sha} =~ ^0+$ ]] || continue
     [[ ! ${remote} =~ ^0+$ ]] || remote="$(git merge-base origin/main "${sha}")"
-    git diff "${remote}..${sha}" > "${diff}"
+    git log -p --cc --format= "${remote}..${sha}" > "${diff}"
     count="$(bash "${root}/scripts/orchestrator/result-precheck.sh" --secrets "${diff}" < /dev/null)" && continue
     echo "pre-push: ${count#secrets: } in ${remote}..${sha} (${ref}); the push is stopped" >&2
     status=1

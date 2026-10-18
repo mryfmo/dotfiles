@@ -205,23 +205,32 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required(self):
         field = self.git("rev-parse", "HEAD")
-        document = json.dumps({"head": field}) + "\n"
-        self.write(".orchestration/t/precheck.json", document)
+
+        def record(*checks):
+            document = json.dumps({"head": field, "checks": list(checks), "selectors": []}) + "\n"
+            self.write(".orchestration/t/precheck.json", document)
+            return hashlib.sha256(document.encode()).hexdigest()
+
+        sum_ = record({"name": "unit-test", "ok": True}, {"name": "local-review", "ok": None})
         head = self.commit("evidence")
-        sum_ = hashlib.sha256(document.encode()).hexdigest()
-        result, sent = self.dispatch(f"AGMSG-RESULT v1 task_id=t head={head} precheck={sum_}", "1")
+        ready = "AGMSG-RESULT v1 task_id=t status=ready_for_review"
+        result, sent = self.dispatch(f"{ready} head={head} precheck={sum_}", "1")
         self.assertEqual((result.returncode, sent), (0, True), result.stderr)
         self.assertNotIn("precheck:", result.stderr)
         self.write("a.py", "x = 2\n")
         outside = self.commit("evidence and code")
-        cases = {
-            "precheck": f"AGMSG-RESULT v1 task_id=t head={head}",
-            "precheck mismatch": f"AGMSG-RESULT v1 task_id=t head={head} precheck={'0' * 64}",
-            "precheck.json:head": f"AGMSG-RESULT v1 task_id=t head={outside} precheck={sum_}",
-            "head": f"AGMSG-RESULT v1 task_id=t head={'f' * 40} precheck={sum_}",
-            "result": "AGMSG-RESULT v1 task_id=other head={head} precheck={sum_}",
-        }
-        for field_name, result_line in cases.items():
+        failed_sum = record({"name": "unit-test", "ok": False})
+        failed = self.commit("a failed record")
+        cases = [
+            ("precheck the RESULT", f"{ready} head={head}"),
+            ("precheck mismatch", f"{ready} head={head} precheck={'0' * 64}"),
+            ("precheck.json:head", f"{ready} head={outside} precheck={sum_}"),
+            ("precheck.json:checks", f"{ready} head={failed} precheck={failed_sum}"),
+            ("head", f"{ready} head={'f' * 40} precheck={sum_}"),
+            ("result no", f"AGMSG-RESULT v1 task_id=other status=ready_for_review head={head} precheck={sum_}"),
+            ("result the newest", f"AGMSG-RESULT v1 task_id=t status=blocked head={head} precheck={sum_}"),
+        ]
+        for field_name, result_line in cases:
             with self.subTest(field=field_name):
                 refused, sent = self.dispatch(result_line, "1")
                 self.assertEqual((refused.returncode, sent), (1, False), refused.stderr)
@@ -259,11 +268,17 @@ class ResultPrecheckTest(unittest.TestCase):
     def test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern(self):
         self.hooks()
         env = {**self.env, "PATH": os.environ["PATH"]}  # the real uv and the real masker
-        for branch, value, code in (("secret", token(), 1), ("clean", "clean", 0)):
+        # Thread 4305945403: a token added and removed again before the push is still in the pushed history.
+        for branch, values, code in (
+            ("secret", [token()], 1),
+            ("removed", [token(), "clean"], 1),
+            ("clean", ["clean"], 0),
+        ):
             with self.subTest(branch=branch):
                 self.git("switch", "-q", "-c", branch, "main")
-                self.write("value.txt", f"value={value}\n")
-                self.commit(branch)
+                for value in values:
+                    self.write("value.txt", f"value={value}\n")
+                    self.commit(branch)
                 result = subprocess.run(
                     ["git", "push", "origin", branch],
                     cwd=self.repo,
@@ -276,7 +291,7 @@ class ResultPrecheckTest(unittest.TestCase):
                 self.assertEqual(result.returncode != 0, bool(code), result.stderr)
                 self.assertNotIn(token(), result.stdout + result.stderr)
                 if code:
-                    self.assertIn("pre-push: 1 match(es) in", result.stderr)
+                    self.assertRegex(result.stderr, r"pre-push: [1-9][0-9]* match\(es\) in ")
                 self.assertEqual(bool(self.git("ls-remote", "origin", branch)), not code)
 
 

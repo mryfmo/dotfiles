@@ -162,38 +162,35 @@ required=${PRECHECK_REQUIRED:-0}
 read -r -d '' prechecker << 'PY' || true
 import hashlib, json, re, subprocess, sys
 task, window = sys.argv[1:3]
-def git(*args):
-    return subprocess.run(["git", *args], capture_output=True)
+git = lambda *args: subprocess.run(["git", *args], capture_output=True)
 def problem():
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", task):
-        return f"task_id {task} is not a task id"
-    if not window:
-        return "result no history window was read (no acceptance record was given)"
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", task): return f"task_id {task} is not a task id"
+    if not window: return "result no history window was read (no acceptance record was given)"
     rows = [row[3].split() for row in json.load(open(window))]
     found = [t for t in rows if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
-    if not found:
-        return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
+    if not found: return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
+    if "status=ready_for_review" not in found[-1]: return "result the newest RESULT is not status=ready_for_review"
     heads = [t[5:] for t in found[-1] if t.startswith("head=")]
     wants = [t[9:] for t in found[-1] if t.startswith("precheck=")]
-    if len(heads) != 1 or not re.fullmatch(r"[0-9a-f]{40}", heads[0]):
-        return "head the RESULT needs one head= of 40 hex digits"
-    if len(wants) != 1 or not re.fullmatch(r"[0-9a-f]{64}", wants[0]):
-        return "precheck the RESULT needs one precheck= of 64 hex digits"
+    if len(heads) != 1 or not re.fullmatch(r"[0-9a-f]{40}", heads[0]): return "head the RESULT needs one head= of 40 hex digits"
+    if len(wants) != 1 or not re.fullmatch(r"[0-9a-f]{64}", wants[0]): return "precheck the RESULT needs one precheck= of 64 hex"
     head, want, path = heads[0], wants[0], f".orchestration/{task}/precheck.json"
-    if git("cat-file", "-e", f"{head}^{{commit}}").returncode:
-        return f"head {head} is not a commit in this checkout"
+    if git("cat-file", "-e", f"{head}^{{commit}}").returncode: return f"head {head} is not a commit in this checkout"
     blob = git("cat-file", "blob", f"{head}:{path}")
     got = hashlib.sha256(blob.stdout).hexdigest() if blob.returncode == 0 else "nothing (no such file)"
-    if got != want:
-        return f"precheck mismatch: the RESULT has {want}, {path} at {head} hashes to {got}"
+    if got != want: return f"precheck mismatch: the RESULT has {want}, {path} at {head} hashes to {got}"
     try:
-        field = json.loads(blob.stdout)["head"]
-    except (ValueError, KeyError, TypeError):
-        field = None
-    if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field):
-        return f"precheck.json:head {path} at {head} has no 40-hex head"
-    if field != head and git("merge-base", "--is-ancestor", field, head).returncode:
-        return f"precheck.json:head {field} is not an ancestor of {head}"
+        doc = json.loads(blob.stdout)
+    except ValueError:
+        doc = None
+    field = doc.get("head") if isinstance(doc, dict) else None
+    if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field): return f"precheck.json:head {path} has no 40-hex head"
+    checks, selectors = doc.get("checks"), doc.get("selectors", [])
+    if not (isinstance(checks, list) and checks and isinstance(selectors, list)): return f"precheck.json:checks {path} lists no checks"
+    failed = [c.get("name") if isinstance(c, dict) else str(c) for c in checks if not isinstance(c, dict) or c.get("ok") is False]
+    failed += [s.get("selector") if isinstance(s, dict) else str(s) for s in selectors if not isinstance(s, dict) or s.get("ok") is not True]
+    if failed: return f"precheck.json:checks {path} at {head} records failed checks: {failed}"
+    if field != head and git("merge-base", "--is-ancestor", field, head).returncode: return f"precheck.json:head {field} is not an ancestor of {head}"
     if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode:
         return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"
     return ""

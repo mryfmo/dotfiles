@@ -62,10 +62,10 @@ def check(s, v, at="$"):
             return f"{at} does not match {p}"
         if len(v) > s.get("maxLength", len(v)):
             return f"{at} is longer than {s['maxLength']}"
-        try:
-            s.get("format") != "date-time" or datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except ValueError:
-            return f"{at} is not a date-time"
+        try:  # RFC 3339 with an offset (a non-match raises TypeError at [0]); fromisoformat then checks the ranges
+            s.get("format") != "date-time" or datetime.fromisoformat(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:\d\d)", v)[0].replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return f"{at} is not an RFC 3339 date-time with an offset"
     if type(v) is int and not s.get("minimum", v) <= v <= s.get("maximum", v):
         return f"{at} is out of range"
     if isinstance(v, dict):

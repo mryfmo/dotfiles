@@ -157,8 +157,8 @@ fi
 
 read_front='import json, sys, yaml; t = open(sys.argv[1]).read(); f = yaml.safe_load(t.split("\n---\n", 1)[0][4:]) if t.startswith("---\n") else 0
 print(json.dumps(f if isinstance(f, dict) else {}))'
-front="$(uv run --offline --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null ||
-    uv run --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null)" || front=""
+# Offline only: a cold cache leaves front empty, which holds (conditions 5 and 8); never an online resolution.
+front="$(uv run --offline --no-project --with pyyaml python -I -c "${read_front}" "${tf}" 2> /dev/null)" || front=""
 if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array ]] &&
     base="$(git merge-base origin/main "${head}")" && numstat="$(git diff --numstat --no-renames "${base}" "${head}")"; then
     allowed=() stray="" outside=0 under=0 excluded=()

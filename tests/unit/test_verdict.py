@@ -247,6 +247,15 @@ class VerdictTest(unittest.TestCase):
                 )
                 self.assertEqual(0, check.returncode, check.stderr)
 
+    def test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable(self):
+        online = '[[ "$*" != *pyyaml* || "$*" == *--offline* ]] || { echo "$*" >> "$CALLS/online.log"; exit 1; }'
+        cold = f'[[ "$*" == *pyyaml* && -f $CALLS/no-pyyaml ]] && exit 1; exec "{shutil.which("uv")}" "$@"'
+        self.write(str(self.temp / "bin/uv"), f"#!/usr/bin/env bash\n{online}\n{cold}\n").chmod(0o755)
+        self.assertEqual("accept", self.verdict(code=0)["verdict"])
+        (self.calls / "no-pyyaml").write_text("")
+        self.assertIn(5, self.failed(self.verdict(code=20)))
+        self.assertFalse((self.calls / "online.log").exists())  # no online resolution, ever
+
     def test_verdict_condition_1_is_a_warning_under_precheck_required_0(self):
         self.record_lines(precheck="1" * 64)
         for env, code in (({}, 0), ({"PRECHECK_REQUIRED": "0"}, 0), ({"PRECHECK_REQUIRED": "1"}, 10)):

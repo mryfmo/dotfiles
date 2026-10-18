@@ -24,19 +24,11 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAM
 
 
 def record(head, task, verdict="correct", cls="string-form-comparison"):
-    finding = {
-        "id": "1",
-        "priority": "P2",
-        "confidence": "high",
-        "file": "a.sh",
-        "line": 3,
-        "class": cls,
-        "scope": "code",
-    }
+    finding = {"id": "1", "priority": "P2", "confidence": "high", "file": "a.sh", "line": 3, "class": cls}
     meta = {"head": head, "task_id": task, "auditor": "codex --profile audit", "generated_at": "2026-10-18T05:00:00Z"}
     return meta | {
         "verdict": verdict,
-        "findings": [finding | {"rationale": "a path by its string form", "status": "new"}],
+        "findings": [finding | {"scope": "code", "rationale": "a path by its string form", "status": "new"}],
     }
 
 
@@ -63,12 +55,8 @@ class AuditPoolTest(unittest.TestCase):
             (bin_dir / name).chmod(0o755)
         path, origin = f"{bin_dir}{os.pathsep}{os.environ['PATH']}", str(self.temp / "origin.git")
         self.env = {**os.environ, **GIT_ENV, "CALLS": str(self.calls), "PATH": path}
-        for args in (
-            ("init", "-q", "-b", "main"),
-            ("add", "."),
-            ("commit", "-q", "-m", "init"),
-            ("init", "-q", "--bare", origin),
-        ):
+        steps = (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-q", "-m", "init"))
+        for args in (*steps, ("init", "-q", "--bare", origin)):
             self.git(*args)
         for args in (("remote", "add", "origin", origin), ("push", "-q", "origin", "main"), ("fetch", "-q", "origin")):
             self.git(*args)
@@ -91,11 +79,9 @@ class AuditPoolTest(unittest.TestCase):
 
     def run_script(self, name, *args, code=0):
         cmd = ["bash", str(self.repo / "scripts/orchestrator" / name), *map(str, args)]
-        result = subprocess.run(
-            cmd, cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=60, check=False
-        )
-        self.assertEqual(code, result.returncode, result.stdout + result.stderr)
-        return result
+        out = subprocess.run(cmd, cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=60, check=False)
+        self.assertEqual(code, out.returncode, out.stdout + out.stderr)
+        return out
 
     def request(self, task, head, **extra):
         queue = self.validation / "audit-queue"
@@ -175,18 +161,13 @@ class AuditPoolTest(unittest.TestCase):
                 self.assertIn("json block is missing or invalid", result.stderr)
                 self.assertFalse(out.exists())
         v, mask = "scripts/validate-agent-assets.py", self.calls / "mask-fails"
-        sweep = self.validation / "t1-a01-pr-feedback.json"
+        sweep, fail = self.validation / "t1-a01-pr-feedback.json", "scripts/orchestrator/fail-check.py"
         refusals = (  # every refusal kept, in an order that restores the state each one changed
             (lambda: None, "at the audited head", 2, (self.git("rev-parse", "HEAD"), 9)),
             (lambda: None, "not a commit", 2, ("1" * 40, 9)),
             (lambda: (self.repo / v).write_text("x = 1\n"), "the validator differs from HEAD", 2, (head, 9)),
             (lambda: (self.git("checkout", v), self.git("rm", "-q", "--cached", v)), "is untracked", 2, (head, 9)),
-            (
-                lambda: self.git("add", v),
-                "incomplete",
-                3,
-                (head, 9, "--ledger-check", "scripts/orchestrator/fail-check.py"),
-            ),
+            (lambda: self.git("add", v), "incomplete", 3, (head, 9, "--ledger-check", fail)),
             (lambda: mask.write_text(""), "the masker failed", 3, (head, 9)),
             (lambda: (mask.unlink(), sweep.write_text('{"items": [{"url": "u"}]}')), "sweep has gaps", 3, (head, 9)),
         )
@@ -194,6 +175,13 @@ class AuditPoolTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 setup()
                 self.assertIn(expected, self.run_script("orch-audit.sh", "t1-a01", "--head", *args, code=code).stderr)
+
+    def test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset(self):
+        doc = self.validation / "doc.json"  # the checker --json extracts through, run alone
+        for at, code in {"2026-10-18T14:00:00.5+09:00": 0, "2026-10-18": 1, "2026-10-18T05:00:00": 1}.items():
+            with self.subTest(at=at):
+                doc.write_text(json.dumps(record("a" * 40, "t1-a01") | {"generated_at": at}))
+                self.run_script("orch-audit.sh", "--validate", ".schemas/audit.json", doc, code=code)
 
     def test_audit_schema_class_enum_equals_the_classes_file_and_rejects_an_unknown_class(self):
         schema = json.loads((ROOT / ".schemas/audit.json").read_text())

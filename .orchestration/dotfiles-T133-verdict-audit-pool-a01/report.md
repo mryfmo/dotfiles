@@ -5,8 +5,8 @@ branch: tools/verdict-audit-pool-a01
 base: 99a4a80f
 pr: 410
 parked_pr: 407
-head_code: f6adaea8
-commits: [beb0b0c7, fada8070, 2ff92578, f2d1ffd2, be70b5c8, f6adaea8]
+head_code: 7462e180
+commits: [beb0b0c7, fada8070, 2ff92578, f2d1ffd2, be70b5c8, f6adaea8, 7462e180]
 task_sha256: 2919563b9f8d47825cf13e251055c7955f5fc975b28896058acd5568ba2d6f59
 ---
 
@@ -51,22 +51,24 @@ My PONG of 04:37Z asked for the D-cap-F2 form: `.schemas/classes.yaml` is 140 li
 
 ## Red before this task, not this task's
 
-- `make format`'s shfmt step fails on 12 tracked files under `.orchestration/tasks/*-input/`, exactly as on `origin/main` (validation §9); ruff format and prettier, the steps after it, pass on their own.
+- `make format`'s shfmt step fails on 12 tracked files (10 under `.orchestration/tasks/*-input/`, `home/dot_claude/hooks/executable_project-map-reload.sh` and `tests/install/macos/common/brew.bats`), each failing the same on `origin/main` (validation §9; the listing's extra `$` entry is a diff body line that begins with `diff `, not a file); none is this branch's; ruff format and prettier, the steps after it, pass on their own.
 - `make unit-test` in this seat's sandbox fails in nine modules (`test_require_crit_review`, `test_herdr_agents`, `test_agent_stop_gate`, `test_ua_symbol_coverage`, `test_update_agent_assets`, `test_runtime_health`, `test_gh_auth`, `test_supply_chain_policy`, `test_aws_cli_acquisition`) with the same counts on a scratch worktree at `origin/main` (validation §7, §7a: e.g. `--base 'main' does not resolve to a commit`, keychain and network tests); none is a module this PR touches, and the PR's CI `test` jobs, which run the same suite, are green.
 
 ## Caps (Amendment 1; validation §11)
 
 - Scripts (outside `tests/`, `.orchestration/`, `.schemas/`): 500 of 500 (verdict.sh 255, audit-pool.sh 132, orch-audit.sh 102 added and 11 deleted).
-- `tests/`: 493 of 500. `.schemas/` (data, outside the count): audit.json 33, classes.yaml 140, verdict.json 29.
+- `tests/`: 497 of 500. `.schemas/` (data, outside the count): audit.json 33, classes.yaml 140, verdict.json 29.
 
 ## The Check's --shadow run (validation §12)
 
 `scripts/orchestrator/verdict.sh 410 --task dotfiles-T133-verdict-audit-pool-a01 --shadow` at f6adaea8: hold (exit 20), as the Check expects before the audit exists; the record, the task file and the feedback JSON live in the orchestrator's checkout, so this seat's run also holds on them.
 
-## Bot
+## Bot (one review: marked ready at 06:11:34Z on 0f96b967, reviewed 06:17:12Z, review 5561714626)
 
-(after `gh pr ready 410`)
+- 4305981902, P1 (`.orchestration/dotfiles-T133-verdict-audit-pool-a01/task.md:23`, the closed threat row of orch-audit.sh's refusals): the cited test did not exercise the validator untracked or modified, the ledger check failing or the masker failing. `fixed:7462e180`: the cited test now runs all seven refusals (the two validator checks, the ledger check through a tracked failing `--ledger-check` script, the masker through the fake uv), each restoring the state it changed. This is the one worker-side P0/P1 fix round; the no-prompt rule relayed at 05:09:30Z forbids posting `@codex review`, so the fix head has no Bot re-review (`bot: none` for 7462e180).
+- 4305981903, P2 (`scripts/orchestrator/orch-audit.sh:68`, a date-only or zoneless `generated_at` passes the checker): proposed `fix in a revise round (C-50)`: one line, the date-time check as an RFC 3339 pattern with an offset, plus one schema-test case; within allowed_files (it was a declared residual above).
+- 4305981908, P2 (`scripts/orchestrator/verdict.sh:161`, the front-matter read falls back to an online uv resolution): proposed `fix in a revise round (C-50)`: drop the online fallback (a cold cache then holds, fail-closed), net minus one line; within allowed_files.
 
-CompactionDB: the `memory add` runs at the RESULT, and its command goes into this report then.
+CompactionDB (main checkout, through the permission gate): `cd ~/Workspace/dotfiles && uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '[memory:decision] dotfiles-T133 verdict-audit-pool a01 (PR 410): every verdict.sh condition is ok only on a positive check of a parsed, non-empty, validated input (empty gh checks, a blocked audit, a record without a ledger or sha256 lines, an unreadable task file all hold); --apply runs only from a checkout whose scripts/, .schemas/ and tracked task files equal origin/main, after four agreeing machine/human rows of distinct PRs in verdict-shadow.tsv; audit-pool.sh locks with python fcntl because macOS ships no flock(1); the audit json block sits before the Verdict line because the gate reads the verdict from the last line.'` printed `236b14b8-7859-4cc9-91fd-ea518a11e8ef` (validation §13).
 
 cost: n/a

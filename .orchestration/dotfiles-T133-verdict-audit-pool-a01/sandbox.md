@@ -24,7 +24,11 @@ Calls outside the sandbox, each through the permission gate (Worker Playbook ste
 | 5 | `gh pr create --draft --base main --head tools/verdict-audit-pool-a01 --title "…" --body-file .orchestration/dotfiles-T133-verdict-audit-pool-a01/pr-body.md`: PR #410 | `gh` |
 | 6 | `scripts/orchestrator/verdict.sh 410 --task dotfiles-T133-verdict-audit-pool-a01 --shadow` (the Check's run; it calls `gh pr view`, `gh pr checks` and `scripts/pr-feedback.py`, which calls gh) | `gh` |
 | 7 | `gh pr checks 410` (a read) and `gh pr checks 410 --watch --interval 30` (background) | `gh` |
+| 8 | `gh pr ready 410` (06:11:34Z, CI green on 0f96b967), one command | `gh` |
+| 9 | the Bot wait: `gh api --paginate repos/mryfmo/dotfiles/pulls/410/reviews` and `…/comments` reads every 30 seconds (the review arrived at 06:17:12Z), then `gh api repos/mryfmo/dotfiles/pulls/comments/<id>` reads of the three comments | `gh` |
+| 10 | the push of 7462e180 and the evidence commit, one command | `git push` |
+| 11 | the main checkout's CompactionDB `memory add` (validation §13) | the task's main-checkout CompactionDB `memory add` |
 
 Under the no-prompt rule relayed at 2026-10-18T05:09:30Z (the user's directive): no command matching a live ask rule runs (no `gh pr comment`, so no `@codex review`; the Bot's automatic review at ready is the only one, and 15 minutes without it is recorded as `bot: none`), and `git fetch`, `git push`, `gh pr ready` and `gh pr create --draft` each run as one command, never chained. Before that message, rows 1 to 6 ran as single commands except the pushes, which were followed by `git ls-remote` in the same call.
 
-Still to run, added here when they run: `gh pr ready 410` once CI is green, the bounded Bot wait (`gh api` reads of the reviews and comments, at most every 30 seconds for at most 15 minutes), and `agmsg-dispatch … AGMSG-RESULT v1 …`.
+Still to run: `agmsg-dispatch … AGMSG-RESULT v1 …`.

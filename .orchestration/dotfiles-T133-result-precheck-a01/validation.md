@@ -6,7 +6,7 @@ amendment: 1
 
 # Validation
 
-Base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox. The Check runner, the mutation check and the default precheck ran on code head de167fa1; 105e42cf (Amendment 2) changes only two comment lines of `result-precheck.sh` (the diff is in the last section), the proof precheck ran on 105e42cf, and after the Bot's review the fix round a7b0da2f (last sections) re-ran the two modules and the precheck. The final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
+Base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox. The Check runner, the mutation check and the default precheck ran on code head de167fa1; 105e42cf (Amendment 2) changes only two comment lines of `result-precheck.sh` (the diff is in the last section), the proof precheck ran on 105e42cf, after the Bot's review the fix round a7b0da2f re-ran the two modules and the precheck, and revise round 1 (bdd8ab81) did so again with its selector. The final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
 
 ## Item 0 (the parked PR)
 
@@ -481,6 +481,94 @@ $ cat result.txt
 AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a01 status=ready_for_review head=a7b0da2f60e4e11af879cdc9b73a4b90cf423d03 precheck=24beae719509c95f0ce01317ab24675b7e6db1152b9cb1d44d3cf5095a282f32 task_copy=05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f report=.orchestration/dotfiles-T133-result-precheck-a01/report.md validation=.orchestration/dotfiles-T133-result-precheck-a01/validation.md sandbox=.orchestration/dotfiles-T133-result-precheck-a01/sandbox.md learning=.orchestration/dotfiles-T133-result-precheck-a01/learning.md
 ```
 
+## Revise round 1, bdd8ab81 (ACCEPTANCE of 06:26:12Z, thread 4305945406)
+
+`revise.yaml` records `previous_head=3f5177a9` and the `check=` selector. The new test run against `result-precheck.sh` of 3f5177a9 (restored afterwards, hash verified) is the red run; the precheck's own selector proof records exit 5 on the previous head because the test is new there ("NO TESTS RAN"), the limit report.md names.
+
+```text
+$ bash red-old-r1.sh 3f5177a944244f9eda6205c357df4b5b9f1d6eee
+scripts/orchestrator/result-precheck.sh at 3f5177a9 -> test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree exit=1
+FAIL: test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree
+FAILED (failures=1)
+exit=0
+
+$ git diff --stat 3f5177a9 bdd8ab81 -- scripts .githooks tests
+ scripts/orchestrator/result-precheck.sh | 11 +++++++----
+ tests/unit/test_result_precheck.py      | 19 +++++++++++++++++++
+ 2 files changed, 26 insertions(+), 4 deletions(-)
+exit=0
+
+$ uv run python -m unittest tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
+Ran 64 tests in 76.334s
+OK
+exit=0
+
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools --previous-head 3f5177a944244f9eda6205c357df4b5b9f1d6eee --check tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree
+result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree previous head exit 5, this head exit 0
+precheck=c7aaf1cf96b9a25dbed4b583ba3e2c74ef2227ebfe05d84444c9e7861ede2ad4
+exit=0
+$ cat precheck.json
+{
+  "head": "bdd8ab81de7cd3667e9213c03d932e0cd1971680",
+  "tree": "5108c458f7b7cbb7b0dea302a71e4fdbf4ae8fe6",
+  "generated_at": "2026-10-18T06:33:41Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "8b1a9d53d671f19efea99bcca79ab508a0108590952540506eab39f9efa3170b"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "f170e34f5d9c464c7dd7be27fb8f87bb26969019903d50b6636103c97a779796"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ec427b4abbf24ab3958dd1498e28cc76113d99c85519521cfc6951635053f42a"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree",
+      "ok": true,
+      "previous_head_exit": 5,
+      "previous_head_output_sha256": "e70fec2825d9bf206d27463a792768195039599cb39bcca66339f47283f84cce",
+      "head_exit": 0,
+      "head_output_sha256": "7144c8021f3ea86bef0df5376a0e64788c19d4884c2f205f51f1553803153434"
+    }
+  ]
+}
+$ cat result.txt
+AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a01 status=ready_for_review head=bdd8ab81de7cd3667e9213c03d932e0cd1971680 precheck=c7aaf1cf96b9a25dbed4b583ba3e2c74ef2227ebfe05d84444c9e7861ede2ad4 task_copy=05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f report=.orchestration/dotfiles-T133-result-precheck-a01/report.md validation=.orchestration/dotfiles-T133-result-precheck-a01/validation.md sandbox=.orchestration/dotfiles-T133-result-precheck-a01/sandbox.md learning=.orchestration/dotfiles-T133-result-precheck-a01/learning.md
+```
+
 ## The runner
 
 ```bash
@@ -531,3 +619,28 @@ fi
 run git status --porcelain
 run git diff --numstat origin/main...HEAD
 ```
+
+```bash
+#!/usr/bin/env bash
+# Run a fix round's extended test against a script's pre-fix version, then restore the file and verify its hash.
+set -u
+old_head=$1
+red() {
+    local file=$1 test=$2 backup sum rc
+    backup="$(mktemp "${TMPDIR%/}/red-old.XXXXXX")"
+    cp -p -- "${file}" "${backup}"
+    sum="$(shasum -a 256 "${file}" | cut -d' ' -f1)"
+    git show "${old_head}:${file}" > "${file}"
+    uv run python -m unittest "tests.unit.test_result_precheck.ResultPrecheckTest.${test}" > "${backup}.log" 2>&1
+    rc=$?
+    cp -p -- "${backup}" "${file}"
+    [[ "$(shasum -a 256 "${file}" | cut -d' ' -f1)" == "${sum}" ]] || echo "RESTORE FAILED: ${file}"
+    printf '%s at %s -> %s exit=%s\n' "${file}" "${old_head:0:8}" "${test}" "${rc}"
+    grep -E '^(FAIL|ERROR):|^(OK|FAILED)' "${backup}.log" | sed 's/ (tests\.unit\.test_result_precheck\.ResultPrecheckTest\.[a-z_]*)//'
+    rm -f -- "${backup}" "${backup}.log"
+}
+red .githooks/pre-push test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern
+red scripts/orchestrator/dispatch.sh test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required
+```
+
+The revise round ran the same function with one `red` line: `red scripts/orchestrator/result-precheck.sh test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree`.

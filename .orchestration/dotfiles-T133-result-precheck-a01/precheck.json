@@ -1,13 +1,13 @@
 {
-  "head": "a7b0da2f60e4e11af879cdc9b73a4b90cf423d03",
-  "tree": "3bcc2b188ddaf345c00817e9170140ea542adef9",
-  "generated_at": "2026-10-18T06:07:54Z",
+  "head": "bdd8ab81de7cd3667e9213c03d932e0cd1971680",
+  "tree": "5108c458f7b7cbb7b0dea302a71e4fdbf4ae8fe6",
+  "generated_at": "2026-10-18T06:33:41Z",
   "checks": [
     {
       "name": "unit-test",
       "ok": true,
       "exit": 0,
-      "output_sha256": "b3dadb74c4315f43676628119eb8a503974e3180e7680dd6372b42fa012dc514"
+      "output_sha256": "8b1a9d53d671f19efea99bcca79ab508a0108590952540506eab39f9efa3170b"
     },
     {
       "name": "render-check",
@@ -39,5 +39,14 @@
       "deferred": "orchestrator"
     }
   ],
-  "selectors": []
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree",
+      "ok": true,
+      "previous_head_exit": 5,
+      "previous_head_output_sha256": "e70fec2825d9bf206d27463a792768195039599cb39bcca66339f47283f84cce",
+      "head_exit": 0,
+      "head_output_sha256": "7144c8021f3ea86bef0df5376a0e64788c19d4884c2f205f51f1553803153434"
+    }
+  ]
 }

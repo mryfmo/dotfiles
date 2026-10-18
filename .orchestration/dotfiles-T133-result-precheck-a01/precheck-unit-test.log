@@ -1,4 +1,5 @@
 test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required) ... ok
+test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree) ... ok
 test_pre_commit_hook_stops_a_commit_on_a_format_or_shellcheck_failure (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_commit_hook_stops_a_commit_on_a_format_or_shellcheck_failure) ... ok
 test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern (tests.unit.test_result_precheck.ResultPrecheckTest.test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern) ... ok
 test_precheck_exits_1_and_records_ok_false_for_each_failing_check (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_exits_1_and_records_ok_false_for_each_failing_check) ... ok
@@ -63,6 +64,6 @@ test_three_repeat_prints_the_records_search_line (tests.unit.test_orchestrator_t
 test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout) ... ok
 
 ----------------------------------------------------------------------
-Ran 63 tests in 57.693s
+Ran 64 tests in 88.186s
 
 OK

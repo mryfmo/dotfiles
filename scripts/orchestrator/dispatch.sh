@@ -57,6 +57,11 @@
 #   (`●` unread, `○` read): agmsg's scripts expose no read_at time, this script
 #   never reads the message database, and it never passes an agent to
 #   history.sh, whose agent argument renames the caller's pane after it.
+#   Plan 024 P1-5: before an `AGMSG-ACCEPTANCE ... status=accepted` send, the task's newest `AGMSG-RESULT v1` in the
+#   pre-send window (none without a record) needs one `head=` (a commit here) and one `precheck=`, the sha256 of the
+#   head's `.orchestration/<task>/precheck.json`, whose `head` is the head or an ancestor whose diff to it is only under
+#   `.orchestration/<task>/`. A failure prints `precheck: <field> <reason>` (exit 1, nothing sent) under
+#   `PRECHECK_REQUIRED=1`, else `precheck: warning <field> <reason>`, and sends (plan 024 0d).
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -65,6 +70,8 @@
 # @arg $6 path Optional acceptance record (`.orchestration/acceptance/<task>.md`), relative to the current directory.
 # @env AGMSG_SCRIPTS The agmsg scripts directory (default `$HOME/.agents/skills/agmsg/scripts`).
 # @env BUS_READ_WINDOW The newest rows each history read takes (default 200, a positive integer).
+# @env PRECHECK_REQUIRED `1` refuses (exit 1) an accepted ACCEPTANCE without a matching precheck; unset or `0` warns; any
+#   other value is a usage error.
 # @exitcode 0 Sent, and recorded when a record was given (agmsg-dispatch's own status otherwise).
 # @exitcode 1 A field check failed, the task file fails the task-consistency check, the record is malformed, or the sent line was not recorded.
 # @exitcode 2 Usage error, the file is not one AGMSG-TASK, AGMSG-ACCEPTANCE or AGMSG-PING v1 line, or PyYAML is not in
@@ -149,6 +156,64 @@ if (($(count_of task_id) != 1)) || [[ -z "$(value_of task_id)" ]]; then
     echo "dispatch: the line needs exactly one non-empty task_id=" >&2
     exit 1
 fi
+required=${PRECHECK_REQUIRED:-0}
+[[ ${required} == 0 || ${required} == 1 ]] || usage
+# Plan 024 P1-5: argv is the task id and the pre-send window file ('' when none was read); git runs in the root.
+read -r -d '' prechecker << 'PY' || true
+import hashlib, json, re, subprocess, sys
+task, window = sys.argv[1:3]
+def git(*args):
+    return subprocess.run(["git", *args], capture_output=True)
+def problem():
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", task):
+        return f"task_id {task} is not a task id"
+    if not window:
+        return "result no history window was read (no acceptance record was given)"
+    rows = [row[3].split() for row in json.load(open(window))]
+    found = [t for t in rows if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
+    if not found:
+        return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
+    heads = [t[5:] for t in found[-1] if t.startswith("head=")]
+    wants = [t[9:] for t in found[-1] if t.startswith("precheck=")]
+    if len(heads) != 1 or not re.fullmatch(r"[0-9a-f]{40}", heads[0]):
+        return "head the RESULT needs one head= of 40 hex digits"
+    if len(wants) != 1 or not re.fullmatch(r"[0-9a-f]{64}", wants[0]):
+        return "precheck the RESULT needs one precheck= of 64 hex digits"
+    head, want, path = heads[0], wants[0], f".orchestration/{task}/precheck.json"
+    if git("cat-file", "-e", f"{head}^{{commit}}").returncode:
+        return f"head {head} is not a commit in this checkout"
+    blob = git("cat-file", "blob", f"{head}:{path}")
+    got = hashlib.sha256(blob.stdout).hexdigest() if blob.returncode == 0 else "nothing (no such file)"
+    if got != want:
+        return f"precheck mismatch: the RESULT has {want}, {path} at {head} hashes to {got}"
+    try:
+        field = json.loads(blob.stdout)["head"]
+    except (ValueError, KeyError, TypeError):
+        field = None
+    if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field):
+        return f"precheck.json:head {path} at {head} has no 40-hex head"
+    if field != head and git("merge-base", "--is-ancestor", field, head).returncode:
+        return f"precheck.json:head {field} is not an ancestor of {head}"
+    if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode:
+        return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"
+    return ""
+print(problem())
+PY
+# @description Refuse (PRECHECK_REQUIRED=1) or warn about an accepted ACCEPTANCE whose precheck does not match.
+# @arg $1 path The pre-send window file, or empty when no history was read.
+precheck_gate() {
+    local problem
+    [[ ${tokens[0]} == AGMSG-ACCEPTANCE && "$(value_of status || true)" == accepted ]] || return 0
+    problem="$(cd -- "${root}" && "${clean[@]}" python3 -I -c "${prechecker}" "$(value_of task_id)" "$1")" ||
+        problem="checker the precheck check itself failed"
+    [[ -n ${problem} ]] || return 0
+    ((required)) || {
+        echo "precheck: warning ${problem}" >&2
+        return 0
+    }
+    echo "precheck: ${problem}" >&2
+    exit 1
+}
 # Thread 4254163604: a TASK whose file is not hash-bound is never sent. The kind is the parsed
 # first token, so a tab after it does not skip this check (thread 4260535901).
 if [[ ${tokens[0]} == AGMSG-TASK ]]; then
@@ -242,7 +307,10 @@ PY
         }
     fi
 fi
-[[ -n ${record} ]] || exec agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}"
+if [[ -z ${record} ]]; then
+    precheck_gate ''
+    exec agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}"
+fi
 
 # Modes: `check` parses the record and writes the pre-send window to the window file; `append` aligns
 # history.sh's post-send window on stdin with it, takes the sent row's read marker (● unread, ○ read) and appends it.
@@ -346,6 +414,7 @@ trap 'rm -f -- "${window}"' EXIT
 # Team-wide: history.sh renames the calling pane after an agent argument (thread 4254399805).
 bus() { "${AGMSG_SCRIPTS:-${HOME}/.agents/skills/agmsg/scripts}/history.sh" "${team}" "" "${limit}"; }
 bus | python3 -I -c "${recorder}" check "${record}" "${line}" "${from}" "${to}" "${window}" "${task}"
+precheck_gate "${window}"
 rc=0
 agmsg-dispatch "${team}" "${from}" "${to}" "${pane}" "${line}" || rc=$?
 bus | python3 -I -c "${recorder}" append "${record}" "${line}" "${from}" "${to}" "${window}" "${task}"

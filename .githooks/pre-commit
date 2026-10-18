@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# @file pre-commit
+# @brief Stop a commit whose staged files fail CI's formatting commands or shellcheck (plan 024 P1-5).
+# @description
+#   Runs `result-precheck.sh --staged`: CI's three formatting commands on the staged files of their CI scopes
+#   (Amendment 1) and `shellcheck -x` on the staged `*.sh` or bash or sh shebang files; a failure names the command.
+#   A worktree runs this hook once its `core.hooksPath` names this directory (P1-7, herdr-agents).
+# @exitcode 0 Every check passed. 1 A check failed; the commit is stopped.
+set -euo pipefail
+bash "$(git rev-parse --show-toplevel)/scripts/orchestrator/result-precheck.sh" --staged < /dev/null || {
+    echo "pre-commit: the commit is stopped" >&2
+    exit 1
+}

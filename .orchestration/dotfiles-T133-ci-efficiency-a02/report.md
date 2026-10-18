@@ -6,7 +6,7 @@ branch: tools/ci-efficiency-a01
 pr: 409
 base: 99a4a80f (origin/main)
 previous_head: 6b2ff08f0b09d719eb3786fd032ce16786002257 (a02's first RESULT; the revise round 1 of 08:03:45Z, amendment 1)
-code_commit: 3bd08848 (the test commit 1bb5d946 and the fix fa66ad4d; the worker review round: 72fcb93b and 492e7e28; the orchestrator's revise round 1: eb4a0c34 and 3bd08848)
+code_commit: 2ac65e3b (the test commit 1bb5d946 and the fix fa66ad4d; the worker review round: 72fcb93b and 492e7e28; the orchestrator's revise round 1: eb4a0c34 and 3bd08848, then the canary's race: b9b8a5b2 and 2ac65e3b)
 task_sha256: 684257319a5b9b5f5c67fe5852aedd76fd5b9db4bb4f5a1ff0b928a0ad61ab98 (amendment 1; dispatched at 0695769b…)
 ---
 
@@ -60,6 +60,15 @@ The orchestrator decided the spec-level P2 this seat proposed in its 07:58Z RESU
 - **Records:** the task copy is amendment 1's text (`68425731…`), and `revise.yaml` carries `previous_head` and the selector. The Check's command passes 33 tests, and `make unit-test` and `make format` ran again at `3bd08848` (validation §4, §11 and §12).
 - **Caps:** 216 changed lines outside `tests/`, `.orchestration/` and the moved job (302 with the 86 lines the move removed from `remote.yaml`; cap 330). `private-bootstrap.yaml` counted separately: 104 added lines. `tests/`: 435 (cap 500).
 
+## The ubuntu-26.04 canary's race (found in revise round 1, fixed before the RESULT)
+
+The first push of revise round 1 (`c2da7960`) passed every required context. The non-required canary `test (ubuntu-26.04, client)` (run 39111755140, job 117629185615) failed `test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs` with `[0, 4] != [0, 0]`: both of two concurrent calls for one run reran it.
+
+- **Root cause:** uutils' `mkdir` ignored `EEXIST` on a non-recursive creation until uutils commit `bf423f388d` (2026-08-28, "mkdir: do not ignore EEXIST on non-recursive creation", fixing uutils/coreutils#13970). Ubuntu 26.04 ships an older uutils, so there the `mkdir` binary returns 0 for a directory another call has just created. GNU `mkdir` (ubuntu-24.04) and macOS refuse it, which is why those jobs passed. Item 11's reservation was therefore not exclusive on that platform.
+- **Red** in `b9b8a5b2`: the same test gains a case with a fake `mkdir` that behaves the same way, first on `PATH`. That makes the race deterministic on any platform: `[0, 4] != [0, 0]` on this Mac.
+- **Fixed** in `2ac65e3b`: the reservation is claimed by the `mkdir(2)` system call itself, through `python3`'s `os.mkdir`. `FileExistsError` exits 4 and any other failure exits 1. It stays an atomic mkdir of the per-run directory, independent of the `mkdir` binary.
+- **Check:** the 33 tests are green (validation §4 and §16).
+
 ## Item 12: evidence counts
 
 - My a01 RESULT's "CI 13/13" is withdrawn: it counted `gh pr checks` rows, which mix check runs and commit statuses.
@@ -68,11 +77,11 @@ The orchestrator decided the spec-level P2 this seat proposed in its 07:58Z RESU
 
 ## The Check
 
-- `uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v`: 33 tests, green at `3bd08848` (§4); 32 at `492e7e28` before the revise round.
-- `make unit-test` (§11, complete output, at `3bd08848`): 1188 tests, `rc=2`, with 38 failures and 10 errors (the same at `492e7e28` with 1187 tests). The run sets `GIT_CONFIG_GLOBAL=/dev/null` and puts the `mktemp` shim first on `PATH` to neutralize the sandbox's signing and `mktemp` limits. The 48 failing tests sit in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (31) and `test_runtime_health` (8), none touched by this PR. The same 48 fail on `origin/main` `99a4a80f` under the same settings, so they are reported as pre-existing failures, never as passing.
-- `make format` (§12, complete output, at `3bd08848`): `rc=2`. Its whole-tree shfmt step flags 12 files, all unchanged from `origin/main`. ruff and prettier are clean.
+- `uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v`: 33 tests, green at `2ac65e3b` (§4); 32 at `492e7e28` before the revise round.
+- `make unit-test` (§11, complete output, at `2ac65e3b`): 1188 tests, `rc=2`, with 38 failures and 10 errors (the same at `3bd08848`, and at `492e7e28` with 1187 tests). The run sets `GIT_CONFIG_GLOBAL=/dev/null` and puts the `mktemp` shim first on `PATH` to neutralize the sandbox's signing and `mktemp` limits. The 48 failing tests sit in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (31) and `test_runtime_health` (8), none touched by this PR. The same 48 fail on `origin/main` `99a4a80f` under the same settings, so they are reported as pre-existing failures, never as passing.
+- `make format` (§12, complete output, at `2ac65e3b`): `rc=2`. Its whole-tree shfmt step flags 12 files, all unchanged from `origin/main`. ruff and prettier are clean.
 - `shellcheck scripts/orchestrator/ci-rerun.sh` is clean. `shfmt -d`: the repository form `shfmt -i 4 -sr -d` is clean. A bare `shfmt -d` asks for tabs on this file and on every tracked script, because `.editorconfig` sets `indent_size = 4` with no `indent_style`; `make format` and CI pass `-i 4 -sr` (§6).
-- Caps (§8, at `3bd08848`): 216 changed lines outside `tests/`, `.orchestration/` and the moved job (302 if the 86 lines the move removed from `remote.yaml` count too; cap 330). `private-bootstrap.yaml`, the extracted job, counted separately: 104 added lines. `tests/`: 435 (cap 500).
+- Caps (§8, at `2ac65e3b`): 223 changed lines outside `tests/`, `.orchestration/` and the moved job (309 if the 86 lines the move removed from `remote.yaml` count too; cap 330). `private-bootstrap.yaml`, the extracted job, counted separately: 104 added lines. `tests/`: 445 (cap 500).
 - After the push: `gh run list --branch tools/ci-efficiency-a01 --json name,event,conclusion,headSha`, `gh pr checks 409 --required` and the final head's feedback counts go in the RESULT, because a record cannot hold its own commit's CI.
 
 ## Changed files

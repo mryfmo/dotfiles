@@ -79,10 +79,14 @@ class TaskCheckersTest(unittest.TestCase):
         for path, block in zip(files, blocks[2::2], strict=True):
             path.write_text(block)
         c2467, c467, c23467 = {"C2", "C4", "C6", "C7"}, {"C4", "C6", "C7"}, {"C2", "C3", "C4", "C6", "C7"}
-        expected = {"process-rules-a01": {"C2", "C6"}, "process-rules-a05": c467, "process-rules-a06": c467}
-        expected |= dict.fromkeys(["process-rules-a02", "process-rules-a03", "process-rules-a04"], c2467)
-        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467)
-        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467)
+        expected = {
+            "process-rules-a01": {"C2", "C6"},
+            "process-rules-a05": c467 | {"C14"},
+            "process-rules-a06": c467 | {"C14"},
+        }
+        expected |= dict.fromkeys(["process-rules-a02", "process-rules-a03", "process-rules-a04"], c2467 | {"C14"})
+        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467 | {"C11", "C15"})
+        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467 | {"C11", "C15"})
         expected = {f"dotfiles-T128-{t}.md": ids for t, ids in expected.items()}
         self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
 
@@ -198,7 +202,13 @@ class TaskCheckersTest(unittest.TestCase):
         for after in (".bak", "", " and its test", "/task.md", ") and more", '" and more', ", and more", "* and more"):
             with self.subTest(after=after):
                 path = self.task(
-                    uncovered=("scripts/foo.py",), rows=[{"control": f"the PR adds scripts/foo.py{after}"}]
+                    uncovered=("scripts/foo.py",),
+                    rows=[
+                        {
+                            "control": f"the PR adds scripts/foo.py{after}",
+                            "disposition": "residual: a compensating control",
+                        }
+                    ],
                 )
                 found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
                 self.assertEqual({"C4"} if after == ".bak" else set(), found)

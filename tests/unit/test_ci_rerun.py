@@ -243,6 +243,16 @@ class CiRerunTest(unittest.TestCase):
         same = [self.start("101", GH_LOG_DELAY="1") for _ in range(2)]
         self.assertEqual([0, 4], sorted(self.finish(process).returncode for process in same))
         self.assertEqual(1, len(self.reruns()))
+        # PR #409's ubuntu-26.04 canary: uutils' mkdir before bf423f388d (2026-08-28) returned 0 for a directory another
+        # call had just created, so the claim must not rest on the mkdir binary.
+        (fake := self.t / "uutils").mkdir()
+        (fake / "mkdir").write_text('#!/usr/bin/env bash\n/bin/mkdir "$@" 2> /dev/null || [ -d "${!#}" ]\n')
+        (fake / "mkdir").chmod(0o755)
+        self.reset()
+        path = f"{fake}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        racing = [self.start("101", GH_LOG_DELAY="1", PATH=path) for _ in range(2)]
+        self.assertEqual([0, 4], sorted(self.finish(process).returncode for process in racing))
+        self.assertEqual(1, len(self.reruns()))
         self.reset()
         distinct = [self.start(run_id, GH_LOG_DELAY="1") for run_id in ("101", "303")]
         self.assertEqual([0, 0], [self.finish(process).returncode for process in distinct])

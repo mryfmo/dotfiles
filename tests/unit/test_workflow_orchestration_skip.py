@@ -402,8 +402,11 @@ class DecisionTest(unittest.TestCase):
             clone, git = scratch_repository(Path(temp))
             base = git("rev-parse", "origin/main")
             for name, writes, macos in (
-                ("os-independent", [("scripts/x.py", "x\n"), ("docs/x.md", "x\n")], "false"),
+                ("os-independent", [("scripts/x.py", "x\n"), ("docs/x.md", "x\n"), ("README.md", "x\n")], "false"),
                 ("shell", [("home/x.sh", "x\n")], "true"),
+                # a01 audit P2: Markdown under home/ or install/ is applied or installed, so it keeps macOS.
+                ("home-markdown", [("home/dot_claude/skills/x/SKILL.md", "x\n")], "true"),
+                ("install-markdown", [("install/common/README.md", "x\n")], "true"),
             ):
                 head = pull_request_head(clone, git, f"m-{name}", writes)
                 for event, os_name, expected in (

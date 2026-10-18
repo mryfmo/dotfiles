@@ -6,7 +6,7 @@ amendment: 1
 
 # Validation
 
-Base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox. The Check runner, the mutation check and the default precheck ran on code head de167fa1; 105e42cf (Amendment 2) changes only two comment lines of `result-precheck.sh` (the diff is in the last section), and the proof precheck ran on 105e42cf. The final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
+Base `origin/main` 99a4a80f, worker-c worktree, inside the Claude seat's Bash sandbox. The Check runner, the mutation check and the default precheck ran on code head de167fa1; 105e42cf (Amendment 2) changes only two comment lines of `result-precheck.sh` (the diff is in the last section), the proof precheck ran on 105e42cf, and after the Bot's review the fix round a7b0da2f (last sections) re-ran the two modules and the precheck. The final commit adds only `.orchestration/dotfiles-T133-result-precheck-a01/` evidence. Every block is verbatim output with the real exit status.
 
 ## Item 0 (the parked PR)
 
@@ -315,7 +315,7 @@ $ the failing set by module (this head)
    2 (test_aws_cli_acquisition.
 ```
 
-## The committed precheck (Amendment 2's form) on 105e42cf
+## The precheck in Amendment 2's form on 105e42cf (superseded by the fix round below)
 
 ```text
 $ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
@@ -396,6 +396,89 @@ index c5854818..864f8dbf 100755
  read -r -d '' writer << 'PY' || true
  import hashlib, json, os, sys
  from datetime import UTC, datetime
+```
+
+## Bot fix round a7b0da2f (threads 4305945403 and 4305945407)
+
+Each extended test run against the pre-fix script of 1763da66 (restored afterwards, hash verified), then the two modules and the precheck on a7b0da2f.
+
+```text
+$ bash red-old.sh 1763da66ae0d86ad2e7d481072cba27be41dfc71
+.githooks/pre-push at 1763da66 -> test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern exit=1
+FAIL: test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern (branch='removed')
+FAILED (failures=1)
+scripts/orchestrator/dispatch.sh at 1763da66 -> test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required exit=1
+FAIL: test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required (field='precheck.json:checks')
+FAIL: test_dispatch_refuses_an_accepted_acceptance_without_a_matching_precheck_when_required (field='result the newest')
+FAILED (failures=2)
+exit=0
+
+$ git diff --stat 105e42cf a7b0da2f -- scripts .githooks tests
+ .githooks/pre-push                 | 10 ++++----
+ scripts/orchestrator/dispatch.sh   | 43 ++++++++++++++++------------------
+ tests/unit/test_result_precheck.py | 47 +++++++++++++++++++++++++-------------
+ 3 files changed, 56 insertions(+), 44 deletions(-)
+exit=0
+
+$ uv run python -m unittest tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
+Ran 63 tests in 58.105s
+OK
+exit=0
+
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a01 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools
+result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+precheck=24beae719509c95f0ce01317ab24675b7e6db1152b9cb1d44d3cf5095a282f32
+exit=0
+$ cat precheck.json
+{
+  "head": "a7b0da2f60e4e11af879cdc9b73a4b90cf423d03",
+  "tree": "3bcc2b188ddaf345c00817e9170140ea542adef9",
+  "generated_at": "2026-10-18T06:07:54Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "b3dadb74c4315f43676628119eb8a503974e3180e7680dd6372b42fa012dc514"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "f170e34f5d9c464c7dd7be27fb8f87bb26969019903d50b6636103c97a779796"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ec427b4abbf24ab3958dd1498e28cc76113d99c85519521cfc6951635053f42a"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": []
+}
+$ cat result.txt
+AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a01 status=ready_for_review head=a7b0da2f60e4e11af879cdc9b73a4b90cf423d03 precheck=24beae719509c95f0ce01317ab24675b7e6db1152b9cb1d44d3cf5095a282f32 task_copy=05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f report=.orchestration/dotfiles-T133-result-precheck-a01/report.md validation=.orchestration/dotfiles-T133-result-precheck-a01/validation.md sandbox=.orchestration/dotfiles-T133-result-precheck-a01/sandbox.md learning=.orchestration/dotfiles-T133-result-precheck-a01/learning.md
 ```
 
 ## The runner

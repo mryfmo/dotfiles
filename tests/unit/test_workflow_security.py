@@ -9,6 +9,7 @@ EXPECTED_PERMISSIONS = {
     "agent-assets.yml": {"contents": "read"},
     "docs.yml": {"contents": "write"},
     "macos.yaml": {"contents": "read"},
+    "regime.yml": {"contents": "read"},
     "remote.yaml": {"contents": "read"},
     "test.yaml": {"contents": "read"},
     "ubuntu.yaml": {"contents": "read"},

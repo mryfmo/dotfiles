@@ -162,16 +162,21 @@ required=${PRECHECK_REQUIRED:-0}
 read -r -d '' prechecker << 'PY' || true
 import hashlib, json, re, subprocess, sys
 task, window = sys.argv[1:3]
+REQUIRED = "unit-test render-check format shellcheck secrets local-review"
 git = lambda *args: subprocess.run(["git", *args], capture_output=True)
 def problem():
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", task): return f"task_id {task} is not a task id"
     if not window: return "result no history window was read (no acceptance record was given)"
     rows = [row[3].split() for row in json.load(open(window))]
-    found = [t for t in rows if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
+    found = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
     if not found: return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
-    if "status=ready_for_review" not in found[-1]: return "result the newest RESULT is not status=ready_for_review"
-    heads = [t[5:] for t in found[-1] if t.startswith("head=")]
-    wants = [t[9:] for t in found[-1] if t.startswith("precheck=")]
+    result = rows[found[-1]]
+    # The newest status=revise ACCEPTANCE before that RESULT names the selectors whose proofs the record must carry.
+    revises = [t for t in rows[: found[-1]] if t[:2] == ["AGMSG-ACCEPTANCE", "v1"] and f"task_id={task}" in t and "status=revise" in t]
+    requested = [t[6:] for t in revises[-1] if t.startswith("check=")] if revises else []
+    if "status=ready_for_review" not in result: return "result the newest RESULT is not status=ready_for_review"
+    heads = [t[5:] for t in result if t.startswith("head=")]
+    wants = [t[9:] for t in result if t.startswith("precheck=")]
     if len(heads) != 1 or not re.fullmatch(r"[0-9a-f]{40}", heads[0]): return "head the RESULT needs one head= of 40 hex digits"
     if len(wants) != 1 or not re.fullmatch(r"[0-9a-f]{64}", wants[0]): return "precheck the RESULT needs one precheck= of 64 hex"
     head, want, path = heads[0], wants[0], f".orchestration/{task}/precheck.json"
@@ -185,11 +190,18 @@ def problem():
         doc = None
     field = doc.get("head") if isinstance(doc, dict) else None
     if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field): return f"precheck.json:head {path} has no 40-hex head"
-    checks, selectors = doc.get("checks"), doc.get("selectors", [])
-    if not (isinstance(checks, list) and checks and isinstance(selectors, list)): return f"precheck.json:checks {path} lists no checks"
-    failed = [c.get("name") if isinstance(c, dict) else str(c) for c in checks if not isinstance(c, dict) or c.get("ok") is False]
-    failed += [s.get("selector") if isinstance(s, dict) else str(s) for s in selectors if not isinstance(s, dict) or s.get("ok") is not True]
-    if failed: return f"precheck.json:checks {path} at {head} records failed checks: {failed}"
+    checks, selectors, required = doc.get("checks"), doc.get("selectors"), REQUIRED.split()
+    if not (isinstance(checks, list) and checks): return f"precheck.json:checks {path} lists no checks"
+    if not all(isinstance(c, dict) and isinstance(c.get("name"), str) and "ok" in c for c in checks): return f"precheck.json:checks {path} at {head} has an entry without a name and an ok"
+    names = [c["name"] for c in checks]
+    if len(set(names)) != len(names) or not set(required) <= set(names): return f"precheck.json:checks {path} at {head} must name each of {required} once: {names}"
+    # Every executed check passed as the JSON boolean true; only the exact deferred local-review record is null.
+    failed = [c["name"] for c in checks if c["ok"] is not True and c != {"name": "local-review", "ok": None, "deferred": "orchestrator"}]
+    if failed: return f"precheck.json:checks {path} at {head} records checks that did not pass: {failed}"
+    if not isinstance(selectors, list) or not all(isinstance(s, dict) and isinstance(s.get("selector"), str) and s.get("ok") is True for s in selectors):
+        return f"precheck.json:selectors {path} at {head} is not a list of passing selector proofs"
+    missing = [r for r in requested if [s["selector"] for s in selectors].count(r) != 1]
+    if missing: return f"precheck.json:selectors {path} at {head} lacks exactly one proof of the requested {missing}"
     if field != head and git("merge-base", "--is-ancestor", field, head).returncode: return f"precheck.json:head {field} is not an ancestor of {head}"
     if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode:
         return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"

@@ -6,8 +6,9 @@
 #   output goes to `.orchestration/<task>/precheck-<name>.log` (masked) and the check to `{name, ok, exit,
 #   output_sha256}`: `unit-test` (`make unit-test` or `uv run python -m unittest <modules> -v`), `render-check`,
 #   `format` (Amendment 1: CI's formatting commands in CI's scopes, below), `shellcheck` (`-x`, the diff's `*.sh` and
-#   bash or sh shebang files), `secrets` (the diff from origin/main masked as a copy; a difference is a match, counted,
-#   never printed) and `local-review` (under `PRECHECK_LOCAL_REVIEW=seat`; else `{ok: null, deferred: orchestrator}`).
+#   bash or sh shebang files), `secrets` (the forced-text diff from origin/main, `git diff --text`, masked as a copy; a
+#   difference is a match, counted, never printed) and `local-review` (under `PRECHECK_LOCAL_REVIEW=seat`; else `{ok:
+#   null, deferred: orchestrator}`). A command a check needs that fails, or cannot run, fails that check.
 #   CI's scopes (`.github/workflows/test.yaml`; a change there is a one-line change in check_format):
 #     Run `shfmt`: git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
 #     Check Python and Markdown formatting: git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check
@@ -75,30 +76,42 @@ trap 'if [[ -e "${work}/previous" ]]; then git worktree remove --force "${work}/
 mask() {
     uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "$@"
 }
-# @description Mask a copy of a file and compare: exit 1 and print `secrets: <n> match(es)` on a difference, never the text.
+# @description Mask a copy of a file's printable text and compare: exit 1 and print `secrets: <n> match(es)` on a
+#   difference, never the text. Bytes outside printable ASCII become newlines first, so a NUL-bearing or binary blob
+#   hides nothing from the masker and cannot make it fail on decoding.
 # @arg $1 path The file.
 secrets_in() {
     local out
-    cp -- "$1" "${work}/copy"
-    out="$(mask "${work}/copy" 2>&1)" || out='masker failed'
-    if [[ ${out} != 'masker failed' ]] && cmp -s -- "$1" "${work}/copy"; then
+    LC_ALL=C tr -c '\11\12\40-\176' '\12' < "$1" > "${work}/text" || return
+    cp -- "${work}/text" "${work}/copy" || return
+    out="$(mask "${work}/copy" 2>&1)" || {
+        echo "secrets: the masker failed"
+        return 1
+    }
+    if cmp -s -- "${work}/text" "${work}/copy"; then
         echo "secrets: 0 match(es)"
         return 0
     fi
-    [[ ${out} =~ masked\ ([0-9]+)\ match ]] && echo "secrets: ${BASH_REMATCH[1]} match(es)" || echo "secrets: ${out}"
+    [[ ${out} =~ masked\ ([0-9]+)\ match ]] && echo "secrets: ${BASH_REMATCH[1]} match(es)" || echo "secrets: 1 match(es)"
     return 1
 }
-# @description List the tracked (or `staged`) files of some pathspecs into the scope file; exit 1 when there is none.
-# @arg $1 string `tracked` or `staged`; then the pathspecs.
-scope() {
-    local list=(git ls-files -z --)
+# @description Run a command on the tracked (or `staged`) files of some pathspecs; nothing runs when none matches, and
+#   a listing that fails fails the call (errexit is off in a function run through `||`, so every failure is explicit).
+# @arg $1 string `tracked` or `staged`; then the pathspecs, `--` and the command.
+on_files() {
+    local list=(git ls-files -z --) specs=()
     [[ $1 != staged ]] || list=(git diff --cached --name-only -z --diff-filter=ACMR --)
     shift
-    "${list[@]}" "$@" > "${work}/scope"
-    [[ -s ${work}/scope ]]
-}
-# @description Run a command on the scope file's files, naming the command when it fails.
-on_scope() {
+    while [[ $1 != -- ]]; do
+        specs+=("$1")
+        shift
+    done
+    shift
+    "${list[@]}" "${specs[@]}" > "${work}/scope" || {
+        echo "failed: ${list[*]} ${specs[*]}"
+        return 1
+    }
+    [[ -s ${work}/scope ]] || return 0
     xargs -0 "$@" < "${work}/scope" || {
         echo "failed: $*"
         return 1
@@ -108,26 +121,31 @@ on_scope() {
 # @arg $1 string `tracked` or `staged`.
 check_format() {
     local rc=0
-    ! scope "$1" ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' || on_scope shfmt --indent 4 --space-redirects --diff || rc=1
-    ! scope "$1" '*.py' || on_scope ruff format --config ruff.toml --check || rc=1
-    ! scope "$1" '*.md' || on_scope prettier --check || rc=1
+    on_files "$1" ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' -- shfmt --indent 4 --space-redirects --diff || rc=1
+    on_files "$1" '*.py' -- ruff format --config ruff.toml --check || rc=1
+    on_files "$1" '*.md' -- prettier --check || rc=1
     return "${rc}"
 }
 # @description shellcheck the `*.sh` and bash or sh shebang files of the diff from origin/main (or of the `staged` files).
 check_shellcheck() {
-    local f first
+    local f first files=()
     if [[ $1 == staged ]]; then
-        scope staged || true
+        git diff --cached --name-only -z --diff-filter=ACMR > "${work}/names" || return
     else
-        git diff --name-only -z origin/main...HEAD > "${work}/scope"
+        git diff --name-only -z origin/main...HEAD > "${work}/names" || return
     fi
     while IFS= read -r -d '' f; do
         first=''
         [[ ! -f ${f} ]] || IFS= read -r first < "${f}" || true
-        [[ -f ${f} && (${f} == *.sh || ${first} =~ ^#!.*[/[:blank:]](ba)?sh([[:blank:]]|$)) ]] && printf '%s\0' "${f}"
-    done < "${work}/scope" > "${work}/shell" || true
-    mv -- "${work}/shell" "${work}/scope"
-    [[ ! -s ${work}/scope ]] || on_scope shellcheck -x
+        if [[ -f ${f} && (${f} == *.sh || ${first} =~ ^#!.*[/[:blank:]](ba)?sh([[:blank:]]|$)) ]]; then
+            files+=("${f}")
+        fi
+    done < "${work}/names"
+    ((${#files[@]})) || return 0
+    shellcheck -x "${files[@]}" || {
+        echo "failed: shellcheck -x ${files[*]}"
+        return 1
+    }
 }
 
 if [[ -n ${secrets} || -n ${staged} ]]; then
@@ -141,7 +159,8 @@ if [[ -n ${secrets} || -n ${staged} ]]; then
     # Thread 4305945406: the checks read the staged blobs, the whole index exported with every tracked config.
     GIT_DIR="$(git rev-parse --absolute-git-dir)" GIT_WORK_TREE=${PWD} GIT_INDEX_FILE="$(git rev-parse --path-format=absolute --git-path index)"
     export GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE # a hook's GIT_INDEX_FILE may be relative to the root
-    git checkout-index -a --prefix="${work}/index/" && cd -- "${work}/index"
+    git checkout-index -a --prefix="${work}/index/" || exit 1
+    cd -- "${work}/index"
     check_format staged || rc=1
     check_shellcheck staged || rc=1
     exit "${rc}"
@@ -170,12 +189,19 @@ run_check() {
 }
 # shellcheck disable=SC2329 # run through run_check
 check_secrets() {
-    git diff origin/main...HEAD > "${work}/diff"
+    git diff --text origin/main...HEAD > "${work}/diff" || return
     secrets_in "${work}/diff"
 }
 # shellcheck disable=SC2329 # run through run_check
 check_local_review() {
-    bash scripts/orchestrator/local-review.sh "${task}" "$(git rev-parse HEAD)" "$(gh pr view --json number --jq .number)"
+    local head pr
+    head="$(git rev-parse HEAD)" || return
+    pr="$(gh pr view --json number --jq .number)" || return
+    [[ ${pr} =~ ^[0-9]+$ ]] || {
+        echo "local-review: no PR number for this branch: ${pr}"
+        return 1
+    }
+    bash scripts/orchestrator/local-review.sh "${task}" "${head}" "${pr}"
 }
 
 touch "${work}/rows" "${work}/selectors"

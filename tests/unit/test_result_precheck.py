@@ -24,17 +24,22 @@ STUBS = {
     # make <target> fails while make-<target>-fails exists; the other tools fail while <name>-fails exists.
     "make": RECORD + '[[ ! -f "$CALLS/make-$1-fails" ]]\n',
     **{name: RECORD + f'[[ ! -f "$CALLS/{name}-fails" ]]\n' for name in ("shfmt", "ruff", "prettier", "shellcheck")},
-    "gh": RECORD + "echo 7\n",
+    "gh": RECORD + '[[ ! -f "$CALLS/gh-fails" ]] || exit 1\necho 7\n',
     "agmsg-dispatch": RECORD
     + 'printf "  ○ [2026-10-18T05:00:00Z] %s → %s: %s\\n" "$2" "$3" "$5" >> "$CALLS/history"\n',
     "uv": RECORD
     + 'if [[ " $* " == *" --mask-secrets "* ]]; then\n'
+    + f'  [[ ! -f "$CALLS/real-masker" ]] || exec "{shutil.which("uv")}" "$@"\n'
     + '  on=; for f in "$@"; do\n'
     + '    [[ -z $on || ! -f "$CALLS/masker-changes" ]] || echo masked >> "$f"; [[ $f != --mask-secrets ]] || on=1\n'
     + "  done; exit 0\n"
     + f'fi\nshift; exec "{sys.executable}" "${{@:2}}"\n',
 }
 LOCAL_REVIEW = '#!/usr/bin/env bash\necho "$*" >> "$CALLS/local-review.log"\nexit "$(cat "$CALLS/local-review-status" 2> /dev/null || echo 0)"\n'
+CHECKS_OK = [
+    {"name": n, "ok": True, "exit": 0} for n in ("unit-test", "render-check", "format", "shellcheck", "secrets")
+]
+DEFERRED = {"name": "local-review", "ok": None, "deferred": "orchestrator"}
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 
 
@@ -93,7 +98,7 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def commit(self, message):
         self.git("add", "-A")
-        self.git("commit", "-q", "--no-verify", "-m", message)
+        self.git("commit", "-q", "--no-verify", "--allow-empty", "-m", message)
         return self.git("rev-parse", "HEAD")
 
     def run_script(self, script, *args, env=None, cwd=None):
@@ -129,12 +134,16 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertIn(f"head={head} precheck=", (path.parent / "result.txt").read_text())
         self.assertIn(f"{TASK} {head} 7", (self.calls / "local-review.log").read_text())
         self.assertIn("-x scripts/new.sh", (self.calls / "shellcheck.log").read_text())
-        for name, trigger in zip(
-            names,
-            ["make-unit-test-fails", "make-render-check-fails", "shfmt-fails", "shellcheck-fails", "masker-changes"],
-            strict=False,
+        for name, trigger in (
+            ("unit-test", "make-unit-test-fails"),
+            ("render-check", "make-render-check-fails"),
+            ("format", "shfmt-fails"),
+            ("format", "ruff-fails"),
+            ("format", "prettier-fails"),
+            ("shellcheck", "shellcheck-fails"),
+            ("secrets", "masker-changes"),
         ):
-            with self.subTest(check=name):
+            with self.subTest(check=name, trigger=trigger):
                 (self.calls / trigger).touch()
                 result = self.precheck(env=seat)
                 (self.calls / trigger).unlink()
@@ -178,6 +187,46 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)
         self.assertNotIn("worktree prune", PRECHECK.read_text())
 
+    def test_precheck_records_failed_commands_as_not_ok(self):
+        # Local review of a5cb73b4 (P2, result-precheck.sh:173-174): a failed prerequisite never passes a check.
+        self.git("switch", "-q", "-c", "feature")
+        self.write("scripts/new.sh", "#!/usr/bin/env bash\necho new\n")
+        self.commit("feature")
+        healthy = self.precheck()
+        self.assertEqual(healthy.returncode, 0, healthy.stdout + healthy.stderr)
+
+        def failed(*names, env=None):
+            result = self.precheck(env=env)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            checks = {c["name"]: c for c in self.record()["checks"]}
+            for name in names:
+                self.assertIs(checks[name]["ok"], False, name)
+                self.assertNotEqual(checks[name]["exit"], 0, name)
+            return checks
+
+        main = self.git("rev-parse", "origin/main")
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+        failed("shellcheck", "secrets")
+        self.assertIn("fatal", (self.repo / f".orchestration/{TASK}/precheck-secrets.log").read_text())
+        orphan = self.git("commit-tree", "4b825dc642cb6eb9a060e54bf8d69288fbee4904", "-m", "unrelated")
+        self.git("update-ref", "refs/remotes/origin/main", orphan)
+        failed("shellcheck", "secrets")
+        self.git("update-ref", "refs/remotes/origin/main", main)
+        wrapper = self.temp / "bin/git"
+        wrapper.write_text(f'#!/usr/bin/env bash\n[[ $1 != ls-files ]] || exit 3\nexec "{shutil.which("git")}" "$@"\n')
+        wrapper.chmod(0o755)
+        failed("format")
+        wrapper.unlink()
+        real = self.temp / "realbin"
+        real.mkdir()
+        for name, target in (("git", shutil.which("git")), ("bash", shutil.which("bash")), ("python3", sys.executable)):
+            (real / name).symlink_to(target)
+        (self.temp / "bin/prettier").unlink()
+        failed("format", env={"PATH": f"{self.temp / 'bin'}{os.pathsep}{real}{os.pathsep}/usr/bin{os.pathsep}/bin"})
+        (self.calls / "gh-fails").touch()
+        failed("local-review", env={"PRECHECK_LOCAL_REVIEW": "seat"})
+        self.assertFalse((self.calls / "local-review.log").exists())
+
     def test_precheck_secrets_mode_counts_and_never_prints_the_match(self):
         diff = self.temp / "diff"
         diff.write_text(f"diff --git a/x b/x\n+value={token()}\n")
@@ -190,11 +239,12 @@ class ResultPrecheckTest(unittest.TestCase):
         diff.write_text("diff --git a/x b/x\n+value=clean\n")
         self.assertEqual(self.run_script(PRECHECK, "--secrets", str(diff), env=env, cwd=ROOT).returncode, 0)
 
-    def dispatch(self, result_line, required):
+    def dispatch(self, result_line, required, revise=None):
         record = self.repo / ".orchestration/acceptance/t.md"
         record.parent.mkdir(parents=True, exist_ok=True)
         record.write_text('---\n{"format": 1, "task": "t"}\n---\n')
-        (self.calls / "history").write_text(f"  ● [2026-10-18T04:00:00Z] worker → orch: {result_line}\n")
+        rows = f"  ● [2026-10-18T03:00:00Z] orch → worker: {revise}\n" if revise else ""
+        (self.calls / "history").write_text(rows + f"  ● [2026-10-18T04:00:00Z] worker → orch: {result_line}\n")
         (self.calls / "agmsg-dispatch.log").unlink(missing_ok=True)
         line = self.temp / "line.txt"
         line.write_text("AGMSG-ACCEPTANCE v1 task_id=t status=accepted reason=ok next_action=none\n")
@@ -211,7 +261,7 @@ class ResultPrecheckTest(unittest.TestCase):
             self.write(".orchestration/t/precheck.json", document)
             return hashlib.sha256(document.encode()).hexdigest()
 
-        sum_ = record({"name": "unit-test", "ok": True}, {"name": "local-review", "ok": None})
+        sum_ = record(*CHECKS_OK, DEFERRED)
         head = self.commit("evidence")
         ready = "AGMSG-RESULT v1 task_id=t status=ready_for_review"
         result, sent = self.dispatch(f"{ready} head={head} precheck={sum_}", "1")
@@ -219,7 +269,7 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertNotIn("precheck:", result.stderr)
         self.write("a.py", "x = 2\n")
         outside = self.commit("evidence and code")
-        failed_sum = record({"name": "unit-test", "ok": False})
+        failed_sum = record({"name": "unit-test", "ok": False, "exit": 2}, *CHECKS_OK[1:], DEFERRED)
         failed = self.commit("a failed record")
         cases = [
             ("precheck the RESULT", f"{ready} head={head}"),
@@ -238,6 +288,49 @@ class ResultPrecheckTest(unittest.TestCase):
                 warned, sent = self.dispatch(result_line, "0")
                 self.assertEqual((warned.returncode, sent), (0, True), warned.stderr)
                 self.assertIn(f"precheck: warning {field_name}", warned.stderr)
+
+    def test_dispatch_rejects_malformed_checks_and_missing_requested_selectors(self):
+        # Local review of a5cb73b4 (P2, dispatch.sh:188-190): the record proves all six checks and every requested proof.
+        field = self.git("rev-parse", "HEAD")
+        sel_a, sel_b = "tests/unit/test_x.py::test_a", "tests/unit/test_x.py::test_b"
+        revise = f"AGMSG-ACCEPTANCE v1 task_id=t status=revise previous_head={'a' * 40} check={sel_a} check={sel_b}"
+        proofs = [{"selector": sel_a, "ok": True}, {"selector": sel_b, "ok": True}]
+
+        def result(checks, selectors=()):
+            document = json.dumps({"head": field, "checks": checks, "selectors": list(selectors)}) + "\n"
+            self.write(".orchestration/t/precheck.json", document)
+            self.git("add", ".orchestration/t/precheck.json")  # only the record, so the evidence-only ancestry holds
+            self.git("commit", "-q", "--no-verify", "--allow-empty", "-m", "record")
+            head = self.git("rev-parse", "HEAD")
+            return f"AGMSG-RESULT v1 task_id=t status=ready_for_review head={head} precheck={hashlib.sha256(document.encode()).hexdigest()}"
+
+        unit = lambda ok: [{"name": "unit-test", **ok}, *CHECKS_OK[1:], DEFERRED]  # noqa: E731
+        valid = result([*CHECKS_OK, DEFERRED], proofs)
+        for required in ("1", "0"):
+            passed, sent = self.dispatch(valid, required, revise)
+            self.assertEqual((passed.returncode, sent), (0, True), passed.stderr)
+            self.assertNotIn("precheck:", passed.stderr)
+        malformed = {
+            "an empty entry": ("checks", result([{}], proofs)),
+            "a missing check": ("checks", result([*CHECKS_OK[:4], DEFERRED], proofs)),
+            "only an unrelated check": ("checks", result([{"name": "other", "ok": True}], proofs)),
+            "a duplicate name": ("checks", result([*CHECKS_OK, DEFERRED, CHECKS_OK[0]], proofs)),
+            "a missing ok": ("checks", result(unit({}), proofs)),
+            "a string ok": ("checks", result(unit({"ok": "true"}), proofs)),
+            "a numeric ok": ("checks", result(unit({"ok": 1}), proofs)),
+            "a null ok": ("checks", result(unit({"ok": None}), proofs)),
+            "a null without the marker": ("checks", result([*CHECKS_OK, {"name": "local-review", "ok": None}], proofs)),
+            "missing selectors": ("selectors", result([*CHECKS_OK, DEFERRED])),
+            "one requested selector omitted": ("selectors", result([*CHECKS_OK, DEFERRED], proofs[:1])),
+        }
+        for name, (field_name, line) in malformed.items():
+            with self.subTest(case=name):
+                refused, sent = self.dispatch(line, "1", revise)
+                self.assertEqual((refused.returncode, sent), (1, False), refused.stderr)
+                self.assertIn(f"precheck: precheck.json:{field_name} ", refused.stderr)
+                warned, sent = self.dispatch(line, "0", revise)
+                self.assertEqual((warned.returncode, sent), (0, True), warned.stderr)
+                self.assertIn(f"precheck: warning precheck.json:{field_name} ", warned.stderr)
 
     def hooks(self):
         self.git("config", "core.hooksPath", str(ROOT / ".githooks"))
@@ -312,6 +405,41 @@ class ResultPrecheckTest(unittest.TestCase):
                 if code:
                     self.assertRegex(result.stderr, r"pre-push: [1-9][0-9]* match\(es\) in ")
                 self.assertEqual(bool(self.git("ls-remote", "origin", branch)), not code)
+
+    def test_pre_push_scans_binary_marked_blobs_in_every_pushed_commit(self):
+        # Local review of a5cb73b4 (P1, pre-push:19-20): Git's binary classification never hides pushed content.
+        self.hooks()
+        env = {**self.env, "PATH": os.environ["PATH"]}  # the real uv and the real masker
+        secret, clean = f"key={token()}\n".encode(), b"key=clean\n"
+        for branch, commits, code in (
+            ("diff-attr", [{".gitattributes": b"*.cred -diff\n", "a.cred": secret}], 1),
+            ("binary-attr", [{".gitattributes": b"*.dat binary\n", "a.dat": secret}], 1),
+            ("nul", [{"a.bin": b"\x00\x01" + secret + b"\x00"}], 1),
+            ("added-then-removed", [{".gitattributes": b"*.cred -diff\n", "a.cred": secret}, {"a.cred": clean}], 1),
+            ("diff-attr-clean", [{".gitattributes": b"*.cred -diff\n", "a.cred": clean}], 0),
+            ("nul-clean", [{"a.bin": b"\x00\x01" + clean + b"\x00"}], 0),
+        ):
+            with self.subTest(branch=branch):
+                self.git("switch", "-q", "-c", branch, "main")
+                for files in commits:
+                    for rel, data in files.items():
+                        (self.repo / rel).write_bytes(data)
+                    self.commit(branch)
+                run = ["git", "push", "origin", branch]
+                result = subprocess.run(run, cwd=self.repo, env=env, capture_output=True, text=True, timeout=120)
+                self.assertEqual(result.returncode != 0, bool(code), result.stderr)
+                self.assertNotIn(token(), result.stdout + result.stderr)
+                if code:
+                    self.assertRegex(result.stderr, r"pre-push: [1-9][0-9]* match\(es\) in ")
+                self.assertEqual(bool(self.git("ls-remote", "origin", branch)), not code)
+        # The precheck's own secrets input is the forced-text diff: a -diff attribute hides nothing there either.
+        self.git("switch", "-q", "diff-attr")
+        (self.calls / "real-masker").touch()
+        result = self.precheck()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIs(next(c for c in self.record()["checks"] if c["name"] == "secrets")["ok"], False)
+        logs = "".join(p.read_text() for p in (self.repo / f".orchestration/{TASK}").glob("precheck-*.log"))
+        self.assertNotIn(token(), result.stdout + result.stderr + logs)
 
 
 if __name__ == "__main__":

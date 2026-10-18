@@ -1419,7 +1419,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
-    def anthropic_route_fixture(self, *extra: str):
+    def anthropic_route_fixture(self, *extra: str, entry: bool = False):
         """One tracked file under home/, install/ and scripts/ (and each extra), and check(rel, line) -> (refused, stderr).
 
         check writes `# fixture` and the line, or with verbatim=True the text as given (JSON has no comments); between
@@ -1438,9 +1438,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         def check(rel: str, line: str, verbatim: bool = False) -> tuple[bool, str]:
             self.write_text_file(rel, line if verbatim else f"# fixture\n{line}\n")
             stderr, refused = io.StringIO(), False
-            with contextlib.redirect_stderr(stderr):
+            with (
+                contextlib.ExitStack() as stack,
+                contextlib.redirect_stderr(stderr),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                if entry:
+                    for name in self.module.main.__code__.co_names:
+                        if name.startswith(("validate_", "report_")) and name != "validate_anthropic_auth_route":
+                            stack.enter_context(mock.patch.object(self.module, name))
                 try:
-                    self.module.validate_anthropic_auth_route()
+                    (self.module.main if entry else self.module.validate_anthropic_auth_route)()
                 except SystemExit:
                     refused = True
             self.write_text_file(rel, empty(rel))
@@ -1453,7 +1461,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     ) -> None:
         # Plan 023 PR D. The names are split so this module passes the committed-secret scan it sits beside.
         key, oauth = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"
-        files, check = self.anthropic_route_fixture()
+        files, check = self.anthropic_route_fixture(entry=True)
         home, install, scripts = files
         for rel, line, rule in (
             (home, f"export {oauth}=x", "R1"),
@@ -1494,6 +1502,126 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             refused, stderr = check(scripts, "")
         self.assertTrue(refused)
         self.assertIn("git ls-files failed", stderr)
+
+    def test_anthropic_auth_route_normalizes_shell_names_and_refuses_unreadable_names(self) -> None:
+        key, oauth = "ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"
+        (home, *_), check = self.anthropic_route_fixture("home/fixture.md")
+        for name, rule in (
+            (f'"{key}"', "R2"),
+            (f"'{key}'", "R2"),
+            (key[:-1] + '"Y"', "R2"),
+            (key[:-1] + r"\Y", "R2"),
+            (oauth[:-1] + r"\N", "R1"),
+            ('"$NAME"', "unreadable name"),
+            ("'$NAME'", "unreadable name"),
+            ("$1", "unreadable name"),
+            ("$@", "unreadable name"),
+            ("${NAME}", "unreadable name"),
+            ('"${NAME:-fallback}"', "unreadable name"),
+            ("`printf NAME`", "unreadable name"),
+            ("$(printf NAME)", "unreadable name"),
+        ):
+            with self.subTest(name=name):
+                refused, stderr = check(home, f"export {name}=literal-value")
+                self.assertTrue(refused)
+                self.assertIn(rule, stderr)
+                self.assertNotIn("literal-value", stderr)
+        for name in (f'"{key}"', key[:-1] + r"\Y"):
+            self.assertEqual((False, ""), check(home, f"export {name}=$DEPLOYED_KEY"))
+        for line in (
+            f'A=1;export {key[:-1]}"Y"=literal-value',
+            f'({key[:-1]}"Y"=literal-value)',
+            "export $(printf '%s' $(printf NAME))=literal-value",
+            f"export {key[:-1]}\\\nY=literal-value",
+            f"out=$(export {key[:-3]}\\KEY=literal-value; client)",
+            f"echo $(export {key[:-3]}\\KEY=literal-value)",
+            f"printf '%s' '$('; export {key[:-3]}\\KEY=literal-value",
+            'out=$(export "$NAME"=literal-value)',
+            'export "$(\nprintf NAME\n)"=literal-value',
+            '# don\'t skip the following name\nexport "$(\nprintf NAME\n)"=literal-value',
+            'out=${OTHER:-$(export "$NAME"=literal-value)}',
+            'out="$(case x in x) export "$NAME"=literal-value ;; esac)"',
+            '  ANTHROPIC_*) export "$name"=literal-value ;;',
+            '  ANTHROPIC_* ) export "${name}"=literal-value ;;',
+            'case "$kind" in\n  ANTHROPIC_*) export "$name"=literal-value ;;\nesac',
+            'out="$( case x in x) export "${NAME}"=literal-value ;; esac )"',
+            'out="$(\ncase "$kind" in\n  ANTHROPIC_*) export "$name"=literal-value ;;\nesac\n)"',
+            'out="$(printf ignored; case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out="$(if true; then case x in x) export "$NAME"=literal-value ;; esac; fi)"',
+            'out="$(case x in x) printf ready ;; esac)"',
+            'out="$(printf [[; case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out="$([[data; case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out="$(cat <<\'EOF\'\n)\nEOF\nexport "$NAME"=literal-value\n)"',
+            'out="$(cat <<\'EOF\'\n\'\nEOF\nexport "$NAME"=literal-value\n)"',
+            'out="$(cat <<\'EOF\'\nEO\\\nF\nEOF\nexport "$NAME"=literal-value\n)"',
+            'out="$(time -p case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out="$(cat <<EOF\n\'$(export "$NAME"=literal-value)\'\nEOF\n)"',
+            'out="$(cat <<\\\n\'EOF\'\nEO\\\nF\n\'\nEOF\nexport "$NAME"=literal-value\n)"',
+            'out="$(coproc NAME case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out="$(f() { case x in x) export "$NAME"=literal-value ;; esac; }; f)"',
+            'out="$(function f { case x in x) export "$NAME"=literal-value ;; esac; }; f)"',
+            'out="$(function "f" { case x in x) export "$NAME"=literal-value ;; esac; }; f)"',
+            'out="$(coproc "NAME" case x in x) export "$NAME"=literal-value ;; esac)"',
+            'out=$(cat <<< "$(export "$NAME"=literal-value)")',
+            'out=$(( $(export "$NAME"=literal-value) << 2 ))',
+            'prefix="(("; export "$NAME"=literal-value',
+            'printf \'%s\' "(("; export "$NAME"=literal-value',
+        ):
+            with self.subTest(line=line):
+                self.assertTrue(check(home, line)[0])
+        self.assertEqual((False, ""), check(home, f'export {key[:-2]}"EY=$DEPLOYED_KEY"'))
+        for line in (
+            'if [ "${DOTFILES_DEBUG:-}" ]; then',
+            'local dir="${HOME:-/tmp}"',
+            '"{{ $fontsPath }}/RobotoMono":',
+            "opaque/bytes$NAME?=not-a-name",
+            "`config.json`: documentation key",
+            "awk '$1==team {print}'",
+            "awk '\n$1==team {print}\n'",
+            "out=$(printf '%s' case)",
+            "out=$(printf '%s' case suffix)",
+            "out=${VALUE:-case}",
+            "out=$((case + 1))",
+            "out=$(printf '%s' \"case x in x)\")",
+            "out=$(# case x in x)\nprintf ready)",
+            "out=$(printf '%s' a{case x)",
+            "out=$(printf '%s' 'case')",
+            'out=$("printf" case suffix)',
+            "out=$( ((case + 1)) )",
+            "out=$((1 << 2))",
+            "((1 << 2))",
+            "out=$( ((1 << 2)) )",
+            'prefix="(("',
+            'out=$(jq -r ".x" <<< "$NAME=data")',
+            "Document `## Owned by <owner>`.\nUse `allowed_files` with `check=`.",
+            'out=$(jq -r ".x" <<< "$value")',
+            "```shell\nuv run python - <<'PY'\nprint(foo())\nPY\n```",
+            "out=\"$(cat <<'EOF'\n'$1==team\nEOF\n)\"",
+            "out=\"$(cat <<'EOF'\nEOF\n)\"",
+            "out=$(cat <<'EOF'\nexport \"$NAME\"=data\nEOF\n)",
+            "deny_command <<- EOF\n\tuv add $req_file\n\tEOF\n",
+        ):
+            self.assertEqual((False, ""), check(home, line))
+        self.assertEqual((False, ""), check("home/fixture.md", "```bash\nfunction example() { :; }\n```"))
+        for line in (f"{key}=literal-value", oauth, 'export "$NAME"=literal-value'):
+            self.assertTrue(check("home/fixture.md", f"```bash\n{line}\n```")[0])
+
+    def test_anthropic_auth_route_parses_both_platform_renderings_of_chezmoi_templates(self) -> None:
+        rel = "home/.chezmoitemplates/fixture.json"
+        key = "ANTHROPIC_API_" + "KEY"
+        _, check = self.anthropic_route_fixture(rel)
+
+        def template(darwin: str, linux: str) -> str:
+            return '{{ if eq .chezmoi.os "darwin" }}' + darwin + "{{ else }}" + linux + "{{ end }}"
+
+        allowed = json.dumps({key: "$DEPLOYED_KEY"})
+        literal = json.dumps({key: "literal-value"})
+        self.assertEqual((False, ""), check(rel, template(allowed, allowed), verbatim=True))
+        for darwin, linux in ((literal, allowed), (allowed, literal), (allowed, "{")):
+            with self.subTest(darwin=darwin, linux=linux):
+                refused, stderr = check(rel, template(darwin, linux), verbatim=True)
+                self.assertTrue(refused)
+                self.assertNotIn("literal-value", stderr)
 
     def test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty(self) -> None:
         # The R2 re-plan (D-389-replan): the whole value is one $NAME or ${NAME} reference, one {{ }} template or
@@ -1592,6 +1720,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertTrue(refused)
                 self.assertIn(f"ERROR: {rel}: cannot be decoded as UTF-8 (UnicodeDecodeError)", stderr.getvalue())
                 self.assertNotIn("unused", stderr.getvalue())
+        for rel, _ in cases:
+            (self.temp_dir / rel).unlink()
         for rel in (text, script):
             (self.temp_dir / rel).write_bytes(b"# invalid text byte: \xff\n")
         self.module.validate_anthropic_auth_route()

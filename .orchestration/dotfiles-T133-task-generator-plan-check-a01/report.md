@@ -6,7 +6,7 @@ status: result
 
 # Report
 
-Worker `claude-standard-dot-a009` (Claude Code, worker-c). Branch `tools/task-generator-plan-check-a01` from `origin/main` 68f8a70a, rebased onto `origin/main` de3b73cc after #413 merged; PR #417 (draft until CI is green); tested code head d7332ebb9cef85a440a0d7c6a0b8a35136ad0690, then 562e77f4bfb1cf43738d857cda7b672acf302b02 after CI round 1 (a test-only fix, below; the RESULT names the final evidence-only head). Task copy `.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md` is byte-identical to the amended dispatched file: sha256 `e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68`. INV-6: amendments=1 questions=1 revises=0.
+Worker `claude-standard-dot-a009` (Claude Code, worker-c). Branch `tools/task-generator-plan-check-a01` from `origin/main` 68f8a70a, rebased onto `origin/main` de3b73cc after #413 merged; PR #417 (draft until CI is green); tested code head d7332ebb9cef85a440a0d7c6a0b8a35136ad0690, then 562e77f4bfb1cf43738d857cda7b672acf302b02 after CI round 1 (a test-only fix) and b3c6b7ea382dbf0b5d16de7005486a6b605a8a72 after Bot round 1 (both below; the RESULT names the final evidence-only head). Task copy `.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md` is byte-identical to the amended dispatched file: sha256 `e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68`. INV-6: amendments=1 questions=1 revises=0.
 
 ## What changed
 
@@ -55,14 +55,29 @@ Applied after the rebase onto #413's merge; the module's diff against `origin/ma
 - The four modules: 12 tests OK, 1 skipped (the green-set subtest above).
 - `make unit-test` exits 2 in the sandbox on this head (1198 tests) and on a pristine `origin/main` de3b73cc worktree (1195 tests); the 305 failing names are identical (`cmp`), none in this task's modules. CI's `make unit-test` decides the full suite.
 - `make format` exits 2 at `shfmt --diff` on both sides with the same twelve pre-existing files; ruff and prettier pass on the changed `.py` and `.md` files.
-- Caps (`git diff --numstat origin/main...HEAD`): 503 changed lines outside `tests/` and `.orchestration/` (cap 600), 373 under `tests/` (cap 700) on d7332ebb; 376 under `tests/` after CI round 1.
+- Caps (`git diff --numstat origin/main...HEAD`): 503 changed lines outside `tests/` and `.orchestration/` (cap 600), 373 under `tests/` (cap 700) on d7332ebb; 376 under `tests/` after CI round 1; 511 and 390 on b3c6b7ea after Bot round 1.
 
 ## CI round 1
 
 On dfce34d7 `test (macos-14, client)` failed one test, `test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan`: the clean plan reported `F6 … cites #77, which is not a pull request` (the two ubuntu client jobs were cancelled by fail-fast; every other check passed). Root cause: `uv run` puts its base interpreter's bin directory before PATH, and on the macOS runner that is Homebrew's, which holds a real `gh`, so the test's stub, prepended to PATH outside `uv run`, lost; the real `gh pr view 77` in a non-repository directory exits nonzero. `test_task_checkers.py` records the same runner fact and puts its stub first inside `uv run`; 562e77f4 does the same in `test_plan_check.py` (3 lines; no production change). The local sandbox cannot reproduce the ordering (uv's interpreter directory here holds no `gh`), so CI on the next head is the green proof.
 
+## Bot round 1 (the Codex Bot's review of 35c66022 on `gh pr ready`, 12:11Z; validation.md)
+
+- 4306960626 [P1] `task-from-plan.py:127` reads `.orchestration/tasks/dotfiles-T133-result-precheck-a01.md`, which a clean checkout lacks, and dies with `FileNotFoundError`: fixed:b3c6b7ea. The generator now checks every input it reads up front (the four plan files it opens, the row template and the completion file) and exits 1 naming the missing ones, before writing anything. Bundling the template is not possible here, because `.orchestration/tasks/` is outside `allowed_files`; the files land on `main` with the regime's records. Red-then-green: the generator test removes the template and asserts exit 1, empty stdout, the template's path on stderr, no traceback and no file written. On 35c66022's code it failed on the traceback; on b3c6b7ea it passes.
+- 4306960630 [P2] `plan-check.py:88` F2 compares glob entries as literal strings, so `scripts/*.py` and `scripts/two.py` in one wave pass: fixed:b3c6b7ea. Two entries now overlap when one is a directory prefix of the other or either matches the other under `fnmatchcase`. fnmatch's `*` also crosses `/`, which errs toward a report. A new subtest gives exactly `F2 …:11 P-W0 P1-1 and P1-2 share scripts/*.py`; it was red on 35c66022's code (no line) and is green on b3c6b7ea.
+- 4306960622 [P1] `task-consistency-check.py:70` C14 runs a task file's premises under `bash -c` with the caller's rights, so the checker described as read-only executes whatever a task file a PR controls says: open:4306960622, proposed for the orchestrator's decision. Item 2 of the task mandates exactly this execution, and the `in-process effects` row's "the checker stays read-only … never through a shell string the plan controls" is the wording flagged above. The Bot's two remedies:
+  - A read-only sandbox cannot run in the regime's seats. Nested `sandbox-exec` fails with `sandbox_apply: Operation not permitted` (exit 71, validation.md) inside a seat's sandbox, and Linux CI has no equivalent.
+  - A trusted revision changes the checker's interface on a trust boundary, which is the task owner's call.
+
+  The options I see:
+  - (a) C14 runs premises only under an explicit flag, which `dispatch.sh` passes for the orchestrator's own file and acceptance never passes for a branch copy; without the flag, C14 prints a "not run" note.
+  - (b) C14 runs premises only when the file's sha256 equals a value the caller passes, such as the TASK line's `task_sha256`.
+  - (c) The residual stands, and the row's wording is corrected to say what runs where.
+
+  The no-prompt rule allows no `@codex review` on the fix head, so the Bot round count is 2 with this item open.
+
 ## Not done yet
 
-The evidence commit, its push, CI on the final head, `gh pr ready`, the Bot window (no `@codex review`) and the RESULT (`task_copy=e08bb0af…`, `precheck=pending-411`).
+The evidence commit, its push, CI on the final head, the Bot window from that push and the RESULT (`task_copy=e08bb0af…`, `precheck=pending-411`, `bot_rounds=2`).
 
 cost: n/a

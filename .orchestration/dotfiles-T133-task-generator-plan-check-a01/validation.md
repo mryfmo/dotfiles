@@ -396,3 +396,31 @@ exit=0
 $ git diff --numstat origin/main...HEAD -- tests/unit/test_plan_check.py
 104	0	tests/unit/test_plan_check.py
 ```
+
+## Bot round 1 (review of 35c66022, 3 findings)
+
+The two new cases (the generator refuses a checkout without its records; F2 reports a glob entry against the path it matches) against the code of 35c66022, then on the fix head b3c6b7ea:
+
+```
+$ uv run python -m unittest tests.unit.test_task_from_plan tests.unit.test_plan_check   # code of 35c66022, new tests
+FAIL: test_a_generated_task_passes_the_consistency_check_and_pastes_real_premise_outputs (tests.unit.test_task_from_plan.TaskFromPlanTest.test_a_generated_task_passes_the_consistency_check_and_pastes_
+AssertionError: 'Traceback' unexpectedly found in 'Traceback (most recent call last):\n  File "~/Workspace/dotfiles/.claude/worktrees/worker-c/scripts/orchestrator/task-from-plan.py", li
+FAIL: test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan (tests.unit.test_plan_check.PlanCheckTest.test_plan_check_reports_each_form_drift_and_invariant_viola
+AssertionError: Tuples differ: (0, []) != (1, ['F2 024-omp-cutover-and-corrective-or[45 chars]py'])
+Ran 2 tests in 2.256s
+FAILED (failures=2)
+```
+
+```
+$ uv run python -m unittest tests.unit.test_task_from_plan tests.unit.test_plan_check tests.unit.test_task_consistency_c11_c15 tests.unit.test_task_checkers   # b3c6b7ea
+Ran 12 tests in 9.443s
+OK (skipped=1)
+```
+
+A read-only premise sandbox cannot nest inside a seat's sandbox (the probe for finding 4306960622):
+
+```
+$ sandbox-exec -p '(version 1)(allow default)(deny file-write*)(allow file-write* (literal "/dev/null"))' bash -c 'echo ran; touch ./nested-write-probe'
+sandbox-exec: sandbox_apply: Operation not permitted
+exit=71
+```

@@ -36,7 +36,8 @@ else:
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
     if name == "npm":  # npm links its own bin and refuses with EEXIST to replace an entry it does not own
         own = "lib/node_modules/@oh-my-pi/pi-coding-agent/"
-        if (target.exists() or target.is_symlink()) and own not in (os.readlink(target) if target.is_symlink() else ""):
+        link = os.readlink(target) if target.is_symlink() else ""
+        if (target.exists() or link) and not link.startswith(("../" + own, str(target.parent.parent / own))):
             sys.exit("npm error code EEXIST: " + str(target))
         target.unlink(missing_ok=True)
         target.symlink_to("../" + own + "bin/omp")
@@ -190,10 +191,11 @@ class UpdateAgentAssetsTest(unittest.TestCase):
         self.exercise_update("omp")
 
     def test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails(self):
-        # local:fbbc6d9:1: a standalone file or a link outside the package, a dangling one included, makes npm fail
-        # with EEXIST; npm's own link stays for npm to replace.
+        # local:fbbc6d9:1: a standalone file or a link outside this prefix's package, a dangling one included, makes npm
+        # fail with EEXIST; it moves to a kept path, not the run's temporary directory. npm's own link and a directory
+        # stay for npm to judge.
         npm_link = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp")
-        for entry in ("dangling", "external", "file", "npm", None):
+        for entry in ("dangling", "external", "foreign", "file", "npm", "directory", None):
             for version in ("18.11.3", "0.0.1"):
                 with self.subTest(entry=entry, version=version), tempfile.TemporaryDirectory() as directory:
                     home = Path(directory)
@@ -203,15 +205,21 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
                         (binary / name).chmod(0o755)
                     target, old = binary / "omp", home / "tern/bin/omp"
+                    aside = home / ".local/share/agent-assets/omp/omp.previous"
                     old.parent.mkdir(parents=True)
                     old.write_text("#!/bin/sh\necho omp/0.0.1\n")
-                    if entry == "external":
-                        old.chmod(0o755)
-                    links = {"dangling": home / "gone/omp", "external": old, "npm": npm_link}
+                    links = {
+                        "dangling": home / "gone/omp",
+                        "external": old,
+                        "foreign": home / "other/lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp",
+                        "npm": npm_link,
+                    }
                     if entry in links:
                         target.symlink_to(links[entry])
                     elif entry == "file":
                         target.write_text("#!/bin/sh\necho omp/0.0.1\n")
+                    elif entry == "directory":
+                        target.mkdir()
                     payload = home / "payload"
                     payload.write_bytes(b"fixture omp tarball\n")
                     result = subprocess.run(
@@ -232,10 +240,16 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         check=False,
                     )
                     output = result.stdout + result.stderr
-                    self.assertEqual(version == "0.0.1", result.returncode != 0, output)
-                    self.assertNotIn("EEXIST", output)
-                    if version == "18.11.3" or entry in ("npm", None):
+                    moved = entry in ("dangling", "external", "foreign", "file")
+                    self.assertEqual(version == "0.0.1" or entry == "directory", result.returncode != 0, output)
+                    self.assertEqual(entry == "directory", "EEXIST" in output, output)
+                    if entry in ("dangling", "external", "foreign"):
+                        self.assertIn(str(links[entry]), result.stdout)
+                    if entry == "directory":
+                        self.assertTrue(target.is_dir())
+                    elif version == "18.11.3" or not moved:
                         self.assertEqual(npm_link, target.readlink(), output)
+                        self.assertEqual(moved, aside.is_symlink() or aside.is_file(), output)
                     elif entry == "file":  # the failed install puts the previous entry back as it was
                         self.assertEqual("#!/bin/sh\necho omp/0.0.1\n", target.read_text(), output)
                     else:

@@ -16,6 +16,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REMOVER = ROOT / "home/dot_local/bin/common/executable_remove-agent-asset"
+UV_STUB = """
+case "$*" in
+"tool dir") printf '%s\\n' "$HOME/.local/share/uv/tools" ;;
+"tool uninstall hcom")
+    [ -d "$HOME/.local/share/uv/tools/hcom" ] || { echo 'error: `hcom` is not installed' >&2; exit 2; }
+    rm -rf "$HOME/.local/share/uv/tools/hcom" ;;
+*) exit 2 ;;
+esac
+"""
 
 
 class RemoveAgentAssetTest(unittest.TestCase):
@@ -343,7 +352,9 @@ class RemoveAgentAssetTest(unittest.TestCase):
         )
         self.assertEqual({}, self.manifest()["steps"])
 
-    def remove_hcom(self, *, uv: bool = True) -> tuple[subprocess.CompletedProcess[str], dict[str, Path]]:
+    def remove_hcom(
+        self, *, uv: bool = True, installed: bool = True, mode: str = "--yes"
+    ) -> tuple[subprocess.CompletedProcess[str], dict[str, Path]]:
         # The Bot's P2 4303212235 and the audit of #398 (finding 2): the hcom step leaves its binary, its retained
         # wheel, uv's tool environment and its receipt behind.
         tools = self.home / ".local/share/uv/tools/hcom"
@@ -353,16 +364,15 @@ class RemoveAgentAssetTest(unittest.TestCase):
             "environment": tools / "bin/hcom",
             "receipt": tools / "uv-receipt.toml",
         }
-        for path in paths.values():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("x")
-        if uv:  # the stub uninstalls uv's own state only; the remover deletes the recorded binary and wheel itself
-            self.executable(
-                "uv", '[ "$*" = "tool uninstall hcom" ] || exit 2\nrm -rf "$HOME/.local/share/uv/tools/hcom"\n'
-            )
+        for name, path in paths.items():
+            if installed or name in ("binary", "wheel"):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("x")
+        if uv:  # the stub answers as uv does and uninstalls uv's own state only; the remover deletes the recorded paths
+            self.executable("uv", UV_STUB)
         recorded = [paths["binary"], paths["wheel"]]
         self.write_manifest({"update_hcom": self.step("installer", recorded, ["uv tool install --force <wheel>"])})
-        return self.run_remover("update_hcom", "--yes"), paths
+        return self.run_remover("update_hcom", mode), paths
 
     def assert_hcom_removal_deletes(self, name: str) -> None:
         removed, paths = self.remove_hcom()
@@ -388,6 +398,20 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.assertIn("uv command not found", removed.stderr)
         self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
         self.assertIn("update_hcom", self.manifest()["steps"])
+
+    def test_hcom_removal_skips_the_uninstall_when_uv_has_no_hcom_and_removes_the_rest(self) -> None:
+        # The worker review: an hcom uv already uninstalled (`hcom` is not installed, exit 2) must not stop the removal.
+        removed, paths = self.remove_hcom(installed=False)
+        self.assertEqual(0, removed.returncode, removed.stdout + removed.stderr)
+        self.assertIn("SKIP: uv has no hcom tool environment", removed.stdout)
+        self.assertEqual([], [name for name, path in paths.items() if path.exists()])
+        self.assertEqual({}, self.manifest()["steps"])
+
+    def test_hcom_dry_run_without_uv_prints_the_plan(self) -> None:
+        removed, paths = self.remove_hcom(uv=False, mode="--dry-run")
+        self.assertEqual(0, removed.returncode, removed.stderr)
+        self.assertIn("DRY-RUN: uv tool uninstall hcom\n", removed.stdout)
+        self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
 
     def executable(self, name: str, body: str) -> None:
         path = self.bin_dir / name

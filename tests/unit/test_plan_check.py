@@ -98,6 +98,10 @@ class PlanCheckTest(unittest.TestCase):
             self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\nrun gh pr merge 77 --admin\n")
             code, lines = self.plan_check("--invariants")
             self.assertEqual((code, lines), (1, ["invariant: 024-execution.md:3 gh pr merge --admin or --auto"]))
+        with self.subTest(rule="F2 glob"):  # a glob entry overlaps the concrete path it matches
+            self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", "scripts/*.py")
+            want = "F2 024-omp-cutover-and-corrective-order.md:11 P-W0 P1-1 and P1-2 share scripts/*.py"
+            self.assertEqual(self.plan_check(), (1, [want]))
 
 
 if __name__ == "__main__":

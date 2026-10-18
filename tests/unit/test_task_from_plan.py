@@ -103,6 +103,16 @@ class TaskFromPlanTest(unittest.TestCase):
         self.assertIn("the task-file copy on the branch (.orchestration/dotfiles-T9-demo-a01/task.md)", controls)
         self.assertNotIn("dotfiles-T133-result-precheck-a01", text)
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)  # the scratch worktree is gone
+        # A checkout without the regime's records (here the row template) is refused by name before anything is written.
+        (self.repo / ".orchestration/tasks/dotfiles-T133-result-precheck-a01.md").unlink()
+        other = ".orchestration/tasks/dotfiles-T9-other-a01.md"
+        refused = subprocess.run(
+            [*run, "--out", other], cwd=self.repo, env=self.env, capture_output=True, text=True, check=False
+        )
+        self.assertEqual((refused.returncode, refused.stdout), (1, ""), refused.stderr)
+        self.assertIn(".orchestration/tasks/dotfiles-T133-result-precheck-a01.md", refused.stderr)
+        self.assertNotIn("Traceback", refused.stderr)
+        self.assertFalse((self.repo / other).exists())
 
 
 if __name__ == "__main__":

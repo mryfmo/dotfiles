@@ -24,6 +24,7 @@ import pathlib
 import re
 import subprocess
 import sys
+from fnmatch import fnmatchcase
 
 try:
     import yaml
@@ -90,8 +91,12 @@ def form(root, files):
         wave = sorted(set(re.findall(r"\bP1-\d+[a-z]?\b", " ".join(c[1:]))) & set(tasks))
         for i, a in enumerate(wave):
             for b in wave[i + 1 :]:
+                # A glob entry overlaps whatever it matches (fnmatch's * also crosses /, which errs toward a report).
                 shared = sorted(
-                    x for x in tasks[a] for y in tasks[b] if x == y or x.startswith(y + "/") or y.startswith(x + "/")
+                    x
+                    for x in tasks[a]
+                    for y in tasks[b]
+                    if x.startswith(y + "/") or y.startswith(x + "/") or fnmatchcase(x, y) or fnmatchcase(y, x)
                 )
                 if shared:
                     out.append(f"F2 024-omp-cutover-and-corrective-order.md:{n} {c[0]} {a} and {b} share {shared[0]}")

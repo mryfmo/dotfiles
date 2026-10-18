@@ -101,8 +101,11 @@ def main():
     args = parser.parse_args()
     root = pathlib.Path(git(".", "rev-parse", "--show-toplevel").stdout.strip())
     read = lambda name: (root / name).read_text().splitlines()  # noqa: E731
-    if not (root / COMPLETION).is_file():
-        sys.exit(f"task-from-plan: {COMPLETION} is missing")
+    # The plan group, the template and the completion file are regime records a checkout may not hold yet.
+    plans = ("todo", "design-programs", "design-quality", "omp-cutover-and-corrective-order")
+    needed = [f"{PLANS}/024-{n}.md" for n in plans] + [f".orchestration/tasks/{TEMPLATE_ID}.md", COMPLETION]
+    if missing := [n for n in needed if not (root / n).is_file()]:
+        sys.exit(f"task-from-plan: missing under {root}: {', '.join(missing)}")
     out = args.out or pathlib.Path(f".orchestration/tasks/{args.todo_id}.md")
     tid, own = out.stem, f".orchestration/{out.stem}/"
     row = next(c for c in rows(read(f"{PLANS}/024-todo.md")) if c[0].split()[0] == args.todo_id)

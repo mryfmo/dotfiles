@@ -12,8 +12,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
 REMOTE = WORKFLOWS / "remote.yaml"
+PRIVATE = WORKFLOWS / "private-bootstrap.yaml"
 TEST = WORKFLOWS / "test.yaml"
 AGENT_ASSETS = WORKFLOWS / "agent-assets.yml"
+# Plan 024 Q1: a pull request's newer head cancels its older run; every main push runs to completion.
+CONCURRENCY = (
+    "\nconcurrency:\n"
+    "  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', "
+    "github.event.pull_request.number) || format('main-{0}', github.sha) }}\n"
+    "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n"
+)
 # A copy of the ruleset's required status checks (a unit test cannot read the
 # ruleset); this is what changes when the ruleset changes.
 REQUIRED_CONTEXTS = frozenset(
@@ -32,7 +40,7 @@ TEST_DECISION = "Decide whether the diff needs the unit tests"
 # The jobs that skip their heavy steps, each with its own decision step and gate.
 DECIDING_JOBS = (
     (REMOTE, "public-bootstrap", BOOTSTRAP_DECISION, "steps.decide.outputs.should_run == 'true'"),
-    (REMOTE, "private-bootstrap", BOOTSTRAP_DECISION, "steps.decide.outputs.should_run == 'true'"),
+    (PRIVATE, "private-bootstrap", BOOTSTRAP_DECISION, "steps.decide.outputs.should_run == 'true'"),
     (TEST, "test", TEST_DECISION, "steps.decide.outputs.should_test == 'true'"),
 )
 # Steps a deciding job runs on every diff: setup, the checkout the decision
@@ -45,7 +53,7 @@ UNGATED_STEPS = frozenset(
         "Checkout repository",
         BOOTSTRAP_DECISION,
         TEST_DECISION,
-        "Skip the bootstrap for an .orchestration-only diff",
+        "Skip the bootstrap when no bootstrap path changed",
         "Skip full unit test run for unrelated changes",
         "Explain skipped private bootstrap",
     }
@@ -192,6 +200,7 @@ def scratch_repository(temp: Path):
 def pull_request_head(clone: Path, git, branch: str, writes=(), moves=()) -> str:
     git("checkout", "-q", "-B", branch, "origin/main")
     for path, text in writes:
+        (clone / path).parent.mkdir(parents=True, exist_ok=True)
         (clone / path).write_text(text)
     for move in moves:
         git(*move)
@@ -223,7 +232,7 @@ class RequiredContextsTest(unittest.TestCase):
             (AGENT_ASSETS, "validate"),
             (TEST, "test"),
             (REMOTE, "public-bootstrap"),
-            (REMOTE, "private-bootstrap"),
+            (PRIVATE, "private-bootstrap"),
         ):
             for key in ("if", "needs"):
                 with self.subTest(job=name, key=key):
@@ -286,7 +295,7 @@ class DecisionStepTest(unittest.TestCase):
                 self.assertIn("persist-credentials: false", before)
 
     def test_both_bootstrap_jobs_decide_with_the_same_script(self) -> None:
-        self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(REMOTE, "private-bootstrap"))
+        self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(PRIVATE, "private-bootstrap"))
 
     def test_a_main_tests_job_when_present_decides_in_itself(self) -> None:
         # V0's main-tests job is parked; when it lands it takes the same in-job decision step by step.
@@ -364,6 +373,66 @@ class DecisionTest(unittest.TestCase):
                 advance_origin(Path(temp), git)
                 env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                 self.assertIn(expected, run_decision(decide_script(path, name), env, clone))
+
+    def test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed(self) -> None:
+        script = decide_script(REMOTE, "public-bootstrap")
+        cases = {
+            "python-script": ([("scripts/x.py", "x\n")], "false"),
+            "home": ([("home/x", "x\n")], "true"),
+            "install": ([("install/x.sh", "x\n")], "true"),
+            "orchestration": ([(".orchestration/y.md", "y\n")], "false"),
+            "empty": ([], "true"),
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            for name, (writes, expected) in cases.items():
+                with self.subTest(case=name):
+                    head = pull_request_head(clone, git, f"b-{name}", writes)
+                    env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+                    self.assertEqual(run_decision(script, env, clone), f"should_run={expected}\n")
+            with self.subTest(case="push"):
+                self.assertEqual(run_decision(script, {"EVENT_NAME": "push"}, clone), "should_run=true\n")
+
+    def test_the_unit_test_decision_skips_macos_for_an_os_independent_diff_and_runs_it_otherwise(self) -> None:
+        script = decide_script(TEST, "test")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            base = git("rev-parse", "origin/main")
+            for name, writes, macos in (
+                ("os-independent", [("scripts/x.py", "x\n"), ("docs/x.md", "x\n")], "false"),
+                ("shell", [("home/x.sh", "x\n")], "true"),
+            ):
+                head = pull_request_head(clone, git, f"m-{name}", writes)
+                for event, os_name, expected in (
+                    ("pull_request", "macos-14", macos),
+                    ("pull_request", "ubuntu-24.04", "true"),
+                    ("push", "macos-14", "true"),
+                ):
+                    with self.subTest(case=name, event=event, os=os_name):
+                        env = {"EVENT_NAME": event, "BASE_REF": "main", "BEFORE_SHA": base, "HEAD_SHA": head}
+                        output = run_decision(script, env | {"OS": os_name}, clone)
+                        self.assertIn(f"should_test={expected}\n", output)
+                        self.assertEqual(expected == "false", "skip_reason=os-independent on macos-14\n" in output)
+
+
+class WorkflowTriggerTest(unittest.TestCase):
+    def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
+        for path in (TEST, REMOTE, AGENT_ASSETS):
+            with self.subTest(workflow=path.name):
+                text = path.read_text()
+                self.assertEqual(1, text.count("\nconcurrency:"))
+                self.assertIn(CONCURRENCY, text.split("\njobs:\n", 1)[0])
+
+    def test_private_bootstrap_runs_only_on_push_schedule_and_dispatch_and_decides_with_the_bootstrap_script(
+        self,
+    ) -> None:
+        on = PRIVATE.read_text().split("\non:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertEqual({"push", "schedule", "workflow_dispatch"}, set(re.findall(r"^  ([a-z_]+):", on, re.MULTILINE)))
+        self.assertIn("  push:\n    branches: [main]\n", on)
+        self.assertIn('    - cron: "0 0 * * 5"', on)
+        self.assertEqual(["public-bootstrap"], list(jobs(REMOTE)))
+        self.assertEqual(["private-bootstrap"], list(jobs(PRIVATE)))
+        self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(PRIVATE, "private-bootstrap"))
 
 
 if __name__ == "__main__":

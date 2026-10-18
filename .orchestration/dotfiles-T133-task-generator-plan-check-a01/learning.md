@@ -13,3 +13,4 @@ Task-local triage; nothing promoted.
 - Adding checks to a checker whose existing test asserts exact finding sets turns that test red even when the old checks are unchanged; the existing module (`tests/unit/test_task_checkers.py`, PR #413's) has to move with the checker. Applies to any extension of a checker with exact-set tests.
 - A test module run by `make unit-test` has no PyYAML: fixtures are written as YAML text and read back through `uv run --with pyyaml`.
 - Shared refs: a seat's `origin/main` moves when another checkout of the same repository fetches; caps and diffs are read three-dot, against the merge base.
+- Revise 1: a checker that runs commands from the file it checks needs the caller to vouch for the bytes. The dispatched sha256 is that vouching, and the checker hashes the same bytes it parses. Applies to any tool that executes text from a file a PR can change.

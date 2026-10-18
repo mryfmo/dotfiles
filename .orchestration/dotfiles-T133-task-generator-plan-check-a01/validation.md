@@ -479,3 +479,125 @@ test (ubuntu-26.04, client)	pass	7m40s
 validate	pass	1m40s
 35c660222ffd7af143842d310ae8cf3b15db61c5
 ```
+
+## Revise 1: red on ff4d25a8's code, green on 538e60bd
+
+The selector against the checker of ff4d25a8 (the new test and helper, before the fix):
+
+```
+$ uv run python -m unittest tests.unit.test_task_consistency_c11_c15
+FAIL: test_c14_executes_premise_commands_only_for_the_dispatched_sha (tests.unit.test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_executes_premise_commands_only_for_the_dispatched_sha) (sha=None)
+AssertionError: Tuples differ: (0, True) != (0, False)
+FAIL: test_c14_executes_premise_commands_only_for_the_dispatched_sha (tests.unit.test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_executes_premise_commands_only_for_the_dispatched_sha) (sha='00000000000000000000000
+AssertionError: Tuples differ: (2, True) != (0, False)
+FAIL: test_c14_executes_premise_commands_only_for_the_dispatched_sha (tests.unit.test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_executes_premise_commands_only_for_the_dispatched_sha)
+AssertionError: Tuples differ: (2, 'usage: task-consistency-check.py [-h][109 chars]a\n') != (0, 'dotfiles-T9-base-a01.md: OK\n')
+FAIL: test_each_new_check_is_red_on_its_fixture_and_the_existing_checks_are_unchanged (tests.unit.test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_each_new_check_is_red_on_its_fixture_and_the_existing_checks_are_unchan
+AssertionError: Tuples differ: (2, 'usage: task-consistency-check.py [-h][109 chars]a\n') != (0, 'dotfiles-T9-base-a01.md: OK\n')
+Ran 2 tests in 1.109s
+FAILED (failures=4)
+```
+
+```
+$ git log --oneline -1
+538e60bd fix(orchestrator): C14 executes premise commands only for the file whose sha256 --premises-sha names (T133 task-generator-plan-check a01 revise 1, Bot 4306960622)
+$ uv run python -m unittest tests.unit.test_task_from_plan tests.unit.test_plan_check tests.unit.test_task_consistency_c11_c15 tests.unit.test_task_checkers -v
+test_a_generated_task_passes_the_consistency_check_and_pastes_real_premise_outputs ... ok
+test_plan_check_reports_each_form_drift_and_invariant_violation_once_and_passes_a_clean_plan ... ok
+test_c14_executes_premise_commands_only_for_the_dispatched_sha ... ok
+test_each_new_check_is_red_on_its_fixture_and_the_existing_checks_are_unchanged ... 
+test_ledger_check_counts_what_the_gate_counts ... ok
+test_ledger_check_passes_a_complete_record ... ok
+test_ledger_check_reads_inherited_audit_ids_from_the_marker ... ok
+test_ledger_check_reports_the_gaps_of_the_pre_fix_record ... ok
+test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary ... ok
+test_task_consistency_check_c9_probes_the_landed_checker_path ... ok
+test_task_consistency_check_detects_the_ten_historical_files ... ok
+test_task_consistency_check_passes_a_complete_task_file ... ok
+test_task_consistency_check_reaches_every_other_check ... ok
+Ran 13 tests in 7.457s
+OK (skipped=1)
+$ git diff origin/main...HEAD -- tests/unit/test_task_checkers.py
+diff --git a/tests/unit/test_task_checkers.py b/tests/unit/test_task_checkers.py
+index f49a9ef9..7df9bd5e 100644
+--- a/tests/unit/test_task_checkers.py
++++ b/tests/unit/test_task_checkers.py
+@@ -81,8 +81,8 @@ class TaskCheckersTest(unittest.TestCase):
+         c2467, c467, c23467 = {"C2", "C4", "C6", "C7"}, {"C4", "C6", "C7"}, {"C2", "C3", "C4", "C6", "C7"}
+         expected = {"process-rules-a01": {"C2", "C6"}, "process-rules-a05": c467, "process-rules-a06": c467}
+         expected |= dict.fromkeys(["process-rules-a02", "process-rules-a03", "process-rules-a04"], c2467)
+-        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467)
+-        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467)
++        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467 | {"C11", "C15"})
++        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467 | {"C11", "C15"})
+         expected = {f"dotfiles-T128-{t}.md": ids for t, ids in expected.items()}
+         self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
+ 
+@@ -186,7 +186,13 @@ class TaskCheckersTest(unittest.TestCase):
+         for after in (".bak", "", " and its test", "/task.md", ") and more", '" and more', ", and more", "* and more"):
+             with self.subTest(after=after):
+                 path = self.task(
+-                    uncovered=("scripts/foo.py",), rows=[{"control": f"the PR adds scripts/foo.py{after}"}]
++                    uncovered=("scripts/foo.py",),
++                    rows=[
++                        {
++                            "control": f"the PR adds scripts/foo.py{after}",
++                            "disposition": "residual: a compensating control",
++                        }
++                    ],
+                 )
+                 found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+                 self.assertEqual({"C4"} if after == ".bak" else set(), found)
+```
+
+## Revise 1: real runs
+
+```
+$ uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root <main checkout> <main checkout>/.orchestration/tasks/dotfiles-T133-*.md   # no --premises-sha
+dotfiles-T133-ci-efficiency-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-ci-efficiency-a02.md: C14: not run (no trusted sha)
+dotfiles-T133-permission-guard-gate-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-permission-guard-gate-a02.md: C14: not run (no trusted sha)
+dotfiles-T133-permission-guard-gate-a03.md: C14: not run (no trusted sha)
+dotfiles-T133-regime-ci-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-result-precheck-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-result-precheck-a02.md: C14: not run (no trusted sha)
+dotfiles-T133-task-generator-plan-check-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-verdict-audit-pool-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-verdict-audit-pool-a02.md: C14: not run (no trusted sha)
+dotfiles-T133-worker-cap-hookspath-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-worker-cap-hookspath-a02.md: C14: not run (no trusted sha)
+dotfiles-T133-worker-hooks-path-a01.md: C14: not run (no trusted sha)
+dotfiles-T133-ci-efficiency-a01.md: OK
+dotfiles-T133-ci-efficiency-a02.md: OK
+dotfiles-T133-ci-efficiency-followup-a01.md: OK
+dotfiles-T133-permission-guard-gate-a01.md: OK
+dotfiles-T133-permission-guard-gate-a02.md: OK
+dotfiles-T133-permission-guard-gate-a03.md: OK
+dotfiles-T133-regime-ci-a01.md: OK
+dotfiles-T133-result-precheck-a01.md: OK
+dotfiles-T133-result-precheck-a02.md: OK
+dotfiles-T133-result-precheck-followup-a01.md: OK
+dotfiles-T133-task-generator-plan-check-a01.md: OK
+dotfiles-T133-verdict-audit-pool-a01.md: OK
+dotfiles-T133-verdict-audit-pool-a02.md: OK
+dotfiles-T133-verdict-audit-pool-followup-a01.md: OK
+dotfiles-T133-worker-cap-hookspath-a01.md: OK
+dotfiles-T133-worker-cap-hookspath-a02.md: OK
+dotfiles-T133-worker-cap-hookspath-followup-a01.md: OK
+dotfiles-T133-worker-hooks-path-a01.md: OK
+checker exit=0
+$ shasum -a 256 <main checkout>/.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a01.md
+e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a01.md
+$ uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root <main checkout> --premises-sha e08bb0afe8d508f5327b0e199108ee1b74efdb5d4a2004faed93b1ca4d1f0c68 <that file>
+dotfiles-T133-task-generator-plan-check-a01.md: OK
+exit=0
+```
+
+## Revise 1: CompactionDB memory
+
+```
+$ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T133 P1-12 revise 1: task-consistency-check.py C14 executes premise commands only for a file whose sha256 equals --premises-sha …'
+3b0ef48d-bc91-4851-8d32-1051f6a5c076
+exit=0
+```

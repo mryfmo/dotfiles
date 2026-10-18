@@ -1,6 +1,6 @@
 ---
 task_id: dotfiles-T133-task-generator-plan-check-a01
-round: 1
+round: 2
 status: result
 ---
 
@@ -20,8 +20,8 @@ Worker `claude-standard-dot-a009` (Claude Code, worker-c). Branch `tools/task-ge
 Applied after the rebase onto #413's merge; the module's diff against `origin/main` is these two hunks and nothing else (validation.md).
 
 1. `test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary`: the fixture row `{"control": "the PR adds scripts/foo.py<after>"}` gains `"disposition": "residual: a compensating control"` (the wording the module's other rows use). Without a disposition C13 reports `disposition is not closed:, residual: or out-of-scope: and a space` on every case; with it the expected sets (`{"C4"}` for `.bak`, empty otherwise) hold.
-2. `test_task_consistency_check_detects_the_ten_historical_files`: ids added, each from the new check's finding on that file (pasted in validation.md):
-   - process-rules a02, a03, a04, a05, a06 gain C14: their premise `~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140` no longer prints the pasted line, so C14 reports `premise output differs from its rerun` in all three places it runs: in a seat's sandbox C14's environment has no TMPDIR, so the script's `mktemp` falls back to `/tmp`, which the sandbox denies, and it prints nothing; with a writable temp directory it prints the line cut at 140 bytes (C14's environment has no locale, so `cut -c` counts bytes, and `○` and `→` are three each), ending `st` where the paste ends `status`; on CI the script does not exist.
+2. `test_task_consistency_check_detects_the_ten_historical_files`: ids added, each from the new check's finding on that file (pasted in validation.md). After revise 1 the test passes no `--premises-sha`, so C14 executes nothing on these fixtures and the process-rules files' C14 ids, added in round 1, were removed again: the final edit adds only C11 and C15. Round 1's reasoning is kept below as the record of what C14 did then.
+   - (round 1, removed in revise 1) process-rules a02, a03, a04, a05, a06 gained C14: their premise `~/.agents/skills/agmsg/scripts/history.sh dotfiles-conformance --limit 1000 | grep 'AGMSG-RESULT v1 task_id=dotfiles-T128-process-rules-redesign-a01' | cut -c1-140` no longer prints the pasted line, so C14 reports `premise output differs from its rerun` in all three places it runs: in a seat's sandbox C14's environment has no TMPDIR, so the script's `mktemp` falls back to `/tmp`, which the sandbox denies, and it prints nothing; with a writable temp directory it prints the line cut at 140 bytes (C14's environment has no locale, so `cut -c` counts bytes, and `○` and `→` are three each), ending `st` where the paste ends `status`; on CI the script does not exist.
    - regime-counters a01 and a02, ci-skip-orchestration a01 and a02 gain C11 and C15: C11 because their `closed:` payloads are prose, not `tests/<path>::<identifier>` (and regime-counters' `out-of-scope: V2 (…)` names no task file); C15 because their `invariants` (INV-6 on regime-counters, INV-2 on ci-skip-orchestration) are not byte-equal to `.orchestration/tasks/dotfiles-T128-regime-v3-a01.md` on `origin/main`.
    - process-rules a01 gains nothing: its network premises are skipped (a note, on stderr) and its `wc -w home/dot_config/claude/rules/agmsg-orchestration.md` premise still prints 447 words after the whitespace collapse.
 
@@ -78,8 +78,30 @@ On dfce34d7 `test (macos-14, client)` failed one test, `test_plan_check_reports_
 
   The no-prompt rule allows no `@codex review` on the fix head, so the Bot round count is 2 with this item open.
 
+Round 1 was sent with head ff4d25a8 and this item open (11:43Z RESULT, `pending-integration` at 12:45Z).
+
+## Revise 1 (round 2; `revise.yaml`)
+
+ACCEPTANCE `status=revise` (12:48:05Z): the Bot's P1 4306960622 is right, and the fix is option (b). This is the last round INV-6 allows (revises 1, amendments 1). Code head 538e60bdb9884b3305c1055a3b74ff83ffc719de.
+
+- 4306960622: fixed:538e60bd. `task-consistency-check.py --premises-sha <sha256>`: C14 executes premise commands only for a file whose bytes hash to that value. Any other file gets one `C14: not run (no trusted sha)` note on stderr and nothing is executed. The file is read once (`read_bytes`), and the hash and the parsed premises come from those same bytes. The `in-process effects` row stays as written ("never through a shell string the plan controls"). The sha makes it true: `dispatch.sh` passes the TASK line's `task_sha256`, which it has already checked against the file it sends. The string C14 runs is therefore the orchestrator's dispatched text and not a PR's. A branch copy at acceptance gets no sha, so a PR-controlled task file executes nothing.
+- `dispatch.sh` is outside this task's files. The P1-5 lineage needs one line, the checker call at `scripts/orchestrator/dispatch.sh:238`, to become `out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" --premises-sha "$(value_of task_sha256)" "${tf}" 2>&1)" || {`. Until then dispatch's check runs C1 to C13 and C15, and C14 prints its note.
+- `task-from-plan.py` passes the sha of the file it has just written, its own text whose premises it ran itself a moment earlier, so its verdict still includes C14.
+- Selector `test_c14_executes_premise_commands_only_for_the_dispatched_sha`: a task whose premise is `touch <marker>; printf base`.
+  - Without a sha, or with a wrong one, the checker exits 0 with the note and the marker is never written.
+  - With the file's sha, the premise runs (the marker exists) and compares.
+  - An edited output with its own sha fails C14.
+
+  On 538e60bd's parent the no-sha case wrote the marker: `(0, True) != (0, False)`, plus the unknown-flag usage errors. On 538e60bd the four modules give 13 tests OK, 1 skipped.
+- With no sha, C14 runs nothing on the historical fixtures. That removes round 1's C14 ids from `test_task_checkers.py` (above) and the live-bus `history.sh` hazard noted under Observations.
+- Real runs (validation.md):
+  - The sixteen T133 files without a sha: exit 0, C1 to C13 and C15 clean, and the 14 files with premises each print the note.
+  - This task's file with its dispatched sha `e08bb0af…`: C14 runs its five premises and they reproduce (OK).
+
+[memory:decision] T133 P1-12 revise 1: task-consistency-check.py C14 executes premise commands only for a file whose sha256 equals --premises-sha (dispatch.sh to pass the TASK line's task_sha256); any other file gets a `C14: not run (no trusted sha)` note and nothing runs. Recorded as memory `3b0ef48d-bc91-4851-8d32-1051f6a5c076` (validation.md).
+
 ## Not done yet
 
-The evidence commit, its push, CI on the final head, the Bot window from that push and the RESULT (`task_copy=e08bb0af…`, `precheck=pending-411`, `bot_rounds=2`).
+The evidence commit, the one push, CI on the final head, the Bot window from that push and the RESULT (`round=revise-1`, `task_copy=e08bb0af…`, `precheck=pending-411`).
 
 cost: n/a

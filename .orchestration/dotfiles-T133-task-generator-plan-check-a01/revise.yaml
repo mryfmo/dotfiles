@@ -1,0 +1,5 @@
+task_id: dotfiles-T133-task-generator-plan-check-a01
+round: 2
+previous_head: ff4d25a89fcf301fddd6cd218aa6c9c91fe4a6ad
+check: tests/unit/test_task_consistency_c11_c15.py::test_c14_executes_premise_commands_only_for_the_dispatched_sha
+reason: the Codex Bot's P1 4306960622 on 35c66022 (C14 executes a task file's premise commands with the caller's rights), revise 1 of a01 and its last round under INV-6 (revises 1, amendments 1); the orchestrator chose option (b) of report.md, --premises-sha <sha256>, so C14 executes premise commands only for the orchestrator's dispatched text

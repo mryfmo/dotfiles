@@ -2,17 +2,16 @@
 # @file audit-pool.sh
 # @brief Run queued task-level audits, at most --max at a time, and keep only schema-valid audit records.
 # @description
-#   Plan 024 5.12 (2) (T133). A request `<queue>/<task>-<sha7>.request` holds `key=value` lines pr, head, base, task
-#   and optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` (python -I; macOS has no flock) a
-#   pick blocks, unread, every request not named `<task-id>-<sha7>.request`, then renames the oldest to `.running-<n>`,
-#   n a free slot of --max, audited in the pool's own `.claude/worktrees/orchestrator-audit-<n>` (added at origin/main
-#   when missing; never the integration worktree) as ORCH_REVIEW_WORKTREE of `orch-audit.sh <task> --head <head> <pr>
-#   --json <v>/<task>-audit-<sha7>.json`, with `--previous-head` and `--previous-findings <v>/<task>-audit-<prev7>.json`
-#   once `<v>/audit-shadow.tsv` holds two rows whose last field (full versus differential finding difference) is 0 (plan
-#   024 5.11 Q-C); until then the audit is full and the differential prompt goes to `<json>.differential-prompt.txt`.
-#   A zero exit whose json passes `orch-audit.sh --validate .schemas/audit.json` makes the request `.done`; otherwise
-#   `<request>.rejected` holds the reason and it becomes `.blocked`. A 429 is retried after 60, 120 and 240 s, then
-#   blocked. A killed pool's `.running-<n>` files hold their slots until removed; `--once` names them when they wait.
+#   Plan 024 5.12 (2) (T133). A request `<queue>/<task>-<sha7>.request` holds `key=value` lines pr, head, base, task and
+#   optionally previous_head. Under fcntl's exclusive lock on `<queue>/.lock` a pick blocks, unread, every request not
+#   named `<task-id>-<sha7>.request`, then renames the oldest to `.running-<n>`, n a free slot of --max, audited in the
+#   pool's own `.claude/worktrees/orchestrator-audit-<n>` (added at origin/main when missing; never the integration
+#   worktree) as ORCH_REVIEW_WORKTREE of `orch-audit.sh <task> --head <head> <pr> --json <v>/<task>-audit-<sha7>.json`,
+#   with `--previous-head` and `--previous-findings <v>/<task>-audit-<prev7>.json` once `<v>/audit-shadow.tsv` holds two
+#   rows whose last field is 0; until then the audit is full and the differential prompt goes to
+#   `<json>.differential-prompt.txt`. A zero exit whose json passes `orch-audit.sh --validate` makes the request
+#   `.done`; otherwise `<request>.rejected` holds the reason and it becomes `.blocked`. A 429 is retried after 60, 120
+#   and 240 s. A killed pool's `.running-<n>` files hold their slots until removed; `--once` names them when they wait.
 # @option --once Start what the free slots allow, then wait for those runs.
 # @option --loop Pick every 30 seconds until `<queue>/.stop` exists.
 # @option --max <n> Concurrent audits, 1 to 9 (default 2).
@@ -48,6 +47,7 @@ with open(os.path.join(q, ".lock"), "a") as lock:
     free = [n for n in range(1, mx + 1) if str(n) not in used]
     todo = sorted(glob.glob(os.path.join(q, "*.request")))
     for bad in [p for p in todo if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*-[0-9a-f]{7}\.request", os.path.basename(p))]:
+        open(f"{bad}.rejected", "w").write("the request name is not <task-id>-<sha7>.request\n")
         os.rename(bad, f"{bad[:-len('.request')]}.blocked")  # never a slot, a path or an argument
     todo = [p for p in todo if os.path.exists(p)]
     if free and todo:

@@ -2,20 +2,19 @@
 # @file verdict.sh
 # @brief Decide accept, revise or hold for one PR from its nine acceptance conditions and write the verdict JSON.
 # @description
-#   Plan 024 5.12 (1) (T133). Each condition `{id, ok, evidence}` is ok only on a positive check of a read input:
-#   (1) the head's `.orchestration/<task>/precheck.json` hashes to the record's `precheck:` and names the head or an
-#   evidence-only ancestor (a warning while PRECHECK_REQUIRED is unset or 0); (2) the seven required checks succeed;
-#   (3) `<task>-audit-<sha7>.json` passes `.schemas/audit.json`, names this task and head, has no open P0/P1, and is
-#   correct or leaves only records findings open; (4) the fresh pr-feedback.py sweep and `<task>-pr-feedback.json` name
-#   the head, and require-crit-review.py's helpers give each fresh item its own validly dispositioned saved item; (5)
-#   the merge-base diff keeps to allowed_files and the Check caps; (6) regime-counters.sh prints no `S1:` and revises
-#   below 2; (7) no P0/P1 finding is new, still-open or status-less, whatever its id or scope; (8) a security task's
-#   review ends `Verdict: correct`; (9) the record's sha256 lines exist and match. accept when all hold; hold when (6)
-#   or (7) fails or an input is missing or invalid; revise otherwise. It first re-runs itself under `env -i`, PATH =
-#   links to bash, uv, python3, gh, git and jq resolved from / (mise which, else command -v; a shim holds) then
-#   /usr/bin:/bin, Python = that python3 -I, uv offline with --no-config and --python: no checkout file and no
+#   Plan 024 5.12 (1) (T133). Each condition `{id, ok, evidence}` is ok only on a positive check of a read input: (1)
+#   the head's `.orchestration/<task>/precheck.json` hashes to the record's `precheck:` and names the head or an
+#   evidence-only ancestor; (2) the seven required checks succeed; (3) `<task>-audit-<sha7>.json` passes
+#   `.schemas/audit.json`, names this task and head, has no open P0/P1, and is correct or leaves only records findings
+#   open; (4) the fresh sweep and `<task>-pr-feedback.json` name the head, and require-crit-review.py's helpers give
+#   each fresh item its own validly dispositioned saved item; (5) the merge-base diff keeps to allowed_files and the
+#   Check caps; (6) regime-counters.sh prints no `S1:` and revises below 2; (7) no P0/P1 finding is new, still-open or
+#   status-less, whatever its id or scope; (8) a security task's review ends `Verdict: correct`; (9) the record's sha256
+#   lines exist and match. accept when all hold; hold when (6) or (7) fails or an input is missing or invalid; revise
+#   otherwise. It first re-runs itself under `env -i`, PATH = links to bash, uv, python3, gh, git and jq resolved from /
+#   then /usr/bin:/bin, Python = that python3 -I, uv offline with --no-config and --python: no checkout file and no
 #   inherited UV_PYTHON or VIRTUAL_ENV picks a tool. --apply (accept only; scripts/, .schemas/ and task files equal
-#   origin/main; four distinct agreeing shadow PRs) dispatches, then merges --match-head-commit; --admin/--auto refused.
+#   origin/main; four distinct agreeing shadow PRs) dispatches, then merges --match-head-commit.
 # @arg $1 int PR number (none with --loop).
 # @option --task <id> The task, when no record's block names the PR.
 # @option --apply With --team, --from, --to and --pane: send the ACCEPTANCE line and merge, on accept only.

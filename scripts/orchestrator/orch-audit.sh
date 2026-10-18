@@ -15,16 +15,16 @@
 #   and masked with this checkout's masker; the review worktree is restored.
 #   T133 (plan 024 5.12 (2)): `--head` must be a commit here; ORCH_REVIEW_WORKTREE replaces the review worktree; a
 #   failed run whose transcript mentions 429 says so on stderr (no transcript text leaves); `--json` asks for one fenced
-#   json block of `.schemas/audit.json`'s record just before the Verdict line (the gate reads the last line), checks it
-#   with the stdlib checker below and against this head, task and Verdict line, and writes it; `--previous-head` with
-#   `--previous-findings` makes the audit differential; `--validate <schema> <json>` runs the checker alone (python3 -I).
+#   json block of `.schemas/audit.json`'s record before the last (Verdict) line, checks it (stdlib checker below; head,
+#   task, Verdict), writes, masks as JSON and rechecks it, and removes it on any failure; `--previous-head` with
+#   `--previous-findings` makes the audit differential; `--validate <schema> <json>` runs the checker alone.
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the audited head).
 # @arg $3 int PR number.
 # @option --head <sha40> In place of the checkout: the audited head.
 # @option --ledger-check <script> A ledger check tracked in this repository and unchanged from HEAD, run instead of
 #   ledger-check.py.
-# @option --json <out> Also write the audit record, checked against `.schemas/audit.json`.
+# @option --json <out> Also write the audit record, checked against `.schemas/audit.json` before and after masking.
 # @option --previous-head <sha40> With --previous-findings <json>: audit only the hunks since that head.
 # @env ORCH_REVIEW_WORKTREE The review worktree (default `.claude/worktrees/orchestrator-review` of this checkout).
 # @exitcode 0 The audit is written; its verdict line is printed.
@@ -169,6 +169,7 @@ uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secret
 if [[ -n ${json} ]] && ! { uv run --no-project python -I -c "${checker}" .schemas/audit.json "${out}.last.md" "${json}" "${head}" "${task}" &&
     uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${json}" > /dev/null &&
     python3 -I -c "${checker}" .schemas/audit.json "${json}"; }; then # masked as JSON too: a \u-escaped secret decodes only now
-    rm -f -- "${json}" && refuse "the audit's json block is missing or invalid" 3
+    rm -f -- "${json}" || true
+    refuse "the audit's json block is missing or invalid" 3
 fi
 echo "orch-audit: ${out} (+ .last.md): $(tail -n 1 -- "${out}.last.md")"

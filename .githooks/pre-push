@@ -6,7 +6,7 @@
 #   of `<remote sha>..<local sha>` (from `git merge-base origin/main <local sha>` when the remote sha is all zeros),
 #   merges included, appends the whole content of each blob it adds or changes to a `mktemp` file: `git cat-file blob
 #   <commit>:<path>`, the raw form of `git show <commit>:<path>` without textconv, so no binary attribute or NUL byte
-#   turns it into a summary. `result-precheck.sh --secrets` scans that file; a match prints its count and the range,
+#   turns it into a summary, then a newline, so no token joins the last word of the blob before it. `result-precheck.sh --secrets` scans that file; a match prints its count and the range,
 #   never the text, and stops the push, as does a range git cannot read.
 # @stdin The ref lines git passes to a pre-push hook.
 # @exitcode 0 No pushed content holds a match. 1 A match, or a range that cannot be read.
@@ -25,6 +25,7 @@ while read -r ref sha _ remote; do
         while IFS= read -r -d '' path; do
             [[ "$(git cat-file -t "${commit}:${path}")" == blob ]] || continue
             git cat-file blob "${commit}:${path}" >> "${work}/scan"
+            echo >> "${work}/scan" # a boundary: a blob's last word never joins the next blob's first
         done < "${work}/paths"
     done < "${work}/commits"
     count="$(bash "${root}/scripts/orchestrator/result-precheck.sh" --secrets "${work}/scan" < /dev/null)" && continue

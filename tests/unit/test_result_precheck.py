@@ -170,11 +170,13 @@ class ResultPrecheckTest(unittest.TestCase):
         )
 
     def test_precheck_selector_proof_requires_red_on_previous_head_and_green_on_head(self):
-        case = "import unittest\n\nclass T(unittest.TestCase):\n    def test_a(self):\n        self.assertTrue({})\n\n"
-        case += "    def test_b(self):\n        pass\n"
-        self.write("tests/unit/test_sel.py", case.format("False"))
+        # The previous head runs this head's test source (revise 1 of a02), so the code under test is what changes.
+        case = "import unittest\n\nimport flag\n\n\nclass T(unittest.TestCase):\n    def test_a(self):\n"
+        case += "        self.assertTrue(flag.ON)\n\n    def test_b(self):\n        pass\n"
+        self.write("tests/unit/test_sel.py", case)
+        self.write("flag.py", "ON = False\n")
         previous = self.commit("red")
-        self.write("tests/unit/test_sel.py", case.format("True"))
+        self.write("flag.py", "ON = True\n")
         self.commit("green")
         green = self.precheck("--previous-head", previous, "--check", "tests/unit/test_sel.py::test_a")
         self.assertEqual(green.returncode, 0, green.stdout + green.stderr)
@@ -440,6 +442,55 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertIs(next(c for c in self.record()["checks"] if c["name"] == "secrets")["ok"], False)
         logs = "".join(p.read_text() for p in (self.repo / f".orchestration/{TASK}").glob("precheck-*.log"))
         self.assertNotIn(token(), result.stdout + result.stderr + logs)
+
+    def test_pre_push_scans_each_blob_on_its_own_boundary(self):
+        # Local review of 9cd5514 (P1, pre-push:27): a blob ending in a word character never joins a token that opens
+        # the next blob, where the masker's word boundary would no longer see it.
+        self.hooks()
+        env = {**self.env, "PATH": os.environ["PATH"]}  # the real uv and the real masker
+        self.git("switch", "-q", "-c", "joined", "main")
+        (self.repo / "a.txt").write_bytes(b"word")
+        (self.repo / "b.txt").write_bytes(token().encode() + b"\n")
+        self.commit("joined")
+        run = ["git", "push", "origin", "joined"]
+        result = subprocess.run(run, cwd=self.repo, env=env, capture_output=True, text=True, timeout=120)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stderr, r"pre-push: [1-9][0-9]* match\(es\) in ")
+        self.assertNotIn(token(), result.stdout + result.stderr)
+        self.assertEqual(self.git("ls-remote", "origin", "joined"), "")
+
+    def test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan(self):
+        # Local review of 9cd5514 (P1, result-precheck.sh:85): a UTF-16 credential file is caught, with a BOM or without.
+        env = {"PATH": os.environ["PATH"]}  # the real uv and the real masker
+        blob = self.temp / "blob"
+        for encoding in ("utf-16", "utf-16-le", "utf-16-be"):
+            with self.subTest(encoding=encoding):
+                blob.write_bytes(f"key={token()}\r\n".encode(encoding))
+                result = self.run_script(PRECHECK, "--secrets", str(blob), env=env, cwd=ROOT)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertRegex(result.stdout, r"^secrets: [1-9][0-9]* match\(es\)\n$")
+                self.assertNotIn(token(), result.stdout + result.stderr)
+        blob.write_bytes("key=clean\r\n".encode("utf-16"))
+        self.assertEqual(self.run_script(PRECHECK, "--secrets", str(blob), env=env, cwd=ROOT).returncode, 0)
+
+    def test_previous_head_proof_requires_an_executed_failing_test(self):
+        # Local review of 9cd5514 (P2, result-precheck.sh:250): the previous head runs this head's test source, and only
+        # an executed test that fails by assertion there is a red proof; an import error or no test run proves nothing.
+        self.write("lib.py", "VALUE = 1\n")
+        previous = self.commit("previous code")
+        self.write("lib.py", "VALUE = 2\n\n\ndef helper():\n    return 2\n")
+        case = "import unittest\n\nimport lib\n\n\nclass T(unittest.TestCase):\n"
+        case += "    def test_value(self):\n        self.assertEqual(lib.VALUE, 2)\n\n"  # fails on the previous code
+        case += "    def test_always(self):\n        self.assertTrue(lib.VALUE)\n\n"  # passes on both
+        case += "    def test_helper(self):\n        from lib import helper\n\n        self.assertEqual(helper(), 2)\n"
+        self.write("tests/unit/test_new.py", case)  # a new module: the previous head lacks it
+        self.commit("this head")
+        for name, ok in (("test_value", True), ("test_always", False), ("test_helper", False), ("test_none", False)):
+            with self.subTest(name=name):
+                result = self.precheck("--previous-head", previous, "--check", f"tests/unit/test_new.py::{name}")
+                self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
+                self.assertIs(self.record()["selectors"][0]["ok"], ok)
+        self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)
 
 
 if __name__ == "__main__":

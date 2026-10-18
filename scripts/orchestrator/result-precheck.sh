@@ -13,9 +13,10 @@
 #     Run `shfmt`: git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
 #     Check Python and Markdown formatting: git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check
 #     Check Python and Markdown formatting: git ls-files -z "*.md" | xargs -0 prettier --check
-#   A `--check` selector (`uv run python -m unittest tests.unit.<module> -k <name>`) must fail in a detached worktree of
-#   `--previous-head` and pass here (`selectors[]`); the worktree is removed with `git worktree remove --force`, never
-#   pruned. `precheck.json` (`{head, tree, generated_at, checks, selectors}`) and `result.txt` (the RESULT line) are
+#   A `--check` selector (`uv run python -m unittest tests.unit.<module> -k <name>`) must pass here and fail in a
+#   detached worktree of `--previous-head` that runs this head's copy of the module: exit 1 after `Ran <n>` tests with
+#   n > 0 and `FAILED (failures=…)` without errors, so an import error or no test run is no proof (`selectors[]`); the
+#   worktree is removed with `git worktree remove --force`, never pruned. `precheck.json` (`{head, tree, generated_at, checks, selectors}`) and `result.txt` (the RESULT line) are
 #   written and `precheck=<sha256>` printed last; the seat commits them and the logs last and sends the RESULT with
 #   `head=` set to that commit. A masker failure removes the logs instead. `--secrets <file>` (the pre-push hook) and
 #   `--staged` (`format` and `shellcheck` on the staged blobs, the pre-commit hook) run only those checks.
@@ -78,11 +79,17 @@ mask() {
 }
 # @description Mask a copy of a file's printable text and compare: exit 1 and print `secrets: <n> match(es)` on a
 #   difference, never the text. Bytes outside printable ASCII become newlines first, so a NUL-bearing or binary blob
-#   hides nothing from the masker and cannot make it fail on decoding.
+#   hides nothing from the masker and cannot make it fail on decoding. A file holding NUL bytes is scanned a second
+#   time with them deleted: that decodes the ASCII of UTF-16LE and UTF-16BE text, where a credential's characters sit
+#   between NULs (a match in both views counts twice; the count is reported, never relied on).
 # @arg $1 path The file.
 secrets_in() {
     local out
     LC_ALL=C tr -c '\11\12\40-\176' '\12' < "$1" > "${work}/text" || return
+    LC_ALL=C tr -d '\0' < "$1" > "${work}/nul-free" || return
+    if ! cmp -s -- "$1" "${work}/nul-free"; then
+        { echo && LC_ALL=C tr -c '\11\12\40-\176' '\12' < "${work}/nul-free"; } >> "${work}/text" || return
+    fi
     cp -- "${work}/text" "${work}/copy" || return
     out="$(mask "${work}/copy" 2>&1)" || {
         echo "secrets: the masker failed"
@@ -222,7 +229,10 @@ if ((${#selectors[@]})); then
     for s in "${selectors[@]}"; do
         n=$((${n:-0} + 1)) module=${s#tests/unit/} && module=${module%%.py::*}
         before="${evidence}/precheck-selector-${n}-previous.log" after="${evidence}/precheck-selector-${n}-head.log" prc=0 hrc=0
-        (cd -- "${work}/previous" && uv run python -m unittest "tests.unit.${module}" -k "${s##*::}") > "${before}" 2>&1 || prc=$?
+        # The previous code runs this head's test source (the selector's test may be new), so its own failure counts.
+        { mkdir -p -- "${work}/previous/tests/unit" && cp -- "tests/unit/${module}.py" "${work}/previous/tests/unit/"; } \
+            > "${before}" 2>&1 || prc=$?
+        ((prc)) || (cd -- "${work}/previous" && uv run python -m unittest "tests.unit.${module}" -k "${s##*::}") > "${before}" 2>&1 || prc=$?
         uv run python -m unittest "tests.unit.${module}" -k "${s##*::}" > "${after}" 2>&1 || hrc=$?
         printf '%s\t%s\t%s\t%s\t%s\n' "${s}" "${prc}" "${before}" "${hrc}" "${after}" >> "${work}/selectors"
         echo "result-precheck: ${s} previous head exit ${prc}, this head exit ${hrc}"
@@ -236,19 +246,24 @@ mask "${logs[@]}" > /dev/null || {
     exit 1
 }
 read -r -d '' writer << 'PY' || true
-import hashlib, json, os, sys
+import hashlib, json, os, re, sys
 from datetime import UTC, datetime
 
 task, evidence, head, tree, rows, sel_rows = sys.argv[1:7]
 def digest(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest()
+def red(code, log):
+    # An executed test failing by assertion; an import or runner error, or no test run, proves no regression.
+    text = open(log, errors="replace").read()
+    ran, summary = re.search(r"^Ran (\d+) tests? in ", text, re.M), re.search(r"^FAILED \(([^)]*)\)$", text, re.M)
+    return code == "1" and bool(ran and int(ran[1]) and summary) and "failures=" in summary[1] and "errors=" not in summary[1]
 checks = [
     {"name": n, "ok": None, "deferred": "orchestrator"} if rc == "deferred"
     else {"name": n, "ok": rc == "0", "exit": int(rc), "output_sha256": digest(log)}
     for n, rc, log in (line.rstrip("\n").split("\t") for line in open(rows))
 ]
 selectors = [
-    {"selector": s, "ok": p != "0" and h == "0", "previous_head_exit": int(p),
+    {"selector": s, "ok": red(p, before) and h == "0", "previous_head_exit": int(p),
      "previous_head_output_sha256": digest(before), "head_exit": int(h), "head_output_sha256": digest(after)}
     for s, p, before, h, after in (line.rstrip("\n").split("\t") for line in open(sel_rows))
 ]

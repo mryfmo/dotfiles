@@ -1,0 +1,49 @@
+[
+  {
+    "id": "a02-review-scope",
+    "scope": "review",
+    "body": "Independent read-only review of `git diff 9da0ed3f..eb20d063` by a fresh general-purpose subagent of the worker seat. It had the diff and the task file, not the worker's conclusions, and worked in its own scratch worktree of eb20d063, removed afterwards. It ran the four task modules (28 tests OK, 1 skipped) and probes under its own temporary directory. Checked and found fine: the byte-identical task copy; the caps (651 of 700, 647 of 800); test_task_checkers.py carrying only amendment 1's two edits; all 27 dispatched T133 task files passing without a sha, with only the no-sha warning; the clean-plan gate before any command or write; plan text read with `git show HEAD:`; no read under .orchestration/tasks/; whole-id wave selection; program items to the next heading; scope confinement; the Check worktree cleanup; the bundled Completion text; C10 `-e`; C6, C10 and C12 confinement, a symlink escape included; the C14 hash and command read from the same bytes and its severities; C12 concrete matches; F2 concrete matches; no printed token value. The verdict was `incorrect` (two P2). This was the task's one correction round, fixed in 6e07d291; each finding's record below gives its disposition. This is worker process evidence, not reviewer authentication and not the task-level audit.",
+    "resolved": true
+  },
+  {
+    "id": "a02-p2-latest-event",
+    "scope": "file",
+    "path": "scripts/orchestrator/plan-check.py",
+    "body": "P2, high: `latest()` took the first status of a line even when that event was another task's, ranked every timed line above every untimed one, and kept a trailing backtick. Real case: .orchestration/acceptance/dotfiles-T128-settings-hook-dedupe-a01.md:80. fixed:6e07d291. Each event is read up to the next one on its line; an untimed event carries the latest timestamp above it; the status is captured as [\\w-]+. Regression: test_drift_uses_the_latest_timestamped_acceptance_for_the_same_task gained a timed line with two events, another task's first, and an untimed shared line after it. It is red against eb20d063 (`accepted != withdrawn`` `) and green on 6e07d291.",
+    "resolved": true
+  },
+  {
+    "id": "a02-p2-c15-missing-design",
+    "scope": "file",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "body": "P2, high: C15 reported a missing design only for a task that carries invariants, so a mistyped design path skipped the assignment check. fixed:6e07d291. Existence now comes from C8's `git cat-file -e` probe. A design that origin/main cannot give is a finding for a task with invariants, and a path naming no design on origin/main or in the checkout is a finding for any task. The one exemption left is a design that exists only in this checkout, for a task without invariants: it assigns nothing yet. Amendment 1's frozen fixtures in test_task_checkers.py are such tasks; the report explains this. Regression: test_c15_requires_the_design_assigned_invariant_id_set gained `a mistyped design`. It is red against eb20d063 and green on 6e07d291. The list form of implementing_tasks (T124, T126) still assigns no id set, so the sentences a task carries are byte-compared, as stated in the docstring: no-change-needed, because a list names no ids per task.",
+    "resolved": true
+  },
+  {
+    "id": "a02-p3-stdin-and-lone-words",
+    "scope": "file",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "body": "P3: rerun() inherited stdin, so a lone-word premise such as `head` waited on the caller. fixed:6e07d291 with stdin=subprocess.DEVNULL; the change is one line, so it has no dedicated test. The lone-word rule itself stays: item 15 names single-word commands. The real plan's field names `head` and `security` become draft premises the orchestrator edits out of the generated file (see the report).",
+    "resolved": true
+  },
+  {
+    "id": "a02-p3-c7b-duplicate-row",
+    "scope": "file",
+    "path": "scripts/orchestrator/task-from-plan.py",
+    "body": "P3: a glob match that is itself an allowed entry got a second row naming two entries, so the generated file failed C7b. fixed:6e07d291: no concrete row is written for an allowed entry. Regression: test_generator_preserves_wildcard_scopes_and_their_threat_rows now adds `scripts/*.sh` over the literal scripts/demo.sh. It is red against eb20d063 and green on 6e07d291.",
+    "resolved": true
+  },
+  {
+    "id": "a02-p3-design-without-front-matter",
+    "scope": "file",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "body": "P3: C15 parsed the YAML of any design read from origin/main. fixed:6e07d291: only a design that opens with `---` is parsed, and anything else assigns nothing. There is no dedicated test: C6, which is unchanged under item 2, parses the same working-tree design first, so a fixture would exercise C6, not C15.",
+    "resolved": true
+  },
+  {
+    "id": "a02-p3-test-gaps",
+    "scope": "review",
+    "body": "P3: item 17's test covered two different PRs, not one repeated PR, and C12's own-evidence exemption had no real file. fixed:6e07d291. The item 17 line is now `#77 abc1234 merged; #77 def4567 abc1234 CLEAN`. The C12 test tracks .orchestration/dotfiles-T9-base-a01/run.sh under the task's own glob. Both pass against eb20d063, because they fill coverage gaps rather than show defects, and both are red against 9da0ed3 with the final sources.",
+    "resolved": true
+  }
+]

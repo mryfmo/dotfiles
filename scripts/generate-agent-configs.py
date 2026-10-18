@@ -444,7 +444,12 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                             "command": hooks["enforce_uv_hook"],
                         }
                     ],
-                }
+                },
+                *(
+                    [{"matcher": "Bash", "hooks": [{"type": "command", "command": hooks["gh_merge_gate_hook"]}]}]
+                    if hooks.get("gh_merge_gate_hook")
+                    else []
+                ),
             ],
             "SessionStart": hooks.get("session_start", []),
             "PostToolUse": [

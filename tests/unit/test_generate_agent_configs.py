@@ -193,6 +193,35 @@ def load_manifest_fixture(temp_dir: Path) -> dict:
 
 
 class GenerateAgentConfigsTest(unittest.TestCase):
+    def test_manifest_gates_merge_update_branch_and_create_through_the_hook_and_keeps_every_other_gh_write_on_ask(
+        self,
+    ) -> None:
+        parse = "import json,yaml,sys;print(json.dumps(yaml.safe_load(sys.stdin.read())))"
+        command = ["uv", "run", "--no-project", "--with", "pyyaml", "python", "-c", parse]
+        manifest = json.loads(
+            subprocess.check_output(command, input=(ROOT / "home/dot_agents/agent-config.yaml").read_text(), text=True)
+        )
+        settings = self.render_claude_template(self.module.render_claude_settings(manifest))
+        self.assertEqual("~/Workspace/dotfiles", manifest["orchestrator_checkout"])
+        ask = settings["permissions"]["ask"]
+        for verb in ("merge", "create", "update-branch"):
+            self.assertNotIn(f"Bash(gh pr {verb}:*)", ask)
+        for verb in ("comment", "review", "close", "edit"):
+            self.assertIn(f"Bash(gh pr {verb}:*)", ask)
+        self.assertIn("Bash(gh issue:*)", ask)
+        for method in ("POST", "PATCH", "PUT", "DELETE"):
+            for flag in (f"-X {method}", f"--method {method}", f"-X{method}", f"--method={method}"):
+                self.assertIn(f"Bash(gh api {flag}:*)", ask)
+        for flag in ("-f:*", "-F:*", "--raw-field:*", "--field:*", "-f*", "-F*", "--raw-field=*", "--field=*"):
+            self.assertIn(f"Bash(gh api {flag})", ask)
+        entries = [
+            h
+            for table in settings["hooks"]["PreToolUse"]
+            for h in table["hooks"]
+            if "gh-merge-gate" in h.get("command", "")
+        ]
+        self.assertEqual([{"type": "command", "command": "~/.claude/hooks/gh-merge-gate.sh"}], entries)
+
     def setUp(self) -> None:
         self.module = load_generator()
         self.old_root = self.module.ROOT
@@ -696,13 +725,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         expected_ask = [
             f"Bash(gh {command}:*)"
             for command in (
-                "pr merge",
-                "pr create",
                 "pr comment",
                 "pr review",
                 "pr close",
                 "pr edit",
-                "pr update-branch",
                 "issue",
                 "api -X POST",
                 "api --method POST",

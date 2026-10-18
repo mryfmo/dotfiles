@@ -30,13 +30,10 @@
     ],
     "defaultMode": "auto",
     "ask": [
-      "Bash(gh pr merge:*)",
-      "Bash(gh pr create:*)",
       "Bash(gh pr comment:*)",
       "Bash(gh pr review:*)",
       "Bash(gh pr close:*)",
       "Bash(gh pr edit:*)",
-      "Bash(gh pr update-branch:*)",
       "Bash(gh issue:*)",
       "Bash(gh api -X POST:*)",
       "Bash(gh api --method POST:*)",
@@ -156,6 +153,15 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/enforce-uv.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/gh-merge-gate.sh"
           }
         ]
       }

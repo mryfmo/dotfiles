@@ -86,6 +86,8 @@ worker_worktree: .claude/worktrees/worker-c
 # Number of seated worker worktrees herdr-agents --add-worker allows.
 # Read from the deployed ~/.agents/agent-config.yaml.
 worker_cap: 4
+# Protected deployed authority for merge and ready-creation checkout checks.
+orchestrator_checkout: ~/Workspace/dotfiles
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
@@ -227,13 +229,10 @@ claude:
       - Bash(kubectl apply:*)
     # shortcut: flags after the API path escape prefix rules; the integration gate remains authoritative.
     ask:
-      - Bash(gh pr merge:*)
-      - Bash(gh pr create:*)
       - Bash(gh pr comment:*)
       - Bash(gh pr review:*)
       - Bash(gh pr close:*)
       - Bash(gh pr edit:*)
-      - Bash(gh pr update-branch:*)
       - Bash(gh issue:*)
       - Bash(gh api -X POST:*)
       - Bash(gh api --method POST:*)
@@ -327,6 +326,8 @@ claude:
       # docker-group user or a reachable `systemd --user` bus it turns the
       # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
   hooks:
+    # A hook allow cannot lift ask; only its three bounded gh pr operations leave ask.
+    gh_merge_gate_hook: ~/.claude/hooks/gh-merge-gate.sh
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
     project_map_reload_hook: ~/.claude/hooks/project-map-reload.sh

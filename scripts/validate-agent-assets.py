@@ -371,9 +371,53 @@ def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
         fail(f"{label}.allow must be a list of non-empty permission rules")
 
 
+def validate_claude_gh_merge_gate(settings: dict[str, Any], label: str) -> None:
+    permissions = settings.get("permissions", {})
+    ask = permissions.get("ask", [])
+    retained = {f"Bash(gh pr {verb}:*)" for verb in ("comment", "review", "close", "edit")} | {"Bash(gh issue:*)"}
+    retained |= {
+        f"Bash(gh api {flag}:*)"
+        for method in ("POST", "PATCH", "PUT", "DELETE")
+        for flag in (f"-X {method}", f"--method {method}", f"-X{method}", f"--method={method}")
+    }
+    retained |= {
+        f"Bash(gh api {flag})"
+        for flag in ("-f:*", "-F:*", "--raw-field:*", "--field:*", "-f*", "-F*", "--raw-field=*", "--field=*")
+    }
+    for rule in sorted(retained):
+        if rule not in ask:
+            fail(f"{label} must retain ask rule {rule}")
+    if any(f"Bash(gh pr {verb}:*)" in ask for verb in ("merge", "create", "update-branch")):
+        fail(f"{label} must route the three gated operations through the hook")
+    if any(str(rule).startswith("Bash(gh") for rule in permissions.get("allow", [])):
+        fail(f"{label} must not pre-approve gh writes")
+    entries = [
+        (table.get("matcher"), hook)
+        for table in settings.get("hooks", {}).get("PreToolUse", [])
+        for hook in table.get("hooks", [])
+        if "gh-merge-gate.sh" in str(hook.get("command", ""))
+    ]
+    if entries != [("Bash", {"type": "command", "command": "~/.claude/hooks/gh-merge-gate.sh"})]:
+        fail(f"{label} requires exactly one synchronous deployed gh-merge-gate hook")
+
+
+def validate_orchestrator_checkout(path: Path) -> None:
+    text = path.read_text()
+    node = yaml.compose(text, Loader=yaml.SafeLoader)
+    anchors = (
+        [key for key, _ in node.value if isinstance(key, yaml.ScalarNode) and key.value == "orchestrator_checkout"]
+        if isinstance(node, yaml.MappingNode)
+        else []
+    )
+    literal = re.findall(r"^orchestrator_checkout: (~/[^\s\x00]+)$", text, re.M)
+    if len(anchors) != 1 or len(literal) != 1 or yaml.safe_load(text).get("orchestrator_checkout") != literal[0]:
+        fail(f"{path} requires one plain root-level orchestrator_checkout: ~/path anchor")
+
+
 def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path, os_name))
+    validate_claude_gh_merge_gate(settings, str(settings_path))
     if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
         fail(f"{settings_path} must declare the Claude Code settings schema")
     interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("claude", {})
@@ -1659,6 +1703,7 @@ def report_regime_boundary() -> None:
 
 def main() -> None:
     manifest = validate_agent_manifest()
+    validate_orchestrator_checkout(ROOT / "home/dot_agents/agent-config.yaml")
     validate_assets(manifest)
     validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()

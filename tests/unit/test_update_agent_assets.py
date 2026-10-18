@@ -36,8 +36,9 @@ else:
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
     if name == "npm":  # npm links its own bin and refuses with EEXIST to replace an entry it does not own
         own = "lib/node_modules/@oh-my-pi/pi-coding-agent/"
-        link = os.readlink(target) if target.is_symlink() else ""
-        if (target.exists() or link) and not link.startswith(("../" + own, str(target.parent.parent / own))):
+        link = os.readlink(target) if target.is_symlink() else ""  # bin-links resolves it before the ownership check
+        resolved = os.path.normpath(os.path.join(target.parent, link)) if link else ""
+        if (target.exists() or link) and not resolved.startswith(str(target.parent.parent / own) + os.sep):
             sys.exit("npm error code EEXIST: " + str(target))
         target.unlink(missing_ok=True)
         target.symlink_to("../" + own + "bin/omp")
@@ -190,6 +191,49 @@ class UpdateAgentAssetsTest(unittest.TestCase):
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
 
+    def update_omp_in(self, home, version):
+        # update_omp with the fixture curl and npm on PATH; the caller has placed any entry at ~/.local/bin/omp.
+        binary = home / ".local/bin"
+        binary.mkdir(parents=True, exist_ok=True)
+        for name in ("curl", "npm"):
+            (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
+            (binary / name).chmod(0o755)
+        payload = home / "payload"
+        payload.write_bytes(b"fixture omp tarball\n")
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+            + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
+            env=os.environ
+            | {
+                "HOME": str(home),
+                "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                "CALLS": str(home / "calls.jsonl"),
+                "PAYLOAD": str(payload),
+                "FIXTURE_VERSION": version,
+            },
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+    def test_a_link_target_escaping_the_npm_prefix_is_refused(self):
+        # The Bot's P2 4307029052: npm resolves the link before its ownership check (bin-links check-bin), so a target
+        # that starts with this prefix's package but leaves it through `..` is not npm's own and moves to the kept path.
+        escaping = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/../../outside")
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / ".local/bin/omp"
+            target.parent.mkdir(parents=True)
+            target.symlink_to(escaping)
+            result = self.update_omp_in(home, "18.11.3")
+            output = result.stdout + result.stderr
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn(f"resolves to {home}/.local/lib/node_modules/outside", result.stdout)
+            self.assertEqual(escaping, (home / ".local/share/agent-assets/omp/omp.previous").readlink(), output)
+            self.assertEqual(Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"), target.readlink(), output)
+
     def test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails(self):
         # local:fbbc6d9:1: a standalone file or a link outside this prefix's package, a dangling one included, makes npm
         # fail with EEXIST; it moves to a kept path, not the run's temporary directory. npm's own link and a directory
@@ -201,9 +245,6 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                     home = Path(directory)
                     binary = home / ".local/bin"
                     binary.mkdir(parents=True)
-                    for name in ("curl", "npm"):
-                        (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
-                        (binary / name).chmod(0o755)
                     target, old = binary / "omp", home / "tern/bin/omp"
                     aside = home / ".local/share/agent-assets/omp/omp.previous"
                     old.parent.mkdir(parents=True)
@@ -220,25 +261,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         target.write_text("#!/bin/sh\necho omp/0.0.1\n")
                     elif entry == "directory":
                         target.mkdir()
-                    payload = home / "payload"
-                    payload.write_bytes(b"fixture omp tarball\n")
-                    result = subprocess.run(
-                        ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
-                        + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
-                        env=os.environ
-                        | {
-                            "HOME": directory,
-                            "PATH": str(binary) + os.pathsep + os.environ["PATH"],
-                            "CALLS": str(home / "calls.jsonl"),
-                            "PAYLOAD": str(payload),
-                            "FIXTURE_VERSION": version,
-                        },
-                        stdin=subprocess.DEVNULL,
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                        check=False,
-                    )
+                    result = self.update_omp_in(home, version)
                     output = result.stdout + result.stderr
                     moved = entry in ("dangling", "external", "foreign", "file")
                     self.assertEqual(version == "0.0.1" or entry == "directory", result.returncode != 0, output)

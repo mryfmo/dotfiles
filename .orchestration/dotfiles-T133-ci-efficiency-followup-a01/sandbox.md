@@ -13,3 +13,5 @@ Every command up to this record's commit ran inside the Claude Code sandbox from
 - Validation §7 explains why `make unit-test` is shown both plain and with the sandbox's commit-signing and `mktemp` limits neutralized.
 
 No `@codex review` comment is posted.
+
+The task paused once, at the orchestrator's revise ACCEPTANCE for `dotfiles-T133-verdict-audit-pool-a02` (20:40:19Z), which came first. The running validation and the first independent review were stopped, because both read this worktree. The draft records were committed here (`5df527dd`). PR #410's branch was checked out for its round, and this branch resumed after that RESULT. Both validation and review were then rerun from the start, and only those reruns are kept.

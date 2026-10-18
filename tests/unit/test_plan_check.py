@@ -58,13 +58,16 @@ class PlanCheckTest(unittest.TestCase):
         (bin_dir / "gh").write_text(GH)
         (bin_dir / "gh").chmod(0o755)
         (self.calls / "head").write_text("abc1234" + "0" * 33)
-        self.env = {**os.environ, "CALLS": str(self.calls), "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+        self.env = {**os.environ, "CALLS": str(self.calls), "STUB_BIN": str(bin_dir)}
         for rel, text in CLEAN.items():
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.root / rel).write_text(text)
 
     def plan_check(self, *args):
-        run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I", str(PLAN_CHECK)]
+        # uv run puts its base interpreter's bin directory before PATH (Homebrew's on the macOS runner, which holds a
+        # real gh), so the stub goes first inside uv run, as in test_task_checkers.py.
+        stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
+        run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first, str(PLAN_CHECK)]
         result = subprocess.run([*run, "--root", str(self.root), *args], env=self.env, capture_output=True, text=True)
         return result.returncode, result.stdout.splitlines()
 

@@ -3,9 +3,9 @@ task_id: dotfiles-T133-ci-efficiency-a01
 seat: claude-standard-dot-a011
 branch: tools/ci-efficiency-a01
 base: 99a4a80f (origin/main at the branch point)
-code_commit: 414e475b (the test commit 0b7c5b4c, the change 3affaac7; the worker review round: the test commit 20096edf and the fix 414e475b)
+code_commit: 99b07d2b (the test commit 0b7c5b4c, the change 3affaac7; the worker review round: 20096edf and 414e475b; the orchestrator's revise round 1: 407a72d4 and 99b07d2b)
 pr: 409
-task_sha256: 17c1cd7d2d873b38e6c9a1cf5b31ba4b09da6982e91647f1623287e71a43d327 (amendment 1; dispatched at 4440b130…)
+task_sha256: a1c573367be16e604a240e610c79729a81748932e531088784295041a74f6089 (amendment 2; amendment 1 17c1cd7d…; dispatched at 4440b130…)
 ---
 
 # Report: dotfiles-T133-ci-efficiency-a01
@@ -42,12 +42,12 @@ task_sha256: 17c1cd7d2d873b38e6c9a1cf5b31ba4b09da6982e91647f1623287e71a43d327 (a
 - `uv run python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v`: 27 tests green at the head (validation §4). Red on `0b7c5b4c` (6 failures and 7 errors: the four new workflow tests, the moved job's reads and the missing script) and on `20096edf` (the exit-code test: `1 != 4`, `1 != 2`).
 - `make unit-test` (validation §4a): 1181 tests, run with the validation-only `mktemp` shim at `3affaac7`. The fix round after it touches only `ci-rerun.sh`, one test module and three comments. It reported 254 failures and errors, in six modules this change does not touch. All six fail identically on untouched `origin/main`: `test_require_crit_review` 136, `test_herdr_agents` 82, `test_ua_symbol_coverage` 19, `test_runtime_health` 8 (the same tests), `test_gh_auth` 5 and `test_agent_stop_gate` 4. The cause, shown for the `git commit` failures, is this machine's global `commit.gpgsign=true` with SSH signing: the sandbox denies `~/.ssh/id_ed25519*`, so every fixture commit that does not disable signing fails with "Couldn't load public key". The stop-gate tests see the gate's own `Terminated: 15` line on stderr. CI is the authority.
 - `shellcheck` and `shfmt -i 4 -sr -d` (3.14.1) on `ci-rerun.sh` are clean, and so is CI's own shfmt form. `ruff format --check` is clean on the three test modules. `ruff check` is clean on the two new or extended modules; `test_workflow_security.py` keeps an I001 that already exists at `99a4a80f` (§6a), and amendment 1 limits that file to one line. `make format` exits non-zero as on `origin/main` (Declared). `make render-check` passes (validation §6 and §7).
-- Caps (validation §8): 149 changed lines outside `tests/`, `.orchestration/` and the moved job (235 if the 86 lines the move removed from `remote.yaml` count too; cap 250). `private-bootstrap.yaml` is counted separately at 101 added lines. `tests/` has 232 (cap 350).
+- Caps (validation §8, after revise round 1): 163 changed lines outside `tests/`, `.orchestration/` and the moved job (249 if the 86 lines the move removed from `remote.yaml` count too; cap 250). `private-bootstrap.yaml` is counted separately at 101 added lines. `tests/` has 256 (cap 350).
 - After the push (validation §10): no `Private bootstrap` run on the pull request. Item 1 worked live: the push of `414e475b` cancelled the in-progress `Snippet install` run of `3affaac7`. The seven required contexts reported on `414e475b`, as §10 shows.
 
 ## Declared
 
-- The bootstrap path filter is the task's pattern as written. Of what the bootstrap depends on, it misses the root `.chezmoiroot` and `vendor/` (`scripts/update-agent-assets.sh` resolves its source root through `vendor/compactiondb`). A PR changing only those skips the bootstrap, and main's push catches it. The pattern is not widened beyond the task's text; the orchestrator decides.
+- The bootstrap path filter's gap (`.chezmoiroot` and `vendor/`) is closed by revise round 1 (below).
 - The existing test `test_a_pull_request_skips_the_bootstrap_only_for_an_orchestration_only_diff` keeps its name and cases, which still pass under the wider rule. Its name now describes only part of the rule, and the new test covers the rest.
 - `ci-rerun.sh` reads YAML through `uv run … --with pyyaml`, the repository's established way for shell scripts to parse YAML (`check-regime-boundary.sh`); jq alone cannot read YAML.
 - `make format` exits non-zero on `origin/main` as on this branch. Its whole-tree shfmt step flags 12 files, ten `.orchestration/tasks/*-input/` records plus `home/dot_claude/hooks/executable_project-map-reload.sh` and `tests/install/macos/common/brew.bats`, all unchanged from `origin/main`. CI's own shfmt step (`install/**/*.sh`, `scripts/**/*.sh`, pinned 3.14.1) is clean, and ruff and prettier are clean (validation §6).
@@ -55,11 +55,19 @@ task_sha256: 17c1cd7d2d873b38e6c9a1cf5b31ba4b09da6982e91647f1623287e71a43d327 (a
 - The OS-independent pattern (item 3) is the task's text. Its `.*\.md$` arm also matches Markdown under `home/` and `install/`, so a PR whose only `home/` change is Markdown skips macOS. A `home/` shell file keeps it, as the test asserts.
 - `ci-rerun.sh` fetches the fields the task names (`status`, `event`) but does not refuse a run that is not complete or not the PR's current head (worker review P3). Rerunning a superseded head's run would re-enter the PR's concurrency group. The orchestrator runs the script on the current head's failed run.
 
+## Revise round 1 (amendment 2, ACCEPTANCE revise of 05:47:01Z, previous_head 7779e78b)
+
+The Bot's review 5561618690 of `7779e78b` (its security review completed with no findings) left two P2 on this PR's own change. Both are fixed in `99b07d2b`, red in `407a72d4`, and recorded in `revise.yaml`:
+
+- **4305896433, `fixed:99b07d2b`**: the bootstrap path gate in `remote.yaml` and `private-bootstrap.yaml` gains `\.chezmoiroot$|vendor/`, still identically in both. chezmoi reads `.chezmoiroot`, and `update-agent-assets.sh` resolves its source root through `vendor/compactiondb`. `test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed` gains the cases `chezmoiroot` and `vendor`, both expecting `should_run=true`.
+- **4305896435, `fixed:99b07d2b`**: `ci-rerun.sh` takes the lock directory `.orchestration/validation/ci-reruns.lock` (an atomic `mkdir`, released by an `EXIT` trap) before it reads the ledger. It writes the rows before `gh run rerun`. A failed rerun exits 1 naming the kept reservation, so neither a crash nor a concurrent call can rerun twice. A lock a killed call leaves behind stops every later call until it is removed by hand, which fails safe. `test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice` covers this: a failing rerun keeps both rows, a second call exits 4 with no gh call, the lock is released, and a held lock stops a call before any gh call.
+- The 28 tests of the Check's command are green at `99b07d2b`, and shellcheck and shfmt are clean (validation §4 and §6). The round was pushed once, as a single command. Its CI and the Bot's state on the new head are in the RESULT. No `@codex review` comment was posted (the no-prompt rule), so when the Bot does not review a push to a ready PR, the RESULT records `bot: none` for the round's head after 15 minutes.
+
 ## Review, hook, cost
 
 - Worker-side independent review: one round on `3affaac7` by a fresh read-only subagent returned `Verdict: incorrect`:
   - P2, fixed: gh's own exit codes (4 needs authentication, 2 cancelled) passed through `set -e` as the script's "already rerun" and "usage" codes. Fixed in `20096edf` (red) and `414e475b`; every gh and jq call and the signature read now end in `|| exit 1`.
-  - P2, declared: the bootstrap pattern (the task's text) misses `vendor/` and `.chezmoiroot`, which the bootstrap reads. A PR changing only those skips the bootstrap, and main's push catches it.
+  - P2, declared at first, closed by revise round 1 after the Bot raised it too: the bootstrap pattern (the task's text) missed `vendor/` and `.chezmoiroot`, which the bootstrap reads.
   - P3, declared: the OS-independent pattern's `.*\.md$` also matches Markdown under `home/` and `install/`, which is in tension with the task's "a home change keeps macOS".
   - P3, declared: `ci-rerun.sh` does not require a completed run of the PR's current head. A rerun of a superseded head's run re-enters `pr-<N>` and could cancel the newest run, and `--failed` also reruns cancelled or timed-out jobs that no signature checked.
   - P3, fixed in `414e475b`: the concurrency comment's wording.

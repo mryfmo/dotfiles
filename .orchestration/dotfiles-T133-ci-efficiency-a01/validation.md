@@ -1,18 +1,18 @@
 ---
 task_id: dotfiles-T133-ci-efficiency-a01
 seat: claude-standard-dot-a011
-code_commit: 414e475b
+code_commit: 99b07d2b
 ---
 
 # Validation: dotfiles-T133-ci-efficiency-a01
 
-Every command ran from the worktree `.claude/worktrees/worker-d` on the branch `tools/ci-efficiency-a01` at `414e475b` (the test commit `0b7c5b4c`, the change `3affaac7`, and the worker review round: the test commit `20096edf` and the fix `414e475b`; all on `origin/main` `99a4a80f`), inside the sandbox unless a section says otherwise. `MAIN` names the main checkout, `T` the task id, `SCRATCH` the seat's scratchpad and `SHIM` the validation-only `mktemp` shim (T132 validation §5: on macOS a bare `mktemp -d` ignores `TMPDIR` and the sandbox denies the Darwin user temp directory). The output is verbatim, with the main checkout's, the home directory's and the scratchpad's paths replaced by `$MAIN`, `$HOME` and `$SCRATCH`, and each block ends with the exit status of the command shown. The item 0 measurement is its own record, `measure.md`.
+Every command ran from the worktree `.claude/worktrees/worker-d` on the branch `tools/ci-efficiency-a01` at `99b07d2b` (the test commit `0b7c5b4c`, the change `3affaac7`, the worker review round: the test commit `20096edf` and the fix `414e475b`, and the orchestrator's revise round 1 (amendment 2): the test commit `407a72d4` and the fix `99b07d2b`; all on `origin/main` `99a4a80f`), inside the sandbox unless a section says otherwise. `MAIN` names the main checkout, `T` the task id, `SCRATCH` the seat's scratchpad and `SHIM` the validation-only `mktemp` shim (T132 validation §5: on macOS a bare `mktemp -d` ignores `TMPDIR` and the sandbox denies the Darwin user temp directory). The output is verbatim, with the main checkout's, the home directory's and the scratchpad's paths replaced by `$MAIN`, `$HOME` and `$SCRATCH`, and each block ends with the exit status of the command shown. The item 0 measurement is its own record, `measure.md`.
 
-## 1. Task file (amendment 1, sha256 17c1cd7d…) and task copy
+## 1. Task file (amendment 2, sha256 a1c57336…) and task copy
 ```console
 $ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
-17c1cd7d2d873b38e6c9a1cf5b31ba4b09da6982e91647f1623287e71a43d327  $MAIN/.orchestration/tasks/dotfiles-T133-ci-efficiency-a01.md
-17c1cd7d2d873b38e6c9a1cf5b31ba4b09da6982e91647f1623287e71a43d327  .orchestration/dotfiles-T133-ci-efficiency-a01/task.md
+a1c573367be16e604a240e610c79729a81748932e531088784295041a74f6089  $MAIN/.orchestration/tasks/dotfiles-T133-ci-efficiency-a01.md
+a1c573367be16e604a240e610c79729a81748932e531088784295041a74f6089  .orchestration/dotfiles-T133-ci-efficiency-a01/task.md
 byte-identical
 [exit 0]
 ```
@@ -57,6 +57,9 @@ validate
 ## 3. Branch
 ```console
 $ git log --oneline origin/main..HEAD; git log --oneline -1 origin/main
+99b07d2b fix(ci): the bootstrap gate runs on .chezmoiroot and vendor/; ci-rerun.sh reserves the run under a lock before rerunning it (T133 ci-efficiency a01, revise round 1, Bot P2 4305896433 and 4305896435)
+407a72d4 test(ci): the bootstrap gate runs on .chezmoiroot and vendor/, and ci-rerun.sh reserves a run before rerunning it (T133 ci-efficiency a01, revise round 1, Bot P2 4305896433 and 4305896435, red)
+7779e78b chore(orchestration): T133 ci-efficiency a01 records (report, validation, sandbox, learning, worker review evidence)
 414e475b fix(ci): ci-rerun.sh exits 1 on any failed gh or jq call; the concurrency comment says what the group does (T133 ci-efficiency a01, worker review P2 and P3)
 20096edf test(ci): ci-rerun.sh reports a failing gh call as exit 1, never with its own codes (T133 ci-efficiency a01, worker review P2, red)
 3affaac7 feat(ci): one run per PR head, the private bootstrap off pull requests, in-job skips and a once-only flake rerun (T133 ci-efficiency a01)
@@ -64,7 +67,7 @@ $ git log --oneline origin/main..HEAD; git log --oneline -1 origin/main
 99a4a80f feat(doctor): make doctor fails on a Mac that may sleep (T129 doctor-sleep-disabled a01) (#394)
 [exit 0]
 ```
-## 4. Red on the test commits 0b7c5b4c and 20096edf, green at the head: the Check's test command (scratch worktrees removed afterwards)
+## 4. Red on the test commits 0b7c5b4c, 20096edf and 407a72d4, green at the head: the Check's test command (scratch worktrees removed afterwards)
 ```console
 $ git worktree add --detach -q "$SCRATCH/v133-red" 0b7c5b4c && uv run --directory "$SCRATCH/v133-red" python -m unittest tests.unit.test_workflow_orchestration_skip tests.unit.test_workflow_security tests.unit.test_ci_rerun -v 2>&1 | /usr/bin/grep -E " \.\.\. (ok|FAIL|ERROR)$|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//"; git worktree remove "$SCRATCH/v133-red"
 test_a_main_tests_job_when_present_decides_in_itself ... ok
@@ -97,7 +100,7 @@ test_unnamed_checkout_setting_does_not_leak_from_the_next_step ... ok
 test_workflows_have_exact_top_level_permissions ... ok
 test_workflows_have_no_job_level_permission_overrides ... ok
 test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature ... ERROR
-Ran 26 tests in 16.914s
+Ran 26 tests in 7.162s
 FAILED (failures=6, errors=7)
 [exit 0]
 ```
@@ -108,8 +111,20 @@ $ git worktree add --detach -q "$SCRATCH/v133-red2" 20096edf && uv run --directo
 test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature ... ok
 AssertionError: 1 != 4 : 
 AssertionError: 1 != 2 : 
-Ran 2 tests in 1.378s
+Ran 2 tests in 1.022s
 FAILED (failures=2)
+[exit 0]
+```
+```console
+$ git worktree add --detach -q "$SCRATCH/v133-red3" 407a72d4 && uv run --directory "$SCRATCH/v133-red3" python -m unittest tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice tests.unit.test_workflow_orchestration_skip.DecisionTest.test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed -v 2>&1 | /usr/bin/grep -E " \\.\\.\\. (ok|FAIL|ERROR)$|Error|^Ran|^OK|^FAILED" | sed "s/ (tests\\.unit[^)]*)//"; git worktree remove "$SCRATCH/v133-red3"
+test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice ... ERROR
+  test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed (case='chezmoiroot') ... FAIL
+  test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed (case='vendor') ... FAIL
+FileNotFoundError: [Errno 2] No such file or directory: '$TMPDIR/tmp01vq718q/repo/.orchestration/validation/ci-reruns.tsv'
+AssertionError: 'should_run=false\n' != 'should_run=true\n'
+AssertionError: 'should_run=false\n' != 'should_run=true\n'
+Ran 2 tests in 2.076s
+FAILED (failures=2, errors=1)
 [exit 0]
 ```
 ```console
@@ -141,9 +156,10 @@ test_workflows_have_exact_top_level_permissions (tests.unit.test_workflow_securi
 test_workflows_have_no_job_level_permission_overrides (tests.unit.test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
 test_a_failing_gh_exits_1_never_with_the_scripts_own_codes (tests.unit.test_ci_rerun.CiRerunTest.test_a_failing_gh_exits_1_never_with_the_scripts_own_codes) ... ok
 test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature) ... ok
+test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice) ... ok
 
 ----------------------------------------------------------------------
-Ran 27 tests in 13.040s
+Ran 28 tests in 9.357s
 
 OK
 [exit 0]
@@ -159,7 +175,7 @@ $ git show origin/main:.github/workflows/remote.yaml | sed -n 112,196p > "$SCRAT
 54c55
 <           if grep -qv '^\.orchestration/' <<< "${changed}"; then
 ---
->           if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
+>           if [ -z "${changed}" ] || grep -Eq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' <<< "${changed}"; then
 60c61
 <       - name: Skip the bootstrap for an .orchestration-only diff
 ---
@@ -241,20 +257,26 @@ $ git diff --numstat origin/main...HEAD
 101	0	.github/workflows/private-bootstrap.yaml
 12	90	.github/workflows/remote.yaml
 21	4	.github/workflows/test.yaml
+26	0	.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-crit.json
+13	0	.orchestration/dotfiles-T133-ci-efficiency-a01/dotfiles-T133-ci-efficiency-a01-worker-review-receipt.md
+8	0	.orchestration/dotfiles-T133-ci-efficiency-a01/learning.md
 326	0	.orchestration/dotfiles-T133-ci-efficiency-a01/measure.md
+68	0	.orchestration/dotfiles-T133-ci-efficiency-a01/report.md
+26	0	.orchestration/dotfiles-T133-ci-efficiency-a01/sandbox.md
 126	0	.orchestration/dotfiles-T133-ci-efficiency-a01/task.md
-92	0	scripts/orchestrator/ci-rerun.sh
-154	0	tests/unit/test_ci_rerun.py
-73	4	tests/unit/test_workflow_orchestration_skip.py
+396	0	.orchestration/dotfiles-T133-ci-efficiency-a01/validation.md
+106	0	scripts/orchestrator/ci-rerun.sh
+175	0	tests/unit/test_ci_rerun.py
+76	4	tests/unit/test_workflow_orchestration_skip.py
 1	0	tests/unit/test_workflow_security.py
 [exit 0]
 ```
 ```console
 $ git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } $3 == ".github/workflows/private-bootstrap.yaml" { moved_new = $1; next } $3 == ".github/workflows/remote.yaml" { remote = $1 + $2; next } { o += $1 + $2 } END { printf "remote.yaml changed lines %d, of which the moved job and its blank line removed: 86\noutside tests/, .orchestration/ and the moved job: %d\nprivate-bootstrap.yaml (the moved job, counted separately): %d added\ntests/: %d\n", remote, o + remote - 86, moved_new, t }'
 remote.yaml changed lines 102, of which the moved job and its blank line removed: 86
-outside tests/, .orchestration/ and the moved job: 149
+outside tests/, .orchestration/ and the moved job: 163
 private-bootstrap.yaml (the moved job, counted separately): 101 added
-tests/: 232
+tests/: 256
 [exit 0]
 ```
 ## 9. Scope: the hunks of each workflow and the files touched
@@ -262,16 +284,22 @@ tests/: 232
 $ git diff --stat origin/main...HEAD; git diff -U0 origin/main...HEAD -- .github/workflows/test.yaml .github/workflows/remote.yaml .github/workflows/agent-assets.yml | /usr/bin/grep -E "^(@@|\+\+\+)"
  .github/flakes.yaml                                |   9 +
  .github/workflows/agent-assets.yml                 |   7 +
- .github/workflows/private-bootstrap.yaml           | 101 +++++++
- .github/workflows/remote.yaml                      | 102 +------
+ .github/workflows/private-bootstrap.yaml           | 101 ++++++
+ .github/workflows/remote.yaml                      | 102 +-----
  .github/workflows/test.yaml                        |  25 +-
- .../dotfiles-T133-ci-efficiency-a01/measure.md     | 326 +++++++++++++++++++++
- .../dotfiles-T133-ci-efficiency-a01/task.md        | 126 ++++++++
- scripts/orchestrator/ci-rerun.sh                   |  92 ++++++
- tests/unit/test_ci_rerun.py                        | 154 ++++++++++
- tests/unit/test_workflow_orchestration_skip.py     |  77 ++++-
+ ...otfiles-T133-ci-efficiency-a01-worker-crit.json |  26 ++
+ ...T133-ci-efficiency-a01-worker-review-receipt.md |  13 +
+ .../dotfiles-T133-ci-efficiency-a01/learning.md    |   8 +
+ .../dotfiles-T133-ci-efficiency-a01/measure.md     | 326 +++++++++++++++++
+ .../dotfiles-T133-ci-efficiency-a01/report.md      |  68 ++++
+ .../dotfiles-T133-ci-efficiency-a01/sandbox.md     |  26 ++
+ .../dotfiles-T133-ci-efficiency-a01/task.md        | 126 +++++++
+ .../dotfiles-T133-ci-efficiency-a01/validation.md  | 396 +++++++++++++++++++++
+ scripts/orchestrator/ci-rerun.sh                   | 106 ++++++
+ tests/unit/test_ci_rerun.py                        | 175 +++++++++
+ tests/unit/test_workflow_orchestration_skip.py     |  80 ++++-
  tests/unit/test_workflow_security.py               |   1 +
- 11 files changed, 922 insertions(+), 98 deletions(-)
+ 17 files changed, 1497 insertions(+), 98 deletions(-)
 +++ b/.github/workflows/agent-assets.yml
 @@ -12,0 +13,7 @@ on:
 +++ b/.github/workflows/remote.yaml
@@ -394,3 +422,6 @@ validate	pass
 $ gh api repos/mryfmo/dotfiles/commits/414e475b/check-runs --paginate --jq '.check_runs[]|[.name,.conclusion]|@tsv' | sort | grep -cE "^(validate|test \((ubuntu-24.04, (server|client)|macos-14, client)\)|public-bootstrap \((ubuntu-24.04, (server|client)|macos-14, client)\))	success$"
 7
 ```
+## 12. Revise round 1 (amendment 2; ACCEPTANCE revise of 05:47:01Z, previous_head 7779e78b)
+
+The two `check=` tests are red on `407a72d4` and green at `99b07d2b` (§4). The Bot's two P2 threads are `fixed:99b07d2b`: 4305896433 (the path gate gains `\.chezmoiroot$|vendor/` in both bootstrap workflows) and 4305896435 (the run is reserved under `ci-reruns.lock` before `gh run rerun`). The round is pushed once, as a single command, after this record is committed. Its CI and the Bot's state on the new head are reported in the RESULT, because a record cannot hold the CI of its own commit. §10 is the CI of `414e475b`, the head before the round. The `revise.yaml` beside this file carries `previous_head` and both selectors.

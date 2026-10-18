@@ -14,6 +14,7 @@ permission_gated_commands: see the table
 - Tests that run `update_omp`/`update_hcom` need the validation-only `mktemp` shim in the scratchpad, as in T132. `make unit-test` ran with it (validation §4a), and CI is the authority.
 - Scratch worktrees for the red run were added under the scratchpad and removed with `git worktree remove`. `git worktree prune` was never run. No Plan Mode was used, so there is no Crit plan server.
 - No local mutation was chained onto a call that ran outside the sandbox.
+- The orchestrator's no-prompt PING (05:11:16Z: `git fetch`, `git push`, `gh pr ready` and `gh pr create --draft` each as a single command, never chained; no `@codex review` comment) was read at 05:44Z. Before that, the records push of 05:27Z and `gh pr ready 409` of 05:38Z ran chained with other commands in one Bash call; no prompt fired. The revise round's push is a single command.
 
 GitHub writes, all inside the sandbox and all named by item 0 or the Completion clause: `gh pr ready 405`, `gh pr ready 402`, `gh pr create --draft --base main --head tools/ci-efficiency-a01 …` (the plain create form) and `gh pr ready <this PR>` when CI is green. No comment, review or edit was run, and `ci-rerun.sh` was never run against GitHub.
 
@@ -23,4 +24,4 @@ Calls outside the sandbox, all through `excludedCommands` (Worker Playbook step 
 |--:|---|---|
 | 1 | `agmsg-dispatch … 'AGMSG-PONG v1 task_id=dotfiles-T133-ci-efficiency-a01 status=question …'` (the `allowed_files` gap, answered by amendment 1) | `agmsg-dispatch` |
 | 2 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T132-make-update-followups-a01 …'` (item 0(a)) | `agmsg-dispatch` |
-| 3 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T133-ci-efficiency-a01 …'` | `agmsg-dispatch` |
+| 3 | `agmsg-dispatch … 'AGMSG-RESULT v1 task_id=dotfiles-T133-ci-efficiency-a01 …'` (round 1 at 05:44Z, and again after revise round 1) | `agmsg-dispatch` |

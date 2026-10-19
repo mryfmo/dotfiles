@@ -15,14 +15,17 @@
 #   `.orchestration/validation/ci-reruns.tsv`, and only then `gh run rerun <run-id> --failed`
 #   runs. The reservation stays after success, failure or interruption, so a run is rerun at most
 #   once, and it blocks only its own run. All of these live in the checkout this script lives in
-#   (`git rev-parse --show-toplevel` there). Before reading anything, uv, python3, gh, jq, git and mkdir are linked
-#   into a private directory as `mise which` answers them under env -i from / (else `command -v`; a shims or
-#   relative path exits 1), PATH becomes those links then /usr/bin:/bin, and PyYAML runs as that python3 through
-#   `uv run --no-config --no-project --python` under env -i from the root, so no checkout's `.python-version`, `.venv`
-#   or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks the interpreter (security:4fe2438:1).
+#   (`git rev-parse --show-toplevel` there). Before reading anything, uv, python3, gh, jq, git and mkdir are resolved
+#   as `mise which` answers them under env -i from / (else `command -v`; a shims or relative path exits 1); all but
+#   python3 are linked into a private directory and PATH becomes those links then /usr/bin:/bin. python3 is always
+#   started by its own path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
+#   `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i from the root, so no
+#   checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks
+#   the interpreter (security:4fe2438:1).
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every candidate job matched a signature; the run was reserved and rerun once.
-# @exitcode 1 A gh or jq call or the signature file failed (never gh's own codes), or the reserved rerun failed.
+# @exitcode 1 A tool resolves only to a shims or relative path, a gh or jq call or the signature file failed (never
+#   gh's own codes), or the reserved rerun failed.
 # @exitcode 2 Usage error, a run not completed yet, or a run with no failed, timed-out or cancelled job.
 # @exitcode 3 A job matched no signature (`real failure: <job>`) or the head is superseded (`superseded: run <id>`).
 # @exitcode 4 The run is already reserved or in ci-reruns.tsv; nothing was rerun.
@@ -35,15 +38,19 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 run_id=$1
-bin="$(mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")"
+bin="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")" # system paths: PATH is not pinned yet
 trap 'rm -rf -- "${bin}"' EXIT
-for tool in uv python3 gh jq git mkdir; do
+for tool in python3 uv gh jq git mkdir; do
     found="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
     [[ ${found} == /* && ${found} != */shims/* ]] || {
         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
         exit 1
     }
-    ln -s -- "${found}" "${bin}/${tool}"
+    if [[ ${tool} == python3 ]]; then
+        py=${found}
+    else
+        /bin/ln -s -- "${found}" "${bin}/${tool}"
+    fi
 done
 PATH="${bin}:/usr/bin:/bin"
 root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -72,7 +79,7 @@ for entry in entries:
         sys.exit("ci-rerun: malformed signature in " + sys.argv[1] + ": " + repr(entry))
     print("\t".join(fields))'
     local uvr=(env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${HOME}/.cache/uv" uv run --no-config --no-project
-        --quiet --python "${bin}/python3" --with pyyaml)
+        --quiet --python "${py}" --with pyyaml)
     # The index form fails inside the Claude sandbox even with PyYAML cached, so the cache goes first.
     (cd -- "${root}" && "${uvr[@]}" --offline python -I -c "${script}" "$1" < /dev/null 2> /dev/null) ||
         (cd -- "${root}" && "${uvr[@]}" python -I -c "${script}" "$1" < /dev/null)
@@ -150,7 +157,7 @@ done <<< "${candidates}"
 # until uutils bf423f388d (2026-08-28), so the mkdir binary cannot decide which of two concurrent calls wins.
 mkdir -p "${reservation%/*}"
 claim=0
-python3 -I -c 'import os, sys
+"${py}" -I -c 'import os, sys
 try:
     os.mkdir(sys.argv[1])
 except FileExistsError:

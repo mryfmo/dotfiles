@@ -379,10 +379,11 @@ class VerdictTest(unittest.TestCase):
         env = dict(HOME=os.environ["HOME"], TMPDIR=str(self.temp), VERDICT_BIN=str(bin_), PATH=f"{bin_}:/usr/bin:/bin")
         run = ["/bin/bash", str(self.repo / "scripts/orchestrator/verdict.sh"), "9"]
         func = {"BASH_FUNC_git%%": f'() {{ echo function >> "{marker}"; }}'}  # the review's exported git function
-        for case, extra, code in (("function", func, 0), ("tool-selection variable", {"UV_PYTHON": str(py)}, 20)):
+        p3, real = bin_ / "python3", shutil.which("python3", path=self.env["PATH"])
+        for case, extra, code in (("function", func, 0), ("variable", {"UV_PYTHON": str(py)}, 20), ("copy", {}, 20)):
             with self.subTest(case=case):  # the caller's pinned-looking state: honoured only as clean, else rebuilt
                 marker.unlink(missing_ok=True)
-                code and ((bin_ / "python3").unlink(), (bin_ / "python3").symlink_to(py))  # then python3 is planted too
+                p3.unlink(), shutil.copy(py, p3) if case == "copy" else p3.symlink_to(py if code else real)  # planted
                 result = subprocess.run(run, check=False, cwd=self.repo, env=env | extra, capture_output=True)
                 self.assertEqual((code, False), (result.returncode, marker.exists()), result.stderr)
 

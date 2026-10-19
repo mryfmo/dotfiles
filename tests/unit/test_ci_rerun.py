@@ -279,12 +279,29 @@ class CiRerunTest(unittest.TestCase):
         python.chmod(0o755)
         (checkout / ".venv/pyvenv.cfg").write_text(f"home = {Path(sys.executable).parent}\n")
         (checkout / ".python-version").write_text(f"{python}\n")
+        for tool in ("mktemp", "ln"):  # the checkout's own, reached through the empty PATH entry below
+            (checkout / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexit 1\n')
+            (checkout / tool).chmod(0o755)
         self.reset()
         selectors = {"UV_PYTHON": str(python), "VIRTUAL_ENV": str(checkout / ".venv")}
+        selectors["PATH"] = os.pathsep + str(self.t / "bin") + os.pathsep + os.environ["PATH"]
         result = self.finish(self.start("101", cwd=checkout, **selectors))
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual(1, len(self.reruns()))
         self.assertFalse(marker.exists(), "a checkout or inherited selector ran the planted interpreter")
+
+    def test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path(self):
+        # Worker review P1: CPython reads pyvenv.cfg beside, and one directory above, the path it was started by, so a
+        # link under a shared TMPDIR would let ${TMPDIR}/pyvenv.cfg choose its standard library.
+        python, seen = self.t / "py/python3", self.t / "started.log"
+        python.parent.mkdir()
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{seen}"\nexec "{sys.executable}" "$@"\n')
+        python.chmod(0o755)
+        self.reset()
+        path = f"{python.parent}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        result = self.finish(self.start("101", PATH=path))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual({str(python)}, set(seen.read_text().split()))
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.

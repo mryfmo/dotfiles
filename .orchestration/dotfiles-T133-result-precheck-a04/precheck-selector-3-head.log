@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_ignores_messages_from_unregistered_identities runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_ignores_messages_from_unregistered_identities
+.
+----------------------------------------------------------------------
+Ran 1 test in 2.480s
+
+OK

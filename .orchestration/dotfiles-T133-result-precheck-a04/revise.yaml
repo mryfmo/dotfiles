@@ -1,0 +1,15 @@
+task_id: dotfiles-T133-result-precheck-a04
+round: 1
+reset_of: dotfiles-T133-result-precheck-a03
+amendment: 1
+previous_head: ddf262dec0db404ffc4ba5e1095842f2f17c7e6d
+check:
+  - tests/unit/test_result_precheck.py::test_precheck_fails_closed_when_masking_fails
+  - tests/unit/test_result_precheck.py::test_precheck_refuses_symlinked_evidence
+  - tests/unit/test_result_precheck.py::test_dispatch_ignores_messages_from_unregistered_identities
+  - tests/unit/test_result_precheck.py::test_precheck_fixtures_isolate_home
+  - tests/unit/test_result_precheck.py::test_blob_scan_rejects_paths_outside_scan_directory
+  - tests/unit/test_result_precheck.py::test_precheck_masks_logs_when_proof_worktree_creation_fails
+  - tests/unit/test_result_precheck.py::test_dispatch_binds_precheck_to_code_head_across_update_branch
+  - tests/unit/test_result_precheck.py::test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+reason: the reset of a03 after the security-profile review (two P1, three P2) and the task-level audit (two P2) of ddf262d; the eight hardening regressions run red against that production head with this head's test source and green here

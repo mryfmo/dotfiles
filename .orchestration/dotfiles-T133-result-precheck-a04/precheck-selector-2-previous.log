@@ -1,0 +1,113 @@
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_refuses_symlinked_evidence runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence
+FFFF
+======================================================================
+FAIL: test_precheck_refuses_symlinked_evidence (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence) (link='precheck.json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 333, in test_precheck_refuses_symlinked_evidence
+    self.assertEqual(done, (1, "kept\n", []), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, '{\n  "head": "a84205f157f5b718fa355e9[1115 chars], []) != (1, 'kept\n', [])
+
+First differing element 0:
+0
+1
+
+Diff is 1473 characters long. Set self.maxDiff to None to see it. : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+precheck=c86420c97c1033c8c2243631e57550362712a4315359469a1c469ef16e8e021d
+
+
+======================================================================
+FAIL: test_precheck_refuses_symlinked_evidence (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence) (link='result.txt')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 333, in test_precheck_refuses_symlinked_evidence
+    self.assertEqual(done, (1, "kept\n", []), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, 'AGMSG-RESULT v1 task_id=dotfiles-T0-x[365 chars], []) != (1, 'kept\n', [])
+
+First differing element 0:
+0
+1
+
++ (1, 'kept\n', [])
+- (0,
+-  'AGMSG-RESULT v1 task_id=dotfiles-T0-x-a01 status=ready_for_review '
+-  'head=ebb331a12c2256771b8e830344503675a703547d '
+-  'precheck=1e60a55663c4d5e54518ac4f77632fb4487aef954cb30339f180b1eae045ee6f '
+-  'report=.orchestration/dotfiles-T0-x-a01/report.md '
+-  'validation=.orchestration/dotfiles-T0-x-a01/validation.md '
+-  'sandbox=.orchestration/dotfiles-T0-x-a01/sandbox.md '
+-  'learning=.orchestration/dotfiles-T0-x-a01/learning.md\n',
+-  []) : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+precheck=1e60a55663c4d5e54518ac4f77632fb4487aef954cb30339f180b1eae045ee6f
+
+
+======================================================================
+FAIL: test_precheck_refuses_symlinked_evidence (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence) (link='precheck-unit-test.log')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 333, in test_precheck_refuses_symlinked_evidence
+    self.assertEqual(done, (1, "kept\n", []), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, 'kept\n', []) != (1, 'kept\n', [])
+
+First differing element 0:
+0
+1
+
+- (0, 'kept\n', [])
+?  ^
+
++ (1, 'kept\n', [])
+?  ^
+ : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+precheck=47fb2c5f5d04b64d5f9d81dea43984c7888818ef1aca9ad5ecb4711ae3ff36c8
+
+
+======================================================================
+FAIL: test_precheck_refuses_symlinked_evidence (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence) (link='the task directory')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 333, in test_precheck_refuses_symlinked_evidence
+    self.assertEqual(done, (1, "kept\n", []), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, 'kept\n', [PosixPath('/private/tmp/cla[513 chars]g')]) != (1, 'kept\n', [])
+
+First differing element 0:
+0
+1
+
++ (1, 'kept\n', [])
+- (0,
+-  'kept\n',
+-  [PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck.json'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck-format.log'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck-shellcheck.log'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/result.txt'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck-render-check.log'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck-secrets.log'),
+-   PosixPath('/private/tmp/claude-501/tmp305nn__n/outside/precheck-unit-test.log')]) : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+precheck=cc6e0579670eaed2c7232ab7676731e5b34ba71191242314a0c5533085068c9d
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.263s
+
+FAILED (failures=4)

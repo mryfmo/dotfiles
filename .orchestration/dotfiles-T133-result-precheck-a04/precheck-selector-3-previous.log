@@ -1,0 +1,23 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_ignores_messages_from_unregistered_identities runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_ignores_messages_from_unregistered_identities
+F
+======================================================================
+FAIL: test_dispatch_ignores_messages_from_unregistered_identities (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_ignores_messages_from_unregistered_identities)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 374, in test_dispatch_ignores_messages_from_unregistered_identities
+    self.assertEqual((passed.returncode, sent, "ignored 3 row" in passed.stderr), (0, True, True), passed.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, False, False) != (0, True, True)
+
+First differing element 0:
+1
+0
+
+- (1, False, False)
++ (0, True, True) : precheck: head ffffffffffffffffffffffffffffffffffffffff is not a commit in this checkout
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.691s
+
+FAILED (failures=1)

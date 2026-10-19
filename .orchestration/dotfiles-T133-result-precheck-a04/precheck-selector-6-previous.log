@@ -1,0 +1,48 @@
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_masks_logs_when_proof_worktree_creation_fails runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_masks_logs_when_proof_worktree_creation_fails
+FF
+======================================================================
+FAIL: test_precheck_masks_logs_when_proof_worktree_creation_fails (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_masks_logs_when_proof_worktree_creation_fails) (masker_fails=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 316, in test_precheck_masks_logs_when_proof_worktree_creation_fails
+    self.assertEqual(done, (True, False, [False, False, True]), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (True, True, [True, True, True]) != (True, False, [False, False, True])
+
+First differing element 1:
+True
+False
+
+- (True, True, [True, True, True])
++ (True, False, [False, False, True]) : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+
+
+======================================================================
+FAIL: test_precheck_masks_logs_when_proof_worktree_creation_fails (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_masks_logs_when_proof_worktree_creation_fails) (masker_fails=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 316, in test_precheck_masks_logs_when_proof_worktree_creation_fails
+    self.assertEqual(done, (True, False, [False, False, True]), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (True, True, [True, True, True]) != (True, False, [False, False, True])
+
+First differing element 1:
+True
+False
+
+- (True, True, [True, True, True])
++ (True, False, [False, False, True]) : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+
+
+----------------------------------------------------------------------
+Ran 1 test in 2.666s
+
+FAILED (failures=2)

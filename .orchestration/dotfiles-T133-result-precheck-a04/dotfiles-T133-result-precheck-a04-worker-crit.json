@@ -1,0 +1,56 @@
+[
+  {
+    "id": "a04-review-scope",
+    "scope": "review",
+    "body": "Independent read-only review of `git diff ddf262de..bf1bce63` by a fresh general-purpose subagent of the worker seat. It had the diff and the task file, not the worker's conclusions, and worked in its own scratch worktree, removed afterwards. It ran both modules (83 tests OK), shellcheck, shfmt and probe repositories. Checked and found fine: masking (H1) on the normal, publish-failure and EXIT paths; the EXIT trap in every mode; the symlink refusal for .orchestration, the task directory, destinations, dangling links and the startup glob; blob path confinement; the identity filter's per-type pair and count-only note; the code-head fields; the C14 wiring; that each of the eight regressions exercises its item; and that the consolidation kept every earlier assertion. Caps were 480 of 500 and 606 of 640. The verdict was `incorrect` (one P2). This was the task's one correction round, fixed in 9f6ec7c9; each finding's record below gives its disposition. This is worker process evidence, not reviewer authentication and not the task-level audit.",
+    "resolved": true
+  },
+  {
+    "id": "a04-p2-evil-merge",
+    "scope": "file",
+    "path": "scripts/orchestrator/dispatch.sh",
+    "body": "P2, high: the update-branch exemption accepted an evil merge, one that also added changes neither parent made. It also read the code entries from the task copy at the RESULT head, which a later evidence commit could narrow. Both were reproduced. fixed:9f6ec7c9. A merge is exempt only when its tree equals `git merge-tree --write-tree` of its parents, its second parent is an ancestor of origin/main, and it leaves the code entries alone. The entries come from the task copy at the tested code head. Regression: test_dispatch_binds_precheck_to_code_head_across_update_branch gained an evil merge (scripts/evil.sh) and a narrowed task copy followed by an a.py merge. Both are red against bf1bce63 (accepted) and refused on 9f6ec7c9.",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-premises-sha-order",
+    "scope": "file",
+    "path": "scripts/orchestrator/dispatch.sh",
+    "body": "P3, high: --premises-sha is unknown to main's checker until PR #417 lands, so every non-review TASK dispatch would be refused if #411 merged first. no-change-needed: amendment 1 makes this integration order the orchestrator's (#417 and #423 before #411, then update-branch), and item 8 stands. The later update-branch merge that brings #423's edits to tests/unit/test_orchestrator_tools.py changes a code entry, so the gate will correctly ask for a fresh precheck then.",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-task-row",
+    "scope": "file",
+    "path": "scripts/orchestrator/dispatch.sh",
+    "body": "P3, high: the TASK-row cross-check counted a TASK row from any identity, missed a tab-separated one, and was silent when no TASK row was in the window. fixed:9f6ec7c9. Only the orchestrator's own TASK rows decide the seat; a tab-separated row is parsed by tokens; a missing row prints a `dispatch: note:`; and the RESULT filter also parses tokens. An intruder's TASK row is now among the ignored rows (test_dispatch_ignores_messages_from_unregistered_identities, red against bf1bce63). Residual, not changed: dispatch.sh consults no seat registry; the pair is this ACCEPTANCE's own argv, cross-checked with the orchestrator's TASK row when the window holds it (report.md).",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-maskfail",
+    "scope": "file",
+    "path": "scripts/orchestrator/result-precheck.sh",
+    "body": "P3, high: maskfail was split on whitespace, so a TMPDIR containing a space left a failed masking recorded as ok; and a failure inside the failure branch still published the capture. fixed:9f6ec7c9. maskfail is read by line, the failed capture is listed before it is deleted, and a failed failure branch returns 1 without publishing. These are one-line changes, so they have no dedicated test.",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-stale-record",
+    "scope": "file",
+    "path": "scripts/orchestrator/result-precheck.sh",
+    "body": "P3, high: an early exit after an earlier successful run left the old precheck.json and a ready result.txt beside new logs, and .publish.* leftovers were never removed. fixed:9f6ec7c9. The startup cleanup also removes precheck.json, result.txt and .publish.*, after the same symlink check. Regression: test_precheck_masks_logs_when_proof_worktree_creation_fails now starts from a complete earlier record and asserts that no record survives while the masked log is published. It is red against bf1bce63.",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-blob-rev",
+    "scope": "file",
+    "path": "scripts/orchestrator/result-precheck.sh",
+    "body": "P3, medium: a --blob rev such as `--output=<file>` reached git show as an option. fixed:9f6ec7c9. A rev starting with `-` is a usage error, and git show reads the object after --end-of-options. Regression: test_blob_scan_rejects_paths_outside_scan_directory's rev-option case is red against bf1bce63 (exit 0).",
+    "resolved": true
+  },
+  {
+    "id": "a04-p3-test-gaps",
+    "scope": "review",
+    "body": "P3, medium: test gaps. The second shortcut line was not asserted. code_head and precheck_head= were checked only indirectly. The early-exit test did not assert publication. The fixture env still inherited UV_* and GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE. fixed:9f6ec7c9. The first test asserts code_head and precheck_head=; the failed-commands test asserts both shortcut lines; the early-exit test asserts the published masked log; and setUp drops inherited GIT_*, XDG_CONFIG* and UV_* variables before adding its own.",
+    "resolved": true
+  }
+]

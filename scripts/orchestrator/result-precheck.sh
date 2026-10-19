@@ -124,7 +124,9 @@ PY
 #   counts and paths only. Exit 0 clean; 1 a finding, an unreadable or undecodable input, or a detector failure.
 scan_one() {
     local dir
-    [[ -n $2 && $2 != /* && /$2/ != */../* ]] || { # the audit of ddf262d: confined before any destination exists
+    # The audit of ddf262d: confined before any destination exists; an empty or absolute path, one os.path.normpath
+    # would change (a `.` or `..` segment), and one that starts by leaving the directory are refused.
+    python3 -I -c 'import os, sys; p = sys.argv[1]; sys.exit(not p or os.path.isabs(p) or os.path.normpath(p) != p or p.split("/")[0] == "..")' "$2" || {
         echo "unreadable: ${1:0:7}:$2 is not a path inside the scan directory"
         return 1
     }

@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a153c3-ca2a-7c83-bb4d-d14741b4f4e9
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 agmsg-orchestration と Ponytail の手順を確認し、タスク本文・脅威表・参照証跡を読み取り専用で監査します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -286,7 +286,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -342,7 +342,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
  M .orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
@@ -1567,13 +1567,13 @@ exec
    604	Local Bats, live enforcement, administrative installation, worker-directory login, permgate policy changes and deployment are not performed by the worker.
 **Splitting output into chunks**
 exec
-/bin/zsh -lc "sed -n '1,130p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,130p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|review'"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|review'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short' in ~/Workspace/dotfiles
  succeeded in 101ms:
 ---
 format: 2
@@ -2430,7 +2430,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Limiting output size**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '100,245p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '100,245p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    100	    disposition: "residual: the orchestrator checks C1 to C10 and C7b, verifies dispatched bytes and binds integration evidence to the final head; P1-14 a05 and P1-6 implement retrieval of evidence of record from GitHub at its SHA; the GitHub boundary is detection, not prevention."
    101	  - control: metadata separators
@@ -2580,7 +2580,7 @@ exec
    245	
 
 exec
-/bin/zsh -lc "sed -n '217,250p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '217,250p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 3ms:
 ## Codex seat worklogs
 
@@ -2619,7 +2619,7 @@ for blocked work, `evidence` (path array), and `tags`.
 
 **Calculating remaining token budget**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '245,380p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '245,380p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    245	
    246	   The agmsg store paths `~/.agents/skills/agmsg/db`, `~/.agents/skills/agmsg/teams`, `~/.agents/skills/agmsg/run` and `~/.agents/skills/agmsg/ext-tools` remain writable. Deny patterns cover neither these directory targets nor their descendants except the file `~/.agents/skills/agmsg/db/trusted-plugins`. Edit denies merge into the sandbox configuration, so Bash writes to that file and `~/.agents/skills/agmsg/plugins/**` are refused too. Their influence on installed delivery-script driver and plugin selection remains the separately owned agmsg residual.
@@ -2762,7 +2762,7 @@ exec
 codex
 The draft explicitly treats shared credentials, control-plane exclusions, and same-user races as residual risks. I’m checking whether its claimed mitigations bind the actual executable, configuration, and path consumed, and whether the cited reviews already addressed each gap. No files or worklogs are being changed.
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '380,518p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '380,518p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    380	    The launcher stops writing Claude worker delivery hooks and merge denials into worktree-local `.claude/settings.local.json`. It renders the worker delivery hooks and native merge denials into `~/.claude-worker/settings.json`, the user-level settings file selected for that directory.
    381	
@@ -2905,7 +2905,7 @@ exec
    518	## Check
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '80,103p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '80,103p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
     80	    disposition: "residual: ignoring the private cache reduces accidental cache publication; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_uv_cache_directory_is_gitignored checks the pattern in a temporary checkout."
     81	  - control: "tests/unit/test_generate_agent_configs.py (separate platform policies, static inventory, pure declared interpreter bindings, pinned-version equality, rendering without installed binaries, tracked hook coverage and item 16's literal-form PermissionRequest assertions)"
@@ -2934,7 +2934,7 @@ exec
 
 **Confirming all references**
 exec
-/bin/zsh -lc "wc -l .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md; rg -n '"'^#|text-security|'"\\[P[0-3]\\]|D-024-2[013]|ownership|Ownership' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "wc -l .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md; rg -n '"'^#|text-security|'"\\[P[0-3]\\]|D-024-2[013]|ownership|Ownership' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
       72 .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
      447 .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md
@@ -2959,7 +2959,7 @@ exec
 67:text-security:772cde0:2	interpreter-isolation
 
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{ecc7ab5,8d42532,08e6ac7,9b58b31,772cde0}.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{ecc7ab5,8d42532,08e6ac7,9b58b31,772cde0}.md.last.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 - [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:273](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:273) The race acceptance rests on a false premise: a sandboxed worker can swap an allowed directory for a symlink after validation, causing the unsandboxed file tool to overwrite a trusted path that the worker cannot write directly; static path tests cannot close this boundary.
 
@@ -3022,9 +3022,9 @@ Verdict: incorrect
 **Investigating test environment issues**
 web search: 
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '460,472p'; command -v uv; command -v python3; command -v git; ls -l /Users/a0004262/.local/share/mise/shims/uv; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '460,472p'; command -v uv; command -v python3; command -v git; ls -l ~/.local/share/mise/shims/uv; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 15ms:
 ---
 {
@@ -3113,17 +3113,17 @@ text-security:772cde0:2	interpreter-isolation
    470	    The complete inventory of the surrounding checks is retained: `validate_claude_settings` still checks the schema, interactive model and effort, absence of the redundant model suffix and legacy type checker, the `format-edited-files.py` operation marker (still present in the guarded command), permission-allow list shape, sandbox policy, disabled unmanaged plugins and the Crit rule. `validate_claude_sandbox` still requires enabled and auto-allow booleans, a Boolean `failIfUnavailable` (the render tests separately require true), all agmsg and Codex writable roots, valid extra write paths, allowed hostname and telemetry restrictions, the platform Mach-service allowlist, no allow-all Unix sockets and valid socket paths; only its exclusion policy changes. `validate_hook_composition` retains duplicate-command rejection, permgate-first ordering, synchronous timeout budgets and the SessionStart `herdr-agent-state.sh` marker and order. These markers remain in the rendered commands, so none is deleted or weakened to accommodate the prefix. Generated-output freshness, manifest home-path checks, tracked project-settings portability, permgate policy and profile-asset checks and the orchestration home-path/secret scan remain unchanged. New worker-user and administrative-managed-policy outputs retain their exact content checks in the already named render tests; the orchestrator user sandbox validator is not applied to worker empty exclusions.
    471	
    472	    In `tests/unit/test_validate_agent_assets.py`, the two already authorized cases in `ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form` remain in scope: macOS gh exclusion and Linux extra exclusion. The shared `ValidateAgentAssetsTest::valid_claude_sandbox` fixture gains the exact three-entry exclusions above. Its callers `test_claude_sandbox_accepts_manifest_symmetric_settings`, `test_claude_sandbox_rejects_each_broken_rule`, `test_claude_sandbox_requires_extra_codex_writable_roots`, `test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs` and `test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs` retain their checks and reach the rule each intends to test. The literal-form fixture in `test_hook_composition_requires_permgate_first` follows the sanitized hook while retaining its ordering failure. Add `ValidateAgentAssetsTest::test_claude_permission_request_requires_sanitized_permgate` with valid quoted-path cases and negative cases for the structural contract and retained ccgate refusal. Extend the structural cases to cover exact declared path shape and render success with absent deployment files, and retain rejection of every invalid declaration without filesystem probes. Keep red-then-green evidence and run `uv run python -m unittest tests.unit.test_validate_agent_assets -v` to green on the final head.
-/Users/a0004262/.local/share/mise/shims/uv
-/Users/a0004262/.local/share/mise/shims/python3
+~/.local/share/mise/shims/uv
+~/.local/share/mise/shims/python3
 /opt/homebrew/bin/git
-lrwxr-xr-x  1 a0004262  staff  31 Sep 30 13:44 /Users/a0004262/.local/share/mise/shims/uv -> /Users/a0004262/.local/bin/mise
+lrwxr-xr-x  1 a0004262  staff  31 Sep 30 13:44 ~/.local/share/mise/shims/uv -> ~/.local/bin/mise
 e5c055e3ab8b386822deb91bf69cb91534589b249d5366f98cbde744aaa8a000  .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md
 
 web search: https://code.claude.com/docs/en/sandboxing
 **Assessing security and tooling concerns**
 **Reviewing environment and hook risks**
 exec
-/bin/zsh -lc "sed -n '49,76p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '464,470p'; rg -n '"'^##|5'"\\.14|GIT_|env -i|ls-remote|gh api|trusted|Completion|acceptance/' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '49,76p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '464,470p'; rg -n '"'^##|5'"\\.14|GIT_|env -i|ls-remote|gh api|trusted|Completion|acceptance/' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md" in ~/Workspace/dotfiles
  succeeded in 14ms:
 - 2026-10-19T06:25:59Z: C-80 of the amendment-1 text (`…-text-security-f1b862c.md`): one P2 (the guard source is a plain `executable_` file, which chezmoi copies without template expansion, so the per-host paths cannot be rendered) → the source becomes `executable_orchestrator-only.sh.tmpl` with the rendering sentence and the render test stated; the review runs again before dispatch.
 - 2026-10-19T06:26:42Z: a010 `status=blocked` on the required CI doc test: tests/unit/test_agmsg_orchestration_docs.py:200-201 asserts the step 4 sentence this task rewrites and is outside allowed_files. Amendment 1 (in its C-80 review) gains the module for that one assertion with a threat row; C-78: PR #427 (P1-8, the same seat) edits the module and merges first; this PR rebases. PING sent 06:2xZ.
@@ -3232,7 +3232,7 @@ text-security:772cde0:2	interpreter-isolation
 web search: 
 web search: 'exec'
 exec
-/bin/zsh -lc 'nl -ba home/dot_claude/hooks/executable_format-edited-files.py | head -160; cat .claude/settings.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba home/dot_claude/hooks/executable_format-edited-files.py | head -160; cat .claude/settings.json' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	#!/usr/bin/env python3
      2	"""Format files reported by Claude Code hook JSON input.
@@ -3586,7 +3586,7 @@ exec
 
 **Reviewing environment and path issues**
 exec
-/bin/zsh -lc "cat home/dot_mise/config.toml; rg -n '5\\.14|"'^###|D-024-2[013]|implementing_tasks|P1-15|P1-16'"' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat home/dot_mise/config.toml; rg -n '5\\.14|"'^###|D-024-2[013]|implementing_tasks|P1-15|P1-16'"' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 [tools]
 # Tools track "latest" behind minimum_release_age; make update upgrades them. A held tool keeps an exact version and says why.
@@ -3673,7 +3673,7 @@ binstall = false
 111:9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19).
 
 exec
-/bin/zsh -lc "nl -ba home/dot_claude/hooks/executable_project-map-reload.sh | head -130; sed -n '415,440p' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md; sed -n '464,470p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba home/dot_claude/hooks/executable_project-map-reload.sh | head -130; sed -n '415,440p' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md; sed -n '464,470p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	#!/bin/bash
      2	
@@ -3784,13 +3784,13 @@ Until PR #420 lands, strings carrying `gh pr merge` or `gh pr create` are writte
 codex
 One concrete mismatch appears in amendment 7: on this host, PATH lookup returns the mise `uv` shim, but the required execution test treats that lookup as a real uv binary. I’m also checking the unchanged hook descendants and the deployment-check command for the same resolution gap.
 exec
-/bin/zsh -lc "ls -ld /Users/a0004262/.agents/skills/agmsg /Users/a0004262/.agents/skills/agmsg/scripts /Users/a0004262/.agents/skills/agmsg/scripts/session-start.sh /Users/a0004262/.local/bin/common/permgate /Users/a0004262/.local/bin/terminal-browser; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '35,80p'; sed -n '99,114p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "ls -ld ~/.agents/skills/agmsg ~/.agents/skills/agmsg/scripts ~/.agents/skills/agmsg/scripts/session-start.sh ~/.local/bin/common/permgate ~/.local/bin/terminal-browser; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md | sed -n '35,80p'; sed -n '99,114p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 9ms:
-drwxr-xr-x  14 a0004262  staff    448 Oct  2 11:59 /Users/a0004262/.agents/skills/agmsg
-drwxr-xr-x  44 a0004262  staff   1408 Sep 30 13:46 /Users/a0004262/.agents/skills/agmsg/scripts
--rwxr-xr-x   1 a0004262  staff  31118 Sep 30 13:46 /Users/a0004262/.agents/skills/agmsg/scripts/session-start.sh
--rwxr-xr-x@  1 a0004262  staff   7200 Oct  5 06:59 /Users/a0004262/.local/bin/common/permgate
--rwxr-xr-x@  1 a0004262  staff     93 Oct  3 00:35 /Users/a0004262/.local/bin/terminal-browser
+drwxr-xr-x  14 a0004262  staff    448 Oct  2 11:59 ~/.agents/skills/agmsg
+drwxr-xr-x  44 a0004262  staff   1408 Sep 30 13:46 ~/.agents/skills/agmsg/scripts
+-rwxr-xr-x   1 a0004262  staff  31118 Sep 30 13:46 ~/.agents/skills/agmsg/scripts/session-start.sh
+-rwxr-xr-x@  1 a0004262  staff   7200 Oct  5 06:59 ~/.local/bin/common/permgate
+-rwxr-xr-x@  1 a0004262  staff     93 Oct  3 00:35 ~/.local/bin/terminal-browser
     35	  - control: "home/dot_agents/agent-config.yaml (trusted checkout and exact pinned home-relative executable declarations, static trusted_paths inventory, distinct worker policy, managed sandbox policy and worker caches)"
     36	    disposition: "residual: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_execution_binding_versions_match_mise_declaration checks the declared pins against home/dot_mise/config.toml; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_policy_is_separate_from_orchestrator_policy checks both platforms without claiming same-UID isolation; binary existence, realpath and version are operator deployment checks."
     37	  - control: "home/dot_mise/config.toml (the tool-version declaration included by home/dot_config/mise/config.toml.tmpl; only exact pins for the tools bound by claude.execution)"
@@ -3857,7 +3857,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 web search: 
 web search: https://docs.astral.sh/uv/reference/cli/
 exec
-/bin/zsh -lc "/usr/bin/python3 -I -c 'from pathlib import Path; import re,hashlib; p=Path(\".orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md\"); s=p.read_text(); front=s.split(\"---\",2)[1]; allowed=front.split(\"allowed_files:\\n\",1)[1].split(\"after:\",1)[0]; paths=re.findall(r\""'^  - (.+)$",allowed,re.M); rows=re.findall(r"''^  - control: (.+)$",front,re.M); print("allowed_files",len(paths),"threat_rows",len(rows)); print("uncovered paths",[p for p in paths if not any(p in r for r in rows)]); print("closed rows",len(re.findall(r"disposition: .closed:",front))); print("sha256",hashlib.sha256(p.read_bytes()).hexdigest())'"'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/python3 -I -c 'from pathlib import Path; import re,hashlib; p=Path(\".orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md\"); s=p.read_text(); front=s.split(\"---\",2)[1]; allowed=front.split(\"allowed_files:\\n\",1)[1].split(\"after:\",1)[0]; paths=re.findall(r\""'^  - (.+)$",allowed,re.M); rows=re.findall(r"''^  - control: (.+)$",front,re.M); print("allowed_files",len(paths),"threat_rows",len(rows)); print("uncovered paths",[p for p in paths if not any(p in r for r in rows)]); print("closed rows",len(re.findall(r"disposition: .closed:",front))); print("sha256",hashlib.sha256(p.read_bytes()).hexdigest())'"'" in ~/Workspace/dotfiles
  succeeded in 83ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-95scwunN' (errno=Operation not permitted)
@@ -3871,10 +3871,10 @@ sha256 e5c055e3ab8b386822deb91bf69cb91534589b249d5366f98cbde744aaa8a000
 **Clarifying Python PATH requirements**
 **Evaluating security around .venv handling**
 exec
-/bin/zsh -lc "sed -n '1,105p' /Users/a0004262/.local/bin/terminal-browser; rg -n '"'^D-024-(17|19|20|21|23)'"' .orchestration/decisions.tsv; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{435275a,e5d1b57,db2a8f9,8520998}.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,105p' ~/.local/bin/terminal-browser; rg -n '"'^D-024-(17|19|20|21|23)'"' .orchestration/decisions.tsv; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-{435275a,e5d1b57,db2a8f9,8520998}.md.last.md" in ~/Workspace/dotfiles
  succeeded in 14ms:
 #!/bin/sh
-exec "/Users/a0004262/.local/share/terminal-browser/app/bin/terminal-browser" "$@"
+exec "~/.local/share/terminal-browser/app/bin/terminal-browser" "$@"
 63:D-024-17	2026-10-19T02:4xZ	worker seats: the commands Worker Playbook step 4 sends outside the sandbox (gh) execute an absolute trusted binary rendered from the manifest, never a PATH lookup in the worker shell; the Claude sandbox exclusion and the Codex policy name that absolute path, and a bare gh stays inside the sandbox	the C-80 review of the a05 text (finding 3) showed that any unsandboxed worker command resolved through the worker PATH (mise shims, a worktree mise.toml) runs worker-selected code with full user rights, which defeats every in-process check of the merge gate and of the regime; the seat sandbox write boundary is the load-bearing control and the unsandboxed exemption is its hole	default under the autonomy directive, reported 2026-10-19 11:4x JST; a design-tier item for plan 024 (new P1-15), dispatched after P1-14 as a security: true task with a C-80 text review; scope=design,permission	pending-P1-15
 65:D-024-19	2026-10-19T03:0xZ	permission decision rows are read from the committed ledger (git show origin/main:.orchestration/decisions.tsv after fetch), never from the working copy; a working-copy row is a proposal until the records PR carrying it merges, and that PR approval is the operator's operation (design 5.14 item 8)	the second C-80 review of the a05 text: a Claude worker seat's file tools run outside the Seatbelt sandbox and the rendered policy has no path deny, so a same-UID forged row in the working-copy ledger was possible; the committed ledger moves forgery behind a protected-branch merge	default under the autonomy directive, reported 2026-10-19 12:0x JST; the consequence is one records PR (boundary 24) before the a05 merge, approved by the operator through the live hook; scope=design,permission	applied-from-a05
 66:D-024-20	2026-10-19T03:1xZ	P1-15 (the worker write boundary: deny rules for the Claude file tools on every trusted path outside the seat worktree, hooks and MCP locked, per-seat caches, the gh wrapper of D-024-17) is implemented before and as the dispatch prerequisite (after:) of every orchestrator-side security: true task (P1-14 a05, P1-10 a02, audit-pool-a02, P1-6); the orchestrator review worktree moves out of .claude/worktrees/ (design 5.14 item 3)	the C-80 reviews of 2026-10-19 (a05 twice, dispositions-a02 twice, audit-pool-a01) all reduce to the unstated Claude-seat boundary; hardening texts dispatched before it carry false closed rows	default under the autonomy directive, reported 2026-10-19 12:1x JST; scope=design	applied
@@ -3917,9 +3917,9 @@ Verdict: correct
 
 I’m refining the description of how the deployment bootstraps with raw uv and Python environments, pointing out that validator checks occur after some interpreter influence, highlighting medium-to-high confidence risks if protection is lacking, and ensuring the final line verdict aligns with developer intent.
 codex
-- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468) The deployment check starts through bare `uv`, inherited interpreter/cache inputs and automatic environment discovery, so attacker-influenced code can execute before the validator checks executable identities; `--no-project` still permits virtual-environment discovery, leaving the checker’s own execution unbound. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run)
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468) The deployment check starts through bare `uv`, inherited interpreter/cache inputs and automatic environment discovery, so attacker-influenced code can execute before the validator checks executable identities; `--no-project` still permits virtual-environment discovery, leaving the checker’s own execution unbound. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450) `shutil.which("uv")` returns this host’s mise shim, not the required real uv binary; binding that path into the fixture preserves configuration-dependent executable selection, so existence checks and sanitized PATH cannot establish the claimed execution evidence. [Mise shim resolution](https://mise.jdx.dev/dev-tools/shims.html#which)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450) `shutil.which("uv")` returns this host’s mise shim, not the required real uv binary; binding that path into the fixture preserves configuration-dependent executable selection, so existence checks and sanitized PATH cannot establish the claimed execution evidence. [Mise shim resolution](https://mise.jdx.dev/dev-tools/shims.html#which)
 
 All 24 allowed paths have coverage across 54 threat rows; none claims `closed`. Reviewed the cited acceptance and review history; findings remain input for orchestrator disposition.
 
@@ -3933,9 +3933,9 @@ hook: Stop
 hook: Stop Completed
 tokens used
 113,285
-- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468) The deployment check starts through bare `uv`, inherited interpreter/cache inputs and automatic environment discovery, so attacker-influenced code can execute before the validator checks executable identities; `--no-project` still permits virtual-environment discovery, leaving the checker’s own execution unbound. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run)
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:468) The deployment check starts through bare `uv`, inherited interpreter/cache inputs and automatic environment discovery, so attacker-influenced code can execute before the validator checks executable identities; `--no-project` still permits virtual-environment discovery, leaving the checker’s own execution unbound. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450) `shutil.which("uv")` returns this host’s mise shim, not the required real uv binary; binding that path into the fixture preserves configuration-dependent executable selection, so existence checks and sanitized PATH cannot establish the claimed execution evidence. [Mise shim resolution](https://mise.jdx.dev/dev-tools/shims.html#which)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:450) `shutil.which("uv")` returns this host’s mise shim, not the required real uv binary; binding that path into the fixture preserves configuration-dependent executable selection, so existence checks and sanitized PATH cannot establish the claimed execution evidence. [Mise shim resolution](https://mise.jdx.dev/dev-tools/shims.html#which)
 
 All 24 allowed paths have coverage across 54 threat rows; none claims `closed`. Reviewed the cited acceptance and review history; findings remain input for orchestrator disposition.
 

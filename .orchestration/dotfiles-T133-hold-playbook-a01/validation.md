@@ -340,3 +340,82 @@ hold-playbook: $MAIN/.orchestration/learning/classes.yaml holds the 97 classes o
 [exit 0]
 ````
 
+## 9. Revise 2: an absent class vocabulary is refused by name
+
+The chain's local review of the update-branch head `9f5eaeec` (`.orchestration/validation/dotfiles-T133-hold-playbook-a01-local-review-9f5eaee.md`) found a P1. On a clean checkout, `.orchestration/learning/classes.yaml` is absent at both the head and the base, because it is the orchestrator's record and lands with the boundary records PR (C2). So every valid run exits 2 with only `cannot read …: FileNotFoundError`. `c04fe52d` refuses through `fail()` before any read, naming the file as the orchestrator's record of plan 024 P1-13: exit 2, no traceback, nothing written. Nothing else changes. `PREV` is `9f5eaeec`, `RED` is `9bac489c` (the new test on `PREV`'s script), `FIX` is `c04fe52d` and `TEST` is the new test.
+
+````console
+$ git log --oneline -3; git diff "$PREV" "$FIX" -- scripts/orchestrator/hold-playbook.sh; git diff --stat "$PREV" "$FIX"; git ls-files .orchestration/learning/classes.yaml | wc -l | tr -d " "; git show origin/main:.orchestration/learning/classes.yaml > /dev/null 2>&1; echo "classes.yaml on origin/main: exit $?"
+c04fe52d fix(orchestrator): hold-playbook.sh names an absent classes.yaml as the orchestrator's record of plan 024 P1-13 (T133 hold-playbook a01, revise 2)
+9bac489c test(orchestrator): hold-playbook.sh refuses an absent classes.yaml by naming it the orchestrator's record (T133 hold-playbook a01, revise 2, red)
+9f5eaeec Merge branch 'main' into tools/hold-playbook-a01
+diff --git a/scripts/orchestrator/hold-playbook.sh b/scripts/orchestrator/hold-playbook.sh
+index 047576df..7c4f4b49 100755
+--- a/scripts/orchestrator/hold-playbook.sh
++++ b/scripts/orchestrator/hold-playbook.sh
+@@ -126,6 +126,8 @@ def covers(entry, glob):
+ 
+ def plan(root, task, cls):
+     o = Path(root) / ".orchestration"
++    if not (o / "learning/classes.yaml").is_file():
++        fail(".orchestration/learning/classes.yaml, the orchestrator's record of plan 024 P1-13, is absent from this checkout")
+     classes = vocabulary_of(o / "learning/classes.yaml")
+     if not paths([cls]):
+         fail(f"class {cls!r} is not a slug")
+ scripts/orchestrator/hold-playbook.sh |  2 ++
+ tests/unit/test_hold_playbook.py      | 11 +++++++++++
+ 2 files changed, 13 insertions(+)
+0
+classes.yaml on origin/main: exit 128
+[exit 0]
+````
+
+````console
+$ git worktree add --detach -q "$SCRATCH/hpr2-red" "$RED" && (cd "$SCRATCH/hpr2-red" && uv run --no-project --with pyyaml python -m unittest "$TEST") > "$SCRATCH/hpr2-red.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/hpr2-red.out" /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//" | cut -c1-220; git worktree remove --force "$SCRATCH/hpr2-red"
+unittest exit status: 1
+FAIL: test_an_absent_vocabulary_is_refused_as_the_orchestrator_record
+AssertionError: "the orchestrator's record of plan 024 P1-13" not found in 'hold-playbook: cannot read $TMPDIR/tmpg29pt2ot/.orchestration/learning/classes.yaml: FileNotFoundError; refused\n'
+Ran 1 test in 0.086s
+FAILED (failures=1)
+[exit 0]
+````
+
+````console
+$ git rev-parse HEAD; uv run --no-project --with pyyaml python -m unittest tests.unit.test_hold_playbook -v
+c04fe52d4c88c3649a9c519b2040bb34fc79a29e
+test_an_absent_vocabulary_is_refused_as_the_orchestrator_record (tests.unit.test_hold_playbook.HoldPlaybookTests.test_an_absent_vocabulary_is_refused_as_the_orchestrator_record) ... ok
+test_existing_replan_exits_4 (tests.unit.test_hold_playbook.HoldPlaybookTests.test_existing_replan_exits_4) ... ok
+test_invalid_task_id_is_refused (tests.unit.test_hold_playbook.HoldPlaybookTests.test_invalid_task_id_is_refused) ... ok
+test_known_class_without_remedy_is_reported (tests.unit.test_hold_playbook.HoldPlaybookTests.test_known_class_without_remedy_is_reported) ... ok
+test_record_text_is_never_executed (tests.unit.test_hold_playbook.HoldPlaybookTests.test_record_text_is_never_executed) ... ok
+test_scope_comparison_covers_the_whole_glob (tests.unit.test_hold_playbook.HoldPlaybookTests.test_scope_comparison_covers_the_whole_glob) ... ok
+test_three_classes_expand_into_replans (tests.unit.test_hold_playbook.HoldPlaybookTests.test_three_classes_expand_into_replans) ... ok
+test_uncovered_scope_appends_pending_decision (tests.unit.test_hold_playbook.HoldPlaybookTests.test_uncovered_scope_appends_pending_decision) ... ok
+test_unknown_class_exits_2 (tests.unit.test_hold_playbook.HoldPlaybookTests.test_unknown_class_exits_2) ... ok
+test_vocabulary_covers_mistake_classes (tests.unit.test_hold_playbook.HoldPlaybookTests.test_vocabulary_covers_mistake_classes) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.589s
+
+OK
+[exit 0]
+````
+
+````console
+$ shellcheck scripts/orchestrator/hold-playbook.sh; shfmt --indent 4 --space-redirects --diff scripts/orchestrator/hold-playbook.sh; ruff format --config ruff.toml --check tests/unit/test_hold_playbook.py; ruff check --config ruff.toml tests/unit/test_hold_playbook.py; uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/hold-playbook.sh 2>&1 | /usr/bin/grep -v "regime-ci.py"; echo "lint exit status: ${PIPESTATUS[0]}"
+1 file already formatted
+All checks passed!
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+lint exit status: 0
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD -- scripts tests; git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } { o += $1 + $2 } END { printf "outside tests/ and .orchestration/: %d of 350\ntests/: %d of 400\n", o, t }'
+233	0	scripts/orchestrator/hold-playbook.sh
+254	0	tests/unit/test_hold_playbook.py
+outside tests/ and .orchestration/: 233 of 350
+tests/: 254 of 400
+[exit 0]
+````
+

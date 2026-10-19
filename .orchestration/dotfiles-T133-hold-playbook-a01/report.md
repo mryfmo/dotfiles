@@ -3,7 +3,7 @@ task_id: dotfiles-T133-hold-playbook-a01
 seat: claude-standard-dot-a011
 branch: tools/hold-playbook-a01
 base: b22a5580 (origin/main at the branch point, PR #423's merge)
-code_head: a6c073e5 (5e719af3 the task copy; 6a72398c the tests, red; f76db928 the script; a6c073e5 the worker review's fixes)
+code_head: c04fe52d (5e719af3 the task copy; 6a72398c the tests, red; f76db928 the script; a6c073e5 the worker review's fixes; update-branch 9f5eaeec; revise 2: 9bac489c red, c04fe52d fix)
 task_sha256: e33f0aa1927956b7e5d17fe06987d611e8ed50ebb3f09f11bff7f9293b9e3d1c
 ---
 
@@ -100,6 +100,17 @@ Every row is `residual`, and the change keeps each control:
 - The tests copy the script into temporary trees.
 - No workflow or environment configuration changes.
 - `hold-playbook.sh` is the only new script.
+
+## Revise 2 (the chain's P1 on the update-branch head 9f5eaeec)
+
+The local review of `9f5eaeec` found that every valid run on a clean checkout exits 2 with only `cannot read …: FileNotFoundError`.
+
+- **The record dependency.** The script reads its vocabulary from `.orchestration/learning/classes.yaml`. That file is the orchestrator's record of plan 024 P1-13 (checker C2 keeps it out of a worker's `allowed_files`), and it lands with the boundary records PR. Until then it is absent from this branch and from `origin/main` (validation §9: `git show origin/main:…` exits 128). The plan mode depends on that record.
+- **The fix (`c04fe52d`).** `plan()` checks for the file before any read and refuses through `fail()`: `.orchestration/learning/classes.yaml, the orchestrator's record of plan 024 P1-13, is absent from this checkout`. That is exit 2, with no traceback and nothing written. Nothing else changes.
+- **The test.** `tests/unit/test_hold_playbook.py::HoldPlaybookTests::test_an_absent_vocabulary_is_refused_as_the_orchestrator_record` runs on a fixture root without the file. It is red on `9bac489c`, the test on `9f5eaeec`'s script, and green at `c04fe52d`: 10 tests OK. shellcheck, `shfmt -i 4 -sr -d`, ruff and the comparison lint (`--changed scripts/orchestrator/hold-playbook.sh`, exit 0) are clean.
+- **The smoke check.** The `--check-vocabulary` run in validation §8 ran against the orchestrator's working copy: the untracked `classes.yaml` and the records of the main checkout, read-only. It is not a run on this branch's tree, which holds no vocabulary.
+- **Caps** (§9): 233 changed lines outside `tests/` and `.orchestration/` (cap 350), and 254 under `tests/` (cap 400).
+- **Rounds.** C-61 counts the pre-push round and this revise as the cap, so no worker review ran on this round.
 
 ## Changed files
 

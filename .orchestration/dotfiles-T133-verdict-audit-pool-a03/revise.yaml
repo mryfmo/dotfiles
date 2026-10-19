@@ -1,0 +1,7 @@
+# The INV-6 reset of dotfiles-T133-verdict-audit-pool-a02 (AGMSG-TASK round=1 reset_of=…-a02, 2026-10-19T00:39:47Z).
+reset_of: dotfiles-T133-verdict-audit-pool-a02
+previous_head: b8998de162afc72d53d07679b8f0a194fcc480ff
+reason: "the P1-4a split (the verdict half on PR #410; the audit pool on dotfiles-T133-audit-pool-a01) and the two b8998de findings on verdict.sh: --apply reached dispatch and merge without the integration gate (P1); the cap parser read the first, not the latest, cap declaration (P2)"
+checks:
+  - tests/unit/test_verdict.py::VerdictTest::test_verdict_apply_runs_the_integration_gate_before_dispatch_or_merge_and_holds_on_failure
+  - tests/unit/test_verdict.py::VerdictTest::test_verdict_condition_5_honors_the_latest_amended_caps

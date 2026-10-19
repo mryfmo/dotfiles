@@ -464,7 +464,8 @@ def render_claude_worker_settings(manifest: dict[str, Any]) -> str:
             + ' claude-code "${CLAUDE_PROJECT_DIR}"'
         )
         hooks[event] = [{"hooks": [{"type": "command", "command": command, "onFailure": "block"}]}]
-    return json_dumps({"permissions": {"deny": [*WORKER_MERGE_DENY, *denies]}, "sandbox": sandbox, "hooks": hooks})
+    permissions = {"defaultMode": claude["permissions"]["defaultMode"], "deny": [*WORKER_MERGE_DENY, *denies]}
+    return json_dumps({"permissions": permissions, "sandbox": sandbox, "hooks": hooks})
 
 
 def render_claude_managed_settings(manifest: dict[str, Any]) -> str:

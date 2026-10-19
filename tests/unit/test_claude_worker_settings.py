@@ -120,6 +120,9 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
     def test_worker_policy_renders_for_both_platforms(self):
         for platform in ("darwin", "linux"):
             settings = self.settings(platform)
+            self.assertEqual(settings["permissions"]["defaultMode"], "auto")
+            checkout_rules = [r for r in settings["permissions"]["deny"] if "/Workspace/dotfiles/" in r]
+            self.assertTrue(checkout_rules and all(r.startswith("Edit(//") for r in checkout_rules))
             sandbox = settings["sandbox"]
             self.assertTrue(sandbox["enabled"] and sandbox["failIfUnavailable"])
             self.assertFalse(sandbox["allowUnsandboxedCommands"])

@@ -14,5 +14,8 @@
   "actual_exit_status": 0,
   "diagnostic": "NOTE: home/example.md:2: note: credential name in a comment or Markdown prose\n",
   "assignment_control_refused": true,
-  "assignment_payload_redacted": true
+  "assignment_payload_redacted": true,
+  "advisory_owner": "dotfiles-T129-anthropic-auth-route-check-followup-a06",
+  "owner_task_sha256": "8685ab7f91a647485d33b959b8eb53c6e6b2a9762dfcf6a47dd1fa2796a4681f",
+  "orchestrator_decision_at": "2026-10-19T02:12:41Z"
 }

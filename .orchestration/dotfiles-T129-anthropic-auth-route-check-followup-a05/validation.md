@@ -1,6 +1,174 @@
 # Validation evidence (a05)
 
-Status: local implementation checks recorded; final-base full validator, independent worker review, push, CI and automatic-review window pending. Commands use the temporary uv cache and existing PyYAML. Evidence belongs to this task in worker-g. Historical results are labelled separately; no baseline success is described as RED.
+
+## Full validator on the clean pre-review snapshot (historical to this round)
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 make validate-agent-assets. Cwd: /private/tmp/a012-a05-clean-assets, a clean tracked clone of a99521b446de5796393ce4f9654136fda4f6e95d with the repository's real origin URL and unchanged live HOME. No checker was stubbed and no warning was suppressed. Exit 0. All output is pasted below. This run began before the independent-review fixes, and validates the initial code/evidence/template snapshot only; it is not a final rebased-head claim. No applied file or template was edited. Final-base validation remains required after PR420's authorized rebase.
+
+~~~~json
+{
+  "command": [
+    "make",
+    "validate-agent-assets"
+  ],
+  "environment": {
+    "UV_CACHE_DIR": "/private/tmp/uv-cache-a012"
+  },
+  "cwd": "/private/tmp/a012-a05-clean-assets",
+  "source_head": "a99521b446de5796393ce4f9654136fda4f6e95d",
+  "started": "2026-10-19T01:58:24.122758+00:00",
+  "sources_before": {
+    "scripts/validate-agent-assets.py": "ecc21eb701e968c47bb8959fa6c23719e3d81331f56af83acb34481e97483efd",
+    "tests/unit/test_validate_agent_assets.py": "30dd0589b8d85e84e56f23ad0fdf15385bd6791bc3cf46684353ca1e63d00c17",
+    "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+    ".orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md": "5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925"
+  },
+  "finished": "2026-10-19T02:15:06.138137+00:00",
+  "exit_status": 0,
+  "sources_after": {
+    "scripts/validate-agent-assets.py": "ecc21eb701e968c47bb8959fa6c23719e3d81331f56af83acb34481e97483efd",
+    "tests/unit/test_validate_agent_assets.py": "30dd0589b8d85e84e56f23ad0fdf15385bd6791bc3cf46684353ca1e63d00c17",
+    "home/.chezmoitemplates/claude-settings-managed.json": "dd009411e4e4aef7395cb80fb31adf771c62fb4d51ee168bf9fa1b8c1311f2cf",
+    ".orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md": "5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925"
+  }
+}
+
+~~~~
+
+~~~~text
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+agent asset validation ok
+WARN: regime-boundary: no agmsg identity at the active seat /private/tmp/a012-a05-clean-assets (expected one)
+WARN: regime-boundary: canonical clone ~/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_agents/agent-config.yaml,home/dot_agents/skills/agmsg-orchestration/SKILL.md,home/dot_local/bin/common/executable_herdr-agents,home/dot_local/bin/common/executable_remove-agent-asset,scripts/orchestrator/acceptance-front-matter.py,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/ci-rerun.sh,scripts/orchestrator/ledger-check.py,scripts/orchestrator/regime-ci.py,scripts/regime-counters.sh,scripts/require-crit-review.py,scripts/update-agent-assets.sh,scripts/upgrade-tools.sh; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C ~/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 PR #313 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 PR #314 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a02 S2: bot_p1_heads 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a01 S2: bot_p1_heads 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: bot_p1_heads 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a03 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 PR #383 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-v0-main-tests-a01 S2: bot_p1_heads 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-v0-main-tests-a01 PR #317 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-stop-and-watch-a02 PR #323 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 PR #393 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+
+~~~~
+
+The source/test/task/template hashes match before and after the run. The 114 output lines include advisory regime-boundary warnings; all are preserved. A first environment-setup attempt without UV_CACHE_DIR exited 2 before running validation; its complete output follows and is not labelled green:
+
+~~~~text
+uv run --with pyyaml scripts/validate-agent-assets.py
+error: Could not acquire lock
+  cause: Could not create temporary file
+  cause: Operation not permitted (os error 1) at path "~/.cache/uv/.tmpns1uUC"
+make: *** [validate-agent-assets] Error 2
+
+~~~~
+
+## Orchestrator disposition after bounded verification
+
+AGMSG-PING received with timestamp 2026-10-19T02:12:41Z assigns OPEN a05-worker-verification-1 to advisory owner dotfiles-T129-anthropic-auth-route-check-followup-a06, confirms that owner's task exists/checker OK, forbids a second correction, and keeps the first push held for PR420's merged PING. Root read the task and verified sha256 8685ab7f91a647485d33b959b8eb53c6e6b2a9762dfcf6a47dd1fa2796a4681f. Its item 1 names this exact finding. The open status and evidence path remain in the RESULT; no fixed claim is made. The tracked applied-file fixture independently confirmed exit 0/note for the bare name and hard/refused plus payload redaction for the assignment-bearing control (post-round-open.json).
+
+Status: local checks, one independent review and one consolidated correction recorded; full validator on the earlier clean a99521b4 snapshot exited 0. One post-round P2 remains open. Final-base full validation, authorized rebase/first push, CI and automatic-review window remain pending. Commands use the temporary uv cache and existing PyYAML except the explicitly recorded initial cache-setup failure. Evidence belongs to this task in worker-g. Historical results are labelled separately; no baseline success is described as RED.
 
 ## Unchanged 325f520b corpus comparison
 

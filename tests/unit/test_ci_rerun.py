@@ -303,6 +303,26 @@ class CiRerunTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual({str(python)}, set(seen.read_text().split()))
 
+    def test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin(self):
+        # Revise 1 (the chain's P1 on 7329f0e): before PATH is pinned, the EXIT trap's rm and the env around mise ran
+        # whatever the caller's PATH named. mise is the resolver the design names; setUp's stub stands in for it.
+        planted, shims, marker = self.t / "planted", self.t / "shims", self.t / "planted.log"
+        for tool, real in (("rm", "/bin/rm"), ("env", "/usr/bin/env")):  # each works, and leaves a mark
+            (planted / tool).parent.mkdir(exist_ok=True)
+            (planted / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexec {real} "$@"\n')
+            (planted / tool).chmod(0o755)
+        shims.mkdir()
+        (shims / "jq").write_text("#!/bin/sh\nexit 1\n")
+        (shims / "jq").chmod(0o755)
+        base = os.pathsep.join(map(str, (planted, self.t / "bin", os.environ["PATH"])))
+        for name, path, code in (("refused before the pin", f"{shims}{os.pathsep}{base}", 1), ("a full run", base, 0)):
+            with self.subTest(name):
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", PATH=path))
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.
         for name, prs, heads, code in (

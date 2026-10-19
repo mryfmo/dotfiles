@@ -1,0 +1,13 @@
+task_id: dotfiles-T133-task-generator-plan-check-a04
+previous_head: 6f5e1074fc578d9881c2c7e9fd597db01a11b0cd
+acceptance_round: 1
+correction_round: 2
+correction_limit: 2
+check: tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c14_interprets_the_probe_vocabulary_without_a_shell
+reason: Compare the launch executable with the running host's realpath of the same /usr/bin/env path, including symlinked installations.
+scope: tests/unit/test_task_consistency_c11_c15.py only; evidence in this task directory
+status: awaiting_final_head_ci
+source_change: one assertion; no production change
+red: revise-symlink-env-red.log
+green: revise-symlink-env-green.log
+module: revise-module-cached-green.log

@@ -366,7 +366,7 @@ class TaskConsistencyC11C15Test(RepositoryTest):
             self.assertEqual(self.check(self.task(text), trace=True)[0], 0, command)
         for call in map(json.loads, (self.repo / "trace.jsonl").read_text().splitlines()):
             self.assertEqual(call["env"], {})
-            self.assertEqual(call["argv"][0], "/usr/bin/env")
+            self.assertEqual(call["argv"][0], os.path.realpath("/usr/bin/env"))
             if "api" in call["argv"]:
                 self.assertTrue(any(str(a).startswith("repos/mryfmo/dotfiles/") for a in call["argv"]))
                 continue

@@ -13,5 +13,13 @@
     "scope": "file",
     "path": "tests/unit/test_task_from_plan.py",
     "resolved": true
+  },
+  {
+    "id": "a04-round2-canary-env-realpath",
+    "body": "[P2, high confidence] Orchestrator ACCEPTANCE at2026-10-19T23:29:37Z requires the Ubuntu26 canary's literal /usr/bin/env expectation to compare the host realpath. Round2 of2 changes only that test assertion. A symlink-env fixture runs the unchanged checker and existing selector:6f5e1074 fails at369, corrected source passes. Native315 module15tests passes with one inherited canonical-record skip, using the explicitly supplied prepared private cache after a fresh-provision attempt ran0tests and was rejected as proof. No production edit and no second independent pre-push review. Final CI and orchestrator audit remain separate requirements.",
+    "scope": "line",
+    "path": "tests/unit/test_task_consistency_c11_c15.py",
+    "line": 369,
+    "resolved": true
   }
 ]

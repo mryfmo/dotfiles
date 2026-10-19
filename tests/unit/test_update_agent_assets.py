@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -191,8 +192,9 @@ class UpdateAgentAssetsTest(unittest.TestCase):
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
 
-    def update_omp_in(self, home, version):
-        # update_omp with the fixture curl and npm on PATH; the caller has placed any entry at ~/.local/bin/omp.
+    def update_omp_in(self, home, version, spelling=""):
+        # update_omp with the fixture curl and npm on PATH and HOME=<home><spelling>; the caller has placed any entry at
+        # ~/.local/bin/omp.
         binary = home / ".local/bin"
         binary.mkdir(parents=True, exist_ok=True)
         for name in ("curl", "npm"):
@@ -205,7 +207,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
             env=os.environ
             | {
-                "HOME": str(home),
+                "HOME": str(home) + spelling,
                 "PATH": str(binary) + os.pathsep + os.environ["PATH"],
                 "CALLS": str(home / "calls.jsonl"),
                 "PAYLOAD": str(payload),
@@ -277,6 +279,41 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                         self.assertEqual("#!/bin/sh\necho omp/0.0.1\n", target.read_text(), output)
                     else:
                         self.assertEqual(links[entry], target.readlink(), output)
+
+    def assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(self, link):
+        # npm folds HOME as it folds the link (Node's path.resolve), so with HOME=<home>/ npm's own link stays put.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / ".local/bin/omp"
+            target.parent.mkdir(parents=True)
+            target.symlink_to(link.format(home=home))
+            result = self.update_omp_in(home, "18.11.3", spelling="/")
+            output = result.stdout + result.stderr
+            self.assertEqual(0, result.returncode, output)
+            self.assertNotIn("Moving", result.stdout)
+            self.assertFalse((home / ".local/share/agent-assets/omp/omp.previous").is_symlink(), output)
+
+    def test_npm_s_own_absolute_link_stays_under_a_home_with_a_trailing_slash(self):
+        # baseline:update-agent-assets.sh:R1:1c780a5: an absolute link restarts the path inside the normaliser.
+        self.assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(
+            "{home}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"
+        )
+
+    def test_npm_s_own_relative_link_stays_under_a_home_with_a_trailing_slash(self):
+        # baseline:update-agent-assets.sh:R1:1d5afaf: the package prefix is folded as the link is.
+        self.assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(
+            "../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"
+        )
+
+    def test_the_platform_cases_read_no_path_operand(self):
+        # baseline:update-agent-assets.sh:R2:851db69, both rows: `uname -s` and `uname -m` form a platform pair, not a
+        # path, so ensure_crit_cli (row 1) and update_hcom (row 2) join them with `-` and the comparison lint reads no
+        # path operand in either case statement.
+        lint = [sys.executable, "-I", str(ROOT / "scripts/lint-comparisons.py"), "--all", "--baseline", os.devnull]
+        result = subprocess.run(lint + [str(UPDATER)], capture_output=True, text=True, timeout=30, check=True)
+        lines = UPDATER.read_text().split("\n")
+        flagged = [lines[int(n) - 1].strip() for n in re.findall(r":(\d+): R2 ", result.stdout)]
+        self.assertEqual([], [line for line in flagged if "uname" in line])
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (

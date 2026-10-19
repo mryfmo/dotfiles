@@ -44,14 +44,17 @@ SH_NORM = re.compile(
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
 JQ_QUOTE = re.compile(
-    r"""(?:\\[\s\S]|"\$(?:[^"\\\n]|\\[\s\S])*"|"(?!(?:[^"\\\n]|\\[\s\S])*")|[^'"\\\n])*+('[^']*'|"(?:[^"\\\n]|\\[\s\S])*")"""
-)  # the first quoted word on the jq word's line that is no "$expansion": a '…' or a "…" program
+    r"""(?:\\[\s\S]|"\$(?:[^"\\]|\\[\s\S])*"|"(?!(?:[^"\\\n]|\\.)*")(?=[^\n]*\S)|[^'"\\\n;&|])*+"""
+    r"""('[^']*'|"(?:[^"\\]|\\[\s\S])*")"""
+)  # the first quoted word after the jq word, before a separator, that is no "$expansion" and no stray closing quote
+# (a " closed nowhere later on its line with text after it, as in "$(command -v jq)"); a "…" may span lines
 JQ_ARG = re.compile(r"(?<!\S)(?:--(?:arg|argjson|slurpfile|rawfile)(?:[\s\\]+\S+)?|--indent|-L|--library-path)[\s\\]+$")
 PS = re.compile(
     r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
 )
-PGREP = re.compile(r"""\bpgrep\s+-\w*f\w*(\s+-\S+)*\s+("[^"]*\$|[^\s'"]*\$)""")  # the whole pattern, quoted or not
-GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(\"[^\"]*\"|'[^']*'|\S+)")
+WORD = r"""(?:'[^']*'|"(?:[^"\\]|\\.)*"|\\.|[^\s'"\\;&|])+"""  # one shell word, its quoted pieces whole
+PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(?:\s+-\S+)*\s+(" + WORD + ")")
+GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(" + WORD + ")")
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
@@ -64,6 +67,11 @@ OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 def operand(tok):  # a path-named variable, or a literal path piece beside any expansion
     name = re.match(r"\$\{?([A-Za-z_]\w*)", tok)
     return bool(name and TOKEN.search(name.group(1))) or bool(LITERAL.search(re.sub(r"\$\{[^}]*\}|\$\w+", "", tok)))
+
+
+def expands(word):  # the shell expands a variable in this word: a $name outside '…' and after no backslash
+    pieces = re.findall(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.|[^'"\\]+""", word)
+    return any(re.search(r"\$\{?[A-Za-z_]", re.sub(r"\\.", "", p)) for p in pieces if p[0] not in "'\\")
 
 
 def comment(line):  # a shell line's comment: from the first unquoted # that starts a word, else ""
@@ -100,8 +108,9 @@ def programs(code):
         while q and JQ_ARG.search(rest, 0, q.start(1)):
             q = JQ_QUOTE.match(rest, q.end())
         if q:  # the program's text, a double-quoted one as the shell hands it to jq
-            begin, inner = m.end() + q.start(1) + 1, q[1][1:-1]
-            yield begin, re.sub(r'\\([\\"$`])', r"\1", inner) if q[1][0] == '"' else inner
+            begin, close = m.end() + q.start(1) + 1, m.end() + q.end(1)
+            inner = code[begin : close - 1]  # the original text: the folding above only located it
+            yield begin, re.sub(r'\\([\\"$`])', r"\1", inner) if q[1][0] == '"' else inner, close
 
 
 def jq_mask(prog):  # (code, literals): prog with its strings and comments blanked, and with all but string characters
@@ -114,9 +123,10 @@ def jq_mask(prog):  # (code, literals): prog with its strings and comments blank
                 code[i + 1], i = " ", i + 2
                 ctx.append(0)
                 continue
-            lits[i : i + len(two)] = two if c == "\\" else c
+            step = len(two) if c == "\\" else 1  # an escape is two characters
+            code[i : i + step], lits[i : i + step] = [" "] * step, prog[i : i + step]
             ctx.pop() if c == '"' else None
-            i += len(two) if c == "\\" else 1
+            i += step
             continue
         if c == "#":  # a comment, to the end of its line
             end = prog.find("\n", i) % (len(prog) + 1) or len(prog)
@@ -152,38 +162,44 @@ def shell_hits(text):
     lines, buf, at = text.split("\n"), "", 0
     for n, raw in enumerate(lines, 1):
         code, at = raw[: len(raw) - len(comment(raw))], at if buf else n
-        if code.endswith("\\"):  # a continuation: the statement goes on, reported at its first line
+        # a continuation (an odd run of trailing backslashes): the statement goes on, reported at its first line
+        if (len(code) - len(code.rstrip("\\"))) % 2:
             buf += code[:-1] + " "
             continue
-        line, buf, n = buf + code, "", at
+        line, buf, last, n = buf + code, "", n, at  # a marker on any line of the statement accepts it
+        marked = any((m := MARKER.search(comment(lines[k - 1]))) and m.group(1) for k in range(n, last + 1))
         toks = words(line)
         for i, tok in enumerate(toks):
             test = tok in ("==", "!=", "=") and 0 < i < len(toks) - 1 and ("[[" in toks[:i] or "[" in toks[:i])
             if test and (operand(toks[i - 1]) or operand(toks[i + 1])):
-                yield n, "R1", SH_NORM.search(line)
+                yield n, "R1", SH_NORM.search(line) or marked
             if tok == "in" and i > 1 and toks[i - 2] == "case" and operand(toks[i - 1]):
-                yield n, "R2", SH_NORM.search(line)
-        if PS.search(line) or PGREP.search(line):
-            yield n, "R5", False
+                yield n, "R2", SH_NORM.search(line) or marked
+        if PS.search(line) or any(map(expands, PGREP.findall(line))):
+            yield n, "R5", marked
         for cmd, flags, pattern in GREP.findall(line):
             ere = cmd == "egrep" or re.search(r"\s-\w*E|--extended-regexp", flags)
-            # a '…' pattern, or an escaped \$, interpolates nothing
-            interpolated = pattern[:1] != "'" and re.search(r"(?<!\\)\$\{?[A-Za-z_]", pattern)
-            if ere and interpolated and "-F" not in flags.split():
-                yield n, "R6", "escape_regex" in line
+            if ere and expands(pattern) and "-F" not in flags.split():
+                yield n, "R6", "escape_regex" in line or marked
     code = "\n".join("" if line.lstrip().startswith("#") else line for line in lines)
-    for begin, region in programs(code):
+    for begin, region, close in programs(code):
         prog, first = region, code.count("\n", 0, begin) + 1
         bare, lits = jq_mask(prog)  # strings and comments hold no operator and apply no normaliser
-        keyword = r"(?<![\w.$])(?:and|or|if|then|elif|else|end)(?!\w)"  # each bounds an operand, as a ; does
-        bare = re.sub(keyword, lambda m: ";" * len(m[0]), bare)
+        view = bare  # the program's code alone, before its keywords become bounds
+        bare = re.sub(r"(?<![\w.$])(?:and|or|then|elif|else)(?!\w)", lambda m: ";" * len(m[0]), bare)  # bounds
+        bare = re.sub(r"(?<![\w.$])if(?!\w)", "( ", re.sub(r"(?<![\w.$])end(?!\w)", "  )", bare))  # one operand
+        after = comment(code[close:].split("\n", 1)[0])  # a shell comment past the program's closing quote
         for op in JQ_OP.finditer(bare):
             lo, hi = span(bare, op.start(), op.group(0).endswith("("))
             expr, sides = bare[lo:hi], (bare[lo : op.start()], bare[op.start() : hi])
             hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
             if hit or LITERAL.search(lits[lo:hi]):
                 ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in sides) for d in JQ_DEF.findall(bare))
-                yield first + prog.count("\n", 0, op.start()), "R3", ok or MARKER.search(comment(lines[first - 1]))
+                row, end = prog.rfind("\n", 0, op.start()) + 1, (prog.find("\n", op.start()) + 1 or len(prog) + 1) - 1
+                sharp = [i for i in range(row, end) if prog[i] == "#" and view[i] == lits[i] == " "]  # a jq comment
+                notes = (comment(lines[first - 1]), after, prog[sharp[0] : end] if sharp else "")
+                marked = any((m := MARKER.search(x)) and m.group(1) for x in notes)
+                yield first + prog.count("\n", 0, op.start()), "R3", ok or marked
 
 
 def python_hits(text):
@@ -204,7 +220,8 @@ def python_hits(text):
         name = dotted(node.func) if isinstance(node, ast.Call) else ""
         if name == "re.escape" or isinstance(node, ast.Constant):
             return True
-        arg = node.args[0] if name.endswith(".join") and len(node.args) == 1 else None
+        joined = name.endswith(".join") and len(node.args) == 1 and isinstance(node.func.value, ast.Constant)
+        arg = node.args[0] if joined else None  # a constant separator: an escaped one would be its own call
         if isinstance(arg, ast.Call) and dotted(arg.func) == "map" and arg.args:
             return dotted(arg.args[0]) == "re.escape"
         return isinstance(arg, (ast.GeneratorExp, ast.ListComp)) and escaped(arg.elt)

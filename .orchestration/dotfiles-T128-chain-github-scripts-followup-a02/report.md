@@ -65,3 +65,15 @@ Final source tree is clean (git diff --exit-code HEAD returned 0). task_copy=c83
 All commands stayed in the managed sandbox. The worktree fast-forwarded to the orchestrator's branch head; no rebase, force push, shared-config edit, main-checkout write, or merge to main was attempted. HTTPS push uses only the existing per-command pushInsteadOf identity rewrite. Local make require-crit-review was run and requires the orchestrator's integration review; it is not claimed passed. No Crit browser, server or Plan Mode session was started. No project decision or memory was promoted; AutoSkill not used; stale graph left untouched and targeted rg used. GitHub uses gh first, no web fallback.
 
 cost: n/a
+
+## Rebase repair 1 (claude-standard-dot-a011, worker-d, 2026-10-19)
+
+This seat took PR #375 over for a D-024-24 rebase repair, by the orchestrator's TASK of 12:04:16Z; the lineage's seat is no longer seated.
+
+- **The failure.** The chain's update-branch onto `main` `51ba5801` gave `dd5c73c5`. Its run 39247773786 (first attempt) failed all four required unit jobs at `Run Python unit tests`. Each job's log shows one failing test, `tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline`, on one hit, `scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form` (validation, "Rebase repair 1"). The 1264 other tests pass.
+- **The cause.** It is the comparison lint PR #415 landed on `main` after this PR's RESULT, not this PR's behaviour. Line 35 is this PR's own `jq` test, `test("_r[0-9]+$")` on a sweep item's `.url` (from `a250b1cb`), which reads the review comment id from the `#discussion_r<id>` fragment.
+- **The repair (`9f1ba112`).** One row, `scripts/orchestrator/resolve-threads.sh R3 ecae8edc…`, in `scripts/lint-comparisons-baseline.tsv`. The hash is the sha256 of the stripped line, computed as the lint computes it.
+  - Why a row and not a rewrite: no URL normaliser applies to a fragment suffix, and `main`'s own row for this file covers the same kind of test (`endswith($suffix)`, now line 55). The TASK allows a baseline row for the PR's own lines, and the baseline file joins allowed_files for that alone.
+  - Nothing else changes. The task copy stays the existing one (`c8307a64…`, while the dispatched text is `5d3b78db…`).
+- **After the repair.** `scripts/lint-comparisons.py --changed scripts/orchestrator/resolve-threads.sh` exits 1 at `dd5c73c5` and 0 at `9f1ba112`, leaving only the five warnings of the unchanged `regime-ci.py`. `test_lint_comparisons` and `test_chain_github_scripts` pass (22 tests). Caps: 15 changed lines outside `tests/` and `.orchestration/` (cap 200), and 47 added lines under `tests/`.
+- **Not done.** No worker review ran: this is a rebase repair, not a fix round. No thread was replied to or resolved, and no `@codex review` was posted.

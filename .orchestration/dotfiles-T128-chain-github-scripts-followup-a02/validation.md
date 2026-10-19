@@ -2445,3 +2445,90 @@ M  .orchestration/dotfiles-T128-chain-github-scripts-followup-a02/sandbox.md
 M  .orchestration/dotfiles-T128-chain-github-scripts-followup-a02/validation.md
 (exit 0)
 ```
+
+## Rebase repair 1 (claude-standard-dot-a011, worker-d): the comparison lint of #415 on the update-branch head dd5c73c5
+
+This seat took PR #375 over by the orchestrator's TASK of 2026-10-19T12:04:16Z (`round=rebase-repair-1`, D-024-24), because the lineage's seat is no longer seated. The chain's update-branch onto `main` `51ba5801` made `dd5c73c5`. Its run 39247773786 (first attempt) failed all four required unit jobs at `Run Python unit tests`, while `main` was green. The jobs' logs were read with `gh api …/actions/jobs/<id>/logs`, because `gh run view --log-failed` refuses while a run is in progress. Every job fails one test: `test_lint_comparisons`'s `test_the_changed_files_are_clean_against_the_baseline`, on one hit, `scripts/orchestrator/resolve-threads.sh:35: R3`. That is the comparison lint PR #415 landed on `main` after this PR's RESULT, applied to a file this PR changes.
+
+Line 35 is this PR's own line (`a250b1cb`): `jq`'s `test("_r[0-9]+$")` on a sweep item's `.url`, which reads the review comment id from the `#discussion_r<id>` fragment. No URL normaliser applies to a fragment suffix, and `main`'s baselined row for this file covers the same kind of test, the `endswith($suffix)` line, now line 55. So, as the TASK allows for the PR's own lines, the repair adds one baseline row: the path, `R3` and the sha256 of the stripped line, computed as the lint computes it. `scripts/lint-comparisons-baseline.tsv` joins allowed_files for that row alone. Nothing else changes, and the task copy stays the existing one. `PREV` is `dd5c73c5` and `FIX` is `9f1ba112`.
+
+````console
+$ for j in 118043815150 118043815499 118043815650 118043815661; do gh api --allow-escape-sequences "repos/mryfmo/dotfiles/actions/jobs/${j}/logs" | sed "s/\x1b\[[0-9;]*m//g" | /usr/bin/grep -E "(FAIL|ERROR): test|FAILED \(|resolve-threads.sh:[0-9]+: R|^.{29}Ran [0-9]+ tests" | cut -c30-200 | sed "s/^/job ${j}: /"; done
+job 118043815150: FAIL: test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline)
+job 118043815150: scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form
+job 118043815150: Ran 1265 tests in 310.187s
+job 118043815150: FAILED (failures=1)
+job 118043815499: FAIL: test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline)
+job 118043815499: scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form
+job 118043815499: Ran 1265 tests in 314.541s
+job 118043815499: FAILED (failures=1)
+job 118043815650: FAIL: test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline)
+job 118043815650: scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form
+job 118043815650: Ran 1265 tests in 257.912s
+job 118043815650: FAILED (failures=1)
+job 118043815661: FAIL: test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline)
+job 118043815661: scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form
+job 118043815661: Ran 1265 tests in 490.314s
+job 118043815661: FAILED (failures=1, skipped=2)
+[exit 0]
+````
+
+````console
+$ git log --oneline -2; git diff "$PREV" "$FIX"; sed -n 35p scripts/orchestrator/resolve-threads.sh; uv run --no-project python -I -c "import hashlib, sys; print(hashlib.sha256(open(sys.argv[1]).read().split(chr(10))[34].strip().encode()).hexdigest())" scripts/orchestrator/resolve-threads.sh
+9f1ba112 fix(lint): baseline resolve-threads.sh's own jq _r<id> fragment test against the comparison lint of #415 (T128 chain-github-scripts follow-up a02, rebase repair 1)
+dd5c73c5 Merge branch 'main' into fix/resolve-threads-lossless-disposition
+diff --git a/scripts/lint-comparisons-baseline.tsv b/scripts/lint-comparisons-baseline.tsv
+index bf950ca5..0a7a11b7 100644
+--- a/scripts/lint-comparisons-baseline.tsv
++++ b/scripts/lint-comparisons-baseline.tsv
+@@ -59,6 +59,7 @@ scripts/orchestrator/local-review.sh	R1	af97146c84f09c810c29eabf4552fcf83adc2414
+ scripts/orchestrator/orch-gate.sh	R1	52c8c70b39348e5d92efdfbaed85da2548e202217c7c3a3721b10ba75b8b28fc
+ scripts/orchestrator/pr-cost.sh	R6	f1ff986bb9600a19078ac1ead58405f0908540af858840971d4b0d243e3b6e80
+ scripts/orchestrator/resolve-threads.sh	R3	d642969f29e3eddf1a5b5a1227cf5d5a0797410646fcfeb3656ce9262a7a45b9
++scripts/orchestrator/resolve-threads.sh	R3	ecae8edcc0f548bb9b43671428706ca8aa5d1de137d3233abbc2c19750700605
+ scripts/orchestrator/task-consistency-check.py	R4	8be62cdea849cb4c813fdbab94a73396f1bcc65bd5ca86fdd8abea76aba3e602
+ scripts/orchestrator/task-consistency-check.py	R4	9d437d518a52fdbd818f2ee7552e84fce6d174f54676f68dd725a0dbfcb8419f
+ scripts/orchestrator/task-consistency-check.py	R6	b2513e6e90aae823c2625b0a34e8f1348f674dc60237ed42bc4d99427c3dc90b
+    bad=$(jq -r 'first(.items[] | select((.url // "") | test("_r[0-9]+$")) |
+ecae8edcc0f548bb9b43671428706ca8aa5d1de137d3233abbc2c19750700605
+[exit 0]
+````
+
+````console
+$ git worktree add --detach -q "$SCRATCH/rtr-prev" "$PREV" && (cd "$SCRATCH/rtr-prev" && uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/resolve-threads.sh 2>&1 | /usr/bin/grep -v "regime-ci.py"; echo "lint exit status at PREV: ${PIPESTATUS[0]}"); git worktree remove --force "$SCRATCH/rtr-prev"
+scripts/orchestrator/resolve-threads.sh:35: R3 jq compares a URL or path by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+lint exit status at PREV: 1
+[exit 0]
+````
+
+````console
+$ git rev-parse HEAD; uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/resolve-threads.sh
+9f1ba112d58a6686c807182473d0384b4905027e
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+[exit 0]
+````
+
+````console
+$ uv run python -m unittest tests.unit.test_lint_comparisons tests.unit.test_chain_github_scripts > "$SCRATCH/rtr-ut.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/rtr-ut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED"
+unittest exit status: 0
+Ran 22 tests in 11.430s
+OK
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD -- scripts tests; git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1; next } $3 ~ /^\.orchestration\// { next } { o += $1 + $2 } END { printf "outside tests/ and .orchestration/: %d changed lines of 200\ntests/: %d added lines\n", o, t }'
+1	0	scripts/lint-comparisons-baseline.tsv
+12	2	scripts/orchestrator/resolve-threads.sh
+47	2	tests/unit/test_chain_github_scripts.py
+outside tests/ and .orchestration/: 15 changed lines of 200
+tests/: 47 added lines
+[exit 0]
+````
+

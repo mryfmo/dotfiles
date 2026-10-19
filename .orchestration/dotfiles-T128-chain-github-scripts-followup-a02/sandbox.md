@@ -19,3 +19,10 @@ Read only, outside this worktree: the main checkout's task file, acceptance reco
 After this commit the seat pushes with `git push origin fix/resolve-threads-lossless-disposition` (inside the sandbox first, through the permission gate only if that fails), runs `gh pr checks 375 --watch` and the two `gh api --paginate` Bot listings of Worker Playbook step 15 outside the sandbox through the permission gate (Seatbelt denies gh's TLS trust lookup, Worker Playbook step 4), and sends its PONG and RESULT with `agmsg-dispatch` (excludedCommands). They run after this file is committed, so the RESULT line names which of them left the sandbox and their exit codes.
 
 No thread replied to or resolved, no `@codex review` posted (the ACCEPTANCE's semantics name push and RESULT only), no merge, no Crit server or Plan Mode session.
+
+## Rebase repair 1 (claude-standard-dot-a011, worker-d, Claude Code seat, 2026-10-19)
+
+- `git fetch origin fix/resolve-threads-lossless-disposition` ran on its own. The existing local branch, an ancestor with no local-only commits and checked out in no other worktree, was switched to and fast-forwarded to `dd5c73c5` with `git merge --ff-only`. The baseline row (`9f1ba112`) and the records were single `git add` and `git commit` commands.
+- Inside the sandbox, `gh` read the run, the attempt's jobs and the four job logs. The log download needed `productionresultssa8.blob.core.windows.net` (GitHub's log storage) as an allowed domain for that command; the first try was refused by the sandbox's network filter and was rerun with it. `gh run view --log-failed` refuses while a run is in progress, so `gh api …/actions/jobs/<id>/logs` read the logs.
+- The lint run at `dd5c73c5` used a scratch worktree, removed with `git worktree remove --force` in the same block. One push follows the evidence commit, over an HTTPS pushurl.
+- No thread was replied to or resolved, no `@codex review` was posted, and nothing was merged.

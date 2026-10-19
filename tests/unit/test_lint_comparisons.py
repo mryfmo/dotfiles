@@ -1,10 +1,13 @@
 """Exercise scripts/lint-comparisons.py (C-61 rule 6; plan 023 PR F2): the rule table on fixture files in a temporary
-directory, the content-hashed baseline, and the tracked tree of this checkout against the committed baseline.
+directory, the content-hashed baseline and its changed-file severity, and the files this checkout changes against the
+committed baseline.
 
 The lint runs as a subprocess (`python3 -I`), so nothing of it is imported here.
 """
 
 import hashlib
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +16,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "scripts/lint-comparisons.py"
+# plan 024 5.14 item 2: env -i, a system git by its absolute path, an explicit -C, no system or global config
+GIT_ENV = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+GIT_C = ("core.hooksPath=/dev/null", "core.fsmonitor=false", "protocol.allow=never", "protocol.https.allow=always")
+GIT_C += ("core.attributesFile=/dev/null", "core.sshCommand=false")
 SHELL_NORMALISERS = {
     "realpath": '[[ "$(realpath "$path")" == */x ]]\n',
     "pwd -P": '[[ "$(cd "$dir" && pwd -P)" == */x ]]\n',
@@ -104,9 +111,10 @@ class LintComparisonsTest(unittest.TestCase):
             [sys.executable, "-I", str(LINT), *args], check=False, cwd=cwd or self.temp, capture_output=True, text=True
         )
 
-    def run_fixture(self, name, text, baseline=None):
+    def run_fixture(self, name, text, baseline=None, changed=None, mode=()):
         (self.temp / name).write_text(text)
-        return self.lint("--baseline", str(baseline or self.temp / "none.tsv"), name)
+        flags = mode or ("--changed", *(changed or [name]))  # the fixture file is the change unless told otherwise
+        return self.lint("--baseline", str(baseline or self.temp / "none.tsv"), name, *flags)
 
     def test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted(self):
         for rule, (name, refused, accepted) in {**TABLE, "R6 (Python)": PYTHON_R6}.items():
@@ -262,9 +270,68 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.run_fixture("r6.py", "re.search(f\"{re.escape(p)}({'|'.join(map(re.escape, names))})\", text)\n")
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
 
-    def test_the_tracked_tree_is_clean_against_the_baseline(self):
-        result = self.lint(cwd=ROOT)
-        self.assertEqual((0, "", ""), (result.returncode, result.stdout, result.stderr))
+    def test_a_hit_main_introduced_in_an_unchanged_file_passes_with_a_warning(self):
+        name, refused, _ = TABLE["R1"]
+        result = self.run_fixture(name, refused, changed=["other.sh"])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"warning: {name}:1: R1 ", result.stdout)
+        self.assertIn("warning: 1 unbaselined hit(s) and 0 stale row(s) in unchanged files\n", result.stdout)
+        result = self.run_fixture(name, refused, mode=("--all",))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"{name}:1: R1 ", result.stdout)
+
+    def test_a_hit_in_a_changed_file_fails(self):
+        name, refused, _ = TABLE["R1"]
+        result = self.run_fixture(name, refused, changed=[name, "other.sh"])
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertTrue(result.stdout.startswith(f"{name}:1: R1 "), result.stdout)
+        self.assertNotIn("warning", result.stdout)
+        result = self.run_fixture(name, refused, mode=("--all",))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"{name}:1: R1 ", result.stdout)
+
+    def stale(self):  # a row for the fixture's hit beside a row for a line the fixture does not have
+        name, refused, _ = TABLE["R1"]
+        baseline = self.temp / "baseline.tsv"
+        rows = (refused.strip(), refused.replace("*/x", "*/y").strip())
+        baseline.write_text("".join(f"{name}\tR1\t{hashlib.sha256(r.encode()).hexdigest()}\n" for r in rows))
+        return name, refused, baseline
+
+    def test_a_stale_row_for_a_changed_file_fails(self):
+        name, refused, baseline = self.stale()
+        result = self.run_fixture(name, refused, baseline)
+        self.assertEqual((1, f"stale baseline row {name} R1\n"), (result.returncode, result.stdout), result.stderr)
+        result = self.run_fixture(name, refused, baseline, mode=("--all",))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"stale baseline row {name} R1\n", result.stdout)
+
+    def test_a_stale_row_for_an_unchanged_file_warns(self):
+        name, refused, baseline = self.stale()
+        result = self.run_fixture(name, refused, baseline, changed=["other.sh"])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(f"warning: stale baseline row {name} R1\n", result.stdout)
+        self.assertIn("warning: 0 unbaselined hit(s) and 1 stale row(s) in unchanged files\n", result.stdout)
+        result = self.run_fixture(name, refused, baseline, mode=("--all",))  # the matched hit is printed too
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(
+            [f"{name}:1: R1 ", f"stale baseline row {name} R1"],
+            [x[: len(name) + 7] if ":" in x else x for x in result.stdout.splitlines()],
+        )
+
+    def test_the_changed_files_are_clean_against_the_baseline(self):
+        git = [
+            os.path.realpath(shutil.which("git", path=os.defpath)),
+            "-C",
+            str(ROOT),
+            *(x for c in GIT_C for x in ("-c", c)),
+        ]
+        diff = ("diff", "--name-only", "-z", "--no-ext-diff", "--no-textconv", "origin/main...HEAD")
+        out = subprocess.run([*git, *diff], env=GIT_ENV, check=True, capture_output=True, text=True).stdout
+        changed = set(filter(None, out.split("\0")))
+        result = self.lint(cwd=ROOT)  # no mode flag: the lint computes the same changed set itself
+        self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+        self.assertEqual([], [x for x in result.stdout.splitlines() if not x.startswith("warning: ")])
+        self.assertEqual([], [x for x in result.stdout.splitlines() for f in changed if f"{f}:" in x or f" {f} " in x])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "fu2-r1-worker-review-p1-link-pyvenv-cfg",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P1 (high, reproduced), fixed in 02ff2e1c (red 73e59b05). 0e42cb06 started python3 through a link in ${TMPDIR}/ci-rerun-bin.XXXXXX. CPython reads a pyvenv.cfg beside and one directory above the path it was started by, without resolving links, so ${TMPDIR}/pyvenv.cfg would choose its standard library: a shared /tmp (Linux with TMPDIR unset, or sandbox seats sharing a TMPDIR) let another user or seat run code with the operator's gh credentials, for both the reservation call and uv's --python. This was not present before 0e42cb06, whose python3 ran from its real directory. Fix: python3 is resolved but never linked, and is always started by its own path (\"${py}\" -I and --python \"${py}\"), which also stops uv's interpreter cache from gaining an entry per run. Test: test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-r1-worker-review-p3-mktemp-ln-before-pinning",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P3 (high, reproduced), fixed in 02ff2e1c (red 73e59b05). mktemp and ln ran before PATH was pinned, through the inherited PATH, so an empty or `.` entry ran a checkout's own. They now run as /usr/bin/mktemp and /bin/ln, and the pinning test plants both in the checkout behind an empty PATH entry.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-r1-worker-review-p3-exitcode-doc",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P3 (high), fixed in 02ff2e1c: @exitcode 1 names the refusal of a tool that resolves only to a shims or relative path.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-r1-worker-review-p3-declared",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P3, declared (no code change). (a) When mise has no answer (absent, as on GitHub runners, or not managing the tool), command -v follows the inherited PATH, so an activated virtualenv's bin first on PATH supplies python3; this is the dispatch.sh and orch-gate.sh pattern the row prescribes. (b) The online PyYAML fallback now runs under env -i with --no-config, so it loses HTTPS_PROXY, SSL_CERT_FILE and uv.toml index settings; a cold cache behind a proxy exits 1 (fail-closed, an availability regression; `make validate-agent-assets` warms the cache). (c) HOME is inherited (dispatch.sh uses the owner's passwd home) and git rev-parse still sees inherited GIT_* variables; both predate this change and lie outside the row. (d) The stub mise always exits 1, so the production `mise which` branch is not exercised by the tests.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-r2-worker-review-p3-trap-rm",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P3 (high, reproduced), declared for the orchestrator's decision; no further worker-side round, because this task's Completion clause counts every fix round toward INV-6's cap of two and the first was used for the P1 above. When the tool loop refuses a tool and the script exits before PATH is pinned, the EXIT trap's `rm -rf -- \"${bin}\"` resolves rm through the inherited PATH: with PATH \":/usr/bin:/bin\", a checkout holding an executable rm, and no resolvable uv, the checkout's rm ran (and the private directory stayed). So 02ff2e1c's claim of no PATH tool before pinning holds for mktemp and ln but not for the trap's rm on that exit path. The fix is one word: /bin/rm in the trap, plus `rm` among the planted tools with an unresolvable tool in the pinning test.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-r2-worker-review-p3-others",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P3, declared. (a) Neither new test fails when only one of the two uv controls (`--python \"${py}\"`, or `cd -- \"${root}\"`) is removed; only removing both turns the pinning test red, because test 2 collapses the starts with set() and test 1 plants only in the working directory. (b) The reservation starts ${py} with the inherited environment (orch-gate.sh uses env -i); -I covers PYTHON*, but on macOS with ${py} = /usr/bin/python3 (the xcrun shim) an inherited DEVELOPER_DIR chooses the interpreter. (c) HOME is inherited (advisory, as above). (d) The doc sentence that python3 is never started through a link is literally false for uv's ephemeral environment, whose bin/python links to ${py} under ~/.cache/uv; that location is user-owned, so it is harmless.",
+    "resolved": true
+  },
+  {
+    "id": "fu2-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "Two rounds by fresh read-only subagents, each given the commit range and the task file and running tests only in its own scratch worktrees. Round 1 on 0e42cb06: Verdict incorrect, one P1 (the link and pyvenv.cfg) and P3s; fixed in one worker-side round (red 73e59b05, fix 02ff2e1c). Round 2 on 02ff2e1c: Verdict correct; the P1 is closed for every python start (reservation, uv's query, uv's ephemeral environment under ~/.cache/uv), red on 73e59b05 and green on 02ff2e1c reproduced, scope limited to the two allowed files, five P3 declared above. Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

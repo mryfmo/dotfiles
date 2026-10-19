@@ -139,6 +139,11 @@ OWNED_ROWS = {
             [],
         ),  # on the quote's last line
         ("k3.sh", "jq -r 'select(.url == $p)' f && echo \"# lint-comparisons: allow reason\"\n", [("R3", 1)]),
+        (
+            "k4.sh",
+            "jq -r 'select(.url == $p)\n  | .x' # lint-comparisons: allow the fixture\n",
+            [],
+        ),  # the whole program
     ],
     "audit:4f5be51:1": [  # and/or bound each comparison's operands; if…end is one operand
         ("l.sh", JQ_AND, [("R3", 1)]),

@@ -31,9 +31,13 @@ The finding, from the task-level audit of PR #402's head `c6464729`: a05's `sand
 - The seat for each action comes from the regime records (validation §5): the a05 acceptance record (lines 7, 128, 129, 153, 159 and 160), and this seat's own ci-efficiency-a01 sandbox record (lines 10 and 19) and acceptance record (line 32).
 - The record also states that the a05 report and the acceptance record do not contradict each other: the worker stopped, and the orchestrator created the PR.
 
-**Where it is written.** The a05 `sandbox.md` itself is unchanged. Checker C2 keeps another task's `.orchestration/<id>/` directory out of a worker's `allowed_files`, so an amendment could not add it. The correction is therefore this task's own record, which names the lines of the a05 record it supersedes (12 to 18). The regime-ci follow-up a01 settled the same case the same way.
+**Where it is written.** The a05 `sandbox.md` itself is unchanged. Checker C2 keeps another task's `.orchestration/<id>/` directory out of a worker's `allowed_files`, so an amendment could not add it. The correction is therefore this task's own record, which names the lines of the a05 record it supersedes: lines 19 to 21, the planned gh command rows 2 to 4 of its ledger (validation §7, a pasted `grep -n` of that file; line 18 is the row of the blocked PONG, an `agmsg-dispatch` call that did run). The regime-ci follow-up a01 settled the same case the same way.
 
-**No code, no test.** The row names no test and no code, and the note says "one red-then-green test where a row names one". So `scripts/orchestrator/local-advisory.sh` and `tests/unit/test_chain_review_scripts.py` are unchanged.
+**No code, no test.** The owned row names no test and no code. Its subject is a record, so its red-then-green is the record it names.
+- The red side is the a05 ledger's planned rows: placeholders and conditional execution, quoted in validation §3 and §7.
+- The green side is `a05-gh-calls.md`: one row per call that ran, each checked against pasted command output in validation §2 to §5.
+
+The task text's item 1 sentence ("its fix and one red-then-green test in `tests/unit/test_chain_review_scripts.py`") applies to rows that name a test. So `scripts/orchestrator/local-advisory.sh` and `tests/unit/test_chain_review_scripts.py` are unchanged.
 
 **Not read.** The team-wide bus history. A whole-bus `history.sh` read started for this record had not finished when the record was committed (C-53: such reads take close to an hour). The seat of the PR creation therefore rests on the orchestrator's own acceptance record, which is the authority on the orchestrator's actions.
 

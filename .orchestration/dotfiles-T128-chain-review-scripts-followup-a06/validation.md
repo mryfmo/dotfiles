@@ -130,3 +130,29 @@ tests/: 0 added of 1000
 ````
 
 This record is part of the final head, so the RESULT carries the final diff and its CI.
+
+## 7. Revise 1: the superseded range of the a05 sandbox record
+
+The task-level audit of `b9f562ec` (P3) found the superseded range named as lines 12 to 18, while the planned gh commands sit on lines 19 to 21. The `grep -n` below fixes the range from the file itself: line 18 is the blocked PONG's `agmsg-dispatch` row, which did run; lines 19 to 21 are the planned gh rows 2 to 4. The second block shows the corrected references in this task's records; its `grep -c` finds no `12 to 18` left, so that block exits 1.
+
+````console
+$ git rev-parse --short HEAD; git show origin/main:.orchestration/$A05/sandbox.md | /usr/bin/grep -n "gh \|agmsg-dispatch"
+b9f562ec
+14:Calls outside the sandbox: `agmsg-dispatch` through `excludedCommands`. Since the operator's notice of 01:1x JST every gh write prompts a human, so none runs from this seat at night; the gh rows below run after the morning's approval:
+18:| 1 | `agmsg-dispatch … AGMSG-PONG v1 task_id=dotfiles-T128-chain-review-scripts-followup-a05 status=blocked …` naming `gh pr create` | `agmsg-dispatch` |
+19:| 2 | after the approval: `gh pr create --draft --repo mryfmo/dotfiles --base main --head tools/chain-review-scripts-followup-a05 …` and `gh pr ready <pr>` | `gh` (a write: the human's prompt) |
+20:| 3 | `gh pr checks <pr> --watch` and the Bot wait's `gh api` reads (reads, no prompt) | `gh` |
+21:| 4 | `@codex review` only at 10 minutes without a review, a gh write (the human's prompt) | `gh` |
+22:| 5 | `agmsg-dispatch … AGMSG-RESULT v1 task_id=dotfiles-T128-chain-review-scripts-followup-a05 …` | `agmsg-dispatch` |
+[exit 0]
+````
+
+````console
+$ /usr/bin/grep -n "19 to 21" .orchestration/$T/a05-gh-calls.md .orchestration/$T/report.md | cut -c1-220; /usr/bin/grep -c "12 to 18" .orchestration/$T/a05-gh-calls.md .orchestration/$T/report.md
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/a05-gh-calls.md:4:supersedes: .orchestration/dotfiles-T128-chain-review-scripts-followup-a05/sandbox.md lines 19 to 21 (the planned gh command rows 2 to 4 of
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/report.md:34:**Where it is written.** The a05 `sandbox.md` itself is unchanged. Checker C2 keeps another task's `.orchestration/<id>/` directory out of a wor
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/a05-gh-calls.md:0
+.orchestration/dotfiles-T128-chain-review-scripts-followup-a06/report.md:0
+[exit 1]
+````
+

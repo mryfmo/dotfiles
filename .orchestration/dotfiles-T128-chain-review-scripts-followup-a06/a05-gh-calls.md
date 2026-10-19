@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T128-chain-review-scripts-followup-a06
 row: audit:c646472:1
-supersedes: .orchestration/dotfiles-T128-chain-review-scripts-followup-a05/sandbox.md lines 12 to 18 (the planned gh ledger)
+supersedes: .orchestration/dotfiles-T128-chain-review-scripts-followup-a05/sandbox.md lines 19 to 21 (the planned gh command rows 2 to 4 of its ledger; the grep -n in validation §7)
 ---
 
 # The gh calls of dotfiles-T128-chain-review-scripts-followup-a05 (PR #402), as they ran

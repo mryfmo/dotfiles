@@ -15,8 +15,10 @@ FAKES = {  # $CALLS becomes the calls directory: verdict.sh runs its tools under
     "scripts/regime-counters.sh": '#!/usr/bin/env bash\n[[ " $* " == *" --history-only "* ]] && exec grep -v "^S1:" "$CALLS/counters.txt"\ncat "$CALLS/counters.txt"\n',
     "../bin/gh": '#!/usr/bin/env bash\necho "gh $*" >> "$CALLS/calls.log"\ncase "$1 $2" in "pr view") cat "$CALLS/view.json" ;; "pr checks") cat "$CALLS/checks.json" ;; "pr list") cat "$CALLS/list.txt" ;; "pr merge") git push -q origin next:main 2> /dev/null || : ;; esac\n',
     "../bin/mise": "#!/bin/sh\nexit 1\n",  # no mise answer: every tool resolves through PATH, these fakes first
+    "scripts/orchestrator/orch-gate.sh": '#!/usr/bin/env bash\necho "gate $*" >> "$CALLS/calls.log"\nexit "$(cat "$CALLS/gate-status" 2> /dev/null || echo 0)"\n',
+    "scripts/orchestrator/orch-audit.sh": "#!/usr/bin/env bash\nexit 0\n",  # the inherited --validate, for red runs on b8998de1
 }
-COPIES = ("orchestrator/verdict.sh", "orchestrator/orch-audit.sh", "require-crit-review.py", "validate-agent-assets.py")
+COPIES = ("orchestrator/verdict.sh", "require-crit-review.py", "validate-agent-assets.py")
 AT, URL = "2026-10-18T05:00:00Z", "https://github.test/pull/9#discussion_r1"
 FINDING = {"id": "1", "priority": "P2", "confidence": "high", "file": "x.sh", "line": 1, "class": "records-form"}
 INCORRECT, P0 = {"verdict": "incorrect", "scope": "code"}, {"priority": "P0", "scope": "code"}
@@ -209,7 +211,7 @@ class VerdictTest(unittest.TestCase):
                 self.audit(**finding) if finding else None
                 self.verdict(code=code)
                 check = self.run_in_repo(
-                    "bash", "scripts/orchestrator/orch-audit.sh", "--validate", ".schemas/verdict.json", out
+                    "bash", "scripts/orchestrator/verdict.sh", "--validate", ".schemas/verdict.json", out
                 )
                 self.assertEqual(0, check.returncode, check.stderr)
 
@@ -310,3 +312,62 @@ class VerdictTest(unittest.TestCase):
             with self.subTest(disposition=disposition):
                 self.green(items=[ITEM | {"disposition": disposition}])
                 self.assertEqual([4] if code else [], self.failed(self.verdict(code=code)))
+
+    def test_verdict_apply_runs_the_integration_gate_before_dispatch_or_merge_and_holds_on_failure(self):
+        self.write(f"{V}/verdict-shadow.tsv", "".join(f"{n}\th\taccept\taccept\tyes\tt\n" for n in range(1, 5)))
+        gate, merge = f"gate {TASK} {self.head} 9", f"gh pr merge 9 --squash --match-head-commit {self.head}"
+        no_gate = (
+            ("rm", "-q", "scripts/orchestrator/orch-gate.sh"),
+            ("commit", "-q", "-m", "n"),
+            ("push", "-q", "origin", "main"),
+        )
+        for case, status, code in (
+            ("zero exit", "0", 0),
+            ("failure", "1", 20),
+            ("refusal", "2", 20),
+            ("missing", "0", 20),
+        ):
+            with self.subTest(case=case):
+                (self.calls / "calls.log").unlink(missing_ok=True)
+                (self.calls / "gate-status").write_text(status)
+                for args in no_gate if case == "missing" else ():  # gone from origin/main too: past the --apply guard
+                    self.git(*args)
+                result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *APPLY)
+                calls = self.calls_log().splitlines()
+                if code:  # b8998de1 dispatched and merged with no gate at all
+                    self.assertNotRegex(self.calls_log(), "dispatch|pr merge")
+                else:
+                    self.assertEqual([gate, "dispatch", merge], [calls[-3], calls[-2].split()[0], calls[-1]])
+                self.assertEqual((code, case != "missing"), (result.returncode, gate in calls), result.stderr)
+                out = json.loads((self.repo / f"{V}/{TASK}-verdict-{self.head[:7]}.json").read_text())
+                self.assertEqual("hold" if code else "accept", out["verdict"])  # no accepted result without the gate
+
+    def test_verdict_condition_5_honors_the_latest_amended_caps(self):
+        self.git("switch", "-q", "pr")  # 531 changed test lines; the precheck and the head follow
+        self.write("tests/unit/t.py", "x = 1\n" * 531)
+        self.git("commit", "-q", "-am", "tests")
+        self.precheck = json.dumps({"head": self.git("rev-parse", "HEAD")})
+        self.write(f".orchestration/{TASK}/precheck.json", self.precheck)
+        self.git("commit", "-q", "-am", "evidence")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        amended = f"at most {CAP}, 550 under `tests/`."
+        a02 = "For this revise round the Check's test cap is 550 under `tests/`; the code cap stays 500 (reached by trimming"
+        for case, amendments, failed in (
+            ("the original 500 alone", [], [5]),
+            ("a later amendment allows 550", [amended], []),
+            ("the a02 test-only amendment wording", [a02 + " documentation prose, never a check or a case)."], []),
+            ("a later lower limit", [amended, amended.replace("550", "520")], [5]),
+            (
+                "the effective exclusions",
+                [amended.replace("and `.orch", ", `scripts/` and `.orch").replace("500", "0", 1)],
+                [],
+            ),
+            ("the effective outside limit", [amended.replace("500", "0", 1)], [5]),
+        ):
+            with self.subTest(case=case):
+                self.green()
+                self.write(
+                    TASK_MD, (self.repo / TASK_MD).read_text() + "".join(f"\nAmendment: {a}\n" for a in amendments)
+                )
+                self.assertEqual(failed, self.failed(self.verdict(code=10 if failed else 0)))

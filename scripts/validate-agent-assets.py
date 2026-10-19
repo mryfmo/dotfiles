@@ -1814,7 +1814,11 @@ def validate_anthropic_auth_route() -> None:
             )
         raw = anthropic_text_findings(source, "", markdown=path.suffix == ".md")
         platforms = (
-            ("darwin", "linux") if parsed and rel.startswith("home/.chezmoitemplates/") and "{{" in source else ()
+            ("darwin", "linux")
+            if parsed
+            and os.path.normpath(rel).startswith(os.path.join("home", ".chezmoitemplates", ""))
+            and "{{" in source
+            else ()
         )
         texts = [render_template_text(path, os_name) for os_name in platforms] if platforms else [source]
         found = []

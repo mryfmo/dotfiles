@@ -1,0 +1,14 @@
+[
+  {
+    "artifact": "revise-1-make-green.log",
+    "bytes": 8419481,
+    "lines": 37385,
+    "sha256": "a6857fd186aefba299f65cba5db1c05fef5b85dfcc43c31303df72d6685e4af7"
+  },
+  {
+    "artifact": "rebase-repair-1-make-green.log",
+    "bytes": 9755435,
+    "lines": 43060,
+    "sha256": "f8c21ea35d71552b1e5ab19aaafc7b531123ef881bacb59d40a565f5304db2d3"
+  }
+]

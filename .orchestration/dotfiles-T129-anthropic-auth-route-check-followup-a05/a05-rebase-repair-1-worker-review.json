@@ -1,0 +1,14 @@
+[
+  {
+    "id": "security-eda0354-P1-retained",
+    "body": "The supplied independent security review and its correction evidence are retained in a05-revise-1-worker-review.json. Rebase repair leaves auth_diagnostic_key and its callers' redaction unchanged; the same 123 auth tests, including the exact P1 leaf/ancestor regression and 425-row corpus, pass after the main merge and path normalization. No new independent worker review or third correction round is claimed.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "rebase-repair-1-scope-verification",
+    "body": "Worker verification under amendment1/D-024-24: only the moved filename-attribute membership line1626 gets one exact path/R4/line-hash baseline row c1af3eb4e92a0cb43242263474b02ffcfedd8c496ee74eddf3b3d269e7fef483. This compares a lexical attribute against the fixed attribute set, not filesystem identity. Authored line1817 now normalizes the relative path with os.path.normpath and constructs the template-directory prefix with os.path.join and a trailing native separator. The explicit changed-file lint is RED before repair and GREEN after; the CI-failing baseline selector passes. No unrelated row, suppression marker, decoder, allowlist, applied file or Markdown code policy changes. Both platform template fixtures pass. Final task audit/security review remain external; this is bounded process verification, not independent final-head approval.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -6,6 +6,7 @@ security: true
 allowed_files:
   - scripts/validate-agent-assets.py
   - tests/unit/test_validate_agent_assets.py
+  - scripts/lint-comparisons-baseline.tsv
   - .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/**
 after: []
 reset_of: [dotfiles-T129-anthropic-auth-route-check-followup-a04]
@@ -16,6 +17,8 @@ threat_table:
     disposition: "residual: temporary tracked repositories exercise discovery and the real entry point; the audit compares every review reproduction and inherited worker corpus row with its fixture bytes, new-policy verdict and redaction assertions"
   - control: ".orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/** (this reset task's branch artifacts)"
     disposition: "residual: artifacts stay in this task's directory, name their tested revisions and commands, and distinguish inherited scanner evidence from final-head results"
+  - control: the PR edits scripts/lint-comparisons-baseline.tsv only for the rows of its own changed lines (D-024-24 rebase repair)
+    disposition: "residual: a row matches a hit of a changed line of this PR and nothing else; tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline in CI"
   - control: "the task-file copy on the branch .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md and the reset_of task's copy .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a04/task.md"
     disposition: "residual: the first push deletes the a04 copy as the sole reset-bookkeeping exception; the a05 copy is byte-identical to the dispatched text and its own sha256 is compared with the TASK and RESULT at acceptance"
   - control: "the branch evidence records under .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/ (report.md, validation.md, sandbox.md, learning.md, autoskill.md, measure.md and worker review evidence)"
@@ -173,6 +176,10 @@ Git and gh writes run as single commands, without shell chaining or a wrapper co
 Until P1-14 lands, any string containing the words `gh pr merge` or `gh pr create` is written with the file-edit tool, never in a Bash heredoc or `echo`. This restriction applies to task copies, reports and evidence text.
 
 The redesign uses read-only repository evidence and claims no new implementation or green validation. Default denial deliberately rejects credential-bearing forms outside the fixed regex; a credential assembled from pieces that no retained decoder joins remains outside detection.
+
+## Amendment 1 (rebase repair under D-024-24, 2026-10-19T06:0xZ; the withdrawal of 05:59Z is superseded)
+
+The comparison lint of PR #415 (main 205fe85c) guards the files a pull request changes, and this PR changes scripts/validate-agent-assets.py: the required test job fails on `test_the_changed_files_are_clean_against_the_baseline` with R4 at lines 1626 and 1817 (run 39206429721). The repair touches only those two comparisons: one this task wrote is rewritten through the normaliser the rule names; one the task moved gets its baseline row (path, R4, sha256 of the normalized line) in scripts/lint-comparisons-baseline.tsv, which joins allowed_files for exactly that; the worker records which applied to each line with the lint output before and after. Nothing else changes; the revise-1 P1 fix stays. This is a rebase repair, labelled `round=rebase-repair-1`, and does not count against the C-61 cap (D-024-24). The audit and the security review run on the new head.
 
 ## Checks (pasted by the orchestrator before each send)
 

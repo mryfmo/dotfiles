@@ -79,3 +79,8 @@ Implementation map after rebase: a99521b4 -> 726f92727e83929a8348a968e20fbb2f41e
 
 Against the same PR base source paths, the authorized correction changes source by +13/-2 lines and tests by +26/-0 relative to eda0354b. The complete PR source total is 227 added +0 deleted =227/300; tests are 967 added +0 deleted =967/1000. The only new implementation helper is auth_diagnostic_key; one shared call replaces the final-only key redaction. No corpus row is removed and the inherited table remains425 rows; the new named method adds36 leaf/ancestor subcases. Task evidence and the two uncommitted timestamped worklogs remain task-local. Exact committed inventory and delivery head follow after commit.
 
+## Amendment1 repair measurement
+
+Current base205fe85c19c03750fe3551bb96e084e9f0a676b6. Full source changes:231 added/0deleted in scripts/validate-agent-assets.py plus1added/0deleted in scripts/lint-comparisons-baseline.tsv =232/300. Tests967 added/0deleted =967/1000. The baseline has exactly one new owned row; no existing row is removed or modified. The source repair changes the single authored template-directory condition (+5/-1 lines); the moved attribute loop is unchanged. Main's linter/test and its93-row baseline arrive from the incorporated base and are not new task-owned executable files. Amended task copy sha3158d7969b273ffd8499f6cc2dcb1dc56bd353c2e1796cf39700c33f8ceea6f1; older5eb78325 observations remain historical.
+
+The corpus stays425 rows and tests stay123 methods. No original fixture is altered or removed; the new repair reuses the existing required lint test and both platform fixtures. Final committed inventory and CI/review observations are supplied after the single repair push.

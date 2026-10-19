@@ -126,6 +126,8 @@ def covers(entry, glob):
 
 def plan(root, task, cls):
     o = Path(root) / ".orchestration"
+    if not (o / "learning/classes.yaml").is_file():
+        fail(".orchestration/learning/classes.yaml, the orchestrator's record of plan 024 P1-13, is absent from this checkout")
     classes = vocabulary_of(o / "learning/classes.yaml")
     if not paths([cls]):
         fail(f"class {cls!r} is not a slug")

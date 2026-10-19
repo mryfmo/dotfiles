@@ -10,6 +10,7 @@ EXPECTED_PERMISSIONS = {
     "docs.yml": {"contents": "write"},
     "macos.yaml": {"contents": "read"},
     "private-bootstrap.yaml": {"contents": "read"},
+    "regime.yml": {"contents": "read"},
     "remote.yaml": {"contents": "read"},
     "test.yaml": {"contents": "read"},
     "ubuntu.yaml": {"contents": "read"},

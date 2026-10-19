@@ -11,11 +11,12 @@
 #   Check caps as last declared (an amendment follows the Check); (6) regime-counters.sh prints no `S1:` and revises
 #   below 2; (7) no P0/P1 finding is new, still-open or status-less, whatever its id or scope; (8) a security task's
 #   review ends `Verdict: correct`; (9) the record's sha256 lines exist and match. accept when all hold; hold when (6)
-#   or (7) fails or an input is missing or invalid; revise otherwise. It first re-runs itself under `env -i`, PATH =
-#   links to bash, uv, python3, gh, git and jq resolved from / then /usr/bin:/bin, Python (the schema checker too)
-#   = that python3 -I, uv offline with --no-config and --python: no checkout file and no inherited UV_PYTHON or
-#   VIRTUAL_ENV picks a tool. --apply (accept only; scripts/, .schemas/ and task files equal origin/main; four distinct
-#   agreeing shadow PRs) holds unless orch-gate.sh <task> <head> <pr> exits 0, then dispatches and merges.
+#   or (7) fails or an input is missing or invalid (a scripts/__pycache__ (4) could import is invalid); revise
+#   otherwise. Inherited functions are unset; unless its environment is exactly the pinned one, it re-runs under
+#   `env -i`, PATH = links to bash, uv, python3, gh, git and jq resolved (never through a caller's VERDICT_BIN) from /
+#   then /usr/bin:/bin, Python = that python3 -I, uv offline with --no-config and --python: no checkout file, inherited
+#   variable or function picks a tool. --apply (accept only; scripts/, .schemas/ and task files equal origin/main; four
+#   distinct agreeing shadow PRs) holds unless orch-gate.sh <task> <head> <pr> exits 0, then dispatches and merges.
 # @arg $1 int PR number (none with --loop).
 # @option --task <id> The task, when no record's block names the PR.
 # @option --apply With --team, --from, --to and --pane: send the ACCEPTANCE line and merge, on accept only.
@@ -29,12 +30,18 @@
 # @exitcode 2 Usage or internal error (treated as hold).
 set -Eeuo pipefail
 shopt -s nullglob
+for f in $(compgen -A function); do unset -f "${f}"; done # an inherited function never runs in place of a tool
 for a in "$@"; do [[ ${a} != *--admin* && ${a} != *--auto* ]] || { echo "verdict: ${a} is refused" >&2 && exit 2; }; done
 trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
 usage() { echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...] | --validate <schema> <json>" >&2 && exit 2; }
 stop() { echo "verdict: $1: hold" >&2 && exit 20; }
-if [[ -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts
-    bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0
+pinned=yes # only as the re-run below builds it: no other exported name, each tool a link outside a shims directory
+for v in $(compgen -e); do [[ ${v} =~ ^(HOME|TMPDIR|PATH|VERDICT_BIN|PRECHECK_REQUIRED|PWD|SHLVL|OLDPWD|_)$ ]] || pinned=no; done
+for t in "${VERDICT_BIN:-/var/empty}"/*; do [[ $(/usr/bin/readlink "${t}") =~ ^/ && ! $(/usr/bin/readlink "${t}") =~ /shims/ ]] || pinned=no; done
+if [[ ${pinned} == no || -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts
+    IFS=: read -ra dirs <<< "${PATH}" && search=""
+    for d in "${dirs[@]}"; do [[ -z ${d} || ${d} == "${VERDICT_BIN:-}" ]] || search+="${search:+:}${d}"; done # not the caller's bin
+    PATH=${search} bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0
     for t in bash uv python3 gh git jq agmsg-dispatch herdr; do
         p="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${t}" 2> /dev/null || command -v "${t}")" || p=""
         [[ ${p} == /* && ${p} != */shims/* ]] && ln -s -- "${p}" "${bin}/${t}" && continue
@@ -140,8 +147,7 @@ elif [[ ${PRECHECK_REQUIRED:-0} == 0 ]]; then
 else
     cond 1 false "precheck.json does not hash to the record's precheck: or names neither the head nor an evidence-only ancestor"
 fi
-required='["validate", "test (ubuntu-24.04, server)", "test (ubuntu-24.04, client)", "test (macos-14, client)",
-  "public-bootstrap (ubuntu-24.04, server)", "public-bootstrap (ubuntu-24.04, client)", "public-bootstrap (macos-14, client)"]'
+required='["validate", "test (ubuntu-24.04, server)", "test (ubuntu-24.04, client)", "test (macos-14, client)", "public-bootstrap (ubuntu-24.04, server)", "public-bootstrap (ubuntu-24.04, client)", "public-bootstrap (macos-14, client)"]'
 checks="$(gh pr checks "${pr}" --json name,state 2> /dev/null)" || true
 if miss="$(jq -er --argjson req "${required}" 'if type != "array" or length == 0 then error("no checks") else . as $c
     | [$req[] | select(. as $n | [$c[] | select(.name == $n) | .state] | length > 0 and all(. == "SUCCESS") | not)] | join(", ") end' <<< "${checks}" 2> /dev/null)"; then
@@ -164,6 +170,7 @@ fi
 base="$(git merge-base origin/main "${head}" 2> /dev/null)" || base=""
 read -r -d '' gaps << 'PY' || true # condition 4 by the gate's helpers: a gap per line; a url only labels it
 import importlib.util, json, sys
+sys.dont_write_bytecode = True  # with -B; the caller refuses a scripts/__pycache__ this import could read
 spec = importlib.util.spec_from_file_location("gate", "scripts/require-crit-review.py")
 spec.loader.exec_module(gate := importlib.util.module_from_spec(spec))
 (fresh, saved), head, base = (json.load(open(p)) for p in sys.argv[1:3]), sys.argv[3], sys.argv[4]
@@ -176,11 +183,11 @@ for item in saved["items"]:
     if reason is None and not commit or short or commit and not gate.commit_in_range(gate.Path("."), commit, base, head):
         print(f"no valid disposition: {item.get('source')} {item.get('url') or ''}")
 PY
-if [[ -n ${base} && -f ${fb} ]] && "${VERDICT_BIN}/python3" -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 &&
+if [[ -n ${base} && -f ${fb} && ! -e scripts/__pycache__ ]] && "${VERDICT_BIN}/python3" -I scripts/pr-feedback.py "${pr}" --json "${fresh}" > /dev/null 2>&1 &&
     a4="$("${VERDICT_BIN}/python3" -I -B -c "${gaps}" "${fresh}" "${fb}" "${head}" "${base}" 2> /dev/null)"; then
     cond 4 "$([[ -z ${a4} ]] && echo true || echo false)" "feedback gaps: ${a4:-none}"
 else
-    lack "the fresh sweep, ${fb} or the merge base" && cond 4 false "no fresh sweep, no ${fb} or no merge base"
+    lack "the fresh sweep, ${fb}, the merge base or a scripts/__pycache__-free checkout" && cond 4 false "no fresh sweep, no ${fb}, no merge base, or scripts/__pycache__ exists"
 fi
 read_front='import json, sys, yaml; t = open(sys.argv[1]).read(); f = yaml.safe_load(t.split("\n---\n", 1)[0][4:]) if t.startswith("---\n") else 0
 print(json.dumps(f if isinstance(f, dict) else {}))'
@@ -221,15 +228,13 @@ if counters="$(scripts/regime-counters.sh "${task}" --pr "${pr}" 2> /dev/null)" 
 else
     lack "regime-counters.sh ${task}" && cond 6 false "the counters are unreadable"
 fi
-if [[ -z ${front} ]]; then
-    cond 8 false "no front matter, so no security reading"
-elif [[ "$(jq -r '.security' <<< "${front}")" != true ]]; then
+if [[ -n ${front} && "$(jq -r '.security' <<< "${front}")" != true ]]; then
     cond 8 true "not a security task"
-elif [[ -f ${sec} ]]; then
+elif [[ -n ${front} && -f ${sec} ]]; then
     last="$(grep -v '^[[:space:]]*$' "${sec}" | tail -n 1)"
     cond 8 "$([[ ${last} == "Verdict: correct" ]] && echo true || echo false)" "the security review: ${last}"
-else
-    lack "${sec}" && cond 8 false "no security review ${sec}"
+else # unreadable front matter selects no non-security path
+    [[ -z ${front} ]] || lack "${sec}" && cond 8 false "no front matter, or no security review ${sec}"
 fi
 bad="" n=0 inputs='{}'
 while read -r want_sum path; do

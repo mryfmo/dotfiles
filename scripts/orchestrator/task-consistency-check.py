@@ -1,44 +1,26 @@
-"""Read-only cross-field check of a format-2 task file, before dispatch and at acceptance (plan 007 T704).
+"""Read-only format-2 task checks under --root; --premises-sha authorizes only fixed read-only C14 probes.
 
-`uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py [--root <repo>]
-[--premises-sha <sha256>] <task.md>...`
-resolves the design path (C6) and probes origin/main with git (C8 to C10) under --root (default: the first file's git
-toplevel), prints `<file name>: OK` or `: FAIL` with one `  C<n> ...` line per finding, and exits 1 when any file fails.
-C14's warnings and skip notes, never findings, go to stderr as `<file name>: warning: <text>` or `<file name>: note:
-<text>`. Every path it opens or hands to git is first resolved and confined to --root; one that leaves it is a finding.
-C1 task_id equals the file name.
-C2 allowed_files covers .orchestration/<task_id>/** and names no other task's .orchestration/<id>/ directory.
-C3 when reset_of is non-empty, a threat_table row names every reset_of id's task.md and the task's own.
-C4 every allowed_files entry (its path before any glob) is named in a row's control, followed by its end, a space, / " ' ( ) , or a glob.
-C5 no residual binds a predecessor's hash ("names the <aNN> file's hash") instead of the task's own.
-C6 design_review.receipt is the design file's current design_review.receipt; a design path outside --root is a finding.
-C7 one row per non-path control name and per orchestrator effect name (the SKILL row unit).
-C7b no row other than a non-path control names two allowed_files entries (one row per entry).
-C8 (code tasks) every *_EVIDENCE input the body names and origin/main does not read yet has a threat row.
-C9 (docs tasks) a quoted rule sentence naming a script, *_EVIDENCE, a check id or classes: finds it on origin/main or says once/until.
-C10 (docs tasks) a quoted rule sentence naming a script on origin/main has no `=` or `[...]` literal absent from the script and its test
-    (each literal reaches git grep after -e, never as an option).
-C11 a disposition's payload has its form's shape: closed: tests/<path>::<identifier>, out-of-scope: an existing task id, residual: 20+ characters.
-C12 every executed or applied file a glob entry matches (*.sh *.py *.yaml *.yml *.json *.toml, or under home/ scripts/ .githooks/
-    .github/), whatever the glob spells, has a row naming it; tests/fixtures/ and the task's own directory are exempt.
-C13 every disposition is exactly one of closed:, residual: or out-of-scope: followed by a space.
-C14 every premise command, run under bash -c with pipefail, PATH <root>/bin:/usr/bin:/bin, prints its pasted output with whitespace runs
-    collapsed (gh, curl and URLs skipped; a tool absent from that PATH is a `C14: tool absent <name>` warning). It runs
-    only for a file whose sha256 is --premises-sha, the dispatched text; any other file gets `C14: not run (no trusted
-    sha)` as a warning and nothing is executed: a structural OK is then no claim that the premises pass.
-C15 with design_review.design, the design on origin/main exists (unless the task carries no invariants and the design is
-    in this checkout, still in flight; a path naming no design anywhere is always one); when its implementing_tasks maps this task to invariant ids, the task carries
-    exactly those ids, an omitted map included, and each sentence equals the design's byte for byte (a list form
-    assigns no ids, so every invariant the task carries does; a design task compares its own definitions).
+C1 task-id filename; C2 own evidence scope; C3 reset-copy rows; C4 scope rows; C5 own hash; C6 confined design receipt.
+C7 non-path/effect rows; C7b one path per row; C8 new evidence inputs; C9 landed rule references; C10 literal probes.
+C11 dispositions accept tests/<path>::<test> or tests/<path>::<Class>::<test>, existing owners and 20-character residuals.
+C12 concrete applied glob matches; C13 disposition grammar; C14 fixed Git/test/grep probes on the same hashed bytes.
+C15 design-assigned invariant ids and byte-equal sentences. Without the dispatched hash C14 warns and runs no probe.
 """
 
 import argparse
 import hashlib
 import os
 import pathlib
+import pwd
 import re
+import shlex
 import subprocess
 import sys
+import tempfile
+
+CACHE = os.environ.get("UV_CACHE_DIR", "")
+if not os.path.isabs(CACHE):
+    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
 
 try:
     import yaml
@@ -52,11 +34,11 @@ NONPATH = ("in-process effects", "task metadata", "metadata separators", "workfl
 NONPATH += ("new or renamed scripts", "orchestrator effect")
 C9_NAMES = r"(scripts/[\w./-]+|\b[A-Z][A-Z_]{3,}_EVIDENCE\b|task-consistency-check C\d|\bC\d\b of the task-consistency check|\bclasses:)"
 CHECKER = "scripts/orchestrator/task-consistency-check.py"  # where `task-consistency-check C<n>` lands
+TRUST_ROOT = pathlib.Path(__file__).resolve().parents[2]
+HOST_HOME = pathlib.Path(pwd.getpwuid(os.getuid()).pw_dir)
 FORMS = ("closed: ", "residual: ", "out-of-scope: ")
 APPLIED = (".sh", ".py", ".yaml", ".yml", ".json", ".toml")
 APPLIED_DIRS = ("home/", "scripts/", ".githooks/", ".github/")
-SKIPPED = "C14 skipped network premise"  # a note, never a failure
-ABSENT = "C14: tool absent"  # a warning, never a failure (Amendment 1)
 UNTRUSTED = "C14: not run (no trusted sha)"  # a warning: the file is not the text --premises-sha names (revise 1)
 
 
@@ -68,7 +50,7 @@ def applied(path):
 def confined(root, rel):
     """The path resolved under root, or None when it leaves the checkout (PR #418's review)."""
     path = (root / rel).resolve()
-    return path if path.is_relative_to(root.resolve()) else None
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
 
 
 def front(text):
@@ -76,31 +58,150 @@ def front(text):
 
 
 def git(cwd, *args):
-    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
+    root = pathlib.Path(cwd).resolve()
+    if (root / ".gitmodules").exists() or (root / ".gitmodules").is_symlink():
+        sys.exit("refused: .gitmodules")
+    flags = ["-C", str(root), f"--git-dir={root / '.git'}", f"--work-tree={root}"]
+    for setting in (
+        "core.hooksPath=/dev/null",
+        "core.fsmonitor=false",
+        "submodule.recurse=false",
+        "protocol.allow=never",
+        "protocol.https.allow=always",
+    ):
+        flags += ["-c", setting]
+    binary = executable("git")
+
+    def checked(extra):
+        config = launch(root, binary, *flags, "config", "--show-origin", "--get-regexp", r"^filter\.|^core\.worktree$")
+        if config.returncode not in (0, 1) or config.stdout:
+            origins = "\n".join(
+                origin + "\t" + value.split()[0]
+                for line in config.stdout.splitlines()
+                for origin, _, value in [line.partition("\t")]
+            )
+            sys.exit("refused: Git configuration: " + origins + config.stderr)
+        return launch(root, binary, *flags, *extra)
+
+    top = checked(["rev-parse", "--show-toplevel"])
+    if top.returncode or not os.path.samefile(top.stdout.strip(), root):
+        sys.exit(f"refused: Git toplevel {top.stdout.strip()} != {root}")
+    if args[0] == "status":
+        args = ("--no-optional-locks", "status", "--ignore-submodules=all", *args[1:])
+    if args[0] in ("show", "diff"):
+        flags += ["-c", "core.attributesFile=/dev/null", "-c", "core.sshCommand=false"]
+        args = (
+            args[0],
+            "--no-ext-diff",
+            "--no-textconv",
+            *(["--ignore-submodules=all"] if args[0] == "diff" else []),
+            *args[1:],
+        )
+    return checked(args)
 
 
-def rerun(cmd, cwd, path=None):
-    """Run a premise or Check command as C14 does; return (stdout, exit status, stderr), stdout None on a timeout.
+def trusted(path):
+    if not pathlib.Path(path).is_absolute():
+        sys.exit("refused: trusted path must be absolute")
+    path = pathlib.Path(path).resolve(strict=True)
+    manifest = TRUST_ROOT / "home/dot_agents/agent-config.yaml"
+    worker = (yaml.safe_load(manifest.read_text()) or {}).get("worker_worktree") if manifest.is_file() else None
+    if (
+        ".claude/worktrees" in path.as_posix().casefold()
+        or "shims" in path.parts
+        or (worker and (TRUST_ROOT / worker).exists() and confined(TRUST_ROOT / worker, path) is not None)
+    ):
+        sys.exit(f"refused: worker-root trusted path: {path}")
+    if not path.is_file():
+        sys.exit(f"refused: trusted file required: {path}")
+    return path
 
-    The command is bash's script argument (`bash -c`, pipefail on), never spliced into another shell line; premises
-    get PATH <root>/bin:/usr/bin:/bin so a rerun prints what the pasted output says, and task-from-plan.py runs its
-    premises through this same function.
-    """
-    env = {"PATH": path or f"{cwd}/bin:/usr/bin:/bin", "HOME": os.environ.get("HOME", "/")}
-    try:
-        run = subprocess.run(
-            ["bash", "-c", "set -o pipefail\n" + cmd],
-            stdin=subprocess.DEVNULL,  # a command that reads stdin (`head`, `cat`) never waits on the caller's
-            cwd=cwd,
-            env=env,
+
+def executable(name):
+    candidates = [pathlib.Path(p) / name for p in ("/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin")]
+    candidates += sorted((HOST_HOME / ".local/share/mise/installs" / name).glob(f"**/{name}"), reverse=True)
+    candidates += [HOST_HOME / ".local/bin" / name]
+    return trusted(next(p for p in candidates if p.is_file() and os.access(p, os.X_OK) and p.resolve().name != "mise"))
+
+
+def launch(root, binary, *args):
+    binary = trusted(binary)
+    os.makedirs(CACHE, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=CACHE, prefix="exec-") as directory:
+        pathlib.Path(directory, binary.name).symlink_to(binary)
+        env = {
+            "HOME": str(HOST_HOME),
+            "PATH": directory,
+            "LANG": "C.UTF-8",
+            "UV_CACHE_DIR": CACHE,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_NO_LAZY_FETCH": "1",
+        }
+        return subprocess.run(
+            [str(trusted("/usr/bin/env")), "-i", *(f"{k}={v}" for k, v in env.items()), str(binary), *map(str, args)],
+            cwd=root,
+            env={},
             capture_output=True,
             text=True,
-            timeout=1800,
             check=False,
         )
-    except subprocess.TimeoutExpired:
-        return None, 124, ""
-    return run.stdout, run.returncode, run.stderr
+
+
+def repository(path):
+    path = pathlib.Path(path).resolve()
+    return next(p for p in (path, *path.parents) if (p / ".git").exists())
+
+
+def snapshot(path, expected=None):
+    data = trusted(path).read_bytes()
+    if expected is not None and hashlib.sha256(data).digest() != expected:
+        sys.exit("refused: consumed bytes changed")
+    if confined(TRUST_ROOT, pathlib.Path(path)) is None:
+        sys.exit("refused: trusted content outside its root")
+    fd, name = tempfile.mkstemp(dir=pathlib.Path(path).parent, suffix=pathlib.Path(path).suffix)
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(data)
+    print(f"input-sha256 {pathlib.Path(path).name} {hashlib.sha256(data).hexdigest()}", file=sys.stderr)
+    return pathlib.Path(name), hashlib.sha256(data).digest()
+
+
+def consume(binding):
+    path, digest = binding
+    if hashlib.sha256(path.read_bytes()).digest() != digest:
+        sys.exit("refused: consumed bytes changed")
+    return path
+
+
+def rerun(cmd, cwd):
+    """Interpret four read-only probe forms; task text is never shell or Python code."""
+    try:
+        words = shlex.split(cmd)
+        syntax = shlex.shlex(cmd, posix=False, punctuation_chars=";&|<>`$()")
+        syntax.whitespace_split = True
+        if any(re.fullmatch(r"[;&|<>`$()]+", token) for token in syntax):
+            words = []
+    except ValueError:
+        words = []
+    if (
+        len(words) == 3
+        and words[:2] == ["git", "rev-parse"]
+        and not words[2].startswith("-")
+        and not re.search(r"[\s;$`|&<>]", words[2])
+    ):
+        run = git(cwd, "rev-parse", "--verify", "--end-of-options", words[2])
+        return run.stdout, run.returncode, run.stderr
+    if (len(words) == 3 and words[:2] in (["test", "-e"], ["test", "-f"])) or (
+        len(words) == 4 and words[:2] == ["grep", "-c"]
+    ):
+        path = confined(pathlib.Path(cwd), words[-1])
+        if path is not None:
+            if words[0] == "test":
+                return "", int(not (path.exists() if words[1] == "-e" else path.is_file())), ""
+            if len(words) == 4 and path.is_file():
+                with path.open("rb") as stream:
+                    return str(sum(words[2].encode() in line.removesuffix(b"\n") for line in stream)) + "\n", 0, ""
+    return None, 1, f"C14 unsupported or unconfined probe: {cmd}"
 
 
 def check(p, root, premises_sha=None):
@@ -198,7 +299,7 @@ def check(p, root, premises_sha=None):
             fails.append(f"C13 disposition is not closed:, residual: or out-of-scope: and a space: {d[:60]}")
             continue
         load = d[len(form) :]
-        if form == "closed: " and not re.fullmatch(r"tests/[\w./-]+::[A-Za-z_]\w*", load):
+        if form == "closed: " and not re.fullmatch(r"tests/[\w./-]+::(?:[A-Za-z_]\w*::)?[A-Za-z_]\w*", load):
             fails.append(f"C11 closed: payload is not tests/<path>::<identifier>: {load[:60]}")
         tid_ok = re.fullmatch(r"[A-Za-z0-9][\w.-]*", load) and (root / f".orchestration/tasks/{load}.md").is_file()
         if form == "out-of-scope: " and not tid_ok:
@@ -220,17 +321,10 @@ def check(p, root, premises_sha=None):
         premises = []
     for pre in premises:  # C14
         cmd, want = str(pre.get("command") or ""), str(pre.get("output") if pre.get("output") is not None else "")
-        if re.search(r"\b(?:gh|curl)\b|https?://", cmd):
-            fails.append(f"{SKIPPED}: {cmd[:60]}")
-            continue
-        got, code, err = rerun(cmd, root)
-        # bash's own line, not exit 127: under pipefail `absent | grep -c` exits with grep's 1.
-        if absent := re.search(r"^bash: line \d+: ([^\s:]+): command not found$", err, re.M):
-            fails.append(f"{ABSENT} {absent.group(1)}: {cmd[:60]}")
-            continue
+        got, _code, err = rerun(cmd, root)
         # Runs of whitespace collapse (BSD wc pads its counts; YAML's |- drops the final newline).
         if got is None or " ".join(got.split()) != " ".join(want.split()):
-            fails.append(f"C14 premise output differs from its rerun: {cmd[:60]}")
+            fails.append(err if got is None else f"C14 premise output differs from its rerun: {cmd}")
     design, mine = dr.get("design"), fm.get("invariants") if isinstance(fm.get("invariants"), dict) else {}
     present = inside and not git(root, "cat-file", "-e", f"origin/main:{design}").returncode  # C8's probe
     shown = git(root, "show", f"origin/main:{design}") if present else None
@@ -258,18 +352,18 @@ def main():
     parser.add_argument("tasks", nargs="+", type=pathlib.Path, metavar="task.md")
     args = parser.parse_args()
     if args.root is None:
-        top = git(args.tasks[0].parent, "rev-parse", "--show-toplevel")
+        top = git(repository(args.tasks[0].parent), "rev-parse", "--show-toplevel")
         if top.returncode:
             parser.error(f"{args.tasks[0]} is not in a git checkout; pass --root")
         args.root = pathlib.Path(top.stdout.strip())
     rc = 0
     for p in args.tasks:
         fails = check(p, args.root, args.premises_sha)
-        notes = [f for f in fails if f.startswith((SKIPPED, ABSENT, UNTRUSTED))]
+        notes = [f for f in fails if f.startswith(UNTRUSTED)]
         bad = [f for f in fails if f not in notes]
         print(f"{p.name}: {'FAIL' if bad else 'OK'}", *bad, sep="\n  ")
         # The severity is explicit: an untrusted or absent-tool premise is a warning, a network premise a skip note.
-        severity = {n: "note" if n.startswith(SKIPPED) else "warning" for n in notes}
+        severity = dict.fromkeys(notes, "warning")
         print(*(f"{p.name}: {severity[n]}: {n}" for n in notes), sep="\n", file=sys.stderr, end="\n" if notes else "")
         rc |= bool(bad)
     return rc

@@ -9,11 +9,12 @@ origin/main: the front matter of the ten historical task files and the pre-fix r
 import json
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+
+from tests.unit.test_task_consistency_c11_c15 import fixture_cache, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 LESSONS = ROOT / "tests/fixtures/lessons"
@@ -38,12 +39,20 @@ class TaskCheckersTest(unittest.TestCase):
         # uv run puts its environment's and its base interpreter's bin directories before PATH (on the macOS runner
         # Homebrew's, which holds a git), so the stub goes first inside uv run, right before python starts.
         stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
+        if script == "task-consistency-check.py":
+            binding = f"import importlib.util,sys,subprocess;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run([{str(self.temp / 'bin/git')!r},*a],capture_output=True,text=True,check=False);sys.exit(m.main())"
+            stub_first = ["python", "-I", "-c", binding]
         result = subprocess.run(
-            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first]
-            + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
+            [*uv_command()[:-2], *stub_first] + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
             capture_output=True,
             text=True,
-            env={**os.environ, "STUB_BIN": str(self.temp / "bin"), "STUB_CAT_FILE": cat_file, "STUB_GREP": grep},
+            env={
+                **os.environ,
+                "UV_CACHE_DIR": fixture_cache(),
+                "STUB_BIN": str(self.temp / "bin"),
+                "STUB_CAT_FILE": cat_file,
+                "STUB_GREP": grep,
+            },
             timeout=120,
             check=False,
         )

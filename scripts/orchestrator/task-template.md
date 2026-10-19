@@ -27,7 +27,7 @@ check:
 
 # The task template of scripts/orchestrator/task-from-plan.py
 
-The generator reads this file, never a task record: the control rows above (`<task_id>` replaced), the common Check commands (each run once on origin/main beside the program items' `make` targets) and the Completion section below, which carries the inherited Completion contract of the regime's code tasks.
+The generator reads this bundled file, never a sibling task record: the control rows above (`<task_id>` replaced), the unverified common Check commands and the Completion section below. Generation executes none of these commands; the orchestrator separately verifies trusted commands and records observations before dispatch.
 
 ## Completion
 

@@ -1,42 +1,21 @@
-"""Exercise task-from-plan.py on a committed fixture plan group in a temporary repository with a bare origin.
-
-The fixture also commits the task records the a01 generator needed (a row template and a Completion file), so each
-regression below is red against that generator for the reason it names; the a02 generator reads none of them.
-"""
+"""Exercise generation, non-execution and output confinement on committed fixture plans."""
 
 import json
 import os
 import shutil
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
 
+from tests.unit.test_task_consistency_c11_c15 import TRACE, RepositoryTest, uv_command
+
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts/orchestrator/task-from-plan.py"
-GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 PROGRAMS = ".orchestration/plans/024-design-programs.md"
 WAVES = ".orchestration/plans/024-omp-cutover-and-corrective-order.md"
-LEGACY_ROWS = (
-    "the task-file copy on the branch (.orchestration/dotfiles-T133-result-precheck-a01/task.md)",
-    "the branch evidence records under .orchestration/dotfiles-T133-result-precheck-a01/ (report.md, validation.md)",
-    "task metadata (the front matter of the task copy)",
-    "metadata separators (the --- lines)",
-    "in-process effects",
-    "workflow and interpreter or environment inputs",
-    "new or renamed scripts",
-    "orchestrator effect merge",
-    "orchestrator effect update-branch",
-    "orchestrator effect forced worker removal",
-)
-LEGACY = {  # what the a01 generator read under .orchestration/tasks/; the a02 generator reads none of it
-    ".orchestration/tasks/dotfiles-T133-result-precheck-a01.md": "---\nformat: 2\nthreat_table:\n"
-    + "".join(
-        f"  - control: {json.dumps(c)}\n    disposition: {json.dumps('residual: the legacy wording of ' + c)}\n"
-        for c in LEGACY_ROWS
-    )
-    + "---\n",
-    ".orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md": "---\nformat: 2\n---\n\n## Completion\n\nOne PR.\n",
+LEGACY = {
+    ".orchestration/tasks/dotfiles-T133-result-precheck-a01.md": "---\nformat: 2\nallowed_files: []\n---\n# poisoned sibling\n",
+    ".orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md": "---\nformat: 2\nallowed_files: []\n---\n# poisoned completion\n",
 }
 FILES = {
     ".orchestration/plans/024-todo.md": "| # | 目的 | やること | 完了条件 |\n| --- | --- | --- | --- |\n"
@@ -53,39 +32,192 @@ FILES = {
 LOAD = "import json, sys, yaml; print(json.dumps(yaml.safe_load(sys.stdin.read().split('\\n---\\n', 1)[0].lstrip('-\\n'))))"
 
 
-class TaskFromPlanTest(unittest.TestCase):
+class TaskFromPlanTest(RepositoryTest):
+    def test_the_generator_never_executes_a_plan_command(self):
+        marker = self.temp / "ran"
+        template = self.production / "task-template.md"
+        template.write_text(template.read_text().replace("check:\n", f"check:\n  - touch {marker}\n"))
+        self.commit(
+            {
+                PROGRAMS: FILES[PROGRAMS].replace("`printf known-output`", f"`touch {marker}`"),
+                "Makefile": f"unit-test:\n\ttouch {marker}\n",
+            },
+            "marker commands",
+        )
+        code, out, front, text = self.generate(trace=True)
+        self.assertFalse(marker.exists(), out)
+        self.assertEqual(code, 0, out)
+        self.assertTrue(all(p["claim"].startswith("verify:") and "output" not in p for p in front["premises"]))
+        self.assertIn("not run", text)
+        self.assertIn("C14: not run (no trusted sha)", out)
+        self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)
+        for call in map(json.loads, (self.temp / "trace.jsonl").read_text().splitlines()):
+            self.assertNotIn("worktree", call["argv"])
+            self.assertNotIn("--premises-sha", call["argv"])
+
+    def test_the_generator_refuses_a_symlinked_or_existing_output(self):
+        folder = self.repo / ".orchestration/tasks"
+        target = self.temp / "target.md"
+        target.write_text("unchanged")
+        for kind in ("ordinary", "inside", "outside", "dangling", "parent", "direct"):
+            out = folder / "dotfiles-T9-new-a01.md"
+            if kind == "ordinary":
+                out.write_text("unchanged")
+            elif kind == "parent":
+                (folder / "linked").symlink_to(self.temp, target_is_directory=True)
+                out = folder / "linked/dotfiles-T9-new-a01.md"
+            elif kind == "direct":
+                out = self.temp / "outside.md"
+            else:
+                out.symlink_to(
+                    folder / "missing"
+                    if kind == "dangling"
+                    else target
+                    if kind == "outside"
+                    else folder / "dotfiles-T133-result-precheck-a01.md"
+                )
+            code, text, _, _ = self.generate(out=str(out))
+            self.assertNotEqual(code, 0, (kind, text))
+            self.assertEqual(target.read_text(), "unchanged")
+            if kind not in ("parent", "direct"):
+                out.unlink()
+        self.assertEqual(self.generate(out=str(folder / "dotfiles-T9-fresh-a01.md"))[0], 0)
+
+    def run_three(self, trace=False, worker_binding=None):
+        from tests.unit.test_task_consistency_c11_c15 import BASE
+
+        task = self.repo / ".orchestration/tasks/dotfiles-T9-base-a01.md"
+        task.write_text(BASE)
+        run = uv_command()
+        for name, args in (
+            ("task-from-plan.py", ["P1-1", "--out", ".orchestration/tasks/new.md"]),
+            ("plan-check.py", ["--root", str(self.repo), "--invariants"]),
+            ("task-consistency-check.py", ["--root", str(self.repo), str(task)]),
+        ):
+            command = (
+                [*run, "-c", TRACE, str(self.temp / "trace.jsonl"), str(self.production / name), *args]
+                if trace
+                else [*run, str(self.production / name), *args]
+            )
+            if worker_binding is not None:
+                binding = "import importlib.util,sys,pathlib;s,p=sys.argv[1:3];spec=importlib.util.spec_from_file_location('m',s);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);getattr(m,'checker',m).executable=lambda name:pathlib.Path(p);sys.argv=[s,*sys.argv[3:]];sys.exit(m.main())"
+                command = [*run, "-c", binding, str(self.production / name), str(worker_binding), *args]
+            result = subprocess.run(command, cwd=self.repo, env=self.env, capture_output=True, text=True, check=False)
+            yield name, result.returncode, result.stdout + result.stderr
+
+    def test_all_three_scripts_refuse_repository_local_filters_before_status_or_diff(self):
+        marker = self.temp / "filter-ran"
+        self.commit({".gitattributes": f"{PROGRAMS} filter=probe\n"}, "filter selection")
+        for location in ("local", "worktree", "included"):
+            if location == "worktree":
+                self.git("config", "extensions.worktreeConfig", "true")
+            if location == "included":
+                config = self.temp / "included.config"
+                config.write_text(f'[filter "probe"]\n clean = touch {marker}\n')
+                self.git("config", "include.path", str(config))
+            else:
+                self.git("config", "--" + location, "filter.probe.clean", f"touch {marker}")
+            os.utime(self.repo / PROGRAMS, None)
+            for name, code, out in self.run_three():
+                self.assertNotEqual(code, 0, (name, out))
+                self.assertIn("filter.probe.clean", out)
+                self.assertIn("file:", out)
+                self.assertFalse(marker.exists(), (name, out))
+            self.git(
+                "config", "--" + location, "--unset", "filter.probe.clean"
+            ) if location != "included" else self.git("config", "--unset", "include.path")
+        worker = self.repo / ".claude/worktrees/seat/git"
+        worker.parent.mkdir(parents=True)
+        worker.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        worker.chmod(0o755)
+        for name, code, out in self.run_three(worker_binding=worker):
+            self.assertNotEqual(code, 0, (name, out))
+            self.assertIn("worker-root", out)
+            self.assertFalse(marker.exists())
+
+    def test_all_three_scripts_refuse_a_checkout_with_gitmodules(self):
+        (self.repo / ".gitmodules").write_text('[submodule "probe"]\n path = probe\n url = ./probe\n')
+        sub = self.repo / "probe"
+        sub.mkdir()
+        (sub / ".gitattributes").write_text("tracked filter=probe\n")
+        (sub / "tracked").write_text("fixture\n")
+        for args in (
+            ("init", "-q"),
+            ("add", "."),
+            ("commit", "-q", "-m", "submodule"),
+            ("config", "filter.probe.clean", f"touch {self.temp / 'filter-ran'}"),
+        ):
+            subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=sub, env=self.env, check=True)
+        self.git("add", "probe")
+        for name, code, out in self.run_three():
+            self.assertNotEqual(code, 0, (name, out))
+            self.assertIn(".gitmodules", out)
+        self.assertFalse((self.temp / "filter-ran").exists())
+        (self.repo / ".gitmodules").unlink()
+        self.git("rm", "--cached", "-f", "probe")
+        for name, code, out in self.run_three():
+            self.assertEqual(code, 0, (name, out))
+
+    def test_all_three_scripts_refuse_a_redirected_worktree(self):
+        self.git("config", "core.worktree", str(self.temp))
+        for name, code, out in self.run_three():
+            self.assertNotEqual(code, 0, (name, out))
+            self.assertIn("core.worktree", out)
+            self.assertIn("file:", out)
+        self.git("config", "--unset", "core.worktree")
+        for name, code, out in self.run_three():
+            self.assertEqual(code, 0, (name, out))
+
+    def test_all_three_scripts_disable_lazy_fetch_for_missing_objects(self):
+        marker = self.temp / "helper-ran"
+        self.git("config", "credential.helper", f"!touch {marker}")
+        self.git("config", "remote.origin.promisor", "true")
+        config = "home/dot_agents/agent-config.yaml"
+        self.commit({config: "claude: {permissions: {ask: []}}\n"}, "missing-object input")
+        for rel in (PROGRAMS, config, ".orchestration/tasks/dotfiles-T9-design-a01.md"):
+            oid = self.git("rev-parse", f"HEAD:{rel}").strip()
+            (self.repo / ".git/objects" / oid[:2] / oid[2:]).unlink()
+        for name, code, out in self.run_three(trace=True):
+            self.assertNotEqual(code, 0, (name, out))
+        calls = [json.loads(line) for line in (self.temp / "trace.jsonl").read_text().splitlines()]
+        self.assertTrue(calls)
+        for call in calls:
+            self.assertTrue(call["env"].get("GIT_NO_LAZY_FETCH") == "1" or "GIT_NO_LAZY_FETCH=1" in call["argv"], call)
+        self.assertFalse(marker.exists())
+
     def setUp(self):
-        temp = tempfile.TemporaryDirectory()
-        self.addCleanup(temp.cleanup)
-        self.temp = Path(temp.name).resolve()
-        self.repo = self.temp / "repo"
-        self.env = {**os.environ, **GIT_ENV, "TMPDIR": temp.name}
-        self.commit(FILES, "init", init=True)
+        super().setUp()
+        self.production = self.temp / "trusted/scripts/orchestrator"
+        self.production.mkdir(parents=True)
+        for name in ("task-from-plan.py", "task-consistency-check.py", "plan-check.py", "task-template.md"):
+            shutil.copyfile(GENERATOR.with_name(name), self.production / name)
+        from tests.unit.test_plan_check import CLEAN
+        from tests.unit.test_task_consistency_c11_c15 import DESIGN
 
-    def git(self, *args):
-        run = ["git", "-c", "commit.gpgsign=false", *args]
-        return subprocess.run(run, cwd=self.repo, env=self.env, capture_output=True, text=True, check=True).stdout
+        self.commit(
+            {
+                **CLEAN,
+                **FILES,
+                ".orchestration/tasks/dotfiles-T9-design-a01.md": DESIGN,
+                "scripts/tool.py": "print('tool')\n",
+            },
+            "init",
+            init=True,
+        )
 
-    def commit(self, files, message, init=False):
-        """Write and commit files; the first commit also creates the bare origin (make unit-test has no PyYAML)."""
-        for rel, text in files.items():
-            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
-            (self.repo / rel).write_text(text)
-        if init:
-            self.git("init", "-q", "-b", "main")
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", message)
-        if init:
-            self.git("init", "-q", "--bare", str(self.temp / "origin.git"))
-            self.git("remote", "add", "origin", str(self.temp / "origin.git"))
-        self.git("push", "-q", "origin", "main")
-        self.git("fetch", "-q", "origin")
-
-    def generate(self, *args, todo="P1-1", out=".orchestration/tasks/dotfiles-T9-demo-a01.md"):
+    def generate(self, *args, todo="P1-1", out=".orchestration/tasks/dotfiles-T9-demo-a01.md", trace=False):
         """Run the generator; return (exit, stdout + stderr, front matter or None, text or "")."""
-        run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", "-I"]
+        run = uv_command()
         result = subprocess.run(
-            [*run, str(GENERATOR), todo, "--out", out, *args],
+            [
+                *run,
+                *(["-c", TRACE, str(self.temp / "trace.jsonl")] if trace else []),
+                str(self.production / GENERATOR.name),
+                todo,
+                "--out",
+                out,
+                *args,
+            ],
             cwd=self.repo,
             env=self.env,
             capture_output=True,
@@ -108,12 +240,13 @@ class TaskFromPlanTest(unittest.TestCase):
         allowed = ["scripts/demo.sh", "tests/unit/test_demo.py", ".orchestration/dotfiles-T9-demo-a01/**"]
         self.assertEqual(front["allowed_files"], allowed)
         first, second = front["premises"]
-        self.assertEqual((first["command"], first["output"]), ("printf known-output", "known-output"))
+        self.assertEqual((first["command"], first.get("output")), ("printf known-output", None))
         self.assertEqual(second["command"], "sh -c 'exit 3'")
-        self.assertTrue(second["claim"].startswith("verify:") and "exits 3" in second["claim"], second)
+        self.assertTrue(second["claim"].startswith("verify:") and "pending" in second["claim"], second)
         self.assertIn("# from: tests/unit/test_demo.py (git grep -l demo.sh)", text)
         head = self.git("rev-parse", "origin/main").strip()
-        self.assertIn(f"- `make unit-test`: exit 0 on origin/main {head[:12]}", text)
+        self.assertIn("- `make unit-test`: verify: not run", text)
+        self.assertIn(head, text)
         self.assertIn("`dotfiles-T9-demo-a01-followup-a01`", text)
         controls = [r["control"] for r in front["threat_table"]]
         self.assertIn("the task-file copy on the branch (.orchestration/dotfiles-T9-demo-a01/task.md)", controls)
@@ -121,8 +254,6 @@ class TaskFromPlanTest(unittest.TestCase):
         self.assertEqual(len(self.git("worktree", "list").splitlines()), 1)  # the scratch worktree is gone
 
     def test_generator_uses_the_bundled_template_without_task_records(self):
-        # The audit of 9da0ed3 (P1, item 5): the generator's rows, Check defaults and Completion come from
-        # scripts/orchestrator/task-template.md; a checkout without .orchestration/tasks/ generates a passing task.
         self.git("rm", "-q", "-r", ".orchestration/tasks")
         self.commit({}, "no task records")
         code, out, front, text = self.generate()
@@ -131,12 +262,11 @@ class TaskFromPlanTest(unittest.TestCase):
         for name in ("task metadata", "metadata separators", "in-process effects", "orchestrator effect merge"):
             self.assertIn(name, controls)
         self.assertIn("(.orchestration/dotfiles-T9-demo-a01/task.md)", controls)
-        self.assertIn("- `make format`: exit ", text)
+        self.assertIn("- `make format`: verify: not run", text)
         self.assertIn("owned by `dotfiles-T9-demo-a01-followup-a01`", text)
         self.assertIn("`task_copy=<sha256 of .orchestration/dotfiles-T9-demo-a01/task.md>`", text)
 
     def test_generator_refuses_dirty_plan_commands_before_execution(self):
-        # The audit of 9da0ed3 (P1, item 6): plan commands run only from a clean, committed 024-* plan group.
         marker = self.temp / "ran"
         program = FILES[PROGRAMS].replace("`printf known-output`", f"`touch {marker}`")
         self.commit({PROGRAMS: program}, "a marker command")
@@ -152,11 +282,10 @@ class TaskFromPlanTest(unittest.TestCase):
                 self.git("reset", "-q", "--hard")
                 (self.repo / ".orchestration/plans/024-extra.md").unlink(missing_ok=True)
         code, out, front, text = self.generate()
-        self.assertEqual((code, marker.exists()), (0, True), out)
+        self.assertEqual((code, marker.exists()), (0, False), out)
         self.assertIn(f"plan group at {self.git('rev-parse', 'HEAD').strip()}", text)
 
     def test_wave_selection_matches_whole_todo_ids(self):
-        # The audit of 9da0ed3 (P2, item 12): P1-1 is a whole id in the seat's column; P1-10 or P1-11 never matches it.
         waves = "## 6. 波\n\n| 波 | a009 | a008 |\n| --- | --- | --- |\n| P-W0 | P1-10, P1-11 | P1-12 |\n"
         self.commit({WAVES: waves + "| P-W1 | P1-1 | |\n\n## 7. STOP\n"}, "two waves")
         code, out, _, text = self.generate("--seat", "a009")
@@ -166,9 +295,6 @@ class TaskFromPlanTest(unittest.TestCase):
         self.assertNotIn("P-W0", text)
 
     def test_generator_preserves_wildcard_scopes_and_their_threat_rows(self):
-        # The audit of 9da0ed3 (P2, item 13): `scripts/*.py` and `home/dot_config/**` stay scopes, and every applied file
-        # they match gets its concrete row, so the generated task passes C4 and C12; a match that is itself an entry
-        # (scripts/demo.sh under `scripts/*.sh`) keeps its one row, so C7b passes too (the pre-push review of eb20d063).
         program = FILES[PROGRAMS].replace(
             "`scripts/demo.sh`**", "`scripts/demo.sh`**, `scripts/*.py`, `scripts/*.sh`, `home/dot_config/**`"
         )
@@ -181,7 +307,6 @@ class TaskFromPlanTest(unittest.TestCase):
             self.assertIn(name, controls)
 
     def test_program_item_continues_until_the_next_numbered_heading(self):
-        # The audit of 9da0ed3 (P2, item 14): a blank line or a fenced block does not end item (1); item (2) does.
         item = "\n\n```\n{schema: x}\n```\n\nThen `scripts/late.sh` runs `printf late-output`.\n\n"
         program = FILES[PROGRAMS].replace("\n\n**(2) other**: unused", item + "**(2) other**: `printf other-item`")
         self.commit({PROGRAMS: program, "scripts/late.sh": "echo late\n"}, "a longer item")
@@ -193,8 +318,6 @@ class TaskFromPlanTest(unittest.TestCase):
         self.assertNotIn("printf other-item", commands)
 
     def test_generator_retains_unavailable_single_word_and_redirecting_commands(self):
-        # The audit of 9da0ed3 (P2, item 15): a span is a command by its form, not by an executable existing now; the
-        # same rule picks the item's `make` targets for the Check.
         written, check = self.temp / "written", self.temp / "check.out"
         spans = f"`no-such-tool-a02 --list`, `pwd`, `printf hi > {written}` and `make unit-test > {check}`"
         self.commit({PROGRAMS: FILES[PROGRAMS].replace("`sh -c 'exit 3'`", spans)}, "command forms")
@@ -203,10 +326,11 @@ class TaskFromPlanTest(unittest.TestCase):
         premises = {p["command"]: p for p in front["premises"]}
         self.assertTrue({"no-such-tool-a02 --list", "pwd", f"printf hi > {written}"} <= set(premises), premises)
         self.assertTrue(premises["no-such-tool-a02 --list"]["claim"].startswith("verify:"), premises)
-        self.assertIn("exits 127", premises["no-such-tool-a02 --list"]["claim"])
-        self.assertEqual(premises["pwd"]["output"], str(self.repo))
-        self.assertEqual((premises[f"printf hi > {written}"]["output"], written.read_text()), ("", "hi"))
-        self.assertIn(f"- `make unit-test > {check}`: exit 0 on origin/main", text)
+        self.assertIn("pending", premises["no-such-tool-a02 --list"]["claim"])
+        self.assertNotIn("output", premises["pwd"])
+        self.assertNotIn("output", premises[f"printf hi > {written}"])
+        self.assertFalse(written.exists())
+        self.assertIn(f"- `make unit-test > {check}`: verify: not run", text)
         self.assertNotIn(f"make unit-test > {check}", premises)
 
 

@@ -1,37 +1,32 @@
-"""Form, drift and invariant checks over the plan 024 group (plan 024 programs (15)), one violation per line.
+"""Read-only plan 024 checks under --root, with optional --drift and --invariants.
 
-`uv run --no-project --with pyyaml python -I scripts/orchestrator/plan-check.py [--root <repo>] [--drift] [--invariants]`
-reads the eleven `.orchestration/plans/024-*` files under --root (default: the current git toplevel), prints every
-violation on its own line and exits 1 when there is one, 0 otherwise. It writes nothing.
-F1 every 024-todo.md table row has a non-empty completion (last) column.
-F2 the tasks one wave row of the plan's section 6 names have pairwise-disjoint allowed_files once their task files
-   exist (a task file belongs to the todo id its `# ` title line names): each glob entry stands for the tree files it
-   matches, a literal entry for itself, and two lists overlap where a path is in both or inside the other's directory,
-   or where a literal matches the other's glob; the finding names the first shared path. Glob spellings are never
-   compared with each other.
-F3 every P1-<n> row names a bottleneck id: a B<n> row of 024-design-mechanism.md or an M<n> row of 024-design-quality.md.
-F4 every DoD row of 024-checklists.md holds a backtick command or a file path.
-F5 every decision row of the plan's section 2 has a bold default.
-F6 every cited dotfiles-T<n>-... id is a task file, every D-... id a row of .orchestration/decisions.tsv, and with
-   --drift every #<pr> a pull request.
---drift: every head sha or state word (CLEAN, BEHIND, draft, merged, closed) that starts within 40 characters after a
-   #<pr> on its line, before the next #, each compared on its own against `gh pr view`; and every 024-progress.tsv row
-   naming a task against the status of that task's latest AGMSG-ACCEPTANCE event (task_id=<task>, each event read up
-   to the next one on its line) in its acceptance record, latest by the last timestamp before the event on its line (an
-   untimed event carries the latest timestamp above it), then by position: `drift: <file>:<line> <cited> != <live>`.
---invariants: ANTHROPIC_OAUTH_TOKEN= with a value (bare, single- or double-quoted; an empty "" or '' is none),
-   `git push origin main`, `gh pr merge` with --admin or --auto in the
-   plan files, and a claude.permissions.ask entry home/dot_agents/agent-config.yaml adds against origin/main.
+F1 completion cells; F2 disjoint concrete scopes and confined globs; F3 bottleneck ids; F4 executable DoD references;
+F5 bold defaults; F6 task/decision ids and, with --drift, PR existence. Drift compares each PR occurrence's head/state
+and each progress row against the latest timestamped acceptance. Invariants reject valued OAuth assignments,
+unsafe merge/push commands and added permissions.ask entries. Directory symlinks are never traversed.
 """
 
 import argparse
 import glob
+import importlib.util
 import json
+import os
 import pathlib
 import re
-import subprocess
 import sys
 from fnmatch import fnmatchcase
+
+CACHE = os.environ.get("UV_CACHE_DIR", "")
+if not os.path.isabs(CACHE):
+    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
+helper = pathlib.Path(__file__).resolve().with_name("task-consistency-check.py").resolve()
+if not os.path.samefile(helper.parent, pathlib.Path(__file__).resolve().parent):
+    sys.exit("refused: checker outside the trusted script directory")
+spec = importlib.util.spec_from_file_location("checker", helper)
+checker = importlib.util.module_from_spec(spec)
+helper_data = helper.read_bytes()
+spec.loader.get_code = lambda _: compile(helper_data, str(helper), "exec")
+spec.loader.exec_module(checker)
 
 try:
     import yaml
@@ -53,7 +48,11 @@ FORBIDDEN = {
 
 
 def run(root, *args):
-    return subprocess.run(args, cwd=root, capture_output=True, text=True, check=False)
+    return (
+        checker.git(root, *args[1:])
+        if args[0] == "git"
+        else checker.launch(root, checker.executable(args[0]), *args[1:], "--repo", "mryfmo/dotfiles")
+    )
 
 
 def cells(line):
@@ -83,7 +82,22 @@ def scope(root, entries):
     globs = {e for e in entries if GLOB.search(e)}
     paths = {e.rstrip("/") for e in entries if e not in globs}
     for g in globs:
-        paths |= {p for p in glob.glob(g, root_dir=root, recursive=True, include_hidden=True) if (root / p).is_file()}
+        parts = pathlib.PurePath(g).parts
+        if pathlib.Path(g).is_absolute() or ".." in parts:
+            raise ValueError(f"F2 outside-root glob: {g}")
+        prefix = root.joinpath(*parts[: next(i for i, p in enumerate(parts) if GLOB.search(p))])
+        if any(p.is_symlink() for p in (prefix, *prefix.parents) if p.is_relative_to(root)):
+            raise ValueError(f"F2 outside-root or directory-symlink glob: {g}")
+        match = re.compile(glob.translate(g, recursive=True, include_hidden=True))
+        for directory, dirs, files in os.walk(prefix, followlinks=False):
+            dirs[:] = [d for d in dirs if not pathlib.Path(directory, d).is_symlink()]
+            for name in files:
+                path = pathlib.Path(directory, name)
+                rel = path.relative_to(root).as_posix()
+                if match.fullmatch(rel):
+                    if checker.confined(root, path) is None:
+                        raise ValueError(f"F2 outside-root glob match: {g}")
+                    paths.add(rel)
     return paths, globs
 
 
@@ -122,6 +136,9 @@ def form(root, files):
             out.append(f"F3 024-todo.md:{n} {c[0].split()[0]} names no bottleneck id of 5.0 or 5.10")
     tasks = {}
     for p in sorted((root / ".orchestration/tasks").glob("*.md")):
+        if checker.confined(root, p) is None:
+            out.append("F2 outside-root task file")
+            continue
         title = next((l for l in p.read_text().splitlines() if l.startswith("# ")), "")
         for tid in set(re.findall(r"\bP1-\d+[a-z]?\b", title)):
             allowed = (yaml.safe_load(p.read_text().split("\n---\n", 1)[0].lstrip("-\n")) or {}).get("allowed_files")
@@ -199,6 +216,8 @@ def invariants(root, files):
             out += [f"invariant: {name}:{n} {what}" for what, rx in FORBIDDEN.items() if re.search(rx, line)]
     path = "home/dot_agents/agent-config.yaml"
     base = run(root, "git", "show", f"origin/main:{path}")
+    if base.returncode and (root / path).is_file():
+        out.append(f"invariant: {path} baseline unavailable: {base.stderr.strip()}")
     if base.returncode == 0 and (root / path).is_file():
 
         def asks(text):
@@ -217,10 +236,19 @@ def main():
     )
     parser.add_argument("--invariants", action="store_true", help="report forbidden patterns and added ask entries")
     args = parser.parse_args()
-    root = args.root or pathlib.Path(run(".", "git", "rev-parse", "--show-toplevel").stdout.strip())
+    root = (args.root or checker.repository(".")).resolve()
+    checker.git(root, "rev-parse", "--show-toplevel")
+    for folder in (root / PLANS, root / ".orchestration/tasks"):
+        if any(p.is_symlink() for p in (folder, *folder.parents) if p.is_relative_to(root)):
+            sys.exit("F2 directory-symlink input")
     paths = sorted((root / PLANS).glob("024-*.md")) + [root / PLANS / "024-progress.tsv"]
+    if any(checker.confined(root, p) is None for p in paths):
+        sys.exit("F2 outside-root plan input")
     files = {p.name: p.read_text().splitlines() for p in paths}
-    found = form(root, files)
+    try:
+        found = form(root, files)
+    except ValueError as error:
+        found = [str(error)]
     found += drift(root, files) if args.drift else []
     found += invariants(root, files) if args.invariants else []
     if found:

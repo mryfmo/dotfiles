@@ -1,0 +1,28 @@
+[
+  {
+    "id": "worker-a03-1",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 202,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Independent review found str.splitlines counted vertical tabs as record delimiters. Corrected in the single batch to binary LF-delimited records. The added needle\\vneedle\\n case failed before correction; final four-module run passes 41 tests (one inherited missing canonical-task skip).",
+    "resolved": true
+  },
+  {
+    "id": "worker-a03-2",
+    "scope": "line",
+    "path": "tests/unit/test_task_consistency_c11_c15.py",
+    "line": 286,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Independent review found UV flag assertions could pass without any observed launch. Corrected hostile config bytes and required dependency/cache access plus a nonempty observed UV launch list. Final test source fails all 12 selectors against unchanged 8a09b936 and passes in the final four-module run.",
+    "resolved": true
+  },
+  {
+    "id": "worker-a03-provisioning",
+    "scope": "review",
+    "body": "The online PyYAML-only cache seed and named provisioning skip comply with the authoritative 2026-10-19T11:46:17Z dispatch interpretation. Initial provisioning candidate withdrawn. No P0/P1 identified in the one independent pre-push review; final CI and deployment were not reviewed.",
+    "resolved": true
+  }
+]

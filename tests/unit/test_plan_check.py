@@ -1,14 +1,12 @@
-"""Exercise plan-check.py on a fixture plan group: a clean group passes and each rule's fixture fails with one line.
-
-plan-check runs through uv with PyYAML; `gh` is a stub on PATH that answers the head written in its calls directory.
-"""
+"""Exercise plan forms, drift, invariants and confined glob enumeration."""
 
 import os
-import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+
+from tests.unit.test_task_consistency_c11_c15 import fixture_cache, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAN_CHECK = ROOT / "scripts/orchestrator/plan-check.py"
@@ -49,6 +47,31 @@ CASES = {
 
 
 class PlanCheckTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        fixture_cache()
+
+    def test_globs_never_resolve_outside_root(self):
+        outside = self.root.parent / "outside"
+        outside.mkdir()
+        (outside / "private-name.py").write_text("")
+        (self.root / "linked").symlink_to(outside, target_is_directory=True)
+        (self.root / "scripts").mkdir()
+        (self.root / "internal").symlink_to(self.root / "scripts", target_is_directory=True)
+        (self.root / "scripts/link.py").symlink_to(outside / "private-name.py")
+        for pattern in (str(outside / "*.py"), "../outside/*.py", "linked/**/*.py", "internal/**/*.py", "scripts/*.py"):
+            self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", pattern)
+            code, lines = self.plan_check()
+            self.assertEqual(code, 1, lines)
+            self.assertIn("outside", " ".join(lines))
+            self.assertNotIn("private-name", " ".join(lines))
+            path = self.root / ".orchestration/tasks/dotfiles-T1-one-a01.md"
+            path.write_text(path.read_text().replace(pattern, "scripts/one.py"))
+        (self.root / "scripts/link.py").unlink()
+        (self.root / "scripts/two.py").touch()
+        self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", "scripts/*.py")
+        self.assertIn("share scripts/two.py", " ".join(self.plan_check()[1]))
+
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -62,12 +85,13 @@ class PlanCheckTest(unittest.TestCase):
         for rel, text in CLEAN.items():
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.root / rel).write_text(text)
+        self.env.update(UV_CACHE_DIR=fixture_cache(), GIT_CONFIG_GLOBAL="/dev/null")
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True, env=self.env)
 
     def plan_check(self, *args):
-        # uv run puts its base interpreter's bin directory before PATH (Homebrew's on the macOS runner, which holds a
-        # real gh), so the stub goes first inside uv run, as in test_task_checkers.py.
-        stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
-        run = [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first, str(PLAN_CHECK)]
+        head = (self.calls / "head").read_text()
+        binding = f"import importlib.util,sys,subprocess,json;spec=importlib.util.spec_from_file_location('plan',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.run=lambda root,*args:subprocess.CompletedProcess(args,0,json.dumps(dict(headRefOid={head!r},mergeStateStatus='CLEAN',isDraft=False,state='OPEN')),'') if args[0]=='gh' else subprocess.CompletedProcess(args,1,'','');sys.exit(m.main())"
+        run = [*uv_command(), "-c", binding, str(PLAN_CHECK)]
         result = subprocess.run(
             [*run, "--root", str(self.root), *args], env=self.env, capture_output=True, text=True, check=False
         )
@@ -106,8 +130,6 @@ class PlanCheckTest(unittest.TestCase):
             self.assertEqual(self.plan_check(), (1, [want]))
 
     def test_f2_detects_intersecting_globs_through_concrete_tree_matches(self):
-        # The audit of 9da0ed3 (P2, item 11): two globs overlap through a file both match in the tree; their spellings
-        # never decide disjointness.
         self.edit(".orchestration/tasks/dotfiles-T1-one-a01.md", "scripts/one.py", "scripts/test_*.py")
         self.edit(".orchestration/tasks/dotfiles-T2-two-a01.md", "scripts/two.py", "scripts/*_check.py")
         (self.root / "scripts").mkdir()
@@ -118,14 +140,10 @@ class PlanCheckTest(unittest.TestCase):
         self.assertEqual(self.plan_check(), (1, [want]))
 
     def test_drift_uses_the_latest_timestamped_acceptance_for_the_same_task(self):
-        # The audit of 9da0ed3 (P2, item 16): the task's latest event by timestamp decides, not the last textual match,
-        # and another task's event never does.
         line = "[2026-10-18T{}:00:00Z] o → w: AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-{}-a01 status={}\n"
         record = self.root / ".orchestration/acceptance/dotfiles-T1-one-a01.md"
         record.parent.mkdir(parents=True)
         events = (("05", "one", "accepted"), ("04", "one", "revise"), ("06", "other", "withdrawn"))
-        # The pre-push review of eb20d063: each event of a two-event line has its own status, another task's coming
-        # first included, and the untimed last line carries 07:00, so its event for one is the latest.
         two = "`AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-other-a01 status={}` `AGMSG-ACCEPTANCE v1 task_id=dotfiles-T1-one-a01 status={}`\n"
         shared = "[2026-10-18T07:00:00Z] " + two.format("withdrawn", "revise") + two.format("revise", "accepted")
         record.write_text("".join(line.format(*e) for e in events) + shared)
@@ -137,9 +155,6 @@ class PlanCheckTest(unittest.TestCase):
         self.assertEqual(self.plan_check("--drift"), (1, [want]))
 
     def test_drift_checks_every_sha_and_state_for_each_pr_occurrence(self):
-        # The audit of 9da0ed3 (P2, item 17): every sha and state near one #<pr> is compared on its own, so a matching
-        # head never hides a conflicting state; association stops at the next #<pr>, so a repeated PR's second
-        # occurrence carries its own sha and state assertions.
         self.edit(PLANS + "024-execution.md", "# x\n", "# x\n\n#77 abc1234 merged; #77 def4567 abc1234 CLEAN\n")
         code, lines = self.plan_check("--drift")
         live = "abc1234" + "0" * 5
@@ -147,8 +162,6 @@ class PlanCheckTest(unittest.TestCase):
         self.assertEqual((code, lines), (1, want))
 
     def test_invariants_reject_nonempty_quoted_oauth_token_assignments(self):
-        # The audit of 9da0ed3 (P2, item 18): quoted and unquoted non-empty values are refused, an empty one is not, and
-        # no diagnostic carries the value (built at run time).
         name, value = "ANTHROPIC_OAUTH_" + "TOKEN", "fixture-" + "x" * 8
         self.edit(
             PLANS + "024-execution.md",

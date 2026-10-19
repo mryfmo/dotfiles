@@ -1,40 +1,19 @@
-"""A format-2 task file from one plan 024 todo row, every premise and Check command run (plan 024 programs (12)).
+"""Generate a format-2 task skeleton from committed plan data and the bundled template.
 
-`uv run --offline --with pyyaml python -I scripts/orchestrator/task-from-plan.py <todo-id> [--out <task.md>]
-[--seat <identity>] [--worktree <path>]` refuses, before it runs or writes anything, while the
-.orchestration/plans/024-* group under the current git toplevel has a staged, unstaged or untracked change. Otherwise it
-reads, at the committed revision HEAD (named in the task's opening line), the row <todo-id> of
-.orchestration/plans/024-todo.md, the items of 024-design-programs.md its work column names by (n) (each through the
-next **(<n>) heading or the end of the file), the wave row of the plan's section 6 whose cell (the --seat column's when
-given) holds the whole id <todo-id>, and the Q-A row of 024-design-quality.md (security: true when it lists the id or a
-range holding it). task-template.md beside this script supplies the control rows, the common Check commands and the
-Completion section; no file under .orchestration/tasks/ is read. It writes --out (default
-.orchestration/tasks/<todo-id>.md), runs task-consistency-check.py on it with --premises-sha of the written bytes,
-prints the checker's output and exits 0 when the checker passes, 1 otherwise (the file stays for editing).
-allowed_files: every path or glob scope the row and its items name in backticks (a literal has a file extension or
-exists, inside the checkout), every file `git grep -l -F` finds under scripts/ and tests/ for each named script or test
-(each listed as `# from: <hit>` in the Files section), and the task's own evidence directory. threat_table: one draft
-row per entry (residual: the row's completion), one per executed or applied file a glob entry matches (C12), then the
-template's rows with <task_id> replaced.
-A backticked span is a command by its form: its first word is a lowercase name, a / or ./ path, or a .sh or .py path,
-and it holds no <placeholder>; a lone word is one only when PATH holds it (a lone path is a scope). premises: every
-command the items quote but `make`, run once through the checker's rerun (C14's environment, so C14 reproduces the
-pasted stdout); a nonzero exit is pasted as `verify:` with its code, and a gh, curl or URL command is not run, as C14
-skips it. Check: the template's commands and the items' `make` commands, each run once in a detached scratch worktree of
-origin/main with the caller's PATH and pasted with its exit code, the revision and its last 20 output lines; the
-worktree is removed with `git worktree remove --force` and its temporary parent deleted.
+Commands remain unverified text; no plan or Check command executes. The generated file is exclusively created
+under .orchestration/tasks and receives a structural check without premise authority.
 """
 
 import argparse
-import hashlib
 import importlib.util
 import os
 import pathlib
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
+
+if not os.path.isabs(os.environ.get("UV_CACHE_DIR", "")):
+    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
 
 import yaml
 
@@ -42,13 +21,18 @@ PLANS = ".orchestration/plans"
 TEMPLATE = pathlib.Path(__file__).with_name("task-template.md")
 NETWORK = r"\b(?:gh|curl)\b|https?://"
 GLOB = r"[*?\[]"
-spec = importlib.util.spec_from_file_location("checker", pathlib.Path(__file__).with_name("task-consistency-check.py"))
+helper = pathlib.Path(__file__).resolve().with_name("task-consistency-check.py").resolve()
+if not os.path.samefile(helper.parent, pathlib.Path(__file__).resolve().parent):
+    sys.exit("refused: checker outside the trusted script directory")
+helper_data = helper.read_bytes()
+spec = importlib.util.spec_from_file_location("checker", helper)
 checker = importlib.util.module_from_spec(spec)
+spec.loader.get_code = lambda _: compile(helper_data, str(helper), "exec")
 spec.loader.exec_module(checker)
 
 
 def git(root, *args):
-    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False)
+    return checker.git(root, *args)
 
 
 def rows(lines):
@@ -78,25 +62,6 @@ def program(lines, n):
     return "\n".join(lines[start:end]).strip()
 
 
-def run_check_commands(root, commands, tid):
-    parent = pathlib.Path(tempfile.mkdtemp(prefix=f"{tid}."))
-    scratch = parent / "origin-main"
-    try:
-        if git(root, "worktree", "add", "--detach", str(scratch), "origin/main").returncode:
-            return [f"- `{c}`: not run (no origin/main worktree)" for c in commands]
-        try:
-            rev, out = git(scratch, "rev-parse", "HEAD").stdout.strip(), []
-            for c in commands:
-                stdout, code, stderr = checker.rerun(c, scratch, os.environ["PATH"])
-                tail = ["```", *((stdout or "") + stderr).splitlines()[-20:], "```"]
-                out.append(f"- `{c}`: exit {code} on origin/main {rev[:12]}" + "".join(f"\n  {l}" for l in tail))
-            return out
-        finally:
-            git(root, "worktree", "remove", "--force", str(scratch))
-    finally:
-        shutil.rmtree(parent, ignore_errors=True)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("todo_id")
@@ -104,8 +69,8 @@ def main():
     parser.add_argument("--seat", help="the wave table column to read (for example a009)")
     parser.add_argument("--worktree", help="the seat's worktree, named in the task's opening line")
     args = parser.parse_args()
-    root = pathlib.Path(git(".", "rev-parse", "--show-toplevel").stdout.strip())
-    # The plan's commands are the orchestrator's own text, so they run only as committed.
+    root = checker.repository(".")
+    # A clean committed plan binds provenance, not permission to execute its text.
     status = git(root, "status", "--porcelain=v1", "--untracked-files=all", "--", f":(glob){PLANS}/024-*")
     if status.returncode or status.stdout:
         sys.exit(
@@ -121,7 +86,11 @@ def main():
 
     out = args.out or pathlib.Path(f".orchestration/tasks/{args.todo_id}.md")
     tid, own = out.stem, f".orchestration/{out.stem}/"
-    template = TEMPLATE.read_text().replace("<task_id>", tid)
+    binding = checker.snapshot(TEMPLATE)
+    try:
+        template = checker.consume(binding).read_text().replace("<task_id>", tid)
+    finally:
+        binding[0].unlink()
     bundled = checker.front(template)
     row = next(c for c in rows(read("024-todo.md")) if c[0].split()[0] == args.todo_id)
     title, purpose, work, completion = row[0].split(" ", 1)[-1], row[1], row[2], row[-1]
@@ -158,22 +127,16 @@ def main():
     rows_out += bundled.get("threat_table") or []
 
     commands = [s for s in dict.fromkeys(spans("\n".join(items))) if is_command(s)]
-    premises = []
-    for cmd in (c for c in commands if c.split()[0] != "make"):
-        if re.search(NETWORK, cmd):
-            premises.append(
-                {
-                    "claim": f"verify: {cmd} is a network command, not run here (C14 skips it)",
-                    "command": cmd,
-                    "output": "",
-                }
-            )
-            continue
-        stdout, code, _ = checker.rerun(cmd, root)
-        claim = f"the program item's `{cmd}` exits 0" if code == 0 else f"verify: `{cmd}` exits {code}"
-        premises.append({"claim": claim, "command": cmd, "output": (stdout or "").rstrip("\n")})
+    premises = [
+        {"claim": f"verify: execution and verification pending: {cmd}", "command": cmd}
+        for cmd in commands
+        if cmd.split()[0] != "make"
+    ]
     makes = [c for c in commands if c.split()[0] == "make"]
-    checks = run_check_commands(root, list(dict.fromkeys((bundled.get("check") or []) + makes)), tid)
+    checks = [
+        f"- `{c}`: verify: not run; execution and verification pending"
+        for c in dict.fromkeys((bundled.get("check") or []) + makes)
+    ]
 
     plan = read("024-omp-cutover-and-corrective-order.md")
     six = plan[next(i for i, l in enumerate(plan) if l.startswith("## 6.")) :]
@@ -196,7 +159,7 @@ def main():
 
 # AGMSG-TASK {tid} — {title} (plan 024 {args.todo_id})
 
-Generated by scripts/orchestrator/task-from-plan.py from `024-todo.md` row {args.todo_id} and its program items, read from the plan group at {rev}; wave {wave[0] if wave else "none"} ({seat}). Every premise output is the command's own stdout.
+Generated by scripts/orchestrator/task-from-plan.py from `024-todo.md` row {args.todo_id} and its program items, read from the plan group at {rev}; wave {wave[0] if wave else "none"} ({seat}). Commands and Check observations are unverified; no output has been observed.
 
 ## Goal
 
@@ -224,18 +187,45 @@ Everything the todo row {args.todo_id} and its program items do not name.
 (pending: pasted at dispatch)
 ```
 """
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text)
-    # The generator's own text, whose premises it has just run itself, is the trusted text C14 reruns.
-    sha = hashlib.sha256(out.read_bytes()).hexdigest()
-    verdict = subprocess.run(
-        [sys.executable, "-I", checker.__file__, "--root", str(root), "--premises-sha", sha, str(out)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    directory = (root / ".orchestration/tasks").resolve()
+    destination = out if out.is_absolute() else root / out
+    if (
+        not directory.is_relative_to(root)
+        or not destination.resolve().is_relative_to(directory)
+        or destination.is_symlink()
+    ):
+        sys.exit("refused: output must be a new confined file under .orchestration/tasks")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        sys.exit("refused: output already exists")
+    with os.fdopen(fd, "w") as stream:
+        stream.write(text)
+    binding = checker.snapshot(checker.__file__, checker.hashlib.sha256(helper_data).digest())
+    try:
+        verdict = checker.launch(
+            root,
+            checker.executable("uv"),
+            "run",
+            "--no-config",
+            "--no-project",
+            "--offline",
+            "--python",
+            checker.trusted(sys.executable),
+            "--with",
+            "pyyaml",
+            "python",
+            "-I",
+            checker.consume(binding),
+            "--root",
+            root,
+            destination,
+        )
+    finally:
+        binding[0].unlink()
     print(verdict.stdout + verdict.stderr, end="")
-    return 0 if verdict.returncode == 0 else 1
+    return int(verdict.returncode != 0)
 
 
 if __name__ == "__main__":

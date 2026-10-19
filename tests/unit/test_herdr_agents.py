@@ -22,6 +22,14 @@ from pathlib import Path
 
 import tomllib
 
+from tests.unit.test_generate_agent_configs import (
+    all_hooks,
+    load_generator,
+    load_manifest_fixture,
+    render_claude_template,
+)
+from tests.unit.test_claude_worker_settings import run_hook
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 MAKEFILE = ROOT / "Makefile"
@@ -893,7 +901,7 @@ fi
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn(f"delivery set both claude-code {self.workdir.resolve()}", calls)
+        self.assertIn("orchestrator-only.sh", (self.workdir / ".claude/settings.local.json").read_text())
         self.assertNotIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
         self.assertFalse(any(call.startswith(("pane split", "agent start")) for call in calls), calls)
         self.assertIn("Herdr agents workspace: w-attach", result.stdout)
@@ -967,7 +975,7 @@ fi
             [f"identities {self.workdir.resolve()} claude-code"],
         )
 
-    def test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing(
+    def test_bootstrap_only_regenerates_claude_delivery_when_hook_is_missing(
         self,
     ) -> None:
         scripts = self.install_agmsg_fakes()
@@ -979,9 +987,13 @@ fi
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
+            [],
         )
-        self.assertIn("next Claude Code session", result.stderr)
+        settings = self.workdir / ".claude/settings.local.json"
+        self.assertIn("agmsg-session-start.sh", settings.read_text())
+        before = settings.read_text()
+        self.assertEqual(self.run_agmsg_bootstrap_helper().returncode, 0)
+        self.assertEqual(settings.read_text(), before)
 
     def test_bootstrap_only_never_sets_codex_delivery_in_the_main_checkout(self) -> None:
         self.install_agmsg_fakes()
@@ -993,7 +1005,7 @@ fi
         # Workers are seated in linked worktrees, each with its own hooks.
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
+            [],
         )
         self.assertNotIn("/hooks", result.stderr)
 
@@ -1724,6 +1736,7 @@ printf 'status=ok team=dotfiles\\n'
         self.addCleanup(sibling.kill)
         live_owner = f"sid-stdin.{sibling.pid}"
         self.install_orchestrator_seat_fakes(held=(("dotfiles", live_owner),))
+        self.write_executable("ps", "#!/bin/sh\nprintf '%s\\n' " + shlex.quote(str(fake_claude)) + "\n")
 
         result = self.run_attach_helper(
             in_herdr=True,
@@ -1873,6 +1886,32 @@ fi
         ),
     ) -> Path:
         """A git repo with origin/main, a manifest worker_worktree, and path-aware agmsg fakes."""
+        anchor = self.home_dir / "Workspace/dotfiles/home"
+        for relative in (
+            ".chezmoitemplates/claude-worker-settings.json",
+            "dot_claude-worker/modify_private_settings.json",
+        ):
+            target = anchor / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "home" / relative, target)
+        hooks = self.home_dir / ".claude/hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        manifest = json.loads(
+            json.dumps(load_manifest_fixture(self.home_dir)).replace("/render-home", "{{ .chezmoi.homeDir }}")
+        )
+        manifest["claude"]["execution"]["tool_paths"] = dict.fromkeys(
+            manifest["claude"]["execution"]["tool_paths"], "/usr/bin/true"
+        )
+        source = (ROOT / "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl").read_text()
+        source = load_generator().render_orchestrator_guard(manifest, source)
+        (hooks / "orchestrator-only.sh").write_text(
+            render_claude_template(source, self.home_dir, home=str(self.home_dir), raw=True)
+        )
+        (hooks / "orchestrator-only.sh").chmod(0o755)
+        interpreter = self.home_dir / ".claude/hook-bin/python3"
+        interpreter.parent.mkdir(exist_ok=True)
+        if not interpreter.exists():
+            interpreter.symlink_to(Path(sys.executable).resolve())
         for args in (
             ("init", "-q"),
             ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "init"),
@@ -1922,8 +1961,8 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         )
         result = self.run_helper("--bootstrap-agmsg")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
-        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(settings["permissions"]["deny"]))
 
     def test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path(self) -> None:
         worktree = self.write_worktree_seat()
@@ -2138,8 +2177,8 @@ exit {despawn_exit}
         result = self.run_helper("--add-worker", ".claude/worktrees/b1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
-        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(settings["permissions"]["deny"]))
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
             f"workspace create --cwd {worktree} --label project worker b1 --env HERDR_AGENTS_LAYOUT=managed "
@@ -2152,10 +2191,7 @@ exit {despawn_exit}
             calls,
         )
         self.assertFalse(any(call.startswith("join ") for call in calls), calls)
-        self.assertLess(
-            calls.index(f"delivery set both claude-code {worktree}"),
-            next(i for i, c in enumerate(calls) if c.startswith("spawn ")),
-        )
+        self.assertFalse(any(c.startswith("delivery set both claude-code") for c in calls))
         self.assertEqual(options.read_text(), "claude-code:\n  --model: opus\n  --effort: high\n")
         self.assertIn(
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
@@ -5262,6 +5298,293 @@ esac
         self.assertIn('"${HOME}/.local/bin/common"', zprofile)
         self.assertIn('if [[ -d "${directory}" ]]', zprofile)
         self.assertNotIn("typeset -gU path fpath", zshrc)
+
+    def prepare_boundary_fixture(self):
+        worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.add_seat_worktree("worker-c")
+        return worktree
+
+    def run_boundary_hook(self, *args, **kwargs):
+        return run_hook(*args, HOME=str(self.home_dir), **kwargs)
+
+    def test_linked_worktree_uses_worker_user_hooks_and_guarded_main_local_hooks(self):
+        worktree = self.prepare_boundary_fixture()
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((worktree / ".claude/settings.local.json").exists())
+        user = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(user["permissions"]["deny"]))
+        local = json.loads((self.workdir / ".claude/settings.local.json").read_text())
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh", "herdr-agents"):
+            path = (
+                self.home_dir
+                / (".local/bin/common/" if name == "herdr-agents" else ".agents/skills/agmsg/scripts/")
+                / name
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("printf 'anchored-payload\\n'\n")
+        for hook in all_hooks(local):
+            self.assertIn("orchestrator-only.sh", hook["command"])
+            result = self.run_boundary_hook(hook["command"], worktree)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = self.run_boundary_hook(hook["command"], self.home_dir / "Workspace/dotfiles")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("anchored-payload", result.stdout)
+
+    def test_repeated_worker_start_replaces_stale_managed_hooks(self):
+        self.prepare_boundary_fixture()
+        for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(
+                    {
+                        "unrelated": 42,
+                        "permissions": {"ask": ["fixture"]},
+                        "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "stale-unknown-payload"}]}]},
+                    }
+                )
+            )
+        for _ in range(2):
+            result = self.run_helper("--bootstrap-agmsg")
+            self.assertEqual(result.returncode, 0, result.stderr)
+        for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+            text = path.read_text()
+            self.assertNotIn("stale-unknown-payload", text)
+            self.assertEqual(json.loads(text)["unrelated"], 42)
+            self.assertEqual(text.count("check-inbox.sh"), 1)
+
+    def test_add_worker_migrates_legacy_worktree_local_hooks(self):
+        worktree = self.prepare_boundary_fixture()
+        self.write_seat_lifecycle_fakes()
+        legacy = worktree / ".claude/settings.local.json"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        old = shlex.join(
+            [str(self.home_dir / ".agents/skills/agmsg/scripts/check-inbox.sh"), "claude-code", str(worktree)]
+        )
+        for unknown in (False, True):
+            with self.subTest(unknown=unknown):
+                hooks = [{"type": "command", "command": old}]
+                if unknown:
+                    hooks.append({"type": "command", "command": old + " ; touch never-run"})
+                legacy.write_text(json.dumps({"unrelated": 42, "hooks": {"Stop": [{"hooks": hooks}]}}))
+                self.calls_path.write_text("")
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                result = self.run_helper("--add-worker", ".claude/worktrees/worker-c", "--kind", "claude")
+                if unknown:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Stop[0].hooks[1]", result.stderr)
+                    self.assertNotIn("spawn ", self.calls_path.read_text())
+                else:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(json.loads(legacy.read_text())["unrelated"], 42)
+                    paths = (
+                        legacy,
+                        self.home_dir / ".claude-worker/settings.json",
+                        self.home_dir / "Workspace/dotfiles/.claude/settings.local.json",
+                    )
+                    self.assertFalse(all_hooks(json.loads(legacy.read_text())))
+                    self.assertTrue(
+                        all(
+                            h["command"].startswith("/usr/bin/env -i ")
+                            for p in paths
+                            for h in all_hooks(json.loads(p.read_text()))
+                        )
+                    )
+
+    def test_every_settings_hook_has_system_path_prefix(self):
+        worktree = self.prepare_boundary_fixture()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        run = self.home_dir / "store/run"
+        run.mkdir(parents=True)
+        (run / "proj.123.project").write_text("/conflicting-marker-root")
+        resolver = """agmsg_resolve_project() {
+  local pwd_path="$1" type="$2" pid marker
+  if [ "${AGMSG_RESOLVE_PROJECT:-1}" = "0" ]; then
+    printf '%s' "$pwd_path"; return 0
+  fi
+  if pid="$(agmsg_agent_pid "$type")" && [ -n "$pid" ]; then
+    if marker="$(agmsg_read_project_marker "$pid" "$type")" && [ -n "$marker" ]; then
+      printf '%s' "$marker"; return 0
+    fi
+  fi
+  printf '%s' "$pwd_path"
+}
+agmsg_agent_pid() { printf 123; }
+agmsg_read_project_marker() { cat "$AGMSG_STORAGE_PATH/run/proj.$1.project"; }
+printf "%s:%s:%s\\n" "$1" "$(agmsg_resolve_project "$2" "$1")" "${AGMSG_RESOLVE_PROJECT:-}"
+"""
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
+            (scripts / name).write_text("#!/usr/bin/env bash\n" + resolver)
+        poison = self.home_dir / "poison"
+        poison.write_text(f"touch {shlex.quote(str(self.home_dir / 'poison-ran'))}\n")
+        for _ in range(2):
+            result = self.run_helper(
+                "--bootstrap-agmsg", extra_env={"AGMSG_STORAGE_PATH": str(self.home_dir / "store")}
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+                for hook in all_hooks(json.loads(path.read_text())):
+                    command = hook["command"]
+                    self.assertTrue(command.startswith("/usr/bin/env -i PATH=/usr/bin:/bin HOME="))
+                    self.assertEqual(hook["onFailure"], "block")
+                    if "agmsg" in command:
+                        self.assertIn("AGMSG_RESOLVE_PROJECT=0", command)
+                        self.assertIn("AGMSG_STORAGE_PATH=", command)
+                    output = self.run_boundary_hook(command, worktree, BASH_ENV=str(poison))
+                    self.assertEqual(output.returncode, 0, output.stderr)
+                    if path.parent.name == ".claude-worker":
+                        self.assertIn("claude-code:" + str(worktree) + ":0", output.stdout)
+                        control = self.run_boundary_hook(command.replace("AGMSG_RESOLVE_PROJECT=0 ", ""), worktree)
+                        self.assertIn("/conflicting-marker-root", control.stdout)
+                        self.run_boundary_hook(command.removeprefix("/usr/bin/env -i "), worktree, BASH_ENV=str(poison))
+                        self.assertTrue((self.home_dir / "poison-ran").exists())
+                        (self.home_dir / "poison-ran").unlink()
+            self.assertFalse((self.home_dir / "poison-ran").exists())
+
+    def test_every_worker_launch_receives_dedicated_policy_and_private_caches(self):
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        original = self.bin_dir / "herdr.original"
+        (self.bin_dir / "herdr").rename(original)
+        capture = self.home_dir / "actual-worker.json"
+        self.write_executable(
+            "herdr",
+            f"""#!{sys.executable}
+import json,os,subprocess,sys
+if sys.argv[1:3] == ['tab','create']:
+    env=os.environ.copy()
+    for i,arg in enumerate(sys.argv):
+        if arg=='--env':
+            key,value=sys.argv[i+1].split('=',1); env[key]=value
+    subprocess.run([sys.executable,'-I','-c', {repr("import json,os; from pathlib import Path; Path(" + repr(str(capture)) + ").write_text(json.dumps({k: os.environ.get(k) for k in ('UV_CACHE_DIR','UV_PYTHON_INSTALL_DIR','CLAUDE_CONFIG_DIR')}))")}],env=env,check=True)
+    print('{{"result":{{}}}}')
+else:
+    os.execv({str(original)!r},[str({str(original)!r}),*sys.argv[1:]])
+""",
+        )
+        for managed in (False, True):
+            for kind in ("codex", "claude"):
+                options = self.write_seat_lifecycle_fakes()
+                if managed:
+                    self.write_pair_workspace()
+                else:
+                    self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+                    self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+                spawn.write_text(
+                    spawn.read_text().replace(
+                        "#!/usr/bin/env bash\n",
+                        '#!/usr/bin/env bash\n/bin/bash -c \'herdr tab create --cwd "$1"\' _ "$4"\n',
+                        1,
+                    )
+                )
+                name = f"route-{managed}-{kind}"
+                result = self.run_helper(
+                    "--add-worker",
+                    ".claude/worktrees/" + name,
+                    "--kind",
+                    kind,
+                    extra_env={
+                        "CLAUDE_CONFIG_DIR": "/poison",
+                        "UV_CACHE_DIR": "/poison",
+                        "UV_PYTHON_INSTALL_DIR": "/poison",
+                    },
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                actual = json.loads(capture.read_text())
+                cache = str(self.workdir.resolve() / ".claude/worktrees" / name / ".uv-cache")
+                self.assertEqual(actual["UV_CACHE_DIR"], cache)
+                self.assertEqual(actual["UV_PYTHON_INSTALL_DIR"], cache + "/python")
+                if kind == "claude":
+                    self.assertEqual(actual["CLAUDE_CONFIG_DIR"], str(self.home_dir / ".claude-worker"))
+                else:
+                    self.assertIn("--sandbox: workspace-write", options.read_text())
+                    self.assertIn("--ask-for-approval: never", options.read_text())
+
+    def test_worker_launch_adds_no_unsandboxed_route(self):
+        source = SCRIPT.read_text()
+        for forbidden in ("danger-full-access", "dangerously-skip-permissions", "GH_CONFIG_DIR"):
+            self.assertNotIn(forbidden, source)
+        worker = json.loads((ROOT / "home/.chezmoitemplates/claude-worker-settings.json").read_text())
+        self.assertEqual(worker["sandbox"]["excludedCommands"], [])
+        self.assertFalse(worker["sandbox"]["allowUnsandboxedCommands"])
+        self.assertNotIn("allowUnixSockets", worker["sandbox"]["network"])
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(worker["permissions"]["deny"]))
+
+    def test_worker_playbook_requires_every_command_inside_sandbox(self):
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        sentence = "Every worker command, including gh, git push and authenticated git fetch, runs inside the worker's sandbox; no worker command runs outside it."
+        self.assertIn(sentence, skill.split("## Worker Playbook")[1].split("5.")[0])
+        self.assertNotIn(
+            "a Claude seat runs three commands outside", skill.split("## Worker Playbook")[1].split("5.")[0]
+        )
+
+    def test_worker_uv_cache_directory_is_gitignored(self):
+        self.assertIn(".uv-cache/", (ROOT / ".gitignore").read_text().splitlines())
+        self.write_worktree_seat()
+        shutil.copyfile(ROOT / ".gitignore", self.workdir / ".gitignore")
+        command = (
+            [
+                "/usr/bin/env",
+                "-i",
+                "GIT_CONFIG_NOSYSTEM=1",
+                "GIT_CONFIG_GLOBAL=/dev/null",
+                "GIT_NO_LAZY_FETCH=1",
+                str(Path(shutil.which("git")).resolve()),
+                "-C",
+                str(self.workdir),
+            ]
+            + "-c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always -c submodule.recurse=false check-ignore -q .uv-cache/item".split()
+        )
+        self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
+
+    def test_hook_descendants_do_not_execute_path_interpreters(self):
+        self.prepare_boundary_fixture()
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (scripts / "identities.sh").write_text(
+            '#!/usr/bin/env bash\nprintf "descendant:%s:%s\\n" "$BASH_VERSION" "$PATH"\n'
+        )
+        (scripts / "identities.sh").chmod(0o755)
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
+            (scripts / name).write_text('#!/usr/bin/env bash\n"' + str(scripts / "identities.sh") + '"\n')
+        for name in ("bash", "python3"):
+            self.write_executable(name, "#!/bin/sh\nexit 99\n")
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        for hook in all_hooks(settings):
+            output = self.run_boundary_hook(hook["command"], self.workdir, PATH=str(self.bin_dir) + ":/usr/bin:/bin")
+            self.assertEqual(output.returncode, 0, output.stderr)
+            self.assertIn("descendant:", output.stdout)
+            self.assertIn("/usr/bin:/bin", output.stdout)
+        helper = ROOT / "home/dot_local/bin/common/executable_herdr-agent-state.sh"
+        address = self.home_dir / "state.sock"
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
+            server.bind(str(address))
+            server.listen(1)
+            received = []
+
+            def report():
+                client, _ = server.accept()
+                with client:
+                    received.append(json.loads(client.recv(8192)))
+                    client.sendall(b"{}")
+
+            thread = threading.Thread(target=report, daemon=True)
+            thread.start()
+            event = json.dumps(
+                {"hook_event_name": "SessionStart", "session_id": "fixture-session", "source": "startup"}
+            )
+            result = subprocess.run(
+                ["/bin/sh", str(helper), "/usr/bin/python3", "session", "fixture:p1", str(address)],
+                input=event,
+                text=True,
+                capture_output=True,
+                env=dict(os.environ, PATH=str(self.bin_dir) + ":/usr/bin:/bin"),
+            )
+            thread.join(timeout=2)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(received[0]["method"], "pane.report_agent_session")
+            self.assertEqual(received[0]["params"]["agent_session_id"], "fixture-session")
 
 
 if __name__ == "__main__":

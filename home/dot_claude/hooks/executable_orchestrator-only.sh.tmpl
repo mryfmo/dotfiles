@@ -1,0 +1,98 @@
+#!/bin/bash
+# @file orchestrator-only.sh
+# @brief Run fixed hook payloads only for the anchored orchestrator launch root.
+# @arg $1 string Fixed payload selector from the rendered policy.
+# @arg $2 string Herdr pane identity for the state-report selector only.
+set -eu
+# BEGIN TRUSTED POLICY
+{{ output "/usr/bin/env" "-i" "PATH=/usr/bin:/bin" "/usr/bin/python3" "-I" "-c" "\nimport glob, json, os, shlex, sys\nfrom pathlib import Path\nhome = Path(sys.argv[2])\npolicy = json.loads(sys.argv[1].replace(\"{{ .chezmoi.homeDir }}\", json.dumps(str(home))[1:-1]))\ndef binary(pattern):\n    pattern = str(home) + pattern[1:] if pattern.startswith(\"~/\") else pattern\n    if not Path(pattern).is_absolute() or \":\" in pattern or \"shims\" in Path(pattern).parts:\n        raise SystemExit(\"invalid executable binding: \" + pattern)\n    matches = glob.glob(pattern)\n    if len(matches) != 1:\n        raise SystemExit(\"missing or ambiguous executable binding: \" + pattern)\n    path = Path(matches[0]).resolve(strict=True)\n    if not path.is_file() or not os.access(path, os.X_OK) or any(p.casefold() in (\"shims\", \".cache\", \".uv-cache\") for p in path.parts) or \"/.claude/worktrees/\" in str(path).casefold():\n        raise SystemExit(\"untrusted executable binding: \" + str(path))\n    return str(path)\npolicy[\"home\"] = str(home)\npolicy[\"tools\"] = {name: binary(pattern) for name, pattern in policy[\"tools\"].items()}\nprint(\"python=\" + shlex.quote(binary(policy.pop(\"bootstrap\"))))\nprint(\"policy=\" + shlex.quote(json.dumps(policy)))\n" "{\"bootstrap\": \"/usr/bin/python3\", \"root\": \"{{ .chezmoi.homeDir }}/Workspace/dotfiles\", \"tools\": {\"bash\": \"/bin/bash\", \"python3\": \"~/.local/share/mise/installs/python/latest/bin/python3\", \"git\": \"/usr/bin/git\", \"herdr\": \"~/.local/share/mise/installs/github-ogulcancelik-herdr/latest/herdr\", \"jq\": \"~/.local/share/mise/installs/jq/latest/jq\", \"ruff\": \"~/.local/share/mise/installs/ruff/latest/*/ruff\", \"prettier\": \"~/.local/share/mise/installs/npm-prettier/latest/bin/prettier\", \"node\": \"~/.local/share/mise/installs/node/latest/bin/node\", \"terminal-browser\": \"~/.local/bin/terminal-browser\"}, \"path\": \"{{ .chezmoi.homeDir }}/.claude/hook-bin:/usr/bin:/bin\", \"commands\": {\"enforce-uv.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.claude/hooks/enforce-uv.sh\"]}, \"format-edited-files.py\": {\"mode\": \"format\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{{ .chezmoi.homeDir }}/.claude/hooks/format-edited-files.py\"]}, \"project-map-reload.sh\": {\"mode\": \"project-map\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.claude/hooks/project-map-reload.sh\"]}, \"herdr-agent-state.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agent-state.sh\", \"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"session\", \"{pane}\", \"{{ .chezmoi.homeDir }}/.config/herdr/herdr.sock\"]}, \"agent-session-staleness\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness\", \"hook\"]}, \"permgate\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{{ .chezmoi.homeDir }}/.local/bin/common/permgate\", \"claude\"]}, \"contextdb_hook.py\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{checkout}/.claude/hooks/contextdb_hook.py\"]}, \"contextdb_recover.py\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{checkout}/.claude/hooks/contextdb_recover.py\"]}, \"agent-stop-gate.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{checkout}/scripts/agent-stop-gate.sh\"]}, \"agmsg-session-start.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-start.sh\", \"claude-code\", \"{checkout}\"]}, \"agmsg-session-end.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-end.sh\", \"claude-code\", \"{checkout}\"]}, \"agmsg-check-inbox.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/check-inbox.sh\", \"claude-code\", \"{checkout}\"]}, \"herdr-agents\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agents\", \"--attach\"]}}}" .chezmoi.homeDir }}
+# END TRUSTED POLICY
+exec "${python}" -I -c '
+import glob, json, os, subprocess, sys
+from pathlib import Path
+policy = json.loads(sys.argv[1])
+home = Path(policy["home"])
+def expand(value):
+    return value.replace("{checkout}", str(root))
+root = home
+anchor = expand(policy["root"])
+project = os.environ.get("CLAUDE_PROJECT_DIR", "")
+try:
+    root = Path(anchor).resolve(strict=True)
+    if "/.claude/worktrees/" in (str(root) + "/").casefold():
+        raise SystemExit("untrusted checkout anchor")
+    if not project or not root.samefile(Path(project).resolve(strict=True)):
+        raise SystemExit(0)
+except OSError:
+    raise SystemExit(0)
+selector, *arguments = sys.argv[2:]
+if arguments and (selector != "herdr-agent-state.sh" or len(arguments) != 1):
+    raise SystemExit("unexpected hook arguments")
+chosen = policy["commands"][selector]
+mode = chosen["mode"]
+command = [expand(word).replace("{pane}", arguments[0] if arguments else "") for word in chosen["argv"]]
+raw = sys.stdin.buffer.read()
+if mode in ("format", "project-map"):
+    def paths(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in ("file_path", "path") and isinstance(item, str):
+                    yield (root / Path(item).expanduser()).resolve()
+                else:
+                    yield from paths(item)
+        elif isinstance(value, list):
+            for item in value:
+                yield from paths(item)
+    files = list(paths(json.loads(raw).get("tool_input", {})))
+    def beneath(path, parent):
+        return parent.exists() and any(p.exists() and p.samefile(parent) for p in (path, *path.parents))
+    if not files or any(not beneath(p, root) or beneath(p, root / ".claude/worktrees") for p in files):
+        raise SystemExit(0)
+tool_path = expand(policy["path"])
+entries = tool_path.split(":")
+if any(not p or not Path(p).is_absolute() or "shims" in Path(p).parts or "/.claude/worktrees/" in (str(Path(p).resolve()) + "/").casefold() for p in entries):
+    raise SystemExit("invalid trusted tool PATH")
+target = home / ".claude/hook-bin"
+bindings = policy["tools"]
+if bindings:
+    if entries[0] != str(target):
+        raise SystemExit("invalid private executable directory")
+    selected = {}
+    for name, pattern in bindings.items():
+        if "/" in name or name in ("", ".", ".."):
+            raise SystemExit("invalid executable name")
+        pattern = str(home) + pattern[1:] if pattern.startswith("~/") else pattern
+        if not Path(pattern).is_absolute() or ":" in pattern or "shims" in Path(pattern).parts:
+            raise SystemExit("invalid executable binding: " + pattern)
+        matches = glob.glob(pattern)
+        if len(matches) != 1:
+            raise SystemExit("missing or ambiguous executable binding: " + pattern)
+        path = Path(matches[0]).resolve(strict=True)
+        parts = [p.casefold() for p in path.parts]
+        if not path.is_file() or not os.access(path, os.X_OK) or "shims" in parts or ".uv-cache" in parts or ".cache" in parts or "/.claude/worktrees/" in str(path).casefold():
+            raise SystemExit("untrusted executable binding: " + str(path))
+        selected[name] = path
+    if target.is_symlink() or "/.claude/worktrees/" in str(target.resolve()).casefold():
+        raise SystemExit("untrusted executable directory")
+    target.mkdir(parents=True, exist_ok=True, mode=0o700)
+    target.chmod(0o700)
+    for child in target.iterdir():
+        if child.name not in selected or not child.is_symlink():
+            raise SystemExit("unexpected executable directory entry: " + str(child))
+    for name, path in selected.items():
+        link = target / name
+        if link.is_symlink() and link.resolve() == path:
+            continue
+        temporary = target.parent / (".hook-bin-" + name + "-" + str(os.getpid()))
+        temporary.symlink_to(path)
+        temporary.replace(link)
+os.environ["PATH"] = tool_path
+os.environ["HERDR_SOCKET_PATH"] = str(home / ".config/herdr/herdr.sock")
+for index in (0, 2 if command[1] == "-I" else 1):
+    path = Path(command[index]).resolve(strict=True)
+    if not Path(command[index]).is_absolute() or "/.claude/worktrees/" in str(path).casefold() or any(part in path.parts for part in ("shims", ".cache", ".uv-cache")):
+        raise SystemExit("untrusted hook executable")
+    command[index] = str(path)
+status = subprocess.run(command, input=raw, cwd=root).returncode
+raise SystemExit(status if status >= 0 else 128 - status)
+' "${policy}" "$@"

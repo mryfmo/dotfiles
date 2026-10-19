@@ -268,8 +268,7 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
         for token in (
             "WebFetch tool, not Bash `curl`",
             "Fetch and fast-forward inside the sandbox",
-            "On both platforms a Claude seat runs three commands outside the sandbox through the permission gate:",
-            "`gh`, `git push`, and an authenticated `git fetch`",
+            "Every worker command, including gh, git push and authenticated git fetch, runs inside the worker's sandbox; no worker command runs outside it.",
             "-worker-crit.json",
             "writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox",
             "(a Claude seat writes them through the permission gate, step 4)",

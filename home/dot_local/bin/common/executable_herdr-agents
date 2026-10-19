@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# BEGIN TRUSTED HOOK BINDINGS
+ORCHESTRATOR_CHECKOUT="${HOME}/Workspace/dotfiles"
+HOOK_SHELL="/bin/bash"
+HOOK_BOOTSTRAP_PYTHON="/usr/bin/python3"
+# END TRUSTED HOOK BINDINGS
+
 # @file herdr-agents
 # @brief Start the Claude Code orchestrator in Herdr and seat workers on demand.
 # @description
@@ -334,10 +340,7 @@ function ensure_worker_identity() {
     printf '%s\t%s\n' "${team}" "${name}"
 }
 
-# @description Point agmsg delivery at the worker worktree when its hook is
-#   missing: `both` for claude-code (turn delivery; upstream session-start.sh
-#   skips sessions under .claude/worktrees, #367, so no Monitor watch starts
-#   there), `turn` for codex. delivery.sh bakes the path into the hook.
+# @description Regenerate Claude worker user hooks or install Codex turn delivery.
 # @arg $1 string Worker kind.
 # @arg $2 path Absolute worker worktree path.
 function ensure_worker_delivery() {
@@ -349,9 +352,25 @@ function ensure_worker_delivery() {
     [[ -x ${delivery} ]] || return 0
     mkdir -p "${log_file%/*}"
     if [[ ${kind} == claude ]]; then
-        jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
-            "${worktree}/.claude/settings.local.json" > /dev/null 2>&1 && return 0
-        "${delivery}" set both claude-code "${worktree}" >> "${log_file}" 2>&1 || true
+        local settings="${HOME}/.claude-worker/settings.json" input temporary legacy="${worktree}/.claude/settings.local.json"
+        if [[ -f ${legacy} ]]; then
+            temporary="$(mktemp "${legacy}.XXXXXX")"
+            if ! CHEZMOI_HOME_DIR="${HOME}" "${HOOK_BOOTSTRAP_PYTHON}" -I \
+                "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --legacy "${worktree}" < "${legacy}" > "${temporary}"; then
+                rm -- "${temporary}"
+                return 1
+            fi
+            mv -- "${temporary}" "${legacy}"
+        fi
+        mkdir -p "${settings%/*}"
+        input="${settings}"
+        [[ -f ${input} ]] || input=/dev/null
+        temporary="$(mktemp "${settings}.XXXXXX")"
+        CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" \
+            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" < "${input}" > "${temporary}"
+        mv -- "${temporary}" "${settings}"
+        write_claude_delivery "${settings}" "${worktree}" worker
+        write_claude_delivery "${ORCHESTRATOR_CHECKOUT}/.claude/settings.local.json" "${ORCHESTRATOR_CHECKOUT}" main
     else
         jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
             "${worktree}/.codex/hooks.json" > /dev/null 2>&1 && return 0
@@ -361,17 +380,45 @@ function ensure_worker_delivery() {
     fi
 }
 
-# @description Add merge-denial rules to a Claude worker worktree's local
-#   settings, preserving hooks and other permissions. Main checkouts and Codex
-#   workers are untouched.
+# @description Regenerate delivery and guarded attachment hooks from trusted bindings.
+# @arg $1 path Settings destination.
+# @arg $2 path Explicit project identity.
+# @arg $3 string Worker user or main local settings.
+function write_claude_delivery() {
+    local settings="$1" project="$2" role="$3" prefix storage="" guard="" attach="" start end stop temporary input
+    prefix="/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"\$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"\${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"\${CLAUDE_ENV_FILE}\" "
+    [[ ! ${AGMSG_STORAGE_PATH+x} ]] || printf -v storage 'AGMSG_STORAGE_PATH=%q ' "${AGMSG_STORAGE_PATH}"
+    prefix+="AGMSG_RESOLVE_PROJECT=0 ${storage}"
+    if [[ ${role} == main ]]; then
+        guard="\"\$HOME/.claude/hooks/orchestrator-only.sh\" "
+        attach="${prefix}HERDR_ENV=\"\${HERDR_ENV}\" HERDR_PANE_ID=\"\${HERDR_PANE_ID}\" HERDR_WORKSPACE_ID=\"\${HERDR_WORKSPACE_ID}\" ${guard}"
+        attach+="herdr-agents"
+        start="${prefix}${guard}agmsg-session-start.sh" end="${prefix}${guard}agmsg-session-end.sh" stop="${prefix}${guard}agmsg-check-inbox.sh"
+    else
+        project="\"\${CLAUDE_PROJECT_DIR}\""
+        printf -v start '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/session-start.sh" "${project}"
+        printf -v end '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/session-end.sh" "${project}"
+        printf -v stop '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/check-inbox.sh" "${project}"
+    fi
+    mkdir -p "${settings%/*}"
+    input="${settings}"
+    [[ -f ${input} ]] || input=/dev/null
+    temporary="$(mktemp "${settings}.XXXXXX")"
+    jq -s --arg start "${start}" --arg end "${end}" --arg stop "${stop}" --arg attach "${attach}" '
+        def entry($c): {hooks:[{type:"command",command:$c,onFailure:"block"}]};
+        .[0] // {} | .hooks = {SessionStart:[entry($start)],SessionEnd:[entry($end)],Stop:[entry($stop)]} |
+        if $attach != "" then .hooks.SessionStart += [entry($attach)] else . end' "${input}" > "${temporary}"
+    mv -- "${temporary}" "${settings}"
+}
+
+# @description Retain native merge denials in the dedicated Claude worker user settings.
 # @arg $1 string Worker kind.
 # @arg $2 path Absolute worker worktree path.
 function ensure_worker_merge_denials() {
     local kind="$1" worktree="$2"
-    local settings="${worktree}/.claude/settings.local.json" input temporary
+    local settings="${HOME}/.claude-worker/settings.json" input temporary
 
-    [[ ${kind} == claude && -f ${worktree}/.git ]] || return 0
-    is_main_checkout "${worktree}" && return 0
+    [[ ${kind} == claude ]] || return 0
     mkdir -p "${settings%/*}"
     input="${settings}"
     [[ -f ${input} ]] || input=/dev/null
@@ -1106,7 +1153,7 @@ function check_worker_linkage() {
         else
             printf 'herdr-agents: read_at/PONG query: the agmsg db path for team %s could not be resolved.\n' "${team}" >&2
         fi
-        hint=attach-a-client
+        hint='attach-a-client'
         [[ -z ${placement} ]] || hint=poke
         printf 'linkage=unreached rc=%s hint=%s\n' "${rc}" "${hint}"
         return "${rc}"
@@ -1407,6 +1454,12 @@ function remove_retired_pre_push_stub() {
 function bootstrap_agmsg() {
     local workdir="$1"
 
+    if [[ -f ${workdir}/.git ]]; then
+        ensure_worker_delivery claude "${workdir}"
+        ensure_worker_merge_denials claude "${workdir}"
+        return
+    fi
+
     if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
         printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
         return 0
@@ -1429,13 +1482,7 @@ function bootstrap_agmsg() {
         return 0
     fi
     mkdir -p "${log_file%/*}"
-    if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
-        'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
-        "${claude_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
-            printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
-        fi
-    fi
+    write_claude_delivery "${claude_hooks_file}" "${workdir}" main
 
     if [[ ! -x ${doctor} ]]; then
         printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2
@@ -1890,10 +1937,27 @@ if [[ ${add_worker_mode} == true ]]; then
     # exists, the orchestrator tab untouched), and --project opts the join
     # out of project resolution. It runs in the background so a claude worker's
     # trust dialog is accepted during the readiness wait, not after it.
-    HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
-        "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
-        --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
-        ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"} &
+    (
+        export UV_CACHE_DIR="${seat_dir}/.uv-cache" UV_PYTHON_INSTALL_DIR="${seat_dir}/.uv-cache/python"
+        [[ ${seat_kind} != claude ]] || export CLAUDE_CONFIG_DIR="${HOME}/.claude-worker"
+        # @description Bind the new pane environment even in an existing workspace.
+        # shellcheck disable=SC2329 # Invoked by the upstream spawn process.
+        function herdr() {
+            if [[ $1 == tab && $2 == create ]]; then
+                local -a bindings=(--env "UV_CACHE_DIR=${UV_CACHE_DIR}" --env "UV_PYTHON_INSTALL_DIR=${UV_PYTHON_INSTALL_DIR}")
+                [[ ${seat_kind} != claude ]] || bindings+=(--env "CLAUDE_CONFIG_DIR=${CLAUDE_CONFIG_DIR}")
+                command herdr "$@" "${bindings[@]}"
+            else
+                command herdr "$@"
+            fi
+        }
+        export seat_kind
+        export -f herdr
+        HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
+            "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
+            --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
+            ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"}
+    ) &
     spawn_pid=$!
     [[ ${seat_kind} != claude ]] || accept_spawned_claude_trust_dialog "${seat_workspace_id}" "${seat_panes}" "${spawn_pid}"
     spawn_rc=0

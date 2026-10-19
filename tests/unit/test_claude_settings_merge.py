@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+from tests.unit.test_generate_agent_configs import all_hooks
+
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
 
@@ -588,12 +590,11 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                         settings["sandbox"]["network"].get("allowMachLookup", []),
                     )
                     self.assertEqual(
-                        ["agmsg-dispatch *"]
-                        + (
-                            ["gh *", "herdr-agents *", f"{self.home_dir}/.agents/skills/agmsg/scripts/actas-claim.sh *"]
-                            if os_name == "Linux"
-                            else []
-                        ),
+                        [
+                            "agmsg-dispatch *",
+                            "herdr-agents *",
+                            f"{self.home_dir}/.agents/skills/agmsg/scripts/actas-claim.sh *",
+                        ],
                         settings["sandbox"]["excludedCommands"],
                     )
                     if "sandbox" in json.loads(current):
@@ -604,6 +605,37 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         output = self.merge({"model": "managed", "enabledPlugins": {}}, "")
 
         self.assertTrue(output.endswith("\n"))
+
+    def test_orchestrator_settings_keep_existing_policy(self):
+        from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture, render_claude_template
+
+        module = load_generator()
+        manifest = load_manifest_fixture(self.source_dir)
+        policy = render_claude_template(module.render_claude_settings(manifest), self.source_dir)
+        before = {
+            "alwaysThinkingEnabled": True,
+            "autoUpdates": False,
+            "autoUpdatesChannel": "stable",
+            "plansDirectory": "./.agents/worklog/claude",
+            "disableSkillShellExecution": True,
+            "includeGitInstructions": True,
+            "statusLine": {"type": "command", "command": "ccstatusline"},
+        }
+        self.assertEqual({key: policy[key] for key in before}, before)
+        self.assertEqual(policy["permissions"], manifest["claude"]["permissions"])
+        self.assertEqual(policy["env"], manifest["claude"]["env"])
+        self.assertTrue(policy["sandbox"]["failIfUnavailable"])
+        self.assertIn("~/.cache/uv", policy["sandbox"]["filesystem"]["allowWrite"])
+        for hook in all_hooks(policy):
+            self.assertEqual(hook["onFailure"], "block")
+            self.assertTrue(hook["command"].startswith("/usr/bin/env -i PATH="))
+        first = self.merge(policy, json.dumps({"unrelated": 1}))
+        self.assertEqual(self.merge(policy, first), first)
+        merged = json.loads(first)
+        self.assertEqual(merged["unrelated"], 1)
+        appended = [h for g in merged["hooks"]["SessionStart"] for h in g["hooks"] if "--attach" in h["command"]]
+        self.assertEqual(len(appended), 1)
+        self.assertNotIn("onFailure", appended[0])  # Existing modify script adds runtime integration separately.
 
 
 if __name__ == "__main__":

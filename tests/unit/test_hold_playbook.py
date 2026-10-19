@@ -133,6 +133,17 @@ class HoldPlaybookTests(unittest.TestCase):
                 self.assertIn(repr(cls), result.stderr)
                 self.assertEqual(before, self.snapshot())
 
+    def test_an_absent_vocabulary_is_refused_as_the_orchestrator_record(self):
+        # Revise 2 (the local review of 9f5eaee): a clean checkout has no classes.yaml, the orchestrator's record.
+        (self.tree / ".orchestration/learning/classes.yaml").unlink()
+        before = self.snapshot()
+        result = self.run_script(TASK, "records-form")
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn(".orchestration/learning/classes.yaml", result.stderr)
+        self.assertIn("the orchestrator's record of plan 024 P1-13", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual(before, self.snapshot())
+
     def test_existing_replan_exits_4(self):
         self.assertEqual(3, self.run_script(TASK, "records-form").returncode)
         before = self.snapshot()

@@ -33,6 +33,7 @@ def main(record, sweep, *audits):
         sha7 = marker.group(1) if marker else re.search(r"-audit-([0-9a-f]{7})\.md", path).group(1)
         count = len(re.findall(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", text, re.MULTILINE))
         need += [f"audit:{sha7}:{n}" for n in range(1, count + 1)]
+    need = list(dict.fromkeys(need))  # an audit and its inherited copy name the same ids (audit:274a536:5)
     gaps = [key for key in need if key not in rows]
     print(f"ledger rows {len(rows)}; findings {len(need)}; gaps {len(gaps)}", *(f"GAP {g}" for g in gaps), sep="\n")
     return 1 if gaps else 0

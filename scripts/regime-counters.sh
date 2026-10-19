@@ -22,8 +22,10 @@
 #   object with a string `id` and a `[a-z0-9-]` `class` (read with jq only):
 #   every non-advisory-p2 class with three or more rows prints `S1: class=<slug>
 #   count=<n> re-plan=present|missing source=record`, present when the block's
-#   `replans` object names the class with specification, design, implementation
-#   and verification as non-empty strings, the object scripts/require-crit-review.py reads.
+#   `replans` object passes the gate's whole-object schema (absent counts as empty;
+#   every key a class slug, every entry exactly specification, design, implementation
+#   and verification, each a string with text after Python's str.strip()) and names
+#   the class: the object scripts/require-crit-review.py reads.
 #   Without such a record (none, or a prose one), Codex Bot
 #   thread titles grouped by their first three words (badge stripped,
 #   lower-cased) seen three or more times on the PR print `S1: candidate
@@ -165,6 +167,12 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
         else [$p[].original_commit_id | select(. as $o | any($shas[$i + 1:][]; . == $o))] | unique end end;
   def hm: (. / 60 | floor) as $m | "\($m / 60 | floor):\($m % 60 | tostring | if length < 2 then "0" + . else . end)";
   def list: if length > 0 then join(",") else "-" end;
+  # The re-plan schema of the gate (require-crit-review.py record_field_errors, acceptance-front-matter.py): replans as
+  # a whole is {<class slug>: exactly the four keys, each a string with text after str.strip() in Python}
+  # (audit:274a536:1); the class is the 29 characters str.strip() removes, which jq \s does not all match.
+  def text: type == "string" and test("[^\t\n\u000b\f\r\u001c-\u001f \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]");
+  def replan: type == "object" and keys == ["design", "implementation", "specification", "verification"] and all(.[]; text);
+  def replans: (if . == null then {} else . end) | type == "object" and all(to_entries[]; (.key | test("^[a-z0-9-]+\\z")) and (.value | replan));
   bot as $b | ($b | if type == "array" then length else . end) as $n
   | ([($c.tasks | length) - 1, 0] | max) as $amendments | ([($c.results | length) - 1, 0] | max) as $revises
   | "task=\($t) tasks=\($c.tasks | length) amendments=\($amendments) questions=\($c.questions | length) results=\($c.results | length) withdrawn=\($c.withdrawn | length) revises=\($revises) first_result_head=\($c.head // "none") bot_p1_heads_after_result=\($n) audits=unknown wall=\($c.first // "none")..\($c.last // "none") (\(if $c.first and $c.last then ($c.last | fromdateiso8601) - ($c.first | fromdateiso8601) | hm else "-" end)) source=\($s)",
@@ -172,9 +180,7 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
     (if $state == "skipped" then empty
       elif $rec.rec != null then [$rec.rec.ledger[].class | select(. != "advisory-p2")] | group_by(.)[] | select(length >= 3)
-        | .[0] as $class | ($rec.rec.replans | if type == "object" then .[$class] else null end) as $r
-        | (($r | type) == "object" and ([("specification", "design", "implementation", "verification") as $k
-            | $r[$k] | type == "string" and test("\\S")] | all)) as $replan
+        | .[0] as $class | ($rec.rec.replans | replans and (.[$class] | replan)) as $replan
         | "S1: class=\($class) count=\(length) re-plan=\(if $replan then "present" else "missing" end) source=record"
       elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
         | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")

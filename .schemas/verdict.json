@@ -1,29 +1,12 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "verdict",
-  "type": "object",
-  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "title": "verdict", "type": "object", "additionalProperties": false,
   "required": ["verdict", "pr", "head", "task_id", "conditions", "inputs_sha256", "generated_at"],
   "properties": {
-    "verdict": {"enum": ["accept", "revise", "hold"]},
-    "pr": {"type": "integer", "minimum": 1},
-    "head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
-    "conditions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "ok", "evidence"],
-        "properties": {
-          "id": {"type": "integer", "minimum": 1, "maximum": 9},
-          "ok": {"type": "boolean"},
-          "evidence": {"type": "string"}
-        }
-      }
-    },
+    "verdict": {"enum": ["accept", "revise", "hold"]}, "pr": {"type": "integer", "minimum": 1},
+    "head": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "conditions": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "ok", "evidence"],
+      "properties": {"id": {"type": "integer", "minimum": 1, "maximum": 9}, "ok": {"type": "boolean"}, "evidence": {"type": "string"}}}},
     "inputs_sha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
-    "generated_at": {"type": "string", "format": "date-time"},
-    "revise_line": {"type": "string", "pattern": "^AGMSG-ACCEPTANCE v1 "}
+    "generated_at": {"type": "string", "format": "date-time"}, "revise_line": {"type": "string", "pattern": "^AGMSG-ACCEPTANCE v1 "}
   }
 }

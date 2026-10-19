@@ -35,12 +35,12 @@ class VerdictTest(unittest.TestCase):
     calls_log = lambda self: (self.calls / "calls.log").read_text() if (self.calls / "calls.log").exists() else ""  # noqa: E731
     replace = lambda self, rel, old, new: self.write(rel, (self.repo / rel).read_text().replace(old, new))  # noqa: E731
     git = lambda self, *args: self.run_in_repo("git", "-c", "commit.gpgsign=false", *args).stdout.strip()  # noqa: E731
+    sh = lambda self, *args: self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", *args)  # noqa: E731
 
     def setUp(self):
         self.temp = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
         self.repo, self.calls = self.temp / "repo", self.temp / "calls"
-        for d in (self.repo / "scripts/orchestrator", self.calls):
-            d.mkdir(parents=True)
+        (self.repo / "scripts/orchestrator").mkdir(parents=True), self.calls.mkdir()
         for name in COPIES:
             shutil.copy(ROOT / "scripts" / name, self.repo / "scripts" / name)
         shutil.copytree(ROOT / ".schemas", self.repo / ".schemas")
@@ -49,20 +49,16 @@ class VerdictTest(unittest.TestCase):
         environ = {k: v for k, v in os.environ.items() if k != "PRECHECK_REQUIRED"}
         self.env = {**environ, **GIT_ENV, "PATH": f"{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"}
         origin = str(self.temp / "origin.git")
-        steps = (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-q", "-m", "init"))
-        for args in (*steps, ("init", "-q", "--bare", origin)):
-            self.git(*args)
-        for args in (("remote", "add", "origin", origin), ("push", "-q", "origin", "main"), ("fetch", "-q", "origin")):
+        steps = (("init", "-qb", "main"), ("add", "."), ("commit", "-qm", "init"), ("init", "-q", "--bare", origin))
+        for args in (*steps, ("remote", "add", "origin", origin), ("push", "-q", "origin", "main"), ("fetch", "-q")):
             self.git(*args)
         self.git("switch", "-q", "-c", "pr")
         self.write("scripts/orchestrator/x.sh", "echo x\n")
         self.write("tests/unit/t.py", "x = 1\n")
-        self.git("add", ".")
-        self.git("commit", "-q", "-m", "code")
+        self.git("add", "."), self.git("commit", "-q", "-m", "code")
         self.precheck = json.dumps({"head": self.git("rev-parse", "HEAD")})
         self.write(f".orchestration/{TASK}/precheck.json", self.precheck)
-        self.git("add", ".")
-        self.git("commit", "-q", "-m", "evidence")
+        self.git("add", "."), self.git("commit", "-q", "-m", "evidence")
         self.head = self.git("rev-parse", "HEAD")
         self.git("switch", "-q", "main")
         self.green()
@@ -174,11 +170,11 @@ class VerdictTest(unittest.TestCase):
         self.assertEqual("hold", self.verdict("--task", TASK, code=20)["verdict"])
         view = json.loads((self.calls / "view.json").read_text()) | {"headRefOid": "f" * 40}
         (self.calls / "view.json").write_text(json.dumps(view))
-        self.assertIn("not in this checkout", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9").stderr)
+        self.assertIn("not in this checkout", self.sh("9").stderr)
 
     def test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto(self):
         shadow = self.write(f"{V}/verdict-shadow.tsv", "9\th\taccept\taccept\tyes\tt\n" * 4)  # one PR is not four
-        self.assertIn("four agreeing", self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *APPLY).stderr)
+        self.assertIn("four agreeing", self.sh("9", *APPLY).stderr)
         shadow.write_text("".join(f"{n}\th\taccept\taccept\tyes\tt\n" for n in range(1, 5)))
         for code, finding in ((10, INCORRECT), (20, P0)):
             with self.subTest(code=code):
@@ -199,7 +195,7 @@ class VerdictTest(unittest.TestCase):
                 self.verdict(*args, code=2)
                 self.assertEqual("", self.calls_log())
         self.git("switch", "-q", "--detach", "pr~1")  # a checkout of the PR's code never merges it
-        result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *APPLY)
+        result = self.sh("9", *APPLY)
         self.assertIn("equal origin/main", result.stderr)
         self.assertNotIn("pr merge", self.calls_log())
 
@@ -210,9 +206,7 @@ class VerdictTest(unittest.TestCase):
                 self.green()
                 self.audit(**finding) if finding else None
                 self.verdict(code=code)
-                check = self.run_in_repo(
-                    "bash", "scripts/orchestrator/verdict.sh", "--validate", ".schemas/verdict.json", out
-                )
+                check = self.sh("--validate", ".schemas/verdict.json", out)
                 self.assertEqual(0, check.returncode, check.stderr)
 
     def test_verdict_validate_refuses_each_rule_the_moved_schema_checker_holds(self):
@@ -223,16 +217,13 @@ class VerdictTest(unittest.TestCase):
         rules |= {"anchored pattern": {"head": self.head + "\n"}, "type": {"auditor": 1}}
         rows = {"minimum": {"line": 0}, "bool is no integer": {"line": True}, "class enum": {"class": "no-such-class"}}
         rows |= {"status enum": {"status": "open"}, "maxLength": {"rationale": "r" * 401}}
-        docs = [("valid", good)] + [
-            (k, good | v if v else {k: v for k, v in good.items() if k != "auditor"}) for k, v in rules.items()
-        ]
+        drop = {k: v for k, v in good.items() if k != "auditor"}  # the "required" rule's document
+        docs = [("valid", good)] + [(k, good | v if v else drop) for k, v in rules.items()]
         docs += [(k, good | {"findings": [good["findings"][0] | v]}) for k, v in rows.items()]
         for case, doc in docs:
             with self.subTest(case=case):
                 audit.write_text(json.dumps(doc))
-                check = self.run_in_repo(
-                    "bash", "scripts/orchestrator/verdict.sh", "--validate", ".schemas/audit.json", audit
-                )
+                check = self.sh("--validate", ".schemas/audit.json", audit)
                 self.assertEqual(case != "valid", check.returncode != 0, check.stderr)
 
     def test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable(self):
@@ -256,14 +247,12 @@ class VerdictTest(unittest.TestCase):
         self.git("branch", "next", self.git("commit-tree", "-p", "main", "-m", "n", "main^{tree}"))  # PR 9's merge
         (self.calls / "list.txt").write_text(f"9 {self.head}\n")
         self.write(f"{V}/verdict-shadow.tsv", "".join(f"{n}\th\taccept\taccept\tyes\tt\n" for n in range(1, 5)))
-        result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "--loop", *APPLY)
+        result = self.sh("--loop", *APPLY)
         self.assertEqual((0, True), (result.returncode, "gh pr merge 9" in self.calls_log()), result.stderr)
-        self.assertEqual(
-            self.git("rev-parse", "origin/main"), self.git("rev-parse", "HEAD")
-        )  # the next PR's guard passes
+        self.assertEqual(*(self.git("rev-parse", r) for r in ("origin/main", "HEAD")))  # the next PR's guard passes
         self.git("commit", "-q", "--allow-empty", "-m", "local")  # diverged from the next merge: the loop holds
         self.git("branch", "-f", "next", self.git("commit-tree", "-p", "origin/main", "-m", "n", "origin/main^{tree}"))
-        self.assertEqual(20, self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "--loop", *APPLY).returncode)
+        self.assertEqual(20, self.sh("--loop", *APPLY).returncode)
 
     def test_verdict_shadow_appends_the_machine_column_only(self):
         doc = self.verdict("--shadow", code=0)
@@ -338,21 +327,16 @@ class VerdictTest(unittest.TestCase):
         gate, merge = f"gate {TASK} {self.head} 9", f"gh pr merge 9 --squash --match-head-commit {self.head}"
         no_gate = (
             ("rm", "-q", "scripts/orchestrator/orch-gate.sh"),
-            ("commit", "-q", "-m", "n"),
+            ("commit", "-qmn"),
             ("push", "-q", "origin", "main"),
         )
-        for case, status, code in (
-            ("zero exit", "0", 0),
-            ("failure", "1", 20),
-            ("refusal", "2", 20),
-            ("missing", "0", 20),
-        ):
+        for case, status, code in (("zero", "0", 0), ("failure", "1", 20), ("refusal", "2", 20), ("missing", "0", 20)):
             with self.subTest(case=case):
                 (self.calls / "calls.log").unlink(missing_ok=True)
                 (self.calls / "gate-status").write_text(status)
                 for args in no_gate if case == "missing" else ():  # gone from origin/main too: past the --apply guard
                     self.git(*args)
-                result = self.run_in_repo("bash", "scripts/orchestrator/verdict.sh", "9", *APPLY)
+                result = self.sh("9", *APPLY)
                 calls = self.calls_log().splitlines()
                 if code:  # b8998de1 dispatched and merged with no gate at all
                     self.assertNotRegex(self.calls_log(), "dispatch|pr merge")
@@ -364,30 +348,51 @@ class VerdictTest(unittest.TestCase):
 
     def test_verdict_condition_5_honors_the_latest_amended_caps(self):
         self.git("switch", "-q", "pr")  # 531 changed test lines; the precheck and the head follow
-        self.write("tests/unit/t.py", "x = 1\n" * 531)
-        self.git("commit", "-q", "-am", "tests")
+        self.write("tests/unit/t.py", "x = 1\n" * 531), self.git("commit", "-q", "-am", "tests")
         self.precheck = json.dumps({"head": self.git("rev-parse", "HEAD")})
-        self.write(f".orchestration/{TASK}/precheck.json", self.precheck)
-        self.git("commit", "-q", "-am", "evidence")
+        self.write(f".orchestration/{TASK}/precheck.json", self.precheck), self.git("commit", "-q", "-am", "evidence")
         self.head = self.git("rev-parse", "HEAD")
         self.git("switch", "-q", "main")
         amended = f"at most {CAP}, 550 under `tests/`."
+        effective = amended.replace("500", "0", 1)  # a later sentence with its own outside limit
         a02 = "For this revise round the Check's test cap is 550 under `tests/`; the code cap stays 500 (reached by trimming"
         for case, amendments, failed in (
             ("the original 500 alone", [], [5]),
             ("a later amendment allows 550", [amended], []),
             ("the a02 test-only amendment wording", [a02 + " documentation prose, never a check or a case)."], []),
             ("a later lower limit", [amended, amended.replace("550", "520")], [5]),
-            (
-                "the effective exclusions",
-                [amended.replace("and `.orch", ", `scripts/` and `.orch").replace("500", "0", 1)],
-                [],
-            ),
-            ("the effective outside limit", [amended.replace("500", "0", 1)], [5]),
+            ("the effective exclusions", [effective.replace("and `.orch", ", `scripts/` and `.orch")], []),
+            ("the effective outside limit", [effective], [5]),
         ):
             with self.subTest(case=case):
                 self.green()
-                self.write(
-                    TASK_MD, (self.repo / TASK_MD).read_text() + "".join(f"\nAmendment: {a}\n" for a in amendments)
-                )
+                for a in amendments:
+                    self.write(TASK_MD, (self.repo / TASK_MD).read_text() + f"\nAmendment: {a}\n")
                 self.assertEqual(failed, self.failed(self.verdict(code=10 if failed else 0)))
+
+    def test_verdict_ignores_caller_bin_and_path_overrides(self):
+        bin_, marker, py = self.temp / "caller-bin", self.temp / "marker.log", self.temp / "planted-python"
+        py.write_text(f'#!/bin/sh\necho python >> "{marker}"\nexec "{sys.executable}" "$@"\n'), py.chmod(0o755)
+        bin_.mkdir()
+        for t in ("bash", "uv", "python3", "gh", "git", "jq"):  # links to the tools the tests resolve, as a pin makes
+            (bin_ / t).symlink_to(shutil.which(t, path=self.env["PATH"]))
+        env = dict(HOME=os.environ["HOME"], TMPDIR=str(self.temp), VERDICT_BIN=str(bin_), PATH=f"{bin_}:/usr/bin:/bin")
+        run = ["/bin/bash", str(self.repo / "scripts/orchestrator/verdict.sh"), "9"]
+        func = {"BASH_FUNC_git%%": f'() {{ echo function >> "{marker}"; }}'}  # the review's exported git function
+        for case, extra, code in (("function", func, 0), ("tool-selection variable", {"UV_PYTHON": str(py)}, 20)):
+            with self.subTest(case=case):  # the caller's pinned-looking state: honoured only as clean, else rebuilt
+                marker.unlink(missing_ok=True)
+                code and ((bin_ / "python3").unlink(), (bin_ / "python3").symlink_to(py))  # then python3 is planted too
+                result = subprocess.run(run, check=False, cwd=self.repo, env=env | extra, capture_output=True)
+                self.assertEqual((code, False), (result.returncode, marker.exists()), result.stderr)
+
+    def test_verdict_never_imports_cached_bytecode(self):
+        marker, py = self.temp / "pyc.log", shutil.which("python3", path=self.env["PATH"])  # verdict pins this one
+        tag = subprocess.check_output([py, "-c", "import sys; print(sys.implementation.cache_tag)"], text=True).strip()
+        evil = self.write("../evil.py", f"open({str(marker)!r}, 'a').write('pyc')\n")
+        cache = self.repo / f"scripts/__pycache__/require-crit-review.{tag}.pyc"  # unchecked: read whatever the source
+        mk = "import py_compile as c, sys; c.compile(*sys.argv[1:], invalidation_mode=c.PycInvalidationMode(3))"
+        subprocess.run([py, "-c", mk, str(evil), str(cache)], check=True)
+        result = self.sh("9")
+        self.assertEqual((20, False), (result.returncode, marker.exists()), result.stderr)
+        self.assertIn("scripts/__pycache__", result.stderr)

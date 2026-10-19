@@ -101,7 +101,8 @@ jobs:
           # reports a status. If more workflows need the same rule later,
           # extract a shared script instead of hiding the pattern in env.
           # The formatting check also runs here, so any .py or .md outside
-          # .orchestration/ counts, as do ruff.toml and .prettierignore.
+          # .orchestration/ counts, as do ruff.toml and .prettierignore, and
+          # .github/flakes.yaml, which test_ci_rerun.py validates.
           # .orchestration-only diffs still skip the matrix.
           # No pipe into grep -q: under pipefail its early exit could SIGPIPE
           # the writer and turn a match into a false negative. core.quotePath
@@ -110,7 +111,7 @@ jobs:
           # home/ into .orchestration/ still runs the tests.
           changed="$(git -c core.quotePath=false diff --no-renames --name-only "${diff_range}")"
           relevant="$(grep -v '^\.orchestration/' <<< "${changed}" || true)"
-          if ! grep -Eq '^(\.github/workflows/|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
+          if ! grep -Eq '^(\.github/workflows/|\.github/flakes\.yaml$|home/|install/|scripts/|tests/|plans/|docs/|setup\.sh$|Makefile$|ruff\.toml$|\.prettierignore$)|(^|/)[^/]+\.(py|md)$' <<< "${relevant}"; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
             echo "skip_reason=unrelated" >> "${GITHUB_OUTPUT}"
           # macOS adds nothing to a pull request whose every relevant path is Python, docs or records: a shell,

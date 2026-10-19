@@ -373,6 +373,9 @@ main
         lines = text.splitlines()
         held = {"fd": "fd = ", "npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
         held["http:gcloud"] = '[tools."http:gcloud"]'
+        # The exact blocc pin avoids the sandbox's blocked version-registry query.
+        held["github:shuntaka9576/blocc"] = '"github:shuntaka9576/blocc" = '
+        self.assertEqual("0.6.0", config["tools"]["github:shuntaka9576/blocc"]["version"])
         for name, request in config["tools"].items():
             version = request if isinstance(request, str) else request["version"]
             if name not in held:

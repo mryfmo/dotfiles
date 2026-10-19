@@ -342,6 +342,168 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         for name in ("sandbox-scan", "local-review", "orch-audit"):
             self.assertEqual([], self.calls_of(name))
 
+    def test_integrate_inherits_the_audit_across_an_update_branch_only_head(self):
+        # Plan 023 F1 (C-61): a merge of main into the audited head with the same PR patch inherits its audit under the
+        # head's names, the first line naming the head the audit ran on; a merge that also edits the PR side does not.
+        p7, summary = self.head[:7], "[P3] low a.txt:1 nit\nVerdict: correct\n"
+        (self.v / f"{TASK}-audit-{p7}.md").write_text("transcript\n")
+        (self.v / f"{TASK}-audit-{p7}.md.last.md").write_text(summary)
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {self.head} Verdict: correct\n")
+
+        def move_main(name):  # on origin/main, since the seed's own main also holds the PR commit
+            self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+            self.commit(self.seed, name)
+            self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+            self.git("pull", "-q", "--ff-only")
+
+        def pr_head(first, edit=None):
+            self.git("checkout", "-q", "--detach", first, cwd=self.seed)
+            self.git("merge", "-q", "--no-ff", "--no-edit", "--no-commit", "origin/main", cwd=self.seed)
+            if edit:
+                (self.seed / "b.txt").write_text(edit)
+                self.git("add", "b.txt", cwd=self.seed)
+            self.git("commit", "-q", "--no-edit", cwd=self.seed)
+            self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+            (self.calls / "head").write_text(self.git("rev-parse", "HEAD", cwd=self.seed) + "\n")
+            return self.git("rev-parse", "HEAD", cwd=self.seed)
+
+        def patch_id(rev):
+            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --verbatim'
+            return subprocess.run(
+                ["bash", "-c", command, "-", rev], cwd=self.seed, capture_output=True, text=True, check=True
+            ).stdout.split()[0]
+
+        move_main("c.txt")
+        merged = pr_head(self.head)
+        self.assertEqual(patch_id(self.head), patch_id(merged))
+        out = self.chain().stdout
+        self.assertEqual([], self.calls_of("orch-audit"))
+        for suffix, text in ((".md", "transcript\n"), (".md.last.md", summary)):
+            self.assertEqual(
+                f"inherited-from: {p7}\n{text}", (self.v / f"{TASK}-audit-{merged[:7]}{suffix}").read_text()
+            )
+        self.assertIn(f" audit rc=0: audit inherited from {p7}", self.log(merged))
+        self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
+        # The same two parents, the merge also editing b.txt: another patch, so the audit runs and nothing is inherited.
+        edited = pr_head(self.head, edit="b, edited in the merge\n")
+        self.assertNotEqual(patch_id(self.head), patch_id(edited))
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{edited[:7]}.md*")))
+        # PR #390 thread 4302490292: a merge that changes only whitespace (b.txt indented) is a new patch too.
+        spaced = pr_head(self.head, edit="  b.txt\n")
+        self.assertNotEqual(patch_id(self.head), patch_id(spaced))
+        self.chain()
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{spaced[:7]}.md*")))
+        # A head that inherited passes its marker on unchanged, so the ids stay the head the audit ran on.
+        move_main("d.txt")
+        again = pr_head(merged)
+        self.chain()
+        self.assertEqual(2, len(self.calls_of("orch-audit")))
+        self.assertEqual(
+            f"inherited-from: {p7}\n{summary}", (self.v / f"{TASK}-audit-{again[:7]}.md.last.md").read_text()
+        )
+
+    def test_inheritance_requires_the_merge_tree_reproduction_to_equal_the_head_tree(self):
+        # Re-plan R1 (the local review P1 of 741e242): patch-id ignores hunk positions, so a merge that moves the PR's
+        # edit into an identical block keeps the patch-id; only a head whose tree a clean merge reproduces inherits.
+        block = "L\nL\nL\nM\nL\nL\nL\n"
+
+        def to_main(name, text=None):
+            self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+            self.commit(self.seed, name, text)
+            self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+            self.git("pull", "-q", "--ff-only")
+
+        def merge(audited, relocate=False):
+            self.git("checkout", "-q", "--detach", audited, cwd=self.seed)
+            self.git("merge", "-q", "--no-ff", "--no-edit", "--no-commit", "origin/main", cwd=self.seed)
+            if relocate:
+                (self.seed / "r.txt").write_text(block + block.replace("M\n", "M\nNEW\n"))
+                self.git("add", "r.txt", cwd=self.seed)
+            self.git("commit", "-q", "--no-edit", cwd=self.seed)
+            self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+            (self.calls / "head").write_text(self.git("rev-parse", "HEAD", cwd=self.seed) + "\n")
+            return self.git("rev-parse", "HEAD", cwd=self.seed)
+
+        def patch_id(rev):
+            command = 'git diff-tree -p "$(git merge-base origin/main "$1")" "$1" | git patch-id --verbatim'
+            run = subprocess.run(
+                ["bash", "-c", command, "-", rev], cwd=self.seed, capture_output=True, text=True, check=True
+            )
+            return run.stdout.split()[0]
+
+        to_main("r.txt", block * 2)
+        (self.seed / "r.txt").write_text(block.replace("M\n", "M\nNEW\n") + block)
+        self.git("commit", "-q", "-am", "the PR edits the first block", cwd=self.seed)
+        audited = self.git("rev-parse", "HEAD", cwd=self.seed)
+        for suffix in (".md", ".md.last.md"):
+            (self.v / f"{TASK}-audit-{audited[:7]}{suffix}").write_text("Verdict: correct\n")
+        (self.v / f"{TASK}-chain-{audited[:7]}.log").write_text(f"chain-integrate: {TASK} {audited} Verdict: correct\n")
+        to_main("c.txt")
+        clean = merge(audited)
+        self.chain()
+        self.assertEqual([], self.calls_of("orch-audit"))
+        self.assertTrue((self.v / f"{TASK}-audit-{clean[:7]}.md.last.md").exists())
+        relocated = merge(audited, relocate=True)
+        self.assertEqual(patch_id(audited), patch_id(relocated))
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{relocated[:7]}.md*")))
+
+    def test_inheritance_requires_the_parent_chain_log_to_name_its_full_sha(self):
+        # PR #413 thread 4306231809 (Bot P1): a receipt is named by 7 characters only, so a commit ground to the same
+        # prefix could load another head's audit; the parent's chain log binds the receipt to the parent's full sha.
+        p7 = self.head[:7]
+        for suffix in (".md", ".md.last.md"):
+            (self.v / f"{TASK}-audit-{p7}{suffix}").write_text("Verdict: correct\n")
+        other = p7 + ("1" if self.head[7] == "0" else "0") * 33
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {other} Verdict: correct\n")
+        self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+        self.commit(self.seed, "c.txt")
+        self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+        self.git("pull", "-q", "--ff-only")
+        self.git("checkout", "-q", "--detach", self.head, cwd=self.seed)
+        self.git("merge", "-q", "--no-ff", "--no-edit", "origin/main", cwd=self.seed)
+        self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+        merged = self.git("rev-parse", "HEAD", cwd=self.seed)
+        (self.calls / "head").write_text(merged + "\n")
+        self.chain()
+        self.assertEqual([f"{TASK} {self.review} 7"], self.calls_of("orch-audit"))
+        self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
+
+    def test_inheritance_requires_a_parent_verdict_the_gate_accepts(self):
+        # Owned row audit:274a536:2 (= local:274a536:2): a blocked, empty or finding-less incorrect parent audit is one
+        # the gate refuses, so the merged head takes the fresh-audit path instead of inheriting it.
+        p7 = self.head[:7]
+        (self.v / f"{TASK}-chain-{p7}.log").write_text(f"chain-integrate: {TASK} {self.head} Verdict: blocked\n")
+        summaries = (
+            "transcript\nVerdict: blocked\n",
+            "",
+            "no finding\nVerdict: incorrect\n",
+            "Verdict: correct\ntrailing\n",
+        )
+        for n, summary in enumerate(
+            summaries, 1
+        ):  # the last: the verdict must be the last non-blank line, as the gate reads it
+            with self.subTest(summary=summary):
+                audits = len(self.calls_of("orch-audit"))
+                for suffix in (".md", ".md.last.md"):
+                    (self.v / f"{TASK}-audit-{p7}{suffix}").write_text(summary)
+                self.git("checkout", "-q", "--detach", "origin/main", cwd=self.seed)
+                self.commit(self.seed, f"c{n}.txt")
+                self.git("push", "-q", "origin", "HEAD:main", cwd=self.seed)
+                self.git("pull", "-q", "--ff-only")
+                self.git("checkout", "-q", "--detach", self.head, cwd=self.seed)
+                self.git("merge", "-q", "--no-ff", "--no-edit", "origin/main", cwd=self.seed)
+                self.git("push", "-q", "origin", "+HEAD:refs/pull/7/head", cwd=self.seed)
+                merged = self.git("rev-parse", "HEAD", cwd=self.seed)
+                (self.calls / "head").write_text(merged + "\n")
+                self.chain()
+                self.assertEqual(audits + 1, len(self.calls_of("orch-audit")))  # this case's own fresh audit
+                self.assertEqual([], list(self.v.glob(f"{TASK}-audit-{merged[:7]}.md*")))
+
     def test_integrate_restores_the_review_worktree_after_the_audit(self):
         # Revise round 2 (the local review of 2fe135c5, P1): orch-audit.sh leaves the shared review worktree at
         # origin/main; the chain puts it back at the audited head, which the gate reads next.

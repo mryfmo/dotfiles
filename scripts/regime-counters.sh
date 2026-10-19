@@ -21,9 +21,11 @@
 #   counted task and whose `ledger` is a list of `{id, class}` rows, each an
 #   object with a string `id` and a `[a-z0-9-]` `class` (read with jq only):
 #   every non-advisory-p2 class with three or more rows prints `S1: class=<slug>
-#   count=<n> re-plan=present|missing source=record`. A matching body line starts
-#   `re-plan: <slug> -> ` and contains specification, design, implementation and
-#   verification as exact ASCII letter runs; its twin is scripts/require-crit-review.py.
+#   count=<n> re-plan=present|missing source=record`, present when the block's
+#   `replans` object passes the gate's whole-object schema (absent counts as empty;
+#   every key a class slug, every entry exactly specification, design, implementation
+#   and verification, each a string with text after Python's str.strip()) and names
+#   the class: the object scripts/require-crit-review.py reads.
 #   Without such a record (none, or a prose one), Codex Bot
 #   thread titles grouped by their first three words (badge stripped,
 #   lower-cased) seen three or more times on the PR print `S1: candidate
@@ -135,8 +137,8 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
 # {rec: the record's JSON block}, {why: <slug>} for a block it ignores, or null for no record, a prose one or another task's.
 record=null
 if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
-    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then (.[$e + 1:] | join("\n")) as $body | .[:$e] | join("\n")
-      | (try {rec: fromjson, body: $body} catch {why: "block-not-json"})
+    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
+      | (try {rec: fromjson} catch {why: "block-not-json"})
       | if has("why") then . elif (.rec | type) == "object" and (.rec.ledger | type) == "array" and .rec.task == $t then
           [.rec.ledger[] | if type != "object" then "ledger-row-not-object" elif (.id | type) != "string" then "id-not-string"
             elif (.class | type) != "string" or (.class | test("^[a-z0-9-]+$") | not) then "class-not-slug" else empty end][0] as $why
@@ -165,6 +167,12 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
         else [$p[].original_commit_id | select(. as $o | any($shas[$i + 1:][]; . == $o))] | unique end end;
   def hm: (. / 60 | floor) as $m | "\($m / 60 | floor):\($m % 60 | tostring | if length < 2 then "0" + . else . end)";
   def list: if length > 0 then join(",") else "-" end;
+  # The re-plan schema of the gate (require-crit-review.py record_field_errors, acceptance-front-matter.py): replans as
+  # a whole is {<class slug>: exactly the four keys, each a string with text after str.strip() in Python}
+  # (audit:274a536:1); the class is the 29 characters str.strip() removes, which jq \s does not all match.
+  def text: type == "string" and test("[^\t\n\u000b\f\r\u001c-\u001f \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]");
+  def replan: type == "object" and keys == ["design", "implementation", "specification", "verification"] and all(.[]; text);
+  def replans: (if . == null then {} else . end) | type == "object" and all(to_entries[]; (.key | test("^[a-z0-9-]+\\z")) and (.value | replan));
   bot as $b | ($b | if type == "array" then length else . end) as $n
   | ([($c.tasks | length) - 1, 0] | max) as $amendments | ([($c.results | length) - 1, 0] | max) as $revises
   | "task=\($t) tasks=\($c.tasks | length) amendments=\($amendments) questions=\($c.questions | length) results=\($c.results | length) withdrawn=\($c.withdrawn | length) revises=\($revises) first_result_head=\($c.head // "none") bot_p1_heads_after_result=\($n) audits=unknown wall=\($c.first // "none")..\($c.last // "none") (\(if $c.first and $c.last then ($c.last | fromdateiso8601) - ($c.first | fromdateiso8601) | hm else "-" end)) source=\($s)",
@@ -172,10 +180,7 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),
     (if $state == "skipped" then empty
       elif $rec.rec != null then [$rec.rec.ledger[].class | select(. != "advisory-p2")] | group_by(.)[] | select(length >= 3)
-        | .[0] as $class | any($rec.body | split("\n")[];
-            startswith("re-plan: \($class) -> ") and (ltrimstr("re-plan: \($class) -> ")
-              | (["specification", "design", "implementation", "verification"] - [scan("[A-Za-z]+")])
-              | length == 0)) as $replan
+        | .[0] as $class | ($rec.rec.replans | replans and (.[$class] | replan)) as $replan
         | "S1: class=\($class) count=\(length) re-plan=\(if $replan then "present" else "missing" end) source=record"
       elif $state == "ok" then [$gh.comments[] | select(codex and .in_reply_to_id == null) | title
         | gsub("!\\[[^\\]]*\\]\\([^)]*\\)|</?sub>|\\*\\*"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")

@@ -1,0 +1,43 @@
+name: regime
+
+# The regime job (plan 024 P1-11, redesigned in T133 regime-ci a02): a pull request that carries a task copy is checked
+# by the base's scripts/orchestrator/regime-ci.py against the base's dispatched policy. pull_request_target runs this
+# workflow as it is on the base; the pull request's head is fetched as data and is never checked out or executed.
+# It is an optional check until the operator adds `regime` to the ruleset's required contexts.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: regime-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          # The base branch's tip at run time: the event's recorded base sha can lag the branch (on PR #420 it was the
+          # head's fork point, from before this verifier; ci:39185982423:1). The pull request cannot move this branch.
+          ref: refs/heads/${{ github.base_ref }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
+      - name: Fetch the pull request's head as data
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"
+          test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"
+      - name: Check the pull request with the base's verifier
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"

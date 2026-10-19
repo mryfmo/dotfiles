@@ -1,0 +1,51 @@
+[
+ {
+  "id": "r1-p2-slug-trailing-newline",
+  "scope": "file",
+  "path": "scripts/regime-counters.sh",
+  "body": "Round 1 (origin/main..9b59a3bc), P2 high, row audit:274a536:1 not fully closed: jq's $ matches before a final newline, so test(\"^[a-z0-9-]+$\") accepted the class key \"other\\n\", which the gate's CLASS_SLUG.fullmatch rejects; the counters printed re-plan=present for a block the gate refuses. Fixed in cdfd3ee5 with test(\"^[a-z0-9-]+\\\\z\"); subtest 'a class key with a trailing newline' in f75c1137, red at 9b59a3bc (validation 4b), green at cdfd3ee5 (5).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-replans-false-crash",
+  "scope": "file",
+  "path": "scripts/regime-counters.sh",
+  "body": "Round 1, P3 high, regression: (. // {}) turned \"replans\": false into {}, so the whole-object check passed and .[$class] on false made jq exit 5; check-regime-boundary.sh would silently drop the task from its INV-6 report. Fixed in cdfd3ee5 with (if . == null then {} else . end), so false is malformed and the re-plan is missing; subtest 'replans false' in f75c1137, red at 9b59a3bc (validation 4b), green at cdfd3ee5.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-test-depth",
+  "scope": "file",
+  "path": "tests/unit/test_chain_glue.py",
+  "body": "Round 1, P3 medium, test depth: mutant m9 (the last line containing Verdict instead of the last non-blank line) survived; only U+001C of the 29 strip characters was exercised; the chain subtests counted audits across subtests, so one failure cascaded. Closed in f75c1137: the case 'Verdict: correct\\ntrailing\\n' in test_inheritance_requires_a_parent_verdict_the_gate_accepts, every one of the 29 characters as a part plus the 29 and x as present in test_s1_applies_the_gate_s_exact_replan_schema, and per-subtest audit counts.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-shdoc-headers",
+  "scope": "file",
+  "path": "scripts/orchestrator/chain-integrate.sh",
+  "body": "Round 1, P3 medium: the shdoc headers were stale; regime-counters.sh:24-26 described S1 as non-empty strings under the class, and chain-integrate.sh:5-11 listed the inheritance conditions without the parent verdict. Fixed in cdfd3ee5: the S1 header names the gate's whole-object schema (absent as empty, class slugs, the four exact keys, text after str.strip()), and the chain header adds that the parent's audit ends with a verdict the gate accepts.",
+  "resolved": true
+ },
+ {
+  "id": "r1-note-pre-existing-gaps",
+  "scope": "review",
+  "path": "",
+  "body": "Round 1, not counted as findings by the reviewer: the ledger-class $ at regime-counters.sh:142 and duplicate JSON keys inside replans (jq keeps the last duplicate; the gate's reader refuses duplicates) both predate this change and behave the same on origin/main. Outside the owned rows, so not changed here; dotfiles-T129-audit-inherit-replan-json-followup-a03 owns any advisory P2 the audit reports on them.",
+  "resolved": true
+ },
+ {
+  "id": "r1-report-red-before-cause",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T129-audit-inherit-replan-json-followup-a02/report.md",
+  "body": "Round 1, records: the report blamed test_require_crit_review's 136 environment failures on --base 'main' not resolving; that is the symptom. The cause is the fixture commit failing under commit signing (the sandbox denies the key read) plus an unset init.defaultBranch. Corrected in the report's 'Red before' section; validation 6b reruns the module with both set and passes 98 of 98.",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-present-control-one-letter",
+  "scope": "file",
+  "path": "tests/unit/test_regime_counters.py",
+  "body": "Round 2 (9b59a3bc..cdfd3ee5), Verdict: correct; findings 1-4 closed, 12 of 13 mutants caught. One P3 high, test depth: mutant m13 (U+200B added to the text class) survived, because the present control appended only the letter x. Closed in 02b6eec1: the control appends each of x, U+200B, U+180E, U+2060 and U+FEFF (none is str.isspace()), and m13 now fails the S1 test (validation 5a). def text itself is unchanged and was checked against every code point in round 1.",
+  "resolved": true
+ }
+]

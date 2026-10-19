@@ -455,14 +455,14 @@ class LintComparisonsTest(unittest.TestCase):
 
     def test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies(self):
         # thread 4313892754: a backslash-newline inside a double-quoted program continues it; it is no stray quote
-        for name, text in (
-            ("jc.sh", 'jq -r "select(.url == \\\n  \\"/x\\")"\n'),
-            ("jc2.sh", 'out="$(jq -r "select(.path \\\n  == \\$p)" f)"\n'),
+        for name, text, line in (  # the hit is reported at its operator's own physical line
+            ("jc.sh", 'jq -r "select(.url == \\\n  \\"/x\\")"\n', 1),
+            ("jc2.sh", 'out="$(jq -r "select(.path \\\n  == \\$p)" f)"\n', 2),
         ):
             with self.subTest(fixture=name):
                 result = self.run_fixture(name, text)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-                self.assertIn(f"{name}:1: R3 ", result.stdout)
+                self.assertIn(f"{name}:{line}: R3 ", result.stdout)
 
     def test_a_backslash_newline_joins_the_physical_lines_without_a_separator(self):
         # thread 4313892766: the shell deletes a backslash-newline, so a word continued by one stays one word

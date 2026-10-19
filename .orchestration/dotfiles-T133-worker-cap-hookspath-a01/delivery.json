@@ -1,0 +1,14 @@
+{
+  "task_id": "dotfiles-T133-worker-cap-hookspath-a01",
+  "kind": "AGMSG-RESULT",
+  "body_file": "amendment1/result.txt",
+  "dispatch_exit": 0,
+  "official_history_matches": 1,
+  "official_history_marker": "\u25cb (read)",
+  "duplicate_sent": false,
+  "bot_rounds": 2,
+  "open_security_P1": 4305769826,
+  "ci_watcher_exit": 0,
+  "ci_success": 13,
+  "operator_decision_required": true
+}

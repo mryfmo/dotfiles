@@ -1,0 +1,14 @@
+{
+  "head": "982eeee02b22b0eae3cf5fc21fe48fd74791993e",
+  "bot_rounds": 2,
+  "worker_proposals": {
+    "4305767690": "fixed:982eeee02b22b0eae3cf5fc21fe48fd74791993e",
+    "4305767694": "fixed:982eeee02b22b0eae3cf5fc21fe48fd74791993e",
+    "4305769826": "open:4305769826",
+    "4305808095": "not-applicable:advisory P2 owned by dotfiles-T133-worker-cap-hookspath-followup-a01"
+  },
+  "operator_decision_required": true,
+  "threads_resolved_by_worker": false,
+  "followup_owner_task_existence_asserted": false,
+  "ci_watcher_exit": 0
+}

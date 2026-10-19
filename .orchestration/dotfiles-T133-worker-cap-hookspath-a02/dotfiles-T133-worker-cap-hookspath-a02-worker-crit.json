@@ -1,0 +1,15 @@
+[
+  {
+    "id": "a02-common-dir-code-approval",
+    "scope": "review",
+    "body": "Independent read-only reviewer independent_t133 found no actionable correctness, security or regression issue in the cap/serialization/common-directory-lock changes and task. Four-file diff SHA2566192723075d85fd42f8769cde4e3f91ab81ca2ec2cef9da730e7d80640ff43ff; incremental diff6826b73388d9455c6b44302ee0101e566cc628ea9edf7bca8019390f1a9c182c; task SHA661c44fddb8e38a33dac80674572c5ea31e5abfbd3230542a86e4f47c1e5bcf4. Real separate-git-dir waiting/seating/cap regression meaningful; no Git configuration writes.",
+    "resolved": true
+  },
+  {
+    "id": "a02-command-provenance-addressed",
+    "scope": "file",
+    "path": ".orchestration/dotfiles-T133-worker-cap-hookspath-a02/validation.md",
+    "body": "Independent reviewer requested exact commands/cwd/exits/tested identities for the evidence. Added raw/command-manifest.json and validation appendix; reviewer verified the gap closed. report SHA2c251720b97a8d25bcea8963704e1a7875192a58216735264ce26dfe386ed9a9; validation SHA1efae2a5469ba6f94188369ae8f694d292d03b087ffcc3186e70dadf5524be3a. 250/251 with reproduced baseline failure and formatting limitations accurately disclosed; no final CI/integration/deployment approval inferred.",
+    "resolved": true
+  }
+]

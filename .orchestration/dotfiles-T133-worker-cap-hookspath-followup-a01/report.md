@@ -1,0 +1,35 @@
+# Worker report
+
+Task: dotfiles-T133-worker-cap-hookspath-followup-a01. Owned row: security:bb84bde:1 (interpreter-isolation).
+
+Base: 740772efb9d7928e810a7d799f2bd32a88d9b8ff. Branch: tools/worker-lock-python-isolation-a01.
+
+Head: 570d7493cafecf8a3e30ba004e822308b84d2a3b. PR: https://github.com/mryfmo/dotfiles/pull/422 (ready for review). GitHub investigation used gh first; no web fallback.
+
+The two fcntl invocations now run in subshells with cwd / and python3 -I. Parent Bash retains inherited fd 9 and its existing lock lifetime. No permission policy, shell startup, authentication helper, hook, model, cap, or live settings change.
+
+Row security:bb84bde:1 maps to HerdrAgentsTest.test_add_worker_lock_helpers_ignore_repository_python_modules. It plants hostile fcntl.py and fcntl/__init__.py files in a temporary repository, starts add-worker from that directory with PYTHONPATH pointing there, and checks both lock calls' isolation flags, trusted cwd, and lack of hostile imports. Both subcases fail on the old launcher with the hostile import marker (red.log); both pass after the fix. Existing test_add_worker_cap_count_and_registration_are_serialized_under_one_lock and test_add_worker_uses_git_common_dir_for_the_seat_lock also pass (green-focused.log, 3 tests).
+
+Shellcheck, shfmt, changed-file ruff format, render-check, diff --check, and worker review gate pass. Full required unit modules completed: 252 tests in 564.639s, 250 passed and two existing tests failed (unit.log). Both failures reproduce using an exact origin/main launcher snapshot: test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude fails in baseline-failures.log; test_session_start_attach_bounds_a_trickling_hook_payload fails all three bounded baseline repeats in baseline-timing.log (8.768s, 5.205s, 6.486s vs its 4.5s limit), after one baseline pass. Both also fail on the focused final-head rerun (current-failures-rerun.log). They are in existing attach/seat-claim code, outside this task's owned add-worker lock calls. All 10 remote CI checks pass and the bounded Bot wait completed as detailed below. The initial validator rejected unmasked home paths in red.log; the repository masker normalized them and the rerun completed successfully. No substantive output was removed by masking.
+
+make format exits 2 on existing formatting differences in unchanged .orchestration/tasks input scripts, home/dot_claude/hooks/executable_project-map-reload.sh and tests/install/macos/common/brew.bats. git diff --exit-code origin/main over those paths exits 0. The task owns neither these paths nor the formatting gate, so no unrelated fix is made. Optional ruff check emits 22 lint diagnostics in existing code under the host's broader lint selection; ruff.toml explicitly scopes this repository's ruff checks to formatting. The new regression adds none of those diagnostic classes.
+
+Crit status reported no review data; crit comments on its reported path failed with no such file. AGENTS.md's fallback was used: an independent read-only subagent reviewed the diff plus connected callers/fixtures and returned no findings. Its resolved approval JSON was saved and read, and the worker receipt passed make require-crit-review. The final task-level audit and security-profile review remain orchestrator-side.
+
+Diff caps: outside tests and .orchestration, 4 changed lines (2 added + 2 deleted) / 160; tests 39 changed lines (37 added + 2 deleted) / 320. Only launcher, unit test, and byte-identical task copy are committed. All other task evidence, including plan/todo/learning, remains untracked in this worktree.
+
+No new or renamed script, no dependency, no live Herdr or agmsg test-subject pane. All regression invocations use the existing fakes. Initial uv cache and SSH push problems were resolved using the orchestrator-confirmed temporary cache and command-scoped HTTPS authentication; sandbox.md records the failures and boundaries.
+
+Evidence is at the task-relative paths in this worker worktree, not in the main checkout. The orchestrator must copy it before acceptance. No live apply: the installed herdr-agents changes only at the operator's make update, which plan 024(4) forbids until the merge-gate replacement lands.
+
+[memory:decision] Both worker-seat lock Python helpers use isolated mode from a trusted cwd; preserve the parent's fd 9 across acquire, registration and release. Recorded in this worktree's CompactionDB as efcd5dc6-7b5f-4c74-9012-e8d9d58a3090 with `UV_CACHE_DIR=/private/tmp/uv-cache-a012 uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dotfiles-T133-worker-cap-hookspath-followup-a01: run both herdr-agents worker-seat fcntl helpers with python3 -I from /; hostile repository module and package regression fails before and passes after, preserving inherited fd 9 and lock serialization.'` (memory.log). The orchestrator consolidates the accepted decision in the main project DB.
+
+Final status: ready for orchestrator review. All 10 GitHub CI checks passed on 570d7493; the CI watcher exited 0. Local make validate-agent-assets completed with exit 0 and agent asset validation ok, plus advisory active-regime warnings (31,227 lines preserved in validation.md and the companion log). The earlier local suite and whole-repository formatting failures are unchanged baseline issues, documented above and reproduced rather than hidden.
+
+Bot wait: ready at 2026-10-18T23:49:29Z, finished at 2026-10-19T00:04:29Z. Paginated review-event and inline-comment endpoints remained empty, so bot: none for the formal event wait and bot_rounds: 0. A single request at ten minutes produced Bot issue receipts binding both code and security reviews to this head, completed without findings (bot-receipts-final.json, issuecomment-6256693208 and issuecomment-6256805072). The receipts are recorded separately from the absent formal review events. No unresolved review thread or finding requires a disposition; no worker-side fix round.
+
+All evidence resides untracked at these relative paths in worker-g; the committed task copy is the sole evidence file on the PR. No plan/todo/learning worklog is committed. The orchestrator still performs final feedback sweep, task audit, security-profile review, acceptance and integration gate. The worker does not merge or apply.
+
+Conformance note (orchestrator message at 2026-10-19T00:05:11Z): this seat's manual @codex review request at 00:00:07Z (issuecomment-6256785486) deviated from the task-specific automatic-window-only completion constraint. I applied the generic playbook's ten-minute fallback; I should have resolved the task-specific instruction before posting. The request will not be repeated. The orchestrator explicitly retains the Bot's no-major-issues answer as evidence. The 00:08:28Z acceptance message records pending-integration status, queues final security review/integration after #411 and #420, and asks for no further worker action on #422. This artifact-only correction leaves head 570d7493 unchanged.
+
+cost: n/a

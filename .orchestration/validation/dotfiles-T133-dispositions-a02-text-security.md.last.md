@@ -1,0 +1,18 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:50](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:50) The worker-write residual assumes protection that §5.14 and the cited acceptance record explicitly deny for Claude seats: file tools, hooks and MCP processes can modify the trusted checkout and evidence before P1-15; committed-ledger reads do not protect these executable and evidence paths. [Sandbox scope](https://code.claude.com/docs/en/sandboxing#what-runs-outside-the-sandbox).
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:48](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:48) Pending D-024-17 supplies no present mitigation: retained unsandboxed worker `gh` commands still resolve through mise shims and worker-controlled configuration, permitting execution outside the boundary protecting the verifier and prefetched evidence; P1-15 is neither implemented here nor a dispatch dependency. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html).
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:189](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:189) The sweep-identity “closed” test compares copies before validation, but never replaces the validated file before the unchanged gate reopens it; identical pathnames and a printed digest cannot bind consumed bytes, and §5.14’s snapshot protection still depends on the false worker-write premise.
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:187](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:187) The verifier-identity “closed” test does not require replacement after authentication but before Python opens the script; a SHA256 comparison followed by execution through a mutable pathname cannot establish the claimed closure against the same-user workers described in the cited records.
+
+- [P1] Medium confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:153](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:153) Wrapper-local `git -c` arguments do not propagate to the unchanged gate’s bare Git subprocesses; the specified binary-link PATH and two configuration environment variables provide no mechanism for enforcing hooks/fsmonitor settings there, while the named test checks discovery, checkout and restoration rather than actual gate descendants.
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:279](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:279) Applying §5.14’s rejection of trusted paths beneath `.claude/worktrees/` conflicts with retaining `.claude/worktrees/orchestrator-review` as the trusted sweep-consumption location; resolving symlinks and case aliases does not resolve this policy contradiction, so the design must distinguish the protected review worktree or relocate it.
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-dispositions-a02.md:279](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-dispositions-a02.md:279) The claimed trusted-path and committed-ledger threat rows are absent, as are explicit dispositions for §5.14’s private-cache and output/lock-identity controls; incorporation by reference does not satisfy its requirement for one threat row per contract item.
+
+📝 まとめ: Read-only review completed with seven findings for orchestrator disposition; no files changed.
+
+Not checked: implementation tests or live enforcement; the cited earlier a02 review’s `.last.md` was unavailable. Execution and evidence integrity remain unestablished.
+Verdict: incorrect

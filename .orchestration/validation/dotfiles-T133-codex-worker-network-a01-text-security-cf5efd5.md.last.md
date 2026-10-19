@@ -1,0 +1,7 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md:90](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md:90) Dispatch requires the prerequisite’s merge but not its recorded deployment readiness: the Claude worker can therefore retain Linux’s automatic `gh` sandbox exclusion and old hook bindings; require the prerequisite’s installation, effective-settings checks and session restart before dispatch, because “no unsandboxed retry” cannot prevent an automatically excluded first execution.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md:72](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-codex-worker-network-a01.md:72) The proposed test does not require merging an existing `[sandbox_workspace_write]` table: the current merger replaces managed tables wholesale, so adding the network table can silently discard `writable_roots` and restrictive `exclude_slash_tmp`/`exclude_tmpdir_env_var` settings while the scoping test passes; require preservation fixtures before marking the generated-script rows closed. [Configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference).
+
+📝 まとめ: Reviewed all 18 threat rows, six allowed-file entries and related acceptance/review context; two findings remain for orchestrator disposition. No files changed.
+
+Not checked: implementation or live enforcement; declared same-user and unrestricted-network residuals remain.
+Verdict: incorrect

@@ -1,0 +1,187 @@
+{
+  "head": "ffd8454dd3a42924e47290aa68a016d211c21c17",
+  "elapsed_seconds": 280,
+  "reviews": [
+    {
+      "id": 5561476764,
+      "node_id": "PRR_kwDOSMyAV88AAAABS31mnA",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "id": 199175422,
+        "node_id": "BOT_kgDOC98s_g",
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+        "html_url": "https://github.com/apps/chatgpt-codex-connector",
+        "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### \ud83d\udca1 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `ffd8454dd3`\n    \n\n<details> <summary>\u2139\ufe0f About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with \ud83d\udc4d.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "state": "COMMENTED",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/408#pullrequestreview-5561476764",
+      "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408",
+      "author_association": "NONE",
+      "_links": {
+        "html": {
+          "href": "https://github.com/mryfmo/dotfiles/pull/408#pullrequestreview-5561476764"
+        },
+        "pull_request": {
+          "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408"
+        }
+      },
+      "submitted_at": "2026-10-18T04:48:52Z",
+      "commit_id": "ffd8454dd3a42924e47290aa68a016d211c21c17"
+    }
+  ],
+  "comments": [
+    {
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767690",
+      "pull_request_review_id": 5561476764,
+      "id": 4305767690,
+      "node_id": "PRRC_kwDOSMyAV88AAAABAKTNCg",
+      "diff_hunk": "@@ -1827,9 +1829,31 @@ if [[ ${add_worker_mode} == true ]]; then\n         printf 'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\\n' \"${workdir}\" >&2\n         exit 2\n     fi\n+    # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as\n+    # the Stop checklist counts them; re-seating a seated worktree adds none.\n+    seat_cap=\"$(sed -n 's/^worker_cap:[[:space:]]*\\([1-9][0-9]*\\)[[:space:]]*$/\\1/p' \"${HOME}/.agents/agent-config.yaml\" 2> /dev/null | head -n 1)\" || seat_cap=''\n+    if [[ -z ${seat_cap} ]]; then\n+        printf 'herdr-agents: no worker_cap in %s; no cap enforced.\\n' \"${HOME}/.agents/agent-config.yaml\" >&2\n+    else\n+        seats=0 seat_seated=false\n+        while IFS= read -r seat_path; do\n+            [[ ${seat_path} == \"${workdir}/.claude/worktrees/\"* ]] || continue\n+            [[ -n \"$(AGMSG_RESOLVE_PROJECT=0 \"${scripts}/identities.sh\" \"${seat_path}\" claude-code 2> /dev/null)$(AGMSG_RESOLVE_PROJECT=0 \"${scripts}/identities.sh\" \"${seat_path}\" codex 2> /dev/null)\" ]] || continue\n+            seats=$((seats + 1))\n+            [[ ${seat_path} != \"${workdir}/${seat_worktree}\" ]] || seat_seated=true\n+        done < <(git -C \"${workdir}\" worktree list --porcelain | sed -n 's/^worktree //p')\n+        if [[ ${seat_seated} == false ]] && ((seats >= seat_cap)); then",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "commit_id": "ffd8454dd3a42924e47290aa68a016d211c21c17",
+      "original_commit_id": "ffd8454dd3a42924e47290aa68a016d211c21c17",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "id": 199175422,
+        "node_id": "BOT_kgDOC98s_g",
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+        "html_url": "https://github.com/apps/chatgpt-codex-connector",
+        "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Serialize the cap check with seat registration**\n\nWhen two `--add-worker` processes start with three of four seats, both can complete this count before either new worktree has acquired its agmsg identity, so both observe `seats == 3`, pass the check, and subsequently register different workers, leaving five seats. The count and creation/registration need a repository-scoped lock or reservation so concurrent additions cannot bypass the new cap.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/ffd8454dd3a42924e47290aa68a016d211c21c17/AGENTS.md#L77-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "created_at": "2026-10-18T04:48:52Z",
+      "updated_at": "2026-10-18T04:48:52Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/408#discussion_r4305767690",
+      "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408",
+      "_links": {
+        "self": {
+          "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767690"
+        },
+        "html": {
+          "href": "https://github.com/mryfmo/dotfiles/pull/408#discussion_r4305767690"
+        },
+        "pull_request": {
+          "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408"
+        }
+      },
+      "reactions": {
+        "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767690/reactions",
+        "total_count": 0,
+        "+1": 0,
+        "-1": 0,
+        "laugh": 0,
+        "hooray": 0,
+        "confused": 0,
+        "heart": 0,
+        "rocket": 0,
+        "eyes": 0
+      },
+      "start_line": null,
+      "original_start_line": null,
+      "start_side": null,
+      "line": 1845,
+      "original_line": 1845,
+      "side": "RIGHT",
+      "author_association": "NONE",
+      "original_position": 26,
+      "position": 26,
+      "subject_type": "line"
+    },
+    {
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767694",
+      "pull_request_review_id": 5561476764,
+      "id": 4305767694,
+      "node_id": "PRRC_kwDOSMyAV88AAAABAKTNDg",
+      "diff_hunk": "@@ -0,0 +1,97 @@\n+---\n+format: 2\n+task_id: dotfiles-T133-worker-cap-hookspath-a01\n+kind: code\n+security: true\n+allowed_files:\n+  - home/dot_agents/agent-config.yaml\n+  - home/dot_local/bin/common/executable_herdr-agents\n+  - home/dot_agents/skills/agmsg-orchestration/SKILL.md\n+  - tests/unit/test_herdr_agents.py\n+  - .orchestration/dotfiles-T133-worker-cap-hookspath-a01/**\n+after: []\n+threat_table:\n+  - control: \"the PR edits home/dot_agents/agent-config.yaml in one place (item 1: the key worker_cap: 4 with its comment beside worker_worktree; nothing else)\"\n+    disposition: \"closed: tests/unit/test_herdr_agents.py::test_the_skill_names_the_manifest_worker_cap\"\n+  - control: \"the PR edits home/dot_local/bin/common/executable_herdr-agents in two places (item 2: the add-worker cap check read from the deployed manifest, refusing a seat beyond worker_cap; item 3: core.hooksPath=.githooks set per worktree on every add-worker, with extensions.worktreeConfig enabled once in the common config when absent)\"\n+    disposition: \"closed: tests/unit/test_herdr_agents.py::test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap\"",
+      "path": ".orchestration/dotfiles-T133-worker-cap-hookspath-a01/task.md",
+      "commit_id": "ffd8454dd3a42924e47290aa68a016d211c21c17",
+      "original_commit_id": "ffd8454dd3a42924e47290aa68a016d211c21c17",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "id": 199175422,
+        "node_id": "BOT_kgDOC98s_g",
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+        "html_url": "https://github.com/apps/chatgpt-codex-connector",
+        "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Point the launcher row at both closing tests**\n\nThis `closed` row covers both cap enforcement and the worktree-local hooks configuration, but its selector names only the cap test; that test can still pass if the `extensions.worktreeConfig` and `core.hooksPath` behavior is removed or implemented incorrectly. Include the separate hooks-path test in the disposition, or split the controls, so every behavior claimed as closed is actually checked.\n\nAGENTS.md reference: [AGENTS.md:L77-L78](https://github.com/mryfmo/dotfiles/blob/ffd8454dd3a42924e47290aa68a016d211c21c17/AGENTS.md#L77-L78)\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+      "created_at": "2026-10-18T04:48:52Z",
+      "updated_at": "2026-10-18T04:48:52Z",
+      "html_url": "https://github.com/mryfmo/dotfiles/pull/408#discussion_r4305767694",
+      "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408",
+      "_links": {
+        "self": {
+          "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767694"
+        },
+        "html": {
+          "href": "https://github.com/mryfmo/dotfiles/pull/408#discussion_r4305767694"
+        },
+        "pull_request": {
+          "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/408"
+        }
+      },
+      "reactions": {
+        "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4305767694/reactions",
+        "total_count": 0,
+        "+1": 0,
+        "-1": 0,
+        "laugh": 0,
+        "hooray": 0,
+        "confused": 0,
+        "heart": 0,
+        "rocket": 0,
+        "eyes": 0
+      },
+      "start_line": null,
+      "original_start_line": null,
+      "start_side": null,
+      "line": 17,
+      "original_line": 17,
+      "side": "RIGHT",
+      "author_association": "NONE",
+      "original_position": 17,
+      "position": 17,
+      "subject_type": "line"
+    }
+  ],
+  "requested_review": false
+}

@@ -1,0 +1,46 @@
+id	kind	title	state	evidence	updated_jst
+P1-1	phase1	マージ経路の復旧（2 トグル、#401、直列マージ、SKIP_RESOLVE、#400 暫定、chezmoi verify）	merging-serial-chains-parallel-ci	merged 14 today (main 51ba5801 = #428 at 19:22 JST); no PR between update-branch and merge now -> the boundary records PR (design 5.14, D-024-16..24, C-79..C-91, all records) is prepared next; #424/#410/#412/#426 are resets waiting for P1-15; #417 after a03; #411 after #417	2026-10-19 19:23
+P1-2	phase1	再ラウンド削減（#390、#387）	f2-followup-a03-merged	F2 reset a03 (#415) merged 14:4x JST -> main 205fe85c (the lint guards changed files; --all reports); the 9 detection gaps + 10 Bot rows are owned by followup-a02 with a tokenizer re-plan; F1 owner a02 (#423) merged 12:21	2026-10-19 14:49
+P1-3	phase1	CI 効率化 F5（concurrency、private-bootstrap、in-job skip）	ci-efficiency-a04-text-correct-waits-P1-15	a04 reset text (one trusted interpreter resolver consumed by ci-rerun.sh; trusted-parent execution with verify-and-refuse; passwd-anchored install root; realpath-bound destinations with named refusal codes; explicit repository on every gh call) C-80 correct at round 7, 18:58 JST; after: P1-15; a011 holds; the #424 branch stays	2026-10-19 18:58
+P1-4a	phase1	verdict.sh、audit-pool.sh、schemas/audit.json	verdict-a04-text-correct-waits-P1-15	a04 reset text (shadow-only: --apply refused, application deferred to verdict-apply-a01; trusted-parent execution; PR content from GitHub at one head40/base40 pair; repository bound on every gh call incl. GraphQL variables; full-head evidence names) C-80 correct at round 6, 19:02 JST; after: P1-15; a008 holds; the #410 branch stays; audit-pool-a02 text after P1-15	2026-10-19 19:02
+P1-4	phase1	integrate-seat-a02（席側統合）	not-started	#393 stop、材料のみ	2026-10-18 11:0x
+P1-5	phase1	result-precheck.sh と受け入れ側の拒否	a04-result-pending-integration	a04 RESULT 12:31 (#411 f461d607: 8 hardening items incl. --premises-sha wiring, the argv assertions amended; CI 10/11, regime fails on the stale base); pending integration after #417 (the checker), #415, #424, #425, #410; a009 free -> A owner a03 after #415 merges	2026-10-19 12:33
+P1-6	phase1	記録自動生成と dispatch.sh --next	not-started	-	2026-10-18 11:0x
+P1-7	phase1	席数上限の数値化	merged	#422 merged 10:46 JST at the audited update-branch head 2d8b0fe -> main 86ea9884 (the #408 security P1: lock helpers under python3 -I); audit P2 (evidence never committed by the Codex seat) synced under the evidence-sync exemption, P3 (manual @codex review) recorded; owner followup-a02 holds 2 rows; the hooks-path task follows on a Codex seat	2026-10-19 10:49
+P1-8	phase1	ルール文の縮小（委任しない条項）	merged	#427 merged 16:42 JST at the audited head e2ea4a52 -> main 69dccca9; audit P2 (the a01 cap sentence misnamed the SKILL budget; interpretation did not change the hashed text) owned by rule-text-reduction-followup-a01 whose Check carries the replacement sentence; P1-15 rebases onto it	2026-10-19 17:16
+P1-9	phase1	orchestrator 運用（handoff、timeout、20 分）	in-progress	INV-6 overrun found by the audits (M-20261018-10): resets at every S2 line via the review-profile redesign (C-69); project-map at milestones (C-70). Observed today: two host stalls where sandboxed commands took ~25-35 min (06:53-07:16Z, 08:33-09:08Z; the project-map agent saw the first); no records lost; cause not identified	2026-10-19 18:10
+P1-10	phase1	所見 disposition の自動化（dispositions.py、second-opinion）	a02-text-after-P1-15-and-a05	second C-80 12:10: 5 P1 + 2 P2, all on the missing Claude-seat boundary and the review-worktree location; re-sequenced after P1-15 and a05; per-item 5.14 rows and the relocated review worktree in the next revision	2026-10-19 12:12
+P1-11	phase1	CI regime ジョブ（regime.yml、regime-ci.py）	owner-a01-merged	#425 merged 15:45 JST at the audited head 380e7f4 -> main 3f240b12; audit P2 (the a01 text inherited the a02 Check wording the owned row 7fad835:2 had reworded; evidence right, text stale) owned by followup-a02 whose Check now states the rule; owner a02 (5 rows) after P1-15 (security: true)	2026-10-19 15:53
+P1-12	phase1	タスク文生成とチェッカー拡張（task-from-plan.py、C11〜C15、plan-check.py）	a03-text-correct-waits-P1-15	a03 text passed its 8th C-80 15:22 (correct); dispatch after the P1-15 merge (after:), to a009 after its A owner a03; the 12 owner P2 follow a03	2026-10-19 15:23
+P1-13	phase1	hold playbook（classes.yaml remedy、hold-playbook.sh）	a02-text-correct-waits-P1-15-and-resolver	hold-playbook-a02 reset text (309 lines: trusted-parent execution, resolver-bound interpreter, O_NOFOLLOW writes, .. refused, wildcard equivalence) C-80 correct 18:40; after: P1-15 and ci-efficiency-followup-a04; a011 holds; the #426 branch stays	2026-10-19 18:42
+P1-14	phase1	permission guard と ruleset 補助	a05-text-batched-after-P1-15	a05 (third revision installed 12:15, after: P1-15) waits: its next revision (P1-15 as a merged control, 5.14 rows 0-10, C-82 wording at its line 361) and C-80 run once P1-15 is implemented; a010 then continues on #420; make update for both lands once, after the a05 merge	2026-10-19 15:05
+P1-15	phase1	worker の sandbox 外コマンドの実行体固定（D-024-17）	a01-amendment-6-dispatched	amendment 5 C-80 18:48: 2 P1 (the deny inventory omitted permgate's policy input; Python without -I) -> design 5.14 items 1 and 9 amended (inventory from executable inputs; isolated Python) -> amendment 6 by the review profile, C-80 correct 19:03 (9b58b31), dispatched to a010 19:04; caps 888/1302; five texts wait on this merge (a07, hold-playbook-a02, ci-efficiency-a04, verdict-a04, codex-worker-network)	2026-10-19 19:04
+#400-interim	phase1	#400 の P1 ラウンド（T131-fix、D3 (a)/(d)）	closed-D3d	#400 closed 13:4x; gate rebuild is in P1-14 (deadline 10/19 12:00)	2026-10-18 14:35
+make-update-1	phase1	#400 マージ後の make update と再着席（0d 手順）	blocked-until-P1-14	no make update before the a05 (P1-14) merge: main agent-config.yaml still lists the three gh ask rules D-024-13 removed live, so an earlier make update (the P1-15 text names one after its merge) would bring the prompts back; P1-15 and a05 deploy together	2026-10-19 15:05
+boundary-23	phase1	boundary 23 の記録 PR（D-024-01〜12 を含む）	pr-open	PR #414 (01ce168e, 352 files) opened 17:1x; records-only; merge after the P1-14 gate (the live hook asks on a records PR) or by the operator; supersedes #401	2026-10-18 17:18
+PRECHECK_REQUIRED	phase1	precheck の強制旗	0	4 席の merge-base 確認待ち	2026-10-18 12:4x
+verdict-shadow	phase1	verdict の shadow 比較（一致 4 件で --apply）	0/4	-	2026-10-18 12:4x
+DoD-P1	gate	第 1 段階の退出条件 a〜p	not-met	-	2026-10-18 12:4x
+A	phase2	資産固定	owner-a03-merged	#428 merged 19:22 JST at the audited head 9e305424 -> main 51ba5801; audit P2 (my revise line check= was prose, no revision test) owned by followup-a04; A lineage: 5 merged (#388, #398, #405, #416, #428)	2026-10-19 19:23
+B-1	phase2	omp 設定生成 stage 1	parked	draft #406 (2e978db7)	2026-10-18 14:35
+B-2	phase2	omp hooks / permission	not-started	docs/hooks.md 確認済み	2026-10-18 11:0x
+C-1	phase2	hcom-dispatch とバス読み	parked	draft #407 (dfa9001b)	2026-10-18 14:35
+C-2	phase2	hcom 着席と移植	not-started	-	2026-10-18 11:0x
+D	phase2	認証検査	a07-text-correct-waits-P1-15	a07 round 3 C-80 18:12: P1 (uncommitted .gitignore rules hide an untracked credential file from the git-based listing) = third row of the git-input-trust family -> S1 re-plan: enumeration by filesystem walk (design 5.14 item 3); round 4 text C-80 correct 18:25 (05b8851); after: P1-15 (shared code files); a012 holds	2026-10-19 18:27
+X	phase2	切替	not-started	-	2026-10-18 11:0x
+E	phase2	撤去	not-started	agmsg 参照 69 ファイル	2026-10-18 11:0x
+G	phase2	pstack	not-started	タスク文のみ	2026-10-18 11:0x
+H	phase2	H1〜H9	not-started	-	2026-10-18 11:0x
+spark	phase2	relay と 2 席目	not-started	chezmoi 1d418126	2026-10-18 11:0x
+D1	decision	strict up-to-date OFF	applied	ruleset 24397953 at 17:40:17 JST: strict=false, 7 required contexts named correctly (verified by gh api); the 16:30 rule removal and the 17:05 misnamed re-add are recorded as M-20261018-11	2026-10-18 17:44
+D2	decision	thread resolution OFF	default	no pull_request rule in ruleset 24397953 at 13:0x: thread resolution not required; glue SKIP_RESOLVE=1	2026-10-18 13:29
+D3	decision	#400 暫定マージ	default-(d)	S1 fired before the round; #400 closed; T131 review record carries the class table and re-plan line	2026-10-18 13:29
+D4	decision	#393 stop → P1-4/5/7	default	#393 closed 13:4x, branch kept; requirements in P1-4/P1-5/P1-7	2026-10-18 13:29
+D5	decision	#399 close	default	#399 closed 13:4x, branch kept	2026-10-18 13:29
+D6	decision	#383 #315 #317 #323 close	default	#383 #315 #317 #323 closed 13:4x, branches kept	2026-10-18 13:29
+D7	decision	#403 close、#395 hold	default	#403 closed 13:4x; #395 held open	2026-10-18 13:29
+D8	decision	F3 → P1-4/P1-6	default	F3 task text not dispatched; requirements in P1-4/P1-6	2026-10-18 13:29
+D9	decision	切替後の orchestrator provider と費用記録	default	recorded; applies at phase 2	2026-10-18 13:29
+D10	decision	席上限 4 → 6	5-now	cap 4 -> 5 at 08:35 JST (D-024-15, the operator's instruction to proceed with the proper state): codex-standard-dot-a012 seated at worker-g for the Codex-boundary backlog (the #408 security P1, then worker-hooks-path); 6 after spark	2026-10-19 08:37
+D11	decision	spark relay 私設ブローカー	default	phase 2	2026-10-18 13:29
+D12	decision	Grok Bot は報告のみ	default	Grok Bot reports only	2026-10-18 13:29

@@ -7,8 +7,8 @@
 #   review worktree, the record, a ready PR) it fetches the head into both checkouts, update-branches when the base
 #   moved (restarting at the fetch), waits for the required checks and the Bot (never gated), then runs the sandbox
 #   scan, the local review, the advisory rows, the sweep, the receipt, the record block and the audit, which an
-#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged and a clean
-#   merge of its parents reproduces its tree. Each command
+#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged, a clean
+#   merge of its parents reproduces its tree and that head's audit ends with a verdict the gate accepts. Each command
 #   goes to `.orchestration/validation/<task>-chain-<sha7>.log` as `<utc> <step> rc=<n>: <command>`, repository
 #   paths relative; a refusal before the head is known goes to stderr only. The repository scripts run from the main
 #   checkout, never the head, and the script never changes directory into the review worktree.
@@ -193,6 +193,11 @@ if [[ -n ${parent} && -f ${from}.md && -f ${from}.md.last.md ]] && "${git}" -C "
     # verdict line, so a commit ground to the same prefix never loads another head's audit (PR #413 thread 4306231809).
     /usr/bin/awk -v t="${task}" -v p="${parent}" '$1 == "chain-integrate:" && $2 == t && $3 == p { f = 1 } END { exit !f }' \
         "${v}/${task}-chain-${parent:0:7}.log" 2> /dev/null || old=''
+    # Only a verdict the gate accepts is inherited (its AUDIT_VERDICT and AUDIT_FINDING): correct, or incorrect with a
+    # [P0-P3] line; a blocked, empty or finding-less parent result takes the fresh audit (audit:274a536:2).
+    last=$(/usr/bin/awk 'NF { l = $0 } END { print l }' "${from}.md.last.md")
+    [[ ${last} =~ ^[[:space:]]*Verdict:\ (correct|incorrect)[[:space:]]*$ ]] || old=''
+    [[ ${BASH_REMATCH[1]-} != incorrect ]] || /usr/bin/grep -qE '^[[:space:]]*([-*+][[:space:]]+)?\[P[0-3]\]' "${from}.md.last.md" || old=''
 fi
 if [[ -n ${old} && ${old%% *} == "${new%% *}" ]]; then
     for s in .md .md.last.md; do

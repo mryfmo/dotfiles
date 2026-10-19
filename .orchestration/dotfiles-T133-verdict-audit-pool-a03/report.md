@@ -10,7 +10,9 @@ split_commit: 0e16d7eb
 test_commit: f8f5da79
 fix_commit: 8f22dd9d
 review_commit: 8b0b5bb4
-code_head: 8b0b5bb4
+code_head: cac07914
+revise_1_previous_head: 513e5d0532ec3c21484ab215ef77fea440329749
+revise_1_commits: 51abdb1c a19a0eba 32e4d2fb cac07914
 parked_pr: 407
 task_sha256: 2f0493944badef8294dc691e87fba7ab6cc84ed2d6e135454a34b1219f724c42
 ---
@@ -99,5 +101,27 @@ The worker review is recorded in `dotfiles-T133-verdict-audit-pool-a03-worker-cr
   - **Cause:** #418, merged as `0e496ce7` after this PR's recorded base `3e41e36a`, runs from main but checks out the PR's base sha. `regime-ci.py` does not exist at `3e41e36a`, so the job exits 2 with "can't open file …/scripts/orchestrator/regime-ci.py" (run 39188822522). It is not this PR's code.
   - **Remedy:** either of two, both outside this task's `allowed_files` and effects. The orchestrator's `gh pr update-branch 410` gives the PR a base that has the verifier. Or the #418 lineage makes the job skip, with a warning, a base that predates its verifier.
 - **Bot:** none. PR #410 was already ready when pushed, and only the CodeRabbit skip notice appeared in the 15 minutes after the push at 02:11Z.
+
+## Revise 1 (AGMSG-ACCEPTANCE status=revise round=2, 2026-10-19T05:34:59Z; previous head 513e5d05)
+
+The security review of the update-branch head `513e5d05` found two P1 and one P2. They are fixed in one round, the INV-6 cap with the pre-push round (C-61).
+
+| Item | Fix | Check (red: validation R2; green: R3; mutants: R4) |
+|---|---|---|
+| (1) P1 `verdict.sh:36`: a caller-supplied `VERDICT_BIN` and matching `PATH` bypassed `env -i`, so inherited functions and tool-selection variables ran with the operator's authority | **Before any command:** every inherited function is unset (`compgen -A function`). **The pinned state** is honoured only when it is exactly what the re-run builds: `PATH` is `VERDICT_BIN:/usr/bin:/bin`, no exported name outside HOME, TMPDIR, PATH, VERDICT_BIN, PRECHECK_REQUIRED and bash's own, and every entry of `VERDICT_BIN` a link to an absolute path outside a shims directory. **Otherwise** it is rebuilt under `env -i`. The resolution's search path then drops the caller's `VERDICT_BIN` and any empty entry, so a caller's bin never selects a tool. | `test_verdict_ignores_caller_bin_and_path_overrides`, with three cases. **An exported `git` function** beside a clean caller-made pinned state is unset, and the run accepts. **A tool-selection variable (`UV_PYTHON`)** with a caller's bin linking a planted `python3` forces a rebuild without that bin, and holds. **A copied (not linked) planted `python3`** in a clean caller's bin is no pinned state, and holds. None leaves the planted marker. At `513e5d05` all three fail: the function and the planted interpreter both ran. |
+| (2) P1 `verdict.sh:168`: the condition-4 import of `require-crit-review.py`, and of the validator it loads, could execute cached bytecode from the ignored `scripts/__pycache__` (`-B` stops writes, not reads) | Condition 4 holds while `scripts/__pycache__` exists; both modules load from that one directory. The import snippet sets `sys.dont_write_bytecode` beside `-I -B`. `PYTHONDONTWRITEBYTECODE` is not added: `-I` makes Python ignore it, and every Python run here is `-I`. | `test_verdict_never_imports_cached_bytecode`: an unchecked-hash `.pyc` for `require-crit-review.py`, compiled by the interpreter verdict pins, never runs, and the verdict holds, naming `scripts/__pycache__`. At `513e5d05` the planted bytecode ran. |
+| (3) P2: 17 predecessor artifacts in the PR tree | `cac07914` deletes `.orchestration/dotfiles-T133-verdict-audit-pool-a01/` and `-a02/` (16 files; the a02 task copy left in the first push). The orchestrator keeps the records. | R6: the cumulative diff is the four allowed files and this task's records. |
+
+- **Caps (R7):** outside `tests/` and `.orchestration/`, 299 of 300: `verdict.sh` 278, `audit.json` 11, `verdict.json` 10. `tests/`: 399 of 400.
+  - **How they fit:** the new code and tests fit by honest compaction, with every case and assertion kept:
+    - a `sh` helper for the repeated `verdict.sh` invocation;
+    - tuples written to fit one line;
+    - two `verdict.sh` blocks (condition 8, the required-check list) written shorter with the same behaviour;
+    - four line breaks fewer in the schemas, whose parsed content still equals b8998de1's (R5).
+  - **Kept:** the 17 tests of the reset stay green at the code head (R3). Before the fix, a local run of the whole compacted file against 513e5d05's script at `51abdb1c` failed only the revise's three new cases. That run is not pasted; R2 pastes the two checks.
+- **Residual for P1 (1):** the host is not a trust boundary (plan 024 §5.14 item 0), and two cases remain:
+  - A caller who builds the complete pinned environment itself (clean names, links to absolute non-shim paths) chooses its tools, exactly as its `PATH` already does for the resolution.
+  - An inherited function named after a bash builtin (`unset`, `compgen`, `read`) could shadow the cleanup.
+- **Not run locally:** `make unit-test` this round; the PR's CI `test` jobs run it. The verdict module, shellcheck and shfmt are green here.
 
 cost: n/a

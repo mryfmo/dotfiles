@@ -2,7 +2,9 @@
 task_id: dotfiles-T133-verdict-audit-pool-a03
 seat: claude-standard-dot-a008
 code_head: 8b0b5bb4
+revise_1_code_head: cac07914
 previous_head: b8998de162afc72d53d07679b8f0a194fcc480ff
+revise_1_previous_head: 513e5d0532ec3c21484ab215ef77fea440329749
 ---
 
 # Validation: dotfiles-T133-verdict-audit-pool-a03
@@ -366,5 +368,141 @@ $ jq . .orchestration/validation/dotfiles-T133-verdict-audit-pool-a03-verdict-8b
   "generated_at": "2026-10-19T02:12:02Z"
 }
 410	8b0b5bb42b41e3a32344744a362f1c9fc99f2e35	hold			2026-10-19T02:12:02Z
+[exit 0]
+```
+
+# Revise 1 (AGMSG-ACCEPTANCE status=revise, 2026-10-19T05:34:59Z; previous head 513e5d05, the orchestrator's update-branch head)
+
+- Every block below ran inside the sandbox from this worktree at the revise's code head `cac07914`. The only later commit is this records commit.
+- Red runs at `513e5d05` with this head's test file (R2). Green, the mutants, the lint, the inventory and the caps run at the code head (R3 to R7).
+- §1 to §11 above stay as the reset round's evidence at `8b0b5bb4`.
+
+## R1. Revise 1: the branch, origin/main and this round's commits on the update-branch head 513e5d05
+```console
+$ git branch --show-current; git rev-parse HEAD origin/main; git log --oneline $PREV..HEAD
+tools/verdict-audit-pool-a01
+cac0791494cd7765187ba3c99f12ff377f9adffb
+205fe85c19c03750fe3551bb96e084e9f0a676b6
+cac07914 chore(orchestration): the a01 and a02 record directories leave PR 410's tree; the orchestrator keeps the records (T133 verdict-audit-pool a03, revise 1)
+32e4d2fb fix(orchestrator): verdict unsets inherited functions, honours a pinned state only as it builds one and never resolves through a caller's VERDICT_BIN; condition 4 holds while scripts/__pycache__ exists (T133 verdict-audit-pool a03, revise 1)
+a19a0eba test(orchestrator): a caller's bin holding a copied, not linked, tool is not a pinned state (T133 verdict-audit-pool a03, revise 1)
+51abdb1c test(orchestrator): verdict ignores a caller's bin and PATH overrides and never imports cached bytecode; the module compacted to its cap with every case kept (T133 verdict-audit-pool a03, revise 1)
+[exit 0]
+```
+## R2. RED at 513e5d05 (its verdict.sh), with this head's test file, in a scratch worktree: the two checks of the revise
+```console
+$ git -C "$R" rev-parse --short=8 HEAD; git show HEAD:tests/unit/test_verdict.py > "$R/tests/unit/test_verdict.py"; cd "$R" && uv run python -m unittest $REV 2>&1 | /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^(OK|FAILED)" | sed -E "s/ \(tests\.unit\.test_verdict\.VerdictTest\.[a-z0-9_]+\)//" | cut -c1-200
+513e5d05
+FAIL: test_verdict_ignores_caller_bin_and_path_overrides (case='function')
+AssertionError: Tuples differ: (0, False) != (20, True)
+FAIL: test_verdict_ignores_caller_bin_and_path_overrides (case='variable')
+AssertionError: Tuples differ: (20, False) != (0, True)
+FAIL: test_verdict_ignores_caller_bin_and_path_overrides (case='copy')
+AssertionError: Tuples differ: (20, False) != (0, True)
+FAIL: test_verdict_never_imports_cached_bytecode
+AssertionError: Tuples differ: (20, False) != (20, True)
+Ran 2 tests in 6.765s
+FAILED (failures=4)
+[exit 0]
+```
+## R3. GREEN at the code head: the whole verdict module, verbose (the 17 tests of the reset, every one kept through the compaction, and the two checks)
+```console
+$ git rev-parse --short=8 HEAD; uv run python -m unittest tests.unit.test_verdict -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"
+cac07914
+test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds (tests.unit.test_verdict.VerdictTest.test_verdict_accepts_only_when_all_nine_conditions_hold_and_each_broken_condition_revises_or_holds) ... ok
+test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto (tests.unit.test_verdict.VerdictTest.test_verdict_apply_calls_nothing_unless_accept_and_refuses_admin_and_auto) ... ok
+test_verdict_apply_runs_the_integration_gate_before_dispatch_or_merge_and_holds_on_failure (tests.unit.test_verdict.VerdictTest.test_verdict_apply_runs_the_integration_gate_before_dispatch_or_merge_and_holds_on_failure) ... ok
+test_verdict_condition_1_is_a_warning_under_precheck_required_0 (tests.unit.test_verdict.VerdictTest.test_verdict_condition_1_is_a_warning_under_precheck_required_0) ... ok
+test_verdict_condition_4_preserves_complete_item_identity_and_multiplicity (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_preserves_complete_item_identity_and_multiplicity) ... ok
+test_verdict_condition_4_rejects_an_undispositioned_status_with_a_null_url (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_rejects_an_undispositioned_status_with_a_null_url) ... ok
+test_verdict_condition_4_requires_saved_and_fresh_heads_to_equal_the_accepted_head (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_requires_saved_and_fresh_heads_to_equal_the_accepted_head) ... ok
+test_verdict_condition_4_uses_the_existing_disposition_and_commit_validators (tests.unit.test_verdict.VerdictTest.test_verdict_condition_4_uses_the_existing_disposition_and_commit_validators) ... ok
+test_verdict_condition_5_honors_the_latest_amended_caps (tests.unit.test_verdict.VerdictTest.test_verdict_condition_5_honors_the_latest_amended_caps) ... ok
+test_verdict_counts_open_p0_p1_findings_even_when_the_id_is_empty (tests.unit.test_verdict.VerdictTest.test_verdict_counts_open_p0_p1_findings_even_when_the_id_is_empty) ... ok
+test_verdict_holds_on_a_missing_or_schema_failing_input (tests.unit.test_verdict.VerdictTest.test_verdict_holds_on_a_missing_or_schema_failing_input) ... ok
+test_verdict_ignores_caller_bin_and_path_overrides (tests.unit.test_verdict.VerdictTest.test_verdict_ignores_caller_bin_and_path_overrides) ... ok
+test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge (tests.unit.test_verdict.VerdictTest.test_verdict_loop_refreshes_the_trusted_checkout_after_a_merge) ... ok
+test_verdict_never_imports_cached_bytecode (tests.unit.test_verdict.VerdictTest.test_verdict_never_imports_cached_bytecode) ... ok
+test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold (tests.unit.test_verdict.VerdictTest.test_verdict_output_validates_against_its_schema_for_accept_revise_and_hold) ... ok
+test_verdict_pins_tools_interpreter_and_environment_before_reading_a_pr_checkout (tests.unit.test_verdict.VerdictTest.test_verdict_pins_tools_interpreter_and_environment_before_reading_a_pr_checkout) ... ok
+test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable (tests.unit.test_verdict.VerdictTest.test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable) ... ok
+test_verdict_shadow_appends_the_machine_column_only (tests.unit.test_verdict.VerdictTest.test_verdict_shadow_appends_the_machine_column_only) ... ok
+test_verdict_validate_refuses_each_rule_the_moved_schema_checker_holds (tests.unit.test_verdict.VerdictTest.test_verdict_validate_refuses_each_rule_the_moved_schema_checker_holds) ... ok
+Ran 19 tests in 148.263s
+OK
+[exit 0]
+```
+## R4. Each control of the revise is load-bearing: one mutant per control fails a check, in a scratch worktree at HEAD (the mutant script, then its run)
+```console
+$ cat "$TMPDIR/mut-v03r.py"; uv run --no-project python -I "$TMPDIR/mut-v03r.py" "$Q"
+# Each mutant removes one control of the revise; one of the two revise tests must fail on every one.
+import subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1]); f = root / "scripts/orchestrator/verdict.sh"; src = f.read_text()
+M = {
+    "inherited functions kept": ('for f in $(compgen -A function); do unset -f "${f}"; done', ':'),
+    "any exported name accepted": ('|| pinned=no; done\nfor t in', '|| :; done\nfor t in'),
+    "a tool that is no link accepted": ('/shims/ ]] || pinned=no; done', '/shims/ ]] || :; done'),
+    "the caller's bin searched": ('|| search+="${search:+:}${d}"; done', '|| :; done; search=${PATH}'),
+    "scripts/__pycache__ allowed": (' && ! -e scripts/__pycache__ ]]', ' ]]'),
+}
+tests = ["tests.unit.test_verdict.VerdictTest.test_verdict_ignores_caller_bin_and_path_overrides",
+         "tests.unit.test_verdict.VerdictTest.test_verdict_never_imports_cached_bytecode"]
+for name, (a, b) in M.items():
+    assert src.count(a) == 1, name
+    f.write_text(src.replace(a, b))
+    r = subprocess.run(["uv", "run", "python", "-m", "unittest", *tests], cwd=root, capture_output=True, text=True)
+    print(f"{name}: {'killed' if r.returncode else 'SURVIVED'}")
+f.write_text(src)
+inherited functions kept: killed
+any exported name accepted: killed
+a tool that is no link accepted: killed
+the caller's bin searched: killed
+scripts/__pycache__ allowed: killed
+[exit 0]
+```
+## R5. shellcheck and shfmt on verdict.sh; ruff format on the test; the schemas parsed-equal to b8998de1
+```console
+$ shellcheck scripts/orchestrator/verdict.sh && echo "shellcheck clean"; shfmt -i 4 -sr -d scripts/orchestrator/verdict.sh && echo "shfmt clean"; ruff format --config ruff.toml --check tests/unit/test_verdict.py; for n in audit verdict; do git show "b8998de1:.schemas/$n.json" > "$TMPDIR/old-$n.json"; uv run --no-project python -I -c "import json, sys; print(sys.argv[3], json.load(open(sys.argv[1])) == json.load(open(sys.argv[2])))" "$TMPDIR/old-$n.json" ".schemas/$n.json" "$n parsed-equal:"; done
+shellcheck clean
+shfmt clean
+1 file already formatted
+audit parsed-equal: True
+verdict parsed-equal: True
+[exit 0]
+```
+## R6. Item 3: the cumulative inventory is this task's allowed files and its own records; the a01 and a02 directories are gone
+```console
+$ git diff --name-only origin/main...HEAD; for d in a01 a02; do [ -z "$(git ls-files .orchestration/dotfiles-T133-verdict-audit-pool-$d)" ] && echo "absent at HEAD: .orchestration/dotfiles-T133-verdict-audit-pool-$d/"; done
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/dotfiles-T133-verdict-audit-pool-a03-worker-crit.json
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/dotfiles-T133-verdict-audit-pool-a03-worker-review-receipt.md
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/learning.md
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/report.md
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/revise.yaml
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/sandbox.md
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/task.md
+.orchestration/dotfiles-T133-verdict-audit-pool-a03/validation.md
+.schemas/audit.json
+.schemas/verdict.json
+scripts/orchestrator/verdict.sh
+tests/unit/test_verdict.py
+absent at HEAD: .orchestration/dotfiles-T133-verdict-audit-pool-a01/
+absent at HEAD: .orchestration/dotfiles-T133-verdict-audit-pool-a02/
+[exit 0]
+```
+## R7. Caps over origin/main...HEAD (additions plus deletions)
+```console
+$ B=$(git merge-base origin/main HEAD); echo "merge-base ${B:0:8}"; git diff --numstat "$B...HEAD" -- . ":!.orchestration"; git diff --numstat "$B...HEAD" | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/: %d of 300\nunder tests/: %d of 400\n\", o, t}"; echo "verdict.sh alone: $(wc -l < scripts/orchestrator/verdict.sh) of 300 lines"; wc -l .schemas/audit.json .schemas/verdict.json
+merge-base b22a5580
+11	0	.schemas/audit.json
+10	0	.schemas/verdict.json
+278	0	scripts/orchestrator/verdict.sh
+399	0	tests/unit/test_verdict.py
+outside tests/ and .orchestration/: 299 of 300
+under tests/: 399 of 400
+verdict.sh alone:      278 of 300 lines
+      11 .schemas/audit.json
+      10 .schemas/verdict.json
+      21 total
 [exit 0]
 ```

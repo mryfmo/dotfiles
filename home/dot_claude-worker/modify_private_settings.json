@@ -1,63 +1,424 @@
 #!/usr/bin/env python3
-"""Replace worker policy with its dedicated baseline, preserving unrelated state."""
+"""Render worker policy and screen its complete startup read set before mutation."""
 
 import json
 import os
 from pathlib import Path
 import platform
+import pwd
 import re
 import shlex
 import sys
+import tempfile
 
 source = Path(os.environ.get("CHEZMOI_SOURCE_DIR", Path(__file__).resolve().parents[1]))
-home = os.environ.get("CHEZMOI_HOME_DIR", str(Path.home()))
-if sys.argv[1:2] == ["--legacy"]:
-    current = json.load(sys.stdin)
-    scripts = Path(home) / ".agents/skills/agmsg/scripts"
-    events = {
-        "SessionStart": "session-start.sh",
-        "SessionEnd": "session-end.sh",
-        "Stop": "check-inbox.sh",
-        "PostToolUse": "check-inbox.sh",
-    }
-    for event, groups in current.get("hooks", {}).items():
-        retained = []
-        for group_index, group in enumerate(groups):
-            hooks = []
-            for hook_index, hook in enumerate(group.get("hooks", [])):
-                if hook.get("type") != "command" and "command" not in hook:
-                    hooks.append(hook)
-                    continue
-                try:
-                    words = shlex.split(hook.get("command", ""))
-                except ValueError:
-                    words = []
-                if words[:1] in (["bash"], ["/bin/bash"]):
-                    words = words[1:]
-                expected = [str(scripts / events[event]), "claude-code", sys.argv[2]] if event in events else []
-                if not expected or words not in (
-                    expected,
-                    expected + ["PostToolUse"] if event == "PostToolUse" else expected,
-                ):
-                    raise SystemExit(f"legacy command hook remains: {event}[{group_index}].hooks[{hook_index}]")
-            if hooks:
-                retained.append(group | {"hooks": hooks})
-        current["hooks"][event] = retained
-    sys.stdout.write(json.dumps(current, indent=2) + "\n")
-    raise SystemExit(0)
-text = (source / ".chezmoitemplates/claude-worker-settings.json").read_text()
-text = re.sub(
-    r'{{ if eq \.chezmoi\.os "darwin" }}(.*?){{ else }}(.*?){{ end }}',
-    lambda m: m[1] if platform.system() == "Darwin" else m[2],
-    text,
-    flags=re.S,
+home = Path(os.environ.get("CHEZMOI_HOME_DIR", str(Path.home())))
+PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
+GUARD = '"$HOME/.claude/hooks/orchestrator-only.sh" '
+EVENTS = {
+    "SessionStart": "session-start.sh",
+    "SessionEnd": "session-end.sh",
+    "Stop": "check-inbox.sh",
+    "PostToolUse": "check-inbox.sh",
+}
+SOURCE_CLASSES = tuple(f"S{i:02}" for i in range(1, 24))
+EXECUTABLE = set(
+    (
+        "apiKeyHelper statusLine subagentStatusLine fileSuggestion awsAuthRefresh awsCredentialExport "
+        "gcpAuthRefresh otelHeadersHelper proxyAuthHelper processWrapper policyHelper policyHelpers "
+        "bwrapPath socatPath ripgrep command args headersHelper workflows monitors dependencies"
+    ).split()
 )
-managed = json.loads(text.replace("{{ .chezmoi.homeDir }}", home))
-current_text = sys.stdin.read()
-try:
-    current = json.loads(current_text)
-except json.JSONDecodeError:
-    current = {}
-current = current if isinstance(current, dict) else {}
-merged = current | managed
-sys.stdout.write(current_text if merged == current else json.dumps(merged, indent=2) + "\n")
+SELECTOR = re.compile(
+    r"^(CLAUDE_CONFIG_DIR|CLAUDE_CODE_.*(?:PLUGIN|SHELL|WRAPPER|HELPER|POLICY|SETTINGS|MANAGED|MCP|CONFIG_ROOT).*)$"
+)
+SETTINGS_ENV_SELECTORS = set(
+    (
+        "HOME PATH SHELL BASH_ENV ENV ZDOTDIR CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE "
+        "NODE_OPTIONS NODE_PATH PYTHONHOME PYTHONPATH LD_PRELOAD LD_LIBRARY_PATH "
+        "DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH AGMSG_STORAGE_PATH UV_CACHE_DIR UV_PYTHON_INSTALL_DIR"
+    ).split()
+)
+
+
+def refuse(path, key):
+    raise SystemExit(f"worker startup refused: {path}: {key}")
+
+
+def present(path):
+    try:
+        path.lstat()
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        refuse(path, "unreadable configuration")
+
+
+def pairs(items):
+    result = dict(items)
+    if len(result) != len(items):
+        raise ValueError("duplicate key")
+    return result
+
+
+def read_json(path):
+    try:
+        if not path.is_file():
+            raise ValueError("not a regular file")
+        result = json.loads(path.read_text(), object_pairs_hook=pairs)
+        if not isinstance(result, dict):
+            raise ValueError("not an object")
+        return result
+    except (OSError, ValueError, UnicodeError):
+        refuse(path, "malformed or unreadable configuration")
+
+
+def baseline():
+    text = (source / ".chezmoitemplates/claude-worker-settings.json").read_text()
+    text = re.sub(
+        r'{{ if eq \.chezmoi\.os "darwin" }}(.*?){{ else }}(.*?){{ end }}',
+        lambda m: m[1] if platform.system() == "Darwin" else m[2],
+        text,
+        flags=re.S,
+    )
+    return json.loads(text.replace("{{ .chezmoi.homeDir }}", str(home)))
+
+
+def entry(command):
+    return {"hooks": [{"type": "command", "command": command, "onFailure": "block"}]}
+
+
+def delivery(role, storage=True):
+    prefix = PREFIX + "AGMSG_RESOLVE_PROJECT=0 "
+    if storage:
+        prefix += "AGMSG_STORAGE_PATH=" + shlex.quote(os.environ.get("AGMSG_STORAGE_PATH", "")) + " "
+    hooks = {
+        event: [entry(prefix + GUARD + ("worker-" if role == "worker" else "") + "agmsg-" + EVENTS[event])]
+        for event in ("SessionStart", "SessionEnd", "Stop")
+    }
+    if role == "main":
+        attach = 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+        hooks["SessionStart"].append(entry(prefix + attach + GUARD + "herdr-agents"))
+    return hooks
+
+
+def legacy(hook, event, project):
+    if hook.get("type") != "command" or set(hook) - {"type", "command", "onFailure", "timeout"}:
+        return False
+    if event in EVENTS:
+        old = (
+            PREFIX
+            + "AGMSG_RESOLVE_PROJECT=0 /bin/bash "
+            + shlex.quote(str(home / ".agents/skills/agmsg/scripts" / EVENTS[event]))
+            + ' claude-code "${CLAUDE_PROJECT_DIR}"'
+        )
+        if hook == entry(old)["hooks"][0]:
+            return True
+    try:
+        words = shlex.split(hook.get("command", ""))
+    except (ValueError, TypeError):
+        return False
+    if words[:1] in (["bash"], ["/bin/bash"]):
+        words = words[1:]
+    expected = (
+        [str(home / ".agents/skills/agmsg/scripts" / EVENTS[event]), "claude-code", str(project)]
+        if event in EVENTS
+        else []
+    )
+    return bool(expected) and words in (expected, expected + ["PostToolUse"] if event == "PostToolUse" else expected)
+
+
+def screen(value, path, allowed=None, project=None, key=""):
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            screen(item, path, key=f"{key}[{index}]")
+    elif isinstance(value, dict):
+        for name, item in value.items():
+            at = f"{key}.{name}" if key else name
+            if name == "hooks":
+                if not isinstance(item, dict):
+                    refuse(path, at + ": unsupported hooks")
+                for event, groups in item.items():
+                    if not isinstance(groups, list):
+                        refuse(path, at + "." + event + ": malformed hooks")
+                    for gi, group in enumerate(groups):
+                        if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                            refuse(path, f"{at}.{event}[{gi}]: malformed hooks")
+                        for hi, hook in enumerate(group["hooks"]):
+                            location = f"{at}.{event}[{gi}].hooks[{hi}]: noncanonical hook handler"
+                            if (
+                                not isinstance(hook, dict)
+                                or hook.get("type") != "command"
+                                or not isinstance(hook.get("command"), str)
+                            ):
+                                refuse(path, location)
+                            owned = any(
+                                group == c | {"hooks": group["hooks"]} and hook in c["hooks"]
+                                for c in (allowed or {}).get(event, [])
+                            )
+                            migrated = project is not None and legacy(hook, event, project)
+                            if key or set(group) - {"matcher", "hooks"} or not (owned or migrated):
+                                refuse(path, location)
+            elif name in EXECUTABLE:
+                refuse(path, at)
+            elif name == "source" and item == "command":
+                refuse(path, at + ": command source")
+            elif name in ("mcpServers", "managedMcpServers"):
+                if not isinstance(item, dict) or item:
+                    refuse(path, at)
+            elif name == "enabledPlugins":
+                if not isinstance(item, dict) or any(v is not False for v in item.values()):
+                    refuse(path, at)
+            elif name in ("syncClaudeAiPlugins", "syncClaudeAiSkills", "extraKnownMarketplaces"):
+                if item != {} if name == "extraKnownMarketplaces" else item is not False:
+                    refuse(path, at)
+            elif name == "additionalDirectories" and item != []:
+                refuse(path, at + ": unenumerated loading root")
+            elif name == "env":
+                if not isinstance(item, dict):
+                    refuse(path, at + ": malformed selector")
+                for variable in item:
+                    if SELECTOR.match(variable) or variable in SETTINGS_ENV_SELECTORS:
+                        refuse(path, at + "." + variable)
+            elif name == "installPath":
+                if (
+                    not isinstance(item, str)
+                    or not Path(item).is_dir()
+                    or not Path(item).resolve().is_relative_to((home / ".claude-worker/plugins").resolve())
+                ):
+                    refuse(path, at)
+            elif name == "oauthAccount":
+                refuse(path, at + ": unenumerable server-managed delivery")
+            else:
+                screen(item, path, key=at)
+
+
+def files(root):
+    if not present(root):
+        return []
+    seen, found = set(), []
+
+    def error(problem):
+        refuse(root, "unreadable loading root")
+
+    for directory, dirs, names in os.walk(root, followlinks=True, onerror=error):
+        identity = Path(directory).stat()
+        inode = identity.st_dev, identity.st_ino
+        if inode in seen:
+            dirs[:] = []
+            continue
+        seen.add(inode)
+        found.extend(Path(directory) / name for name in names)
+    return found
+
+
+def configured(paths, suffix):
+    parts = Path(suffix).parts
+    found = []
+    for path in paths:
+        if tuple(p.casefold() for p in path.parts[-len(parts) :]) == tuple(p.casefold() for p in parts):
+            candidate = path.parents[len(parts) - 1] / suffix
+            if present(candidate):
+                found.append(candidate)
+    return found
+
+
+def inventory(worktree, anchor):
+    user = home / ".claude-worker"
+    managed = Path("/Library/Application Support/ClaudeCode" if platform.system() == "Darwin" else "/etc/claude-code")
+    ancestors = set((worktree, *tuple(worktree.parents)[:-1], anchor, *tuple(anchor.parents)[:-1]))
+    roots = {user, managed / ".claude", worktree / ".claude", anchor / ".claude"}
+    for path in files(worktree):
+        parts = path.relative_to(worktree).parts
+        for index, part in enumerate(parts):
+            candidate = worktree.joinpath(*parts[:index], ".claude")
+            if part.casefold() == ".claude" and present(candidate):
+                roots.add(candidate)
+    result = dict(zip(SOURCE_CLASSES, [[] for _ in SOURCE_CLASSES]))
+    result["S01"] = [user / "settings.json"]
+    result["S02"] = [worktree / ".claude/settings.json"]
+    result["S03"] = [worktree / ".claude/settings.local.json"]
+    result["S04"] = [anchor / ".claude/settings.local.json"]
+    result["S05"] = [managed / "managed-settings.json"]
+    dropins = managed / "managed-settings.d"
+    result["S06"] = [p for p in files(dropins) if p.parent == dropins and p.suffix == ".json"]
+    result["S07"] = [user / "remote-settings.json"]
+    result["S08"], result["S09"] = [worktree / ".mcp.json"], [anchor / ".mcp.json"]
+    result["S10"] = [p / ".mcp.json" for p in ancestors - {worktree, anchor}]
+    result["S11"] = [user / ".claude.json"]
+    plugin_files = files(user / "plugins")
+    skills = [p for root in roots for p in files(root / "skills")]
+    result["S12"] = configured(skills, ".claude-plugin/plugin.json")
+    result["S13"], result["S14"] = [user / "plugins/installed_plugins.json"], [user / "plugins/known_marketplaces.json"]
+    result["S15"] = result["S12"] + configured(plugin_files, ".claude-plugin/plugin.json")
+    result["S16"] = configured(plugin_files + skills, "hooks/hooks.json")
+    result["S17"] = configured(plugin_files, ".claude-plugin/marketplace.json")
+    result["S18"] = configured(plugin_files + skills, ".mcp.json")
+    result["S19"] = [managed / "managed-mcp.json"]
+    result["S20"] = configured(skills + plugin_files, "SKILL.md")
+    result["S21"] = [p for root in roots for p in files(root / "commands") if p.suffix == ".md"] + [
+        p for p in plugin_files if p.suffix == ".md" and "commands" in p.parts
+    ]
+    result["S22"] = [p for root in roots for p in files(root / "agents") if p.suffix == ".md"] + [
+        p for p in plugin_files if p.suffix == ".md" and "agents" in p.parts
+    ]
+    result["S23"] = configured(plugin_files + skills, ".lsp.json") + configured(plugin_files + skills, "lsp.json")
+    for path in result["S15"]:
+        descriptor = read_json(path)
+        for field, sid in (
+            ("hooks", "S16"),
+            ("mcpServers", "S18"),
+            ("lspServers", "S23"),
+            ("commands", "S21"),
+            ("agents", "S22"),
+            ("skills", "S20"),
+        ):
+            references = descriptor.get(field, [])
+            if isinstance(references, str):
+                references = [references]
+            if isinstance(references, list):
+                for reference in references:
+                    if not isinstance(reference, str):
+                        refuse(path, field + ": unsupported component")
+                    try:
+                        target = (path.parent.parent / reference).resolve(strict=True)
+                    except (OSError, RuntimeError):
+                        refuse(path, field + ": unreadable component")
+                    if not target.is_relative_to(path.parent.parent.resolve()):
+                        refuse(path, field + ": unenumerable component")
+                    result[sid].extend(files(target) if target.is_dir() else [target])
+    return result
+
+
+def plain(path):
+    try:
+        if not path.is_file():
+            raise ValueError("not a regular file")
+        text = path.read_text()
+    except (OSError, ValueError, UnicodeError):
+        refuse(path, "unreadable frontmatter")
+    if re.search(r"!\s*`|`{3,}\s*!", text):
+        refuse(path, "dynamic command")
+    if text.startswith("---\n"):
+        if "\n---" not in text[4:]:
+            refuse(path, "malformed frontmatter")
+        block = False
+        for line in text[4:].split("\n---", 1)[0].splitlines():
+            if not line.strip() or line.startswith("#") or (block and line.startswith(" ")):
+                continue
+            match = re.fullmatch(
+                r"(name|description|argument-hint|disable-model-invocation|user-invocable|allowed-tools|model):[ \t]*(.*)",
+                line,
+            )
+            if not match:
+                refuse(path, "hooks or unsupported frontmatter")
+            block = match[2] in ("|", ">", "|-", ">-")
+
+
+def preflight(worktree, anchor):
+    if platform.system() == "Linux" and "microsoft" in platform.release().casefold():
+        refuse("Windows managed policy", "unenumerable WSL delivery")
+    for key in os.environ:
+        if SELECTOR.match(key) and not (key == "CLAUDE_CONFIG_DIR" and os.environ[key] == str(home / ".claude-worker")):
+            refuse("launch environment", key)
+    mdm = Path("/Library/Managed Preferences")
+    domain = "com.anthropic.claudecode.plist"
+    for path in (mdm / pwd.getpwuid(os.getuid()).pw_name / domain, mdm / domain):
+        if platform.system() == "Darwin" and present(path):
+            refuse(path, "unenumerable MDM com.anthropic.claudecode")
+    expected, plugins = baseline()["hooks"], {}
+    project_file = anchor / ".claude/settings.json"
+    project_settings = read_json(project_file) if present(project_file) else {}
+    project_hooks = project_settings.get("hooks", {})
+    screen(project_settings, project_file, project_hooks)
+    for groups in project_hooks.values():
+        for group in groups:
+            for hook in group["hooks"]:
+                command = hook.get("command", "")
+                if (
+                    hook.get("type") != "command"
+                    or not command.startswith(PREFIX + GUARD)
+                    or not re.fullmatch(
+                        r"[a-zA-Z0-9_.-]+(?: \"\$\{HERDR_PANE_ID\}\")?", command.removeprefix(PREFIX + GUARD)
+                    )
+                ):
+                    refuse(project_file, "noncanonical trusted project hook")
+    for sid, paths in inventory(worktree, anchor).items():
+        for path in dict.fromkeys(paths):
+            if not present(path):
+                continue
+            if sid in ("S20", "S21", "S22"):
+                plain(path)
+                continue
+            value = read_json(path)
+            if sid in ("S12", "S15"):
+                if isinstance(value.get("name"), str):
+                    plugins[value["name"] + "@skills-dir"] = False
+                value = {
+                    k: v
+                    for k, v in value.items()
+                    if k not in ("hooks", "mcpServers", "lspServers", "commands", "agents", "skills")
+                    or not isinstance(v, (str, list))
+                }
+            if sid == "S13":
+                if not isinstance(value.get("plugins", {}), dict):
+                    refuse(path, "plugins: malformed registry")
+                plugins.update({key: False for key in value.get("plugins", {})})
+            worker = {event: groups + expected.get(event, []) for event, groups in delivery("worker").items()}
+            allowed = {"S01": worker, "S02": project_hooks, "S04": delivery("main")}.get(sid, {})
+            if sid == "S04":
+                allowed = {event: groups + delivery("main", False)[event] for event, groups in allowed.items()}
+            project = worktree if sid in ("S01", "S03") else anchor if sid == "S04" else None
+            screen(value, path, allowed, project)
+            if sid in ("S08", "S09", "S10", "S18", "S19") and set(value) - {"mcpServers", "managedMcpServers"}:
+                refuse(path, "mcpServers")
+            if sid == "S23" and value:
+                refuse(path, "lspServers")
+    return plugins
+
+
+def write(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+        json.dump(value, handle, indent=2)
+        handle.write("\n")
+    os.replace(handle.name, path)
+
+
+if sys.argv[1:2] == ["--inventory"]:
+    print(json.dumps(SOURCE_CLASSES))
+elif sys.argv[1:2] == ["--delivery"]:
+    path, role = Path(sys.argv[2]), sys.argv[3]
+    current = read_json(path) if path.exists() else {}
+    write(path, current | {"hooks": delivery(role)})
+elif sys.argv[1:2] == ["--prepare"]:
+    worktree, anchor = Path(sys.argv[2]).resolve(), source.parent
+    plugins = preflight(worktree, anchor)
+    user, legacy_path = home / ".claude-worker/settings.json", worktree / ".claude/settings.local.json"
+    current = read_json(user) if user.exists() else {}
+    managed = baseline()
+    managed["enabledPlugins"].update(plugins)
+    managed["hooks"] = delivery("worker")
+    prepared = current | managed
+    screen(prepared, user, delivery("worker"))
+    if legacy_path.exists():
+        old = read_json(legacy_path)
+        write(legacy_path, old | {"hooks": {}})
+    write(user, prepared)
+    main = anchor / ".claude/settings.local.json"
+    old = read_json(main) if main.exists() else {}
+    write(main, old | {"hooks": delivery("main")})
+elif sys.argv[1:2] == ["--legacy"]:
+    current = json.load(sys.stdin)
+    screen(current, "legacy settings", project=Path(sys.argv[2]))
+    print(json.dumps(current | {"hooks": {}}, indent=2))
+else:
+    original = sys.stdin.read()
+    try:
+        current = json.loads(original)
+    except json.JSONDecodeError:
+        current = {}
+    current = current if isinstance(current, dict) else {}
+    merged = current | baseline()
+    sys.stdout.write(original if merged == current else json.dumps(merged, indent=2) + "\n")

@@ -187,6 +187,11 @@ codex:
       trust_level: trusted
 
 claude:
+  worker_disabled_plugins:
+    - superpowers@claude-plugins-official
+    - crit@crit
+    - ponytail@ponytail
+    - understand-anything@understand-anything
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
   worker_settings_path: home/.chezmoitemplates/claude-worker-settings.json
   managed_settings_path: home/.chezmoitemplates/claude-managed-settings.json

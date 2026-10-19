@@ -2,7 +2,6 @@
 
 # BEGIN TRUSTED HOOK BINDINGS
 ORCHESTRATOR_CHECKOUT="${HOME}/Workspace/dotfiles"
-HOOK_SHELL="/bin/bash"
 HOOK_BOOTSTRAP_PYTHON="/usr/bin/python3"
 # END TRUSTED HOOK BINDINGS
 
@@ -344,34 +343,15 @@ function ensure_worker_identity() {
 # @arg $1 string Worker kind.
 # @arg $2 path Absolute worker worktree path.
 function ensure_worker_delivery() {
-    local kind="$1"
-    local worktree="$2"
+    local kind="$1" worktree="$2"
     local delivery="${HOME}/.agents/skills/agmsg/scripts/delivery.sh"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
 
-    [[ ${kind} == claude || -x ${delivery} ]] || return 0
-    mkdir -p "${log_file%/*}"
     if [[ ${kind} == claude ]]; then
-        local settings="${HOME}/.claude-worker/settings.json" input temporary legacy="${worktree}/.claude/settings.local.json"
-        if [[ -f ${legacy} ]]; then
-            temporary="$(mktemp "${legacy}.XXXXXX")"
-            if ! CHEZMOI_HOME_DIR="${HOME}" "${HOOK_BOOTSTRAP_PYTHON}" -I \
-                "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --legacy "${worktree}" < "${legacy}" > "${temporary}"; then
-                rm -- "${temporary}"
-                return 1
-            fi
-            mv -- "${temporary}" "${legacy}"
-        fi
-        mkdir -p "${settings%/*}"
-        input="${settings}"
-        [[ -f ${input} ]] || input=/dev/null
-        temporary="$(mktemp "${settings}.XXXXXX")"
-        CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" \
-            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" < "${input}" > "${temporary}"
-        mv -- "${temporary}" "${settings}"
-        write_claude_delivery "${settings}" "${worktree}" worker
-        write_claude_delivery "${ORCHESTRATOR_CHECKOUT}/.claude/settings.local.json" "${ORCHESTRATOR_CHECKOUT}" main
-    else
+        CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" CLAUDE_CONFIG_DIR="${HOME}/.claude-worker" \
+            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --prepare "${worktree}"
+    elif [[ -x ${delivery} ]]; then
+        mkdir -p "${log_file%/*}"
         jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
             "${worktree}/.codex/hooks.json" > /dev/null 2>&1 && return 0
         if "${delivery}" set turn codex "${worktree}" >> "${log_file}" 2>&1; then
@@ -380,35 +360,12 @@ function ensure_worker_delivery() {
     fi
 }
 
-# @description Regenerate delivery and guarded attachment hooks from trusted bindings.
+# @description Write trusted main-local delivery; worker preparation screens first.
 # @arg $1 path Settings destination.
-# @arg $2 path Explicit project identity.
-# @arg $3 string Worker user or main local settings.
+# @arg $2 string Main-local role.
 function write_claude_delivery() {
-    local settings="$1" project="$2" role="$3" prefix storage="" guard="" attach="" start end stop temporary input
-    prefix="/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"\$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"\${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"\${CLAUDE_ENV_FILE}\" "
-    [[ ! ${AGMSG_STORAGE_PATH+x} ]] || printf -v storage 'AGMSG_STORAGE_PATH=%q ' "${AGMSG_STORAGE_PATH}"
-    prefix+="AGMSG_RESOLVE_PROJECT=0 ${storage}"
-    if [[ ${role} == main ]]; then
-        guard="\"\$HOME/.claude/hooks/orchestrator-only.sh\" "
-        attach="${prefix}HERDR_ENV=\"\${HERDR_ENV}\" HERDR_PANE_ID=\"\${HERDR_PANE_ID}\" HERDR_WORKSPACE_ID=\"\${HERDR_WORKSPACE_ID}\" ${guard}"
-        attach+="herdr-agents"
-        start="${prefix}${guard}agmsg-session-start.sh" end="${prefix}${guard}agmsg-session-end.sh" stop="${prefix}${guard}agmsg-check-inbox.sh"
-    else
-        project="\"\${CLAUDE_PROJECT_DIR}\""
-        printf -v start '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/session-start.sh" "${project}"
-        printf -v end '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/session-end.sh" "${project}"
-        printf -v stop '%s%q %q claude-code %s' "${prefix}" "${HOOK_SHELL}" "${HOME}/.agents/skills/agmsg/scripts/check-inbox.sh" "${project}"
-    fi
-    mkdir -p "${settings%/*}"
-    input="${settings}"
-    [[ -f ${input} ]] || input=/dev/null
-    temporary="$(mktemp "${settings}.XXXXXX")"
-    jq -s --arg start "${start}" --arg end "${end}" --arg stop "${stop}" --arg attach "${attach}" '
-        def entry($c): {hooks:[{type:"command",command:$c,onFailure:"block"}]};
-        .[0] // {} | .hooks = {SessionStart:[entry($start)],SessionEnd:[entry($end)],Stop:[entry($stop)]} |
-        if $attach != "" then .hooks.SessionStart += [entry($attach)] else . end' "${input}" > "${temporary}"
-    mv -- "${temporary}" "${settings}"
+    CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" \
+        "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --delivery "$1" "$2"
 }
 
 # @description Retain native merge denials in the dedicated Claude worker user settings.
@@ -526,6 +483,10 @@ function write_spawn_options() {
     fi
     printf '%s:\n' "$(worker_agmsg_type "${kind}")"
     for ((index = 0; index < ${#words[@]}; index += 2)); do
+        if [[ ${kind} == claude && ${words[index]} != --model && ${words[index]} != --effort ]]; then
+            printf 'worker startup refused: worker profile: %s is an unenumerated launch input\n' "${words[index]}" >&2
+            exit 2
+        fi
         if [[ ! ${words[index]} =~ ^--[a-z][a-z0-9-]*$ || ! ${words[index + 1]} =~ ^[A-Za-z0-9._:/=+-]+$ ]]; then
             printf 'herdr-agents: worker profile arg is not a plain --flag value pair: %s %s\n' "${words[index]}" "${words[index + 1]}" >&2
             exit 2
@@ -1453,6 +1414,11 @@ function remove_retired_pre_push_stub() {
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
+    local worker_path
+    worker_path="$(resolve_worker_worktree)"
+    if [[ -n ${worker_path} && -d ${workdir}/${worker_path} && $(resolve_worker_kind) == claude ]]; then
+        ensure_worker_delivery claude "${workdir}/${worker_path}"
+    fi
 
     if [[ -f ${workdir}/.git ]]; then
         ensure_worker_delivery claude "${workdir}"
@@ -1482,7 +1448,7 @@ function bootstrap_agmsg() {
         return 0
     fi
     mkdir -p "${log_file%/*}"
-    write_claude_delivery "${claude_hooks_file}" "${workdir}" main
+    write_claude_delivery "${claude_hooks_file}" main
 
     if [[ ! -x ${doctor} ]]; then
         printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2

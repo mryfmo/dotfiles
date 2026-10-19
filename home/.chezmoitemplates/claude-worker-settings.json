@@ -122,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 /bin/bash '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-start.sh' claude-code \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-session-start.sh",
             "onFailure": "block"
           }
         ]
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 /bin/bash '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-end.sh' claude-code \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-session-end.sh",
             "onFailure": "block"
           }
         ]
@@ -144,11 +144,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 /bin/bash '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/check-inbox.sh' claude-code \"${CLAUDE_PROJECT_DIR}\"",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-check-inbox.sh",
             "onFailure": "block"
           }
         ]
       }
     ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
+  "syncClaudeAiPlugins": false,
+  "syncClaudeAiSkills": false,
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false,
+    "superpowers@skills-dir": false,
+    "crit@crit": false,
+    "crit@skills-dir": false,
+    "ponytail@ponytail": false,
+    "ponytail@skills-dir": false,
+    "understand-anything@understand-anything": false,
+    "understand-anything@skills-dir": false
   }
 }

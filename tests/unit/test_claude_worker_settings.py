@@ -134,6 +134,12 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
                 [str(self.home / ".agents/skills/agmsg" / part) for part in ("db", "teams", "run", "ext-tools")],
             )
             self.assertIn("Bash(gh pr merge:*)", settings["permissions"]["deny"])
+            self.assertFalse(settings["enableAllProjectMcpServers"])
+            self.assertEqual(settings["enabledMcpjsonServers"], [])
+            self.assertFalse(settings["syncClaudeAiPlugins"] or settings["syncClaudeAiSkills"])
+            self.assertTrue(settings["enabledPlugins"])
+            self.assertTrue(all(value is False for value in settings["enabledPlugins"].values()))
+            self.assertIn("crit@skills-dir", settings["enabledPlugins"])
 
     def test_worker_denies_leave_agmsg_stores_writable(self):
         patterns = [p[5:-1] for p in self.settings()["permissions"]["deny"] if p.startswith("Edit(")]
@@ -170,7 +176,7 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
             result = self.modify(initial)
             self.assertEqual(result.returncode, 0, result.stderr)
             desired = json.loads(result.stdout)
-            for key in ("sandbox", "permissions", "hooks"):
+            for key in self.settings():
                 self.assertEqual(desired[key], self.settings()[key])
             again = self.modify(result.stdout)
             self.assertEqual(again.returncode, 0, again.stderr)
@@ -191,7 +197,7 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         settings = json.loads(result.stdout)
         self.assertNotIn("poison", result.stdout)
-        self.assertNotIn("enabledPlugins", settings)
+        self.assertTrue(all(value is False for value in settings["enabledPlugins"].values()))
         text = json.dumps(settings["hooks"])
         for name in ("format-edited", "project-map", "permgate", "herdr-agent-state", "--attach"):
             self.assertNotIn(name, text)

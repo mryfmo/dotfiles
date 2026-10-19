@@ -433,6 +433,15 @@ def guard_policy(manifest: dict) -> dict:
                 "{checkout}",
             ],
         }
+        commands["worker-agmsg-" + script] = {
+            "mode": "worker",
+            "argv": [
+                "/bin/bash",
+                "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/" + script,
+                "claude-code",
+                "{project}",
+            ],
+        }
     return {"root": anchor, "commands": commands}
 
 
@@ -458,14 +467,29 @@ def render_claude_worker_settings(manifest: dict[str, Any]) -> str:
     ]
     hooks = {}
     for event, script in (("SessionStart", "session-start"), ("SessionEnd", "session-end"), ("Stop", "check-inbox")):
-        command = HOOK_PREFIX + "AGMSG_RESOLVE_PROJECT=0 /bin/bash "
-        command += (
-            shlex.quote("{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/" + script + ".sh")
-            + ' claude-code "${CLAUDE_PROJECT_DIR}"'
+        command = (
+            HOOK_PREFIX
+            + 'AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH="${AGMSG_STORAGE_PATH}" "$HOME/.claude/hooks/orchestrator-only.sh" worker-agmsg-'
+            + script
+            + ".sh"
         )
         hooks[event] = [{"hooks": [{"type": "command", "command": command, "onFailure": "block"}]}]
     permissions = {"defaultMode": claude["permissions"]["defaultMode"], "deny": [*WORKER_MERGE_DENY, *denies]}
-    return json_dumps({"permissions": permissions, "sandbox": sandbox, "hooks": hooks})
+    plugins = claude["worker_disabled_plugins"]
+    return json_dumps(
+        {
+            "permissions": permissions,
+            "sandbox": sandbox,
+            "hooks": hooks,
+            "enableAllProjectMcpServers": False,
+            "enabledMcpjsonServers": [],
+            "syncClaudeAiPlugins": False,
+            "syncClaudeAiSkills": False,
+            "enabledPlugins": {
+                key: False for plugin in plugins for key in (plugin, plugin.split("@", 1)[0] + "@skills-dir")
+            },
+        }
+    )
 
 
 def render_claude_managed_settings(manifest: dict[str, Any]) -> str:
@@ -1484,7 +1508,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             claude = manifest["claude"]
             bindings = {
                 "ORCHESTRATOR_CHECKOUT": claude["orchestrator_checkout"],
-                "HOOK_SHELL": "/bin/bash",
                 "HOOK_BOOTSTRAP_PYTHON": "/usr/bin/python3",
             }
             block = "\n".join(

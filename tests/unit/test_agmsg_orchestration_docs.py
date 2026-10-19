@@ -1,4 +1,10 @@
+import json
+import os
 import re
+import shlex
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -268,10 +274,10 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
         for token in (
             "WebFetch tool, not Bash `curl`",
             "Fetch and fast-forward inside the sandbox",
-            "Every worker command, including gh, git push and authenticated git fetch, runs inside the worker's sandbox; no worker command runs outside it.",
+            "Complete every worker command, including gh, git push and authenticated git fetch, inside the sandbox and allowlist without forbidden actions or escalation",
             "-worker-crit.json",
-            "writing the task's artifacts at their expected main-checkout paths and masking them with the repository masker, through the permission gate because the main checkout is not writable from a worktree sandbox",
-            "(a Claude seat writes them through the permission gate, step 4)",
+            "main-checkout artifact writes and masking under evidence-sync",
+            "exact expected relative paths in the worker's own worktree",
             "never run `git worktree prune` from a sandboxed seat",
             "`git worktree remove <path>` only",
             "the orchestrator moves them into the main checkout",
@@ -280,6 +286,92 @@ class AgmsgOrchestrationSkillTest(unittest.TestCase):
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
+
+    def test_worker_playbook_has_no_sandbox_exceptions(self):
+        text = SKILL.read_text()
+        worker = text.split("## Worker Playbook\n", 1)[1].split("\n## ", 1)[0]
+        orchestrator = text.split("## Orchestrator Playbook\n", 1)[1].split("\n## Worker Playbook", 1)[0]
+        sentence = "Complete every worker command, including gh, git push and authenticated git fetch, inside the sandbox and allowlist without forbidden actions or escalation; anything that cannot complete there is `AGMSG-PONG v1 status=blocked` naming the exact command and boundary."
+        self.assertIn(sentence, worker)
+        for escape in (
+            "only the push leaves the sandbox",
+            "runs three commands outside",
+            "Three documented cases run outside",
+            "writes them through the permission gate",
+            "a Claude worker runs it outside",
+            "runs it outside the sandbox from the first attempt",
+            "main-checkout CompactionDB `memory add`",
+        ):
+            self.assertNotIn(escape, worker)
+        for operation in (
+            "main-checkout artifact writes and masking",
+            "CompactionDB consolidation",
+            "agmsg-dispatch control-plane delivery",
+        ):
+            self.assertIn(operation, orchestrator)
+        self.assertIn("orchestrator-only", orchestrator)
+
+    def test_deferred_ledger_calls_bind_github_host_under_hostile_gh_host(self):
+        task = ROOT / ".orchestration/dotfiles-T133-worker-write-boundary-a02/task.md"
+        paragraph = task.read_text().split("## Out of scope\n", 1)[1].split("## Check\n", 1)[0]
+        templates = [shlex.split(c) for c in re.findall(r"`(gh api --hostname github.com [^`]+)`", paragraph)]
+        self.assertEqual(len(templates), 2)
+        self.assertIn("--repo github.com/mryfmo/dotfiles", paragraph)
+        sha = "a" * 40
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            stub, log = root / "gh", root / "argv.jsonl"
+            stub.write_text(
+                f"#!{sys.executable}\nimport json,sys\nfrom pathlib import Path\np=Path({str(log)!r})\nwith p.open('a') as f: f.write(json.dumps(sys.argv[1:])+'\\n')\nprint({sha!r} if sys.argv[-1]=='.object.sha' else 'nonsecret-ledger-fixture')\n"
+            )
+            stub.chmod(0o755)
+            env = dict(os.environ, GH_HOST="example.invalid", PATH=str(root))
+
+            def invoke(words, *, available=True):
+                self.assertEqual(words[:4], ["gh", "api", "--hostname", "github.com"])
+                self.assertEqual(words.count("--hostname"), 1)
+                self.assertFalse(any(word.startswith("--hostname=") for word in words))
+                self.assertTrue(words[4].startswith("repos/mryfmo/dotfiles/"))
+                try:
+                    return subprocess.run(
+                        words,
+                        env=env | {"PATH": str(root if available else root / "empty")},
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                except FileNotFoundError:
+                    return subprocess.CompletedProcess(words, 2, "", "cannot bind github.com: gh unavailable")
+
+            reference = invoke(templates[0])
+            self.assertEqual(reference.returncode, 0)
+            actual = reference.stdout.strip()
+            self.assertRegex(actual, r"\A[0-9a-f]{40}\Z")
+            content = [word.replace("<sha40>", actual) for word in templates[1]]
+            self.assertEqual(content[4], f"repos/mryfmo/dotfiles/contents/.orchestration/decisions.tsv?ref={actual}")
+            ledger = invoke(content)
+            self.assertEqual(ledger.returncode, 0)
+            self.assertEqual(ledger.stdout.strip(), "nonsecret-ledger-fixture")
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+            self.assertEqual(calls, [templates[0][1:], content[1:]])
+            print(json.dumps({"hostile_GH_HOST": "example.invalid", "recorded_argv": calls}))
+            for words in (
+                templates[0][:2] + templates[0][4:],
+                templates[0] + ["--hostname", "github.com"],
+                templates[0][:3] + ["example.invalid"] + templates[0][4:],
+            ):
+                with self.assertRaises(AssertionError):
+                    invoke(words)
+            stub.unlink()
+            refused = invoke(templates[0], available=False)
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertIn("cannot bind github.com", refused.stderr)
+            self.assertEqual(refused.stdout, "")
+            print(f"no-gh: exit={refused.returncode}; {refused.stderr}; no approval output")
+            self.assertEqual(len(log.read_text().splitlines()), 2)
+            print(
+                "hostile GH_HOST: both fixed-host argv bound to one validated SHA; no-gh: named refusal, no approval or retry; contract only"
+            )
 
 
 class AgmsgRegimePatternTest(unittest.TestCase):
@@ -619,13 +711,10 @@ class AgmsgRegimePatternTest(unittest.TestCase):
         self.assertIn("`gh pr create --draft --head <branch>`", step)
 
     def test_workers_commit_inside_the_sandbox(self) -> None:
-        # Audit of 27ea99b2: only the push is a step 4 exemption, so the commit stays inside.
         step = self.section(SKILL.read_text(), "\n2. Switch to the `repo`", "\n3. ")
         for token in (
             "Commit inside the sandbox, with `git -c commit.gpgsign=false` when the signing key is unreadable there",
-            "only the push leaves the sandbox",
-            # Thread 4240598179: a Codex seat never leaves its sandbox, push included.
-            "a Codex seat pushes from inside it (step 4)",
+            "All Git operations remain inside the sandbox (step 4)",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, step)

@@ -303,3 +303,113 @@ tests/: 60 of 350
 [exit 0]
 ````
 
+
+## 9. Rebase repair 1: the comparison lint on the update-branch head
+
+The orchestrator's update-branch merged `main` `205fe85c` (PR #415, the comparison lint) as `b0d957cc`. There `tests/unit/test_lint_comparisons.py`'s `test_the_changed_files_are_clean_against_the_baseline` fails: `scripts/orchestrator/ci-rerun.sh` is a changed file, and its line 46, `[[ ${found} == /* && ${found} != */shims/* ]]` (introduced by `0e42cb06` on this branch, absent from `main`), compares a path by its string form (R1). The repair normalises it in place. The tool's directory is resolved physically (`cd -P`, `pwd -P`) on the same line, the shims test reads that physical directory, and an unresolvable directory or a relative path is still refused. A bare `realpath` of the tool would not do, because a shim link resolves to mise itself. No baseline row is added. `PREV` is `b0d957cc`, `RED` is `bc19b1ea` (the extended test on `PREV`'s script) and `FIX` is `028af504`.
+
+````console
+$ git log --oneline -3; git diff "$PREV" "$FIX" -- scripts/orchestrator/ci-rerun.sh; git diff --stat "$PREV" "$FIX"
+028af504 fix(orchestrator): ci-rerun.sh judges a tool's directory physically (cd -P) before refusing a shims path, so the comparison lint passes (T133 ci-efficiency follow-up a02, rebase repair 1)
+bc19b1ea test(orchestrator): ci-rerun.sh refuses a PATH entry that links to a shims directory (T133 ci-efficiency follow-up a02, rebase repair 1, red)
+b0d957cc Merge branch 'main' into tools/ci-efficiency-followup-a02
+diff --git a/scripts/orchestrator/ci-rerun.sh b/scripts/orchestrator/ci-rerun.sh
+index 4e28cc77..b12cb951 100755
+--- a/scripts/orchestrator/ci-rerun.sh
++++ b/scripts/orchestrator/ci-rerun.sh
+@@ -43,7 +43,8 @@ bin="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")" # system paths
+ trap '/bin/rm -rf -- "${bin}"' EXIT
+ for tool in python3 uv gh jq git mkdir; do
+     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
+-    [[ ${found} == /* && ${found} != */shims/* ]] || {
++    # The directory is judged physically, so a PATH entry that links to a shims directory is refused too.
++    [[ ${found} == /* ]] && where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)" && [[ ${where}/ != */shims/* ]] || {
+         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
+         exit 1
+     }
+ scripts/orchestrator/ci-rerun.sh |  3 ++-
+ tests/unit/test_ci_rerun.py      | 10 +++++++++-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+[exit 0]
+````
+
+````console
+$ git worktree add --detach -q "$SCRATCH/fu2p-prev" "$PREV" && (cd "$SCRATCH/fu2p-prev" && uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/ci-rerun.sh 2>&1 | /usr/bin/grep -v "regime-ci.py"; rc=${PIPESTATUS[0]}; echo "lint exit status at PREV: ${rc}"; uv run python -m unittest tests.unit.test_lint_comparisons > "$SCRATCH/fu2p-lt.out" 2>&1; rc=$?; echo "test_lint_comparisons exit status at PREV: ${rc}"; < "$SCRATCH/fu2p-lt.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//"); git worktree remove --force "$SCRATCH/fu2p-prev"
+scripts/orchestrator/ci-rerun.sh:46: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+lint exit status at PREV: 1
+test_lint_comparisons exit status at PREV: 1
+FAIL: test_the_changed_files_are_clean_against_the_baseline
+Ran 14 tests in 4.653s
+FAILED (failures=1)
+[exit 0]
+````
+
+````console
+$ git rev-parse HEAD; uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/ci-rerun.sh
+028af5041a89f21fcf3ac06dafe3cd2878244523
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+[exit 0]
+````
+
+````console
+$ uv run python -m unittest tests.unit.test_lint_comparisons > "$SCRATCH/fu2p-lt.out" 2>&1; rc=$?; echo "test_lint_comparisons exit status at HEAD: ${rc}"; < "$SCRATCH/fu2p-lt.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED"
+test_lint_comparisons exit status at HEAD: 0
+Ran 14 tests in 5.430s
+OK
+[exit 0]
+````
+
+The extended test adds a PATH entry that links to the shims directory. The string check let that through, so on `RED` the case fails: the run exits 1 only later, when the stub `jq` fails, without the refusal.
+
+````console
+$ git worktree add --detach -q "$SCRATCH/fu2p-red" "$RED" && (cd "$SCRATCH/fu2p-red" && uv run python -m unittest "$TEST") > "$SCRATCH/fu2p-red.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/fu2p-red.out" /usr/bin/grep -E "^(FAIL|ERROR):|^AssertionError|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//" | cut -c1-160; git worktree remove --force "$SCRATCH/fu2p-red"
+unittest exit status: 1
+FAIL: test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin [refused through a link]
+AssertionError: True != False : 
+Ran 1 test in 0.984s
+FAILED (failures=1)
+[exit 0]
+````
+
+````console
+$ uv run python -m unittest tests.unit.test_ci_rerun -v
+test_a_failing_gh_exits_1_never_with_the_scripts_own_codes (tests.unit.test_ci_rerun.CiRerunTest.test_a_failing_gh_exits_1_never_with_the_scripts_own_codes) ... ok
+test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin) ... ok
+test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment) ... ok
+test_ci_rerun_refuses_a_superseded_pull_request_head (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_refuses_a_superseded_pull_request_head) ... ok
+test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs) ... ok
+test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature) ... ok
+test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs) ... ok
+test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice) ... ok
+test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path) ... ok
+test_the_production_flake_registry_matches_its_samples_and_no_real_failure (tests.unit.test_ci_rerun.CiRerunTest.test_the_production_flake_registry_matches_its_samples_and_no_real_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 24.423s
+
+OK
+[exit 0]
+````
+
+````console
+$ shellcheck scripts/orchestrator/ci-rerun.sh; shfmt --indent 4 --space-redirects --diff scripts/orchestrator/ci-rerun.sh; ruff format --config ruff.toml --check tests/unit/test_ci_rerun.py; ruff check --config ruff.toml tests/unit/test_ci_rerun.py
+1 file already formatted
+All checks passed!
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD -- scripts tests; git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } { o += $1 + $2 } END { printf "outside tests/ and .orchestration/: %d of 250\ntests/: %d of 350\n", o, t }'
+31	5	scripts/orchestrator/ci-rerun.sh
+67	1	tests/unit/test_ci_rerun.py
+outside tests/ and .orchestration/: 36 of 250
+tests/: 68 of 350
+[exit 0]
+````
+

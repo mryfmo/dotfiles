@@ -6,9 +6,12 @@ security: true
 allowed_files:
   - scripts/orchestrator/ci-rerun.sh
   - tests/unit/test_ci_rerun.py
+  - scripts/lint-comparisons-baseline.tsv
   - .orchestration/dotfiles-T133-ci-efficiency-followup-a02/**
 after: []
 threat_table:
+  - control: the PR edits scripts/lint-comparisons-baseline.tsv only for the rows of its own changed lines (D-024-24 rebase repair)
+    disposition: "residual: a row matches a hit of a changed line of this PR and nothing else; tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline in CI"
   - control: the PR edits scripts/orchestrator/ci-rerun.sh only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
   - control: the PR edits tests/unit/test_ci_rerun.py only within the owned rows (item 1)
@@ -49,3 +52,13 @@ Each owned row (the advisory P2 of the local review of 27613c0c and any Bot P2 t
 ## Check and Completion
 
 The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-ci-efficiency-a01.md` apply as written, with `dotfiles-T133-ci-efficiency-followup-a02` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md>` in the RESULT.
+
+## Amendment 1 (rebase repair under D-024-24, 2026-10-19T06:0xZ)
+
+The comparison lint of PR #415 (main 205fe85c) guards the files a pull request changes, and this PR changes scripts/orchestrator/ci-rerun.sh: the required test job fails on `test_the_changed_files_are_clean_against_the_baseline` (run 39206803893). The repair touches only the lint hits of this PR's own changed lines in ci-rerun.sh: a comparison this task wrote is rewritten through the normaliser the rule names; a pre-existing comparison the task moved gets its baseline row (path, rule, sha256 of the normalized line) in scripts/lint-comparisons-baseline.tsv, which joins allowed_files for exactly that. Nothing else changes. This is a rebase repair, labelled `round=rebase-repair-1`, and does not count against the C-61 cap (D-024-24). The audit and the security review run on the new head.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+2026-10-19T06:0xZ amendment 1 (rebase repair): task=dotfiles-T133-ci-efficiency-followup-a02 tasks=1 amendments=0 questions=0 results=2 revises=1 source=live; D-024-24 applies
+```

@@ -3,8 +3,8 @@ task_id: dotfiles-T133-ci-efficiency-followup-a02
 seat: claude-standard-dot-a011
 branch: tools/ci-efficiency-followup-a02
 base: 740772ef (origin/main)
-code_commit: 67180e37 (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix; update-branch 7329f0ee; revise 1: 4dacbd60 red, 67180e37 fix)
-task_sha256: 50599bfdb250510004525e48155a53b954ba6c19af4a2be5d520c9352a3f2466
+code_commit: 028af504 (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix; update-branch 7329f0ee; revise 1: 4dacbd60 red, 67180e37 fix; update-branch b0d957cc; rebase repair 1: bc19b1ea red, 028af504 fix)
+task_sha256: 4aa89584da50f4085651d9fd3cddb9e913d7ae0557fa8ba283c2eb89b6146dc3 (amendment 1; previous 50599bfdb250510004525e48155a53b954ba6c19af4a2be5d520c9352a3f2466)
 ---
 
 # Report: dotfiles-T133-ci-efficiency-followup-a02
@@ -59,6 +59,22 @@ The chain's local review found a P1 at `scripts/orchestrator/ci-rerun.sh:42`. Th
   - Green at `67180e37`: the module's 10 tests pass. shellcheck, `shfmt -i 4 -sr -d` and ruff are clean.
 - **Caps** against the new merge base (§8): 35 changed lines outside `tests/` and `.orchestration/` (cap 250), and 60 under `tests/` (cap 350).
 - **No worker-side review round.** C-61 counts the pre-push round and this revise as the cap, so the revise's evidence is the red-then-green test and the chain's next run.
+
+## Rebase repair 1 (the comparison lint of main 205fe85c on the update-branch head b0d957cc)
+
+The orchestrator dispatched this repair under D-024-24 as amendment 1, not as a fix round. The dispatched text is `4aa89584…` (previous `50599bfd…`), and the task copy here was swapped to it byte-identical. The amendment adds `scripts/lint-comparisons-baseline.tsv` to `allowed_files`, for baseline rows of pre-existing comparisons only. The 06:05:35Z TASK line named amendment 1 while the text still had the old sha, and the orchestrator corrected it at 06:09:06Z.
+
+PR #415 added `scripts/lint-comparisons.py`. With `main` merged in (`b0d957cc`), the lint's `test_the_changed_files_are_clean_against_the_baseline` fails on `scripts/orchestrator/ci-rerun.sh:46`: `[[ ${found} == /* && ${found} != */shims/* ]]` compares a path by its string form (R1). This branch introduced that line in `0e42cb06`; `main` has no shims check. So the repair normalises the line rather than adding a baseline row, and `scripts/lint-comparisons-baseline.tsv` is unchanged.
+
+- **Fix (`028af504`).** The tool's directory is resolved physically on the same line, `where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)"`. The shims test reads `${where}/`.
+  - A relative path, or a directory that cannot be resolved, is still refused.
+  - A bare `realpath` of the tool would not do, because a shim link resolves to mise itself.
+  - The repair also refuses a PATH entry that is a link to a shims directory. The string check let that through. This follows from normalising the line, and the test case below pins it. Nothing else changed.
+- **Test (red `bc19b1ea`, green `028af504`).** `test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin` gains the case `refused through a link`, and every case now checks that a refusal names the shims directory. On `bc19b1ea`, the old check let the link through and the run failed only later, at the stub `jq`.
+- **The lint** (validation §9): `uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/ci-rerun.sh`.
+  - At `b0d957cc`: exit 1 with the R1 hit, and `test_lint_comparisons` fails `test_the_changed_files_are_clean_against_the_baseline`.
+  - At `028af504`: exit 0. Its only output is the five warnings for `regime-ci.py`, an unchanged file. `test_lint_comparisons`: 14 tests OK. `test_ci_rerun`: 10 tests OK. shellcheck, `shfmt -i 4 -sr -d` and ruff are clean.
+- **Caps** (§9): 36 changed lines outside `tests/` and `.orchestration/` (cap 250), and 68 under `tests/` (cap 350).
 
 ## Changed files
 

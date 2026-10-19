@@ -1671,7 +1671,13 @@ def auth_decoded_views(text: str):
         (r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|c.|.)", escape),
         (r"(?:%[0-9a-fA-F]{2})+", lambda match: unquote(match[0])),
     )
-    yield view, locations
+
+    def spellings():
+        yield view, locations
+        kept = [(char, locations[index]) for index, char in enumerate(view) if char not in "'\"\\{}$"]
+        yield "".join(char for char, _ in kept), [number for _, number in kept]
+
+    yield from spellings()
     while True:
         previous = view
         for pattern, decode in transforms:
@@ -1685,11 +1691,9 @@ def auth_decoded_views(text: str):
             parts.append(view[cursor:])
             mapped.extend(locations[cursor:])
             view, locations = "".join(parts), mapped
-            yield view, locations
+            yield from spellings()
         if view == previous:
             break
-    kept = [(char, locations[index]) for index, char in enumerate(view) if char not in "'\"\\{}$"]
-    yield "".join(char for char, _ in kept), [number for _, number in kept]
 
 
 def credential_occurrences(text: str) -> list[tuple[int, str, str]]:
@@ -1707,17 +1711,28 @@ def allowed_assignment_line(line: str) -> bool:
 
 
 def anthropic_text_findings(text: str, where: str, markdown: bool = False) -> list[tuple[str, str, str]]:
-    code_lines, fence = set(), ""
+    code_lines, fence, fence_depth = set(), "", 0
     if markdown:
         for number, line in enumerate(text.split("\n"), 1):
-            marker = re.match(r"^[ \t]*(\x60{3,}|~{3,})", line)
-            if marker:
+            quote = re.match(r"^(?: {0,3}>[ \t]?)*", line)[0]
+            depth, content = quote.count(">"), line[len(quote) :]
+            if fence and depth < fence_depth:
+                fence = ""
+            marker = re.match(r"^ {0,3}(\x60{3,}|~{3,})(.*)$", content)
+            if fence:
                 code_lines.add(number)
-                if not fence:
-                    fence = marker[1]
-                elif marker[1][0] == fence[0] and len(marker[1]) >= len(fence):
+                if (
+                    marker
+                    and depth == fence_depth
+                    and marker[1][0] == fence[0]
+                    and len(marker[1]) >= len(fence)
+                    and not marker[2].strip(" \t")
+                ):
                     fence = ""
-            elif fence or line.startswith(("    ", "\t")):
+            elif marker:
+                code_lines.add(number)
+                fence, fence_depth = marker[1], depth
+            elif content.startswith(("    ", "\t")):
                 code_lines.add(number)
     found = []
     for number, line, name in credential_occurrences(text):

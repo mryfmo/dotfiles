@@ -1,0 +1,18 @@
+[
+  {
+    "id": "a05-worker-review-1",
+    "body": "P1, high confidence, found independently at a99521b4: ordinary backslash before uppercase E was destructively decoded before punctuation stripping, missing both credential spellings. Addressed in the single consolidated round: inspect raw and punctuation-stripped spellings before and after every retained transform. API/OAuth exact reproductions and percent-to-backslash intermediate view regressions pass. Original LF locations and unchanged allowance lines are preserved.",
+    "scope": "line",
+    "path": "scripts/validate-agent-assets.py",
+    "line": 1691,
+    "resolved": true
+  },
+  {
+    "id": "a05-worker-review-2",
+    "body": "P2, high confidence, found independently at a99521b4: text after a same-character fence incorrectly closed code, and quoted fences were not classified as code. Addressed in the same consolidated round: validate closing-fence suffix/length/type and quote-container depth; classify quoted indented code without rewriting acceptance lines. Exact fake-closer/blockquoted regressions, nested quote/indent variants and prose/container-exit controls pass.",
+    "scope": "line",
+    "path": "scripts/validate-agent-assets.py",
+    "line": 1718,
+    "resolved": true
+  }
+]

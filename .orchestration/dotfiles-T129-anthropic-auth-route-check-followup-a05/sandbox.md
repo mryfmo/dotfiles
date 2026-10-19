@@ -26,3 +26,13 @@ Update 2026-10-19T03:17:43Z: the orchestrator released that hold and reversed or
 
 The knowledge graph is stale against the starting branch, so targeted rg was used and no .ua update was made; no update hook was acted on. The project-map output path is outside allowed_files and was not created. Worklogs are timestamped in this task directory because .agents is read-only, and remain uncommitted. Durable learning.md is a requested task report rather than a type: learn worklog and is committed under the orchestrator's specific four-evidence-file instruction.
 
+
+## Revise-1 isolation
+
+The 05:36:10Z revise was handled in the same worker-g sandbox. Fetch and fast-forward reached the orchestrator's eda0354b update-branch head, exit0; the known packed-refs.lock warning was left untouched and HEAD verified directly. No shared Git config, permission, credential, home file or sibling-task write occurred. The two source paths and a05 records alone are changed. No extra independent reviewer was spawned.
+
+The new test ran RED on eda0354b before the correction. Its terminal trace and Ruff paths were normalized with the repository masker in task-local evidence; exact fixture bytes remain in the test source. The first make attempt exited2 when its secret scan found the new unit log's home-directory spelling. That own log was masked and make restarted with its raw output outside the repository to avoid scanning an in-progress output file. The failed attempt is retained and is not labelled passing. Existing older task artifacts remain unchanged. Temporary cache, PyYAML, global-Git-fixture isolation and command-scoped signing/push conventions remain the same. Bats and home apply were not run.
+
+
+The restarted full make ran05:39:43Z–05:46:17Z in the actual worker-g tree and exited0. Source/test/task hashes remained identical. Its full unsuppressed output was copied from the temporary external logfile, normalized with the repository masker (174 matches reported), and pasted into validation.md. No code or applied-file change was made while it ran. CI and the automatic review window will bind the single final pushed head.
+

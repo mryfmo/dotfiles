@@ -2152,6 +2152,32 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_anthropic_check_redacts_assignment_payloads_in_diagnostics(self) -> None:
         self.assert_anthropic_a03_cases("diagnostic")
 
+    def test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key(self) -> None:
+        rel = "home/key.json"
+        _, check = self.anthropic_route_fixture(rel)
+        for credential in ("ANTHROPIC_API_" + "KEY", "ANTHROPIC_OAUTH_" + "TOKEN"):
+            for spelling in (
+                r"\c=audit_dummy",
+                r"\c:audit_dummy",
+                "$audit_dummy",
+                "%3daudit_dummy=unused",
+                "%3aaudit_dummy$unused",
+                "%24audit_dummy=unused",
+                "%5Cc%3daudit_dummy",
+                "%255Cc%253daudit_dummy",
+                r"\x5cc=audit_dummy",
+            ):
+                for ancestor in (False, True):
+                    key = ("parent" if ancestor else credential) + spelling
+                    document = {key: {credential: "unused"} if ancestor else "unused"}
+                    with self.subTest(credential=credential, spelling=spelling, ancestor=ancestor):
+                        refused, stderr = check(rel, json.dumps(document), verbatim=True)
+                        self.assertTrue(refused)
+                        self.assertIn(f"ERROR: {rel}: R", stderr)
+                        self.assertIn("<redacted>", stderr)
+                        self.assertNotIn("audit_dummy", stderr)
+                        self.assertNotIn("unused", stderr)
+
     def test_anthropic_check_rejects_undecodable_name_forms(self) -> None:
         self.assert_anthropic_a03_cases("unsupported")
 

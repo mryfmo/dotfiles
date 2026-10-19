@@ -49,3 +49,19 @@ Post-round bounded verification found a05-worker-verification-1, P2/high confide
 
 No manual Bot request, PR edit, PR comment, thread resolution or merge is performed by this worker. This committed report freezes local-check status before delivery; after first push, exact-head CI and the 900-second automatic-review observations are recorded in delivery-observation.json and the final RESULT without claiming a prediction here. Final feedback, task-level audit, separate security-profile review, acceptance and integration belong to the orchestrator.
 
+
+## Revise-1: security diagnostic disclosure (2026-10-19)
+
+The 05:36:10Z ACCEPTANCE explicitly authorizes one revise correction after the first RESULT: the independent security review at update-branch head eda0354b5ddf9a4089435cd412013fe2bf20e3fc found P1 scripts/validate-agent-assets.py:1774, final-only redaction leaking mapping-key payloads when decoding erased their delimiters. The branch was fast-forwarded to that head; no rebase or predecessor artifact change occurred. This section supersedes the earlier pre-push status for the current round while preserving its historical provenance.
+
+The requested test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key was added before the implementation. On unchanged eda0354b it failed 28 of 36 subcases, including the exact valid-JSON control-escape reproduction and ancestor-key case. The shared auth_diagnostic_key now truncates at a delimiter in the original or an intermediate view before further decoding of that prefix. It repeats this for any earlier encoded delimiter and appends a redaction marker only after decoding finishes. No payload suffix is passed into a later transform. The occurrence detector, raw-line allowlist, discovery, structured parsers and Markdown classification are unchanged.
+
+Both credential names, leaf/ancestor paths, original equals/colon/dollar delimiters, nested percent encodings and backslash-produced delimiters pass. The same 425-row corpus and all 123 module tests pass with PyYAML/no skips. The current source cap is 227/300 and test cap 967/1000, with fixtures counted. Ruff still exits1 with exactly the eight inherited findings, no new finding or suppression. Format, diff and the supplied-review evidence-backed worker gate pass. Full make and final-head CI/window observations are recorded separately below or in revise-1 delivery evidence, never predicted.
+
+The supplied independent security review is retained as a05-revise-1-worker-review.json; its P1 is addressed, and this is not a new independent worker review. The original one worker correction plus this explicitly authorized revise reaches the cap. Known P2 a05-worker-verification-1 remains OPEN with a06 ownership and has no implementation change. Final-head audit, security re-review, feedback sweep and integration remain orchestrator-side. One push follows completed local evidence, then CI and the 900-second automatic review window; no manual Bot request or PR edit/comment.
+
+cost: n/a (runtime exposes no reliable task token/cost total).
+
+
+Final local revise-1 result: full make exited0 at05:46:17Z on the live worker tree, including its real tracked applied files and unchanged prior-task untracked records. Complete unsuppressed output and before/after bindings are in validation.md. Source5016df2c, tests942429c2, task5eb78325 were unchanged during validation. The final push carries this source plus completed local evidence; runtime CI/review delivery observations are stored separately as revise-1-delivery-observation.json before RESULT round=revise-1.
+

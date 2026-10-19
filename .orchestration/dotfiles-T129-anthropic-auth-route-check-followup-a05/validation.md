@@ -2279,3 +2279,1411 @@ Final local status before first push: unit122/corpus425, both platform template 
 Extra final current-worktree scan: importing the validator and calling validate_no_obvious_secrets() first exited1 on the untracked a05 make-worker-fixed.log's home-directory spelling. All a05 logs/artifacts except the exact byte-bound task.md were normalized with the repository masker, then the same scan exited0 and printed latest_tracked_source_and_evidence_secret_scan=pass. No predecessor artifact was changed. git diff --check remained exit0; the evidence-backed worker gate remained exit0.
 
 
+
+## Revise-1 security correction (05:36:10Z ACCEPTANCE)
+
+Base source: eda0354b5ddf9a4089435cd412013fe2bf20e3fc (the orchestrator update-branch merge). Task copy remains sha256 5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925. The new named test ran before source edits; 28/36 subcases failed, including both exact review reproductions. One authorized correction only. Evidence paths are relative to worker-g. Output normalization uses the repository masker for home paths; fixture bytes in test source are unchanged.
+
+### Requested regression RED; source eda0354b, only test added
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 GIT_CONFIG_GLOBAL=/dev/null uv run --no-project --with pyyaml python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key -v
+Exit: 1.
+
+```text
+test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) ...
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c=audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c=audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c:audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c:audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='$audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='$audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%24audit_dummy=unused', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%24audit_dummy=unused', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%5Cc%3daudit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%5Cc%3daudit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%255Cc%253daudit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%255Cc%253daudit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\x5cc=audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\x5cc=audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c=audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c=audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c:audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c:audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='$audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='$audit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%24audit_dummy=unused', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%24audit_dummy=unused', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%5Cc%3daudit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%5Cc%3daudit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%255Cc%253daudit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%255Cc%253daudit_dummy', ancestor=True) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\x5cc=audit_dummy', ancestor=False) ... FAIL
+  test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\x5cc=audit_dummy', ancestor=True) ... FAIL
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c=audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEY\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c=audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parent\\x1daudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c:audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEY\\x1aaudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\c:audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parent\\x1aaudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='$audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEYaudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='$audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parentaudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%24audit_dummy=unused', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2178, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertNotIn("audit_dummy", stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'audit_dummy' unexpectedly found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEYaudit_dummy<redacted>: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%24audit_dummy=unused', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2178, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertNotIn("audit_dummy", stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'audit_dummy' unexpectedly found in 'ERROR: home/key.json: R2: parentaudit_dummy<redacted>.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%5Cc%3daudit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEY\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%5Cc%3daudit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parent\\x1daudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%255Cc%253daudit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEY\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='%255Cc%253daudit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parent\\x1daudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\x5cc=audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: ANTHROPIC_API_KEY\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_API_KEY', spelling='\\x5cc=audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R2: parent\\x1daudit_dummy.ANTHROPIC_API_KEY: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c=audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKEN\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c=audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parent\\x1daudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c:audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKEN\\x1aaudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\c:audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parent\\x1aaudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='$audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKENaudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='$audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parentaudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%24audit_dummy=unused', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2178, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertNotIn("audit_dummy", stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'audit_dummy' unexpectedly found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKENaudit_dummy<redacted>: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%24audit_dummy=unused', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2178, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertNotIn("audit_dummy", stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'audit_dummy' unexpectedly found in 'ERROR: home/key.json: R1: parentaudit_dummy<redacted>.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%5Cc%3daudit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKEN\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%5Cc%3daudit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parent\\x1daudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%255Cc%253daudit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKEN\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='%255Cc%253daudit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parent\\x1daudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\x5cc=audit_dummy', ancestor=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: ANTHROPIC_OAUTH_TOKEN\\x1daudit_dummy: credential occurrence is not an allowed environment-reference assignment\n'
+
+======================================================================
+FAIL: test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) (credential='ANTHROPIC_OAUTH_TOKEN', spelling='\\x5cc=audit_dummy', ancestor=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py", line 2177, in test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key
+    self.assertIn("<redacted>", stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '<redacted>' not found in 'ERROR: home/key.json: R1: parent\\x1daudit_dummy.ANTHROPIC_OAUTH_TOKEN: credential occurrence is not an allowed environment-reference assignment\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.864s
+
+FAILED (failures=28)
+```
+
+### Focused GREEN; changed source
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 GIT_CONFIG_GLOBAL=/dev/null uv run --no-project --with pyyaml python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_bypass_corpus tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_json_and_toml_through_their_parsers -v
+Exit: 0.
+
+```text
+test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) ... ok
+test_anthropic_check_bypass_corpus (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_bypass_corpus) ... ok
+test_anthropic_auth_route_reads_json_and_toml_through_their_parsers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_json_and_toml_through_their_parsers) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 11.348s
+
+OK
+```
+
+### Full module; PyYAML available, no skips
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 GIT_CONFIG_GLOBAL=/dev/null uv run --no-project --with pyyaml python -m unittest tests/unit/test_validate_agent_assets.py -v
+Exit: 0.
+
+```text
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_keeps_carriage_returns_and_every_unmasked_byte (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_keeps_carriage_returns_and_every_unmasked_byte) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_content_whatever_the_suffix (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_content_whatever_the_suffix) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_normalises_home_paths_in_text_and_json_evidence (tests.unit.test_validate_agent_assets.MaskSecretsModeTest.test_normalises_home_paths_in_text_and_json_evidence) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+test_an_sk_key_body_needs_a_hyphen_free_run (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (tests.unit.test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_a_one_segment_home_keeps_namespace_roots_intact (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_one_segment_home_keeps_namespace_roots_intact) ... ok
+test_a_root_home_keeps_sub_agent_identifiers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_a_root_home_keeps_sub_agent_identifiers) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_the_retired_adh_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_the_retired_adh_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_on_demand_seating (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_on_demand_seating) ... ok
+test_agent_manifest_requires_readme_to_state_the_orchestrator_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_orchestrator_kind) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_worker_kind_check_ignores_the_orchestrator_sentence) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_anthropic_auth_route_check_refuses_malformed_utf8_in_a_structured_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_check_refuses_malformed_utf8_in_a_structured_source) ... ok
+test_anthropic_auth_route_normalizes_shell_names_and_refuses_unreadable_names (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_normalizes_shell_names_and_refuses_unreadable_names) ... ok
+test_anthropic_auth_route_parses_both_platform_renderings_of_chezmoi_templates (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_parses_both_platform_renderings_of_chezmoi_templates) ... ok
+test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_accepts_only_a_whole_value_reference_template_or_empty) ... ok
+test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_r2_reaches_a_quoted_key_and_a_compound_assignment) ... ok
+test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_a_comment_after_an_empty_value_as_empty) ... ok
+test_anthropic_auth_route_reads_a_json_reference_before_a_delimiter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_a_json_reference_before_a_delimiter) ... ok
+test_anthropic_auth_route_reads_json_and_toml_through_their_parsers (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_json_and_toml_through_their_parsers) ... ok
+test_anthropic_auth_route_reads_yaml_through_its_parser (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_reads_yaml_through_its_parser) ... ok
+test_anthropic_auth_route_refuses_a_single_quoted_reference_in_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_refuses_a_single_quoted_reference_in_text) ... ok
+test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_auth_route_refuses_an_oauth_token_in_applied_files_and_a_literal_api_key_assignment) ... ok
+test_anthropic_check_accepts_an_environment_reference_followed_by_a_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_accepts_an_environment_reference_followed_by_a_command) ... ok
+test_anthropic_check_bypass_corpus (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_bypass_corpus) ... ok
+test_anthropic_check_decodes_ansi_c_escaped_names (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_decodes_ansi_c_escaped_names) ... ok
+test_anthropic_check_keeps_single_quote_semantics_for_backslashes (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_keeps_single_quote_semantics_for_backslashes) ... ok
+test_anthropic_check_parses_each_fenced_example_with_a_fresh_quote_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_parses_each_fenced_example_with_a_fresh_quote_state) ... ok
+test_anthropic_check_redacts_assignment_payloads_in_diagnostics (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_redacts_assignment_payloads_in_diagnostics) ... ok
+test_anthropic_check_refuses_an_env_option_it_cannot_classify_before_an_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_refuses_an_env_option_it_cannot_classify_before_an_assignment) ... ok
+test_anthropic_check_refuses_an_unresolved_env_prefix_before_a_dynamic_assignment (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_refuses_an_unresolved_env_prefix_before_a_dynamic_assignment) ... ok
+test_anthropic_check_refuses_an_unseen_shape_without_a_new_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_refuses_an_unseen_shape_without_a_new_rule) ... ok
+test_anthropic_check_refuses_parse_failures_and_missing_yaml_without_disclosing_payloads (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_refuses_parse_failures_and_missing_yaml_without_disclosing_payloads) ... ok
+test_anthropic_check_rejects_undecodable_name_forms (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_rejects_undecodable_name_forms) ... ok
+test_anthropic_check_splits_shell_text_on_lf_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_splits_shell_text_on_lf_only) ... ok
+test_anthropic_check_uses_the_unchanged_whole_line_for_allowance (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_anthropic_check_uses_the_unchanged_whole_line_for_allowance) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_accept_rolling_releases_without_pins (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_rolling_releases_without_pins) ... ok
+test_assets_reject_a_malformed_render_entry (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_invalid_rolling_and_pinned_declarations (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_invalid_rolling_and_pinned_declarations) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_validator_refuses_each_forbidden_form (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form) ... ok
+test_codex_command_hooks_accept_the_declared_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_accept_the_declared_tables) ... ok
+test_codex_command_hooks_reject_bad_entries_and_stray_tables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_command_hooks_reject_bad_entries_and_stray_tables) ... ok
+test_codex_modify_script_requires_executable_source (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_compactiondb_project_copy_must_match_the_vendor_tree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_compactiondb_project_copy_must_match_the_vendor_tree) ... ok
+test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_diagnostics_never_contain_a_decoded_payload_of_a_sensitive_key) ... ok
+test_home_paths_normalise_to_tilde_and_repository_paths_stay (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_home_paths_normalise_to_tilde_and_repository_paths_stay) ... ok
+test_hook_composition_accepts_managed_source_fixture (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_gitignored_local_state (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_gitignored_local_state) ... ok
+test_recursive_scans_skip_nested_git_trees_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/validate-agent-assets-test-ge4x25il/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: ~/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_runner_homes_match_anywhere (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_runner_homes_match_anywhere) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_flags_the_running_users_home_as_a_backstop (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_flags_the_running_users_home_as_a_backstop) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_home_paths_in_orchestration_evidence_only (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_home_paths_in_orchestration_evidence_only) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+
+----------------------------------------------------------------------
+Ran 123 tests in 19.809s
+
+OK
+```
+
+### Real applied-tree auth
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 uv run --no-project --with pyyaml python -c 'import importlib.util; p="scripts/validate-agent-assets.py"; s=importlib.util.spec_from_file_location("validator",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.validate_anthropic_auth_route(); print("real_applied_tree_auth=pass")'
+Exit: 0.
+
+```text
+real_applied_tree_auth=pass
+```
+
+### Ruff current; eight inherited findings, not passing
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 uv run ruff check scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py --output-format json
+Exit: 1.
+
+```text
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 20
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\nfrom urllib.parse import unquote\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 22
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 141
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 140
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 140,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 902
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 902
+          },
+          "location": {
+            "column": 12,
+            "row": 902
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 902
+          },
+          "location": {
+            "column": 69,
+            "row": 902
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 902
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 902,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 966
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 963
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 965
+          },
+          "location": {
+            "column": 13,
+            "row": 964
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 959
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 959,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 2598
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 2598
+          },
+          "location": {
+            "column": 41,
+            "row": 2598
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 2598
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 2598,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]
+```
+
+### Ruff pristine325 comparison; original relative filenames/modes, same repository config
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 uv run ruff check --config <worker-g>/ruff.toml scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py --output-format json
+Exit: 1.
+
+```text
+[
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 15,
+      "row": 19
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 21
+          },
+          "location": {
+            "column": 1,
+            "row": 4
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "SIM102",
+    "end_location": {
+      "column": 62,
+      "row": 140
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/scripts/validate-agent-assets.py",
+    "fix": null,
+    "location": {
+      "column": 9,
+      "row": 139
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements",
+    "name": "collapsible-if",
+    "noqa_row": 139,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+  },
+  {
+    "cell": null,
+    "code": "C401",
+    "end_location": {
+      "column": 70,
+      "row": 901
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "{",
+          "end_location": {
+            "column": 16,
+            "row": 901
+          },
+          "location": {
+            "column": 12,
+            "row": 901
+          }
+        },
+        {
+          "content": "}",
+          "end_location": {
+            "column": 70,
+            "row": 901
+          },
+          "location": {
+            "column": 69,
+            "row": 901
+          }
+        }
+      ],
+      "message": "Rewrite as a set comprehension"
+    },
+    "location": {
+      "column": 12,
+      "row": 901
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)",
+    "name": "unnecessary-generator-set",
+    "noqa_row": 901,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+  },
+  {
+    "cell": null,
+    "code": "UP022",
+    "end_location": {
+      "column": 10,
+      "row": 965
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/scripts/validate-agent-assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "capture_output=True",
+          "end_location": {
+            "column": 35,
+            "row": 962
+          },
+          "location": {
+            "column": 13,
+            "row": 962
+          }
+        },
+        {
+          "content": "",
+          "end_location": {
+            "column": 13,
+            "row": 964
+          },
+          "location": {
+            "column": 13,
+            "row": 963
+          }
+        }
+      ],
+      "message": "Replace with `capture_output` keyword argument"
+    },
+    "location": {
+      "column": 18,
+      "row": 958
+    },
+    "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+    "name": "replace-stdout-stderr",
+    "noqa_row": 958,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+  },
+  {
+    "cell": null,
+    "code": "EXE001",
+    "end_location": {
+      "column": 23,
+      "row": 1
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/tests/unit/test_validate_agent_assets.py",
+    "fix": null,
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Shebang is present but file is not executable",
+    "name": "shebang-not-executable",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+  },
+  {
+    "cell": null,
+    "code": "FLY002",
+    "end_location": {
+      "column": 14,
+      "row": 276
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "f'#:schema https://developers.openai.com/codex/config-schema.json\\nmodel = \"gpt-5.5\"\\nmodel_reasoning_effort = \"high\"\\nsandbox_mode = \"workspace-write\"\\n\\n[sandbox_workspace_write]\\n{sandbox_workspace_write}\\n\\n[features]\\nplugins = true\\nhooks = true\\nplugin_hooks = true\\n\\n[shell_environment_policy]\\ninherit = \"core\"\\nset = {{ PATH = \"{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin\" }}\\n\\n{projects_toml}'",
+          "end_location": {
+            "column": 14,
+            "row": 276
+          },
+          "location": {
+            "column": 13,
+            "row": 255
+          }
+        }
+      ],
+      "message": "Replace with f-string"
+    },
+    "location": {
+      "column": 13,
+      "row": 255
+    },
+    "message": "Consider f-string instead of string join",
+    "name": "static-join-to-f-string",
+    "noqa_row": 255,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/static-join-to-f-string"
+  },
+  {
+    "cell": null,
+    "code": "UP037",
+    "end_location": {
+      "column": 75,
+      "row": 2276
+    },
+    "filename": "/private/tmp/a012-ruff-baseline/tests/unit/test_validate_agent_assets.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "subprocess.CompletedProcess[str]",
+          "end_location": {
+            "column": 75,
+            "row": 2276
+          },
+          "location": {
+            "column": 41,
+            "row": 2276
+          }
+        }
+      ],
+      "message": "Remove quotes"
+    },
+    "location": {
+      "column": 41,
+      "row": 2276
+    },
+    "message": "Remove quotes from type annotation",
+    "name": "quoted-annotation",
+    "noqa_row": 2276,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/quoted-annotation"
+  }
+]
+```
+
+### Ruff comparison (JSON code/message/path set, no suppression)
+
+Command: Python JSON comparison of the two preceding outputs
+Exit: 0.
+
+```text
+{
+  "baseline_count": 8,
+  "revise_count": 8,
+  "same_finding_set": true,
+  "new_findings": []
+}
+```
+
+### Initial review gate; review required
+
+Command: make require-crit-review
+Exit: 2.
+
+```text
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/20261018_233812_done.md
+- broad diff touches 95 files
+- broad diff changes 75076 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+### Evidence-backed worker gate; supplied independent security P1 addressed
+
+Command: AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/a05-revise-1-worker-receipt.md make require-crit-review
+Exit: 0.
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+### First make attempt; own unit-log home path, retained failure
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 make validate-agent-assets
+Exit: 2.
+
+```text
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+ERROR: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/revise-1-unit.log names a home directory; normalise it with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`
+make: *** [validate-agent-assets] Error 1
+```
+
+### Format, whitespace and measurements
+
+UV_CACHE_DIR=/private/tmp/uv-cache-a012 uv run ruff format --check scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py; exit0:
+
+```text
+2 files already formatted
+```
+
+git diff --check; exit0, empty output.
+
+git diff --numstat origin/main -- scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py; exit0:
+
+```text
+227	0	scripts/validate-agent-assets.py
+967	0	tests/unit/test_validate_agent_assets.py
+```
+
+Crit status --json exits0 with review_file_exists=false, daemon.running=false, sessions=[]. crit comments --all --json for that path exits1 (no such file). The supplied independent security report is preserved as a resolved P1 record in a05-revise-1-worker-review.json and read before the gate. The known list-container P2 is intentionally still OPEN in post-round-open.json, under the existing a06 task; the gate receipt is scoped to the new P1 only.
+
+
+### Successful complete make on the revise-1 source
+
+Command: UV_CACHE_DIR=/private/tmp/uv-cache-a012 make validate-agent-assets. Exit0. The live worker tree retains unrelated untracked prior-task records; this is not called a clean snapshot. Source/test/task hashes are unchanged before/after and bound to the files that will be committed. No mock, warning suppression, waiver, applied-file edit, or global environment/config repair. Complete stdout/stderr (home-path normalization only):
+
+```text
+Warning: truncated output (original token count: 2235263)
+... 7892475 bytes omitted ...
+
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a05.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a03.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a04.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-anthropic-auth-route-check-followup-a05.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-anthropic-auth-runtime-check-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-assets-omp-hcom-followup-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-integration-seat-result-gate-cap-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a03.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T129-omp-config-render-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T130-sandbox-portability-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T132-make-update-followups-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-audit-pool-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-ci-efficiency-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-ci-efficiency-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-dispositions-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-hold-playbook-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a03.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-regime-ci-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-regime-ci-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-regime-ci-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-result-precheck-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-result-precheck-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-result-precheck-a03.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-result-precheck-a04.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-rule-text-reduction-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a03.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-a02.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-worker-cap-hookspath-followup-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/20261018_072807_done.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/20261018_072807_plan.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/20261018_082826_learn.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/autoskill.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.chezmoiroot
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/config.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/__init__.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/cli.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/config.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/hook.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/memory.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/normalize.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/paths.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/probe.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/recall.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/recover_hook.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/recovery.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/redaction.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/semantic.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/spool.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/storage.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/contextdb/util.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/health/.gitkeep
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/spool/incoming/.gitkeep
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/spool/quarantine/.gitkeep
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/contextdb/state/.gitkeep
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/hooks/contextdb_cli.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/hooks/contextdb_hook.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/hooks/contextdb_recover.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/hooks/query_log.py
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.claude/settings.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.coderabbit.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.editorconfig
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/funding.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/header.png
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/screenshot-macos-client.png
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/screenshot-ubuntu-server.png
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/agent-assets.yml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/docs.yml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/macos.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/remote.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/test.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.github/workflows/ubuntu.yaml
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.gitignore
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T10-herdr-files-pane.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T11-agmsg-join-unique-identity-guard.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T13-agmsg-orchestration-rule-file.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T14-t13-pr-lifecycle.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T15-herdr-lazy-start-attach-layout.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T16-herdr-attach-layout-order-repair.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T17-herdr-attach-agmsg-bootstrap.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T18-herdr-agents-two-pane.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T19-herdr-file-viewer-popup-config.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T21-model-profiles-pr.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T22-doctor-settings-idempotency.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T23-agmsg-nudge-guidance.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T24-usage-review-automation.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T25-permgate-harness.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T26-pr86-herdr-rebase.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T27-pr87-npm-allow-scripts-rebase.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T28-ccgate-removal-permgate-deploy.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T36-understand-anything-analysis.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T37-understand-anything-codex-dist.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T38-evidence-sync.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T40-understand-anything-search-first.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T41-remove-cognee.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T42-zero-tail-evidence-sync.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T43-compactiondb-integration.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T44-marker-extraction-redesign.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T45.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T46.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T47.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T48.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T48b.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T48c.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/acceptance/T49.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a02/clean-main/.orchestration/accep…250152 tokens truncated…05/revise-1-ruff-comparison.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/revise-1-ruff.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/revise-1-unit.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/ruff-baseline-325.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/ruff-current-pre-review.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/ruff-rebased.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/ruff-worker-fixed.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/unit-first.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/unit-policy-updated.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/unit-pre-review.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/unit-rebased.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/unit-worker-fixed.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/20261018_233812_done.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/20261018_233812_plan.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/autoskill.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/baseline-failures.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/baseline-timing.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/bot-inline-final.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/bot-receipts-final.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/bot-review-request.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/bot-reviews-final.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/ci-final.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/current-failures-rerun.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/dotfiles-T133-worker-cap-hookspath-followup-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/dotfiles-T133-worker-cap-hookspath-followup-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/format.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/green-focused.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/learning.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/masking-final.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/masking.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/memory.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/pr-body.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/pr-final.json
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/red.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/render-check.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/report.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/review-gate-final.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/review-gate-initial.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/review-gate-worker.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/ruff-format.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/ruff-repo-config.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/ruff.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/sandbox.md
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/shellcheck.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/shfmt.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/unit.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/validate-agent-assets-final.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/validate-agent-assets.log
+WARN: regime-boundary: untracked .orchestration file in ~/Workspace/dotfiles/.claude/worktrees/worker-g: .orchestration/dotfiles-T133-worker-cap-hookspath-followup-a01/validation.md
+WARN: regime-boundary: worker still seated at .claude/worktrees/worker-c (herdr-agents --remove-worker .claude/worktrees/worker-c)
+WARN: regime-boundary: worker still seated at .claude/worktrees/worker-d (herdr-agents --remove-worker .claude/worktrees/worker-d)
+WARN: regime-boundary: worker still seated at .claude/worktrees/worker-e (herdr-agents --remove-worker .claude/worktrees/worker-e)
+WARN: regime-boundary: worker still seated at .claude/worktrees/worker-f (herdr-agents --remove-worker .claude/worktrees/worker-f)
+WARN: regime-boundary: worker still seated at .claude/worktrees/worker-g (herdr-agents --remove-worker .claude/worktrees/worker-g)
+WARN: regime-boundary: canonical clone ~/.local/share/chezmoi differs from origin/main under home/, install/ or scripts/: home/dot_agents/agent-config.yaml,home/dot_agents/skills/agmsg-orchestration/SKILL.md,home/dot_local/bin/common/executable_herdr-agents,home/dot_local/bin/common/executable_remove-agent-asset,scripts/orchestrator/acceptance-front-matter.py,scripts/orchestrator/chain-integrate.sh,scripts/orchestrator/ci-rerun.sh,scripts/orchestrator/ledger-check.py,scripts/orchestrator/regime-ci.py,scripts/regime-counters.sh,scripts/require-crit-review.py,scripts/update-agent-assets.sh,scripts/upgrade-tools.sh; nothing but pull and apply runs in the canonical clone; restore a stray diff with git -C ~/.local/share/chezmoi restore -SW --source=origin/main -- <files> and drop its autostash
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles-conformance:claude-standard-dot-a008 (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles-conformance:claude-standard-dot-a009 (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles-conformance:claude-standard-dot-a011 (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles-conformance:codex-standard-dot-a010 (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles-conformance:codex-standard-dot-a012 (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: wJ:p8 (herdr-agents --remove-worker)
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 PR #313 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 PR #314 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a02 S2: bot_p1_heads 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a01 S2: bot_p1_heads 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: bot_p1_heads 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a03 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 PR #383 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-v0-main-tests-a01 S2: bot_p1_heads 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-v0-main-tests-a01 PR #317 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-stop-and-watch-a02 PR #323 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: bot_p1_heads 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 PR #393 closed unmerged without an anchored reset record
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T131-claude-pinned-merge-gate-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-ci-efficiency-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-permission-guard-gate-a01 S2: questions 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-permission-guard-gate-a03 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-result-precheck-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-result-precheck-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-task-generator-plan-check-a02 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-worker-cap-hookspath-a01 S2: amendments 3 >= 2 source=live
+agent asset validation ok
+```
+
+Execution binding:
+
+```json
+{
+  "command": "UV_CACHE_DIR=/private/tmp/uv-cache-a012 make validate-agent-assets",
+  "cwd": "worker-g",
+  "tracked_base": "eda0354b5ddf9a4089435cd412013fe2bf20e3fc",
+  "state": "uncommitted authorized revise-1 source/test diff; existing unrelated untracked records retained",
+  "started": "2026-10-19T05:39:43.169754+00:00",
+  "before": {
+    "scripts/validate-agent-assets.py": "5016df2ce10697595c28f0aeed477db0e419e8ed5518132f79c89a1298cbad83",
+    "tests/unit/test_validate_agent_assets.py": "942429c261f1abfa531fb672178f2027b95adf5b8426b30706f56804f7e19170",
+    ".orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md": "5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925"
+  },
+  "finished": "2026-10-19T05:46:17.513699+00:00",
+  "exit_status": 0,
+  "after": {
+    "scripts/validate-agent-assets.py": "5016df2ce10697595c28f0aeed477db0e419e8ed5518132f79c89a1298cbad83",
+    "tests/unit/test_validate_agent_assets.py": "942429c261f1abfa531fb672178f2027b95adf5b8426b30706f56804f7e19170",
+    ".orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md": "5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925"
+  }
+}
+```
+
+Task copy was independently hashed at the dispatched canonical path and branch path; both remain 5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925. Source SHA2565016df2ce10697595c28f0aeed477db0e419e8ed5518132f79c89a1298cbad83; tests SHA256942429c261f1abfa531fb672178f2027b95adf5b8426b30706f56804f7e19170. Against current merged PR base b22a5580d0778e57a66d3f75c76e3c55b88701e1, complete source/test caps are unchanged at227/300 and967/1000. CI and the900-second review window are recorded after the final push in revise-1-delivery-observation.json, avoiding an evidence-only push restarting the head/window.
+
+Final documentation whitespace check initially exited2 on unittest's trailing progress-line space in the pasted RED transcript. Only that trailing space was removed from this Markdown copy; the masked raw log retains it and no fixture byte changed. The repeated diff check is recorded with its actual exit status before commit.
+

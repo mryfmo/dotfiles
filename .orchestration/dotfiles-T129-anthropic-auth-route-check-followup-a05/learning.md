@@ -16,3 +16,8 @@ Keep actual checks distinguishable: unit/format/applied-auth pass; Ruff is an in
 
 The release at 03:17:43Z reverses PR order, so preserve its provenance rather than treating the earlier hold as current. The single rebase onto 212efe97 changes commit identities but leaves source/test/task hashes and all four reset patches identical; retain the original independent-review head and provide the rebased fix mapping. Full validation on the corrected pre-rebase snapshot passed; rebased unit/format/auth checks pass again. Post-push CI and automatic-window facts are written to the delivery observation and RESULT, avoiding a prediction in this pre-push artifact.
 
+
+## Revise-1 validated candidate
+
+A diagnostic redactor must inspect every retained spelling view before another decoder can erase a delimiter. Redacting only the final decoded string is insufficient: backslash-control escapes can consume equals/colon, and punctuation removal can consume dollar. The regression is RED on eda0354b and GREEN after discarding each payload suffix before decoding the remaining prefix. Repeatedly inspect that prefix because an earlier encoded delimiter can coexist with a later original delimiter. Keep the redaction marker outside the decoding stream. Applies to diagnostic key-path formatting, including ordinary ancestors of a sensitive leaf; no rule promotion or new skill installation.
+

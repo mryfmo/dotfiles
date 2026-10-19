@@ -1696,6 +1696,18 @@ def auth_decoded_views(text: str):
             break
 
 
+def auth_diagnostic_key(text: str) -> str:
+    redacted = ""
+    while True:
+        for view, _ in auth_decoded_views(text):
+            if boundary := re.search(r"[=:$]", view):
+                # Discard before decoding again: a later transform can erase the delimiter.
+                text, redacted = view[: boundary.start()], "<redacted>"
+                break
+        else:
+            return view + redacted
+
+
 def credential_occurrences(text: str) -> list[tuple[int, str, str]]:
     # shortcut: runtime-assembled names are undetectable; revisit only with a new reviewed policy.
     lines, found = text.split("\n"), []
@@ -1771,8 +1783,7 @@ def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, 
                 if key is None:
                     fail(f"{rel}: unsupported YAML mapping key (ValueError); the Anthropic auth route check refuses it")
                 key_findings = anthropic_text_findings(str(key), "")
-                decoded = list(auth_decoded_views(str(key)))[-1][0]
-                label = re.sub(r"[=:$].*", "<redacted>", decoded, flags=re.DOTALL)
+                label = auth_diagnostic_key(str(key))
                 here = f"{where}.{label}" if where else label
                 found += [(rule, here, reason) for rule, _, reason in key_findings]
                 stack.append((child, here))

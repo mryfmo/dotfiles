@@ -74,3 +74,8 @@ Reset delta, compared with the rebased predecessor e1512cbc0d146360365caa43bab4a
 
 Implementation map after rebase: a99521b4 -> 726f92727e83929a8348a968e20fbb2f41ebfa75; sole correction e37be90d -> 5ed00db13a8c7daaaf0b9d95ae4a272210a4c16a. Range-diff equals for all four reset commits, and SHA256 of source/test/task matches pre-rebase. No second source correction or independent review.
 
+
+## Revise-1 current measurement
+
+Against the same PR base source paths, the authorized correction changes source by +13/-2 lines and tests by +26/-0 relative to eda0354b. The complete PR source total is 227 added +0 deleted =227/300; tests are 967 added +0 deleted =967/1000. The only new implementation helper is auth_diagnostic_key; one shared call replaces the final-only key redaction. No corpus row is removed and the inherited table remains425 rows; the new named method adds36 leaf/ancestor subcases. Task evidence and the two uncommitted timestamped worklogs remain task-local. Exact committed inventory and delivery head follow after commit.
+

@@ -15,6 +15,7 @@ from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 import tomllib
 
@@ -1606,12 +1607,14 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
-ANTHROPIC_API_KEY_DATA = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})|\{\{(?:(?!\}\}).)*\}\}|")
-AUTH_R1 = "names ANTHROPIC_OAUTH_TOKEN; Anthropic is reached by API key only"
-AUTH_R2 = "a string assigns ANTHROPIC_API_KEY a literal; reference the environment"
-AUTH_PREFIXES = "if then else elif do while until ! time -p { } command builtin exec sudo env nohup xargs"
-AUTH_WRAPPERS = ("env", "exec", "command", "nohup", "sudo", "xargs", "time")
-AUTH_OPTIONS = {"env": "-i --ignore-environment", "command": "-p -v -V", "sudo": "-n -E", "time": "-p"}
+AUTH_NAMES = r"ANTHROPIC_(?:API_KEY|OAUTH_TOKEN)"
+AUTH_REASON = "credential occurrence is not an allowed environment-reference assignment"
+AUTH_ALLOWED = re.compile(
+    r'\A(?:export )?(?:ANTHROPIC_API_KEY|ANTHROPIC_OAUTH_TOKEN)=(?P<q>"?)\$(?:\{(?!ANTHROPIC_(?:'
+    r"API_KEY|OAUTH_TOKEN)\})[A-Za-z_][A-Za-z0-9_]*\}|(?!ANTHROPIC_(?:API_KEY|OAUTH_TOKEN)(?![A-"
+    r"Za-z0-9_]))[A-Za-z_][A-Za-z0-9_]*)(?P=q)(?: (?!.*ANTHROPIC_(?:API_KEY|OAUTH_TOKEN))[A-Za-z"
+    r"0-9_./-]+(?: [A-Za-z0-9_./-]+)*)?\Z"
+)
 CHEZMOI_FILE_ATTRIBUTES = {
     *("after", "before", "create", "dot", "empty", "encrypted", "executable", "literal"),
     *("modify", "once", "onchange", "private", "readonly", "remove", "run", "symlink"),
@@ -1646,224 +1649,89 @@ def parsed_entry(node: Any) -> tuple[str, Any]:
     return ("str", node) if isinstance(node, str) else ("null" if node is None else "other", None)
 
 
-def decode_auth_word(parts: list[tuple[str, list[str]]]) -> tuple[str, str, bool]:
-    def ansi(match: re.Match[str]) -> str:
+def auth_decoded_views(text: str):
+    """Stateless spelling transforms with the original LF location of each character."""
+    view, locations = text, []
+    for number, line in enumerate(text.split("\n"), 1):
+        locations.extend([number] * (len(line) + 1))
+    locations.pop()
+
+    def escape(match: re.Match[str]) -> str:
         value = match[1]
         if value[0] in "01234567" or value[0] in "xuU" and len(value) > 1:
             number = int(value, 8) % 256 if value[0] in "01234567" else int(value[1:], 16)
-            return chr(number)
+            return chr(number) if number <= 0x10FFFF else match[0]
         if value.startswith("c") and len(value) == 2:
             return chr(127 if value[1] == "?" else ord(value[1].upper()) & 31)
         controls = str.maketrans("abeEfnrtv", "\a\b\x1b\x1b\f\n\r\t\v")
         return value.translate(controls) if value in "abeEfnrtv\\'\"?" else "\\" + value
 
-    value, provenance, previous, before, quote = "", "", "=", "", ""
-    for index, (kind, chunks) in enumerate(parts):
-        raw = "".join(chunks)
-        if kind == "ansi":
-            raw = re.sub(
-                r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|c.|.)", ansi, raw, flags=re.DOTALL
-            ).split("\0", 1)[0]
-        elif kind in ("bare", "double", "locale"):
-            pattern = r'\\([$\x60"\\\n])' if kind != "bare" else r"\\(.)"
-            raw = re.sub(pattern, lambda m: "" if m[1] == "\n" else m[1], raw, flags=re.DOTALL)
-        quote = "" if kind == "end" else kind if kind in ("single", "double", "ansi", "locale") else quote
-        whole = len(parts) - index == (2 if quote == "double" and parts[-1][0] == "end" else 1 if not quote else 0)
-        whole = whole and (
-            previous.endswith(("=", ":")) or quote == "double" and not previous and before.endswith(("=", ":"))
-        )
-        value += raw
-        marker = "R" if kind == "ref" and whole else "D" if kind in ("ref", "dynamic", "locale") else "L"
-        provenance += marker * len(raw)
-        before, previous = previous, raw
-    return value, provenance, any(kind not in ("bare", "ref") or "\\" in "".join(chunks) for kind, chunks in parts)
+    transforms = (
+        (r"\\\n", lambda _: ""),
+        (r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|c.|.)", escape),
+        (r"(?:%[0-9a-fA-F]{2})+", lambda match: unquote(match[0])),
+    )
+    yield view, locations
+    while True:
+        previous = view
+        for pattern, decode in transforms:
+            parts, mapped, cursor = [], [], 0
+            for match in re.finditer(pattern, view, flags=re.DOTALL):
+                value = decode(match)
+                parts.extend((view[cursor : match.start()], value))
+                mapped.extend(locations[cursor : match.start()])
+                mapped.extend([locations[match.start()]] * len(value))
+                cursor = match.end()
+            parts.append(view[cursor:])
+            mapped.extend(locations[cursor:])
+            view, locations = "".join(parts), mapped
+            yield view, locations
+        if view == previous:
+            break
+    kept = [(char, locations[index]) for index, char in enumerate(view) if char not in "'\"\\{}$"]
+    yield "".join(char for char, _ in kept), [number for _, number in kept]
 
 
-def auth_shell_words(text, start=0, end="", arithmetic=False, inactive=False, stop=None, substitution=False):
-    words, parts, quote, pos, word_start = [], [], "", start, start
-    streams = [(arithmetic, inactive, substitution, words)]
-
-    def put(kind: str, value: str) -> None:
-        nonlocal word_start
-        if not parts:
-            word_start = pos
-        if parts and parts[-1][0] == kind:
-            parts[-1][1].append(value)
-        else:
-            parts.append((kind, [value]))
-
-    def flush() -> None:
-        if parts:
-            words.append((*decode_auth_word(parts), word_start))
-            parts.clear()
-
-    while pos < (len(text) if stop is None else stop):
-        char, pair = text[pos], text[pos : pos + 2]
-        if not quote and end and text.startswith(end, pos):
-            flush()
-            return streams, pos + len(end)
-        kind = "single" if quote == "'" else "double" if quote == '"' else quote or "bare"
-        if not inactive and char == "\\" and quote != "'":
-            if pair != "\\\n" or quote == "ansi":
-                put(kind, pair)
-            pos += 2
-            continue
-        if quote and char == ("'" if quote in ("'", "ansi") else '"'):
-            put("end", "")
-            quote = ""
-            pos += 1
-            continue
-        opening = {"$'": "ansi", '$"': "locale"}.get(pair, char)
-        if not inactive and not quote and opening in ("'", '"', "ansi", "locale"):
-            quote = opening
-            put({"'": "single", '"': "double"}.get(quote, quote), "")
-            pos += 2 if quote in ("ansi", "locale") else 1
-            continue
-        reference = ANTHROPIC_API_KEY_DATA.match(text, pos) if char == "$" else None
-        if reference and not reference[0]:
-            reference = re.match(r"\$[0-9@*#?$!-]", text[pos:])
-        if not inactive and quote not in ("'", "ansi") and reference and reference[0]:
-            put("dynamic" if quote == "locale" else "ref", reference[0])
-            pos += len(reference[0])
-            continue
-        process = not quote and not arithmetic and pair in ("<(", ">(")
-        expansion = pair in ("$(", "${") or char == "`" or process
-        if not inactive and quote not in ("'", "ansi") and expansion:
-            math = text.startswith("$((", pos)
-            width = 1 if char == "`" else 3 if math else 2
-            closing = "}" if pair == "${" else "))" if math else "`" if char == "`" else ")"
-            child, pos = auth_shell_words(text, pos + width, closing, math, substitution=closing in (")", "`"))
-            streams.extend(child)
-            put("dynamic", "?")
-            continue
-        if not quote and not inactive and text.startswith("{{", pos):
-            finish = text.find("}}", pos + 2)
-            if finish >= 0:
-                put("single", text[pos : finish + 2])
-                pos = finish + 2
-                continue
-        if not quote and not inactive and char == "(":
-            flush()
-            math = pair == "(("
-            child, pos = auth_shell_words(text, pos + (2 if math else 1), "))" if math else ")", arithmetic=math)
-            streams.extend(child)
-            words.append(";")
-            continue
-        if not quote and not inactive and pair == "<<" and not text.startswith("<<<", pos) and not arithmetic:
-            match = re.match(
-                r"""<<(-)?[ \t]*(['"]?)(\w+)\2[ \t]*\n((?:.*?\n)?)(?(1)\t*)\3(?=\n|$)""", text[pos:], re.DOTALL
-            )
-            if match is None or (not match[2] and re.search(r"\$\(|\x60", match[4])):
-                raise ValueError
-            flush()
-            child, _ = auth_shell_words(text, start=pos + match.start(4), inactive=True, stop=pos + match.end(4))
-            streams.extend(child)
-            pos += match.end()
-            continue
-        if not quote and char in " \t\n;|&()<>":
-            if char in "<>" and parts and all(kind == "bare" for kind, _ in parts):
-                raw = "".join("".join(chunks) for _, chunks in parts)
-                if re.fullmatch(r"[0-9]+|\{[A-Za-z_][A-Za-z_0-9]*\}", raw):
-                    parts.clear()
-            flush()
-            width = (
-                3 if text.startswith(("<<<", "&>>"), pos) else 2 if pair in (">>", "<>", ">&", "<&", "&>", ">|") else 1
-            )
-            if char not in " \t":
-                words.append(text[pos : pos + width])
-            pos += width
-            continue
-        if not quote and not inactive and char == "#" and not parts:
-            child, pos = auth_shell_words(text, start=pos + 1, end="\n", inactive=True)
-            streams.extend(child)
-            words.append("\n")
-            continue
-        put(kind, char)
-        pos += 1
-    flush()
-    return streams, pos
+def credential_occurrences(text: str) -> list[tuple[int, str, str]]:
+    # shortcut: runtime-assembled names are undetectable; revisit only with a new reviewed policy.
+    lines, found = text.split("\n"), []
+    for view, locations in auth_decoded_views(text):
+        for match in re.finditer(AUTH_NAMES, view):
+            number = locations[match.start()]
+            found.append((number, lines[number - 1], match[0]))
+    return list(dict.fromkeys(found))
 
 
-def anthropic_text_findings(text: str, where: str) -> list[tuple[str, str, str]]:
+def allowed_assignment_line(line: str) -> bool:
+    return AUTH_ALLOWED.fullmatch(line) is not None
+
+
+def anthropic_text_findings(text: str, where: str, markdown: bool = False) -> list[tuple[str, str, str]]:
+    code_lines, fence = set(), ""
+    if markdown:
+        for number, line in enumerate(text.split("\n"), 1):
+            marker = re.match(r"^[ \t]*(\x60{3,}|~{3,})", line)
+            if marker:
+                code_lines.add(number)
+                if not fence:
+                    fence = marker[1]
+                elif marker[1][0] == fence[0] and len(marker[1]) >= len(fence):
+                    fence = ""
+            elif fence or line.startswith(("    ", "\t")):
+                code_lines.add(number)
     found = []
-    if "ANTHROPIC_OAUTH_TOKEN" in text:
-        location = where or str(text.count("\n", 0, text.index("ANTHROPIC_OAUTH_TOKEN")) + 1)
-        found.append(("R1", location, AUTH_R1))
-    try:
-        for arithmetic, inactive, substitution, words in auth_shell_words(text)[0]:
-            beginning, declaration, operand, unresolved, index = True, False, False, False, 0
-            while index < len(words):
-                word = words[index]
-                index += 1
-                if isinstance(word, str):
-                    operand = word in ("<", ">", "<<<", ">>", "<>", ">&", "<&", "&>", "&>>", ">|")
-                    if word in ("\n", ";", "|", "&", "(", ")"):
-                        beginning, declaration, unresolved = True, False, False
-                    continue
-                value, provenance, quoted, offset = word
-                keyword = substitution and not arithmetic and not inactive and beginning and not quoted
-                if keyword and value in ("case", "function", "coproc"):
-                    raise ValueError
-                following = words[index] if index < len(words) and not isinstance(words[index], str) else None
-                separate = value == "ANTHROPIC_API_KEY" and following and following[0] in ("=", ":")
-                if separate:
-                    suffix, mask, _, _ = following
-                    value, provenance, index = value + suffix, provenance + mask, index + 1
-                following = words[index] if index < len(words) and not isinstance(words[index], str) else None
-                if following and value.endswith(("=", ":")) and (":" in value or separate):
-                    suffix, mask, _, _ = following
-                    value, provenance, index = value + suffix, provenance + mask, index + 1
-                if "ANTHROPIC_OAUTH_TOKEN" in value:
-                    found.append(("R1", where or str(text.count("\n", 0, offset) + 1), AUTH_R1))
-                match = re.search(r"""ANTHROPIC_API_KEY['"]?[ \t]*(?:\+?=|:)""", value)
-                if match:
-                    payload, origin = value[match.end() :], provenance[match.end() :]
-                    reference = ANTHROPIC_API_KEY_DATA.fullmatch(payload)
-                    if payload and (not reference or (not payload.startswith("{{") and set(origin) != {"R"})):
-                        found.append(("R2", where or str(text.count("\n", 0, offset) + 1), AUTH_R2))
-                name, equal, _ = value.partition("=")
-                dynamic = bool(set(provenance[: len(name)]) & {"R", "D"})
-                unresolved |= beginning and not operand and dynamic
-                wrapper = value.rsplit("/", 1)[-1]
-                if (
-                    beginning
-                    and not operand
-                    and not equal
-                    and (value in ("export", "readonly", "local", "declare", "typeset") or wrapper in AUTH_WRAPPERS)
-                ):
-                    declaration = wrapper if wrapper in AUTH_WRAPPERS else value
-                    beginning = declaration in AUTH_WRAPPERS
-                    continue
-                if (declaration in AUTH_WRAPPERS or unresolved) and not operand:
-                    option = value == "--" or value in AUTH_OPTIONS.get(declaration, "").split()
-                    option |= declaration == "sudo" and re.fullmatch(r"--preserve-env=[A-Za-z_,]+", value) is not None
-                    unresolved |= dynamic or value.startswith("-") and not option
-                    form = "".join("?" if p in "RD" else c for c, p in zip(name, provenance))
-                    assignment = equal and re.fullmatch(r"[A-Za-z_?][A-Za-z0-9_?]*\+?", form)
-                    if not inactive and unresolved and assignment:
-                        raise ValueError
-                    if not equal and not option and not unresolved:
-                        declaration = False
-                unreadable = dynamic and (equal or declaration and declaration not in AUTH_WRAPPERS)
-                candidate = declaration or beginning and re.fullmatch(r"[A-Za-z_?][A-Za-z0-9_?]*", name.rstrip("+"))
-                literal_prefix = re.split(r"[][{}*?,]", name, maxsplit=1)[0]
-                possible = any(key.startswith(literal_prefix) for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN"))
-                invalid = (
-                    declaration and equal and (any(c in name for c in "$`") or (literal_prefix != name and possible))
-                )
-                if not inactive and not operand and candidate and (unreadable or invalid):
-                    raise ValueError
-                prefix = value in AUTH_PREFIXES.split()
-                beginning = beginning and (
-                    bool(equal) or prefix or declaration in AUTH_WRAPPERS or unresolved or operand
-                )
-                operand = False
-    except (ValueError, OverflowError, RecursionError):
-        found.append(("R2", where or "1", "unsupported authentication name form; use a literal variable name"))
+    for number, line, name in credential_occurrences(text):
+        if allowed_assignment_line(line):
+            continue
+        note = line.startswith("#") or markdown and number not in code_lines and "=" not in line
+        rule = "note" if note else "R1" if name.endswith("OAUTH_TOKEN") else "R2"
+        reason = "credential name in a comment or Markdown prose" if note else AUTH_REASON
+        found.append((rule, where or str(number), reason))
     return list(dict.fromkeys(found))
 
 
 def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, str, str]]:
+    rel = rel.encode("unicode_escape").decode("ascii")
     if fmt == "yaml" and yaml is None:
         fail(f"{rel}: cannot be parsed as yaml (ImportError); PyYAML is required")
     errors = (ValueError, RecursionError) + ((yaml.YAMLError,) if yaml is not None else ())
@@ -1888,15 +1756,10 @@ def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, 
                 if key is None:
                     fail(f"{rel}: unsupported YAML mapping key (ValueError); the Anthropic auth route check refuses it")
                 key_findings = anthropic_text_findings(str(key), "")
-                separator = "[=:]" if key_findings else "="
-                label = re.sub(rf"({separator}|\$).*", r"\1<redacted>", str(key), flags=re.DOTALL)
+                decoded = list(auth_decoded_views(str(key)))[-1][0]
+                label = re.sub(r"[=:$].*", "<redacted>", decoded, flags=re.DOTALL)
                 here = f"{where}.{label}" if where else label
                 found += [(rule, here, reason) for rule, _, reason in key_findings]
-                child_kind, child_text = parsed_entry(child)
-                if str(key).endswith("ANTHROPIC_API_KEY") and not (
-                    child_kind == "null" or child_kind == "str" and ANTHROPIC_API_KEY_DATA.fullmatch(child_text)
-                ):
-                    found.append(("R2", here, AUTH_R2))
                 stack.append((child, here))
         elif kind == "seq":
             stack.extend((child, f"{where}[{index}]") for index, child in enumerate(payload))
@@ -1910,7 +1773,7 @@ def validate_anthropic_auth_route() -> None:
         ["git", "-C", str(ROOT), "ls-files", "-z", "--", "home", "install"], capture_output=True, check=False
     )
     if listed.returncode != 0:
-        fail(f"git ls-files failed, so the Anthropic auth route check cannot run: {os.fsdecode(listed.stderr).strip()}")
+        fail("git ls-files failed, so the Anthropic auth route check cannot run")
     for name in filter(None, listed.stdout.split(b"\0")):
         rel = os.fsdecode(name)
         path = ROOT / rel
@@ -1918,20 +1781,29 @@ def validate_anthropic_auth_route() -> None:
             continue
         parsed = applied_file_format(rel)
         try:
-            text = path.read_bytes().decode("utf-8", errors="strict" if parsed else "replace")
+            source = path.read_bytes().decode("utf-8", errors="strict" if parsed else "replace")
         except UnicodeDecodeError:
-            fail(f"{rel}: cannot be decoded as UTF-8 (UnicodeDecodeError); the Anthropic auth route check refuses it")
-        platforms = ("darwin", "linux") if parsed and rel.startswith("home/.chezmoitemplates/") and "{{" in text else ()
-        texts = [render_template_text(path, os_name) for os_name in platforms] if platforms else [text]
+            fail(
+                f"{rel.encode('unicode_escape').decode('ascii')}: cannot be decoded as UTF-8 (UnicodeDecodeError); the Anthropic auth route check refuses it"
+            )
+        raw = anthropic_text_findings(source, "", markdown=path.suffix == ".md")
+        platforms = (
+            ("darwin", "linux") if parsed and rel.startswith("home/.chezmoitemplates/") and "{{" in source else ()
+        )
+        texts = [render_template_text(path, os_name) for os_name in platforms] if platforms else [source]
+        found = []
         for text in texts:
-            if parsed is None:
-                chunks = re.split(r"(?m)(^[ \t]*(?:\x60{3,}|~{3,})[^\n]*$)", text) if path.suffix == ".md" else [text]
-                for chunk in chunks:
-                    for rule, where, reason in anthropic_text_findings(chunk, ""):
-                        fail(f"{rel}:{where}: {rule}: {reason}")
-            if parsed is not None:  # Escape key paths to prevent forged CI lines; never print values.
-                for rule, where, reason in anthropic_parsed_findings(rel, parsed, text):
-                    fail(f"{rel}: {rule}: {where.encode('unicode_escape').decode('ascii')}: {reason}")
+            if text != source:
+                raw += anthropic_text_findings(text, "")
+            if parsed is not None:
+                found += anthropic_parsed_findings(rel, parsed, text)
+        for rule, where, reason in dict.fromkeys(found + raw):
+            location = f"{rel}:{where}: {rule}" if where.isdecimal() else f"{rel}: {rule}: {where}"
+            location = location.encode("unicode_escape").decode("ascii")
+            if rule == "note":
+                print(f"NOTE: {location}: {reason}", file=sys.stderr)
+            else:
+                fail(f"{location}: {reason}")
 
 
 def validate_compactiondb_project_copy() -> None:

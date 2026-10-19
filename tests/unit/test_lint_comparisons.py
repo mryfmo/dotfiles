@@ -453,6 +453,47 @@ class LintComparisonsTest(unittest.TestCase):
                     found = [line.split(" ", 2)[:2] for line in result.stdout.splitlines()]
                     self.assertEqual([[f"{name}:{n}:", rule] for rule, n in wants], found)
 
+    def test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies(self):
+        # thread 4313892754: a backslash-newline inside a double-quoted program continues it; it is no stray quote
+        for name, text in (
+            ("jc.sh", 'jq -r "select(.url == \\\n  \\"/x\\")"\n'),
+            ("jc2.sh", 'out="$(jq -r "select(.path \\\n  == \\$p)" f)"\n'),
+        ):
+            with self.subTest(fixture=name):
+                result = self.run_fixture(name, text)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"{name}:1: R3 ", result.stdout)
+
+    def test_a_backslash_newline_joins_the_physical_lines_without_a_separator(self):
+        # thread 4313892766: the shell deletes a backslash-newline, so a word continued by one stays one word
+        for name, text, rule in (
+            ("wj.sh", '[[ "$x" == *\\\n/foo ]]\n', "R1"),
+            ("wc.sh", 'case "$x" in */fo\\\no) ;; esac\n', None),
+        ):
+            with self.subTest(fixture=name):
+                result = self.run_fixture(name, text)
+                if rule:
+                    self.assertEqual(
+                        (1, True), (result.returncode, f"{name}:1: {rule} " in result.stdout), result.stdout
+                    )
+                else:  # case matches on its word, here the variable: no path operand, as on one line
+                    self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+
+    def test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment(self):
+        # thread 4313892783: shell comments are read with the quote state carried across lines and heredoc bodies skipped
+        for name, text in (
+            ("ms.sh", 'msg="\n# lint-comparisons: allow\n"\n'),
+            ("ms2.sh", "msg='a\n  # lint-comparisons: allow\nb'\n"),
+            ("hd.sh", "cat <<EOF\n# lint-comparisons: allow\nEOF\n"),
+            ("hd2.sh", "cat <<-'X' > f\n\t# lint-comparisons: allow\n\tX\n"),
+        ):
+            with self.subTest(fixture=name):
+                result = self.run_fixture(name, text)
+                self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+        # a real comment after both is still one: its reasonless marker is R0
+        result = self.run_fixture("rc.sh", 'msg="\na"\ncat <<EOF\nb\nEOF\n# lint-comparisons: allow\n')
+        self.assertEqual((1, ["rc.sh:6: R0"]), (result.returncode, [x[:11] for x in result.stdout.splitlines()]))
+
 
 if __name__ == "__main__":
     unittest.main()

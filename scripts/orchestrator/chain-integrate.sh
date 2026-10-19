@@ -6,7 +6,9 @@
 #   arguments, the binaries resolved outside shims, the main checkout on main at origin/main, the canonical clean
 #   review worktree, the record, a ready PR) it fetches the head into both checkouts, update-branches when the base
 #   moved (restarting at the fetch), waits for the required checks and the Bot (never gated), then runs the sandbox
-#   scan, the local review, the advisory rows, the sweep, the receipt, the record block and the audit. Each command
+#   scan, the local review, the advisory rows, the sweep, the receipt, the record block and the audit, which an
+#   update-branch-only head inherits from the head it merged main into when the PR's patch-id is unchanged, a clean
+#   merge of its parents reproduces its tree and that head's audit ends with a verdict the gate accepts. Each command
 #   goes to `.orchestration/validation/<task>-chain-<sha7>.log` as `<utc> <step> rc=<n>: <command>`, repository
 #   paths relative; a refusal before the head is known goes to stderr only. The repository scripts run from the main
 #   checkout, never the head, and the script never changes directory into the review worktree.
@@ -174,7 +176,41 @@ step record 0,1 /usr/bin/grep -o -E $'^([0-9]{10,}|audit:[0-9a-f]{7}:[0-9]+)\t[a
 printf '%s\n' "${out}" > "${tsv}"
 step record 0 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/acceptance-front-matter.py" "${task}" "${sweep}" "${review}" --ledger "${tsv}"
 rm -f -- "${tsv}"
-step audit 0 "${main}/scripts/orchestrator/orch-audit.sh" "${task}" "${review}" "${pr}"
-verdict="chain-integrate: ${task} ${head} ${out##*$'\n'}"
-step audit 0 "${git}" -C "${review}" checkout -q --detach "${head}" # orch-audit.sh leaves it at origin/main; the gate reads it
+# C-61 (plan 023 F1): an update-branch-only head, a merge of main into the audited head whose PR patch is unchanged,
+# inherits that head's audit under its own names; the first line names the head the audit ran on, whose ids it keeps.
+# --verbatim keeps whitespace in the id, so a whitespace-only change is a new patch (PR #390 thread 4302490292).
+patch() { "${git}" -C "${main}" diff-tree -p "$("${git}" -C "${main}" merge-base origin/main "$1")" "$1" | "${git}" -C "${main}" patch-id --verbatim; }
+parent=$("${git}" -C "${main}" rev-parse -q --verify "${head}^1" || true) old='' new=''
+from=${v}/${task}-audit-${parent:0:7}
+if [[ -n ${parent} && -f ${from}.md && -f ${from}.md.last.md ]] && "${git}" -C "${main}" merge-base --is-ancestor "${head}^2" origin/main 2> /dev/null; then
+    old=$(patch "${parent}") || old='' # computed outside the condition, so a failure is an empty id and a fresh audit
+    new=$(patch "${head}") || new=''
+    # patch-id ignores hunk positions, so the head must also be the tree a clean merge of its parents writes: a
+    # conflict (merge-tree exits 1) or any edit made in the merge gets a fresh audit (re-plan R1).
+    tree=$("${git}" -C "${main}" merge-tree --write-tree "${head}^1" "${head}^2") || tree=''
+    [[ -n ${tree} && ${tree} == "$("${git}" -C "${main}" rev-parse "${head}^{tree}")" ]] || old=''
+    # The receipt names its head by 7 characters only: the parent's chain log must name the parent's full sha in its
+    # verdict line, so a commit ground to the same prefix never loads another head's audit (PR #413 thread 4306231809).
+    /usr/bin/awk -v t="${task}" -v p="${parent}" '$1 == "chain-integrate:" && $2 == t && $3 == p { f = 1 } END { exit !f }' \
+        "${v}/${task}-chain-${parent:0:7}.log" 2> /dev/null || old=''
+    # Only a verdict the gate accepts is inherited (its AUDIT_VERDICT and AUDIT_FINDING): correct, or incorrect with a
+    # [P0-P3] line; a blocked, empty or finding-less parent result takes the fresh audit (audit:274a536:2).
+    last=$(/usr/bin/awk 'NF { l = $0 } END { print l }' "${from}.md.last.md")
+    [[ ${last} =~ ^[[:space:]]*Verdict:\ (correct|incorrect)[[:space:]]*$ ]] || old=''
+    [[ ${BASH_REMATCH[1]-} != incorrect ]] || /usr/bin/grep -qE '^[[:space:]]*([-*+][[:space:]]+)?\[P[0-3]\]' "${from}.md.last.md" || old=''
+fi
+if [[ -n ${old} && ${old%% *} == "${new%% *}" ]]; then
+    for s in .md .md.last.md; do
+        # A parent that inherited keeps its marker: the ids stay those of the head the audit ran on.
+        { [[ $(head -n 1 -- "${from}${s}") == inherited-from:* ]] || echo "inherited-from: ${parent:0:7}"; } > "${v}/${task}-audit-${sha7}${s}"
+        cat -- "${from}${s}" >> "${v}/${task}-audit-${sha7}${s}"
+    done
+    say "$("${date}" -u +%FT%TZ) audit rc=0: audit inherited from ${parent:0:7} ($(head -n 1 -- "${v}/${task}-audit-${sha7}.md.last.md"))"
+    echo "audit inherited from ${parent:0:7}"
+    verdict="chain-integrate: ${task} ${head} $(tail -n 1 -- "${v}/${task}-audit-${sha7}.md.last.md")"
+else
+    step audit 0 "${main}/scripts/orchestrator/orch-audit.sh" "${task}" "${review}" "${pr}"
+    verdict="chain-integrate: ${task} ${head} ${out##*$'\n'}"
+    step audit 0 "${git}" -C "${review}" checkout -q --detach "${head}" # orch-audit.sh leaves it at origin/main; the gate reads it
+fi
 say "${verdict}" && echo "${verdict}"

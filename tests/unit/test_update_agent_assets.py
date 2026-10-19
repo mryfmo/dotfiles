@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -34,6 +35,16 @@ else:
     entry["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
     tool = "omp" if name == "npm" else "hcom"
     target = Path(os.environ["HOME"]) / ".local/bin" / tool
+    if name == "npm":  # npm links its own bin and refuses with EEXIST to replace an entry it does not own
+        own = "lib/node_modules/@oh-my-pi/pi-coding-agent/"
+        link = os.readlink(target) if target.is_symlink() else ""  # bin-links resolves it before the ownership check
+        resolved = os.path.normpath(os.path.join(target.parent, link)) if link else ""
+        if (target.exists() or link) and not resolved.startswith(str(target.parent.parent / own) + os.sep):
+            sys.exit("npm error code EEXIST: " + str(target))
+        target.unlink(missing_ok=True)
+        target.symlink_to("../" + own + "bin/omp")
+        target = target.parent.parent / own / "bin/omp"
+        target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("#!/usr/bin/env bash\nprintf '%s\\n' " + shlex.quote(tool + ("/" if tool == "omp" else " ") + os.environ["FIXTURE_VERSION"]) + "\n")
     target.chmod(0o755)
 with open(os.environ["CALLS"], "a") as log:
@@ -132,12 +143,18 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             artifact = Path(records[1]["argv"][-1])
             self.assertEqual(".tgz" if tool == "omp" else ".whl", artifact.suffix)
             self.assertEqual(digest, records[1]["sha256"])
-            self.assertFalse(artifact.exists())
-            self.assertFalse(artifact.parent.exists())
+            wheels = home / ".local/share/agent-assets/hcom"
+            if tool == "omp":
+                self.assertFalse(artifact.exists())
+                self.assertFalse(artifact.parent.exists())
+            else:
+                # uv's receipt names the wheel as hcom's source, so the verified wheel outlives the run (local:b49da6d:1).
+                self.assertEqual(wheels, artifact.parent)
+                self.assertEqual(digest, hashlib.sha256(artifact.read_bytes()).hexdigest())
             receipt_path = home / ".agents/.installed-manifest.json"
             receipt = json.loads(receipt_path.read_text())["steps"][f"update_{tool}"]
             self.assertEqual(pin, receipt["source_version"])
-            self.assertEqual([str(target)], receipt["paths"])
+            self.assertEqual([str(target)] + ([] if tool == "omp" else [str(artifact)]), receipt["paths"])
             repeated = update()
             self.assertEqual(0, repeated.returncode, repeated.stdout + repeated.stderr)
             self.assertIn("already installed", repeated.stdout)
@@ -145,6 +162,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
             reset()
             receipt_path.unlink()
+            for kept in wheels.glob("*"):
+                kept.unlink()
             bad_hash = "0" * 64
             drifted_hash = update(checksum=bad_hash)
             self.assertNotEqual(0, drifted_hash.returncode)
@@ -152,6 +171,7 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             self.assertIn(digest, drifted_hash.stdout + drifted_hash.stderr)
             self.assertEqual(["curl"], [row["tool"] for row in calls()])
             self.assertFalse(Path(calls()[0]["argv"][-1]).parent.exists())
+            self.assertEqual([], list(wheels.glob("*")))  # a wheel that fails its hash never reaches the managed path
             self.assertFalse(receipt_path.exists())
 
             reset()
@@ -160,7 +180,8 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             self.assertIn(pin, drifted_version.stdout + drifted_version.stderr)
             self.assertIn("0.0.1", drifted_version.stdout + drifted_version.stderr)
             self.assertEqual(2, len(calls()))
-            self.assertFalse(Path(calls()[1]["argv"][-1]).parent.exists())
+            # The omp tarball goes with its run; the hcom wheel stays where uv's receipt points.
+            self.assertEqual(tool == "hcom", Path(calls()[1]["argv"][-1]).exists())
             self.assertFalse(receipt_path.exists())
             reset()
             skipped = update(prefix="has_command() { return 1; }; ")
@@ -170,6 +191,129 @@ class UpdateAgentAssetsTest(unittest.TestCase):
 
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
+
+    def update_omp_in(self, home, version, spelling=""):
+        # update_omp with the fixture curl and npm on PATH and HOME=<home><spelling>; the caller has placed any entry at
+        # ~/.local/bin/omp.
+        binary = home / ".local/bin"
+        binary.mkdir(parents=True, exist_ok=True)
+        for name in ("curl", "npm"):
+            (binary / name).write_text(STUB.replace("@PYTHON@", sys.executable))
+            (binary / name).chmod(0o755)
+        payload = home / "payload"
+        payload.write_bytes(b"fixture omp tarball\n")
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; OMP_PIN_VERSION=18.11.3; OMP_TARBALL_SHA256="$2"; update_omp']
+            + ["bash", str(UPDATER), hashlib.sha256(payload.read_bytes()).hexdigest()],
+            env=os.environ
+            | {
+                "HOME": str(home) + spelling,
+                "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                "CALLS": str(home / "calls.jsonl"),
+                "PAYLOAD": str(payload),
+                "FIXTURE_VERSION": version,
+            },
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+    def test_a_link_target_escaping_the_npm_prefix_is_refused(self):
+        # The Bot's P2 4307029052: npm resolves the link before its ownership check (bin-links check-bin), so a target
+        # that starts with this prefix's package but leaves it through `..` is not npm's own and moves to the kept path.
+        escaping = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/../../outside")
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / ".local/bin/omp"
+            target.parent.mkdir(parents=True)
+            target.symlink_to(escaping)
+            result = self.update_omp_in(home, "18.11.3")
+            output = result.stdout + result.stderr
+            self.assertEqual(0, result.returncode, output)
+            self.assertIn(f"resolves to {home}/.local/lib/node_modules/outside", result.stdout)
+            self.assertEqual(escaping, (home / ".local/share/agent-assets/omp/omp.previous").readlink(), output)
+            self.assertEqual(Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"), target.readlink(), output)
+
+    def test_update_omp_moves_an_entry_npm_does_not_own_aside_and_puts_it_back_when_the_install_fails(self):
+        # local:fbbc6d9:1: a standalone file or a link outside this prefix's package, a dangling one included, makes npm
+        # fail with EEXIST; it moves to a kept path, not the run's temporary directory. npm's own link and a directory
+        # stay for npm to judge.
+        npm_link = Path("../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp")
+        for entry in ("dangling", "external", "foreign", "file", "npm", "directory", None):
+            for version in ("18.11.3", "0.0.1"):
+                with self.subTest(entry=entry, version=version), tempfile.TemporaryDirectory() as directory:
+                    home = Path(directory)
+                    binary = home / ".local/bin"
+                    binary.mkdir(parents=True)
+                    target, old = binary / "omp", home / "tern/bin/omp"
+                    aside = home / ".local/share/agent-assets/omp/omp.previous"
+                    old.parent.mkdir(parents=True)
+                    old.write_text("#!/bin/sh\necho omp/0.0.1\n")
+                    links = {
+                        "dangling": home / "gone/omp",
+                        "external": old,
+                        "foreign": home / "other/lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp",
+                        "npm": npm_link,
+                    }
+                    if entry in links:
+                        target.symlink_to(links[entry])
+                    elif entry == "file":
+                        target.write_text("#!/bin/sh\necho omp/0.0.1\n")
+                    elif entry == "directory":
+                        target.mkdir()
+                    result = self.update_omp_in(home, version)
+                    output = result.stdout + result.stderr
+                    moved = entry in ("dangling", "external", "foreign", "file")
+                    self.assertEqual(version == "0.0.1" or entry == "directory", result.returncode != 0, output)
+                    self.assertEqual(entry == "directory", "EEXIST" in output, output)
+                    if entry in ("dangling", "external", "foreign"):
+                        self.assertIn(str(links[entry]), result.stdout)
+                    if entry == "directory":
+                        self.assertTrue(target.is_dir())
+                    elif version == "18.11.3" or not moved:
+                        self.assertEqual(npm_link, target.readlink(), output)
+                        self.assertEqual(moved, aside.is_symlink() or aside.is_file(), output)
+                    elif entry == "file":  # the failed install puts the previous entry back as it was
+                        self.assertEqual("#!/bin/sh\necho omp/0.0.1\n", target.read_text(), output)
+                    else:
+                        self.assertEqual(links[entry], target.readlink(), output)
+
+    def assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(self, link):
+        # npm folds HOME as it folds the link (Node's path.resolve), so with HOME=<home>/ npm's own link stays put.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            target = home / ".local/bin/omp"
+            target.parent.mkdir(parents=True)
+            target.symlink_to(link.format(home=home))
+            result = self.update_omp_in(home, "18.11.3", spelling="/")
+            output = result.stdout + result.stderr
+            self.assertEqual(0, result.returncode, output)
+            self.assertNotIn("Moving", result.stdout)
+            self.assertFalse((home / ".local/share/agent-assets/omp/omp.previous").is_symlink(), output)
+
+    def test_npm_s_own_absolute_link_stays_under_a_home_with_a_trailing_slash(self):
+        # baseline:update-agent-assets.sh:R1:1c780a5: an absolute link restarts the path inside the normaliser.
+        self.assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(
+            "{home}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"
+        )
+
+    def test_npm_s_own_relative_link_stays_under_a_home_with_a_trailing_slash(self):
+        # baseline:update-agent-assets.sh:R1:1d5afaf: the package prefix is folded as the link is.
+        self.assert_npm_s_link_stays_under_a_home_with_a_trailing_slash(
+            "../lib/node_modules/@oh-my-pi/pi-coding-agent/bin/omp"
+        )
+
+    def test_the_platform_cases_read_no_path_operand(self):
+        # baseline:update-agent-assets.sh:R2:851db69, both rows: `uname -s` and `uname -m` form a platform pair, not a
+        # path, so ensure_crit_cli (row 1) and update_hcom (row 2) join them with `-` and the comparison lint reads no
+        # path operand in either case statement.
+        lint = [sys.executable, "-I", str(ROOT / "scripts/lint-comparisons.py"), "--all", "--baseline", os.devnull]
+        result = subprocess.run(lint + [str(UPDATER)], capture_output=True, text=True, timeout=30, check=True)
+        lines = UPDATER.read_text().split("\n")
+        flagged = [lines[int(n) - 1].strip() for n in re.findall(r":(\d+): R2 ", result.stdout)]
+        self.assertEqual([], [line for line in flagged if "uname" in line])
 
     def test_omp_version_check_accepts_the_branded_omp_slash_version_form(self):
         for output, valid in (
@@ -205,6 +349,67 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             with self.subTest(platform=platform):
                 self.exercise_update("hcom", platform)
         self.exercise_update("hcom", "Plan9/unknown", unsupported=True)
+
+    def test_update_hcom_keeps_the_wheel_uv_records_as_its_source(self):
+        # local:b49da6d:1: `uv tool upgrade` re-reads the wheel uv's receipt names, so the verified wheel stays at the
+        # managed path and the asset manifest lists it; exercise_update asserts the path, its hash and the entry.
+        self.exercise_update("hcom", "Darwin/arm64")
+
+    def update_pinned_hcom(self, home, uv=":"):
+        # update_hcom over an hcom installed at the pin; curl, uv and uname are shell functions that log to $CALLS.
+        hcom = home / ".local/bin/hcom"
+        hcom.parent.mkdir(parents=True, exist_ok=True)
+        hcom.write_text("#!/bin/sh\nprintf 'hcom 0.7.30\\n'\n")
+        hcom.chmod(0o755)
+        payload = "reproduced wheel bytes; no real package\n"
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        stubs = (
+            "HCOM_PIN_VERSION=0.7.30; HCOM_LINUX_AMD64_URL=https://fixture.invalid/hcom-0.7.30-py3-none-any.whl; "
+            f"HCOM_LINUX_AMD64_SHA256={digest}; has_command() {{ return 0; }}; manifest_record() {{ :; }}; "
+            'uname() { if [ "$1" = -s ]; then echo Linux; else echo x86_64; fi; }; '
+            'curl() { printf %s "$PAYLOAD" > "${@: -1}"; echo curl >> "$CALLS"; }; '
+            f'uv() {{ echo "uv $*" >> "$CALLS"; {uv}; }}; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + stubs + "update_hcom", "bash", str(UPDATER)],
+            env=os.environ | {"HOME": str(home), "PAYLOAD": payload, "CALLS": str(home / "calls")},
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        return result, digest
+
+    def test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel(self):
+        # The Bot's P2 4303212227: an hcom installed at the pin before the wheel was kept has a receipt that names a
+        # deleted temporary wheel, so the version alone does not skip it; once the wheel is retained it is skipped.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            log, wheel = home / "calls", home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            repaired, digest = self.update_pinned_hcom(home)
+            self.assertEqual(0, repaired.returncode, repaired.stdout + repaired.stderr)
+            self.assertNotIn("already installed", repaired.stdout)
+            self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
+            self.assertEqual(digest, hashlib.sha256(wheel.read_bytes()).hexdigest())
+            log.write_text("")
+            skipped, _ = self.update_pinned_hcom(home)
+            self.assertEqual(0, skipped.returncode, skipped.stdout + skipped.stderr)
+            self.assertIn("hcom 0.7.30 is already installed", skipped.stdout)
+            self.assertEqual("", log.read_text())
+
+    def test_update_hcom_drops_the_retained_wheel_when_uv_fails_so_the_next_run_retries(self):
+        # The Bot's P2 4303338055 (local:9842d91:1, audit:9842d91:1): when `uv tool install --force` fails after the
+        # verified wheel moved into place, the next run retries instead of skipping on the wheel its guard reads.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            log, wheel = home / "calls", home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl"
+            failed, _ = self.update_pinned_hcom(home, uv="false")
+            self.assertNotEqual(0, failed.returncode)
+            self.assertFalse(wheel.exists(), failed.stdout + failed.stderr)
+            log.write_text("")
+            retried, _ = self.update_pinned_hcom(home)
+            self.assertEqual(0, retried.returncode, retried.stdout + retried.stderr)
+            self.assertEqual(["curl", f"uv tool install --force {wheel}"], log.read_text().splitlines())
 
     def test_updates_use_managed_binaries_when_path_is_shadowed(self):
         for tool in ("omp", "hcom"):

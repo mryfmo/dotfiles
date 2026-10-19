@@ -49,6 +49,7 @@
 #   `.orchestration/validation/<id>-audit-<sha7>.md`.
 # @option --add-worker [<worktree>] Seat a worker for DIR/<worktree> via agmsg spawn.sh; the
 #   worktree defaults to the manifest worker_worktree when omitted.
+#   The deployed manifest's worker_cap limits seated worker worktrees.
 # @option --remove-worker <worktree> Despawn that worker and close its tab (or its own workspace).
 # @option --kind <codex|claude> Add-worker agent kind. Defaults to the manifest worker_kind.
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
@@ -1827,6 +1828,28 @@ if [[ ${add_worker_mode} == true ]]; then
         printf 'herdr-agents: %s is not a git main checkout; run --add-worker from the repository root.\n' "${workdir}" >&2
         exit 2
     fi
+    # Bash retains this inherited flock until spawn.sh registers the identity.
+    seat_git_common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir)"
+    exec 9>> "${seat_git_common_dir}/herdr-agents-seat.lock"
+    (cd / && python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)')
+    # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as
+    # the Stop checklist counts them; re-seating a seated worktree adds none.
+    seat_cap="$(sed -n 's/^worker_cap:[[:space:]]*\([1-9][0-9]*\)[[:space:]]*$/\1/p' "${HOME}/.agents/agent-config.yaml" 2> /dev/null | head -n 1)" || seat_cap=''
+    if [[ -z ${seat_cap} ]]; then
+        printf 'herdr-agents: no worker_cap in %s; no cap enforced.\n' "${HOME}/.agents/agent-config.yaml" >&2
+    else
+        seats=0 seat_seated=false
+        while IFS= read -r seat_path; do
+            [[ ${seat_path} == "${workdir}/.claude/worktrees/"* ]] || continue
+            [[ -n "$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_path}" claude-code 2> /dev/null)$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_path}" codex 2> /dev/null)" ]] || continue
+            seats=$((seats + 1))
+            [[ ${seat_path} != "${workdir}/${seat_worktree}" ]] || seat_seated=true
+        done < <(git -C "${workdir}" worktree list --porcelain | sed -n 's/^worktree //p')
+        if [[ ${seat_seated} == false ]] && ((seats >= seat_cap)); then
+            printf 'herdr-agents: worker_cap is %s and %s worker seats are registered; remove one with --remove-worker first.\n' "${seat_cap}" "${seats}" >&2
+            exit 2
+        fi
+    fi
     write_spawn_options "${seat_kind}" > /dev/null
     [[ -e ${workdir}/${seat_worktree} ]] || ensure_worker_identity "${seat_kind}" "${workdir}" "${workdir}/${seat_worktree}" --no-join > /dev/null
     seat_dir="$(ensure_worker_worktree "${workdir}" "${seat_worktree}")"
@@ -1875,6 +1898,8 @@ if [[ ${add_worker_mode} == true ]]; then
     [[ ${seat_kind} != claude ]] || accept_spawned_claude_trust_dialog "${seat_workspace_id}" "${seat_panes}" "${spawn_pid}"
     spawn_rc=0
     wait "${spawn_pid}" || spawn_rc=$?
+    (cd / && python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_UN)')
+    exec 9>&-
     if [[ ${spawn_rc} -ne 0 ]]; then
         printf 'herdr-agents: spawn.sh exited %s for worker %s in workspace %s; confirm linkage with AGMSG-PING before dispatching.\n' "${spawn_rc}" "${seat_name}" "${seat_workspace_id}" >&2
     else

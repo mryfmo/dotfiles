@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fu-worker-review-p3-test-yaml-quoting",
+    "scope": ".github/workflows/test.yaml",
+    "body": "P3 (high), advisory, outside the owned rows; no code change. test.yaml's unit-test decision still reads `git -c core.quotePath=false diff --name-only` line by line, so a pull request whose only change is `scripts/a\"b.sh` prints as a quoted name, misses `^scripts/` and skips the unit tests (`skip_reason=unrelated`). This is the same class as row audit:4fe2438:1. The report names it for the orchestrator to record under dotfiles-T133-ci-efficiency-followup-a02.",
+    "resolved": true
+  },
+  {
+    "id": "fu-worker-review-p3-grep-error-as-no-match",
+    "scope": ".github/workflows/remote.yaml",
+    "body": "P3 (medium), pre-existing and unchanged by this PR; advisory. The gate's grep sits in an `if` condition, so a grep error (exit 2) reads as no match and gives should_run=false instead of failing the step. The reviewer judged it unrealistic: GNU grep has had -z for many releases, BSD grep 2.6.0 (the macos-14 version) supports it (verified), and the list file is written just before. Hardening it (treat exit >= 2 as a failure) is a separate row for dotfiles-T133-ci-efficiency-followup-a02.",
+    "resolved": true
+  },
+  {
+    "id": "fu-worker-review-p3-report-wording",
+    "scope": ".orchestration/dotfiles-T133-ci-efficiency-followup-a01/report.md",
+    "body": "P3 (high), fixed in the records before the push. The report said the quoted-name defect made a pull request skip both bootstrap jobs; private-bootstrap never runs on a pull request, so only public-bootstrap was skipped, and private-bootstrap.yaml changes only to keep the two decide scripts equal (amendment 1).",
+    "resolved": true
+  },
+  {
+    "id": "fu-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "One round on 4da0c7be by a fresh read-only subagent, given the commit range and the amended task file, not the worker's conclusions; it ran tests only in its own scratch worktrees. Verdict: correct, no P0, P1 or P2, three P3 (above). It ran the workflow test module at every commit (3e41e36a 18 OK; 11ca625b 19, the flakes test red; c3460269 OK; 05714d84 20, the four quoted-name subtests red and the .orchestration control green; 4da0c7be 20 OK), probed BSD grep -zEq per-record anchoring directly, confirmed the two decide steps byte-identical and the fixture change meaning-preserving, and measured caps 31 of 250 and 32 of 350. GNU grep and live CI were not checked locally. Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

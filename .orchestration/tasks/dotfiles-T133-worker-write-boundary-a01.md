@@ -16,7 +16,6 @@ allowed_files:
   - scripts/validate-agent-assets.py
   - Makefile
   - home/dot_local/bin/common/executable_herdr-agents
-  - home/dot_local/bin/common/executable_herdr-agent-state.sh
   - home/dot_agents/skills/agmsg-orchestration/SKILL.md
   - .gitignore
   - tests/unit/test_generate_agent_configs.py
@@ -29,569 +28,699 @@ allowed_files:
   - .orchestration/dotfiles-T133-worker-write-boundary-a01/**
 after: []
 threat_table:
-  - control: "tests/unit/test_agmsg_orchestration_docs.py (amendment 1: only the assertion of the Worker Playbook step 4 sentence this task rewrites changes; PR #427 edits this file first and merges before this PR, which rebases onto it)"
-    disposition: "residual: one assertion follows the rewritten sentence; the doc test module stays green in CI on the final head"
-  - control: "home/dot_agents/agent-config.yaml (trusted checkout and interpreter bindings, static trusted_paths inventory, distinct worker policy, managed sandbox policy and worker caches)"
-    disposition: "residual: the rendered policy reduces accidental and injected damage; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_policy_is_separate_from_orchestrator_policy checks both platforms without claiming same-UID isolation."
-  - control: "home/.chezmoitemplates/claude-settings-managed.json (orchestrator user settings with failIfUnavailable true, onFailure block, hook PATH bindings and absolute uv/Python PermissionRequest invocation)"
-    disposition: "residual: the user baseline preserves orchestrator functions within the managed sandbox policy; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_orchestrator_settings_keep_existing_policy checks the specified changes and retained settings; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_hooks_bind_executables_and_permgate_returns_decision executes the rendered PermissionRequest under the system-only PATH and checks every rendered hook entrypoint."
-  - control: "home/.chezmoitemplates/claude-worker-settings.json (static trusted-path and worktree-configuration Edit denies, empty user exclusions, restricted write allowances, native merge denials and minimal delivery hooks)"
-    disposition: "residual: dedicated user settings reduce worker access to trusted paths; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_policy_renders_for_both_platforms checks the baseline and distinguishes it from shared managed exclusions and socket access."
-  - control: "~/.agents/permgate-policy.yaml"
-    disposition: "residual: the static worker Edit deny protects the policy input reread by permgate for each decision; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_protect_permgate_policy_and_ignore_planted_replacement checks denial with the existing rendered-rule fixture and an unchanged real permgate decision despite a planted policy outside the protected path, without claiming live Claude enforcement."
-  - control: "~/.local/lib/python*/site-packages"
-    disposition: "residual: the static worker Edit deny protects this user-site directory target; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks the explicit rendered pattern on both platforms; same-UID host processes remain outside seat isolation."
-  - control: "~/.local/lib/python*/site-packages/**"
-    disposition: "residual: the static worker Edit deny protects user-site descendants including .pth, usercustomize.py and sitecustomize.py; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks descendant fixtures, and tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_hooks_bind_executables_and_permgate_returns_decision checks that planted user-site startup markers never execute under python -I."
-  - control: "~/Library/Python/*/lib/python/site-packages"
-    disposition: "residual: the static worker Edit deny protects the macOS framework user-site directory target where an interpreter uses it; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks the explicit rendered pattern and interpreter-location coverage; same-UID host processes remain outside seat isolation."
-  - control: "~/Library/Python/*/lib/python/site-packages/**"
-    disposition: "residual: the static worker Edit deny protects macOS framework user-site startup descendants where an interpreter uses that location; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks .pth, usercustomize.py and sitecustomize.py fixtures and coverage of the selected interpreters' other user-site and startup-hook locations."
-  - control: "~/.claude/hooks/orchestrator-only.sh"
-    disposition: "residual: the static worker Edit deny explicitly protects the rendered guard as a trusted input; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks its rendered deny, and tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads checks its bound execution; concurrent same-UID path swaps remain residual."
-  - control: "home/.chezmoitemplates/claude-managed-settings.json (admin-required sandbox enforcement, fixed rendered control-plane exclusions and Herdr socket allowance)"
-    disposition: "residual: operator installation establishes the documented enforcement scope against project and local sandbox relaxation; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_policy_requires_admin_sandbox asserts the rendered keys; shared control-plane capabilities and same-UID host access remain residual."
-  - control: "home/dot_claude/modify_private_settings.json (native per-host binding rendering and replacement of legacy and previously bound managed PermissionRequest hooks without removing custom hooks)"
-    disposition: "residual: the identical render_native_bindings function used by both Claude modify scripts expands the trusted generated binding expressions before JSON parsing; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_modify_private_settings_renders_native_bindings_before_merging checks this rendering; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_upgrades_legacy_permgate_to_bound_hook, tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_replaces_previous_bound_hook_idempotently, tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_unrelated_current_hooks, tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_custom_hook_in_mixed_entry and tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_does_not_classify_foreign_hook_as_managed cover legacy replacement, binding upgrades, idempotence, custom-hook retention and foreign-hook rejection; classification removes stale managed commands and does not authorize their execution or establish live enforcement."
-  - control: "home/dot_claude-worker/modify_private_settings.json (deployment of the dedicated worker baseline without importing orchestrator policy)"
-    disposition: "residual: replacing the worker baseline's managed values reduces stale or permissive user configuration; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_replace_stale_policy_idempotently checks repeated rendering in temporary homes."
-  - control: "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl (anchored launch-root guard for tracked and main-checkout local project hooks)"
-    disposition: "residual: the guard reduces execution of worker-influenced project code and orchestrator hooks in worker sessions; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads checks fixed arguments, canonical identity and child status."
-  - control: "formatter and project-map reload configuration-selection boundary (the edited file path in the hook tool input and its owning repository)"
-    disposition: "residual: the guard skips these commands for input outside CLAUDE_PROJECT_DIR or in a worker repository under .claude/worktrees/, preventing consumption of worker-controlled Prettier JavaScript configuration and ruff settings; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads checks both the skip and normal anchored-file execution."
-  - control: ".claude/settings.json (portable HOME-relative installed-guard commands with fixed operation identifiers, explicit HOME re-export, pinned system PATH and onFailure block)"
-    disposition: "residual: guarded commands reduce worker-triggered project-hook execution while host-specific executable bindings remain in the per-host rendered guard and user settings; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_every_tracked_project_hook_is_guarded_and_blocks_on_failure exhaustively traverses the hook entries and checks this split."
-  - control: "scripts/generate-agent-configs.py (separate user and managed settings generation, static manifest deny inventory and absolute executable bindings)"
-    disposition: "residual: rendering an explicit manifest list removes Git object traversal from inventory construction; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks exact manifest correspondence and filesystem coverage."
-  - control: "scripts/validate-agent-assets.py (consolidated item 16: exact platform-symmetric excludedCommands at base lines 349-355; native per-host binding expansion in render_template_text before structural sanitized Claude PermissionRequest wiring at base lines 1193-1200; enumeration and preservation of the other managed Claude settings, hook-composition and sandbox checks)"
-    disposition: "residual: tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form covers the two exclusion fixtures; tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_render_template_text_expands_native_bindings checks expansion from the same binding source as both modify scripts before JSON parsing and the structural check; tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_permission_request_requires_sanitized_permgate covers shlex parsing, the exact clean prefix, absolute uv and Python bindings, the fixed offline uv arguments and python -I, the installed permgate script and sole claude argument, malformed or additional words and retained ccgate refusal; the Codex wiring check remains unchanged, and rendered-content validation does not establish live enforcement."
-  - control: "Makefile (the install-managed-settings target that renders a home-directory staging file and prints the operator's sudo install command)"
-    disposition: "residual: staging makes the administrative installation concrete without granting the worker administrative authority; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_install_target_stages_and_prints_without_running_sudo checks the destination, rendered content, quoting and absence of privileged execution."
-  - control: "home/dot_local/bin/common/executable_herdr-agents (worker pane environment, dedicated Claude configuration, private caches, worker user hooks and guarded main-checkout local hooks)"
-    disposition: "residual: launch preparation reduces accidental inheritance of orchestrator settings and stale hooks (the legacy worktree-local file included: tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_add_worker_migrates_legacy_worktree_local_hooks checks that migration against a fixture with a previously generated entry); tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_worker_launch_receives_dedicated_policy_and_private_caches captures managed and standalone launches and repeated starts."
-  - control: "home/dot_local/bin/common/executable_herdr-agent-state.sh (repository-owned Herdr state helper with an explicitly supplied absolute Python interpreter)"
-    disposition: "residual: binding the helper and its Python child reduces shim execution; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_hook_descendants_do_not_execute_path_interpreters checks executed identities with planted shims."
-  - control: "home/dot_agents/skills/agmsg-orchestration/SKILL.md (the governing Worker Playbook step 4 sentence)"
-    disposition: "residual: the sentence removes procedural authorization for worker sandbox escapes; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_playbook_requires_every_command_inside_sandbox checks its replacement; shared managed control-plane capabilities remain available and are not represented as per-seat isolation."
-  - control: ".gitignore (the .uv-cache directory pattern)"
-    disposition: "residual: ignoring the private cache reduces accidental cache publication; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_uv_cache_directory_is_gitignored checks the pattern in a temporary checkout."
-  - control: "tests/unit/test_generate_agent_configs.py (separate platform policies, static inventory, interpreter bindings, tracked hook coverage and item 16's literal-form PermissionRequest assertions)"
-    disposition: "residual: render fixtures verify configuration and command construction; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_managed_hooks_use_installed_permgate_paths and tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_claude_settings_use_interactive_profile_with_permgate cover the installed sanitized Claude hook with its bound uv/Python invocation and the synthetic renderer fixture respectively; they do not establish live enforcement or authenticate host-local inputs."
-  - control: "tests/unit/test_validate_agent_assets.py (consolidated item 16: the macOS gh-exclusion and Linux extra-exclusion fixtures, valid_claude_sandbox's exact required exclusions, the literal-form hook fixture, native-binding rendering and the structural PermissionRequest cases)"
-    disposition: "residual: tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form, tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_accepts_manifest_symmetric_settings, tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_rejects_each_broken_rule, tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_requires_extra_codex_writable_roots, tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs and tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs exercise the corrected shared sandbox fixture; tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_hook_composition_requires_permgate_first and tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_permission_request_requires_sanitized_permgate cover the hook contract; tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_render_template_text_expands_native_bindings checks native expansion before the structural check and render/runtime test without claiming live enforcement."
-  - control: "tests/unit/test_claude_settings_merge.py (orchestrator baseline preservation, native-binding rendering, failure-policy rendering and legacy-to-bound PermissionRequest migration, binding upgrades, idempotence, custom-hook retention and foreign-hook rejection)"
-    disposition: "residual: temporary HOME fixtures verify baseline entries and identify runtime-added hooks separately; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_modify_private_settings_renders_native_bindings_before_merging checks native expansion; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_upgrades_legacy_permgate_to_bound_hook checks legacy-to-bound replacement; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_replaces_previous_bound_hook_idempotently checks binding upgrades and byte-identical re-merge; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_unrelated_current_hooks and tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_custom_hook_in_mixed_entry check custom-hook retention; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_does_not_classify_foreign_hook_as_managed checks foreign-hook rejection; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_permgate_replaces_stale_current_ccgate_hook retains stale-ccgate removal; these fixtures do not install administrative settings."
-  - control: "tests/unit/test_herdr_agents.py (every launch route, repeated starts, main-local and worker-user hook placement, the legacy worktree-local migration, descendants, caches and retained native denials)"
-    disposition: "residual: fake launchers and subprocess markers verify effective arguments and executed fixture identities without starting live seats; shared managed exceptions remain explicitly outside per-seat exclusion claims."
-  - control: "tests/unit/test_claude_worker_settings.py (dedicated settings deployment, static narrow denies, worktree configuration protection, project guard and hook failure configuration)"
-    disposition: "residual: fixtures verify configured controls and credential-free deployment behavior; runtime permission checks and the remaining path-consumption window remain deployment and host residuals."
-  - control: "tests/unit/test_claude_managed_settings.py (managed policy rendering, conflicting project and local settings fixtures, rendered-hook executable resolution, PermissionRequest execution and nonprivileged staging)"
-    disposition: "residual: fixtures verify the selected documented enforcement keys and staging behavior; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_hooks_bind_executables_and_permgate_returns_decision checks every rendered hook entrypoint and executes the real dependency-free permgate through bound uv/Python under PATH=/usr/bin:/bin, without simulating proof of Claude runtime enforcement or performing sudo installation."
-  - control: ".orchestration/dotfiles-T133-worker-write-boundary-a01/** (this task's branch artifacts)"
-    disposition: "residual: artifacts distinguish documentation facts, historical probes, final-head fixture results and unperformed operator deployment; acceptance compares their claims with the diff and CI."
-  - control: "the task-file copy at .orchestration/dotfiles-T133-worker-write-boundary-a01/task.md (amendment 1 text)"
-    disposition: "residual: the first push deletes the a01 copy and adds the byte-identical dispatched a02 copy; TASK and RESULT carry the a02 copy's SHA256, which the orchestrator verifies at acceptance."
-  - control: "the evidence records under .orchestration/dotfiles-T133-worker-write-boundary-a01/"
-    disposition: "residual: report.md, validation.md, sandbox.md, learning.md, autoskill.md and worker review evidence retain commands, outputs, statuses and tested revisions without credentials or unmasked home-directory paths."
-  - control: "task metadata (PR_FEEDBACK_EVIDENCE, AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCEENCE and REVIEW_EVIDENCE)"
-    disposition: "residual: the orchestrator checks C1 to C10 and C7b, verifies dispatched bytes and binds integration evidence to the final head; P1-14 a05 and P1-6 implement retrieval of evidence of record from GitHub at its SHA; the GitHub boundary is detection, not prevention."
+  - control: home/dot_agents/agent-config.yaml
+    disposition: "residual: the manifest separates worker policy and enumerates protected executable inputs statically; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_policy_is_separate_from_orchestrator_policy and tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest check both platforms without establishing same-UID isolation or executable binding."
+  - control: home/.chezmoitemplates/claude-settings-managed.json
+    disposition: "residual: the orchestrator baseline adds startup failure, hook failure policy and sanitized non-PermissionRequest commands while retaining the legacy PermissionRequest command; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_orchestrator_settings_keep_existing_policy checks the retained policy, and dotfiles-T133-trusted-entrypoint-binding-a01 owns the unbound PermissionRequest execution."
+  - control: home/.chezmoitemplates/claude-worker-settings.json
+    disposition: "residual: dedicated settings provide static trusted-path and worktree-configuration denies, restricted writes, minimal delivery hooks and native merge denials; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_policy_renders_for_both_platforms checks the user baseline separately from shared managed capabilities."
+  - control: home/.chezmoitemplates/claude-managed-settings.json
+    disposition: "residual: operator installation establishes the documented administrative sandbox scope; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_policy_requires_admin_sandbox checks its content without claiming live enforcement or per-seat removal of shared exclusions and socket access."
+  - control: home/dot_claude/modify_private_settings.json
+    disposition: "residual: classification follows the managed non-PermissionRequest prefix and guard forms so upgrades replace stale managed hooks without consuming custom hooks; tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_prefixed_guarded_managed_hooks_replace_legacy_hooks_idempotently checks migration and repeated merging while PermissionRequest retains its existing classification."
+  - control: home/dot_claude-worker/modify_private_settings.json
+    disposition: "residual: the separate renderer replaces stale worker-managed policy without importing orchestrator hooks or credentials; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_replace_stale_policy_idempotently checks temporary-HOME deployment."
+  - control: home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl
+    disposition: "residual: the rendered guard checks canonical launch identity and fixed operation selection before project payload execution; tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads checks worker suppression and anchored fixture execution, while complete executable and formatter-tool binding belongs to dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: .claude/settings.json
+    disposition: "residual: portable guarded commands and explicit clean-environment re-exports reduce worker-triggered project-hook execution; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_every_tracked_project_hook_is_guarded_and_blocks_on_failure traverses every tracked entry without establishing complete descendant binding."
+  - control: scripts/generate-agent-configs.py
+    disposition: "residual: deterministic generation uses the static manifest inventory and emits separate user and administrative policies without consulting Git objects or discovering executable installations; tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks correspondence and filesystem coverage."
+  - control: scripts/validate-agent-assets.py
+    disposition: "residual: the exclusion validator requires the same exact three-entry list on both platforms and preserves the existing legacy PermissionRequest check; tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form covers exclusion failures while structural bound-hook validation remains owned by dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: Makefile
+    disposition: "residual: the installation target stages administrative settings and prints the platform-specific sudo command without executing it; tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_install_target_stages_and_prints_without_running_sudo checks both destinations and the absence of privileged execution."
+  - control: home/dot_local/bin/common/executable_herdr-agents
+    disposition: "residual: preparation supplies dedicated settings and private caches on every launch route and migrates legacy local delivery hooks; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_worker_launch_receives_dedicated_policy_and_private_caches and tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_add_worker_migrates_legacy_worktree_local_hooks check actual launch construction and stale-hook removal."
+  - control: home/dot_agents/skills/agmsg-orchestration/SKILL.md
+    disposition: "residual: the governing sentence removes procedural authorization for worker sandbox escapes; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_playbook_requires_every_command_inside_sandbox checks the replacement without representing shared managed capabilities as per-seat isolation."
+  - control: .gitignore
+    disposition: "residual: ignoring .uv-cache reduces accidental publication of worker cache contents; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_uv_cache_directory_is_gitignored checks the pattern in a temporary checkout."
+  - control: tests/unit/test_generate_agent_configs.py
+    disposition: "residual: platform, static-inventory and guarded-command fixtures verify generated configuration and retain the existing literal PermissionRequest expectations without claiming live permission enforcement or bound executable identity."
+  - control: tests/unit/test_validate_agent_assets.py
+    disposition: "residual: exclusion cases and the corrected valid_claude_sandbox fixture exercise the retained policy checks while the existing PermissionRequest and hook-composition fixtures continue to use the legacy managed command."
+  - control: tests/unit/test_claude_settings_merge.py
+    disposition: "residual: migration fixtures cover prefixed and guarded managed SessionStart and PostToolUse commands, stale-ccgate removal, custom-hook preservation and idempotence without introducing bound PermissionRequest forms or native-binding expansion."
+  - control: tests/unit/test_herdr_agents.py
+    disposition: "residual: fake launchers and subprocess markers check every launch route, legacy migration, hook placement, sanitized delivery environments, caches and native denials without starting live seats or verifying the removed binding family."
+  - control: tests/unit/test_agmsg_orchestration_docs.py
+    disposition: "residual: only the assertion of the Worker Playbook step 4 sentence follows its replacement, and the complete module remains green on the rebased final head."
+  - control: tests/unit/test_claude_worker_settings.py
+    disposition: "residual: fixtures check dedicated settings, protected policy bytes, narrow inventory, ordinary worktree writes and guard behavior without executing a bound PermissionRequest hook or claiming live Claude enforcement."
+  - control: tests/unit/test_claude_managed_settings.py
+    disposition: "residual: fixtures check administrative policy content, conflicting lower-scope settings and nonprivileged staging while real-uv hook execution and binary-identity deployment checks remain owned by dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: .orchestration/dotfiles-T133-worker-write-boundary-a01/**
+    disposition: "residual: branch artifacts distinguish historical observations, retained final-head results, removed binding work and pending operator deployment, and acceptance compares their claims with the final diff and CI."
+  - control: ~/.agents/permgate-policy.yaml
+    disposition: "residual: an explicit static Edit deny protects the policy input reread by permgate, and tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_protect_permgate_policy checks denied writes and unchanged protected bytes without claiming environment isolation of the legacy hook."
+  - control: ~/.local/lib/python*/site-packages
+    disposition: "residual: explicit directory-target denies protect known user-site locations, and tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest checks the rendered patterns on both platforms."
+  - control: ~/.local/lib/python*/site-packages/**
+    disposition: "residual: descendant denies include .pth, usercustomize.py and sitecustomize.py fixtures, while execution-time Python isolation remains owned by dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: ~/Library/Python/*/lib/python/site-packages
+    disposition: "residual: explicit directory-target denies cover the macOS framework user-site location where used, without treating directory protection as proof of isolated interpreter startup."
+  - control: ~/Library/Python/*/lib/python/site-packages/**
+    disposition: "residual: descendant patterns protect macOS framework user-site startup files, and the inventory fixture checks their coverage while dotfiles-T133-trusted-entrypoint-binding-a01 owns the planted-startup execution test."
+  - control: ~/.claude/hooks/orchestrator-only.sh
+    disposition: "residual: the static inventory explicitly protects the installed guard as a consumed input, and inventory and guard fixtures check configured protection without closing concurrent same-UID path swaps."
+  - control: formatter and project-map configuration selection
+    disposition: "residual: the guard skips worker-repository and outside-anchor tool inputs before invoking these operations, while formatter PATH repair and actual tool-chain availability remain owned by dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: .orchestration/dotfiles-T133-worker-write-boundary-a01/task.md
+    disposition: "residual: the next push replaces the previous task copy with the complete byte-identical dispatched narrowing text, and TASK and RESULT identify that copy by SHA256."
+  - control: evidence records
+    disposition: "residual: report.md, validation.md, sandbox.md, learning.md, autoskill.md and worker review evidence retain commands, statuses and tested identities without credentials or literal operator home paths."
+  - control: task metadata
+    disposition: "residual: the orchestrator checks C1 to C10 and C7b, dispatched bytes and final-head PR_FEEDBACK_EVIDENCE, AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE and REVIEW_EVIDENCE without treating local proposals as approval authority."
   - control: metadata separators
-    disposition: "residual: the first document separators delimit format-2 metadata; the task-copy SHA256 binds the complete document."
+    disposition: "residual: the opening separators delimit format-2 metadata, and the task-copy SHA256 binds the complete front matter and body."
   - control: in-process effects
-    disposition: "residual: generation and tests use repository files and temporary fixtures; the worker performs no live deployment, login, administrative installation, permission-policy mutation or operator-session restart."
+    disposition: "residual: generation and tests operate on repository files and temporary fixtures, and the worker performs no live deployment, login, administrative installation, permission-policy mutation or operator-session restart."
   - control: workflow and interpreter or environment inputs
-    disposition: "residual: absolute interpreters, Python -I, sanitized Git, fixed hook PATH and trusted executable bindings reduce environment injection; the host, native loader and same-UID processes remain outside this task's security guarantee."
+    disposition: "residual: non-PermissionRequest hook commands receive the prescribed clean prefix and delivery PATH, while the legacy PermissionRequest, complete interpreter binding and deployment-check execution remain owned by dotfiles-T133-trusted-entrypoint-binding-a01."
   - control: new or renamed scripts
-    disposition: "residual: the worker settings modify script, orchestrator-only guard and repository-owned Herdr state helper have named source and installed paths; RESULT inventories their interpreter and descendant bindings without introducing a worker-write-boundary hook or gh wrapper."
+    disposition: "residual: the worker settings modify script and rendered orchestrator guard have named source and installed paths, and this task adds no state-helper replacement, private executable-link manager, write-boundary hook or gh wrapper."
   - control: "5.14 item 0: host threat model"
-    disposition: "residual: host controls reduce accidental and injected damage without isolating seats sharing one OS user; prevention of worker-initiated merges requires a separate OS user or host under D-024-23's future P1-16, which the operator decides; the GitHub boundary is detection, not prevention, through P1-11's regime check in the next records PR for missing acceptance or gate evidence; shared managed control-plane exclusions and the Herdr socket remain residual."
+    disposition: "residual: host controls reduce accidental and injected damage without separating same-UID seats, and P1-11 owns next-records-PR detection while separate-user or separate-host prevention remains the operator's future P1-16 decision."
   - control: "5.14 item 1: worker write controls"
-    disposition: "residual: dedicated configuration, static symlink-aware Edit denies including worktree configuration and orchestrator worklogs and caches, narrow writable agmsg stores, managed sandbox enforcement and failIfUnavailable true reduce damage; documented path checks do not establish atomic immunity to concurrent path swaps."
-  - control: "5.14 item 2: sanitized environment and private executable PATH"
-    disposition: "residual: sanitized Git verification and absolute hook entrypoints reduce injected configuration, while PATH=/usr/bin:/bin binds upstream env-bash descendants away from shims; the remaining consuming-helper contracts belong to P1-14 a05, P1-10 a02, audit-pool-a02 and P1-6."
+    disposition: "residual: dedicated settings, static input-derived denies, restricted writes, legacy-hook migration and administrative sandbox policy reduce damage without establishing atomic protection against path-consumption races."
+  - control: "5.14 item 2: sanitized environment and executable selection"
+    disposition: "residual: the clean prefix applies to every command hook rendered by this task except the unchanged managed PermissionRequest, and dotfiles-T133-trusted-entrypoint-binding-a01 owns that exception, exact interpreter selection and complete trusted-entrypoint binding."
   - control: "5.14 item 3: trusted-path checks"
-    disposition: "residual: canonical anchor and interpreter checks reduce worker-selected trusted paths and account for symlink components and filesystem case aliases; other consuming-helper checks remain with their owning hardening tasks."
+    disposition: "residual: guard fixtures check canonical launch and input identities including symlink and case aliases, while executable realpath binding belongs to dotfiles-T133-trusted-entrypoint-binding-a01 and other consuming helpers retain their own hardening owners."
   - control: "5.14 item 4: verified executable and consumed-byte identity"
-    disposition: "residual: hooks execute selected absolute entrypoints and trusted scripts, and upstream shell descendants inherit the fixed system PATH; evidence snapshots, last-use digest checks and their race limitations remain with the consuming orchestrator-side tasks; store-selected driver execution remains the separately named agmsg residual."
+    disposition: "residual: fixed guard operations avoid worker-selected project payloads, while executable identity belongs to dotfiles-T133-trusted-entrypoint-binding-a01 and snapshots and last-use digests remain with the consuming hardening tasks."
   - control: "5.14 item 5: output and reservation identity"
-    disposition: "residual: this task adds no reservation protocol; full-head output names, fixed-inode locks and physical-slot identity remain with the orchestrator-side tasks that create them."
-  - control: "5.14 item 6: honest residuals, hooks and MCP"
-    disposition: "residual: guarded tracked and main-local project hooks and minimal worker user hooks reduce host execution routes; shared managed Herdr socket access, control-plane exclusions, approved external processes and same-UID processes outside every seat sandbox remain residual."
-  - control: "5.14 item 7: trusted-execution verification"
-    disposition: "residual: this task records red-then-green render, merge, managed-policy, guard, launch, descendant and cache tests; P1-6 owns tests/unit/trusted_exec_contract.py and the consuming-helper contract tests."
+    disposition: "residual: this task introduces no reservation protocol, and full-head output names, fixed-inode locks and physical-slot identity remain with the orchestrator mechanisms that create them."
+  - control: "5.14 item 6: honest residuals"
+    disposition: "residual: the text retains same-UID, shared credential, managed exception, Herdr socket, agmsg sourcing, path-race and hook-event limitations and assigns executable-binding gaps to dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: "5.14 item 7: verification"
+    disposition: "residual: retained render, merge, policy, guard, launch and cache tests provide final-head evidence, while real-uv hook execution belongs to dotfiles-T133-trusted-entrypoint-binding-a01 and the common trusted_exec_contract helper belongs to P1-6."
   - control: "5.14 item 8: committed approval ledger"
-    disposition: "residual: the regime reads the ledger through the GitHub contents API at the SHA returned by git ls-remote origin refs/heads/main; P1-14 a05 implements that read, and local refs, files and object traversal provide no approval authority; the GitHub boundary is detection, not prevention."
-  - control: "5.14 item 9: private uv caches"
-    disposition: "residual: per-seat worker caches, restricted worker write allowances and explicit denies on the orchestrator worklog and uv-cache reduce cache poisoning; consuming hardening tasks use the protected orchestrator cache with --offline and execute no worker, shared uv or mise cache content."
-  - control: "5.14 item 10: no worker command outside the sandbox"
-    disposition: "residual: empty worker user exclusions and disabled unsandboxed requests reduce escape routes; the worker rule forbids using shared managed control-plane exceptions, whose availability and Herdr socket access remain residual; the deterministic Codex permgate rule and live deployment remain operator steps."
-  - control: "hook failure policy"
-    disposition: "residual: every generated and tracked hook entry, including launcher-written worker user and main-local entries, carries onFailure block, reducing fail-open behavior where Claude supports it; configuration tests cover missing-command and timeout policy, while background hooks and events on which the field has no effect carry no enforcement responsibility."
-  - control: "agmsg store driver and plugin selection (team configuration drivers.partition, db/trusted-plugins authorization and installed storage.sh sourcing)"
-    disposition: "residual: every seat writes the store, and installed storage.sh resolves drivers.partition as a driver path and sources it during unsandboxed delivery; it also uses db/trusted-plugins to authorize plugins/partition/shared.sh for sourcing; fixed PATH does not stop these routes; worker denies on plugins/** and db/trusted-plugins reduce the plugin route; dotfiles-T133-agmsg-hardening-a01 owns upstream basename validation, plugin authorization hardening and their adversarial red-then-green tests; this task introduces no store-derived sourcing beyond the installed scripts' current behavior."
+    disposition: "residual: P1-14 a05 implements SHA-bound GitHub API approval reads, and this task provides no authority from local files, refs or objects and no prevention of shared-credential API merges."
+  - control: "5.14 item 9: private caches and isolated interpreters"
+    disposition: "residual: private worker caches and explicit orchestrator-cache denies remain here, while exact uv/Python declarations, interpreter isolation, trusted resolver consumption and bound deployment checks belong to dotfiles-T133-trusted-entrypoint-binding-a01."
+  - control: "5.14 item 10: commands inside the sandbox"
+    disposition: "residual: empty worker user exclusions and the governing execution rule remove worker authorization to escape, while shared managed capabilities remain available and Codex network configuration and deterministic permgate deployment retain their separate owners."
+  - control: hook failure policy
+    disposition: "residual: generated, tracked and launcher-managed entries carry onFailure block where supported, but template tests do not establish runtime timeout enforcement and background or excluded events carry no enforcement responsibility."
+  - control: agmsg store driver and plugin selection
+    disposition: "residual: plugin and trusted-plugins denies reduce one route, but writable team configuration still influences installed storage.sh sourcing and dotfiles-T133-agmsg-hardening-a01 owns driver-name validation, plugin authorization hardening and adversarial execution tests."
   - control: orchestrator effect merge
-    disposition: "residual: the worker is forbidden to merge; the orchestrator follows the final-head integration gate, required permission approval and pinned squash-merge procedure, with evidence of record retrieved from GitHub; shared credentials still permit worker-initiated API merges, so the GitHub boundary is detection, not prevention."
+    disposition: "residual: the worker is forbidden to merge and the orchestrator uses final-head integration evidence and a pinned merge, while shared credentials still permit worker-initiated API merges that the regime detects rather than prevents."
   - control: orchestrator effect update-branch
     disposition: "residual: the orchestrator owns branch updates and obtains fresh required CI, feedback, audit and security evidence for the resulting head."
   - control: orchestrator effect forced worker removal
-    disposition: "residual: no forced removal is planned; existing dirty-worktree protections remain, and acceptance identifies any operator-authorized discarded state."
+    disposition: "residual: no forced removal is planned, existing dirty-worktree protections remain, and acceptance identifies any operator-authorized discarded state."
 premises:
   - claim: >-
-      The historical a05 premises carried by the preceding text describe its recorded observations. They do not require this worker to rebuild PR 400, edit the approval ledger or implement P1-14 a05.
-    sources:
-      - .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md
-      - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
-  - claim: >-
-      D-024-21 establishes the host threat model and dedicated Claude worker configuration. D-024-23 supersedes D-024-22's credential-separation claim because gh Keychain access is shared by seats running as the same macOS user. Prevention requires a separate OS user or host; the current GitHub boundary is detection, not prevention.
+      D-024-26 narrows P1-15 after the fourth executable-binding finding;
+      amendment 8 is not the implementation contract for this dispatch.
+      The acceptance record retains the class correction, re-plan line and
+      complete review history.
     sources:
       - .orchestration/decisions.tsv
-      - .orchestration/plans/024-design-quality.md
+      - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
+      - .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-5204254.md.last.md
+  - claim: >-
+      Design section 5.14 is uncommitted main-checkout context. The worker
+      reads the HOME-relative source named below, and the verbatim quotations
+      in this task bind the relied-on sentences without a literal operator
+      home path in tracked text.
+    sources:
+      - $HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md
       - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
   - claim: >-
-      The existing Claude settings modify script merges the orchestrator user baseline into current settings and appends an attachment hook. The dedicated worker renderer does not import that orchestrator settings merge or its attachment behavior. The administrative managed-settings file is a separate deployment destination.
+      The worker's latest measured local snapshot is 7c3a6394 on main
+      69dccca9, with 876 source and 1299 test changed lines under the former
+      888 and 1335 caps; no implementation push has occurred.
     sources:
-      - home/dot_claude/modify_private_settings.json
+      - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
+  - claim: >-
+      The managed template currently renders the PermissionRequest command
+      as ~/.local/bin/common/permgate claude, and the existing validator
+      recognizes that legacy form; D-024-26 preserves it for this task.
+    sources:
       - home/.chezmoitemplates/claude-settings-managed.json
-    verification: tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_do_not_import_orchestrator_hooks
+      - home/dot_claude/modify_private_settings.json
+      - scripts/validate-agent-assets.py
+      - .orchestration/decisions.tsv
   - claim: >-
-      The current launcher constructs worker profile options separately from the pane environment. The dedicated Claude configuration directory and private cache variables reach the actual worker process on every launch route. This task adds no gh configuration directory or credential-separation mechanism.
-    sources:
-      - home/dot_local/bin/common/executable_herdr-agents
-      - home/dot_agents/agent-config.yaml
-    verification: tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_worker_launch_receives_dedicated_policy_and_private_caches
-  - claim: >-
-      Linked-worktree Claude sessions load the main checkout's .claude/settings.local.json. The current launcher writes worker-local delivery hooks and merge denials into a different file. Worker delivery moves to the worker configuration directory's user settings, and the launcher's main-checkout local hooks receive the orchestrator-only guard.
-    sources:
-      - https://code.claude.com/docs/en/settings#where-claude-code-keeps-the-local-file-in-a-git-repository
-      - home/dot_local/bin/common/executable_herdr-agents
-      - .claude/settings.local.json
-    verification: tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_linked_worktree_uses_worker_user_hooks_and_guarded_main_local_hooks
-  - claim: >-
-      Managed sandbox.enabled true, failIfUnavailable true and allowUnsandboxedCommands false establish the documented admin-required enforcement scope. Project and local settings cannot supply sandbox relaxations in that scope. User settings and shared managed exceptions remain distinct from project and local settings.
-    sources:
-      - https://code.claude.com/docs/en/sandboxing#repository-settings-under-an-admin-required-sandbox
-      - .orchestration/plans/024-design-quality.md
-      - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
-    verification: tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_managed_render_is_independent_of_conflicting_project_and_local_settings
-  - claim: >-
-      Installed agmsg storage.sh resolves the writable team configuration's drivers.partition value as a driver path and sources it during delivery. The upstream hardening belongs to dotfiles-T133-agmsg-hardening-a01 and remains a residual of this task.
+      Linked-worktree sessions load main-checkout local settings and can
+      retain legacy worktree-local delivery hooks; worker user settings,
+      main-local guarding and legacy migration must therefore be checked
+      together.
     sources:
       - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
-      - .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-08e6ac7.md.last.md
+      - .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-f589c7c.md.last.md
+      - home/dot_local/bin/common/executable_herdr-agents
+  - claim: >-
+      Same-macOS-user gh Keychain access is not separated by a configuration
+      directory, and administrative settings and shared capabilities do not
+      establish adversarial isolation between seats sharing one OS user.
+    sources:
+      - .orchestration/decisions.tsv
+      - .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
 ---
 
-# AGMSG-TASK dotfiles-T133-worker-write-boundary-a01 — INV-6 reset of a01 on tools/worker-write-boundary-a01, seat a010; plan 024 P1-15 under D-024-17, D-024-19, D-024-20, D-024-21 and D-024-23
+# AGMSG-TASK dotfiles-T133-worker-write-boundary-a01 — D-024-26 re-plan; plan 024 P1-15; seat a010
 
 ## Goal
 
-This is the amendment-6 text of the task dispatched at 2026-10-19T05:42Z (the ninth-round text that passed its pre-dispatch security review). Amendment 1 folds in two interpretation notes the worker needed (the inherited make format clause; the portable tracked `.claude/settings.json` with host-specific paths only in the rendered guard) and removes the Codex worker profile item (a Codex seat edits no Codex-boundary source; it becomes the separate Claude-seat task dotfiles-T133-codex-worker-network-a01). Everything else is the dispatched text in meaning; the branch, the eight green tests and the fixtures stay; the worker swaps the task copy to this text at its next push.
+Ship the worker write boundary alone. This complete text replaces amendment 8; it is a re-plan under D-024-26, not a ninth incremental amendment.
 
-The host is not a security boundary between seats sharing one OS user. gh keys Keychain credentials by host and user, so a worker running as the same macOS user can read the orchestrator's token regardless of `GH_CONFIG_DIR`. Prevention of a worker-initiated merge requires a separate OS user or host under D-024-23's future P1-16, which the operator decides whether to pursue. Until then the GitHub boundary is detection, not prevention. The regime detects missing acceptance or gate-passage evidence in the next records PR, not at main-push time, because the records reach main only with that boundary PR. On a PR touching `.orchestration/acceptance/**`, the regime job checks every main merge commit since the previous boundary for its corresponding acceptance record with gate-passage evidence and fails the PR when one is missing. P1-11 owns implementation of that check; this task states section 5.14 item 0's detection rule. Approvals and gate evidence of record are read from GitHub at a SHA through its API inside the sandbox. Host-local controls reduce accidental and injected damage without establishing isolation from a malicious same-UID process.
+Continue the existing implementation branch `tools/worker-write-boundary-a01` in `$HOME/Workspace/dotfiles/.claude/worktrees/worker-e`, retaining the work that belongs to the narrowed scope. The latest local snapshot is `7c3a6394` on main `69dccca9`, with no push. The worker replaces its task copy with the byte-identical text dispatched after this re-plan passes its checks.
 
-This task implements section 5.14 items 1, 9 and 10 through a dedicated Claude worker configuration directory, static Edit deny rules on trusted paths and worktree configuration, managed sandbox enforcement, guarded project hooks, hook interpreter and PATH bindings, private worker caches and the rule that worker commands run inside their sandbox. Every Claude seat has `sandbox.failIfUnavailable: true`.
+Retain the dedicated `CLAUDE_CONFIG_DIR`, static trusted-path deny inventory enumerated from executable inputs, private caches, managed sandbox policy, legacy worktree-local hook migration, native merge denials, platform-symmetric exclusions and their validator fixtures, guarded project hooks, and the orchestrator modify script's classification of its managed hooks.
 
-The administrative managed policy is shared by every Claude seat. Its Herdr socket allowance and three control-plane exclusions remain available to workers as well as the orchestrator. Empty arrays in worker user settings do not subtract these managed entries. Their availability is a residual under item 0, and the worker execution rule supplies no authorization to use them outside the sandbox.
+Every command hook this task renders starts with the prescribed `/usr/bin/env -i …` prefix except the managed PermissionRequest hook. Its command remains exactly `~/.local/bin/common/permgate claude`, as the current managed template renders it, behind the managed deny rules until `dotfiles-T133-trusted-entrypoint-binding-a01` lands. Do not put that legacy command behind the system-only PATH prefix: its unchanged shebang requires uv discovery.
 
-[memory:decision] D-024-20 makes this task the dispatch prerequisite of P1-14 a05, P1-10 a02, audit-pool-a02 and P1-6. The orchestrator places this task in their `after:` fields before dispatch. This task has `after: []`. A Codex seat performs these Claude configuration edits under the routing rule, including the Worker Playbook step 4 sentence permitted by plan 021 step 8.3. This Codex seat edits no Codex-boundary source.
+The bound PermissionRequest form, its structural validator, exact uv/Python declarations and mise pins, binary-identity deployment checker, real-uv hook execution test and formatter PATH changes leave this task. The worker reverts or leaves unmerged its amendment-6/amendment-7 implementation belonging to that family and names the removed files and portions in RESULT.
 
-The design source is `.orchestration/plans/024-design-quality.md` section 5.14 items 0 through 10.
+The host is not a security boundary between seats sharing one OS user. Host-local controls reduce accidental and injected damage. They do not prevent a malicious same-UID process from exploiting shared credentials, filesystem races, host processes or shared control-plane capabilities.
 
-C-88: The following verbatim design sentences are normative for this task; the path is context only. The worker resolves `$HOME` when reading `$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md`, and no tracked task text or task copy carries a literal operator home path, as required by the validator's home-path scan.
+The GitHub boundary is detection, not prevention. P1-11 owns the next-records-PR check that every main merge since the previous boundary has acceptance and gate-passage evidence. Records do not reach main until that boundary PR, so this text makes no main-push detection claim. Separate-user or separate-host prevention remains the operator's future P1-16 decision under D-024-23.
 
-> 5.14 item 1: Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。worker 設定：除外コマンド無し、Herdr socket 無し、sandbox の allowWrite は自席 worktree と agmsg store と席別キャッシュだけ、`failIfUnavailable: true`、信頼パス（anchored checkout の `.claude/worktrees/` 以外、`~/.agents`、`~/.claude*`、`~/.local`、`~/.config`）への Edit deny（公式文書：file tool の permission 検査は要求パスと symlink 解決後のパスの両方に deny を適用し、symlink そのものへの書き込みは拒否する）、sandbox の強制範囲はユーザー設定ではなく **managed settings**（`/Library/Application Support/ClaudeCode/managed-settings.json`、公式文書 "Repository settings under an admin-required sandbox"：project/local 設定は sandbox を無効化したり除外・socket を足したりできない）に置く。 hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。 `failIfUnavailable: true` を全席に置く。 The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19).
+D-024-20 retains P1-15 as the write-boundary prerequisite of P1-14 a05, P1-10 a02, audit-pool-a02 and P1-6. The orchestrator owns their `after:` fields. This task has `after: []`. Satisfying this write-boundary prerequisite does not establish the executable-binding contract deferred by D-024-26.
 
-> 5.14 item 2: 最初の処理として `env -i` に入り、PATH は信頼ルートで解決した絶対バイナリへのリンクだけの私設ディレクトリ（shims、空、相対は拒否）。
+## Design contract and review history
 
-> 5.14 item 9: orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。 Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19).
+Read `$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md` section 5.14 items 0 through 10 as main-checkout context. This is the only form in which that design path appears in this task.
 
-> 5.14 item 10: worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。
+C-88: the following relied-on sentences are quoted verbatim. D-024-26 assigns the quoted executable-binding requirements to the binding task; quotation does not restore them to this task's implementation scope.
 
-D-024-21, D-024-23 and the amended items 0, 1 and 8 govern this revision. D-024-22's proposed gh credential separation is superseded. The acceptance record preserves documentation facts and earlier proposals as history.
+Item 0:
 
-The third C-80 text review is `.orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-ecc7ab5.md.last.md`. Its five P1 findings remain recorded. The retained mechanisms are documented symlink-aware deny rules, approval reads outside the local object database, hook interpreter bindings and runtime hook failure policy.
+> ホスト内の制御（本節 1〜10）は事故と prompt injection による損害の抑制であり、文はそう書く。
 
-The fourth C-80 text review is `.orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-8d42532.md.last.md`. Its six P1 findings remain recorded. The retained mechanisms are the static manifest deny inventory, protection of the orchestrator worklog and cache, narrow home denies around writable agmsg stores, correct linked-worktree hook placement and fixed hook-runtime PATH.
+Item 1:
 
-The fifth C-80 text review is `.orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-08e6ac7.md.last.md`. Its three P1 findings remain recorded. This revision removes the gh credential-separation mechanism, records the upstream agmsg store-driver residual and moves sandbox enforcement into administrative managed settings.
+> Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。
 
-The file-tool rule is the documented sentence, “Deny rules: apply when either the requested path or the file it resolves to matches.” Edit and Write refuse a requested file that is itself a symlink. Directory symlinks are subject to resolved-target permission checks, and the tools check the resolved location again when opening the approved file. These documented checks reduce redirection risk without establishing an atomic host security boundary against concurrent same-UID changes. [Claude permission reference](https://code.claude.com/docs/en/permissions#symlinks)
+> managed settings の配置先は OS で異なる（macOS `/Library/Application Support/ClaudeCode/managed-settings.json`、Linux `/etc/claude-code/managed-settings.json`）。
 
-The 2026-10-19T03:45:06Z sandbox probe ran `gh api repos/mryfmo/dotfiles --jq .name` and returned `dotfiles`. The recorded sandbox proxy used CONNECT without TLS interception, and gh read the Keychain token. This historical observation confirms neither credential separation nor final-head deployment readiness.
+> hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。
 
-The documentation facts recorded at 03:2xZ establish that Edit denies also affect the Bash sandbox, hooks reload during a session and an unavailable sandbox is fail-open by default. D-024-21's 04:0xZ decision establishes the dedicated Claude configuration mechanism, directory-specific Claude credentials, symlink coverage and `onFailure: "block"` support. These Claude credentials do not separate gh Keychain access.
+> `failIfUnavailable: true` を全席に置く。
 
-The settings documentation states, “In a worktree, it uses the file at the main checkout’s root.” Linked-worktree sessions therefore load the main checkout's `.claude/settings.local.json`. Worker hooks belong in `~/.claude-worker/settings.json`, and the main checkout's local hooks also receive the orchestrator-only guard. [Claude local settings reference](https://code.claude.com/docs/en/settings#where-claude-code-keeps-the-local-file-in-a-git-repository)
+> The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19).
+
+Item 2:
+
+> 最初の処理として `env -i` に入り、PATH は信頼ルートで解決した絶対バイナリへのリンクだけの私設ディレクトリ（shims、空、相対は拒否）。
+
+Item 3:
+
+> 仕組みが信頼するパス（スクリプト、台帳、証跡、worktree、lock、出力先）は realpath で解決し、`.claude/worktrees/` または manifest の worker ルート配下なら拒否（ask/hold）。
+
+Item 4:
+
+> 検証した実行体はその realpath で実行する（再探索しない）。検証したファイル内容は信頼ルート配下のスナップショット（0600、一意名）として渡し、使用直前に sha256 を再照合する。判断に読んだ証跡は sha256 を出力に記録する。
+
+Item 5:
+
+> 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
+
+Item 6:
+
+> 境界だけが緩和するリスクを `closed` と書かない。各文は残余を 1 行で明記する。
+
+Item 7:
+
+> threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。
+
+Item 8:
+
+> permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。
+
+Item 9:
+
+> orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。
+
+> `UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。
+
+> One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19).
+
+> Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19).
+
+Item 10:
+
+> worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。
+
+The acceptance record retains the entire findings history. Read every `.orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-*.md.last.md`, including the final amendment-8 review `5204254`; do not use an earlier `Verdict: correct` as approval of this text.
+
+The executable-binding class combines `text-security:f810c30:1`, `text-security:772cde0:2`, `text-security:e5c055e:1` and the fourth binding finding `text-security:5204254:1`. The acceptance record's class correction and re-plan line remain authoritative history. The nonexistent uv layout and missing Node interpreter are assigned to the binding task, not described as fixed by this narrowing.
+
+Retained responses to the earlier findings are the static input inventory, narrow denies around writable agmsg stores, worklog/cache protection, dedicated worker settings, administrative sandbox scope, explicit hook-variable re-exports, guarded main-local hooks, legacy worktree-local migration and honest same-UID and agmsg-sourcing residuals.
 
 ## Files
 
 1. `home/dot_agents/agent-config.yaml` remains the source of agent policy and model profiles.
 
-   The manifest names `orchestrator_checkout` as the anchored primary checkout and supplies trusted deployment bindings for the guard, hook scripts and absolute interpreters. Both user-settings renders use the same `claude.execution` bindings: resolve Python from `claude.execution.tool_paths.python3`, the trusted source behind `claude.execution.python`, and add the missing `claude.execution.tool_paths.uv` binding for the installed uv binary. Render their resolved absolute executable files, not PATH lookups or a private link whose creation depends on an earlier hook. These bindings resolve outside worker worktrees and executable caches. Worker cwd, tool input, worktree configuration and inherited command variables do not select them. The manifest also supplies the trusted bindings from which the render resolves the absolute directories holding `ruff`, `prettier` and `terminal-browser`, without using mise shims.
+   Add the separate worker settings output `home/.chezmoitemplates/claude-worker-settings.json`, administrative output `home/.chezmoitemplates/claude-managed-settings.json`, worker directory `~/.claude-worker` and anchored primary checkout declaration. Keep existing model selections and Codex profile, sandbox, approval, network and shared-Git settings unchanged.
 
-   The manifest defines a separate Claude worker settings output at `home/.chezmoitemplates/claude-worker-settings.json` and an administrative managed-settings output at `home/.chezmoitemplates/claude-managed-settings.json`. The worker configuration directory is `~/.claude-worker`. The launcher passes its expanded absolute path as `CLAUDE_CONFIG_DIR`.
+   Keep the static `trusted_paths:` inventory. It protects anchored-checkout source and control paths outside `.claude/worktrees/`, including tracked `.claude` contents, the main checkout's `.claude/settings.local.json`, `.orchestration`, scripts, tests, configuration and other current top-level source paths. Explicitly include both `<anchored-checkout>/.agents/worklog/**` and `<anchored-checkout>/.agents/worklog/uv-cache/**`, with directory targets where needed.
 
-   A static `trusted_paths:` list names every protected top-level path of the anchored checkout and the protected home paths. It explicitly includes `<anchored-checkout>/.agents/worklog/**` and `<anchored-checkout>/.agents/worklog/uv-cache/**`. The `.claude` entries protect tracked contents and the main checkout's `.claude/settings.local.json` without denying the whole `.claude/worktrees/` tree. The list explicitly names directory targets and descendant patterns where both are required.
+   Do not deny the checkout parent or all of `.claude/worktrees/`. Separately protect the directory target and descendants of `//<anchored-checkout>/.claude/worktrees/*/.claude/**` and the file `//<anchored-checkout>/.claude/worktrees/*/.mcp.json`. Ordinary worktree source writes and per-seat caches remain available.
 
-   Separate worker Edit denies protect `//<anchored-checkout>/.claude/worktrees/*/.claude/**` and `//<anchored-checkout>/.claude/worktrees/*/.mcp.json`. The `.claude` directory target is also protected. Ordinary worktree source files and the per-seat cache remain outside these configuration denies.
+   Enumerate protected inputs of trusted executables, including these home paths and their directory targets where applicable:
 
-   The home-path denies are `~/.agents/agent-config.yaml`, `~/.agents/permgate-policy.yaml`, `~/.agents/model-profiles.env`, `~/.agents/skills/**/scripts/**`, `~/.agents/skills/**/SKILL.md`, `~/.agents/skills/agmsg/plugins/**`, `~/.agents/skills/agmsg/db/trusted-plugins`, `~/.claude/**`, `~/.claude/hooks/orchestrator-only.sh`, `~/.claude-worker/**`, `~/.local/bin/**`, `~/.local/lib/python*/site-packages`, `~/.local/lib/python*/site-packages/**`, `~/Library/Python/*/lib/python/site-packages`, `~/Library/Python/*/lib/python/site-packages/**`, `~/.local/share/**`, `~/.local/state/**`, `~/.local/share/mise/**`, `~/.config/**`, `~/.cache/uv/**` and `~/.local/share/uv/**`. No blanket deny on `~/.agents/**` or `~/.local/**` replaces this list.
+   - `~/.agents/agent-config.yaml`
+   - `~/.agents/permgate-policy.yaml`
+   - `~/.agents/model-profiles.env`
+   - `~/.agents/skills/**/scripts/**`
+   - `~/.agents/skills/**/SKILL.md`
+   - `~/.agents/skills/agmsg/plugins/**`
+   - `~/.agents/skills/agmsg/db/trusted-plugins`
+   - `~/.claude/**`
+   - `~/.claude/hooks/orchestrator-only.sh`
+   - `~/.claude-worker/**`
+   - `~/.local/bin/**`
+   - `~/.local/lib/python*/site-packages`
+   - `~/.local/lib/python*/site-packages/**`
+   - `~/Library/Python/*/lib/python/site-packages`
+   - `~/Library/Python/*/lib/python/site-packages/**`
+   - `~/.local/share/**`
+   - `~/.local/state/**`
+   - `~/.local/share/mise/**`
+   - `~/.config/**`
+   - `~/.cache/uv/**`
+   - `~/.local/share/uv/**`
 
-   Enumerate protected inputs of every trusted executable, not only executable paths. The user-site directory targets and descendant patterns cover `.pth`, `usercustomize.py` and `sitecustomize.py`; verify that every other user-site or startup-hook location of the selected interpreters is covered by a separately named pattern above or an existing protected interpreter-install or configuration path. The existing `~/.claude-worker/**` deny covers that directory's hook and settings files. The rendered guard is explicitly named even though `~/.claude/**` also covers it.
+   The user-site entries cover `.pth`, `usercustomize.py` and `sitecustomize.py`. Account for other user-site or startup-hook locations of interpreters currently used by the retained hooks through an explicit inventory entry or an existing protected installation/configuration path. This inventory work does not introduce exact interpreter declarations or claim isolated startup.
 
-   The agmsg store paths `~/.agents/skills/agmsg/db`, `~/.agents/skills/agmsg/teams`, `~/.agents/skills/agmsg/run` and `~/.agents/skills/agmsg/ext-tools` remain writable. Deny patterns cover neither these directory targets nor their descendants except the file `~/.agents/skills/agmsg/db/trusted-plugins`. Edit denies merge into the sandbox configuration, so Bash writes to that file and `~/.agents/skills/agmsg/plugins/**` are refused too. Their influence on installed delivery-script driver and plugin selection remains the separately owned agmsg residual.
+   Protect application code consumed by installed wrappers, including code beneath `~/.local/share/**`; protecting only the wrapper executable is insufficient. Explicitly name the permgate policy and rendered guard even where another pattern overlaps them.
 
-   The orchestrator retains its existing permissions, cache allowances and hook functions within the administrative managed policy. Its user baseline receives `failIfUnavailable: true`, `onFailure: "block"` on its hooks and the interpreter and PATH bindings below. Its exclusion entries match the three control-plane entries specified below; the former Linux `gh *` exclusion is removed.
+   Do not replace the inventory with a blanket `~/.agents/**` or `~/.local/**` deny. The agmsg stores `~/.agents/skills/agmsg/db`, `teams`, `run` and `ext-tools` remain writable, including ordinary descendants, except `db/trusted-plugins`. Plugin code remains denied. Read/Edit denies also affect Bash sandbox writes.
 
-   The worker user policy contains no excluded commands and sets `allowUnsandboxedCommands: false`. It contains no Herdr socket allowance and no allow-all Unix socket switch. Its sandbox is enabled and has `failIfUnavailable: true`. Shared managed entries remain effective despite these empty worker arrays.
+   Worker user policy enables sandboxing, sets `failIfUnavailable: true` and `allowUnsandboxedCommands: false`, supplies no excluded commands or Herdr socket allowance, and limits additional write allowances to the agmsg stores and private seat caches. The project root provides ordinary worktree writes. Do not copy shared uv or mise write allowances into worker settings.
 
-   Worker `sandbox.filesystem.allowWrite` contains only the existing agmsg store paths and per-seat cache paths. The worktree is the project root and supplies its ordinary project write root. Shared uv and mise write allowances are not copied into worker settings.
+   The orchestrator user policy retains its existing permissions and cache allowances, receives `failIfUnavailable: true`, and uses the same three control-plane exclusions on both platforms. Remove the former Linux `gh *` exclusion.
 
-   Existing model selections, Codex worker profile values, Codex sandbox and approval arguments and Codex shared Git grants retain their meaning and remain unchanged. The deterministic Codex permgate rule that stops approving sandbox escapes is an operator step.
+   Remove the amendment-6/amendment-7 uv/Python binding declarations and formatter-tool declarations from this PR. Do not add exact versions, installation-layout assumptions, private executable links or tool-discovery fallbacks.
 
-2. `scripts/generate-agent-configs.py` renders the distinct orchestrator user, worker user and administrative managed baselines from the manifest.
+2. `scripts/generate-agent-configs.py` renders distinct orchestrator user, worker user and administrative settings from the manifest.
 
-   The trusted-path deny inventory is rendered from the static `trusted_paths:` list. Rendering performs no Git object traversal, `git ls-tree` enumeration or tracked-path discovery. Worker-writable refs, replacement refs and objects do not determine the list.
+   Render deny rules from the static inventory, using absolute `//` anchored-checkout patterns and the listed home forms. Perform no Git tree, index, ref or object traversal to choose protected paths. Do not use `git ls-tree` or `git ls-files` as inventory authority.
 
-   Anchored checkout rules use absolute `//` permission patterns. Rendering includes the explicitly listed trusted paths themselves and their descendants. It emits no checkout-wide parent deny that defeats ordinary worktree writes. The separate worktree-configuration denies remain present.
+   Generation is independent of deployment executable availability. Remove binding-only native `{{ output ... }}` expressions, executable discovery and installation probes from the narrowed outputs. Ordinary trusted home, source, platform and anchor substitutions remain sufficient for this task's templates.
 
-   Edit denies cover Write, MultiEdit and NotebookEdit through Claude's permission system. Requested-path and resolved-target matching supply the documented symlink coverage. The generator creates no `executable_worker-write-boundary.py` or replacement PreToolUse path validator.
+   Add or retain `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_policy_is_separate_from_orchestrator_policy`.
 
-   Every direct Git verification introduced or changed by this task follows section 5.14 item 2. It begins with `env -i`, uses the selected absolute Git executable and an explicit `-C`, sets `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null`, and supplies `-c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always`. Diff and show also use `--no-ext-diff --no-textconv` and `-c core.attributesFile=/dev/null -c core.sshCommand=false`.
+   Add or retain `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest`. It checks exact manifest-to-render correspondence on Darwin and Linux, directory targets and descendants, current source-path coverage by filesystem enumeration under fixed roots, worklog/cache protection, the explicit policy and guard entries, user-site startup-file fixtures and ordinary worktree writes. Git-controlled enumeration and planted Git environment or replacement refs must not change the output.
 
-   The private executable-link directory contains only links to selected absolute trusted binaries. Rendering rejects missing bindings, worker-controlled executable paths, shims, empty PATH entries and relative PATH entries. Direct Python invocations use `-I`; PermissionRequest uses the fixed uv invocation in item 3. Hook execution uses the role-specific pinned PATH bindings specified below. The render test asserts that `ruff`, `prettier` and `terminal-browser` resolve under the rendered orchestrator tool PATH on the rendering host and that no entry of that PATH is a shims directory.
+   Include anchors and homes containing spaces. Cover tracked `.claude` children, main-local settings, worktree configuration, symlink components and filesystem case aliases. These fixtures check configured coverage and identity; they do not simulate proof of Claude's live permission enforcement.
 
-   `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_worker_deny_inventory_is_static_and_matches_manifest` asserts that the rendered list equals the manifest entry after trusted anchor and home expansion. It explicitly asserts the rendered home-path deny patterns `~/.local/share/**` and `~/.local/state/**`, including the application code under `~/.local/share` used by `~/.local/bin` wrappers such as `terminal-browser`. It reads the filesystem of the test's own checkout and asserts that every tracked top-level source path is represented. It invokes no Git command to discover those paths. It also asserts the explicit policy-file and rendered-guard denies, both user-site directory targets and descendant patterns above, `.pth`, `usercustomize.py` and `sitecustomize.py` descendant fixtures, and coverage of every other user-site or startup-hook location of the selected interpreters by the inventory. Run the inventory assertions for both Darwin and Linux without using worker-controlled configuration to select trusted interpreter locations.
+   Retain `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_leave_agmsg_stores_writable`, including the plugin and `trusted-plugins` exceptions.
 
-   The inventory fixtures cover files, directories, `.claude` children, the main-local settings file, ordinary worktree writes, both worktree-configuration patterns, an anchor containing spaces and both explicit worklog patterns. Adding a top-level source path without a manifest entry makes the coverage assertion fail. Planted Git environment and replacement-ref fixtures leave rendering unchanged.
+   Add `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_protect_permgate_policy`. In a temporary HOME, match worker Edit and Write requests against the rendered protected policy rule, refuse the fixture write and assert unchanged policy bytes. Do not execute a bound PermissionRequest command or claim resistance to inherited policy-selection environment inputs.
 
-   `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_leave_agmsg_stores_writable` asserts the rendered deny patterns `~/.agents/skills/agmsg/plugins/**` and `~/.agents/skills/agmsg/db/trusted-plugins` and verifies that the four store directories `db`, `teams`, `run` and `ext-tools` and their descendant fixtures remain writable except that one file.
+3. `home/.chezmoitemplates/claude-settings-managed.json` remains the orchestrator user baseline.
 
-   `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_denies_protect_permgate_policy_and_ignore_planted_replacement` uses the existing rendered deny-rule fixture pattern for a worker-side Edit/Write request to the temporary HOME's protected policy file: the rendered deny matches, the fixture refuses the write and the policy bytes remain unchanged. Install the unchanged real permgate source and a deterministic protected policy in that temporary HOME, execute the rendered bound PermissionRequest command and record its decision. Plant a replacement policy with a different decision outside the protected path in the fixture worktree, set the outer `PERMGATE_POLICY_PATH` to that planted file and run the same rendered command from that worktree. Assert that the sanitized command still reads the protected policy and returns the identical expected decision. This is rendered-rule and execution evidence, not a claim of live Claude enforcement. Record red-then-green evidence for this selector.
+   Its managed PermissionRequest command remains exactly:
 
-3. `home/.chezmoitemplates/claude-settings-managed.json` remains the orchestrator user baseline, and `home/dot_claude/modify_private_settings.json` merges that rendered baseline into the orchestrator's `~/.claude/settings.json`.
+   ```text
+   ~/.local/bin/common/permgate claude
+   ```
 
-   The orchestrator modify script is now in `allowed_files`. Its `render_managed_template` expands the native per-host executable bindings before JSON parsing, in addition to the existing HOME, source and OS substitutions. Use an identical standard-library function named `render_native_bindings(text, source, home, os_name)` in both Claude modify scripts and the validator; this is the selected shared mechanism, not a new `{{ include }}` snippet or file. It expands the same generated native `{{ output ... }}` binding expressions that the managed template renders, supplied by `scripts/generate-agent-configs.py` from the trusted `claude.execution` bindings in item 1, with the same trusted home, source, platform and executable-resolution rules. Render only the trusted baseline, never expressions from stdin or current runtime hook strings. The worker renderer retains its separate baseline and imports neither the orchestrator settings merge nor its attachment behavior.
+   Do not add an env prefix, guard selector, absolute uv/Python invocation or new command-form validator for this hook. Keep its existing timeout and add the task's common `onFailure: "block"` entry policy. The unchanged command's shebang, interpreter discovery and inherited environment are explicit residuals owned by the binding task.
 
-   `is_managed_permission_hook` in both Claude modify scripts retains recognition of the legacy two-word `permgate claude` form and stale `ccgate claude` migration, and also recognizes the complete bound form by `shlex` parsing: exactly the sanitized prefix in this item with the rendered absolute HOME, an absolute uv path with basename `uv`, `run --no-config --no-project --offline --python`, an absolute Python path, `python -I`, the absolute installed `<home>/.local/bin/common/permgate` path, and sole argument `claude`, with no further words. A previous absolute uv/Python binding is recognized for replacement when those bindings change; this does not approve or execute the old paths. A foreign script path, altered prefix, extra assignment, missing or altered flag, wrapper, trailing argument or shell operation is not the managed bound hook. Do not classify bound commands by a `permgate` substring or basename alone.
+   Every other command hook generated by this task starts with:
 
-   A legacy-to-bound upgrade or change of uv/Python bindings replaces the previous managed PermissionRequest entry and leaves exactly one current managed invocation, never both old and new. Re-merging is byte-identical. Preserve unrelated custom PermissionRequest hooks, including custom hooks sharing an entry with a managed hook; foreign hooks remain custom.
+   ```text
+   /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"
+   ```
 
-   In `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest`, add `test_modify_private_settings_renders_native_bindings_before_merging` using the actual generated native binding expressions, temporary homes and executable paths containing spaces; `test_permission_merge_upgrades_legacy_permgate_to_bound_hook` for the legacy-to-bound upgrade; `test_permission_merge_replaces_previous_bound_hook_idempotently` for old-to-new absolute uv/Python bindings and byte-identical re-merge; and `test_permission_merge_does_not_classify_foreign_hook_as_managed` for foreign-script and malformed or extended bound commands. Extend `test_permission_merge_preserves_unrelated_current_hooks` and `test_permission_merge_preserves_custom_hook_in_mixed_entry` to retain custom hooks through these upgrades, and retain `test_managed_permgate_replaces_stale_current_ccgate_hook`. Record red-then-green evidence for each named selector.
+   Re-export HOME before an entrypoint path uses it, and preserve launch identity explicitly. Agmsg delivery commands additionally set `AGMSG_RESOLVE_PROJECT=0` and preserve `AGMSG_STORAGE_PATH` when supplied by the launcher.
 
-   This existing template's name does not make it administrative managed settings. The new `claude-managed-settings.json` template supplies that separate scope.
+   Project-sensitive orchestrator commands use the installed guard and fixed operation identifiers. Use existing payload scripts; do not introduce the repository-owned Herdr state-helper replacement. Do not add formatter-specific tool directories or private executable links.
 
-   The orchestrator retains its current user policy content apart from `failIfUnavailable: true`, `onFailure: "block"`, the required interpreter and PATH bindings and alignment of exclusions with the three control-plane entries. Worker-specific Edit denies and restricted worker cache allowances do not enter this baseline. Administrative sandbox requirements apply to the orchestrator as well as workers.
+   Retain `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_orchestrator_settings_keep_existing_policy`, accounting for the changed startup/failure policy, prefixes, guarding and exclusions. Do not claim that this test verifies formatter tools or PermissionRequest executable binding.
 
-   Every generated hook entry carries `onFailure: "block"`. Every generated command hook starts with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"` before its trusted installed entrypoint, except that this chezmoi template renders PermissionRequest HOME as `HOME="{{ .chezmoi.homeDir }}"`. The prefix re-exports HOME before any HOME-relative entrypoint path. Host-specific interpreter, private-link-directory, anchored-checkout and tool-directory bindings remain in the per-host rendered user settings and guard. The formatter and project-map hooks run through the installed orchestrator-only guard and receive the role-specific pinned PATH specified below. Merge evidence identifies hooks appended by the existing modify script and distinguishes them from generated baseline entries. The report accounts for the effective deployed hook set without equating baseline coverage with coverage of runtime-added entries.
+4. `home/dot_claude/modify_private_settings.json` stays in scope because its managed-hook classifiers and appended attachment hook consume the retained command changes.
 
-   The PermissionRequest command is `/usr/bin/env -i PATH=/usr/bin:/bin HOME="{{ .chezmoi.homeDir }}" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" <abs uv> run --no-config --no-project --offline --python <abs python> python -I "{{ .chezmoi.homeDir }}/.local/bin/common/permgate" claude`. The template renders `<abs uv>` and `<abs python>` from the trusted manifest bindings in item 1, shell-quotes each complete path and bypasses permgate's shebang. Reading permgate's header confirms no PEP 723 dependency declaration and only standard-library imports, so drop `--script` and run `python -I` with the selected interpreter. This dependency-free, no-project invocation requires no dependency download or executable dependency content from a shared uv cache. Python isolation suppresses the user site, `PYTHON*` environment inputs and the script directory on `sys.path`. Its existing `#!/usr/bin/env -S uv run --no-cache --script` shebang stays unchanged for interactive use. This bound invocation applies `$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md` section 5.14 items 2 and 9; that uncommitted design file is read-only context. Host-specific absolute paths rendered in this chezmoi template are permitted; the tracked `.claude/settings.json` remains portable.
+   Keep `is_managed_permission_hook`'s existing legacy `permgate claude` recognition and stale `ccgate claude` migration. Add no bound PermissionRequest recognition or binding-upgrade migration.
 
-   Every other rendered hook command, including SessionStart, Stop, delivery and guard invocations, likewise uses absolute bound entrypoints and interpreters and never relies on PATH to select uv, python3, bash or a tool; upstream agmsg env-bash descendants retain the fixed system-PATH binding in item 11.
+   Update classification of managed SessionStart and PostToolUse hooks for the exact prefixed and guarded forms this task emits. Recognize owned guard paths, fixed operation identifiers and expected arguments, alongside the existing owned legacy forms. A foreign guard path, unrelated command, malformed prefix, extra operation or custom hook must not become managed merely because a token has a familiar basename.
 
-   `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_orchestrator_settings_keep_existing_policy` compares the merged policy with the preceding baseline and accounts for the specified changes. Repeated merging remains idempotent and preserves unrelated settings.
+   Preserve the existing quoted/escaped-tilde distinction for legacy PostToolUse commands. Preserve unrelated hooks, including custom hooks sharing an entry with a managed hook. Replace stale managed forms in place without duplication, retaining ordering and byte-identical repeated merge behavior.
 
-4. `home/.chezmoitemplates/claude-worker-settings.json` is the dedicated worker user baseline.
+   The attachment hook appended by `main()` also receives the clean prefix, installed guard route and `onFailure: "block"`. Account for it in effective merged-settings fixtures; it is not covered merely by inspecting the generated baseline.
 
-   It renders the static trusted-path Edit denies, the worktree `.claude` and `.mcp.json` Edit denies, retained native merge denials, empty user `excludedCommands`, `allowUnsandboxedCommands: false`, restricted `allowWrite`, no user Herdr socket allowance and `failIfUnavailable: true` for both Darwin and Linux.
+   Add `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_prefixed_guarded_managed_hooks_replace_legacy_hooks_idempotently`, covering legacy-to-prefixed/guarded SessionStart and PostToolUse replacement, attachment handling, repeated merging, mixed custom entries and foreign-form rejection.
 
-   Its hooks are limited to agmsg delivery. It contains no formatter, project-map, permgate, orchestrator attachment, Herdr state or worker-write-boundary hook. Tracked project hooks and main-checkout local hooks still load and receive the guard described below.
+   Retain the existing stale-ccgate, SessionStart ordering, PostToolUse migration, quoted/escaped-tilde, unrelated-hook and mixed-entry preservation tests. No native-binding renderer or executable subprocess is added to template rendering.
 
-   Every worker hook entry carries `onFailure: "block"`. Every command starts with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" AGMSG_RESOLVE_PROJECT=0` before the selected absolute shell interpreter and absolute installed agmsg script path. The prefix also re-exports `AGMSG_STORAGE_PATH` when it is set in the launcher environment. Project resolution from a writable `run/proj.<pid>.project` marker remains disabled, so delivery retains the explicit worker path. Descendants inherit this PATH.
+5. `home/.chezmoitemplates/claude-worker-settings.json` is the dedicated worker baseline.
 
-   The worker baseline does not copy the orchestrator's plugins, credential files or current hook arrays. Hook settings reload during a session, so protection is stated as current configuration rather than startup capture. `CLAUDE_CONFIG_DIR` selects the separate user settings directory while project settings continue to apply within the administrative enforcement scope. [Claude settings reference](https://code.claude.com/docs/en/settings)
+   Render the static trusted-path and worktree-configuration denies, native merge denials, empty user exclusions, disabled unsandboxed requests, restricted additional writes, no user Herdr socket allowance and `failIfUnavailable: true` on both platforms.
 
-   Worker user settings supply no additional socket or exclusion allowance. Their empty lists cannot remove the shared managed Herdr socket or control-plane exclusions.
+   Worker user hooks are limited to agmsg delivery. Do not import orchestrator formatter, project-map, PermissionRequest, attachment, Herdr state, plugins or credential files.
 
-5. `home/.chezmoitemplates/claude-managed-settings.json` supplies the administrative sandbox policy.
+   Every worker command hook uses the clean prefix from item 3, followed by the absolute system shell and installed agmsg script path. Add `AGMSG_RESOLVE_PROJECT=0` and preserve launcher-supplied `AGMSG_STORAGE_PATH`. Every entry carries `onFailure: "block"`.
 
-   The rendered policy sets `sandbox.enabled: true`, `sandbox.failIfUnavailable: true` and `sandbox.allowUnsandboxedCommands: false`. The last setting makes sandboxing admin-required. Project and local files cannot add sandbox exclusions, socket allowances or other documented relaxations in this scope. Managed Boolean values prevail over lower scopes. User settings remain a separate trusted scope, and arrays such as exclusions have no general managed-only lock. [Repository settings under an admin-required sandbox](https://code.claude.com/docs/en/sandboxing#repository-settings-under-an-admin-required-sandbox)
+   Use the existing `/bin/bash` delivery invocation and fixed system PATH; do not introduce versioned interpreter declarations. Upstream env-bash descendants inherit the system-only PATH. Their store-selected sourced code remains the separately owned agmsg residual.
 
-   The rendered policy sets `sandbox.filesystem.disabled: false`, `sandbox.enableWeakerNestedSandbox: false`, `sandbox.enableWeakerNetworkIsolation: false`, `sandbox.network.allowAllUnixSockets: false`, `sandbox.network.allowLocalBinding: false` and `sandbox.allowAppleEvents: false`.
+   Worker empty arrays do not subtract shared administrative exclusions or socket access.
 
-   The rendered `sandbox.excludedCommands` list contains exactly `agmsg-dispatch *`, `herdr-agents *` and `<absolute-home>/.agents/skills/agmsg/scripts/actas-claim.sh *`. These are the orchestrator's three control-plane entries. It contains no `gh *`, `git push *` or authenticated-fetch exemption.
+6. `home/.chezmoitemplates/claude-managed-settings.json` supplies the separate administrative sandbox policy.
 
-   The rendered `sandbox.network.allowUnixSockets` list contains exactly the trusted home expansion of `~/.config/herdr/herdr.sock`. This allowance is shared by every seat under managed settings. Per-seat removal is unavailable in that scope, and the worker baseline's empty list does not revoke it.
+   Set `sandbox.enabled: true`, `sandbox.failIfUnavailable: true` and `sandbox.allowUnsandboxedCommands: false`.
 
-   Shared control-plane exclusions are also available in worker sessions. The worker execution rule forbids using them to leave the sandbox. The text treats their availability and the socket's host-execution capability as item 0 residuals rather than enforced per-seat separation.
+   Set `sandbox.filesystem.disabled: false`, `sandbox.enableWeakerNestedSandbox: false`, `sandbox.enableWeakerNetworkIsolation: false`, `sandbox.network.allowAllUnixSockets: false`, `sandbox.network.allowLocalBinding: false` and `sandbox.allowAppleEvents: false`.
 
-   `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_policy_requires_admin_sandbox` asserts the rendered content, exact exclusion and socket lists, trusted home expansion and every required Boolean value.
+   Its ordered `sandbox.excludedCommands` list is exactly:
 
-   `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_managed_render_is_independent_of_conflicting_project_and_local_settings` supplies project and local fixtures that disable sandboxing, disable startup failure, enable unsandboxed retries, add exclusions and sockets, enable weaker isolation and widen filesystem writes. The trusted managed render remains unchanged. The test verifies configuration scope and content without presenting a simulated settings merger as runtime enforcement.
+   ```text
+   agmsg-dispatch *
+   herdr-agents *
+   <absolute-home>/.agents/skills/agmsg/scripts/actas-claim.sh *
+   ```
 
-6. `Makefile` adds only the `install-managed-settings` target and its `.PHONY` declaration.
+   Its `sandbox.network.allowUnixSockets` list contains exactly the trusted home expansion of `~/.config/herdr/herdr.sock`.
 
-   The target uses the repository's existing rendering facilities to render `home/.chezmoitemplates/claude-managed-settings.json` into `~/.claude/managed-settings.rendered.json`. The staging path is expanded to an absolute path under the user's home.
+   These administrative exceptions remain available to every Claude seat. Empty worker user lists cannot revoke them. The worker execution rule provides no authorization to use them outside the sandbox.
 
-   The target selects `/Library/Application Support/ClaudeCode/managed-settings.json` on macOS and `/etc/claude-code/managed-settings.json` on Linux and prints the exact command `sudo install -m 0644 "<absolute-home>/.claude/managed-settings.rendered.json" "<detected-managed-settings-path>"` with the actual staging path and detected destination substituted and shell quoting preserved. The printed command is ready for the operator to run.
+   Retain `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_policy_requires_admin_sandbox`.
 
-   The target performs no sudo call, administrative installation, live settings application, authentication or session restart. The staging file alone does not establish managed enforcement.
+   Retain `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_managed_render_is_independent_of_conflicting_project_and_local_settings`. Supply lower-scope attempts to disable sandboxing and startup failure, enable unsandboxed retries, add exclusions/sockets and weaken isolation or filesystem policy. Assert unchanged trusted administrative content without representing a fixture merger as live runtime enforcement.
 
-   `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_install_target_stages_and_prints_without_running_sudo` covers both macOS and Linux, uses a temporary home, verifies the staged JSON and exact printed command with the detected destination, includes a home path containing spaces and asserts that a planted sudo marker remains absent.
+7. `Makefile` adds only `install-managed-settings` and its `.PHONY` declaration.
 
-7. `home/dot_claude-worker/modify_private_settings.json` renders `~/.claude-worker/settings.json` from the dedicated baseline.
+   Render `home/.chezmoitemplates/claude-managed-settings.json` into the absolute home staging path `~/.claude/managed-settings.rendered.json`.
 
-   The script follows the existing chezmoi modify-script interface: current content arrives on stdin and the desired settings object is written to stdout. It uses Python's standard library and the same trusted source and home resolution conventions as the existing renderer.
+   Detect `/Library/Application Support/ClaudeCode/managed-settings.json` on macOS and `/etc/claude-code/managed-settings.json` on Linux, then print the exact ready-to-run operator command:
 
-   Worker permissions, sandbox policy and hooks managed by this renderer replace stale managed values. Permissive old user exclusions, socket allowances, hook commands and shared cache allowances do not survive as additive worker user policy. The script does not read or copy `~/.claude/settings.json`.
+   ```text
+   sudo install -m 0644 "<absolute-home>/.claude/managed-settings.rendered.json" "<detected-managed-settings-path>"
+   ```
 
-   Rendering handles empty and malformed input through the repository's existing baseline behavior and is idempotent. It neither reads credentials nor initiates authentication.
+   Preserve shell quoting, including homes and destinations containing spaces. Execute no sudo command, live installation, authentication or restart.
 
-   `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_replace_stale_policy_idempotently` exercises repeated deployment in temporary homes. `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_do_not_import_orchestrator_hooks` plants orchestrator hook and plugin markers and verifies their absence.
+   Retain `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_install_target_stages_and_prints_without_running_sudo`, covering both platform destinations, staged JSON, exact printed command and an absent planted-sudo marker.
 
-8. `home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl` is installed as `~/.claude/hooks/orchestrator-only.sh`.
+8. `home/dot_claude-worker/modify_private_settings.json` renders `~/.claude-worker/settings.json`.
 
-   Chezmoi renders the installed guard per host. Its rendered absolute shebang selects the trusted shell interpreter. The host-specific absolute interpreter paths, private executable-link directory, anchored checkout and tool directories are bound inside this rendered guard and the rendered user settings. The tracked project settings contain none of these paths.
+   Follow the existing stdin/stdout chezmoi modify-script interface and standard-library baseline conventions. Replace stale worker-managed permissions, sandbox settings and hook arrays. Old exclusions, socket allowances, shared cache allowances and stale hooks must not accumulate.
 
-   The guard compares canonical `CLAUDE_PROJECT_DIR` with the anchored checkout. Equality executes the fixed operation supplied by the caller through the guard's trusted interpreter and anchored-script bindings, subject to the formatter and project-map tool-input check below. Every other launch root exits 0 without executing it. `CLAUDE_PROJECT_DIR` supplies launch identity and never selects an executable.
+   Do not read or copy the orchestrator's `~/.claude/settings.json`. Keep empty/malformed-input baseline behavior and idempotence. Perform no authentication or credential access.
 
-   Worker launch roots, sibling worktrees and unrelated checkouts execute no guarded project code. Missing or unresolvable launch-root identity also executes no supplied command. Event cwd does not change the launch-root decision.
+   Retain `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_replace_stale_policy_idempotently` and `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_worker_settings_do_not_import_orchestrator_hooks`.
 
-   The guard also binds the formatter and project-map reload to the edited file path from the hook's tool input and its owning repository. When the resolved path is outside canonical `CLAUDE_PROJECT_DIR` or belongs to a worker repository under `.claude/worktrees/`, the guard exits 0 without running the command. Worker-repository configuration, including Prettier JavaScript configuration and ruff settings, is never consumed by an orchestrator hook.
+   Remove binding-only native rendering code from the worker renderer.
 
-   The guard preserves argument boundaries, stdin and child exit status. It performs no eval, PATH interpreter lookup or worktree-relative script selection. Its portable caller starts with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"` followed by `"$HOME/.claude/hooks/orchestrator-only.sh"` and a fixed operation identifier with its arguments. The shell running the hook expands `$HOME`. The prefix re-exports `HOME` from the launcher environment as `HOME="$HOME"` before any path that uses it and explicitly re-exports the launch identity and the few variables Claude Code documents for hooks. No interpreter or anchored script path is supplied by the tracked settings.
+9. `home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl` installs `~/.claude/hooks/orchestrator-only.sh`.
 
-   The pinned PATH differs by role. Worker-session hooks use `/usr/bin:/bin`. For the orchestrator's formatter and project-map hooks, which the guard runs only in orchestrator sessions, the guard itself sets PATH to a rendered list of absolute tool directories of the trusted root before executing the guarded command. Those directories hold `ruff`, `prettier` and `terminal-browser` and are resolved by the render from the manifest without using mise shims. The formatter and project-map scripts remain outside `allowed_files` and unchanged.
+   Keep the `.tmpl` suffix: chezmoi must render trusted home and anchored-checkout constants into the installed guard. Render fixtures exercise that source and its installed form; a plain executable source copied without expansion is insufficient.
 
-   `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads` plants worker Stop, contextdb and formatter payloads. Worker and unrelated-root invocations leave all markers absent. The positive-path case runs the complete rendered command in a subprocess with a fake `CLAUDE_PROJECT_DIR` equal to the anchored checkout and asserts that the guarded script executed while preserving its arguments and status. A second case runs the complete rendered command with a worktree `CLAUDE_PROJECT_DIR` and asserts that the guarded script did not execute. A planted `BASH_ENV` in the outer environment remains unexecuted in both cases. Formatter and project-map reload cases keep `CLAUDE_PROJECT_DIR` anchored and supply hook tool input for an outside file and a worker-repository file under `.claude/worktrees/`; both exit 0 with command and planted configuration markers absent. Matching anchored-file inputs run both commands normally. The guard tests execute the portable HOME-relative hook command against separately rendered per-host guards, assert the `HOME="$HOME"` re-export and verify that interpreter and anchor selection occurs only inside the rendered guard. Changing `CLAUDE_PROJECT_DIR` never changes the selected executable.
+   The guard compares canonical `CLAUDE_PROJECT_DIR` with the anchored primary checkout. Worker roots, sibling worktrees, unrelated checkouts and missing/unresolvable launch identity execute no payload and exit 0. Event cwd cannot change the launch-root decision. `CLAUDE_PROJECT_DIR` supplies identity, never an executable path.
 
-9. `.claude/settings.json` retains its tracked project hooks and rewrites every command through the installed orchestrator-only guard.
+   An anchored invocation selects a fixed owned operation and its anchored or installed payload path. Preserve argument boundaries, stdin and child status. Reject unknown operations; perform no eval or worker-relative script selection.
 
-   This tracked file is not a chezmoi template and remains portable across hosts. Every command starts with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"` followed by `"$HOME/.claude/hooks/orchestrator-only.sh"` and a fixed operation identifier with its arguments. The shell running the hook expands `$HOME`, and the clean environment re-exports the launcher's HOME before any path that uses it. The file names no interpreter, anchor path, private links directory or host-specific tool directory.
+   Retain existing absolute system-interpreter conventions for the guard and fixed payload dispatch. Do not add exact uv/Python version declarations, a private executable-link directory, binary installation discovery or formatter PATH repair. Complete runtime executable identity remains the binding task's residual.
 
-   Host-specific absolute bindings live only inside the per-host rendered guard and rendered user settings, including the orchestrator user template's bound PermissionRequest invocation. The guard binds the selected operation to its absolute interpreter and anchored script path. Contextdb commands do not invoke bare `python3` or select `.claude/hooks` from a worker checkout. The Stop gate does not invoke bare `bash` or a worker checkout's `scripts/agent-stop-gate.sh`. `CLAUDE_PROJECT_DIR` never selects an executable.
+   For formatter and project-map operations, also check resolved tool-input paths. Inputs outside the canonical launch root or within a worker repository under `.claude/worktrees/` execute no formatter/map payload and consume no worker configuration. An anchored launch alone is insufficient.
 
-   Every hook entry carries `onFailure: "block"`. Existing event functions remain available to the anchored orchestrator. They are no-ops in worker sessions because the guard rejects their launch roots.
+   Retain `tests/unit/test_claude_worker_settings.py::ClaudeWorkerSettingsTest::test_project_guard_uses_launch_root_and_never_runs_worker_payloads`. Exercise complete prefixed invocations, positive anchored fixture execution, worker/unrelated roots, mutable event cwd, symlink and case aliases, preserved arguments/stdin/status, and an inherited `BASH_ENV` marker that remains absent.
 
-   `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_every_tracked_project_hook_is_guarded_and_blocks_on_failure` traverses every event, matcher and command entry. It rejects unguarded commands, missing failure policy, missing `/usr/bin/env -i` prefixes with the specified HOME re-export, interpreter or anchor paths in the tracked file and worker-selected executable paths. Render fixtures use distinct homes and anchors and assert that the tracked commands stay identical while the guard and worker settings receive their own host bindings.
+   Formatter/map fixture cases keep the launch identity anchored while supplying outside-anchor and worker-repository inputs; payload and configuration markers remain absent. Anchored-file fixture inputs reach their selected fixture operations. This verifies guard routing, not actual Ruff, Prettier, Node or terminal-browser availability.
 
-10. `home/dot_local/bin/common/executable_herdr-agents` supplies the dedicated worker configuration at the actual worker launch boundary.
+10. `.claude/settings.json` keeps its tracked project events and routes every command through the installed guard.
 
-    Every Claude worker pane starts with `CLAUDE_CONFIG_DIR=<absolute-home>/.claude-worker`. This value reaches the actual worker process through the pane command and environment construction. Setting it only in the parent spawn process does not satisfy this requirement.
+    Keep this non-template file portable. Commands use the exact clean prefix from item 3, followed by `"$HOME/.claude/hooks/orchestrator-only.sh"` and a fixed operation identifier. Put no host-specific home, interpreter-installation, anchor or tool-directory path in the tracked file.
 
-    Managed-workspace and standalone-worker routes receive the same binding. Repeated starts do not inherit a conflicting caller Claude configuration directory. This task introduces no worker gh configuration directory, gh templates or credential-separation claim.
+    Every hook entry carries `onFailure: "block"`. Worker sessions execute no guarded project payload. Keep operation markers required by the existing validator, including `format-edited-files.py`.
 
-    Every worker launch exports `UV_CACHE_DIR=<absolute-worktree>/.uv-cache` and `UV_PYTHON_INSTALL_DIR=<absolute-worktree>/.uv-cache/python`. Both worker kinds receive values derived from the selected canonical worktree. Caller-provided values do not replace them.
+    Retain `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_every_tracked_project_hook_is_guarded_and_blocks_on_failure`. Traverse all events, matchers and command entries; reject unguarded commands, missing failure policy, missing HOME/launch-variable re-exports and worker-selected payload paths.
 
-    The launcher stops writing Claude worker delivery hooks and merge denials into worktree-local `.claude/settings.local.json`. It renders the worker delivery hooks and native merge denials into `~/.claude-worker/settings.json`, the user-level settings file selected for that directory.
+    Render distinct temporary homes and anchors while keeping tracked commands identical. No bound PermissionRequest appears in this tracked file.
 
-    Before every Claude worker start, the launcher also migrates the legacy worktree-local file. Claude Code loads the worktree's own `.claude/settings.local.json` alongside the main checkout's local settings, so a previously generated delivery entry there would stay effective with its unsanitized environment and PATH-resolved interpreter. The launcher removes every managed delivery hook entry it previously wrote from `<worktree>/.claude/settings.local.json`, keeps that file's unrelated entries, and refuses to start the worker while a command hook it did not write remains there, naming the entry. The effective hook set is asserted across the three files Claude Code loads for a linked worktree (worker user settings, the main checkout's local settings, the legacy worktree-local file) with a fixture holding a previously generated unsanitized entry: `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_add_worker_migrates_legacy_worktree_local_hooks` is red at the base and green on the final head.
+11. `home/dot_local/bin/common/executable_herdr-agents` prepares the actual worker launch boundary.
 
-    Before every Claude worker start, managed worker delivery entries are regenerated from trusted inputs. An existing delivery match does not skip preparation. Stale managed commands are replaced, unknown command hooks are not promoted into the trusted delivery set and the effective delivery set contains no duplicate managed invocation.
+    Every Claude worker process receives `CLAUDE_CONFIG_DIR=<absolute-home>/.claude-worker`, including managed-workspace and standalone routes and repeated starts. A variable present only in the parent spawn process is insufficient. Do not inherit a conflicting caller value.
 
-    The launcher also regenerates its managed hooks in the main checkout's `.claude/settings.local.json`. Every local agmsg delivery and orchestrator attachment command that it writes runs through the installed orchestrator-only guard. The existing permissions object and unrelated non-hook settings remain stored. Their effective sandbox interpretation follows the administrative managed policy.
+    Every worker kind receives `UV_CACHE_DIR=<canonical-worktree>/.uv-cache` and `UV_PYTHON_INSTALL_DIR=<canonical-worktree>/.uv-cache/python`. Caller cache variables cannot replace these values.
 
-    Every command hook in both `~/.claude-worker/settings.json` and the main checkout's `.claude/settings.local.json` starts with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"`. Worker user settings contain their per-host rendered absolute interpreter and script bindings. Main-local commands invoke `"$HOME/.claude/hooks/orchestrator-only.sh"` with fixed operation identifiers, leaving host-specific executable bindings inside the rendered guard. The prefix removes inherited `BASH_ENV` before Bash starts and explicitly re-exports the launch identity and documented hook variables. Agmsg delivery prefixes additionally re-export `AGMSG_RESOLVE_PROJECT=0` and `AGMSG_STORAGE_PATH` when the latter is set in the launcher environment, so the clean environment does not re-enable project resolution from the writable `run/proj.<pid>.project` marker. Every entry carries `onFailure: "block"`. Main-local hooks loaded by a worker session execute no guarded payload.
+    Stop creating worker-local `.claude/settings.local.json` for delivery hooks or merge denials. Put the managed worker delivery hooks and native merge denials in `~/.claude-worker/settings.json`.
 
-    Worker settings retain existing native merge denials. They add no user excluded commands, Herdr socket allowance, unsandboxed requests or orchestrator hooks. Shared managed exclusions and socket access remain effective.
+    Before every Claude start, migrate an existing legacy worktree-local file. Remove each recognized managed delivery hook previously written by the launcher, preserve unrelated settings, and refuse startup while an unknown command hook remains, naming that entry. Do not create a local file merely to perform migration.
 
-    Codex launches retain their existing `--sandbox workspace-write` and `--ask-for-approval never` arguments unchanged. This task changes no Codex worker profile or network-policy source and adds no network-policy test.
+    Before every start, regenerate trusted worker delivery entries rather than skipping preparation on an existing match. Replace stale managed commands and avoid duplicates.
 
-    The retained Codex Git grant permits shared `.git/objects`, `.git/refs`, `.git/logs` and the worker's administration directory. It does not authenticate local ledger content and is not represented as a host security boundary.
+    Regenerate launcher-managed main-checkout local agmsg and attachment hooks through the installed guard. Preserve the existing permissions object and unrelated non-hook settings.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_worker_launch_receives_dedicated_policy_and_private_caches` covers both worker kinds and all launch routes. `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_repeated_worker_start_replaces_stale_managed_hooks` covers repeated preparation.
+    Every launcher-rendered command hook uses the clean prefix from item 3 and carries `onFailure: "block"`. Delivery commands also preserve `AGMSG_RESOLVE_PROJECT=0` and launcher-supplied `AGMSG_STORAGE_PATH`. A writable `run/proj.<pid>.project` marker must not override the explicit worker project.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_launch_adds_no_unsandboxed_route` checks that worker launch construction adds no outside-sandbox command route, worker user exclusions or socket allowances and retains native merge denials. It separately records the shared managed exceptions and does not claim that empty user arrays remove them.
+    Retain the native merge denials `Bash(gh pr merge:*)`, `Bash(gh api -X PUT:*)`, `Bash(gh api --method PUT:*)` and `Bash(gh api graphql:*)`. These command denials do not prevent all API merge routes with shared credentials.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_linked_worktree_uses_worker_user_hooks_and_guarded_main_local_hooks` asserts that worker hooks are written to worker user settings, worker preparation writes no worktree-local settings file and main-local agmsg and attachment hooks execute no payload under a worker launch root. An anchored orchestrator invocation still reaches the expected fixture payloads.
+    Codex launches retain `--sandbox workspace-write`, `--ask-for-approval never` and existing shared Git grants. Add no Codex network-policy change or test.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_settings_hook_has_system_path_prefix` exhaustively traverses both settings files after initial preparation and repeated starts. It asserts the literal `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"` prefix on every command hook, checks the split between absolute bindings in rendered worker settings and HOME-relative main-local guard calls, and asserts that a planted `BASH_ENV` in the hook's inherited environment does not run. The planted-`BASH_ENV` case is red against the current PATH-only form. The test also asserts `AGMSG_RESOLVE_PROJECT=0` in every agmsg delivery prefix and preservation of `AGMSG_STORAGE_PATH` when set in the launcher environment. It invokes the delivery resolver through the rendered prefix with an explicit worker path and a conflicting writable `run/proj.<pid>.project` marker and asserts that the resolver retains the explicit worker path.
+    Retain these selectors:
 
-11. `home/dot_local/bin/common/executable_herdr-agent-state.sh` provides the repository-owned Herdr state helper installed as `~/.local/bin/common/herdr-agent-state.sh`.
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_worker_launch_receives_dedicated_policy_and_private_caches`
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_repeated_worker_start_replaces_stale_managed_hooks`
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_add_worker_migrates_legacy_worktree_local_hooks`
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_launch_adds_no_unsandboxed_route`
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_linked_worktree_uses_worker_user_hooks_and_guarded_main_local_hooks`
+    - `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_every_settings_hook_has_system_path_prefix`
 
-    The currently installed `~/.claude/hooks/herdr-agent-state.sh` is generated by Herdr and is not a tracked source in this repository. Its bare `python3` descendant is not retained as a trusted worker hook. The repository-owned helper preserves the required state-reporting function and receives its absolute Python interpreter through the rendered invocation.
+    The legacy fixture checks the effective combination of worker user settings, main-local settings and the legacy worktree-local file. Main-local guard markers remain absent under worker launch roots. Repeated preparation retains native denials.
 
-    Every hook command reaches a selected absolute interpreter and absolute script path through trusted installed bindings. The tracked settings name only the HOME-relative guard and fixed operation identifiers. Host-specific interpreter and anchor bindings reside inside the per-host rendered guard or rendered user settings. Repository-owned shell descendants use absolute shebangs or explicit absolute shell invocations. Direct Python descendants use the selected absolute interpreter with `-I`; PermissionRequest uses the bound uv/Python invocation in item 3.
+    The prefix test traverses both launcher-written files after initial and repeated preparation, verifies the explicit HOME and launch-variable re-exports, suppresses inherited `BASH_ENV`, and invokes delivery resolution with a conflicting writable project marker.
 
-    Upstream agmsg scripts retain their `/usr/bin/env bash` shebangs and direct calls to other installed agmsg scripts. The `PATH=/usr/bin:/bin` supplied by the delivery hook's `/usr/bin/env -i` prefix propagates to those descendants, so their Bash resolution uses the system directories without reaching host shims. The installed upstream files are neither edited nor vendored.
+12. Retain the delivery-environment portion of `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_hook_descendants_do_not_execute_path_interpreters`.
 
-    The delivery inventory names `~/.agents/skills/agmsg/scripts/session-start.sh`, `~/.agents/skills/agmsg/scripts/session-end.sh`, `~/.agents/skills/agmsg/scripts/check-inbox.sh`, `~/.agents/skills/agmsg/scripts/identities.sh` and every additional delivery descendant actually reached.
+    Exercise installed-style agmsg delivery fixtures with directly executed `/usr/bin/env bash` descendants. Plant a leading Bash shim in the outer environment and verify that the rendered clean prefix gives descendants `/usr/bin:/bin`, leaving the shim marker absent.
 
-    The inventory records source ownership, installed path, caller, entrypoint interpreter and inherited PATH for each reached script. Binding only the first command does not establish descendant coverage.
+    Remove the replacement Herdr state-helper implementation and its socket-reporting/interpreter-binding fixture from this PR. Keep the existing installed state hook behind the orchestrator guard; report its unresolved execution requirements with the binding task.
 
-    The inventory separately records the current `storage.sh` route from writable team configuration to driver sourcing. A `drivers.partition` value such as `../../../db/payload` can select a planted driver file during unsandboxed delivery. Fixed PATH does not mitigate that selection. The upstream fix belongs to `dotfiles-T133-agmsg-hardening-a01` as recorded in the acceptance record's ownership section.
+    Inventory reached delivery scripts, including `session-start.sh`, `session-end.sh`, `check-inbox.sh`, `identities.sh` and additional reached descendants. Distinguish clean environment and fixed delivery PATH evidence from complete executable binding.
 
-    No worker hook added by this task introduces store-derived driver sourcing beyond the behavior of the currently installed agmsg scripts. This task neither implements nor claims the upstream validation.
+    Fixed PATH does not mitigate `storage.sh` sourcing a driver selected by writable team configuration. Record the traversal and plugin-authorization routes as the `dotfiles-T133-agmsg-hardening-a01` residual.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_hook_descendants_do_not_execute_path_interpreters` executes the fixture hook routes with planted Python and Bash shims. It includes a directly executed descendant with an `/usr/bin/env bash` shebang, checks descendant markers and records actual interpreter identities and inherited PATH. Capturing launcher command strings alone does not satisfy this test. Its result does not close the store-driver residual.
+13. `home/dot_agents/skills/agmsg-orchestration/SKILL.md` changes only the Worker Playbook step 4 sentence listing outside-sandbox worker commands.
 
-12. `home/dot_agents/skills/agmsg-orchestration/SKILL.md` changes only the Worker Playbook step 4 sentence that lists outside-sandbox worker commands.
+    Its replacement is:
 
-    The replacement sentence is: “Every worker command, including gh, git push and authenticated git fetch, runs inside the worker's sandbox; no worker command runs outside it.”
+    > Every worker command, including gh, git push and authenticated git fetch, runs inside the worker's sandbox; no worker command runs outside it.
 
-    This sentence governs worker execution. Historical TLS, keyring, artifact-writing and delivery exceptions elsewhere in the playbook provide no authorization to leave the sandbox. Shared managed control-plane exceptions provide no worker authorization either. An unavailable operation produces a blocked PONG with its exact command and boundary.
+    Historical TLS, keyring, artifact-writing and delivery exceptions provide no authorization to leave the sandbox. Shared managed exceptions provide no worker authorization either. An unavailable operation produces a blocked PONG naming the exact command and boundary.
 
-    `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_playbook_requires_every_command_inside_sandbox` checks the replacement and removal of the former three-command exception sentence.
+    Retain `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_playbook_requires_every_command_inside_sandbox`.
 
-13. `.gitignore` adds only `.uv-cache/`.
+    In `tests/unit/test_agmsg_orchestration_docs.py`, change only the assertion of that sentence. PR #427 has merged into the recorded main base; retain its changes and run the complete module.
 
-    Section 5.14 item 9 fixes trusted orchestrator consumers to `UV_CACHE_DIR=<anchored-checkout>/.agents/worklog/uv-cache`, places managed Python installations beneath that cache and uses `--offline`. Those consumers execute no dependency content from worker caches, shared uv caches or mise caches. Their owning hardening tasks implement the consumer changes.
+14. `.gitignore` adds only `.uv-cache/`.
 
-    This task's static deny inventory explicitly protects both `.agents/worklog/**` and `.agents/worklog/uv-cache/**` beneath the anchored checkout. Their gitignored status does not remove them from the inventory.
+    Retain `tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_worker_uv_cache_directory_is_gitignored`.
 
-    This task's hooks use standard-library Python and absolute shell interpreters; PermissionRequest alone invokes the existing dependency-free permgate through the absolute uv/Python binding with `--offline` and `python -I` specified in item 3. The existing `.agents/worklog/` ignore covers the orchestrator cache.
+    The existing `.agents/worklog/` ignore covers the orchestrator cache. Its ignored status does not remove either worklog/cache pattern from the static deny inventory. Consuming hardening tasks own their use of the protected orchestrator cache.
 
-14. The five allowed test modules reuse existing render, merge, fake-launcher and temporary-HOME fixtures.
+15. `scripts/validate-agent-assets.py` changes the policy checks affected by the retained exclusion change.
 
-    Tests are written before implementation and retain identified base-failure and implementation-success evidence. A missing new entrypoint supplies its baseline failure.
+    Replace the platform-specific exclusion branches with one exact ordered-list check for both Darwin and Linux:
 
-    Worker settings tests cover both platforms, exact static manifest correspondence, current-checkout filesystem coverage, every protected path category, directory targets, descendants, both worklog patterns, ordinary worktree writes, the worktree `.claude` and `.mcp.json` denies, writable agmsg stores, stale settings and the absence of the removed boundary hook.
+    ```text
+    agmsg-dispatch *
+    herdr-agents *
+    {{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *
+    ```
 
-    Managed settings tests cover the exact rendered policy, conflicting project and local sandbox relaxations, shared control-plane exclusions, shared Herdr socket access and staging without privileged execution. They distinguish worker user settings from the effective shared policy.
+    Compare the home-expanded equivalent when validating rendered settings. Keep non-empty-string list validation. Reject `gh *`, additional, missing, reordered or substituted entries on either platform.
 
-    Path fixtures cover symlink components and filesystem case aliases. They verify inventory and configuration identities without presenting a simulated permission matcher as proof of Claude runtime enforcement.
+    Keep the existing managed Claude PermissionRequest wiring check and ccgate refusal unchanged. The literal `permgate claude` form remains valid because this task preserves the command. Do not introduce the structural bound-hook parser, native-binding expansion or `--check-effective-settings` mode. Codex wiring checks remain unchanged.
 
-    Hook tests cover every generated and tracked entry's failure policy, worker user settings, guarded main-local settings, the `/usr/bin/env -i` prefix with explicit hook-variable re-exports, complete rendered-command positive and worktree-negative cases, role-specific pinned PATH bindings, suppression of a planted inherited `BASH_ENV` and actual descendant execution. They distinguish synchronous policy hooks from background delivery and post-action events.
+    Keep surrounding schema, model/effort, formatter operation marker, permission-list, sandbox, plugin and Crit checks. Preserve duplicate-hook rejection, permgate-first ordering, synchronous timeout budgets and SessionStart state-hook marker/order checks. Do not weaken those checks to accommodate prefixes.
 
-    `tests/unit/test_claude_managed_settings.py::ClaudeManagedSettingsTest::test_rendered_hooks_bind_executables_and_permgate_returns_decision` renders the complete orchestrator and worker user hook sets and the guard in a temporary HOME, reusing the tracked and launcher-generated hook fixtures for SessionStart, Stop and delivery. For every command hook, expand only the fixture's known HOME and hook-variable bindings, parse with `shlex`, and assert that the first word is an absolute path to an existing executable file; for `/usr/bin/env -i`, also assert the first word after all environment assignments is such a file. Check the guard's rendered shebang, interpreter and fixed-operation executable bindings too, so no bare uv, python3, bash or tool survives. In the same test, install the unchanged real permgate source and a minimal deterministic fixture policy beneath that temporary HOME, then execute the rendered PermissionRequest command with the actual bound uv and Python binaries, outer `PATH=/usr/bin:/bin` and a fake PermissionRequest payload matching the fixture policy. Assert exit 0, parse stdout and assert `hookSpecificOutput.hookEventName == "PermissionRequest"` and the expected `hookSpecificOutput.decision.behavior`; empty stdout, exit 127 or `env: uv: No such file or directory` fails. A fake uv or permgate that merely prints a decision does not satisfy this test. Before executing the hook, use the selected absolute Python interpreter with `-I` and the fixture HOME to identify its user-site location through the standard library; require that the location is beneath the temporary HOME before writing fixtures. Plant an executable `.pth` and a `usercustomize.py` there, each writing a distinct marker. A fixture-only control invocation without `-I` confirms that both payloads are reachable; remove its markers before the hook invocation. Execute the complete rendered PermissionRequest command with those files still present and assert that neither marker is created while the expected real permgate decision is returned. No real user-site directory is modified. Missing `-I`, an unprocessed fake user site or markers created before permgate runs fails this case. Record red-then-green evidence for this selector.
+    Retain generated-output freshness, home-path/secret scanning, tracked project-settings portability and deterministic permgate-policy validation.
 
-    `onFailure: "block"` requires Claude Code v2.1.295 or later and has no enforcement effect on background hooks or the documented excluded events. [Claude hook failure reference](https://code.claude.com/docs/en/hooks#block-the-action-when-a-hook-fails)
+    In `tests/unit/test_validate_agent_assets.py`, keep the macOS gh-exclusion and Linux extra-exclusion cases in `ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form`.
 
-    Tests create no identities, initiate no login and access no real credential store. No fixture result is represented as proof of credential isolation, live managed enforcement or upstream agmsg hardening.
+    Update `ValidateAgentAssetsTest::valid_claude_sandbox` to contain the exact three-entry list. Preserve its callers and their intended checks:
 
-15. `.orchestration/dotfiles-T133-worker-write-boundary-a01/` contains the byte-identical dispatched `task.md`, `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `autoskill.md` and worker review evidence.
+    - `test_claude_sandbox_accepts_manifest_symmetric_settings`
+    - `test_claude_sandbox_rejects_each_broken_rule`
+    - `test_claude_sandbox_requires_extra_codex_writable_roots`
+    - `test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs`
+    - `test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs`
 
-    The report maps each of the third C-80 review's five findings, fourth C-80 review's six findings and fifth C-80 review's three findings to the revised mechanism, its tests and its remaining residual or owning task. It distinguishes policy configuration from live enforcement and deployment.
+    PermissionRequest fixtures in `test_hook_composition_requires_permgate_first`, generator tests and merge tests retain the legacy command. Adjust only surrounding non-PermissionRequest forms where the retained prefix/guard change requires it.
 
-16. `scripts/validate-agent-assets.py` is the consolidated validator scope for every existing check affected by this task's rendered Claude settings, hooks, sandbox and exclusions, with their corresponding fixtures and assertions.
+16. The seven allowed test modules reuse existing render, merge, fake-launcher and temporary-HOME fixtures.
 
-    `render_template_text` expands the native per-host bindings rendered by the managed template before JSON parsing, the structural PermissionRequest check and the render/runtime test in item 14. It uses the identical `render_native_bindings(text, source, home, os_name)` function specified in item 3 and the same generated native `{{ output ... }}` expressions and trusted `claude.execution` binding source as both modify scripts. Preserve its existing source, OS and comment handling and the unchanged Codex rendering behavior. `tests/unit/test_validate_agent_assets.py::ValidateAgentAssetsTest::test_render_template_text_expands_native_bindings` uses the actual generated binding expressions with temporary HOME/source and quoted executable paths containing spaces, asserts complete expansion before JSON parsing and the structural check, and checks correspondence with both modify-script renders. Its red-then-green evidence and item 14's real hook-execution render test cover the same resolved bindings.
+    Write retained behavior tests before changing implementation and preserve base-failure/final-head-success evidence. New guard/worker-renderer entrypoints may supply the baseline missing-entrypoint failure.
 
-    The Linux and macOS `excludedCommands` checks at base lines 349-355 become one exact ordered-list check on both platforms: `agmsg-dispatch *`, `herdr-agents *`, `{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *`. The last entry becomes `<absolute-home>/.agents/skills/agmsg/scripts/actas-claim.sh *` after chezmoi expansion. Neither platform permits `gh *` or an additional, missing, reordered or substituted exclusion. The existing non-empty-string list validation remains. This follows the normative design sentences quoted above from `$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md` section 5.14 (C-86, C-88); the path is context only.
+    Do not retain the real-uv PermissionRequest execution test, fixture interpreter discovery, planted-user-site execution control, exact-version equality test, installation-existence render tests or binary-identity deployment-check fixtures. Static user-site inventory assertions remain.
 
-    The Claude managed-user-settings hook-wiring check in `validate_model_profile_assets` at base lines 1193-1200 becomes structural. Inspect command hooks under `hooks.PermissionRequest`, not serialized text from other events, and parse the command with `shlex` without executing it. Require exactly the sanitized prefix from item 3 with HOME equal to the absolute home rendered from `{{ .chezmoi.homeDir }}`, followed in order by an absolute uv path whose basename is `uv`, `run`, `--no-config`, `--no-project`, `--offline`, `--python`, an absolute Python path matching the trusted rendered interpreter binding, `python`, `-I`, the absolute installed permgate path whose basename is `permgate`, and `claude`, with no further words. The uv and permgate paths also match their trusted rendered bindings. Compare parsed words so quoting of a bound path containing spaces is preserved; do not require a literal `permgate claude` substring. Missing or malformed commands, an incomplete or altered prefix, an extra environment assignment, relative or substituted executable paths, missing, reordered or additional uv flags, a different script or argument, `--script`, omitted or substituted `python -I`, a direct shebang-based permgate call, a guard selector, and trailing words or shell operations fail. The generated PermissionRequest command and its assertions conform to this bound-interpreter contract; the worker's current `orchestrator-only.sh permgate` selector does not satisfy it. Parsed tokens establish command structure; the render/runtime test in item 14 establishes that the executable binding actually runs under the sanitized PATH. The existing refusal of `ccgate` anywhere in the Claude hooks remains. The Codex PermissionRequest and `permgate codex` check at base lines 1189-1190, and its ccgate refusal, are unchanged because this task changes no Codex hook design.
+    `onFailure: "block"` requires the recorded supported Claude version and has no enforcement effect on background hooks or excluded events. Configuration inspection does not establish runtime timeout or crash handling.
 
-    The complete inventory of the surrounding checks is retained: `validate_claude_settings` still checks the schema, interactive model and effort, absence of the redundant model suffix and legacy type checker, the `format-edited-files.py` operation marker (still present in the guarded command), permission-allow list shape, sandbox policy, disabled unmanaged plugins and the Crit rule. `validate_claude_sandbox` still requires enabled and auto-allow booleans, a Boolean `failIfUnavailable` (the render tests separately require true), all agmsg and Codex writable roots, valid extra write paths, allowed hostname and telemetry restrictions, the platform Mach-service allowlist, no allow-all Unix sockets and valid socket paths; only its exclusion policy changes. `validate_hook_composition` retains duplicate-command rejection, permgate-first ordering, synchronous timeout budgets and the SessionStart `herdr-agent-state.sh` marker and order. These markers remain in the rendered commands, so none is deleted or weakened to accommodate the prefix. Generated-output freshness, manifest home-path checks, tracked project-settings portability, permgate policy and profile-asset checks and the orchestration home-path/secret scan remain unchanged. New worker-user and administrative-managed-policy outputs retain their exact content checks in the already named render tests; the orchestrator user sandbox validator is not applied to worker empty exclusions.
+    Tests create no identities, initiate no login and access no real credential store. They do not establish credential separation, live administrative enforcement or upstream agmsg hardening.
 
-    In `tests/unit/test_validate_agent_assets.py`, the two already authorized cases in `ValidateAgentAssetsTest::test_claude_sandbox_validator_refuses_each_forbidden_form` remain in scope: macOS gh exclusion and Linux extra exclusion. The shared `ValidateAgentAssetsTest::valid_claude_sandbox` fixture gains the exact three-entry exclusions above. Its callers `test_claude_sandbox_accepts_manifest_symmetric_settings`, `test_claude_sandbox_rejects_each_broken_rule`, `test_claude_sandbox_requires_extra_codex_writable_roots`, `test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs` and `test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs` retain their checks and reach the rule each intends to test. The literal-form fixture in `test_hook_composition_requires_permgate_first` follows the sanitized hook while retaining its ordering failure. Add `ValidateAgentAssetsTest::test_claude_permission_request_requires_sanitized_permgate` with valid quoted-path cases and negative cases for the structural contract and retained ccgate refusal. Keep red-then-green evidence and run `uv run python -m unittest tests.unit.test_validate_agent_assets -v` to green on the final head.
+17. `.orchestration/dotfiles-T133-worker-write-boundary-a01/` contains the byte-identical dispatched `task.md`, `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `autoskill.md`, operator instructions and worker review evidence.
 
-    The other tests carrying the literal hook form are `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_managed_hooks_use_installed_permgate_paths`, `tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_claude_settings_use_interactive_profile_with_permgate`, `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_managed_permgate_replaces_stale_current_ccgate_hook`, `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_unrelated_current_hooks` and `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_permission_merge_preserves_custom_hook_in_mixed_entry`. Their hook fixtures and assertions are in scope together: production-hook expectations use the parsed prefix, bound absolute uv/Python invocation with the fixed flags, installed permgate script and sole `claude` argument; synthetic renderer and merge-only inputs may remain synthetic where they assert no production command form. Preserve their model, stale-ccgate-removal and custom-hook-preservation assertions and the unchanged Codex assertion. No validator pin or literal-form fixture named here is left outside scope.
+    Map the findings history to retained controls, remaining residuals or their owning tasks. In particular, report executable-binding findings as transferred under D-024-26, not fixed by this PR.
 
-The worker's before-amendment-4 measurements are 674 changed source lines, guard included, and 905 changed test lines (2026-10-19T08:21:22Z evidence at local head 55c125a1 on main 69dccca9); re-measuring that worker diff, including its pending validator/exclusion edits, gives the same totals. For amendments 4 and 5, estimate additional changed source lines as 45 for the generator/manifest uv/Python binding and native hook render, 45 for the structural PermissionRequest validator, 60 for the orchestrator modify script's native-binding renderer and managed-hook classifier, 25 for the identical renderer in the worker modify script and 25 for native expansion in the validator: `674 + 45 + 45 + 60 + 25 + 25 = 874`. Estimate additional changed test lines as 10 for `valid_claude_sandbox`, 90 for the hook-execution render test in item 14, 50 for the structural validator cases, 25 for the native-binding validator render fixture, 20 for the existing literal-form fixture/assertion adjustments and 90 for the native-binding merge fixture, legacy-to-bound upgrade, binding-upgrade/idempotence, custom-hook and foreign-hook merge fixtures in item 3: `905 + 10 + 90 + 50 + 25 + 20 + 90 = 1190`. For amendment 6, estimate six additional source lines for the explicit policy, rendered-guard and user-site directory/descendant inventory entries, and eight changed source lines for the isolated command and matching validator/classifier token sequence: `874 + 6 + 8 = 888`. Estimate 20 additional changed test lines for the new inventory assertions, 45 for the replacement-policy test, 35 for the planted-user-site extension of the hook-execution test and 12 for the isolated-token fixture/assertion adjustments: `1190 + 20 + 45 + 35 + 12 = 1302`. The source cap therefore rises from 874 to 888 and the test cap from 1190 to 1302, only to these estimated sums. All increments and totals count additions plus deletions, with the same generated-template exclusions as below. These are allocation estimates, not final-head measurements; the worker records final per-file numstat and both measured totals and does not raise either cap further without a measured sum requiring it.
+    RESULT and the report list each file or portion of amendment-6/amendment-7 binding work reverted or left unmerged. Files removed from `allowed_files` must have no final PR diff. Shared files may retain only this text's authorized changes.
 
-The guard source is `home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl`: chezmoi renders the guard from its .tmpl source with the per-host absolute interpreter, anchored-checkout and tool-directory paths at apply time (a plain `executable_` source would be copied without expansion), and the render test renders the template with the test host values and asserts the paths it contains.
+## Change budget
 
-The doc test `tests/unit/test_agmsg_orchestration_docs.py` asserts the exact step 4 sentence this task rewrites (lines 200-201 at the base); the assertion follows the new sentence, nothing else in that module changes; PR #427 (P1-8) edits the same module and merges before this pull request, which rebases onto it before its first push.
+The starting measurement is the worker's snapshot `7c3a6394` on main `69dccca9`: 876 source and 1299 test changed lines under the former 888/1335 caps, using additions plus deletions and the generated-template exclusions stated in Check.
+
+Subtract these binding-only source estimates: 45 generator/manifest binding lines, 45 structural PermissionRequest validator lines, 40 of the former 60 orchestrator modify-script lines, 25 worker native-renderer lines, 25 validator native-renderer lines and 8 isolated-token lines. Retain 20 of the former orchestrator modify-script allocation for classification of the hooks still managed here. Also remove the 29-line replacement Herdr state helper, which is present in the measured snapshot only for execution binding. The removed source allocation is `45 + 45 + 40 + 25 + 25 + 8 + 29 = 217`; the projected source total is `876 - 217 = 659`, and the narrowed source cap is `888 - 217 = 671`, retaining the former 12-line source margin.
+
+Subtract these binding-only test estimates: 90 real-hook execution lines, 50 structural-validator lines, 25 native-render fixture lines, 60 of the former 90 binding-merge fixture lines, 35 planted-user-site execution lines, 12 isolated-token assertion lines and 24 state-helper-only descendant fixture lines. Retain 30 merge-fixture lines for the retained managed-hook classification and the remaining delivery-environment fixture coverage. The removed measured-snapshot allocation is `90 + 50 + 25 + 60 + 35 + 12 + 24 = 296`; the projected test total is `1299 - 296 = 1003`. Remove the additional unimplemented amendment-7 allocations of 12 discovery/skip lines and 24 declaration/render/deployment-check lines as well, making the narrowed test cap `1335 - 296 - 12 - 24 = 1003`.
+
+These subtraction-based projections are planning estimates, not a measurement of a narrowed final head. The worker records actual per-file numstat and both totals after removing the binding family. No further increase is authorized by this text.
 
 ## Out of scope
 
-The enumerated Codex consumers `home/.chezmoitemplates/codex-config-managed.toml`, `home/dot_codex/modify_private_config.toml` and `tests/unit/test_codex_config_merge.py` are unchanged: their PermissionRequest wiring, rendering and stale-ccgate migration use the separate `permgate codex` contract. `tests/unit/test_permgate.py` invokes the unchanged permgate source directly through Python and tests its payload, decision and policy contracts; it has no literal Claude managed-hook command-form assertion and is unaffected. `tests/unit/test_statusline_tools.py` calls the orchestrator's `render_managed_template` to read `statusLine.command`; its assertions concern the unchanged `ccusage statusline` and `ccstatusline` commands, not the PermissionRequest form, so it is unaffected and remains unchanged. `tests/fixtures/gate-evidence/pr-feedback-right.json` is historical PR-feedback disposition data mentioning the managed template; it asserts no managed-hook command form and is unaffected and unchanged. The enumerated `tests/unit/test_herdr_agents.py` and `tests/unit/test_agmsg_orchestration_docs.py` remain limited to their already authorized launcher and Worker Playbook changes: their template/PermissionRequest mentions add no literal-form assertion to this amendment. All consumers of the changed managed Claude hook form are consolidated in items 3 and 16; the existing in-scope manifest, generator, worker modify script and named generator, validator and merge tests follow that contract.
+`dotfiles-T133-trusted-entrypoint-binding-a01` is the owner of the executable-binding family and is a task to be written, with:
 
-The Codex worker profile change `sandbox_workspace_write.network_access=true` belongs to the separate task `dotfiles-T133-codex-worker-network-a01` for a Claude seat. This task contains no implementation, threat row or test for that change. This Codex seat edits no Codex-boundary source. The operator step for the deterministic Codex permgate policy remains named below.
+```yaml
+after:
+  - dotfiles-T133-worker-write-boundary-a01
+  - dotfiles-T133-ci-efficiency-followup-a04
+```
 
-The worker-write-boundary Python hook, its hook entries and `tests/unit/test_worker_write_boundary.py` are dropped. The gh-trusted wrapper remains dropped. The worker gh configuration directory, its templates and the dedicated-identity implementation are removed from this task.
+It consumes the trusted interpreter resolver from `dotfiles-T133-ci-efficiency-followup-a04`. Its scope includes exact host-probed installation layouts and declarations for uv, Python and Node; corresponding mise pins; the bound and isolated PermissionRequest invocation; structural validation and binding-form migrations; bound binary-identity deployment checks whose own execution is trusted; real-uv hook execution and planted-startup tests; complete descendant binding; formatter PATH changes; and any replacement state helper needed by that binding design.
 
-D-024-23 establishes that `GH_CONFIG_DIR` does not separate same-macOS-user Keychain access. A separate OS user or host is required for prevention of worker-initiated merges. Future P1-16 remains the operator's decision. This task implements no credential-separation substitute.
+This task does not write that task file. It names the owner and prerequisites without claiming the resolver, binding implementation or its tests have landed.
 
-The permission guard and merge gate remain P1-14 a05's work. P1-14 a05 and P1-6 implement the regime rule that approvals and gate evidence of record come from GitHub at a SHA through its API inside the sandbox. The GitHub boundary is detection, not prevention.
+`home/dot_mise/config.toml` and `home/dot_local/bin/common/executable_herdr-agent-state.sh` are removed from `allowed_files`. Revert or leave their binding-family work unmerged. Remove binding-only portions of the manifest, generator, modify scripts, validator, guard and tests while retaining their authorized write-boundary changes. Do not leave dormant binding machinery in this PR.
 
-For the committed approval ledger, the regime obtains the commit SHA returned by `git ls-remote origin refs/heads/main` and reads `gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>` inside the sandbox. The consuming implementation reads the API response's file content at that exact SHA. It does not fall back to local files, local refs or local object traversal.
+The managed PermissionRequest keeps its current direct command behind the managed deny rules. Its interpreter discovery, startup environment and execution remain unverified here. No sanitized-prefix claim includes that exception.
 
-A working-copy decision remains a proposal until its record PR reaches main. This task writes no approval row and implements no local-object substitute for GitHub authority. Shared credentials can still authorize a worker-initiated merge. P1-11 owns the next-records-PR regime check for missing acceptance or gate evidence under section 5.14 item 0's detection rule.
+Formatter and project-map PATH repair is deferred. The clean system PATH can leave current formatter or reload dependencies unavailable; report that interim limitation explicitly. Guard fixture success does not establish Ruff, Prettier, Node or terminal-browser execution. Do not repair their scripts, add tool directories or claim preservation of their complete runtime behavior in this task.
 
-The upstream agmsg driver-selection fix belongs to `dotfiles-T133-agmsg-hardening-a01`. Its recorded scope validates the `drivers.partition` driver name as an allowlisted basename without path separators before sourcing and supplies an adversarial red-then-green test. This task leaves the shared stores writable and records the current sourcing route as a residual. The ownership section identifies that upstream task as a task to be written; this text does not claim that its fix or test exists.
+The Codex worker network change belongs to `dotfiles-T133-codex-worker-network-a01` on a Claude seat. This Codex seat edits no Codex-boundary source. Codex shared Git grants remain unchanged.
 
-Permgate code and deterministic policy remain the operator's responsibility. The worker prepares the operator step that stops the Codex permgate policy from approving sandbox escapes. The worker performs no live policy edit or escape probe.
+The worker-write-boundary Python hook and gh-trusted wrapper remain dropped. No worker gh configuration directory or credential-separation substitute is added.
 
-The operator logs into Claude once with `CLAUDE_CONFIG_DIR=<absolute-home>/.claude-worker` selected. The Claude Keychain entry is keyed to that directory. This Claude login does not authenticate or isolate gh.
+D-024-23 establishes that `GH_CONFIG_DIR` does not separate same-macOS-user Keychain access. Shared credentials permit worker-initiated API merges despite native command denials. Separate-user or separate-host prevention remains the operator's P1-16 decision.
 
-Administrative installation of `/Library/Application Support/ClaudeCode/managed-settings.json` on macOS and `/etc/claude-code/managed-settings.json` on Linux is the operator's step. The worker implements rendering, staging and the printed installation command without running sudo or installing live managed settings.
+P1-14 a05 and P1-6 own approval and evidence-of-record consumption. The regime obtains the SHA returned by `git ls-remote origin refs/heads/main` and reads the committed ledger through `gh api repos/mryfmo/dotfiles/contents/.orchestration/decisions.tsv?ref=<sha>` inside the sandbox. Local files, refs, replacement refs and object traversal supply no approval authority. This task implements none of those consuming mechanisms and writes no approval row.
 
-The documented file-tool checks reduce symlink redirection risk. A same-UID process can race filesystem changes, alter host-local state or execute outside a seat sandbox. The remaining interval between permission checks and path consumption is a residual under section 5.14 item 0. This text makes no claim that the worker could already write every redirected target directly.
+P1-11 owns next-records-PR detection of missing acceptance or gate evidence. This task states that rule without claiming it implements detection or prevention.
 
-The managed Herdr socket allowance stays available to every seat. Per-seat socket removal is unavailable in that shared scope. Shared control-plane exclusions, socket RPC, hooks, approved MCP processes and other processes outside every seat sandbox retain their stated host trust. The configuration is not represented as same-UID adversarial isolation.
+`dotfiles-T133-agmsg-hardening-a01` owns upstream driver-name validation and plugin authorization outside the writable stores. The recorded `drivers.partition` traversal and `db/trusted-plugins`/plugin sourcing routes remain residuals. This task adds no new store-derived sourcing beyond installed delivery behavior.
 
-`onFailure: "block"` supplies runtime failure behavior where Claude supports it. Python exit-status tests do not establish timeout handling by the runtime. Background hooks and events on which the field has no effect perform no security enforcement in this design.
+Consuming-helper snapshots, reservation locks, full-head output identities, the common trusted-execution test helper and review-worktree relocation remain with their owning hardening tasks.
 
-Consuming-helper snapshots, reservation locks, the common trusted-execution test helper and orchestrator review-worktree relocation remain with their owning hardening tasks. Codex writable-root grants remain unchanged.
+The Codex templates, Codex modify script and Codex merge tests retain the separate `permgate codex` contract. `tests/unit/test_permgate.py` retains direct testing of the unchanged permgate source. `tests/unit/test_statusline_tools.py` retains its existing statusline-render assertions. No binding-only render expression is left to make those consumers depend on deployment installations.
 
-In `scripts/validate-agent-assets.py`, the consolidated policy-check changes enumerated in item 16 are in scope; unrelated validator behavior remains out of scope. In `tests/unit/test_validate_agent_assets.py`, the two exclusion cases, `valid_claude_sandbox`, the native-binding render fixture, the named hook fixture and structural-hook cases in item 16 are in scope; unrelated tests remain out of scope. The named literal-form assertions and fixtures in the already allowed generator and merge test modules are included as item 16 specifies.
-
-The worker edits neither `.orchestration/decisions.tsv` nor other tasks' canonical texts, evidence or acceptance records, apart from the explicitly named deletion of the predecessor's task-file copy. It performs no authentication change, keyring mutation, ruleset mutation, administrative installation, live settings application, global installation, operator restart or merge.
+The worker performs no authentication change, keyring mutation, ruleset mutation, administrative installation, live settings application, global installation, session restart or merge. It edits no canonical acceptance record, decision ledger or another task's text.
 
 ## Check
 
 `make render-check` and `make validate-agent-assets` pass. The task's own files pass the `make format` flags: `shfmt -i 4 -sr --diff`, `ruff format --config ruff.toml --check` and `prettier --check`.
 
-The clean base `205fe85c` has an inherited formatting failure on 12 out-of-scope files: ten archived task shell sources, `project-map-reload.sh` and `brew.bats`. The inherited failure is reproduced against that unchanged base and disclosed in `validation.md` with its exact output and per-file exit statuses. This clause authorizes no out-of-scope repair.
+The clean historical base `205fe85c` has an inherited formatting failure on 12 out-of-scope files: ten archived task shell sources, `project-map-reload.sh` and `brew.bats`. Reproduce that failure against the unchanged base and disclose exact output and per-file exit statuses in `validation.md`. This authorizes no out-of-scope repair.
 
-Shellcheck and shfmt cover the changed shell sources, including the launcher, orchestrator-only guard and repository-owned Herdr state helper. Added or changed shell comments use English shdoc-compatible annotations. Changed Python receives the repository's Python formatting and lint checks.
+Shellcheck and shfmt cover changed shell sources, including the launcher and rendered guard. Added or changed shell comments use English shdoc-compatible annotations. Changed Python receives the repository's formatting and lint checks.
 
-`uv run python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_claude_settings_merge tests.unit.test_herdr_agents tests.unit.test_claude_worker_settings tests.unit.test_claude_managed_settings -v` is green. The validation record contains every named red-then-green selector and the complete final module run.
+`uv run python -m unittest tests.unit.test_generate_agent_configs tests.unit.test_claude_settings_merge tests.unit.test_herdr_agents tests.unit.test_claude_worker_settings tests.unit.test_claude_managed_settings -v` is green.
 
-The final diff has at most 888 changed lines outside `tests/` and `.orchestration/`, excluding the regenerated `home/.chezmoitemplates/claude-settings-managed.json`, `home/.chezmoitemplates/claude-worker-settings.json` and `home/.chezmoitemplates/claude-managed-settings.json`. It has at most 1302 changed lines under `tests/`. Changed lines are additions plus deletions. The validation record includes per-file numstat, base and head identities and both totals.
+`uv run python -m unittest tests.unit.test_validate_agent_assets tests.unit.test_agmsg_orchestration_docs -v` is green.
 
-The validation record contains exact commands, verbatim outputs, exit statuses and tested identities. Git commands producing that evidence follow section 5.14 item 2.
+The validation record contains every named retained red-then-green selector and complete final module outputs.
 
-Both platform renders show separate worker and orchestrator user settings, exact manifest deny-inventory correspondence, filesystem coverage of current tracked top-level source paths, both worklog denies, explicit protected policy and rendered-guard denies, user-site directory and startup-file coverage, the replacement-policy test's denied write and unchanged real permgate decision, ordinary worktree writes, the worktree `.claude` and `.mcp.json` denies, narrow home denies, writable agmsg stores, empty worker user exclusions, restricted worker writes and `failIfUnavailable: true` for every Claude seat.
+The final diff has at most 671 changed lines outside `tests/` and `.orchestration/`, excluding the regenerated `home/.chezmoitemplates/claude-settings-managed.json`, `home/.chezmoitemplates/claude-worker-settings.json` and `home/.chezmoitemplates/claude-managed-settings.json`.
 
-Managed render evidence asserts sandbox enablement, startup failure, disabled unsandboxed retries, the required anti-weakening Boolean values, exactly the three rendered control-plane exclusions and exactly the Herdr socket allowance. Conflicting project and local fixtures leave that render unchanged. The evidence names the documented enforcement scope without claiming live runtime verification.
+The final diff has at most 1003 changed lines under `tests/`.
 
-Staging evidence shows the home-directory output and exact printed `sudo install -m 0644` command with the detected administrative destination on both macOS and Linux. The temporary-HOME test proves that the target executes no sudo command.
+Changed lines mean additions plus deletions. Record per-file numstat, base/head identities and both actual totals. Keep subtraction arithmetic in Change budget.
 
-Hook evidence inventories every generated and tracked entry, its `onFailure` value, `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}"` prefix (with template-rendered absolute HOME for PermissionRequest), installed script, absolute entrypoint interpreter and reached descendants. It includes the new render/runtime selector's actual exit status and parsed permgate decision under `PATH=/usr/bin:/bin`, plus first-word and post-env-assignment executable checks for every rendered hook command. It includes the exact `run --no-config --no-project --offline --python <abs python> python -I` sequence, the planted `.pth` and `usercustomize.py`, the fixture control's markers and their absence during the isolated real-hook invocation. It states the portable tracked-command and per-host-rendered-binding split, verifies HOME re-export before HOME-relative paths and shows that tracked commands name no interpreter or anchor path. It includes worker user settings and main-checkout local settings. Render evidence shows that `ruff`, `prettier` and `terminal-browser` resolve under the guard's rendered orchestrator tool PATH on the rendering host and that no PATH entry is a shims directory. Merged-settings evidence identifies runtime-added entries separately. No report claims complete effective failure-policy coverage from template inspection alone.
+The validation record contains exact commands, verbatim outputs, exit statuses and tested identities. Git verification introduced or changed by this task follows the design's sanitized Git requirements, including explicit checkout selection, disabled system/global configuration, hooks/fsmonitor restrictions and disabled external diff/textconv where applicable.
 
-Launch evidence shows both cache variables reaching the actual worker process on every route. Claude processes additionally receive the dedicated Claude configuration directory. Repeated-start evidence shows replacement of stale managed hooks, retained native merge denials and the unchanged Codex sandbox and approval arguments.
+Both platform renders show separate worker and orchestrator settings, exact static inventory correspondence, filesystem source-path coverage, both worklog/cache patterns, explicit policy and guard protection, user-site directory/startup-file coverage, ordinary worktree writes, worktree `.claude`/`.mcp.json` denies, narrow home denies, writable agmsg stores, empty worker user exclusions, restricted worker writes and `failIfUnavailable: true` for every Claude seat.
 
-Linked-worktree evidence shows worker hooks in the worker configuration directory's user settings and no new worker-local `.claude/settings.local.json`. Guard markers show that the main checkout's local agmsg and attachment hooks execute no payload under worker launch roots.
+Managed render evidence asserts sandbox enablement, startup failure, disabled unsandboxed retries, all required anti-weakening Booleans, exactly the three ordered exclusions and exactly the Herdr socket allowance. Conflicting project/local fixtures leave the trusted render unchanged. This is configuration evidence, not live runtime enforcement.
 
-Guard markers also show that worker project scripts, contextdb hooks, Stop gates and formatter payloads do not execute through tracked hooks. Descendant markers show that planted PATH interpreters do not execute on the tested hook routes, including an upstream-style `/usr/bin/env bash` descendant.
+Staging evidence shows the temporary-HOME output and exact printed `sudo install -m 0644` command for both platform destinations, including quoting, with no executed sudo marker.
 
-The report separately identifies the writable agmsg store's current driver-selection route and `dotfiles-T133-agmsg-hardening-a01` ownership. Hook interpreter tests do not claim to close that residual.
+Hook evidence inventories every generated, tracked, modify-script-appended and launcher-managed command. It identifies PermissionRequest separately and confirms its exact unchanged `~/.local/bin/common/permgate claude` command. Every other command rendered by this task has the clean prefix with explicit HOME and hook-variable re-exports.
 
-The report states the GitHub API ledger rule without claiming this task implements the permission guard or the P1-11 next-records-PR regime check. It states detection, not prevention, and records D-024-23's future P1-16 decision. It also records shared managed exclusions and Herdr socket access, same-UID credential access, path-consumption residuals, external-process trust, hook-event failure limitations and the retained Codex shared Git grant.
+Delivery evidence verifies `AGMSG_RESOLVE_PROJECT=0`, preservation of launcher-supplied `AGMSG_STORAGE_PATH`, rejection of conflicting writable project-marker selection, suppressed inherited `BASH_ENV`, and system-only PATH propagation to the tested env-bash descendant. It makes no complete executable-binding claim.
 
-No local Bats tests run. Required Bats results come from GitHub Actions. Failed required checks retain their actual output and receive an in-scope fix before RESULT.
+Merged-settings evidence shows legacy managed non-PermissionRequest forms replaced once, custom hooks preserved, attachment handling, repeated-merge idempotence and unchanged legacy PermissionRequest migration.
+
+Launch evidence shows both cache variables reaching the actual worker process on every route. Claude processes additionally receive the dedicated configuration directory. Repeated preparation replaces stale hooks and retains native merge denials and Codex sandbox/approval arguments.
+
+Linked-worktree evidence checks worker user settings, guarded main-local settings and legacy worktree-local settings together. Migration removes old managed delivery commands, preserves unrelated settings, refuses unknown command hooks and creates no new local file when absent.
+
+Guard evidence uses complete prefixed commands. Worker roots, unrelated roots, missing launch identity, worker-repository formatter inputs and outside-anchor inputs leave payload/configuration markers absent. Positive anchored fixture cases preserve arguments, stdin and status. Report actual formatter/tool availability as deferred.
+
+The report identifies each binding-only file or portion removed from the measured snapshot and confirms that files outside the narrowed allowlist have no final PR diff.
+
+The report retains the agmsg sourcing residual and owner, shared managed exclusions/socket access, same-UID credential access, path-consumption races, external-process trust, hook-event failure limitations, legacy PermissionRequest exception and retained Codex shared Git grant.
+
+No local Bats tests run. Required Bats results come from GitHub Actions. Required checks pass before RESULT; an in-scope failure retains its actual output and receives an authorized fix.
 
 The orchestrator runs `uv run --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md` before dispatch and at acceptance. C1 to C10 and C7b pass.
 
-A C-80 security-profile context reviews this complete revised text before dispatch. That review is a dispatch prerequisite and is not claimed as a result of this draft.
+A C-80 security-profile context reviews this complete narrowing before dispatch. The review and checker result are prerequisites, not results claimed by this draft.
 
 ## Completion
 
-One implementation PR continues the existing branch `tools/worker-write-boundary-a01`, created from clean base `205fe85c`, on the Codex seat a010. The eight green tests, fixtures and evidence stay. The first push deletes the predecessor copy `.orchestration/dotfiles-T133-worker-write-boundary-a01/task.md` and adds the byte-identical dispatched a02 task at `.orchestration/dotfiles-T133-worker-write-boundary-a01/task.md`. This predecessor-copy deletion is the sole authorized edit to the predecessor's artifact directory.
+Continue one implementation PR on `tools/worker-write-boundary-a01` from its recorded rebased main base `69dccca9`; retain the earlier base `205fe85c` as historical context. Do not open a second implementation PR or discard unrelated work.
 
-The Completion clauses of `.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md` apply with this task's branch, files and evidence paths, `dotfiles-T133-worker-write-boundary-followup-a01` as the owner of any advisory P2, and `task_copy=<sha256 of .orchestration/dotfiles-T133-worker-write-boundary-a01/task.md>` in RESULT. The a05-specific continuation of PR #420, predecessor-copy deletion, inherited counters, deadline and implementation requirements do not transfer. The orchestrator writes the follow-up owner task before assigning its first advisory P2.
+Before the first push, remove the executable-binding family from the PR. Revert it or leave it unmerged on the existing branch without carrying its final diff into this task. RESULT names the removed files and shared-file portions. Keep retained tests and fixtures rather than treating the whole implementation as disposable.
 
-Every worker-side fix round counts toward INV-6. The worker's own pre-push review is one round at most. A surviving P0/P1 is sent in RESULT as open and stops integration. The worker starts no additional private correction-and-review cycle to avoid reporting it.
+Replace `.orchestration/dotfiles-T133-worker-write-boundary-a01/task.md` with the byte-identical dispatched narrowing text and report its SHA256. There is no a02 task-copy substitution under this task id.
 
-No `@codex review` comment is posted. Automatic final-head reviews are observed within the bounded 15-minute window, and absence is recorded as `bot: none`. Required GitHub Actions checks pass before RESULT. Every feedback item carries its proposed disposition, and surviving P0/P1 findings remain open for the operator's decision.
+The Completion clauses of `.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md` apply with this task's branch, files and evidence paths, `dotfiles-T133-worker-write-boundary-followup-a01` as owner of advisory P2 findings, and `task_copy=<sha256 of .orchestration/dotfiles-T133-worker-write-boundary-a01/task.md>` in RESULT. The a05-specific PR continuation, predecessor-copy deletion, deadline and implementation requirements do not transfer. The orchestrator writes the follow-up owner task before assigning its first advisory P2.
 
-Every gh write and every git write runs as a separate command without shell chaining. Every worker command remains inside its sandbox. An operation that cannot complete there produces a blocked PONG with the exact command and boundary.
+Every worker-side fix round counts toward INV-6. The worker's pre-push review is one round at most. A surviving P0/P1 is sent in RESULT as open and stops integration; do not start another private correction/review cycle to avoid reporting it.
 
-The Codex worker writes evidence at the required relative paths in its own worktree and says so in RESULT. Worker review evidence uses the `-worker-` infix. Crit-data evidence and its receipt follow repository rules without a browser review or human review request. The orchestrator copies evidence by absolute path before acceptance.
+No `@codex review` comment is posted. Observe automatic final-head reviews within the bounded 15-minute window and record absence as `bot: none`. Required GitHub Actions checks pass before RESULT. Every feedback item has a proposed disposition; surviving P0/P1 findings remain open for the operator.
 
-`AGMSG-RESULT v1` names the final head, base, branch, changed files, new deployable scripts, source and installed paths, trusted anchor, interpreter and descendant inventory, hook PATH bindings, user and administrative settings destinations, staging path and printed installation command, Bot findings and proposed dispositions, open P0/P1 findings, exact test selectors, measured caps, task-copy SHA256 and evidence paths. It distinguishes historical observations from final-head results and names all pending operator steps.
+Every gh write and git write runs as a separate command without shell chaining. Every worker command remains inside its sandbox. An unavailable operation produces a blocked PONG with its exact command and boundary.
 
-The report states the user-visible effects. Claude workers use `~/.claude-worker` and require its own Claude login. Worker trusted-path and worktree-configuration Edit denies also affect Bash sandbox writes. Agmsg store paths remain writable except `~/.agents/skills/agmsg/db/trusted-plugins`, and worker denies also cover `~/.agents/skills/agmsg/plugins/**`. Worker user settings add no excluded commands or Herdr socket allowance, while shared managed settings retain the three control-plane exclusions and Herdr socket for every seat. Tracked and main-local orchestrator project hooks are no-ops in worker sessions. Worker caches are private. Every Claude seat fails when its sandbox is unavailable.
+The Codex worker writes evidence at the required relative paths in its own worktree and says so in RESULT. Worker review evidence uses the `-worker-` infix. Crit-data evidence and receipts follow repository rules without a browser review or human review request. The orchestrator copies evidence before acceptance.
 
-Administrative managed settings require sandboxing for the orchestrator as well as workers and disable unsandboxed retries. The former Linux gh exemption is removed. The orchestrator retains its existing functions within those requirements and the specified hook failure, guarding and interpreter/PATH-binding changes.
+`AGMSG-RESULT v1` names the final head, base, branch, changed files, removed binding-family files/portions, retained new scripts and installed paths, trusted anchor, retained hook inventory, PermissionRequest exception, settings destinations, staging path, printed installation command, Bot findings/dispositions, open P0/P1 findings, exact selectors, measured totals, task-copy SHA256 and evidence paths. Distinguish historical observations from final-head results and name all pending operator steps.
 
-The report states that no gh credential separation is established. Shared credentials permit worker-initiated API merges despite native command denials. The GitHub boundary is detection, not prevention, with the required next-records-PR regime check owned by P1-11.
+Report the user-visible effects:
 
-This task is `security: true`. The orchestrator obtains the task-level audit and a separate security-profile review of the final implementation head. The finding-class record includes `decision-not-bound-to-execution`, `unbound-evidence` and `fail-open-on-error`. A third non-advisory finding of one class stops the artifact for redesign under the inherited completion rules.
+- Claude workers use `~/.claude-worker` and require its separate Claude login.
+- Trusted-path and worktree-configuration denies also affect Bash sandbox writes.
+- Agmsg stores remain writable except `db/trusted-plugins`; plugin code is denied.
+- Worker user policy adds no exclusions or Herdr socket allowance, while shared managed policy retains both for every seat.
+- Tracked and main-local orchestrator project hooks execute no payload in worker sessions.
+- Worker caches are private.
+- Every Claude seat fails when sandboxing is unavailable.
+- Administrative policy requires sandboxing and disables unsandboxed retries for the orchestrator too.
+- The former Linux gh exemption is removed.
+- Non-PermissionRequest commands receive the clean prefix; the legacy PermissionRequest remains unchanged.
+- Formatter/map tool availability and complete executable binding remain deferred to the binding task.
 
-Final-head feedback collection, task-level audit, finding dispositions, acceptance and the integration gate follow Orchestrator Playbook step 10 in its prescribed order. The gate receives `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE`, `ACCEPTANCE_EVIDENCE` and the agent review receipt. Changed heads receive fresh required evidence. The final-head security review precedes the gate.
+Report that no gh credential separation is established. Shared credentials permit worker-initiated API merges despite native denials. GitHub provides next-records-PR detection under P1-11, not prevention.
 
-The permission-surface change receives the required operator-backed approval through the repository's existing process. The worker writes no approval row and treats no candidate-tree decision as authority.
+This task remains `security: true`. The orchestrator obtains a task-level audit and separate security-profile review of the final implementation head. Preserve the executable-binding class history and D-024-26 re-plan record alongside `decision-not-bound-to-execution`, `unbound-evidence` and `fail-open-on-error`. Do not reset inherited counters or relabel transferred findings as fixed.
 
-Live deployment is the operator's post-merge `make update`. The operator runs `make install-managed-settings`, inspects the rendered staging file and executes its printed `sudo install -m 0644 "<absolute-home>/.claude/managed-settings.rendered.json" "<detected-managed-settings-path>"` command with `/Library/Application Support/ClaudeCode/managed-settings.json` detected on macOS and `/etc/claude-code/managed-settings.json` detected on Linux. Administrative installation is recorded separately from staging and ordinary chezmoi application.
+Final-head feedback collection, task-level audit, finding dispositions, acceptance and integration follow Orchestrator Playbook step 10 in order. The gate receives `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE`, `ACCEPTANCE_EVIDENCE` and the agent review receipt. Changed heads receive fresh required evidence, and final-head security review precedes the gate.
 
-The operator performs the Claude worker-directory login with `CLAUDE_CONFIG_DIR=<absolute-home>/.claude-worker` selected.
+The permission-surface change receives operator-backed approval through the existing repository process. The worker writes no approval row and treats no candidate-tree decision as authority.
 
-The operator applies the prepared deterministic Codex permgate rule that stops approving sandbox escapes and restarts affected sessions.
+Live deployment is the operator's post-merge `make update`. The operator runs `make install-managed-settings`, inspects staging and executes the printed `sudo install -m 0644` command at the detected macOS or Linux destination. Record administrative installation separately from ordinary chezmoi application.
 
-The deployment record checks effective settings after `make update` and administrative installation, including hooks added by merge scripts or integration installers. It verifies the installed managed-settings content, admin-required sandbox scope, worker directory, both platform policy outputs, static deny inventory, worktree-configuration denies, writable agmsg stores, worker-user and main-local hook placement, hook PATH and interpreter descendants, failure-policy coverage and sandbox startup without exposing credentials.
+The operator performs the Claude login with `CLAUDE_CONFIG_DIR=<absolute-home>/.claude-worker`, applies the prepared deterministic Codex permgate rule that stops approving sandbox escapes, and restarts affected sessions.
 
-The effective-settings check includes conflicting project and local sandbox relaxations and confirms that they do not weaken the administrative policy. It also records the shared control-plane exclusions and Herdr socket as available capabilities. It makes no claim that worker user arrays subtract those entries.
+Retain the deployment record's effective-policy inspection after application and administrative installation: installed managed content, worker directory, static denies, worktree configuration protection, writable stores, worker-user/main-local/legacy hook placement, the PermissionRequest exception, failure-policy coverage and sandbox startup. Check conflicting project/local sandbox relaxations and record shared managed capabilities without exposing credentials.
 
-Merge alone does not establish deployment readiness. The orchestrator records `make update`, the managed-settings installation with sudo, the Claude worker-directory login, effective startup checks and the Codex permgate rule before releasing dependent hardening tasks for live operation. The upstream agmsg store-driver route remains a named residual until its owning task is implemented. GitHub remains detection, not prevention, until the operator pursues separate-user or separate-host isolation under future P1-16.
+This retained policy inspection does not add the removed automated binary-identity checker, its trusted launch command, executable version probes or real-uv hook execution. Those belong to the binding task.
+
+Merge alone does not establish deployment readiness. Record the operator's application, administrative installation, login, startup checks and Codex permgate change before releasing dependent mechanisms for live operation; any mechanism requiring the deferred executable-binding contract also waits for its binding prerequisite.
 
 ## Checks (pasted by the orchestrator before each send)
 
+The retained block below is the historical amendment-6 dispatch record carried by amendment 8. Its review result does not approve this narrowing. Before sending, the orchestrator replaces it with fresh consistency-check output, the review of these exact bytes, current counters and the D-024-26 re-plan reference.
+
 ```
-amendment 6 (consolidated over amendments 3 to 5, none of which was dispatched except 4), 2026-10-19T10:0xZ; task-consistency-check.py: OK; C-80 text security review of this text: .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-9b58b31.md.last.md Verdict: correct (amendment 5 772cde0: two P1, the permgate policy input and Python isolation, fixed here)
-S2: amendments 3 >= 2 source=live
-detail: pr=none authors=claude-deep-dot tasks=01a152ae-8ef0-784f-801e-d4c9a4f3007f,01a152ed-0b08-7431-8fd0-5b5e43c89bd6,01a1533c-1568-7e88-8653-ef63f42314a2,01a1537c-0498-7df1-8c89-2b805cf64b57 results=- questions=- withdrawn=- bot_heads=- source=live
+narrowed text (D-024-26: the write boundary alone; the executable binding moved to trusted-entrypoint-binding-a01), 2026-10-19T11:3xZ; task-consistency-check.py: OK; C-80: .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-text-security-679166e.md.last.md Verdict: correct (the 20th review; re-plan line of 11:1xZ; C-92 guard passed)
+S2: amendments 4 >= 2 source=live
+detail: pr=none authors=claude-deep-dot tasks=01a152ae-8ef0-784f-801e-d4c9a4f3007f,01a152ed-0b08-7431-8fd0-5b5e43c89bd6,01a1533c-1568-7e88-8653-ef63f42314a2,01a1537c-0498-7df1-8c89-2b805cf64b57,01a1539e-59a8-7aee-8556-dd14c1e56719 results=- questions=- withdrawn=- bot_heads=- source=live
 ```
 
-Local Bats, live enforcement, administrative installation, worker-directory login, permgate policy changes and deployment are not performed by the worker.
+Local Bats, live enforcement, administrative installation, login, permgate policy changes and deployment are not performed by the worker.
+Legacy PermissionRequest execution, formatter tool availability, same-UID access, shared managed capabilities, path races and agmsg sourcing remain the named residuals.

@@ -73,3 +73,8 @@ audit:380e7f4:1	evidence-head-mismatch
 ## Owned by dotfiles-T133-regime-ci-followup-a02 (audit row)
 
 - `audit:380e7f4:1` evidence-head-mismatch: the owner text's Check states the reworded bootstrap evidence rule (code head; evidence commit touching only the task directory) instead of the inherited 'final head' wording; report.md names the code head it bootstrapped.
+
+## Owned by dotfiles-T133-regime-ci-followup-a02 (records PR observation)
+
+- `ci:39239649184:1` evidence-sync-task-dir: on the records-only PR #429 the regime job treated three task directories as task PRs (1,790 paths outside their allowed files) because the orchestrator's evidence sync (#422, the evidence-sync exemption) placed worker evidence into directories that already hold a task.md; the regime check recognises a records-only boundary PR (branch prefix `orchestration/boundary-` and no code change) and an orchestrator evidence sync, instead of applying the task-PR copy rules to it.
+ci:39239649184:1	evidence-sync-task-dir

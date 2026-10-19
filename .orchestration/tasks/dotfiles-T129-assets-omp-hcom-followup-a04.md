@@ -6,7 +6,6 @@ security: false
 allowed_files:
   - home/dot_local/bin/common/executable_remove-agent-asset
   - scripts/update-agent-assets.sh
-  - scripts/lint-comparisons-baseline.tsv
   - tests/unit/test_remove_agent_asset.py
   - tests/unit/test_update_agent_assets.py
   - .orchestration/dotfiles-T129-assets-omp-hcom-followup-a04/**
@@ -16,8 +15,6 @@ threat_table:
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
   - control: the PR edits scripts/update-agent-assets.sh only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
-  - control: the PR edits scripts/lint-comparisons-baseline.tsv only where an owned fix removes or adds a hit (item 1)
-    disposition: "residual: a baseline row is removed when its hit is fixed and added only for a pre-existing comparison an owned fix moves; the lint test reports any other change"
   - control: the PR edits tests/unit/test_remove_agent_asset.py only within the owned rows (item 1)
     disposition: "residual: one fixture per owned row, red before the fix and green after"
   - control: the PR edits tests/unit/test_update_agent_assets.py only within the owned rows (item 1)
@@ -56,3 +53,11 @@ Each owned row (any advisory P2 of the local review or the task-level audit of P
 ## Check and Completion
 
 The Check and Completion clauses of `.orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a03.md` apply as written, with `dotfiles-T129-assets-omp-hcom-followup-a05` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T129-assets-omp-hcom-followup-a04/task.md>` in the RESULT.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+dispatch to claude-standard-dot-a009, 2026-10-19T11:3xZ; task-consistency-check.py: OK; security: false (no C-80); D-024-25 order: owner rows of a merged lineage, files disjoint from every in-flight task
+task=dotfiles-T129-assets-omp-hcom-followup-a04 tasks=0 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=none..none (-) source=live
+detail: pr=none authors=- tasks=- results=- questions=- withdrawn=- bot_heads=- source=live
+```

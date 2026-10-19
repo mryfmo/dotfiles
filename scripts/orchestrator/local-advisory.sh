@@ -57,7 +57,9 @@ token() { [[ $1 =~ ([A-Za-z0-9._/-]+:[0-9]+(-[0-9]+)?) ]] && printf '%s\n' "${BA
 earlier=""
 for f in .orchestration/validation/"$task"-local-review-*.md; do
     [[ -f $f && $f != "$LR" ]] || continue
-    e=${f%.md} && e=${e##*-local-review-} && k=0
+    # The exact prefix is stripped, so the whole rest of the name must be the head: a name with a second
+    # `-local-review-` cannot pass as its last part (the audit of 000c5c6, finding 1).
+    e=${f%.md} && e=${e#.orchestration/validation/"$task"-local-review-} && k=0
     # Only a seven-hex suffix names a reviewed head; any other file is skipped (the audit of d3e8acf, finding 1).
     [[ $e =~ ^[0-9a-f]{7}$ ]] || continue
     while IFS= read -r l; do

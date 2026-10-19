@@ -100,6 +100,47 @@ MORE_REFUSED = {
     "R5": ("x=$(ps -axo pid,command | grep claude)\n", "if ps -axo pid,command | grep -q claude; then :; fi\n"),
 }
 
+# the owned rows of dotfiles-T129-normalised-comparison-lint-followup-a02 (the followup-a01 and followup-a03 records):
+# row id -> (fixture, text, the (rule, line) it must report, or None where the form holds no comparison)
+OWNED_ROWS = {
+    "4306643800": ("c.sh", 'case "$url" \\\n  in file://*) ;; esac\n', ("R2", 1)),  # a continuation inside the test
+    "4306643803": ("j.sh", 'jq -r "select(.url == \\"/x\\")"\n', ("R3", 1)),  # a double-quoted jq program
+    "4306643804": (
+        "r.py",
+        're.search(f"{re.escape(prefix) + name}", text)\n',
+        ("R6", 1),
+    ),  # escaped and raw in one value
+    "4306643808": (
+        "m.py",
+        'if path == "/x": print("# lint-comparisons: allow reason")\n',
+        ("R4", 1),
+    ),  # a marker in a string
+    "audit:4f5be51:1": (
+        "l.sh",
+        (
+            "jq -r 'def canonical_path: .; select((.a | canonical_path) == ($x | canonical_path) and .url == $p"
+            " and (.b | canonical_path) == ($y | canonical_path))'\n"
+        ),
+        ("R3", 1),
+    ),  # and/or bound each comparison's operands
+    "audit:4f5be51:2": (
+        "r.py",
+        're.search(f"{name + re.escape(suffix)}", text)\n',
+        ("R6", 1),
+    ),  # every fragment escaped
+    "audit:4f5be51:3": ("g.sh", "grep -E '^$name$' file\n", None),  # a single-quoted pattern interpolates nothing
+    "audit:4f5be51:4": ("t.sh", '[[ "$path" == \\\n  */x ]]\n', ("R1", 1)),  # continuation lines are one test
+    "audit:4f5be51:5": ("s.sh", 'jq -n \'"path == /x" # .url == "/x"\'\n', None),  # a jq string and a jq comment
+    "audit:4f5be51:6": ("p.sh", 'pgrep -f "prefix $name"\n', ("R5", 1)),  # the whole quoted pattern
+    "audit:4f5be51:7": ("v.sh", '[[ "$x/path" == "$y/path" ]]\n', ("R1", 1)),  # a literal path after the variable
+    "audit:4f5be51:8": (
+        "k.sh",
+        '[[ $path == /x ]] && echo "# lint-comparisons: allow reason"\n',
+        ("R1", 1),
+    ),  # in a string
+    "audit:4f5be51:9": ("q.sh", 'jq -n --arg p /x "select(.path == \\$p)"\n', ("R3", 1)),  # a double-quoted program
+}
+
 
 class LintComparisonsTest(unittest.TestCase):
     def setUp(self):
@@ -384,6 +425,16 @@ class LintComparisonsTest(unittest.TestCase):
         result = subprocess.run(run, check=False, capture_output=True, text=True)
         self.assertNotEqual(0, result.returncode, result.stdout)
         self.assertNotIn("warning", result.stdout)
+
+    def test_each_owned_row_is_refused_or_accepted_by_its_fixture(self):
+        for row, (name, text, want) in OWNED_ROWS.items():
+            with self.subTest(row=row):
+                result = self.run_fixture(name, text)
+                if want is None:
+                    self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+                else:
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(f"{name}:{want[1]}: {want[0]} ", result.stdout)
 
 
 if __name__ == "__main__":

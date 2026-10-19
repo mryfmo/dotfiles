@@ -21,7 +21,8 @@
 #   started by its own path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
 #   `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i from the root, so no
 #   checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks
-#   the interpreter (security:4fe2438:1).
+#   the interpreter (security:4fe2438:1). Before PATH is pinned, every other command (mktemp, env, ln and the EXIT trap's
+#   rm) runs by its absolute system path; mise, the resolver itself, is the one program found through PATH.
 # @arg $1 int The workflow run id.
 # @exitcode 0 Every candidate job matched a signature; the run was reserved and rerun once.
 # @exitcode 1 A tool resolves only to a shims or relative path, a gh or jq call or the signature file failed (never
@@ -39,9 +40,9 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
 fi
 run_id=$1
 bin="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")" # system paths: PATH is not pinned yet
-trap 'rm -rf -- "${bin}"' EXIT
+trap '/bin/rm -rf -- "${bin}"' EXIT
 for tool in python3 uv gh jq git mkdir; do
-    found="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
+    found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
     [[ ${found} == /* && ${found} != */shims/* ]] || {
         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
         exit 1

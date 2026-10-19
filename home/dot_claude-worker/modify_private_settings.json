@@ -7,7 +7,53 @@ from pathlib import Path
 import platform
 import re
 import shlex
+import subprocess
 import sys
+
+
+def render_native_bindings(text, source, home, os_name):
+    token = r'"(?:\\.|[^"\\])*"|\.chezmoi\.(?:homeDir|sourceDir|os)'
+    values = {".chezmoi.homeDir": str(home), ".chezmoi.sourceDir": str(source), ".chezmoi.os": os_name}
+
+    def expand(match):
+        words = [values[word] if word in values else json.loads(word) for word in re.findall(token, match[1])]
+        if words[:6] != ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "/usr/bin/python3", "-I", "-c"]:
+            raise ValueError("untrusted native binding command")
+        return subprocess.check_output(words, text=True, cwd=source)
+
+    return re.sub(r"{{ output ((?:(?:" + token + r")\s*)+)}}", expand, text)
+
+
+def is_managed_permission_hook(hook):
+    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
+        return False
+    try:
+        parts = shlex.split(hook["command"])
+    except ValueError:
+        return False
+    if len(parts) == 2:
+        return Path(parts[0]).name in ("permgate", "ccgate") and parts[1] == "claude"
+    home = Path(os.environ.get("CHEZMOI_HOME_DIR", str(Path.home())))
+    prefix = [
+        "/usr/bin/env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "HOME=" + str(home),
+        "LANG=C.UTF-8",
+        "TERM=dumb",
+        "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
+        "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
+    ]
+    return (
+        len(parts) == 19
+        and parts[:8] == prefix
+        and Path(parts[8]).is_absolute()
+        and Path(parts[8]).name == "uv"
+        and parts[9:14] == ["run", "--no-config", "--no-project", "--offline", "--python"]
+        and Path(parts[14]).is_absolute()
+        and parts[15:] == ["python", "-I", str(home / ".local/bin/common/permgate"), "claude"]
+    )
+
 
 source = Path(os.environ.get("CHEZMOI_SOURCE_DIR", Path(__file__).resolve().parents[1]))
 home = os.environ.get("CHEZMOI_HOME_DIR", str(Path.home()))
@@ -45,7 +91,12 @@ if sys.argv[1:2] == ["--legacy"]:
         current["hooks"][event] = retained
     sys.stdout.write(json.dumps(current, indent=2) + "\n")
     raise SystemExit(0)
-text = (source / ".chezmoitemplates/claude-worker-settings.json").read_text()
+text = render_native_bindings(
+    (source / ".chezmoitemplates/claude-worker-settings.json").read_text(),
+    source,
+    home,
+    "darwin" if platform.system() == "Darwin" else "linux",
+)
 text = re.sub(
     r'{{ if eq \.chezmoi\.os "darwin" }}(.*?){{ else }}(.*?){{ end }}',
     lambda m: m[1] if platform.system() == "Darwin" else m[2],

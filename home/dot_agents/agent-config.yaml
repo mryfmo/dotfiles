@@ -206,6 +206,7 @@ claude:
     tool_paths:
       bash: /bin/bash
       python3: "~/.local/share/mise/installs/python/latest/bin/python3"
+      uv: "~/.local/share/mise/installs/uv/latest/*/uv"
       git: /usr/bin/git
       herdr: "~/.local/share/mise/installs/github-ogulcancelik-herdr/latest/herdr"
       jq: "~/.local/share/mise/installs/jq/latest/jq"
@@ -240,6 +241,9 @@ claude:
     "~/.agents/skills/**/SKILL.md",
     "~/.agents/skills/agmsg/plugins", "~/.agents/skills/agmsg/plugins/**",
     "~/.agents/skills/agmsg/db/trusted-plugins",
+    "~/.agents/permgate-policy.yaml", "~/.claude/hooks/orchestrator-only.sh",
+    "~/.local/lib/python*/site-packages", "~/.local/lib/python*/site-packages/**",
+    "~/Library/Python/*/lib/python/site-packages", "~/Library/Python/*/lib/python/site-packages/**",
     "~/.claude", "~/.claude/**",
     "~/.claude-worker", "~/.claude-worker/**",
     "~/.local/bin", "~/.local/bin/**",

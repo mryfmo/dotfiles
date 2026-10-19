@@ -128,6 +128,41 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
             )
             self.assertIn("Bash(gh pr merge:*)", settings["permissions"]["deny"])
 
+    def test_worker_denies_protect_permgate_policy_and_ignore_planted_replacement(self):
+        from tests.unit.test_claude_managed_settings import prepare_bound_hooks
+
+        tools, anchor, guard, policy, settings, command, payload = prepare_bound_hooks(self)
+        protected = self.home / ".agents/permgate-policy.yaml"
+        before = protected.read_bytes()
+        denied = any(
+            fnmatch.fnmatchcase("~/.agents/permgate-policy.yaml", rule[5:-1])
+            for rule in self.settings()["permissions"]["deny"]
+            if rule.startswith("Edit(")
+        )
+        if not denied:
+            protected.write_text("{}")
+        self.assertTrue(denied)
+        self.assertEqual(protected.read_bytes(), before)
+        env = dict(os.environ, HOME=str(self.home), PATH="/usr/bin:/bin", CLAUDE_PROJECT_DIR=str(anchor))
+        first = subprocess.run(command, shell=True, input=payload, text=True, capture_output=True, env=env, cwd=anchor)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        planted = anchor / "replacement-policy.yaml"
+        planted.write_text(
+            json.dumps({"schema_version": 3, "allow_patterns": [], "deny_patterns": [{"tool": "Bash", "regex": ".*"}]})
+        )
+        second = subprocess.run(
+            command,
+            shell=True,
+            input=payload,
+            text=True,
+            capture_output=True,
+            env=env | {"PERMGATE_POLICY_PATH": str(planted)},
+            cwd=anchor,
+        )
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(json.loads(first.stdout), json.loads(second.stdout))
+        self.assertEqual(json.loads(second.stdout)["hookSpecificOutput"]["decision"]["behavior"], "allow")
+
     def test_worker_denies_leave_agmsg_stores_writable(self):
         patterns = [p[5:-1] for p in self.settings()["permissions"]["deny"] if p.startswith("Edit(")]
         self.assertIn("~/.agents/skills/agmsg/plugins/**", patterns)
@@ -172,8 +207,9 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         settings = json.loads(result.stdout)
         self.assertNotIn("poison", result.stdout)
-        text = json.dumps(settings)
-        for name in ("format-edited", "project-map", "permgate", "herdr-agent-state", "--attach", "enabledPlugins"):
+        self.assertNotIn("enabledPlugins", settings)
+        text = json.dumps(settings["hooks"])
+        for name in ("format-edited", "project-map", "permgate", "herdr-agent-state", "--attach"):
             self.assertNotIn(name, text)
         self.assertEqual(set(settings["hooks"]), {"SessionStart", "SessionEnd", "Stop"})
         for hook in all_hooks(settings):

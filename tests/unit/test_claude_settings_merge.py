@@ -14,7 +14,12 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import all_hooks
+from tests.unit.test_generate_agent_configs import (
+    all_hooks,
+    install_binding_fixture,
+    load_generator,
+    load_manifest_fixture,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
@@ -26,7 +31,8 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
         self.baseline_path = self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
-        self.home_dir = self.source_dir / "target-home"
+        self.home_dir = self.source_dir / "target home"
+        install_binding_fixture(self.home_dir)
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
@@ -228,6 +234,73 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(permission_hooks, [managed_hook])
         self.assertNotIn("ccgate", json.dumps(permission_hooks))
 
+    def bound_hook(self, version="new"):
+        import shlex
+
+        words = [
+            "/usr/bin/env",
+            "-i",
+            "PATH=/usr/bin:/bin",
+            "HOME=" + str(self.home_dir),
+            "LANG=C.UTF-8",
+            "TERM=dumb",
+            "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
+            "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
+            f"/tools with spaces/{version}/uv",
+            "run",
+            "--no-config",
+            "--no-project",
+            "--offline",
+            "--python",
+            f"/tools with spaces/{version}/python3",
+            "python",
+            "-I",
+            str(self.home_dir / ".local/bin/common/permgate"),
+            "claude",
+        ]
+        return {"hooks": [{"type": "command", "command": shlex.join(words)}]}
+
+    def test_modify_private_settings_renders_native_bindings_before_merging(self):
+        module = load_generator()
+        text = module.render_claude_settings(load_manifest_fixture(self.source_dir))
+        self.assertIn("{{ output ", text)
+        self.baseline_path.write_text(text)
+        env = os.environ | {"CHEZMOI_HOME_DIR": str(self.home_dir), "CHEZMOI_SOURCE_DIR": str(self.source_dir)}
+        result = subprocess.run(
+            [sys.executable, "-I", str(MERGE_SCRIPT)], input="{}", text=True, capture_output=True, env=env
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("{{", json.dumps(json.loads(result.stdout)))
+
+    def test_permission_merge_upgrades_legacy_permgate_to_bound_hook(self):
+        current = {"hooks": {"PermissionRequest": [{"hooks": [{"command": "permgate claude"}]}]}}
+        desired = {"hooks": {"PermissionRequest": [self.bound_hook()]}}
+        self.assertEqual(
+            json.loads(self.merge(desired, json.dumps(current)))["hooks"]["PermissionRequest"], [self.bound_hook()]
+        )
+
+    def test_permission_merge_replaces_previous_bound_hook_idempotently(self):
+        desired = {"hooks": {"PermissionRequest": [self.bound_hook()]}}
+        once = self.merge(desired, json.dumps({"hooks": {"PermissionRequest": [self.bound_hook("old")]}}))
+        self.assertEqual(json.loads(once)["hooks"]["PermissionRequest"], [self.bound_hook()])
+        self.assertEqual(self.merge(desired, once), once)
+
+    def test_permission_merge_does_not_classify_foreign_hook_as_managed(self):
+        classifier = runpy.run_path(str(MERGE_SCRIPT))["is_managed_permission_hook"]
+        command = self.bound_hook()["hooks"][0]["command"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            for value in (
+                command.replace(str(self.home_dir / ".local/bin/common/permgate"), "/foreign/permgate"),
+                command + " extra",
+                command + " ; true",
+                command.replace("--offline", "--script"),
+                command.replace("python -I", "python"),
+                command.replace("PATH=/usr/bin:/bin", "PATH=/tmp"),
+                "wrapper " + command,
+            ):
+                self.assertFalse(classifier({"command": value}), value)
+            self.assertTrue(classifier({"command": command}))
+
     def test_managed_session_start_replaces_stale_hard_coded_home_hook(self) -> None:
         """Upgrade path: a machine that received the old hard-coded managed hook."""
         managed_hook = {
@@ -327,10 +400,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertNotIn("/Users/someone-else", json.dumps(commands))
 
     def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
-        managed_hook = {
-            "matcher": "*",
-            "hooks": [{"type": "command", "command": "permgate claude"}],
-        }
+        managed_hook = self.bound_hook()
         stale_hook = {
             "matcher": "*",
             "hooks": [{"type": "command", "command": "ccgate claude"}],
@@ -357,10 +427,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(permission_hooks, [custom_hook, managed_hook])
 
     def test_permission_merge_preserves_custom_hook_in_mixed_entry(self) -> None:
-        managed_hook = {
-            "matcher": "*",
-            "hooks": [{"type": "command", "command": "permgate claude"}],
-        }
+        managed_hook = self.bound_hook()
         mixed_hook = {
             "matcher": "*",
             "hooks": [

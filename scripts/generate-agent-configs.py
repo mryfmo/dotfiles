@@ -400,8 +400,13 @@ def binary(pattern):
     return str(path)
 policy["home"] = str(home)
 policy["tools"] = {name: binary(pattern) for name, pattern in policy["tools"].items()}
-print("python=" + shlex.quote(binary(policy.pop("bootstrap"))))
-print("policy=" + shlex.quote(json.dumps(policy)))
+if len(sys.argv) > 3:
+    command = policy["prefix"].replace('HOME="$HOME"', 'HOME=' + shlex.quote(str(home)))
+    command += shlex.join([policy["tools"]["uv"], "run", "--no-config", "--no-project", "--offline", "--python", policy["tools"]["python3"], "python", "-I", str(home / ".local/bin/common/permgate"), "claude"])
+    print(json.dumps(command)[1:-1], end="")
+else:
+    print("python=" + shlex.quote(binary(policy.pop("bootstrap"))))
+    print("policy=" + shlex.quote(json.dumps(policy)))
 """
 
 
@@ -426,12 +431,12 @@ def hook_command(claude: dict, command: str) -> tuple[str, dict]:
 def guard_policy(manifest: dict) -> dict:
     claude = manifest["claude"]
     binding, hooks = claude["execution"], claude["hooks"]
-    required = {"bash", "python3", "git", "herdr", "jq", "node", "ruff", "prettier", "terminal-browser"}
+    required = {"bash", "python3", "uv", "git", "herdr", "jq", "node", "ruff", "prettier", "terminal-browser"}
     if set(binding["tool_paths"]) != required:
         fail("trusted executable bindings must name exactly " + ", ".join(sorted(required)))
     sources = [hooks[key] for key in ("enforce_uv_hook", "format_edited_files_hook", "project_map_reload_hook")]
     sources.extend(hook["command"] for group in hooks["session_start"] for hook in group["hooks"])
-    sources += [hooks["permission_request"]["command"], *binding["project_hooks"].values()]
+    sources += list(binding["project_hooks"].values())
     commands = dict(hook_command(claude, source) for source in sources)
     for script in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
         commands["agmsg-" + script] = {
@@ -632,6 +637,17 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                         command += ' "${HERDR_PANE_ID}"'
                     hook.update(command=command, onFailure="block")
     text = json_dumps(settings)
+    if "execution" in claude and permission_request:
+        policy = {
+            "prefix": HOOK_PREFIX,
+            "tools": {name: claude["execution"]["tool_paths"][name] for name in ("uv", "python3")},
+        }
+        expression = '{{ output "/usr/bin/env" "-i" "PATH=/usr/bin:/bin" "/usr/bin/python3" "-I" "-c" '
+        expression += (
+            json.dumps(RENDER_BINDINGS) + " " + json.dumps(json.dumps(policy)) + ' .chezmoi.homeDir "permission" }}'
+        )
+        old = settings["hooks"]["PermissionRequest"][0]["hooks"][0]["command"]
+        text = text.replace(json.dumps(old), '"' + expression + '"', 1)
     if "sandbox" in claude:
         variants = [json_dumps(render_claude_sandbox(manifest, os_name)).strip() for os_name in ("darwin", "linux")]
         sandbox_template = (

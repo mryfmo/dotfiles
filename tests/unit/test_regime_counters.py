@@ -23,6 +23,7 @@ SCRIPT = ROOT / "scripts/regime-counters.sh"
 FIXTURES = ROOT / "tests/fixtures/regime-counters"
 # A complete C-59 re-plan, the value of the record block's replans[<class>] (plan 023 F1).
 REPLAN = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
+WHITESPACE = "".join(filter(str.isspace, map(chr, range(0x110000))))  # the 29 characters str.strip() removes
 T118 = "dotfiles-T118-rolling-tools-single-update-a01"
 T119 = "dotfiles-T119-rolling-release-assets-a01"
 T124 = "dotfiles-T124-wave1-task-validator-a01"
@@ -509,6 +510,31 @@ class RegimeCountersTest(unittest.TestCase):
                     self.s1_record_lines("bookkeeping", replans=replans),
                     ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
                 )
+
+    def test_s1_applies_the_gate_s_exact_replan_schema(self):
+        # Owned row audit:274a536:1 (= local:274a536:1): the gate's record_field_errors() and the front-matter writer
+        # accept replans only as {<class slug>: exactly the four keys, each a string with text after str.strip()}, the
+        # whole object at once; the counters read the same object and report a re-plan only where the gate accepts it.
+        for label, replans in (
+            ("an extra key", {"bookkeeping": {**REPLAN, "notes": "n"}}),
+            ("a malformed entry under another class", {"bookkeeping": REPLAN, "other": {"design": "d"}}),
+            ("a class that is no slug", {"bookkeeping": REPLAN, "Other Class": REPLAN}),
+            ("a part only str.strip() empties", {"bookkeeping": {**REPLAN, "design": "\x1c"}}),
+            ("a part of all 29 characters str.strip() removes", {"bookkeeping": {**REPLAN, "design": WHITESPACE}}),
+            ("a class key with a trailing newline", {"bookkeeping": REPLAN, "other\n": REPLAN}),  # fullmatch, not $
+            ("replans false", False),  # never null-coalesced into an empty object
+        ):
+            with self.subTest(label):
+                self.assertEqual(
+                    self.s1_record_lines("bookkeeping", replans=replans),
+                    ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
+                )
+        # the class names those 29 characters and no other: a letter, or a format character str.isspace() rejects, is text
+        for extra in "x\u200b\u180e\u2060\ufeff":
+            with self.subTest(extra=extra):
+                replans = {"bookkeeping": {**REPLAN, "design": WHITESPACE + extra}}
+                lines = self.s1_record_lines("bookkeeping", replans=replans)
+                self.assertEqual(["S1: class=bookkeeping count=3 re-plan=present source=record"], lines)
 
     def test_s1_excludes_advisory_p2_at_three_rows(self):
         self.assertEqual(self.s1_record_lines("advisory-p2", replans={"advisory-p2": REPLAN}), [])

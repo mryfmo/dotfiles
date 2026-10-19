@@ -955,7 +955,7 @@ function update_omp() (
         printf 'omp %s is already installed.\n' "${installed}"
         return 0
     fi
-    download_dir="$(mktemp -d)" || return
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
     curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
@@ -1019,7 +1019,7 @@ function update_hcom() (
         printf 'hcom %s is already installed.\n' "${installed}"
         return 0
     fi
-    download_dir="$(mktemp -d)" || return
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     wheel="${download_dir}/${url##*/}"
     curl -fsSL "${url}" -o "${wheel}" || return
@@ -1088,7 +1088,7 @@ function agmsg_state_snapshot() {
         [ ! -e "${skill_dir}/${relative}" ] || paths+=("${skill_dir}/${relative}")
     done
     ((${#paths[@]})) || return 0
-    list="$(mktemp)" || return 1
+    list="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
     if ! find "${paths[@]}" -type f -print0 > "${list}"; then
         rm -f "${list}"
         printf 'agmsg: could not list the live state under %s\n' "${skill_dir}" >&2
@@ -1146,9 +1146,9 @@ function install_pinned_agmsg() (
         install_args=(--update "${install_args[@]}")
     fi
 
-    tarball="$(mktemp)" || return 1
-    extract_dir="$(mktemp -d)" || return 1
-    install_log="$(mktemp)" || return 1
+    tarball="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
+    extract_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
+    install_log="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
     trap 'rm -f "${tarball}" "${install_log}"; rm -rf "${extract_dir}"' EXIT
     curl -fsSL "${fetch_url}" -o "${tarball}" || {
         printf 'agmsg download failed: %s; nothing was installed\n' "${fetch_url}" >&2

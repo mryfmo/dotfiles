@@ -529,9 +529,12 @@ class RegimeCountersTest(unittest.TestCase):
                     self.s1_record_lines("bookkeeping", replans=replans),
                     ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
                 )
-        # the class names those 29 characters and no other: one letter more is text
-        lines = self.s1_record_lines("bookkeeping", replans={"bookkeeping": {**REPLAN, "design": WHITESPACE + "x"}})
-        self.assertEqual(["S1: class=bookkeeping count=3 re-plan=present source=record"], lines)
+        # the class names those 29 characters and no other: a letter, or a format character str.isspace() rejects, is text
+        for extra in "x\u200b\u180e\u2060\ufeff":
+            with self.subTest(extra=extra):
+                replans = {"bookkeeping": {**REPLAN, "design": WHITESPACE + extra}}
+                lines = self.s1_record_lines("bookkeeping", replans=replans)
+                self.assertEqual(["S1: class=bookkeeping count=3 re-plan=present source=record"], lines)
 
     def test_s1_excludes_advisory_p2_at_three_rows(self):
         self.assertEqual(self.s1_record_lines("advisory-p2", replans={"advisory-p2": REPLAN}), [])

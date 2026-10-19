@@ -1,0 +1,18 @@
+{
+  "source_commit": "e37be90d9aef1c2371529cf02b7266e1645f597e",
+  "source_sha256": "6d882a00b2c8cbafde397e6cf0abfb342388ef105ade4627a3bc001b592bb451",
+  "check": "post-round bounded Markdown container verification through tracked applied-file fixture",
+  "finding": "a05-worker-verification-1",
+  "priority": "P2",
+  "confidence": "high",
+  "path": "scripts/validate-agent-assets.py",
+  "line": 1721,
+  "status": "open",
+  "fixture": "- ```sh\n  ANTHROPIC_API_KEY\n  ```",
+  "expected_class": "hard",
+  "expected_exit_status": 1,
+  "actual_exit_status": 0,
+  "diagnostic": "NOTE: home/example.md:2: note: credential name in a comment or Markdown prose\n",
+  "assignment_control_refused": true,
+  "assignment_payload_redacted": true
+}

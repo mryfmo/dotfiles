@@ -74,12 +74,13 @@ PY
 }
 
 #
-# @description Return success when a path equals or descends from a prefix.
-# @arg $1 path Normalized candidate path.
-# @arg $2 path Normalized prefix path.
+# @description Return success when a path equals or descends from a prefix, both folded by os.path.normpath first.
+# @arg $1 path Candidate path.
+# @arg $2 path Prefix path.
+# @arg $3 string Optional `strict`, which refuses the prefix itself.
 #
 function path_has_prefix() {
-    [ "$1" = "$2" ] || [[ "$1" == "$2/"* ]]
+    python3 -I -c 'import os, sys; p, q = map(os.path.normpath, sys.argv[1:3]); sys.exit(not (p.startswith(q + os.sep) or p == q and sys.argv[3:] != ["strict"]))' "$@"
 }
 
 #
@@ -98,7 +99,7 @@ function path_is_in_safe_root() {
         "${HOME}/.local/share/mise/installs" \
         "${HOME}/.local/share/agent-assets"; do
         root="$(normalize_root_path "${root}")" || return 1
-        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+        if path_has_prefix "${candidate}" "${root}" strict; then
             return 0
         fi
     done
@@ -208,7 +209,7 @@ function is_plugin_data_path() {
         "${CODEX_ASSET_ROOT}/plugins/cache" \
         "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins"; do
         root="$(normalize_root_path "${root}")" || return 1
-        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+        if path_has_prefix "${candidate}" "${root}" strict; then
             return 0
         fi
     done

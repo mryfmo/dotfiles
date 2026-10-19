@@ -271,11 +271,11 @@ function crit_version() {
 function ensure_crit_cli() {
     local artifact checksum tag="${CRIT_PIN_VERSION}" target
 
-    case "$(uname -s)/$(uname -m)" in
-    Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
-    Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
-    Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
-    Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
+    case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64 | Linux-amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
+    Linux-aarch64 | Linux-arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
+    Darwin-x86_64 | Darwin-amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
+    Darwin-arm64 | Darwin-aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
     *)
         printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
@@ -915,12 +915,35 @@ function update_terminal_browser() {
 }
 
 #
+# @description Resolve path segments lexically as Node's path.resolve does, which npm applies to a bin link and to its
+#   prefix before its ownership check (bin-links check-bin): an absolute segment restarts the path, empty and `.`
+#   segments drop, and `..` drops its parent.
+# @arg $@ path Segments, the first one absolute.
+# @stdout The resolved path.
+#
+function normalize_node_path() {
+    local segment part resolved=""
+    local -a parts=()
+    for segment in "$@"; do
+        [ -z "${segment}" ] || [ -n "${segment%%/*}" ] || resolved="" # an absolute segment starts with its separator
+        IFS=/ read -ra parts <<< "${segment}"
+        for part in ${parts[@]+"${parts[@]}"}; do # empty for ""; bash before 4.4 calls "${parts[@]}" unbound then
+            case "${part}" in
+            "" | .) ;;
+            ..) resolved="${resolved%/*}" ;;
+            *) resolved="${resolved}/${part}" ;;
+            esac
+        done
+    done
+    printf '%s\n' "${resolved:-/}"
+}
+
+#
 # @description Verify the pinned omp tarball before npm installs it.
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link resolved="" part
-    local -a parts=()
+    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link resolved
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -944,19 +967,12 @@ function update_omp() (
     # npm refuses with EEXIST to replace a bin entry it does not own, so a standalone file or a link outside this
     # prefix's package (a mise or manual install, a dangling link included) moves to a kept path, and comes back when
     # the install fails; a directory stays for npm to judge.
-    # npm resolves the link against the bin directory before its ownership check (bin-links check-bin), so `.` and `..`
-    # fold here too, and a target that leaves this prefix's package is not npm's own (the Bot's 4307029052).
+    # npm resolves the link against the bin directory, and its prefix, before its ownership check (bin-links check-bin),
+    # so both fold here too, and a target that leaves this prefix's package is not npm's own (the Bot's 4307029052).
     link="$(readlink "${entry}")" || link=""
-    [[ -z "${link}" || "${link}" == /* ]] && part="${link}" || part="${entry%/*}/${link}"
-    IFS=/ read -ra parts <<< "${part}"
-    for part in ${parts[@]+"${parts[@]}"}; do # empty for a file; bash before 4.4 calls "${parts[@]}" unbound then
-        case "${part}" in
-        "" | .) ;;
-        ..) resolved="${resolved%/*}" ;;
-        *) resolved="${resolved}/${part}" ;;
-        esac
-    done
-    if { [ -f "${entry}" ] || [ -L "${entry}" ]; } && [[ "${resolved}" != "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent/"* ]]; then
+    resolved="$(normalize_node_path "${entry%/*}" "${link}")"
+    if { [ -f "${entry}" ] || [ -L "${entry}" ]; } &&
+        [[ "${resolved}" != "$(normalize_node_path "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent")/"* ]]; then
         aside="${HOME}/.local/share/agent-assets/omp/omp.previous"
         printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link} and resolves to ${resolved})}"
         mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
@@ -979,11 +995,11 @@ function update_omp() (
 #
 function update_hcom() (
     local url expected installed download_dir wheel actual wheel_dir
-    case "$(uname -s)/$(uname -m)" in
-    Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
-    Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
-    Linux/x86_64 | Linux/amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
-    Linux/aarch64 | Linux/arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
+    case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64 | Darwin-aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
+    Darwin-x86_64 | Darwin-amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
+    Linux-x86_64 | Linux-amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
+    Linux-aarch64 | Linux-arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
     *)
         printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 0

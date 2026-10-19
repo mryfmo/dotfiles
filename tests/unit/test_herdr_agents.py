@@ -496,7 +496,9 @@ fi
         path = self.pane_layout_after_resize_path if after_resize else self.pane_layout_path
         path.write_text(json.dumps(layout) + "\n")
 
-    def run_helper(self, *mode: str, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    def run_helper(
+        self, *mode: str, extra_env: dict[str, str] | None = None, cwd: Path = ROOT
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
@@ -517,7 +519,7 @@ fi
             env.update(extra_env)
         return subprocess.run(
             ["bash", str(SCRIPT), *mode, str(self.workdir)],
-            cwd=ROOT,
+            cwd=cwd,
             env=env,
             check=False,
             text=True,
@@ -2237,6 +2239,39 @@ exec {shlex.quote(real_git)} "$@"
         self.assertEqual(sum(call.startswith("workspace create ") for call in calls), 1, calls)
         self.assertEqual(sum(call.startswith("spawn ") for call in calls), 1, calls)
         self.assertEqual(len(seated.read_text().splitlines()), 4)
+
+    def test_add_worker_lock_helpers_ignore_repository_python_modules(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        marker = self.temp_dir / "hostile-import"
+        python_calls = self.temp_dir / "lock-python-calls.txt"
+        self.write_executable(
+            "python3",
+            f"""#!/usr/bin/env bash
+if [[ $* == *'import fcntl'* ]]; then
+    printf '%s\\t%s\\n' "$PWD" "$*" >> {shlex.quote(str(python_calls))}
+fi
+exec {shlex.quote(sys.executable)} "$@"
+""",
+        )
+        for relative in ("fcntl.py", "fcntl/__init__.py"):
+            with self.subTest(relative=relative):
+                hostile = self.workdir / relative
+                hostile.parent.mkdir(exist_ok=True)
+                hostile.write_text(
+                    f"from pathlib import Path\nPath({str(marker)!r}).touch()\n"
+                    "raise RuntimeError('repository fcntl imported')\n"
+                )
+                python_calls.write_text("")
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                result = self.run_helper("--add-worker", cwd=self.workdir, extra_env={"PYTHONPATH": str(self.workdir)})
+                self.assertFalse(marker.exists(), result.stdout + result.stderr)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(
+                    python_calls.read_text().splitlines(),
+                    [f"/\t-I -c import fcntl; fcntl.flock(9, fcntl.{op})" for op in ("LOCK_EX", "LOCK_UN")],
+                )
+                hostile.unlink()
 
     def test_add_worker_uses_git_common_dir_for_the_seat_lock(self) -> None:
         common = self.temp_dir / "separate.git"

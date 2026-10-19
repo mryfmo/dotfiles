@@ -103,37 +103,59 @@ MORE_REFUSED = {
 # the owned rows of dotfiles-T129-normalised-comparison-lint-followup-a02 (the followup-a01 and followup-a03 records), one
 # entry per distinct gap naming its ids (a Bot row and its local twin share the fixture): fixture -> [(rule, line)], or []
 # where the form holds no comparison
+JQ_AND = (  # a raw comparison between two normalised ones, joined by and
+    "jq -r 'def canonical_path: .; select((.a | canonical_path) == ($x | canonical_path) and .url == $p"
+    " and (.b | canonical_path) == ($y | canonical_path))'\n"
+)
 OWNED_ROWS = {
-    "4306643800 audit:4f5be51:4": [  # continuation lines are one test
-        ("c.sh", '[[ "$path" == \\\n  */x ]]\ncase "$url" \\\n  in file://*) ;; esac\n', [("R1", 1), ("R2", 3)])
+    "4306643800 audit:4f5be51:4": [  # continuation lines are one test; its marker may sit on its last line
+        ("c.sh", '[[ "$path" == \\\n  */x ]]\ncase "$url" \\\n  in file://*) ;; esac\n', [("R1", 1), ("R2", 3)]),
+        ("c2.sh", '[[ "$path" == \\\n  */x ]] # lint-comparisons: allow the fixture\n', []),
+        ("c3.sh", "x=a\\\\\n[[ $path == /x ]]\n", [("R1", 2)]),  # an escaped backslash continues nothing
     ],
-    "4306643803 audit:4f5be51:9": [  # a double-quoted jq program is read as the program
-        ("j.sh", 'jq -r "select(.url == \\"/x\\")"\njq -n --arg p /x "select(.path == \\$p)"\n', [("R3", 1), ("R3", 2)])
+    "4306643803 audit:4f5be51:9": [  # a double-quoted jq program is read as the program, across lines too
+        (
+            "j.sh",
+            'jq -r "select(.url == \\"/x\\")"\njq -n --arg p /x "select(.path == \\$p)"\n',
+            [("R3", 1), ("R3", 2)],
+        ),
+        ("j2.sh", 'jq -r "\n  select(.url == \\"/x\\")"\n', [("R3", 2)]),
+        ("j3.sh", 'jq -r .url f > o; echo "select(.url == \\"/x\\")"\n', []),  # no program after a separator
     ],
-    "4306643804 audit:4f5be51:2": [  # every fragment of a formatted value is escaped
+    "4306643804 audit:4f5be51:2": [  # every fragment of a formatted value is escaped, a join's separator too
         (
             "r.py",
             're.search(f"{re.escape(prefix) + name}", t)\nre.search(f"{name + re.escape(suffix)}", t)\n',
             [("R6", 1), ("R6", 2)],
-        )
+        ),
+        ("r2.py", 're.search(f"{sep.join(map(re.escape, xs))}", t)\n', [("R6", 1)]),
     ],
     "4306643808 audit:4f5be51:8": [  # an allow marker counts only in a comment, never in a string
         ("m.py", 'if path == "/x": print("# lint-comparisons: allow reason")\n', [("R4", 1)]),
         ("k.sh", '[[ $path == /x ]] && echo "# lint-comparisons: allow reason"\n', [("R1", 1)]),
-    ],
-    "audit:4f5be51:1": [  # and/or bound each comparison's operands
         (
-            "l.sh",
-            (
-                "jq -r 'def canonical_path: .; select((.a | canonical_path) == ($x | canonical_path) and .url == $p"
-                " and (.b | canonical_path) == ($y | canonical_path))'\n"
-            ),
-            [("R3", 1)],
-        )
+            "k2.sh",
+            "jq -r '\n  select(.url == $p)' # lint-comparisons: allow the fixture\n",
+            [],
+        ),  # on the quote's last line
+        ("k3.sh", "jq -r 'select(.url == $p)' f && echo \"# lint-comparisons: allow reason\"\n", [("R3", 1)]),
     ],
-    "audit:4f5be51:3": [("g.sh", "grep -E '^$name$' file\n", [])],  # a single-quoted pattern interpolates nothing
-    "audit:4f5be51:5": [("s.sh", 'jq -n \'"path == /x" # .url == "/x"\'\n', [])],  # a jq string and a jq comment
-    "audit:4f5be51:6": [("p.sh", 'pgrep -f "prefix $name"\n', [("R5", 1)])],  # the whole quoted pattern
+    "audit:4f5be51:1": [  # and/or bound each comparison's operands; if…end is one operand
+        ("l.sh", JQ_AND, [("R3", 1)]),
+        ("l2.sh", "jq -r 'select(if .a then .url else .path end == $p)'\n", [("R3", 1)]),
+    ],
+    "audit:4f5be51:3": [  # a single-quoted pattern interpolates nothing; a pattern word with an expanded $ does
+        ("g.sh", "grep -E '^$name$' file\n", []),
+        ("g2.sh", "grep -E \"^\\\\$name\" f\ngrep -E '^'\"$name\"'$' f\n", [("R6", 1), ("R6", 2)]),
+    ],
+    "audit:4f5be51:5": [  # a jq string and a jq comment hold no operator; a long literal shifts no later one
+        ("s.sh", 'jq -n \'"path == /x" # .url == "/x"\'\n', []),
+        ("s2.sh", "jq -r 'select(.name != \"" + "a" * 40 + '") | select(.x == "/y")\'\n', [("R3", 1)]),
+    ],
+    "audit:4f5be51:6": [  # the whole pattern word, mixed quotes too; an escaped $ expands nothing
+        ("p.sh", 'pgrep -f "prefix $name"\n', [("R5", 1)]),
+        ("p2.sh", 'pgrep -f x"$name"\npgrep -f "x \\$y"\n', [("R5", 1)]),
+    ],
     "audit:4f5be51:7": [("v.sh", '[[ "$x/path" == "$y/path" ]]\n', [("R1", 1)])],  # a literal path after the variable
 }
 

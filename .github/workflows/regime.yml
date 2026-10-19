@@ -23,7 +23,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.base.sha }}
+          # The base branch's tip at run time: the event's recorded base sha changes only when the pull request
+          # synchronizes, so it can predate this verifier (PR #420, ci:39185982423:1). The PR cannot move this branch.
+          ref: refs/heads/${{ github.base_ref }}
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
@@ -37,6 +39,5 @@ jobs:
           test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"
       - name: Check the pull request with the base's verifier
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "${BASE_SHA}" --head "${HEAD_SHA}"
+        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"

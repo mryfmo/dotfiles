@@ -10,9 +10,9 @@ split_commit: 0e16d7eb
 test_commit: f8f5da79
 fix_commit: 8f22dd9d
 review_commit: 8b0b5bb4
-code_head: cac07914
+code_head: 7c24617e
 revise_1_previous_head: 513e5d0532ec3c21484ab215ef77fea440329749
-revise_1_commits: 51abdb1c a19a0eba 32e4d2fb cac07914
+revise_1_commits: 51abdb1c a19a0eba 32e4d2fb cac07914 7c24617e
 parked_pr: 407
 task_sha256: 2f0493944badef8294dc691e87fba7ab6cc84ed2d6e135454a34b1219f724c42
 ---
@@ -122,6 +122,10 @@ The security review of the update-branch head `513e5d05` found two P1 and one P2
 - **Residual for P1 (1):** the host is not a trust boundary (plan 024 §5.14 item 0), and two cases remain:
   - A caller who builds the complete pinned environment itself (clean names, links to absolute non-shim paths) chooses its tools, exactly as its `PATH` already does for the resolution.
   - An inherited function named after a bash builtin (`unset`, `compgen`, `read`) could shadow the cleanup.
+- **A second push, against the revise's "one push":** the first push (`ebfc57fa`) failed all four `test` jobs.
+  - **Cause:** main had gained the comparison lint after the update-branch head (#415, `205fe85c`, the lint's changed-file gate). CI tests the PR merged with main, where `verdict.sh` is a changed file, and the lint reported nine intentional string comparisons in it.
+  - **Fix, `7c24617e`:** each comparison carries the lint's allow marker with its reason, on its own line; no logic or line count changes. The comparisons are the pinned PATH's exact string, a shim refused by its spelling (resolving a mise shim would erase that), SHA and record-field matches, and repository-relative git paths against globs and exclusions.
+  - **Evidence:** validation R8 merges main in a scratch worktree, as CI does: the lint exits 0 and its checkout test passes.
 - **Not run locally:** `make unit-test` this round; the PR's CI `test` jobs run it. The verdict module, shellcheck and shfmt are green here.
 
 cost: n/a

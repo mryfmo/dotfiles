@@ -2,7 +2,7 @@
 task_id: dotfiles-T133-verdict-audit-pool-a03
 seat: claude-standard-dot-a008
 code_head: 8b0b5bb4
-revise_1_code_head: cac07914
+revise_1_code_head: 7c24617e
 previous_head: b8998de162afc72d53d07679b8f0a194fcc480ff
 revise_1_previous_head: 513e5d0532ec3c21484ab215ef77fea440329749
 ---
@@ -504,5 +504,22 @@ verdict.sh alone:      278 of 300 lines
       11 .schemas/audit.json
       10 .schemas/verdict.json
       21 total
+[exit 0]
+```
+
+- R8 runs after the first revise push (`ebfc57fa`), whose four `test` jobs failed: main had gained the comparison lint (#415 `205fe85c`) after the update-branch head, and CI tests the PR merged with main. `7c24617e` marks verdict.sh's nine intentional comparisons. R1 to R7 above are at `cac07914`; `7c24617e` changes only those nine lines' trailing comments (and shfmt's alignment of two of them).
+
+## R8. CI's view: HEAD merged with origin/main (which now carries the comparison lint, #415 205fe85c) in a scratch worktree; the lint with no mode flag, and its checkout test
+```console
+$ git -C "$Q" merge origin/main; the lint; the lint module
+5e53d78b parents=7c24617e 205fe85c
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+lint exit 0
+OK
 [exit 0]
 ```

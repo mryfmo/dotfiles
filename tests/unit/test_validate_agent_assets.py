@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import install_binding_fixture, load_generator, load_manifest_fixture
+from tests.unit.test_generate_agent_configs import load_manifest_fixture
 
 sys.dont_write_bytecode = True
 
@@ -329,12 +329,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
-            text = (ROOT / relative_path).read_text()
-            if relative_path.name == "claude-settings-managed.json":
-                manifest = load_manifest_fixture(self.temp_dir)
-                manifest["claude"]["execution"]["tool_paths"].update(install_binding_fixture(self.temp_dir))
-                text = load_generator().render_claude_settings(manifest)
-            self.write_text_file(str(relative_path), text)
+            self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
 
     def update_json_hook_source(self, relative_path: str, event: str, groups: list[dict]) -> None:
         path = self.temp_dir / relative_path
@@ -1019,9 +1014,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_hook_composition_requires_permgate_first(self) -> None:
         self.copy_managed_hook_sources()
-        command = json.loads(
-            self.module.render_template_text(self.temp_dir / "home/.chezmoitemplates/claude-settings-managed.json")
-        )["hooks"]["PermissionRequest"][0]["hooks"][0]["command"]
         self.update_json_hook_source(
             "home/.chezmoitemplates/claude-settings-managed.json",
             "PermissionRequest",
@@ -1031,7 +1023,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         {"type": "command", "command": "audit-hook", "timeout": 5},
                         {
                             "type": "command",
-                            "command": command,
+                            "command": "permgate claude",
                             "timeout": 10,
                         },
                     ]
@@ -1084,92 +1076,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             },
         }
 
-    def test_render_template_text_expands_native_bindings(self):
-        home = self.temp_dir / "home with spaces"
-        bindings = install_binding_fixture(home)
-        generator = load_generator()
-        text = generator.render_claude_settings(load_manifest_fixture(self.temp_dir))
-        self.assertIn("{{ output ", text)
-        renders = [self.module.render_native_bindings]
-        for script in (
-            "home/dot_claude/modify_private_settings.json",
-            "home/dot_claude-worker/modify_private_settings.json",
-        ):
-            import ast
-
-            tree = ast.parse((ROOT / script).read_text())
-            function = next(
-                node
-                for node in tree.body
-                if isinstance(node, ast.FunctionDef) and node.name == "render_native_bindings"
-            )
-            namespace = {"re": __import__("re"), "json": json, "subprocess": subprocess}
-            exec(compile(ast.Module(body=[function], type_ignores=[]), script, "exec"), namespace)
-            renders.append(namespace["render_native_bindings"])
-        outputs = [render(text, self.temp_dir, home, "darwin") for render in renders]
-        self.assertEqual(outputs, [outputs[0]] * 3)
-        path = self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", text)
-        with mock.patch.object(self.module.Path, "home", return_value=home):
-            settings = json.loads(self.module.render_template_text(path))
-        self.module.validate_claude_permission_hook(settings, bindings, home)
-        self.assertNotIn("{{ output", json.dumps(settings))
-
-    def test_claude_permission_request_requires_sanitized_permgate(self):
-        import shlex
-
-        home = self.temp_dir / "home with spaces"
-        bindings = {"uv": "/trusted tools/uv", "python3": "/trusted tools/python3"}
-        words = [
-            "/usr/bin/env",
-            "-i",
-            "PATH=/usr/bin:/bin",
-            "HOME=" + str(home),
-            "LANG=C.UTF-8",
-            "TERM=dumb",
-            "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
-            "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
-            bindings["uv"],
-            "run",
-            "--no-config",
-            "--no-project",
-            "--offline",
-            "--python",
-            bindings["python3"],
-            "python",
-            "-I",
-            str(home / ".local/bin/common/permgate"),
-            "claude",
-        ]
-
-        def settings(command):
-            return {"hooks": {"PermissionRequest": [{"hooks": [{"type": "command", "command": command}]}]}}
-
-        for valid in (shlex.join(words), " ".join(json.dumps(word) for word in words)):
-            self.module.validate_claude_permission_hook(settings(valid), bindings, home)
-        invalid = [[], words[1:], words + ["extra"], words + [";", "true"], words[:8] + ["EXTRA=1"] + words[8:]]
-        for index, value in (
-            (2, "PATH=/tmp"),
-            (3, "HOME=/foreign"),
-            (8, "uv"),
-            (8, "/foreign/uv"),
-            (10, "--project"),
-            (12, "--script"),
-            (14, "python3"),
-            (14, "/foreign/python3"),
-            (15, "--script"),
-            (16, "-s"),
-            (17, "/foreign/permgate"),
-            (18, "codex"),
-        ):
-            invalid.append(words[:index] + [value] + words[index + 1 :])
-        for bad in [*(shlex.join(parts) for parts in invalid), "'malformed", "permgate claude", "guard permgate"]:
-            with self.subTest(command=bad), self.assertRaises(SystemExit):
-                self.module.validate_claude_permission_hook(settings(bad), bindings, home)
-        data = settings(shlex.join(words))
-        data["hooks"]["Stop"] = [{"hooks": [{"command": "ccgate claude"}]}]
-        with self.assertRaises(SystemExit):
-            self.module.validate_claude_permission_hook(data, bindings, home)
-
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
         self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox")
 
@@ -1180,18 +1086,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
-        manifest["claude"]["execution"]["tool_paths"].update(install_binding_fixture(self.temp_dir))
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
             (
                 "macOS gh exclusion",
                 lambda sandbox: sandbox["excludedCommands"].append("gh *"),
-                "darwin sandbox.*excludedCommands",
+                "darwin.*excludedCommands",
             ),
             (
                 "Linux extra exclusion",
-                lambda sandbox: sandbox.setdefault("linux_excluded_commands", []).append("bash *"),
-                "linux sandbox.*excludedCommands",
+                lambda sandbox: sandbox.update(linux_excluded_commands=[*sandbox["excludedCommands"], "bash *"]),
+                "linux.*excludedCommands",
             ),
             (
                 "Mach allowlist",

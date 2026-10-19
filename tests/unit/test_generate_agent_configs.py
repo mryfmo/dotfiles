@@ -168,25 +168,7 @@ statusMessage = "Closing session"
 """
 
 
-def install_binding_fixture(home):
-    uv = Path(shutil.which("uv"))
-    if "shims" in uv.parts:
-        uv = Path(subprocess.check_output(["mise", "which", "uv"], text=True).strip())
-    bindings = {"python/latest/bin/python3": Path(sys.executable).resolve(), "uv/latest/bin/uv": uv.resolve()}
-    for name, target in bindings.items():
-        link = Path(home) / ".local/share/mise/installs" / name
-        link.parent.mkdir(parents=True, exist_ok=True)
-        if not link.exists():
-            link.symlink_to(target)
-    return {"uv": str(uv.resolve()), "python3": str(Path(sys.executable).resolve())}
-
-
 def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin", *, home="/render-home", raw=False):
-    original_home = home
-    if "{{ output " in text:
-        home = str(temp_dir / "render-home") if home == "/render-home" else home
-        assert Path(home).is_relative_to(temp_dir)
-        install_binding_fixture(home)
     result = subprocess.run(
         [
             "chezmoi",
@@ -208,8 +190,7 @@ def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin", *
         capture_output=True,
         check=True,
     )
-    output = result.stdout.replace(home, original_home)
-    return output if raw else json.loads(output)
+    return result.stdout if raw else json.loads(result.stdout)
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -1438,18 +1419,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertNotIn("/Users/mryfmo/", config)
 
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
-        import shlex
-
         codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
         claude = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
-        command = self.render_claude_template(claude)["hooks"]["PermissionRequest"][0]["hooks"][0]["command"]
-        words = shlex.split(command)
-        self.assertEqual(words[:3], ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin"])
-        self.assertEqual(words[9:14], ["run", "--no-config", "--no-project", "--offline", "--python"])
-        self.assertTrue(all(Path(words[index]).is_absolute() for index in (8, 14, 17)))
-        self.assertEqual(words[15:], ["python", "-I", "/render-home/.local/bin/common/permgate", "claude"])
+        self.assertTrue(
+            any(
+                h["command"] == "~/.local/bin/common/permgate claude"
+                for h in all_hooks(self.render_claude_template(claude))
+            )
+        )
 
     def test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb(self) -> None:
         hooks = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())["hooks"]
@@ -2375,23 +2354,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             if line.startswith(("  model:", "  effortLevel:", "  model_reasoning_effort:")):
                 self.fail(f"model settings must live in model_profiles only: {line.strip()}")
 
-    def test_render_rejects_missing_trusted_bindings(self):
-        manifest = load_manifest_fixture(self.temp_dir)
-        del manifest["claude"]["execution"]["tool_paths"]["ruff"]
-        with self.assertRaises(SystemExit):
-            self.module.render_claude_settings(manifest)
-
-    def test_render_rejects_worker_and_relative_executable_bindings(self):
-        for section, key, value in (
-            ("tool_paths", "ruff", "relative"),
-            ("tool_paths", "ruff", "/anchor/.claude/worktrees/w/ruff"),
-            ("project_hooks", "contextdb_hook.py", "/anchor/.claude/worktrees/w/script.py"),
-        ):
-            manifest = load_manifest_fixture(self.temp_dir)
-            manifest["claude"]["execution"][section][key] = value
-            with self.subTest(value=value), self.assertRaises(SystemExit):
-                self.module.render_claude_settings(manifest)
-
     def test_worker_policy_is_separate_from_orchestrator_policy(self):
         from tests.unit.test_claude_worker_settings import expand
 
@@ -2426,38 +2388,16 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(actual, expected)
         self.assertIn("Edit(" + "/" + anchor + "/.agents/worklog/**)", actual)
         self.assertIn("Edit(" + "/" + anchor + "/.agents/worklog/uv-cache/**)", actual)
+        for platform in ("darwin", "linux"):
+            rendered = expand(self.module.render_claude_worker_settings(manifest), "/render-home", platform)
+            self.assertEqual([r for r in rendered["permissions"]["deny"] if r.startswith("Edit(")], expected)
+        for path in ("~/.agents/permgate-policy.yaml", "~/.claude/hooks/orchestrator-only.sh"):
+            self.assertIn("Edit(" + path + ")", actual)
+        for site in ("~/.local/lib/python3.13/site-packages", "~/Library/Python/3.13/lib/python/site-packages"):
+            for suffix in ("", "/fixture.pth", "/usercustomize.py", "/sitecustomize.py"):
+                self.assertTrue(any(fnmatch.fnmatchcase(site + suffix, p[5:-1]) for p in actual), site + suffix)
         for name in (".local/share", ".local/state"):
             self.assertIn("Edit(~/" + name + "/**)", actual)
-        for platform in ("darwin", "linux"):
-            rules = expand(self.module.render_claude_worker_settings(manifest), "/render-home", platform)[
-                "permissions"
-            ]["deny"]
-            for name in (
-                ".agents/permgate-policy.yaml",
-                ".claude/hooks/orchestrator-only.sh",
-                ".local/lib/python*/site-packages",
-                "Library/Python/*/lib/python/site-packages",
-            ):
-                self.assertIn("Edit(~/" + name + ")", rules)
-            for base in (
-                "~/.local/lib/python3.14/site-packages",
-                "~/Library/Python/3.14/lib/python/site-packages",
-                "~/.local/share/mise/installs/python/3.14/lib/python3.14/site-packages",
-            ):
-                for name in ("planted.pth", "usercustomize.py", "sitecustomize.py"):
-                    self.assertTrue(any(fnmatch.fnmatchcase(base + "/" + name, rule[5:-1]) for rule in rules))
-            for interpreter in {Path("/usr/bin/python3").resolve(), Path(sys.executable).resolve()}:
-                site = Path(
-                    subprocess.check_output(
-                        [str(interpreter), "-I", "-c", "import site; print(site.getusersitepackages())"],
-                        env=dict(os.environ, HOME=str(self.temp_dir)),
-                        text=True,
-                    ).strip()
-                )
-                self.assertTrue(site.is_relative_to(self.temp_dir))
-                for suffix in ("", "/planted.pth", "/usercustomize.py", "/sitecustomize.py"):
-                    candidate = "~/" + str(site.relative_to(self.temp_dir)) + suffix
-                    self.assertTrue(any(fnmatch.fnmatchcase(candidate, rule[5:-1]) for rule in rules), candidate)
         ignored = {".git", ".codex", ".agents", ".ruff_cache", ".uv-cache", ".venv", "__pycache__"}
         for path in ROOT.iterdir():
             if path.name not in ignored | {".claude"}:

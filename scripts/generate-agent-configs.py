@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -382,98 +383,64 @@ WORKER_MERGE_DENY = [
     "Bash(gh api graphql:*)",
 ]
 HOOK_PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
-RENDER_BINDINGS = r"""
-import glob, json, os, shlex, sys
-from pathlib import Path
-home = Path(sys.argv[2])
-policy = json.loads(sys.argv[1].replace("{{ .chezmoi.homeDir }}", json.dumps(str(home))[1:-1]))
-def binary(pattern):
-    pattern = str(home) + pattern[1:] if pattern.startswith("~/") else pattern
-    if not Path(pattern).is_absolute() or ":" in pattern or "shims" in Path(pattern).parts:
-        raise SystemExit("invalid executable binding: " + pattern)
-    matches = glob.glob(pattern)
-    if len(matches) != 1:
-        raise SystemExit("missing or ambiguous executable binding: " + pattern)
-    path = Path(matches[0]).resolve(strict=True)
-    if not path.is_file() or not os.access(path, os.X_OK) or any(p.casefold() in ("shims", ".cache", ".uv-cache") for p in path.parts) or "/.claude/worktrees/" in str(path).casefold():
-        raise SystemExit("untrusted executable binding: " + str(path))
-    return str(path)
-policy["home"] = str(home)
-policy["tools"] = {name: binary(pattern) for name, pattern in policy["tools"].items()}
-if len(sys.argv) > 3:
-    command = policy["prefix"].replace('HOME="$HOME"', 'HOME=' + shlex.quote(str(home)))
-    command += shlex.join([policy["tools"]["uv"], "run", "--no-config", "--no-project", "--offline", "--python", policy["tools"]["python3"], "python", "-I", str(home / ".local/bin/common/permgate"), "claude"])
-    print(json.dumps(command)[1:-1], end="")
-else:
-    print("python=" + shlex.quote(binary(policy.pop("bootstrap"))))
-    print("policy=" + shlex.quote(json.dumps(policy)))
-"""
 
 
-def hook_command(claude: dict, command: str) -> tuple[str, dict]:
-    binding = claude["execution"]
+def hook_command(command: str) -> tuple[str, dict]:
     words = shlex.split(command.replace("{{ .chezmoi.homeDir }}", "~"))
-    words = [word.replace("~", "{{ .chezmoi.homeDir }}", 1) if word.startswith("~") else word for word in words]
+    if words[0] == "bash":
+        words.pop(0)
+    words = [
+        word.replace("~", "{{ .chezmoi.homeDir }}", 1)
+        if word.startswith("~")  # lint-comparisons: allow template syntax
+        else word
+        for word in words
+    ]
     name = Path(words[0]).name
     mode = {"format-edited-files.py": "format", "project-map-reload.sh": "project-map"}.get(name, "project")
-    if name == "herdr-agent-state.sh":
-        argv = [binding["shell"], words[0], binding["python"], "session", "{pane}"]
-        argv.append("{{ .chezmoi.homeDir }}/.config/herdr/herdr.sock")
-    else:
-        argv = (
-            [binding["python"], "-I", *words]
-            if name in ("permgate", "agent-session-staleness") or name.endswith(".py")
-            else [binding["shell"], *words]
-        )
+    argv = (
+        ["/usr/bin/python3", "-I", *words]
+        if name.endswith(".py") or name == "agent-session-staleness"
+        else ["/bin/bash", *words]
+    )
     return name, {"mode": mode, "argv": argv}
 
 
 def guard_policy(manifest: dict) -> dict:
-    claude = manifest["claude"]
-    binding, hooks = claude["execution"], claude["hooks"]
-    required = {"bash", "python3", "uv", "git", "herdr", "jq", "node", "ruff", "prettier", "terminal-browser"}
-    if set(binding["tool_paths"]) != required:
-        fail("trusted executable bindings must name exactly " + ", ".join(sorted(required)))
+    claude, commands = manifest["claude"], {}
+    anchor = claude["orchestrator_checkout"]
+    normalized = os.path.normpath(anchor.replace("{{ .chezmoi.homeDir }}", "/home"))
+    if (
+        not Path(normalized).is_absolute()
+        or "/.claude/worktrees/" in (normalized + "/").casefold()  # lint-comparisons: allow already normalized
+    ):
+        fail("untrusted orchestrator checkout: " + anchor)
+    hooks = claude["hooks"]
     sources = [hooks[key] for key in ("enforce_uv_hook", "format_edited_files_hook", "project_map_reload_hook")]
-    sources.extend(hook["command"] for group in hooks["session_start"] for hook in group["hooks"])
-    sources += list(binding["project_hooks"].values())
-    commands = dict(hook_command(claude, source) for source in sources)
+    sources += [hook["command"] for group in hooks["session_start"] for hook in group["hooks"]]
+    sources += ["{checkout}/.claude/hooks/" + name for name in ("contextdb_hook.py", "contextdb_recover.py")]
+    sources += [
+        "{checkout}/scripts/agent-stop-gate.sh",
+        "{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agents --attach",
+    ]
+    commands.update(hook_command(source) for source in sources)
     for script in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
         commands["agmsg-" + script] = {
             "mode": "project",
-            "argv": [binding["shell"], binding["delivery_scripts"] + "/" + script, "claude-code", "{checkout}"],
+            "argv": [
+                "/bin/bash",
+                "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/" + script,
+                "claude-code",
+                "{checkout}",
+            ],
         }
-    commands["herdr-agents"] = {"mode": "project", "argv": [binding["shell"], binding["attachment_hook"], "--attach"]}
-    paths = [
-        claude["orchestrator_checkout"],
-        *(binding[key] for key in ("shell", "bootstrap_python", "python", "guard")),
-        *binding["tool_paths"].values(),
-    ]
-    paths += [value["argv"][2 if value["argv"][1] == "-I" else 1] for value in commands.values()]
-    for raw in paths:
-        value = raw.replace("{checkout}", claude["orchestrator_checkout"]).replace("{{ .chezmoi.homeDir }}", "/home")
-        value = os.path.normpath("/home/" + value[2:] if value.startswith("~/") else value)
-        if (
-            not Path(value).is_absolute()
-            or ":" in value
-            or any(part in Path(value).parts for part in ("shims", ".cache", ".uv-cache"))
-            or "/.claude/worktrees/" in (value + "/").casefold()
-        ):
-            fail("untrusted hook binding: " + raw)
-    return {
-        "bootstrap": binding["bootstrap_python"],
-        "root": claude["orchestrator_checkout"],
-        "tools": binding["tool_paths"],
-        "path": "{{ .chezmoi.homeDir }}/.claude/hook-bin:/usr/bin:/bin",
-        "commands": commands,
-    }
+    return {"root": anchor, "commands": commands}
 
 
 def render_orchestrator_guard(manifest: dict, text: str) -> str:
-    policy = guard_policy(manifest)
-    text = re.sub(r"\A#![^\n]+", "#!" + manifest["claude"]["execution"]["shell"], text)
-    block = '{{ output "/usr/bin/env" "-i" "PATH=/usr/bin:/bin" "/usr/bin/python3" "-I" "-c" '
-    block += json.dumps(RENDER_BINDINGS) + " " + json.dumps(json.dumps(policy)) + " .chezmoi.homeDir }}"
+    policy = base64.b64encode(
+        json.dumps(guard_policy(manifest)).replace("{{ .chezmoi.homeDir }}", "{home}").encode()
+    ).decode()
+    block = "home='{{ .chezmoi.homeDir | b64enc }}'\npolicy='" + policy + "'"
     return re.sub(r"(?<=# BEGIN TRUSTED POLICY\n).*?(?=\n# END TRUSTED POLICY)", lambda _: block, text, flags=re.S)
 
 
@@ -626,28 +593,20 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "disableSkillShellExecution": claude["disableSkillShellExecution"],
         "includeGitInstructions": claude["includeGitInstructions"],
     }
-    if "execution" in claude:
+    if "orchestrator_checkout" in claude:
         guard_policy(manifest)
-        for groups in settings["hooks"].values():
+        for event, groups in settings["hooks"].items():
             for group in groups:
                 for hook in group["hooks"]:
-                    selector, _ = hook_command(claude, hook["command"])
+                    hook["onFailure"] = "block"
+                    if event == "PermissionRequest":
+                        continue
+                    selector, _ = hook_command(hook["command"])
                     command = HOOK_PREFIX + '"$HOME/.claude/hooks/orchestrator-only.sh" ' + shlex.quote(selector)
                     if selector == "herdr-agent-state.sh":
                         command += ' "${HERDR_PANE_ID}"'
                     hook.update(command=command, onFailure="block")
     text = json_dumps(settings)
-    if "execution" in claude and permission_request:
-        policy = {
-            "prefix": HOOK_PREFIX,
-            "tools": {name: claude["execution"]["tool_paths"][name] for name in ("uv", "python3")},
-        }
-        expression = '{{ output "/usr/bin/env" "-i" "PATH=/usr/bin:/bin" "/usr/bin/python3" "-I" "-c" '
-        expression += (
-            json.dumps(RENDER_BINDINGS) + " " + json.dumps(json.dumps(policy)) + ' .chezmoi.homeDir "permission" }}'
-        )
-        old = settings["hooks"]["PermissionRequest"][0]["hooks"][0]["command"]
-        text = text.replace(json.dumps(old), '"' + expression + '"', 1)
     if "sandbox" in claude:
         variants = [json_dumps(render_claude_sandbox(manifest, os_name)).strip() for os_name in ("darwin", "linux")]
         sandbox_template = (
@@ -1524,7 +1483,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             claude = manifest["claude"]
             bindings = {
                 "ORCHESTRATOR_CHECKOUT": claude["orchestrator_checkout"],
-                **{f"HOOK_{key.upper()}": claude["execution"][key] for key in ("shell", "bootstrap_python")},
+                "HOOK_SHELL": "/bin/bash",
+                "HOOK_BOOTSTRAP_PYTHON": "/usr/bin/python3",
             }
             block = "\n".join(
                 key

@@ -5,13 +5,14 @@
 # @arg $2 string Herdr pane identity for the state-report selector only.
 set -eu
 # BEGIN TRUSTED POLICY
-{{ output "/usr/bin/env" "-i" "PATH=/usr/bin:/bin" "/usr/bin/python3" "-I" "-c" "\nimport glob, json, os, shlex, sys\nfrom pathlib import Path\nhome = Path(sys.argv[2])\npolicy = json.loads(sys.argv[1].replace(\"{{ .chezmoi.homeDir }}\", json.dumps(str(home))[1:-1]))\ndef binary(pattern):\n    pattern = str(home) + pattern[1:] if pattern.startswith(\"~/\") else pattern\n    if not Path(pattern).is_absolute() or \":\" in pattern or \"shims\" in Path(pattern).parts:\n        raise SystemExit(\"invalid executable binding: \" + pattern)\n    matches = glob.glob(pattern)\n    if len(matches) != 1:\n        raise SystemExit(\"missing or ambiguous executable binding: \" + pattern)\n    path = Path(matches[0]).resolve(strict=True)\n    if not path.is_file() or not os.access(path, os.X_OK) or any(p.casefold() in (\"shims\", \".cache\", \".uv-cache\") for p in path.parts) or \"/.claude/worktrees/\" in str(path).casefold():\n        raise SystemExit(\"untrusted executable binding: \" + str(path))\n    return str(path)\npolicy[\"home\"] = str(home)\npolicy[\"tools\"] = {name: binary(pattern) for name, pattern in policy[\"tools\"].items()}\nif len(sys.argv) > 3:\n    command = policy[\"prefix\"].replace('HOME=\"$HOME\"', 'HOME=' + shlex.quote(str(home)))\n    command += shlex.join([policy[\"tools\"][\"uv\"], \"run\", \"--no-config\", \"--no-project\", \"--offline\", \"--python\", policy[\"tools\"][\"python3\"], \"python\", \"-I\", str(home / \".local/bin/common/permgate\"), \"claude\"])\n    print(json.dumps(command)[1:-1], end=\"\")\nelse:\n    print(\"python=\" + shlex.quote(binary(policy.pop(\"bootstrap\"))))\n    print(\"policy=\" + shlex.quote(json.dumps(policy)))\n" "{\"bootstrap\": \"/usr/bin/python3\", \"root\": \"{{ .chezmoi.homeDir }}/Workspace/dotfiles\", \"tools\": {\"bash\": \"/bin/bash\", \"python3\": \"~/.local/share/mise/installs/python/latest/bin/python3\", \"uv\": \"~/.local/share/mise/installs/uv/latest/*/uv\", \"git\": \"/usr/bin/git\", \"herdr\": \"~/.local/share/mise/installs/github-ogulcancelik-herdr/latest/herdr\", \"jq\": \"~/.local/share/mise/installs/jq/latest/jq\", \"ruff\": \"~/.local/share/mise/installs/ruff/latest/*/ruff\", \"prettier\": \"~/.local/share/mise/installs/npm-prettier/latest/bin/prettier\", \"node\": \"~/.local/share/mise/installs/node/latest/bin/node\", \"terminal-browser\": \"~/.local/bin/terminal-browser\"}, \"path\": \"{{ .chezmoi.homeDir }}/.claude/hook-bin:/usr/bin:/bin\", \"commands\": {\"enforce-uv.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.claude/hooks/enforce-uv.sh\"]}, \"format-edited-files.py\": {\"mode\": \"format\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{{ .chezmoi.homeDir }}/.claude/hooks/format-edited-files.py\"]}, \"project-map-reload.sh\": {\"mode\": \"project-map\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.claude/hooks/project-map-reload.sh\"]}, \"herdr-agent-state.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agent-state.sh\", \"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"session\", \"{pane}\", \"{{ .chezmoi.homeDir }}/.config/herdr/herdr.sock\"]}, \"agent-session-staleness\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness\", \"hook\"]}, \"contextdb_hook.py\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{checkout}/.claude/hooks/contextdb_hook.py\"]}, \"contextdb_recover.py\": {\"mode\": \"project\", \"argv\": [\"{{ .chezmoi.homeDir }}/.claude/hook-bin/python3\", \"-I\", \"{checkout}/.claude/hooks/contextdb_recover.py\"]}, \"agent-stop-gate.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{checkout}/scripts/agent-stop-gate.sh\"]}, \"agmsg-session-start.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-start.sh\", \"claude-code\", \"{checkout}\"]}, \"agmsg-session-end.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/session-end.sh\", \"claude-code\", \"{checkout}\"]}, \"agmsg-check-inbox.sh\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/check-inbox.sh\", \"claude-code\", \"{checkout}\"]}, \"herdr-agents\": {\"mode\": \"project\", \"argv\": [\"/bin/bash\", \"{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agents\", \"--attach\"]}}}" .chezmoi.homeDir }}
+home='{{ .chezmoi.homeDir | b64enc }}'
+policy='eyJyb290IjogIntob21lfS9Xb3Jrc3BhY2UvZG90ZmlsZXMiLCAiY29tbWFuZHMiOiB7ImVuZm9yY2UtdXYuc2giOiB7Im1vZGUiOiAicHJvamVjdCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5jbGF1ZGUvaG9va3MvZW5mb3JjZS11di5zaCJdfSwgImZvcm1hdC1lZGl0ZWQtZmlsZXMucHkiOiB7Im1vZGUiOiAiZm9ybWF0IiwgImFyZ3YiOiBbIi91c3IvYmluL3B5dGhvbjMiLCAiLUkiLCAie2hvbWV9Ly5jbGF1ZGUvaG9va3MvZm9ybWF0LWVkaXRlZC1maWxlcy5weSJdfSwgInByb2plY3QtbWFwLXJlbG9hZC5zaCI6IHsibW9kZSI6ICJwcm9qZWN0LW1hcCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5jbGF1ZGUvaG9va3MvcHJvamVjdC1tYXAtcmVsb2FkLnNoIl19LCAiaGVyZHItYWdlbnQtc3RhdGUuc2giOiB7Im1vZGUiOiAicHJvamVjdCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5jbGF1ZGUvaG9va3MvaGVyZHItYWdlbnQtc3RhdGUuc2giLCAic2Vzc2lvbiJdfSwgImFnZW50LXNlc3Npb24tc3RhbGVuZXNzIjogeyJtb2RlIjogInByb2plY3QiLCAiYXJndiI6IFsiL3Vzci9iaW4vcHl0aG9uMyIsICItSSIsICJ7aG9tZX0vLmxvY2FsL2Jpbi9jb21tb24vYWdlbnQtc2Vzc2lvbi1zdGFsZW5lc3MiLCAiaG9vayJdfSwgImNvbnRleHRkYl9ob29rLnB5IjogeyJtb2RlIjogInByb2plY3QiLCAiYXJndiI6IFsiL3Vzci9iaW4vcHl0aG9uMyIsICItSSIsICJ7Y2hlY2tvdXR9Ly5jbGF1ZGUvaG9va3MvY29udGV4dGRiX2hvb2sucHkiXX0sICJjb250ZXh0ZGJfcmVjb3Zlci5weSI6IHsibW9kZSI6ICJwcm9qZWN0IiwgImFyZ3YiOiBbIi91c3IvYmluL3B5dGhvbjMiLCAiLUkiLCAie2NoZWNrb3V0fS8uY2xhdWRlL2hvb2tzL2NvbnRleHRkYl9yZWNvdmVyLnB5Il19LCAiYWdlbnQtc3RvcC1nYXRlLnNoIjogeyJtb2RlIjogInByb2plY3QiLCAiYXJndiI6IFsiL2Jpbi9iYXNoIiwgIntjaGVja291dH0vc2NyaXB0cy9hZ2VudC1zdG9wLWdhdGUuc2giXX0sICJoZXJkci1hZ2VudHMiOiB7Im1vZGUiOiAicHJvamVjdCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5sb2NhbC9iaW4vY29tbW9uL2hlcmRyLWFnZW50cyIsICItLWF0dGFjaCJdfSwgImFnbXNnLXNlc3Npb24tc3RhcnQuc2giOiB7Im1vZGUiOiAicHJvamVjdCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5hZ2VudHMvc2tpbGxzL2FnbXNnL3NjcmlwdHMvc2Vzc2lvbi1zdGFydC5zaCIsICJjbGF1ZGUtY29kZSIsICJ7Y2hlY2tvdXR9Il19LCAiYWdtc2ctc2Vzc2lvbi1lbmQuc2giOiB7Im1vZGUiOiAicHJvamVjdCIsICJhcmd2IjogWyIvYmluL2Jhc2giLCAie2hvbWV9Ly5hZ2VudHMvc2tpbGxzL2FnbXNnL3NjcmlwdHMvc2Vzc2lvbi1lbmQuc2giLCAiY2xhdWRlLWNvZGUiLCAie2NoZWNrb3V0fSJdfSwgImFnbXNnLWNoZWNrLWluYm94LnNoIjogeyJtb2RlIjogInByb2plY3QiLCAiYXJndiI6IFsiL2Jpbi9iYXNoIiwgIntob21lfS8uYWdlbnRzL3NraWxscy9hZ21zZy9zY3JpcHRzL2NoZWNrLWluYm94LnNoIiwgImNsYXVkZS1jb2RlIiwgIntjaGVja291dH0iXX19fQ=='
 # END TRUSTED POLICY
-exec "${python}" -I -c '
-import glob, json, os, subprocess, sys
+exec /usr/bin/python3 -I -c '
+import base64, json, os, subprocess, sys
 from pathlib import Path
-policy = json.loads(sys.argv[1])
-home = Path(policy["home"])
+home = Path(base64.b64decode(sys.argv[1]).decode())
+policy = json.loads(base64.b64decode(sys.argv[2]).decode().replace("{home}", json.dumps(str(home))[1:-1]))
 def expand(value):
     return value.replace("{checkout}", str(root))
 root = home
@@ -25,12 +26,12 @@ try:
         raise SystemExit(0)
 except OSError:
     raise SystemExit(0)
-selector, *arguments = sys.argv[2:]
+selector, *arguments = sys.argv[3:]
 if arguments and (selector != "herdr-agent-state.sh" or len(arguments) != 1):
     raise SystemExit("unexpected hook arguments")
 chosen = policy["commands"][selector]
 mode = chosen["mode"]
-command = [expand(word).replace("{pane}", arguments[0] if arguments else "") for word in chosen["argv"]]
+command = [expand(word) for word in chosen["argv"]]
 raw = sys.stdin.buffer.read()
 if mode in ("format", "project-map"):
     def paths(value):
@@ -48,51 +49,8 @@ if mode in ("format", "project-map"):
         return parent.exists() and any(p.exists() and p.samefile(parent) for p in (path, *path.parents))
     if not files or any(not beneath(p, root) or beneath(p, root / ".claude/worktrees") for p in files):
         raise SystemExit(0)
-tool_path = expand(policy["path"])
-entries = tool_path.split(":")
-if any(not p or not Path(p).is_absolute() or "shims" in Path(p).parts or "/.claude/worktrees/" in (str(Path(p).resolve()) + "/").casefold() for p in entries):
-    raise SystemExit("invalid trusted tool PATH")
-target = home / ".claude/hook-bin"
-bindings = policy["tools"]
-if bindings:
-    if entries[0] != str(target):
-        raise SystemExit("invalid private executable directory")
-    selected = {}
-    for name, pattern in bindings.items():
-        if "/" in name or name in ("", ".", ".."):
-            raise SystemExit("invalid executable name")
-        pattern = str(home) + pattern[1:] if pattern.startswith("~/") else pattern
-        if not Path(pattern).is_absolute() or ":" in pattern or "shims" in Path(pattern).parts:
-            raise SystemExit("invalid executable binding: " + pattern)
-        matches = glob.glob(pattern)
-        if len(matches) != 1:
-            raise SystemExit("missing or ambiguous executable binding: " + pattern)
-        path = Path(matches[0]).resolve(strict=True)
-        parts = [p.casefold() for p in path.parts]
-        if not path.is_file() or not os.access(path, os.X_OK) or "shims" in parts or ".uv-cache" in parts or ".cache" in parts or "/.claude/worktrees/" in str(path).casefold():
-            raise SystemExit("untrusted executable binding: " + str(path))
-        selected[name] = path
-    if target.is_symlink() or "/.claude/worktrees/" in str(target.resolve()).casefold():
-        raise SystemExit("untrusted executable directory")
-    target.mkdir(parents=True, exist_ok=True, mode=0o700)
-    target.chmod(0o700)
-    for child in target.iterdir():
-        if child.name not in selected or not child.is_symlink():
-            raise SystemExit("unexpected executable directory entry: " + str(child))
-    for name, path in selected.items():
-        link = target / name
-        if link.is_symlink() and link.resolve() == path:
-            continue
-        temporary = target.parent / (".hook-bin-" + name + "-" + str(os.getpid()))
-        temporary.symlink_to(path)
-        temporary.replace(link)
-os.environ["PATH"] = tool_path
-os.environ["HERDR_SOCKET_PATH"] = str(home / ".config/herdr/herdr.sock")
-for index in (0, 2 if command[1] == "-I" else 1):
-    path = Path(command[index]).resolve(strict=True)
-    if not Path(command[index]).is_absolute() or "/.claude/worktrees/" in str(path).casefold() or any(part in path.parts for part in ("shims", ".cache", ".uv-cache")):
-        raise SystemExit("untrusted hook executable")
-    command[index] = str(path)
+if selector == "herdr-agent-state.sh" and arguments:
+    os.environ.update(HERDR_ENV="1", HERDR_PANE_ID=arguments[0], HERDR_SOCKET_PATH=str(home / ".config/herdr/herdr.sock"))
 status = subprocess.run(command, input=raw, cwd=root).returncode
 raise SystemExit(status if status >= 0 else 128 - status)
-' "${policy}" "$@"
+' "${home}" "${policy}" "$@"

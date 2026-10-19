@@ -12,17 +12,12 @@ import os
 import platform
 import re
 import shlex
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 RUNTIME_KEYS = ("enabledPlugins",)
 MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
-# SessionStart entries are merged additively, so a managed command whose shape
-# changes would leave its previous variant behind and fire the hook twice. Any
-# entry invoking this script is managed, whatever home path it was rendered with.
-MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
 
 
@@ -46,23 +41,7 @@ def home_dir() -> Path:
     return Path.home()
 
 
-def render_native_bindings(text, source, home, os_name):
-    token = r'"(?:\\.|[^"\\])*"|\.chezmoi\.(?:homeDir|sourceDir|os)'
-    values = {".chezmoi.homeDir": str(home), ".chezmoi.sourceDir": str(source), ".chezmoi.os": os_name}
-
-    def expand(match):
-        words = [values[word] if word in values else json.loads(word) for word in re.findall(token, match[1])]
-        if words[:6] != ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "/usr/bin/python3", "-I", "-c"]:
-            raise ValueError("untrusted native binding command")
-        return subprocess.check_output(words, text=True, cwd=source)
-
-    return re.sub(r"{{ output ((?:(?:" + token + r")\s*)+)}}", expand, text)
-
-
 def render_managed_template(text: str) -> str:
-    text = render_native_bindings(
-        text, source_dir(), home_dir(), "darwin" if platform.system() == "Darwin" else "linux"
-    )
     text = re.sub(
         r'\{\{ if eq \.chezmoi\.os "darwin" \}\}(.*?)\{\{ else \}\}(.*?)\{\{ end \}\}',
         lambda match: match[1] if platform.system() == "Darwin" else match[2],
@@ -84,52 +63,81 @@ def load_json_object(text: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def is_managed_permission_hook(hook):
+def is_managed_permission_hook(hook: Any) -> bool:
     if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
         return False
     try:
         parts = shlex.split(hook["command"])
     except ValueError:
         return False
-    if len(parts) == 2:
-        return Path(parts[0]).name in ("permgate", "ccgate") and parts[1] == "claude"
-    home = Path(os.environ.get("CHEZMOI_HOME_DIR", str(Path.home())))
-    prefix = [
-        "/usr/bin/env",
-        "-i",
-        "PATH=/usr/bin:/bin",
-        "HOME=" + str(home),
-        "LANG=C.UTF-8",
-        "TERM=dumb",
-        "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
-        "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
-    ]
-    return (
-        len(parts) == 19
-        and parts[:8] == prefix
-        and Path(parts[8]).is_absolute()
-        and Path(parts[8]).name == "uv"
-        and parts[9:14] == ["run", "--no-config", "--no-project", "--offline", "--python"]
-        and Path(parts[14]).is_absolute()
-        and parts[15:] == ["python", "-I", str(home / ".local/bin/common/permgate"), "claude"]
-    )
+    return len(parts) == 2 and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES and parts[1] == "claude"
+
+
+HOOK_PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
+ATTACH_ENV = 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+
+
+def owned_hook_parts(hook: Any) -> list[str]:
+    command = hook.get("command", "") if isinstance(hook, dict) else ""
+    try:
+        return shlex.split(command) if isinstance(command, str) else []
+    except ValueError:
+        return []
+
+
+def is_guarded_hook(hook: Any, selectors: dict[str, list[str]]) -> bool:
+    command = hook.get("command", "") if isinstance(hook, dict) else ""
+    if not isinstance(command, str) or not command.startswith(HOOK_PREFIX):
+        return False
+    tail = command[len(HOOK_PREFIX) :]
+    if tail.startswith(ATTACH_ENV):
+        tail = tail[len(ATTACH_ENV) :]
+        selectors = {"herdr-agents": []} if "herdr-agents" in selectors else {}
+    parts = owned_hook_parts({"command": tail})
+    if (
+        parts
+        and parts[0].startswith("$HOME/")  # lint-comparisons: allow shell syntax ownership
+        and not tail.startswith('"$HOME/.claude/hooks/orchestrator-only.sh" ')  # lint-comparisons: allow HOME quoting
+    ):
+        return False
+    guards = {"$HOME/.claude/hooks/orchestrator-only.sh", str(home_dir() / ".claude/hooks/orchestrator-only.sh")}
+    return len(parts) >= 2 and parts[0] in guards and parts[1] in selectors and parts[2:] == selectors[parts[1]]
 
 
 def is_managed_session_start_hook(hook: Any) -> bool:
-    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
-        return False
-    try:
-        parts = shlex.split(hook["command"])
-    except ValueError:
-        return False
-    return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
+    if is_guarded_hook(
+        hook, {"herdr-agent-state.sh": ["${HERDR_PANE_ID}"], "herdr-agents": [], "agent-session-staleness": []}
+    ):
+        return True
+    parts = owned_hook_parts(hook)
+    if parts == [str(home_dir() / ".local/bin/common/agent-session-staleness"), "hook"]:
+        return True
+    if len(parts) == 3 and parts[0] == "bash" and parts[2] == "session":
+        return (
+            parts[1].endswith("/.claude/hooks/herdr-agent-state.sh")  # lint-comparisons: allow legacy syntax
+            and parts[1].startswith("/")  # lint-comparisons: allow legacy syntax
+        )
+    executables = {"herdr-agents", str(home_dir() / ".local/bin/common/herdr-agents")}
+    return (
+        bool(parts)
+        and parts[0] in executables
+        and parts[1:]
+        in (
+            ["--attach", "2>>", "$HOME/.config/herdr/herdr-agents.log", "||", "true"],
+            ["--attach", ">>", "$HOME/.config/herdr/herdr-agents.log", "2>&1", "||", "true"],
+        )
+    )
 
 
 def is_managed_post_tool_use_hook(hook: Any) -> bool:
-    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
-        return False
-    # The whole command, not shlex's words: a quoted or escaped ~ is a literal directory, not the home path.
-    return hook["command"].strip() in managed_post_tool_use_paths()
+    if is_guarded_hook(hook, {name: [] for name in MANAGED_POST_TOOL_USE_SCRIPTS}):
+        return True
+    # The whole command preserves the distinction between expanding and literal tilde paths.
+    return (
+        isinstance(hook, dict)
+        and isinstance(hook.get("command"), str)
+        and hook["command"].strip() in managed_post_tool_use_paths()
+    )
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
@@ -232,8 +240,9 @@ def main() -> int:
                 "hooks": [
                     {
                         "type": "command",
-                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true',
+                        "command": HOOK_PREFIX + ATTACH_ENV + '"$HOME/.claude/hooks/orchestrator-only.sh" herdr-agents',
                         "timeout": 10,
+                        "onFailure": "block",
                     }
                 ],
             }

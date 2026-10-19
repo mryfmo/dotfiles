@@ -1213,7 +1213,8 @@ fi
         command = session_hooks[-1]["hooks"][0]["command"]
         # stdout (the plain-start summary line) reaches the SessionStart context; stderr is logged.
         self.assertTrue(
-            command.endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
+            command.startswith('/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME"')
+            and command.endswith('"$HOME/.claude/hooks/orchestrator-only.sh" herdr-agents'),
             command,
         )
 
@@ -1899,19 +1900,12 @@ fi
         manifest = json.loads(
             json.dumps(load_manifest_fixture(self.home_dir)).replace("/render-home", "{{ .chezmoi.homeDir }}")
         )
-        manifest["claude"]["execution"]["tool_paths"] = dict.fromkeys(
-            manifest["claude"]["execution"]["tool_paths"], "/usr/bin/true"
-        )
         source = (ROOT / "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl").read_text()
         source = load_generator().render_orchestrator_guard(manifest, source)
         (hooks / "orchestrator-only.sh").write_text(
             render_claude_template(source, self.home_dir, home=str(self.home_dir), raw=True)
         )
         (hooks / "orchestrator-only.sh").chmod(0o755)
-        interpreter = self.home_dir / ".claude/hook-bin/python3"
-        interpreter.parent.mkdir(exist_ok=True)
-        if not interpreter.exists():
-            interpreter.symlink_to(Path(sys.executable).resolve())
         for args in (
             ("init", "-q"),
             ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "init"),
@@ -5353,6 +5347,30 @@ esac
             self.assertEqual(json.loads(text)["unrelated"], 42)
             self.assertEqual(text.count("check-inbox.sh"), 1)
 
+    def test_claude_preparation_keeps_boundary_when_delivery_tool_is_unavailable(self):
+        worktree = self.prepare_boundary_fixture()
+        delivery = self.home_dir / ".agents/skills/agmsg/scripts/delivery.sh"
+        settings = self.home_dir / ".claude-worker/settings.json"
+        legacy = worktree / ".claude/settings.local.json"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                delivery.unlink(missing_ok=True)
+                if not missing:
+                    delivery.write_text("exit 99\n")
+                settings.parent.mkdir(parents=True, exist_ok=True)
+                settings.write_text('{"permissions":{"allow":["Bash(*)"]}}')
+                result = self.run_helper("--bootstrap-agmsg")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                policy = json.loads(settings.read_text())
+                self.assertIn("Edit(~/.agents/permgate-policy.yaml)", policy["permissions"]["deny"])
+                self.assertTrue(policy["sandbox"]["failIfUnavailable"])
+                legacy.write_text('{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"unknown"}]}]}}')
+                result = self.run_helper("--bootstrap-agmsg")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Stop[0].hooks[0]", result.stderr)
+                legacy.unlink()
+
     def test_add_worker_migrates_legacy_worktree_local_hooks(self):
         worktree = self.prepare_boundary_fixture()
         self.write_seat_lifecycle_fakes()
@@ -5530,6 +5548,8 @@ else:
                 "GIT_CONFIG_GLOBAL=/dev/null",
                 "GIT_NO_LAZY_FETCH=1",
                 str(Path(shutil.which("git")).resolve()),
+                "--git-dir=" + str(self.workdir / ".git"),
+                "--work-tree=" + str(self.workdir),
                 "-C",
                 str(self.workdir),
             ]
@@ -5556,35 +5576,6 @@ else:
             self.assertEqual(output.returncode, 0, output.stderr)
             self.assertIn("descendant:", output.stdout)
             self.assertIn("/usr/bin:/bin", output.stdout)
-        helper = ROOT / "home/dot_local/bin/common/executable_herdr-agent-state.sh"
-        address = self.home_dir / "state.sock"
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-            server.bind(str(address))
-            server.listen(1)
-            received = []
-
-            def report():
-                client, _ = server.accept()
-                with client:
-                    received.append(json.loads(client.recv(8192)))
-                    client.sendall(b"{}")
-
-            thread = threading.Thread(target=report, daemon=True)
-            thread.start()
-            event = json.dumps(
-                {"hook_event_name": "SessionStart", "session_id": "fixture-session", "source": "startup"}
-            )
-            result = subprocess.run(
-                ["/bin/sh", str(helper), "/usr/bin/python3", "session", "fixture:p1", str(address)],
-                input=event,
-                text=True,
-                capture_output=True,
-                env=dict(os.environ, PATH=str(self.bin_dir) + ":/usr/bin:/bin"),
-            )
-            thread.join(timeout=2)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(received[0]["method"], "pane.report_agent_session")
-            self.assertEqual(received[0]["params"]["agent_session_id"], "fixture-session")
 
 
 if __name__ == "__main__":

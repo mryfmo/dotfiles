@@ -14,12 +14,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import (
-    all_hooks,
-    install_binding_fixture,
-    load_generator,
-    load_manifest_fixture,
-)
+from tests.unit.test_generate_agent_configs import all_hooks
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
@@ -31,8 +26,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
         self.baseline_path = self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
-        self.home_dir = self.source_dir / "target home"
-        install_binding_fixture(self.home_dir)
+        self.home_dir = self.source_dir / "target-home"
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
@@ -202,9 +196,9 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         commands = [h["command"] for e in session_hooks for h in e["hooks"]]
         self.assertEqual(len(session_hooks), 2)
         self.assertTrue(
-            commands[0].startswith(str(self.home_dir))
-            and commands[0].endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
-            f"attach hook must migrate to an absolute path, got {commands[0]!r}",
+            commands[0].startswith('/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME"')
+            and commands[0].endswith('"$HOME/.claude/hooks/orchestrator-only.sh" herdr-agents'),
+            f"attach hook must migrate to the installed guard, got {commands[0]!r}",
         )
         self.assertEqual(session_hooks[1], state_hook)
 
@@ -233,73 +227,6 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         permission_hooks = json.loads(output)["hooks"]["PermissionRequest"]
         self.assertEqual(permission_hooks, [managed_hook])
         self.assertNotIn("ccgate", json.dumps(permission_hooks))
-
-    def bound_hook(self, version="new"):
-        import shlex
-
-        words = [
-            "/usr/bin/env",
-            "-i",
-            "PATH=/usr/bin:/bin",
-            "HOME=" + str(self.home_dir),
-            "LANG=C.UTF-8",
-            "TERM=dumb",
-            "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
-            "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
-            f"/tools with spaces/{version}/uv",
-            "run",
-            "--no-config",
-            "--no-project",
-            "--offline",
-            "--python",
-            f"/tools with spaces/{version}/python3",
-            "python",
-            "-I",
-            str(self.home_dir / ".local/bin/common/permgate"),
-            "claude",
-        ]
-        return {"hooks": [{"type": "command", "command": shlex.join(words)}]}
-
-    def test_modify_private_settings_renders_native_bindings_before_merging(self):
-        module = load_generator()
-        text = module.render_claude_settings(load_manifest_fixture(self.source_dir))
-        self.assertIn("{{ output ", text)
-        self.baseline_path.write_text(text)
-        env = os.environ | {"CHEZMOI_HOME_DIR": str(self.home_dir), "CHEZMOI_SOURCE_DIR": str(self.source_dir)}
-        result = subprocess.run(
-            [sys.executable, "-I", str(MERGE_SCRIPT)], input="{}", text=True, capture_output=True, env=env
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotIn("{{", json.dumps(json.loads(result.stdout)))
-
-    def test_permission_merge_upgrades_legacy_permgate_to_bound_hook(self):
-        current = {"hooks": {"PermissionRequest": [{"hooks": [{"command": "permgate claude"}]}]}}
-        desired = {"hooks": {"PermissionRequest": [self.bound_hook()]}}
-        self.assertEqual(
-            json.loads(self.merge(desired, json.dumps(current)))["hooks"]["PermissionRequest"], [self.bound_hook()]
-        )
-
-    def test_permission_merge_replaces_previous_bound_hook_idempotently(self):
-        desired = {"hooks": {"PermissionRequest": [self.bound_hook()]}}
-        once = self.merge(desired, json.dumps({"hooks": {"PermissionRequest": [self.bound_hook("old")]}}))
-        self.assertEqual(json.loads(once)["hooks"]["PermissionRequest"], [self.bound_hook()])
-        self.assertEqual(self.merge(desired, once), once)
-
-    def test_permission_merge_does_not_classify_foreign_hook_as_managed(self):
-        classifier = runpy.run_path(str(MERGE_SCRIPT))["is_managed_permission_hook"]
-        command = self.bound_hook()["hooks"][0]["command"]
-        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
-            for value in (
-                command.replace(str(self.home_dir / ".local/bin/common/permgate"), "/foreign/permgate"),
-                command + " extra",
-                command + " ; true",
-                command.replace("--offline", "--script"),
-                command.replace("python -I", "python"),
-                command.replace("PATH=/usr/bin:/bin", "PATH=/tmp"),
-                "wrapper " + command,
-            ):
-                self.assertFalse(classifier({"command": value}), value)
-            self.assertTrue(classifier({"command": command}))
 
     def test_managed_session_start_replaces_stale_hard_coded_home_hook(self) -> None:
         """Upgrade path: a machine that received the old hard-coded managed hook."""
@@ -396,11 +323,14 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             commands[0].endswith("herdr-agent-state.sh' session"),
             f"state hook must stay first, got {commands}",
         )
-        self.assertIn("herdr-agents --attach", commands[1])
+        self.assertIn('orchestrator-only.sh" herdr-agents', commands[1])
         self.assertNotIn("/Users/someone-else", json.dumps(commands))
 
     def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
-        managed_hook = self.bound_hook()
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "permgate claude"}],
+        }
         stale_hook = {
             "matcher": "*",
             "hooks": [{"type": "command", "command": "ccgate claude"}],
@@ -427,7 +357,10 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(permission_hooks, [custom_hook, managed_hook])
 
     def test_permission_merge_preserves_custom_hook_in_mixed_entry(self) -> None:
-        managed_hook = self.bound_hook()
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "permgate claude"}],
+        }
         mixed_hook = {
             "matcher": "*",
             "hooks": [
@@ -673,6 +606,79 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
 
         self.assertTrue(output.endswith("\n"))
 
+    def test_prefixed_guarded_managed_hooks_replace_legacy_hooks_idempotently(self):
+        prefix = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
+        guard = '"$HOME/.claude/hooks/orchestrator-only.sh" '
+
+        def entry(commands):
+            return {
+                "matcher": "*",
+                "hooks": [{"type": "command", "command": c, "onFailure": "block"} for c in commands],
+            }
+
+        state = prefix + guard + 'herdr-agent-state.sh "${HERDR_PANE_ID}"'
+        formatting = prefix + guard + "format-edited-files.py"
+        mapping = prefix + guard + "project-map-reload.sh"
+        attachment = (
+            prefix
+            + 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+            + guard
+            + "herdr-agents"
+        )
+        staleness = prefix + guard + "agent-session-staleness"
+        legacy_staleness = f"{self.home_dir}/.local/bin/common/agent-session-staleness hook"
+        custom = "custom-wrapper format-edited-files.py"
+        foreign = [
+            prefix + "'$HOME/.claude/hooks/orchestrator-only.sh' format-edited-files.py",
+            prefix + '"/foreign/orchestrator-only.sh" format-edited-files.py',
+            prefix + guard + "format-edited-files.py extra",
+            prefix.replace("PATH=/usr/bin:/bin", "PATH=/tmp") + guard + "format-edited-files.py",
+            "wrapper " + prefix + guard + "herdr-agent-state.sh",
+            prefix + guard + "herdr-agent-state.sh extra",
+            "echo herdr-agents",
+        ]
+        managed = {
+            "hooks": {
+                "SessionStart": [entry([state]), entry([staleness])],
+                "PostToolUse": [entry([formatting, mapping])],
+            }
+        }
+        current = {
+            "hooks": {
+                "SessionStart": [
+                    entry(["bash '/old-home/.claude/hooks/herdr-agent-state.sh' session"]),
+                    entry([legacy_staleness]),
+                    entry(
+                        [
+                            f'{self.home_dir}/.local/bin/common/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'
+                        ]
+                    ),
+                    *[entry([c]) for c in foreign],
+                ],
+                "PostToolUse": [
+                    entry(["~/.claude/hooks/format-edited-files.py", custom]),
+                    *[entry([c]) for c in foreign],
+                ],
+            }
+        }
+        once = self.merge(managed, json.dumps(current))
+        self.assertEqual(once, self.merge(managed, once))
+        events = json.loads(once)["hooks"]
+        self.assertEqual(events["SessionStart"][0], entry([state]))
+        self.assertEqual(events["PostToolUse"][0], entry([custom]))
+        for event in events.values():
+            commands = [h["command"] for e in event for h in e["hooks"]]
+            self.assertTrue(all(c in commands for c in foreign))
+        commands = [h["command"] for e in events["SessionStart"] for h in e["hooks"]]
+        self.assertEqual(commands.count(attachment), 1)
+        self.assertEqual(commands.count(staleness), 1)
+        self.assertNotIn(legacy_staleness, commands)
+        self.assertNotIn("/old-home", once)
+        self.assertEqual(events["PostToolUse"][-1], entry([formatting, mapping]))
+        absolute = prefix + f'"{self.home_dir}/.claude/hooks/orchestrator-only.sh" format-edited-files.py'
+        upgraded = self.merge(managed, json.dumps({"hooks": {"PostToolUse": [entry([absolute])]}}))
+        self.assertEqual(json.loads(upgraded)["hooks"]["PostToolUse"], [entry([formatting, mapping])])
+
     def test_orchestrator_settings_keep_existing_policy(self):
         from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture, render_claude_template
 
@@ -695,14 +701,20 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertIn("~/.cache/uv", policy["sandbox"]["filesystem"]["allowWrite"])
         for hook in all_hooks(policy):
             self.assertEqual(hook["onFailure"], "block")
-            self.assertTrue(hook["command"].startswith("/usr/bin/env -i PATH="))
+            if hook["command"] != "~/.local/bin/common/permgate claude":
+                self.assertTrue(hook["command"].startswith("/usr/bin/env -i PATH="))
         first = self.merge(policy, json.dumps({"unrelated": 1}))
         self.assertEqual(self.merge(policy, first), first)
         merged = json.loads(first)
         self.assertEqual(merged["unrelated"], 1)
-        appended = [h for g in merged["hooks"]["SessionStart"] for h in g["hooks"] if "--attach" in h["command"]]
+        appended = [
+            h
+            for g in merged["hooks"]["SessionStart"]
+            for h in g["hooks"]
+            if h["command"].endswith('orchestrator-only.sh" herdr-agents')
+        ]
         self.assertEqual(len(appended), 1)
-        self.assertNotIn("onFailure", appended[0])  # Existing modify script adds runtime integration separately.
+        self.assertEqual(appended[0]["onFailure"], "block")
 
 
 if __name__ == "__main__":

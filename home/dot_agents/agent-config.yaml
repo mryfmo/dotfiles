@@ -192,28 +192,6 @@ claude:
   managed_settings_path: home/.chezmoitemplates/claude-managed-settings.json
   worker_config_dir: "{{ .chezmoi.homeDir }}/.claude-worker"
   orchestrator_checkout: "{{ .chezmoi.homeDir }}/Workspace/dotfiles"
-  execution:
-    shell: /bin/bash
-    bootstrap_python: /usr/bin/python3
-    python: "{{ .chezmoi.homeDir }}/.claude/hook-bin/python3"
-    guard: "{{ .chezmoi.homeDir }}/.claude/hooks/orchestrator-only.sh"
-    attachment_hook: "{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agents"
-    delivery_scripts: "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts"
-    project_hooks:
-      contextdb_hook.py: "{checkout}/.claude/hooks/contextdb_hook.py"
-      contextdb_recover.py: "{checkout}/.claude/hooks/contextdb_recover.py"
-      agent-stop-gate.sh: "{checkout}/scripts/agent-stop-gate.sh"
-    tool_paths:
-      bash: /bin/bash
-      python3: "~/.local/share/mise/installs/python/latest/bin/python3"
-      uv: "~/.local/share/mise/installs/uv/latest/*/uv"
-      git: /usr/bin/git
-      herdr: "~/.local/share/mise/installs/github-ogulcancelik-herdr/latest/herdr"
-      jq: "~/.local/share/mise/installs/jq/latest/jq"
-      ruff: "~/.local/share/mise/installs/ruff/latest/*/ruff"
-      prettier: "~/.local/share/mise/installs/npm-prettier/latest/bin/prettier"
-      node: "~/.local/share/mise/installs/node/latest/bin/node"
-      terminal-browser: "~/.local/bin/terminal-browser"
   trusted_paths: [
     "{checkout}/.chezmoiroot",
     "{checkout}/.claude/contextdb", "{checkout}/.claude/contextdb/**",
@@ -398,7 +376,7 @@ claude:
       - matcher: "^(startup|resume|clear|compact|fork)$"
         hooks:
           - type: command
-            command: "~/.local/bin/common/herdr-agent-state.sh"
+            command: "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session"
             timeout: 10
       - matcher: "*"
         hooks:

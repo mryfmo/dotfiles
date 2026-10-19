@@ -5,12 +5,10 @@ from __future__ import annotations
 
 import configparser
 import fnmatch
-import glob
 import json
 import os
 import posixpath
 import re
-import shlex
 import subprocess
 import sys
 from collections.abc import Iterable
@@ -87,21 +85,8 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
-def render_native_bindings(text, source, home, os_name):
-    token = r'"(?:\\.|[^"\\])*"|\.chezmoi\.(?:homeDir|sourceDir|os)'
-    values = {".chezmoi.homeDir": str(home), ".chezmoi.sourceDir": str(source), ".chezmoi.os": os_name}
-
-    def expand(match):
-        words = [values[word] if word in values else json.loads(word) for word in re.findall(token, match[1])]
-        if words[:6] != ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "/usr/bin/python3", "-I", "-c"]:
-            raise ValueError("untrusted native binding command")
-        return subprocess.check_output(words, text=True, cwd=source)
-
-    return re.sub(r"{{ output ((?:(?:" + token + r")\s*)+)}}", expand, text)
-
-
 def render_template_text(path: Path, os_name: str = "darwin") -> str:
-    text = render_native_bindings(path.read_text(), ROOT / "home", Path.home(), os_name)
+    text = path.read_text()
     # This repository uses .chezmoiroot=home, so .chezmoi.sourceDir resolves
     # to the chezmoi source root that contains dot_agents/, dot_codex/, etc.
     text = text.replace("{{ .chezmoi.sourceDir }}", str(ROOT / "home"))
@@ -362,7 +347,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         "herdr-agents *",
         "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
     ]:
-        fail(f"{label}.excludedCommands must match the exact control-plane list")
+        fail(f"{label} {os_name} excludedCommands must match the exact seat-tool list")
     sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
     if not isinstance(sockets, list):
         fail(f"{label}.network.allowUnixSockets must be a list")
@@ -1194,47 +1179,6 @@ def validate_permgate_policy(policy_path: Path) -> None:
             fail(f"{policy_path} {key} must be a list of objects with string tool and regex")
 
 
-def validate_claude_permission_hook(settings, bindings, home):
-    hooks = settings.get("hooks", {})
-    if "ccgate" in json.dumps(hooks):
-        fail("Claude hooks must not wire ccgate")
-    expected = [
-        "/usr/bin/env",
-        "-i",
-        "PATH=/usr/bin:/bin",
-        "HOME=" + str(home),
-        "LANG=C.UTF-8",
-        "TERM=dumb",
-        "CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR}",
-        "CLAUDE_ENV_FILE=${CLAUDE_ENV_FILE}",
-        bindings["uv"],
-        "run",
-        "--no-config",
-        "--no-project",
-        "--offline",
-        "--python",
-        bindings["python3"],
-        "python",
-        "-I",
-        str(Path(home) / ".local/bin/common/permgate"),
-        "claude",
-    ]
-    commands = []
-    try:
-        for group in hooks.get("PermissionRequest", []):
-            for hook in group.get("hooks", []):
-                if hook.get("type") == "command":
-                    commands.append(shlex.split(hook.get("command", "")))
-    except (ValueError, TypeError):
-        fail("malformed Claude permgate PermissionRequest command")
-    if (
-        commands != [expected]
-        or any(not Path(bindings[key]).is_absolute() for key in ("uv", "python3"))
-        or Path(bindings["uv"]).name != "uv"
-    ):
-        fail("Claude PermissionRequest must use the sanitized bound permgate command")
-
-
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -1245,14 +1189,11 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
 
     claude_settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     claude_settings = json.loads(render_template_text(claude_settings_path))
-    bindings = {}
-    for name in ("uv", "python3"):
-        pattern = manifest["claude"]["execution"]["tool_paths"][name]
-        matches = glob.glob(str(Path.home()) + pattern[1:] if pattern.startswith("~/") else pattern)
-        if len(matches) != 1:
-            fail("missing or ambiguous trusted binding: " + pattern)
-        bindings[name] = str(Path(matches[0]).resolve(strict=True))
-    validate_claude_permission_hook(claude_settings, bindings, Path.home())
+    claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
+    if "PermissionRequest" not in claude_hooks or "permgate claude" not in claude_hooks:
+        fail(f"{claude_settings_path} must wire the permgate PermissionRequest hook")
+    if "ccgate" in claude_hooks:
+        fail(f"{claude_settings_path} must not wire ccgate")
 
     policy_path = ROOT / "home/dot_agents/permgate-policy.yaml"
     permgate_path = ROOT / "home/dot_local/bin/common/executable_permgate"

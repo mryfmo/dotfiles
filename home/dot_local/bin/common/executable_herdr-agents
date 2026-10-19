@@ -349,7 +349,7 @@ function ensure_worker_delivery() {
     local delivery="${HOME}/.agents/skills/agmsg/scripts/delivery.sh"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
 
-    [[ -x ${delivery} ]] || return 0
+    [[ ${kind} == claude || -x ${delivery} ]] || return 0
     mkdir -p "${log_file%/*}"
     if [[ ${kind} == claude ]]; then
         local settings="${HOME}/.claude-worker/settings.json" input temporary legacy="${worktree}/.claude/settings.local.json"

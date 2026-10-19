@@ -38,13 +38,13 @@ stop() { echo "verdict: $1: hold" >&2 && exit 20; }
 pinned=yes # only as the re-run below builds it: no other exported name, each tool a link outside a shims directory
 for v in $(compgen -e); do [[ ${v} =~ ^(HOME|TMPDIR|PATH|VERDICT_BIN|PRECHECK_REQUIRED|PWD|SHLVL|OLDPWD|_)$ ]] || pinned=no; done
 for t in "${VERDICT_BIN:-/var/empty}"/*; do [[ $(/usr/bin/readlink "${t}") =~ ^/ && ! $(/usr/bin/readlink "${t}") =~ /shims/ ]] || pinned=no; done
-if [[ ${pinned} == no || -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts
+if [[ ${pinned} == no || -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts # lint-comparisons: allow the pinned PATH is this exact string by construction
     IFS=: read -ra dirs <<< "${PATH}" && search=""
     for d in "${dirs[@]}"; do [[ -z ${d} || ${d} == "${VERDICT_BIN:-}" ]] || search+="${search:+:}${d}"; done # not the caller's bin
     PATH=${search} bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0
     for t in bash uv python3 gh git jq agmsg-dispatch herdr; do
         p="$(cd / && env -i PATH="${PATH}" HOME="${HOME}" mise which "${t}" 2> /dev/null || command -v "${t}")" || p=""
-        [[ ${p} == /* && ${p} != */shims/* ]] && ln -s -- "${p}" "${bin}/${t}" && continue
+        [[ ${p} == /* && ${p} != */shims/* ]] && ln -s -- "${p}" "${bin}/${t}" && continue # lint-comparisons: allow a shim is refused by its spelling, which resolving would erase
         [[ ${t} == agmsg-dispatch || ${t} == herdr ]] || { rm -rf -- "${bin}" && stop "no ${t} outside a shims directory ('${p}')"; }
     done
     env -i HOME="${HOME}" TMPDIR="${TMPDIR:-/tmp}" PATH="${bin}:/usr/bin:/bin" VERDICT_BIN="${bin}" \
@@ -103,7 +103,7 @@ if [[ ${loop} == true ]]; then
         --jq '.[] | select(.isDraft | not) | "\(.number) \(.headRefOid)"' | sort -n)"
     while read -r n h; do
         for f in .orchestration/acceptance/*.md; do
-            [[ -n ${n} && "$(block "${f}" | jq -r --argjson p "${n}" 'select(.pr == $p) | .head' 2> /dev/null)" == "${h}" ]] || continue
+            [[ -n ${n} && "$(block "${f}" | jq -r --argjson p "${n}" 'select(.pr == $p) | .head' 2> /dev/null)" == "${h}" ]] || continue # lint-comparisons: allow a record head sha against the PR head sha
             "${here}/verdict.sh" "${n}" ${opts[@]+"${opts[@]}"} || true
             git fetch -q origin # a merge moved origin/main: the trusted checkout follows it, or the loop holds
             [[ ${apply} == false ]] || git merge -q --ff-only origin/main || stop "this checkout cannot fast-forward to origin/main"
@@ -131,7 +131,7 @@ cond() { conds+=("$(jq -cn --argjson id "$1" --argjson ok "$2" --arg e "$3" '{id
 lack() { hold+="${hold:+; }$1"; }
 fresh="$(mktemp "${TMPDIR:-/tmp}/verdict-sweep.XXXXXX")" line_file="" conds=() hold=""
 trap 'rm -f -- "${fresh}" "${line_file}"' EXIT
-[[ "$(block "${rec}" 2> /dev/null | jq -r '"\(.task) \(.pr) \(.head) \(.ledger | type)"' 2> /dev/null)" == "${task} ${pr} ${head} array" ]] ||
+[[ "$(block "${rec}" 2> /dev/null | jq -r '"\(.task) \(.pr) \(.head) \(.ledger | type)"' 2> /dev/null)" == "${task} ${pr} ${head} array" ]] || # lint-comparisons: allow record fields against the task, PR and head strings
     lack "the record ${rec} is not this task's at the head"
 [[ "$(jq -r '"\(.state) \(.baseRefName) \(.isDraft)"' <<< "${view}")" == "OPEN main false" ]] || lack "PR ${pr} is not open, non-draft, on main"
 want="$(sed -n 's/^precheck: \([0-9a-f]\{64\}\)$/\1/p' "${rec}" 2> /dev/null | tail -n 1 || true)" got="" ph=""
@@ -158,8 +158,8 @@ fi
 if [[ -f ${audit} ]] && "${VERDICT_BIN}/python3" -I -c "${checker}" .schemas/audit.json "${audit}" > /dev/null 2>&1; then
     a7="$(jq '[.findings[] | select(.priority == "P0" or .priority == "P1") | select(.status // "new" | . == "new" or . == "still-open")] | length' "${audit}")" # counted, never named: no empty id hides one
     a3="$(jq -r --arg h "${head}" --arg t "${task}" --argjson n "${a7}" '[.findings[] | select((.status // "new") != "fixed")] as $open
-        | if [.head, .task_id] != [$h, $t] then "the audit is of \(.task_id) at \(.head[0:7])" elif .verdict == "blocked" then "blocked: not assessed"
-        elif $n > 0 then "\($n) open P0/P1 findings" elif .verdict == "correct" or ($open | length > 0 and all(.[]; .scope == "records")) then ""
+        | if [.head, .task_id] != [$h, $t] then "the audit is of \(.task_id) at \(.head[0:7])" elif .verdict == "blocked" then "blocked: not assessed" # lint-comparisons: allow the audit head sha and task id against strings
+        elif $n > 0 then "\($n) open P0/P1 findings" elif .verdict == "correct" or ($open | length > 0 and all(.[]; .scope == "records")) then "" # lint-comparisons: allow the audit verdict and scope words
         else "verdict \(.verdict), unfixed \($open | map(.scope))" end' "${audit}")"
     [[ ${a3} != blocked:* ]] || lack "the audit ${audit} is blocked"
     cond 3 "$([[ -z ${a3} ]] && echo true || echo false)" "${a3:-the audit of the head is correct or leaves only records findings}"
@@ -208,11 +208,11 @@ if [[ -n ${front} && "$(jq -r '.allowed_files | type' <<< "${front}")" == array 
         [[ -n ${path} ]] || continue
         in=no counted=yes
         # shellcheck disable=SC2053 # an allowed_files entry is a glob
-        for a in "${allowed[@]}"; do [[ ${path} != ${a} ]] || in=yes; done
+        for a in "${allowed[@]}"; do [[ ${path} != ${a} ]] || in=yes; done # lint-comparisons: allow repository-relative git paths against allowed_files globs
         [[ ${in} == yes ]] || stray+=" ${path}"
         [[ ${add} != - ]] || add=0 del=0
-        for x in "${excluded[@]}"; do [[ ${path} != "${x}" && (${x} != */ || ${path} != "${x}"*) ]] || counted=no; done
-        [[ ${path} != tests/* ]] || under=$((under + add + del))
+        for x in "${excluded[@]}"; do [[ ${path} != "${x}" && (${x} != */ || ${path} != "${x}"*) ]] || counted=no; done # lint-comparisons: allow repository-relative git paths against the cap exclusions
+        [[ ${path} != tests/* ]] || under=$((under + add + del))                                                        # lint-comparisons: allow a repository-relative git path against tests/
         [[ ${counted} == no ]] || outside=$((outside + add + del))
     done <<< "${numstat}"
     [[ -z ${cap_out} ]] || ((outside <= cap_out)) || over+=" ${outside}>${cap_out} outside tests/"

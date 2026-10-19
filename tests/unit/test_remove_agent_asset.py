@@ -415,6 +415,36 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.assertIn("DRY-RUN: uv tool uninstall hcom\n", removed.stdout)
         self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
 
+    def call(self, *argv: str) -> int:
+        # One remover function, sourced without the script's closing `main "$@"` line.
+        source = REMOVER.read_text()
+        self.assertTrue(source.endswith('\nmain "$@"\n'))
+        library = self.temp_dir / "remove-agent-asset.bash"
+        library.write_text(source.removesuffix('main "$@"\n'))
+        env = {**os.environ, "HOME": str(self.home), "PATH": f"{self.bin_dir}:/usr/bin:/bin"}
+        argv = ("bash", "-c", 'source "$1"; shift; "$@"', "bash", str(library), *argv)
+        return subprocess.run(argv, env=env, capture_output=True, check=False).returncode
+
+    def test_path_has_prefix_folds_both_paths_before_comparing(self) -> None:
+        # baseline:executable_remove-agent-asset:R1:ff2e0ca: a `..` that leaves the prefix is not a descendant, and a
+        # `.` or a trailing slash does not hide one.
+        self.assertEqual(1, self.call("path_has_prefix", "/r/a/../b", "/r/a"))
+        self.assertEqual(0, self.call("path_has_prefix", "/r/a/./b", "/r/a/"))
+
+    def test_a_safe_root_is_not_inside_itself_in_any_spelling(self) -> None:
+        # baseline:executable_remove-agent-asset:R1:5903a3c, both rows: the strict check folds the candidate, so a root
+        # spelled with `/` or `/.` is not inside itself; row 1 through path_is_in_safe_root, row 2 at the call
+        # is_plugin_data_path now makes (it folds its argument first, so the spelling cannot reach it from outside).
+        agents, cache = self.home.resolve() / ".agents", self.home.resolve() / ".claude/plugins/cache"
+        for argv in (
+            ("path_is_in_safe_root", f"{agents}/"),
+            ("path_is_in_safe_root", f"{agents}/."),
+            ("path_has_prefix", f"{cache}/", str(cache), "strict"),
+        ):
+            with self.subTest(argv=argv):
+                self.assertEqual(1, self.call(*argv))
+        self.assertEqual(0, self.call("path_is_in_safe_root", f"{agents}/skills/x"))
+
     def executable(self, name: str, body: str) -> None:
         path = self.bin_dir / name
         path.write_text("#!/usr/bin/env bash\n" + textwrap.dedent(body))

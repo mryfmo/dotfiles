@@ -10,4 +10,8 @@ These are candidates only; nothing is promoted.
 3. [memory:decision] A path-shaped spelling of something that is not a path is a false positive to fix at its spelling, not through a normaliser. The `uname -s`/`uname -m` pair joined by `/` reads as a path; joined by `-` it does not.
    - A normaliser there would be wrong: `realpath Darwin/arm64` resolves against the working directory.
    - The red-then-green test for such a row can only be the lint itself, because behaviour does not change.
-4. [memory:failure] The updater's `update_omp` tests cannot run inside the macOS sandbox, because `mktemp -d` without a template is refused there. Run the module outside the sandbox and record it. The fakes keep the run local.
+4. [memory:failure] Round 1 ran the updater's tests outside the sandbox after macOS `mktemp -d` without a template was refused inside it. That was the audit's P1: a refusal is a blocked PONG, never an escape, tests included, fakes or not.
+   - The fix that keeps work inside the sandbox is a `${TMPDIR:-/tmp}/<name>.XXXXXX` template on each `mktemp` the tests reach (round 2, `92d39f00`).
+   - A red proof at a base without the template then needs the template hunk applied to that base, so the row's assertion is reached.
+5. [memory:failure] `gh` was run outside the sandbox on an assumption. Inside the sandbox, `gh pr view`, `gh pr checks` and `gh api` work. Try the sandbox first, and leave it only after a recorded refusal.
+6. [memory:failure] A Bot wait on a draft PR is no Bot wait, because the Codex Bot reviews when a draft is marked ready. Check `isDraft` before claiming the window, and report the draft state instead.

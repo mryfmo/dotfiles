@@ -12,11 +12,6 @@ import re
 import shutil
 import sys
 
-if not os.path.isabs(os.environ.get("UV_CACHE_DIR", "")):
-    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
-
-import yaml
-
 PLANS = ".orchestration/plans"
 TEMPLATE = pathlib.Path(__file__).with_name("task-template.md")
 NETWORK = r"\b(?:gh|curl)\b|https?://"
@@ -29,6 +24,9 @@ spec = importlib.util.spec_from_file_location("checker", helper)
 checker = importlib.util.module_from_spec(spec)
 spec.loader.get_code = lambda _: compile(helper_data, str(helper), "exec")
 spec.loader.exec_module(checker)
+normalise_name = checker.normalise_name
+
+import yaml
 
 
 def git(root, *args):
@@ -53,7 +51,7 @@ def is_command(span):
         r"[a-z][\w.+-]*|\.?\.?/[\w./-]+|[\w./-]+\.(?:sh|py)", words[0]
     ):
         return False
-    return len(words) > 1 or ("/" not in words[0] and shutil.which(words[0]) is not None)
+    return len(words) > 1 or ("/" not in normalise_name(words[0]) and shutil.which(words[0]) is not None)
 
 
 def program(lines, n):
@@ -103,7 +101,7 @@ def main():
 
     names = [s.split()[0] for s in spans(work + "\n" + "\n".join(items)) if s.split()]
     # A literal has a file extension or exists, so a ref such as origin/main is not proposed; a glob stays a scope.
-    cand = [n.rstrip(".,") for n in names if "/" in n and not n.startswith(("-", "~"))]
+    cand = [n.rstrip(".,") for n in names if "/" in normalise_name(n) and not normalise_name(n).startswith(("-", "~"))]
     paths = [
         n
         for n in cand
@@ -122,7 +120,7 @@ def main():
     rows_out = [{"control": f"{p} ({title})", "disposition": f"residual: {completion}"} for p in allowed[:-1]]
     for g in (a for a in allowed[:-1] if re.search(GLOB, a)):  # C12: every executed or applied file a glob matches
         for f in filter(None, git(root, "ls-files", "-z", "--", f":(glob){g}").stdout.split("\0")):
-            if checker.applied(f) and f not in allowed and not f.startswith("tests/fixtures/"):  # an entry has its row
+            if checker.applied(f) and f not in allowed and not normalise_name(f).startswith("tests/fixtures/"):
                 rows_out.append({"control": f"{f} (matched by {g})", "disposition": f"residual: {completion}"})
     rows_out += bundled.get("threat_table") or []
 
@@ -212,7 +210,7 @@ Everything the todo row {args.todo_id} and its program items do not name.
             "--no-project",
             "--offline",
             "--python",
-            checker.trusted(sys.executable),
+            checker.PYTHON,
             "--with",
             "pyyaml",
             "python",

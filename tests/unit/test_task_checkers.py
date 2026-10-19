@@ -14,11 +14,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.unit.test_task_consistency_c11_c15 import fixture_cache, uv_command
+from tests.unit.test_task_consistency_c11_c15 import parent_env, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 LESSONS = ROOT / "tests/fixtures/lessons"
-GIT = "#!/usr/bin/env bash\ncase $1 in\ncat-file) [[ $STUB_CAT_FILE == present ]] ;;\ngrep) [[ $STUB_GREP == found ]] ;;\n"
+GIT = "#!/usr/bin/env bash\ncase $1 in\nrev-parse) pwd ;;\ncat-file) [[ $STUB_CAT_FILE == present ]] ;;\ngrep) [[ $STUB_GREP == found ]] ;;\n"
 GIT += "*) exit 99 ;;\nesac\n"
 ROW_UNIT = "task metadata|metadata separators|in-process effects|workflow and interpreter or environment inputs"
 ROW_UNIT += "|new or renamed scripts|orchestrator effect merge|orchestrator effect update-branch"
@@ -40,19 +40,21 @@ class TaskCheckersTest(unittest.TestCase):
         # Homebrew's, which holds a git), so the stub goes first inside uv run, right before python starts.
         stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
         if script == "task-consistency-check.py":
-            binding = f"import importlib.util,sys,subprocess;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run([{str(self.temp / 'bin/git')!r},*a],capture_output=True,text=True,check=False);sys.exit(m.main())"
+            binding = f"import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run([{str(self.temp / 'bin/git')!r},*a],cwd=cwd,capture_output=True,text=True,check=False)\ndef presence(root,name):\n with open({str(self.temp / 'canonical-probes.txt')!r},'a') as f:f.write(name+'\\n')\n return {{}} if os.environ['STUB_CAT_FILE']=='present' else None\nm.main_entry=presence;m.main_text=lambda root,name:'' if presence(root,name) is not None else None;m.main_contains=lambda *a,**kw:os.environ['STUB_GREP']=='found';sys.exit(m.main())"
             stub_first = ["python", "-I", "-c", binding]
         result = subprocess.run(
             [*uv_command()[:-2], *stub_first] + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
             capture_output=True,
             text=True,
-            env={
-                **os.environ,
-                "UV_CACHE_DIR": fixture_cache(),
-                "STUB_BIN": str(self.temp / "bin"),
-                "STUB_CAT_FILE": cat_file,
-                "STUB_GREP": grep,
-            },
+            env=parent_env(
+                self.temp,
+                {
+                    **os.environ,
+                    "STUB_BIN": str(self.temp / "bin"),
+                    "STUB_CAT_FILE": cat_file,
+                    "STUB_GREP": grep,
+                },
+            ),
             timeout=120,
             check=False,
         )
@@ -127,15 +129,15 @@ class TaskCheckersTest(unittest.TestCase):
         # where the checker landed; a stub git that knows only that path answers present.
         (self.temp / "bin/git").write_text(
             '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$STUB_BIN/git.log"\n'
-            "case $1 in\ncat-file) [[ $3 == origin/main:scripts/orchestrator/task-consistency-check.py ]] ;;\n"
+            "case $1 in\nrev-parse) pwd ;;\ncat-file) [[ $3 == origin/main:scripts/orchestrator/task-consistency-check.py ]] ;;\n"
             "grep) true ;;\n*) exit 99 ;;\nesac\n"
         )
         design = "---\ndesign_review:\n  receipt: receipt.md\n---\n\n# Design\n"
         (self.temp / "design.md").write_text(design)
         path = self.task(kind="docs", body='"every task file passes task-consistency-check C4 before its dispatch"')
         self.assertEqual({"t-a01.md": set()}, self.failing_checks(path, root=self.temp, code=0))
-        probes = (self.temp / "bin/git.log").read_text().splitlines()
-        self.assertIn("cat-file -e origin/main:scripts/orchestrator/task-consistency-check.py", probes)
+        probes = (self.temp / "canonical-probes.txt").read_text().splitlines()
+        self.assertIn("scripts/orchestrator/task-consistency-check.py", probes)
 
     def ledger(self, *args, code):
         return self.run_check("ledger-check.py", *args, code=code).splitlines()

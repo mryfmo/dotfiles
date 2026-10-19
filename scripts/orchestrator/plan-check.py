@@ -7,7 +7,6 @@ unsafe merge/push commands and added permissions.ask entries. Directory symlinks
 """
 
 import argparse
-import glob
 import importlib.util
 import json
 import os
@@ -16,9 +15,6 @@ import re
 import sys
 from fnmatch import fnmatchcase
 
-CACHE = os.environ.get("UV_CACHE_DIR", "")
-if not os.path.isabs(CACHE):
-    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
 helper = pathlib.Path(__file__).resolve().with_name("task-consistency-check.py").resolve()
 if not os.path.samefile(helper.parent, pathlib.Path(__file__).resolve().parent):
     sys.exit("refused: checker outside the trusted script directory")
@@ -88,25 +84,33 @@ def scope(root, entries):
         prefix = root.joinpath(*parts[: next(i for i, p in enumerate(parts) if GLOB.search(p))])
         if any(p.is_symlink() for p in (prefix, *prefix.parents) if p.is_relative_to(root)):
             raise ValueError(f"F2 outside-root or directory-symlink glob: {g}")
-        match = re.compile(glob.translate(g, recursive=True, include_hidden=True))
         for directory, dirs, files in os.walk(prefix, followlinks=False):
             dirs[:] = [d for d in dirs if not pathlib.Path(directory, d).is_symlink()]
             for name in files:
                 path = pathlib.Path(directory, name)
                 rel = path.relative_to(root).as_posix()
-                if match.fullmatch(rel):
+                if glob_matches(parts, pathlib.PurePosixPath(rel).parts):
                     if checker.confined(root, path) is None:
                         raise ValueError(f"F2 outside-root glob match: {g}")
                     paths.add(rel)
     return paths, globs
 
 
+def glob_matches(pattern, names):
+    if not pattern:
+        return not names
+    if pattern[0] == "**":
+        return glob_matches(pattern[1:], names) or bool(names and glob_matches(pattern, names[1:]))
+    return bool(names and fnmatchcase(names[0], pattern[0]) and glob_matches(pattern[1:], names[1:]))
+
+
 def shared(a, b):
     (pa, ga), (pb, gb) = a, b
     out = {x for x in pa for y in pb if x == y or x.startswith(y + "/")}
     out |= {y for x in pa for y in pb if y.startswith(x + "/")}
-    # A literal not yet in the tree overlaps a glob it matches (fnmatch's * also crosses /, which errs toward a report).
-    out |= {x for x in pa for g in gb if fnmatchcase(x, g)} | {y for y in pb for g in ga if fnmatchcase(y, g)}
+    # A literal not yet in the tree still uses the same component grammar as enumerated files.
+    out |= {x for x in pa for g in gb if glob_matches(pathlib.PurePosixPath(g).parts, pathlib.PurePosixPath(x).parts)}
+    out |= {y for y in pb for g in ga if glob_matches(pathlib.PurePosixPath(g).parts, pathlib.PurePosixPath(y).parts)}
     return sorted(out)
 
 
@@ -156,7 +160,10 @@ def form(root, files):
     for n, c in table_rows(section(plan, 2)):  # F5
         if re.match(r"D\d+\b", c[0]) and not re.search(r"\*\*[^*]+\*\*", c[-1]):
             out.append(f"F5 024-omp-cutover-and-corrective-order.md:{n} {c[0].split()[0]} has no bold default")
-    decisions = {l.split("\t", 1)[0] for l in (root / ".orchestration/decisions.tsv").read_text().splitlines()[1:]}
+    ledger = checker.main_text(root, ".orchestration/decisions.tsv")
+    if ledger is None:
+        sys.exit("refused: canonical decisions.tsv unavailable")
+    decisions = {l.split("\t", 1)[0] for l in ledger.splitlines()[1:]}
     for name, lines in files.items():  # F6
         for n, line in enumerate(lines, 1):
             for tid in dict.fromkeys(re.findall(TASK_ID, line)):
@@ -215,15 +222,15 @@ def invariants(root, files):
         for n, line in enumerate(lines, 1):
             out += [f"invariant: {name}:{n} {what}" for what, rx in FORBIDDEN.items() if re.search(rx, line)]
     path = "home/dot_agents/agent-config.yaml"
-    base = run(root, "git", "show", f"origin/main:{path}")
-    if base.returncode and (root / path).is_file():
-        out.append(f"invariant: {path} baseline unavailable: {base.stderr.strip()}")
-    if base.returncode == 0 and (root / path).is_file():
+    base = checker.main_text(root, path)
+    if base is None and (root / path).is_file():
+        sys.exit(f"refused: canonical baseline unavailable: {path}")
+    if base is not None and (root / path).is_file():
 
         def asks(text):
             return ((yaml.safe_load(text) or {}).get("claude") or {}).get("permissions", {}).get("ask") or []
 
-        old = asks(base.stdout)
+        old = asks(base)
         out += [f"invariant: {path} permissions.ask adds {e}" for e in asks((root / path).read_text()) if e not in old]
     return out
 

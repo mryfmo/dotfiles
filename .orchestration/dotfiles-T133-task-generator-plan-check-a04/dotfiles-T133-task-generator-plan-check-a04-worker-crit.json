@@ -1,0 +1,17 @@
+[
+  {
+    "id": "a04-worker-prepush-1",
+    "body": "[P1, high confidence] The glob regression directly imported production in the ambient test process, requiring launch variables and PyYAML there. The21:20:01 interpretation confirms this is the same original finding in the open single batch. The real scope/shared table now runs in one existing uv_command child with fixture self.env; stdlib parent reads JSON and the child disables glob.translate. glob-bare-parent-before.log fails1/error1; glob-bare-parent-after.log prints outer-yaml-spec None and passes1/exit0. Final source7 remain assertion-red on82fd and actual312 glob red is preserved. No second review or batch.",
+    "scope": "line",
+    "path": "tests/unit/test_plan_check.py",
+    "line": 56,
+    "resolved": true
+  },
+  {
+    "id": "a04-worker-validation-env-1",
+    "body": "[P1, high confidence] Auxiliary UV calls omitted fixture self.env at generator lint/parser and regime workflow parser; the missing-binding negative path also used a bare interpreter requiring ambient PyYAML. Under the21:14:12/21:20:01 all-caller interpretations, calls now preserve fixture env and the negative path reuses uv_command. Three caller methods pass; all new7 pass from bare native parent; final complete64 pass from bare315/312 parents with outer-yaml-spec None and launch variables absent. Earlier failure outputs remain before evidence. One open correction batch, no second review.",
+    "scope": "file",
+    "path": "tests/unit/test_task_from_plan.py",
+    "resolved": true
+  }
+]

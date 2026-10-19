@@ -7,7 +7,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from tests.unit.test_task_consistency_c11_c15 import TRACE, RepositoryTest, uv_command
+from tests.unit.test_task_consistency_c11_c15 import MAIN_SHA, TRACE, RepositoryTest, parent_env, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts/orchestrator/task-from-plan.py"
@@ -33,6 +33,56 @@ LOAD = "import json, sys, yaml; print(json.dumps(yaml.safe_load(sys.stdin.read()
 
 
 class TaskFromPlanTest(RepositoryTest):
+    def test_task_scripts_have_no_unbaselined_comparison_hits(self):
+        paths = [
+            str(ROOT / "scripts/orchestrator" / n)
+            for n in ("task-consistency-check.py", "task-from-plan.py", "plan-check.py")
+        ]
+        paths = [str(Path(p).relative_to(ROOT)) for p in paths]
+        run = subprocess.run(
+            [*uv_command(), str(ROOT / "scripts/lint-comparisons.py"), *paths, "--changed", *paths],
+            cwd=ROOT,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+
+    def test_all_three_scripts_ignore_git_url_rewrites_for_canonical_main(self):
+        from tests.unit.test_plan_check import CLEAN
+        from tests.unit.test_task_consistency_c11_c15 import DESIGN, canonical_files
+
+        self.commit(
+            {
+                ".orchestration/plans/024-execution.md": CLEAN[".orchestration/plans/024-execution.md"] + "\nD-API\n",
+                ".orchestration/decisions.tsv": CLEAN[".orchestration/decisions.tsv"] + "D-API\tcanonical\n",
+                "home/dot_agents/agent-config.yaml": "claude: {permissions: {ask: [safe]}}\n",
+                PROGRAMS: FILES[PROGRAMS].replace("prints ", "prints `printf API_EVIDENCE` and "),
+                "Makefile": FILES["Makefile"] + "# API_EVIDENCE\n",
+            },
+            "canonical probes",
+        )
+        canonical = canonical_files(self.repo)
+        self.git("update-ref", "refs/remotes/origin/main", "HEAD~1")
+        self.git("remote", "set-url", "origin", "https://github.com/mryfmo/dotfiles.git")
+        self.git("config", "url.https://rewrite.invalid/.insteadOf", "https://github.com/")
+        self.env = parent_env(self.temp, self.env, canonical)
+        (self.repo / ".orchestration/decisions.tsv").write_text("id\ttext\nD-LOCAL\tconflict\n")
+        (self.repo / ".orchestration/tasks/dotfiles-T9-design-a01.md").write_text(
+            DESIGN.replace("one line", "local lie")
+        )
+        for name, code, out in self.run_three(trace=True):
+            self.assertEqual(code, 0, (name, out))
+        self.assertTrue((self.temp / "gh-calls.jsonl").exists(), "no canonical API was requested")
+        calls = [json.loads(line) for line in (self.temp / "gh-calls.jsonl").read_text().splitlines()]
+        self.assertGreaterEqual(sum(c[1] == "repos/mryfmo/dotfiles/git/ref/heads/main" for c in calls), 3)
+        self.assertTrue(any("contents/.orchestration/decisions.tsv?ref=" + MAIN_SHA in c[1] for c in calls))
+        self.assertTrue(any("contents/home/dot_agents/agent-config.yaml?ref=" + MAIN_SHA in c[1] for c in calls))
+        for call in map(json.loads, (self.temp / "trace.jsonl").read_text().splitlines()):
+            self.assertFalse({"ls-remote", "fetch", "remote", "origin/main"} & set(call["argv"]))
+            self.assertNotIn("rewrite.invalid", str(call))
+
     def test_the_generator_never_executes_a_plan_command(self):
         marker = self.temp / "ran"
         template = self.production / "task-template.md"
@@ -83,7 +133,7 @@ class TaskFromPlanTest(RepositoryTest):
                 out.unlink()
         self.assertEqual(self.generate(out=str(folder / "dotfiles-T9-fresh-a01.md"))[0], 0)
 
-    def run_three(self, trace=False, worker_binding=None):
+    def run_three(self, trace=False, worker_binding=None, missing=None):
         from tests.unit.test_task_consistency_c11_c15 import BASE
 
         task = self.repo / ".orchestration/tasks/dotfiles-T9-base-a01.md"
@@ -102,6 +152,20 @@ class TaskFromPlanTest(RepositoryTest):
             if worker_binding is not None:
                 binding = "import importlib.util,sys,pathlib;s,p=sys.argv[1:3];spec=importlib.util.spec_from_file_location('m',s);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);getattr(m,'checker',m).executable=lambda name:pathlib.Path(p);sys.argv=[s,*sys.argv[3:]];sys.exit(m.main())"
                 command = [*run, "-c", binding, str(self.production / name), str(worker_binding), *args]
+            if missing is not None:
+                binding = (
+                    TRACE.split("sys.argv.pop(0)")[0]
+                    + "\nimport importlib.util,pathlib;s=importlib.util.spec_from_file_location('m',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);r=getattr(m,'checker',m).git(pathlib.Path(sys.argv[2]),'show','HEAD:'+sys.argv[3]);print(r.stdout+r.stderr);sys.exit(r.returncode)"
+                )
+                command = [
+                    *run,
+                    "-c",
+                    binding,
+                    str(self.temp / "trace.jsonl"),
+                    str(self.production / name),
+                    str(self.repo),
+                    missing,
+                ]
             result = subprocess.run(command, cwd=self.repo, env=self.env, capture_output=True, text=True, check=False)
             yield name, result.returncode, result.stdout + result.stderr
 
@@ -177,7 +241,7 @@ class TaskFromPlanTest(RepositoryTest):
         for rel in (PROGRAMS, config, ".orchestration/tasks/dotfiles-T9-design-a01.md"):
             oid = self.git("rev-parse", f"HEAD:{rel}").strip()
             (self.repo / ".git/objects" / oid[:2] / oid[2:]).unlink()
-        for name, code, out in self.run_three(trace=True):
+        for name, code, out in self.run_three(trace=True, missing=PROGRAMS):
             self.assertNotEqual(code, 0, (name, out))
         calls = [json.loads(line) for line in (self.temp / "trace.jsonl").read_text().splitlines()]
         self.assertTrue(calls)
@@ -228,7 +292,9 @@ class TaskFromPlanTest(RepositoryTest):
             return result.returncode, result.stdout + result.stderr, None, ""
         text = (self.repo / out).read_text()
         front = json.loads(
-            subprocess.run([*run, "-c", LOAD], input=text, capture_output=True, text=True, check=True).stdout
+            subprocess.run(
+                [*run, "-c", LOAD], input=text, env=self.env, capture_output=True, text=True, check=True
+            ).stdout
         )
         return result.returncode, result.stdout + result.stderr, front, text
 

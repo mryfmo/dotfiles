@@ -8,7 +8,9 @@ C15 design-assigned invariant ids and byte-equal sentences. Without the dispatch
 """
 
 import argparse
+import base64
 import hashlib
+import json
 import os
 import pathlib
 import pwd
@@ -17,10 +19,16 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import unicodedata
+from functools import cache
+from urllib.parse import quote
 
 CACHE = os.environ.get("UV_CACHE_DIR", "")
 if not os.path.isabs(CACHE):
     sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
+PYTHON = os.environ.get("TRUSTED_PYTHON", "")
+if not os.path.isabs(PYTHON) or not os.path.isfile(PYTHON):
+    sys.exit("refused: TRUSTED_PYTHON must be set to an absolute regular file")
 
 try:
     import yaml
@@ -44,7 +52,12 @@ UNTRUSTED = "C14: not run (no trusted sha)"  # a warning: the file is not the te
 
 def applied(path):
     """An executed or applied file, by its kind or its place (C12 and task-from-plan.py's concrete rows)."""
-    return path.endswith(APPLIED) or path.startswith(APPLIED_DIRS)
+    return normalise_name(path).endswith(APPLIED) or normalise_name(path).startswith(APPLIED_DIRS)
+
+
+def normalise_name(value):
+    """Canonical Unicode for logical name tokens; preserve ref, separator and wildcard grammar."""
+    return unicodedata.normalize("NFC", value)
 
 
 def confined(root, rel):
@@ -103,11 +116,13 @@ def git(cwd, *args):
 def trusted(path):
     if not pathlib.Path(path).is_absolute():
         sys.exit("refused: trusted path must be absolute")
+    if "shims" in pathlib.Path(path).parts:
+        sys.exit(f"refused: shim trusted path: {path}")
     path = pathlib.Path(path).resolve(strict=True)
     manifest = TRUST_ROOT / "home/dot_agents/agent-config.yaml"
     worker = (yaml.safe_load(manifest.read_text()) or {}).get("worker_worktree") if manifest.is_file() else None
     if (
-        ".claude/worktrees" in path.as_posix().casefold()
+        ".claude/worktrees" in os.path.realpath(path).casefold()
         or "shims" in path.parts
         or (worker and (TRUST_ROOT / worker).exists() and confined(TRUST_ROOT / worker, path) is not None)
     ):
@@ -117,23 +132,42 @@ def trusted(path):
     return path
 
 
+PYTHON = trusted(PYTHON)
+if not os.access(PYTHON, os.X_OK):
+    sys.exit("refused: trusted interpreter is not executable")
+
+
+@cache
 def executable(name):
-    candidates = [pathlib.Path(p) / name for p in ("/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin")]
-    candidates += sorted((HOST_HOME / ".local/share/mise/installs" / name).glob(f"**/{name}"), reverse=True)
-    candidates += [HOST_HOME / ".local/bin" / name]
-    return trusted(next(p for p in candidates if p.is_file() and os.access(p, os.X_OK) and p.resolve().name != "mise"))
+    directory = pathlib.Path(os.environ.get("TRUSTED_BIN_DIR", ""))
+    binding = directory / name
+    if not directory.is_absolute() or not binding.is_symlink() or not binding.is_file():
+        sys.exit(f"refused: trusted executable binding missing: {name}")
+    binary = trusted(binding)
+    if not os.access(binary, os.X_OK):
+        sys.exit(f"refused: trusted executable binding is not executable: {name}")
+    return binary
 
 
 def launch(root, binary, *args):
     binary = trusted(binary)
+    if confined(pathlib.Path(root).resolve(), binary) is not None:
+        sys.exit("refused: checkout executable binding")
     os.makedirs(CACHE, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=CACHE, prefix="exec-") as directory:
-        pathlib.Path(directory, binary.name).symlink_to(binary)
+        for name in ("git", "uv", "gh"):
+            if pathlib.Path(os.environ.get("TRUSTED_BIN_DIR", ""), name).is_symlink():
+                target = executable(name)
+                if confined(pathlib.Path(root).resolve(), target) is not None:
+                    sys.exit("refused: checkout executable binding")
+                pathlib.Path(directory, name).symlink_to(target)
         env = {
             "HOME": str(HOST_HOME),
             "PATH": directory,
             "LANG": "C.UTF-8",
             "UV_CACHE_DIR": CACHE,
+            "TRUSTED_PYTHON": str(PYTHON),
+            "TRUSTED_BIN_DIR": directory,
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_NO_LAZY_FETCH": "1",
@@ -146,6 +180,68 @@ def launch(root, binary, *args):
             text=True,
             check=False,
         )
+
+
+@cache
+def main_sha(root):
+    result = launch(root, executable("gh"), "api", "repos/mryfmo/dotfiles/git/ref/heads/main", "--jq", ".object.sha")
+    sha = result.stdout.strip()
+    if result.returncode or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        sys.exit("refused: canonical main SHA unavailable: " + result.stderr)
+    print(f"canonical-main {sha}", file=sys.stderr)
+    return sha
+
+
+@cache
+def main_entry(root, name):
+    if pathlib.PurePosixPath(name).is_absolute() or ".." in pathlib.PurePosixPath(name).parts:
+        sys.exit("refused: canonical contents path")
+    endpoint = f"repos/mryfmo/dotfiles/contents/{quote(name, safe='/')}?ref={main_sha(root)}"
+    result = launch(root, executable("gh"), "api", endpoint)
+    digest = hashlib.sha256((result.stdout + result.stderr).encode()).hexdigest()
+    print(f"api-input-sha256 {endpoint} exit={result.returncode} {digest}", file=sys.stderr)
+    if result.returncode:
+        if "HTTP 404" in result.stderr:
+            return None
+        sys.exit("refused: canonical contents unavailable: " + result.stderr)
+    try:
+        entry = json.loads(result.stdout)
+    except ValueError:
+        sys.exit("refused: invalid canonical contents response")
+    if not isinstance(entry, (dict, list)):
+        sys.exit("refused: invalid canonical contents response")
+    return entry
+
+
+def main_text(root, name):
+    entry = main_entry(root, name)
+    if entry is None:
+        return None
+    if not isinstance(entry, dict) or entry.get("encoding") != "base64" or not isinstance(entry.get("content"), str):
+        sys.exit(f"refused: canonical file unavailable: {name}")
+    try:
+        return base64.b64decode("".join(entry["content"].split()), validate=True).decode(errors="replace")
+    except ValueError:
+        sys.exit(f"refused: invalid canonical file encoding: {name}")
+
+
+def main_texts(root, name):
+    entry = main_entry(root, name)
+    if isinstance(entry, list):
+        for child in entry:
+            if not normalise_name(child["path"]).startswith(normalise_name(name).rstrip("/") + "/"):
+                sys.exit("refused: canonical directory child")
+            yield from main_texts(root, child["path"])
+    elif entry is not None:
+        yield main_text(root, name)
+
+
+def main_contains(root, pattern, names, literal=False):
+    return any(
+        pattern in text if literal else re.search(pattern, text, re.MULTILINE)
+        for name in names
+        for text in main_texts(root, name)
+    )
 
 
 def repository(path):
@@ -257,7 +353,7 @@ def check(p, root, premises_sha=None):
     if fm.get("kind") == "code":
         for var in sorted(set(re.findall(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)*_EVIDENCE\b", body))):
             # an input a script on origin/main already reads is not an added input
-            added = git(root, "grep", "-q", var, "origin/main", "--", "scripts", "Makefile", "home").returncode != 0
+            added = not main_contains(root, var, ("Makefile", "scripts", "home"))
             if added and rows and var not in controls:
                 fails.append(f"C8 the task adds input {var} but no threat row controls it")
     sentences = re.findall(r'"([^"]{20,})"', body) if fm.get("kind") == "docs" else []
@@ -266,15 +362,15 @@ def check(p, root, premises_sha=None):
             if not confined(root, scr):
                 fails.append(f"C10 rule sentence names {scr}, a path outside the checkout")
                 continue
-            if git(root, "cat-file", "-e", f"origin/main:{scr}").returncode:
+            if main_entry(root, scr) is None:
                 continue
             m = re.search(r"\b(once|until)\b", sent, re.IGNORECASE)
             if m and scr in sent[m.start() :]:
                 continue  # the script is named inside its own landing clause
             test = f"tests/unit/test_{pathlib.Path(scr).stem.replace('-', '_')}.py"
             for lit in set(re.findall(r"`([^`]*(?:=|\[[^\]]+\])[^`]*)`", sent)):
-                # After -e the literal is a pattern: `--open-files-in-pager=<cmd>` is searched for, never run.
-                if git(root, "grep", "-qF", "-e", lit, "origin/main", "--", scr, test).returncode:
+                # Canonical bytes are searched literally; option-shaped text never reaches a command line.
+                if not main_contains(root, lit, (scr, test), literal=True):
                     why = f"which neither the script nor {test} carries on origin/main"
                     fails.append(f'C10 rule sentence names {scr} beside the literal `{lit}`, {why}: "{sent[:60]}…"')
     for sent in sentences:  # C9
@@ -283,12 +379,11 @@ def check(p, root, premises_sha=None):
         for n in set(re.findall(C9_NAMES, sent)):
             probe = n.replace("task-consistency-check ", f"{CHECKER}#").split("#")[0]
             if probe.startswith("scripts/"):
-                ok = git(root, "cat-file", "-e", f"origin/main:{probe}").returncode == 0
+                ok = main_entry(root, probe) is not None
             elif probe.endswith("_EVIDENCE"):
-                ok = git(root, "grep", "-q", probe, "origin/main", "--", "scripts", "Makefile").returncode == 0
+                ok = main_contains(root, probe, ("Makefile", "scripts"))
             else:
-                mistakes = ("grep", "-q", "^classes:", "origin/main", "--", ".orchestration/learning/mistakes")
-                ok = probe == "classes:" and git(root, *mistakes).returncode == 0
+                ok = probe == "classes:" and main_contains(root, "^classes:", (".orchestration/learning/mistakes",))
             if not ok:
                 why = "it is not on origin/main and the sentence has no landing condition"
                 fails.append(f'C9 rule sentence names {n} as present but {why}: "{sent[:70]}…"')
@@ -326,14 +421,14 @@ def check(p, root, premises_sha=None):
         if got is None or " ".join(got.split()) != " ".join(want.split()):
             fails.append(err if got is None else f"C14 premise output differs from its rerun: {cmd}")
     design, mine = dr.get("design"), fm.get("invariants") if isinstance(fm.get("invariants"), dict) else {}
-    present = inside and not git(root, "cat-file", "-e", f"origin/main:{design}").returncode  # C8's probe
-    shown = git(root, "show", f"origin/main:{design}") if present else None
+    shown = main_text(root, design) if inside else None
+    present = shown is not None
     # C15: a design main cannot give leaves a task's invariants unchecked, and a path naming no design on main or in
     # this checkout is a typo for any task; a design still in flight here assigns nothing yet to a task without any.
-    if inside and (not shown or shown.returncode):
+    if inside and not present:
         fails += [f"C15 design {design} is not on origin/main"] if mine or not (present or inside.exists()) else []
-    elif shown:  # the design's assignment fixes the ids; a design task compares its own definitions
-        dfm = front(shown.stdout) if shown.stdout.startswith("---\n") else None
+    elif present:  # the design's assignment fixes the ids; a design task compares its own definitions
+        dfm = front(shown) if shown.startswith("---\n") else None
         dfm = dfm if isinstance(dfm, dict) else {}
         canon, assigned = dfm.get("invariants") or {}, dfm.get("implementing_tasks")
         ids = (assigned.get(tid) or []) if isinstance(assigned, dict) and fm.get("kind") != "design" else None
@@ -351,11 +446,10 @@ def main():
     parser.add_argument("--premises-sha", metavar="sha256", help="the dispatched file's sha256; C14 runs only for it")
     parser.add_argument("tasks", nargs="+", type=pathlib.Path, metavar="task.md")
     args = parser.parse_args()
-    if args.root is None:
-        top = git(repository(args.tasks[0].parent), "rev-parse", "--show-toplevel")
-        if top.returncode:
-            parser.error(f"{args.tasks[0]} is not in a git checkout; pass --root")
-        args.root = pathlib.Path(top.stdout.strip())
+    top = git(args.root or repository(args.tasks[0].parent), "rev-parse", "--show-toplevel")
+    if top.returncode:
+        parser.error(f"{args.tasks[0]} is not in a git checkout; pass --root")
+    args.root = pathlib.Path(top.stdout.strip())
     rc = 0
     for p in args.tasks:
         fails = check(p, args.root, args.premises_sha)

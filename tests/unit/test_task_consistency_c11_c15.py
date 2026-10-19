@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-import pwd
 import shutil
 import subprocess
 import sys
@@ -16,13 +15,9 @@ TRACE = "import sys,subprocess,json,runpy; original=subprocess.run; log=sys.argv
 
 
 def uv_command(offline=True):
-    uv = Path(shutil.which("uv")).resolve()
-    if uv.name == "mise":
-        uv = next(
-            p
-            for p in (Path(pwd.getpwuid(os.getuid()).pw_dir) / ".local/share/mise/installs/uv").glob("**/uv")
-            if p.is_file()
-        ).resolve()
+    uv = (
+        Path(os.environ["TRUSTED_BIN_DIR"]) / "uv" if "TRUSTED_BIN_DIR" in os.environ else Path(shutil.which("uv"))
+    ).resolve()
     return [
         str(uv),
         "run",
@@ -44,7 +39,11 @@ def fixture_cache():
         _CACHE = tempfile.TemporaryDirectory(prefix="a03-pyyaml-")
         command = [*uv_command(False), "-c", "import yaml"]
         result = subprocess.run(
-            command, env={**os.environ, "UV_CACHE_DIR": _CACHE.name}, capture_output=True, text=True, check=False
+            command,
+            env={**os.environ, "PATH": os.defpath, "UV_CACHE_DIR": _CACHE.name},
+            capture_output=True,
+            text=True,
+            check=False,
         )
         print(
             f"fixture-seed UV_CACHE_DIR={_CACHE.name} {command!r} exit={result.returncode}\n{result.stdout}{result.stderr}",
@@ -59,6 +58,64 @@ def fixture_cache():
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKER = ROOT / "scripts/orchestrator/task-consistency-check.py"
+MAIN_SHA = "a" * 40
+
+
+def canonical_files(repo):
+    paths = subprocess.check_output([shutil.which("git"), "-C", str(repo), "ls-files", "-z"], text=True).split("\0")
+    return {
+        p: os.readlink(repo / p) if (repo / p).is_symlink() else (repo / p).read_text()
+        for p in paths
+        if p and (repo / p).is_file()
+    }
+
+
+def parent_env(directory, env=None, files=None):
+    directory = Path(directory)
+    private = directory / "private-bin"
+    private.mkdir(exist_ok=True, mode=0o700)
+    for name, source in (
+        ("git", shutil.which("git")),
+        ("uv", uv_command()[0]),
+        ("bash", "/bin/bash"),
+        ("sh", "/bin/sh"),
+        ("pwd", "/bin/pwd"),
+    ):
+        if not (private / name).exists():
+            (private / name).symlink_to(Path(source).resolve())
+    data, calls = directory / "canonical.json", directory / "gh-calls.jsonl"
+    data.write_text(json.dumps(files or {}))
+    gh = directory / "trusted-gh"
+    gh.write_text(
+        f"#!{Path(sys.executable).resolve()} -I\nimport sys,json,base64,pathlib\n"
+        f"a=sys.argv[1:];p=pathlib.Path({str(data)!r});d=json.loads(p.read_text());"
+        f"open({str(calls)!r},'a').write(json.dumps(a)+'\\n')\n"
+        "assert a[0]=='api';endpoint=a[1];prefix='repos/mryfmo/dotfiles/';assert endpoint.startswith(prefix)\n"
+        f"if endpoint==prefix+'git/ref/heads/main':\n assert a[2:]==['--jq','.object.sha'];print({MAIN_SHA!r})\n"
+        "else:\n"
+        f" assert endpoint.startswith(prefix+'contents/') and endpoint.endswith('?ref={MAIN_SHA}')\n"
+        " name=endpoint[len(prefix+'contents/'):].split('?ref=')[0]\n"
+        " if name in d:print(json.dumps(dict(type='file',encoding='base64',content=base64.b64encode(d[name].encode()).decode())))\n"
+        " else:\n"
+        "  children={}\n"
+        "  for key in d:\n"
+        "   if key.startswith(name.rstrip('/')+'/'):\n"
+        "    tail=key[len(name.rstrip('/'))+1:];part=tail.split('/')[0];children[part]=dict(path=name.rstrip('/')+'/'+part,type='dir' if '/' in tail else 'file')\n"
+        "  if children:print(json.dumps(list(children.values())))\n"
+        "  else:print('gh: Not Found (HTTP 404)',file=sys.stderr);sys.exit(1)\n"
+    )
+    gh.chmod(0o700)
+    if not (private / "gh").exists():
+        (private / "gh").symlink_to(gh)
+    return {
+        **(os.environ if env is None else env),
+        "UV_CACHE_DIR": fixture_cache(),
+        "TRUSTED_PYTHON": str(Path(sys.executable).resolve()),
+        "TRUSTED_BIN_DIR": str(private),
+        "PATH": str(private),
+    }
+
+
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 UNTRUSTED = "dotfiles-T9-base-a01.md: warning: C14: not run (no trusted sha)\n"  # the checker's stderr line
 NONPATH = "".join(
@@ -126,7 +183,7 @@ class RepositoryTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name).resolve()
         self.repo = self.temp / "repo"
-        self.env = {**os.environ, **GIT_ENV, "GIT_CONFIG_GLOBAL": "/dev/null", "UV_CACHE_DIR": fixture_cache()}
+        self.env = parent_env(self.temp, {**os.environ, **GIT_ENV, "GIT_CONFIG_GLOBAL": "/dev/null"})
 
     def git(self, *args):
         return subprocess.run(
@@ -151,9 +208,138 @@ class RepositoryTest(unittest.TestCase):
             self.git("remote", "add", "origin", str(self.temp / "origin.git"))
         self.git("push", "-q", "origin", "main")
         self.git("fetch", "-q", "origin")
+        (self.temp / "canonical.json").write_text(json.dumps(canonical_files(self.repo)))
 
 
 class TaskConsistencyC11C15Test(RepositoryTest):
+    def test_all_three_scripts_use_parent_supplied_launch_bindings(self):
+        from tests.unit.test_task_from_plan import TaskFromPlanTest
+
+        fixture = TaskFromPlanTest()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        fixture.env = parent_env(fixture.temp, fixture.env, canonical_files(fixture.repo))
+        evil = fixture.temp / "evil-ran"
+        (fixture.repo / "bin").mkdir()
+        for name in ("git", "uv", "gh"):
+            shim = fixture.repo / "bin" / name
+            shim.write_text(f"#!/bin/sh\ntouch {evil}\nexit 87\n")
+            shim.chmod(0o700)
+        (fixture.repo / "uv.toml").write_text(f'cache-dir = "{fixture.temp / "evil-cache"}"\n')
+        (fixture.repo / ".venv/bin").mkdir(parents=True)
+        (fixture.repo / ".venv/bin/python").symlink_to(fixture.repo / "bin/uv")
+        site = fixture.temp / f"user/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+        site.mkdir(parents=True)
+        payload = f"import pathlib;pathlib.Path({str(evil)!r}).touch()\n"
+        (site / "bad.pth").write_text(payload)
+        (site / "usercustomize.py").write_text(payload)
+        fixture.env.update(
+            PYTHONUSERBASE=str(fixture.temp / "user"), PYTHONPATH=str(site), GIT_WORK_TREE=str(fixture.temp)
+        )
+        marker = fixture.temp / "bound-uv-ran"
+        wrapper = fixture.temp / "bound-uv"
+        wrapper.write_text(f'#!/bin/sh\nprintf used >> {marker}\nexec {uv_command()[0]} "$@"\n')
+        wrapper.chmod(0o700)
+        link = fixture.temp / "private-bin/uv"
+        link.unlink()
+        link.symlink_to(wrapper)
+        for name, code, out in fixture.run_three(trace=True):
+            self.assertEqual(code, 0, (name, out))
+        self.assertFalse(evil.exists())
+        self.assertFalse((fixture.temp / "evil-cache").exists())
+        self.assertTrue(marker.exists(), "the supplied UV binding was not consumed")
+        launches = [
+            c
+            for c in map(json.loads, (fixture.temp / "trace.jsonl").read_text().splitlines())
+            if "--python" in c["argv"]
+        ]
+        self.assertTrue(launches)
+        for call in launches:
+            argv = call["argv"]
+            self.assertEqual(call["env"], {})
+            self.assertIn(str(wrapper), argv)
+            self.assertEqual(argv[argv.index("--python") + 1], fixture.env["TRUSTED_PYTHON"])
+            for value in (
+                "--no-config",
+                "--no-project",
+                "--offline",
+                "-I",
+                "UV_CACHE_DIR=" + fixture.env["UV_CACHE_DIR"],
+                "TRUSTED_PYTHON=" + fixture.env["TRUSTED_PYTHON"],
+            ):
+                self.assertIn(value, argv)
+
+        bad = {
+            **fixture.env,
+            "TRUSTED_BIN_DIR": str(fixture.temp / "absent-bindings"),
+            "PATH": str(fixture.repo / "bin"),
+        }
+        for script, args in (
+            ("task-from-plan.py", ["P1-1"]),
+            ("plan-check.py", ["--root", str(fixture.repo)]),
+            (
+                "task-consistency-check.py",
+                ["--root", str(fixture.repo), str(fixture.repo / ".orchestration/tasks/dotfiles-T9-base-a01.md")],
+            ),
+        ):
+            result = subprocess.run(
+                [*uv_command(), str(fixture.production / script), *args],
+                cwd=fixture.repo,
+                env=bad,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("refused: trusted executable binding missing: git", result.stdout + result.stderr)
+        self.assertFalse(evil.exists())
+
+    def interpreter_refusal(self, values):
+        from tests.unit.test_task_from_plan import TaskFromPlanTest
+
+        fixture = TaskFromPlanTest()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        valid = parent_env(fixture.temp, fixture.env)
+        for value in values:
+            env = {**valid, "UV_CACHE_DIR": str(fixture.temp / "untouched-cache")}
+            env.pop("TRUSTED_PYTHON", None)
+            if value is not None:
+                env["TRUSTED_PYTHON"] = value
+            for script, args in (
+                ("task-from-plan.py", ["P1-1"]),
+                ("plan-check.py", ["--root", str(fixture.repo)]),
+                ("task-consistency-check.py", ["--root", str(self.repo), str(self.task(BASE))]),
+            ):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-I",
+                        "-c",
+                        TRACE,
+                        str(fixture.temp / "unexpected.jsonl"),
+                        str(CHECKER.with_name(script)),
+                        *args,
+                    ],
+                    cwd=fixture.repo,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertFalse((fixture.temp / "untouched-cache").exists())
+                self.assertFalse((fixture.temp / "unexpected.jsonl").exists())
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "refused: TRUSTED_PYTHON must be set to an absolute regular file", result.stdout + result.stderr
+                )
+
+    def test_all_three_scripts_refuse_an_unset_trusted_python(self):
+        self.interpreter_refusal([None])
+
+    def test_all_three_scripts_refuse_an_invalid_trusted_python(self):
+        self.interpreter_refusal(["relative/python", str(self.temp / "missing-python"), str(self.temp)])
+
     def test_c14_interprets_the_probe_vocabulary_without_a_shell(self):
         fake = self.repo / "bin"
         fake.mkdir()
@@ -181,6 +367,9 @@ class TaskConsistencyC11C15Test(RepositoryTest):
         for call in map(json.loads, (self.repo / "trace.jsonl").read_text().splitlines()):
             self.assertEqual(call["env"], {})
             self.assertEqual(call["argv"][0], "/usr/bin/env")
+            if "api" in call["argv"]:
+                self.assertTrue(any(str(a).startswith("repos/mryfmo/dotfiles/") for a in call["argv"]))
+                continue
             for flag in (
                 "GIT_CONFIG_NOSYSTEM=1",
                 "GIT_CONFIG_GLOBAL=/dev/null",
@@ -209,8 +398,12 @@ class TaskConsistencyC11C15Test(RepositoryTest):
         worker = self.repo / ".claude/worktrees/seat/helper.py"
         worker.parent.mkdir(parents=True)
         worker.write_text("fixture")
+        shim = self.repo / "shims/python"
+        shim.parent.mkdir()
+        shim.symlink_to(Path(sys.executable).resolve())
         for path, action, refusal in (
             (worker, "m.trusted(p)", "worker-root"),
+            (shim, "m.trusted(p)", "shim trusted path"),
             (
                 bound,
                 "b=m.snapshot(p);assert b[0].stat().st_mode & 0o777 == 0o600;b[0].write_text('replaced');m.consume(b)",
@@ -369,7 +562,16 @@ class TaskConsistencyC11C15Test(RepositoryTest):
             env=self.env,
             cwd=self.repo,
         )
-        return result.returncode, result.stdout + result.stderr
+        output = result.stdout + result.stderr
+        for line in output.splitlines():
+            if line.startswith(("canonical-main ", "api-input-sha256 ")):
+                length = 40 if line.startswith("canonical-main ") else 64
+                self.assertRegex(line.split()[-1], rf"^[0-9a-f]{{{length}}}$")
+        return result.returncode, "".join(
+            line
+            for line in output.splitlines(keepends=True)
+            if not line.startswith(("canonical-main ", "api-input-sha256 "))
+        )
 
     def task(self, text):
         path = self.repo / ".orchestration/tasks/dotfiles-T9-base-a01.md"

@@ -8,20 +8,14 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from tests.unit.test_task_consistency_c11_c15 import fixture_cache, parent_env, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKER = "scripts/orchestrator/task-consistency-check.py"
 VERIFIER = "scripts/orchestrator/regime-ci.py"
-UV = [
-    shutil.which("uv") or "uv",
-    "run",
-    "--no-config",
-    "--no-project",
-    "--with",
-    "pyyaml",
-    "python",
-    "-I",
-]  # as regime.yml
+UV = uv_command()
 T = "t1-a01"
 ROWS = "".join(
     f"  - control: {name}\n    disposition: 'residual: the compensating control of this fixture'\n"
@@ -50,9 +44,35 @@ GIT_ENV = {f"GIT_{role}_{k}": v for role in ("AUTHOR", "COMMITTER") for k, v in 
 
 
 class RegimeCiTest(unittest.TestCase):
+    def test_regime_ci_supplies_absolute_parent_launch_inputs_to_the_checker(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("UV_CACHE_DIR", None)
+            os.environ.pop("TRUSTED_PYTHON", None)
+            self.setUp()
+            from tests.unit.test_task_consistency_c11_c15 import fixture_cache
+
+            bootstrap = tempfile.TemporaryDirectory()
+            self.addCleanup(bootstrap.cleanup)
+            (Path(bootstrap.name) / "uv").symlink_to(fixture_cache(), target_is_directory=True)
+            self.env["XDG_CACHE_HOME"] = bootstrap.name
+            result = self.build()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        cache = Path(self.env.get("UV_CACHE_DIR", ""))
+        self.assertTrue(cache.is_absolute())
+        self.assertTrue(cache.is_relative_to(self.parent_temp))
+        self.assertTrue(Path(self.env.get("TRUSTED_PYTHON", "")).is_file())
+
     def setUp(self):
         env = {k: v for k, v in os.environ.items() if k != "GITHUB_HEAD_REF"}
-        self.env = env | GIT_ENV | {"GITHUB_HEAD_REF": "tools/t1"}
+        parent = tempfile.TemporaryDirectory()
+        self.addCleanup(parent.cleanup)
+        self.parent_temp = Path(parent.name).resolve()
+        self.env = parent_env(
+            self.parent_temp, env | GIT_ENV | {"GITHUB_HEAD_REF": "tools/t1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+        )
+        cache = self.parent_temp / "uv-cache"
+        shutil.copytree(fixture_cache(), cache)
+        self.env["UV_CACHE_DIR"] = str(cache)
 
     def git(self, *args):
         cmd = ["git", "-c", "commit.gpgsign=false", *args]
@@ -229,7 +249,7 @@ class RegimeCiTest(unittest.TestCase):
         # fetched ref read as data, never checked out or executed.
         read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
         cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
-        doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
+        doc = json.loads(subprocess.run(cmd, env=self.env, capture_output=True, text=True, check=True).stdout)
         types = ["opened", "synchronize", "reopened", "ready_for_review"]
         self.assertEqual({"pull_request_target": {"types": types}}, doc.get("on", doc.get("true")))
         self.assertEqual(({"contents": "read"}, ["regime"]), (doc["permissions"], list(doc["jobs"])))

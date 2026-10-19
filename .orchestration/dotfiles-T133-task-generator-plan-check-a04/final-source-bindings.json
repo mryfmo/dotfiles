@@ -1,0 +1,12 @@
+{
+  "scripts/orchestrator/task-from-plan.py": "5a131a4193ce17e2d1715e98f87589959caa29e1563d443cf9e9521c04c667f3",
+  "scripts/orchestrator/plan-check.py": "db7cba02549c6d576f1528822baecab04c24fe5df42cb891084d1a6dc82d7b44",
+  "scripts/orchestrator/task-consistency-check.py": "088edfe17d9ae3f2106b16cf0bb6f712349d87d36345a43c2bc052130781265a",
+  "scripts/orchestrator/task-template.md": "59e157be30134d995bb2125443df039754756ca9b3cf56f16166ca40f68b59b3",
+  "tests/unit/test_task_from_plan.py": "7ed99043f046cc31371526874e91400d7b570b526b190bd2f3af1df64fb84a32",
+  "tests/unit/test_plan_check.py": "254d5cbbbf8ee2afff560e9efa97485a23e9d6167fce1a52fc96903d9e8744e8",
+  "tests/unit/test_task_consistency_c11_c15.py": "b4a7f60301610c9dfd0f5e871da50757e1b10985ec70b9346f1ebdab44131c25",
+  "tests/unit/test_task_checkers.py": "b11353f2092f1b23e39ccdc049f42479d59d27a78f63cb951c400af41b49846a",
+  "tests/unit/test_regime_ci.py": "aff6c2a61723e8cd78e6a4bf1d55ffa5ce28f48f6623f0f38e4460e691057420",
+  ".orchestration/dotfiles-T133-task-generator-plan-check-a04/task.md": "b325fe161c1e2cab2183cc0f8110ad185153b6cde15dbeaf9b894d5efe9e3e0c"
+}

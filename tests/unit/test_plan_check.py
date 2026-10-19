@@ -1,12 +1,13 @@
 """Exercise plan forms, drift, invariants and confined glob enumeration."""
 
+import json
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from tests.unit.test_task_consistency_c11_c15 import fixture_cache, uv_command
+from tests.unit.test_task_consistency_c11_c15 import fixture_cache, parent_env, uv_command
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAN_CHECK = ROOT / "scripts/orchestrator/plan-check.py"
@@ -47,6 +48,46 @@ CASES = {
 
 
 class PlanCheckTest(unittest.TestCase):
+    def test_glob_translation_works_without_glob_translate(self):
+        files = {"scripts/a.py", "scripts/deep/b.py", "scripts/.hidden.py", "scripts/a.txt", "other/a.py"}
+        for name in files:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+        cases = (
+            ("scripts/**/*.py", files - {"scripts/a.txt", "other/a.py"}),
+            ("scripts/**", files - {"other/a.py"}),
+            ("scripts/*.py", {"scripts/a.py", "scripts/.hidden.py"}),
+            ("scripts/?.py", {"scripts/a.py"}),
+            ("scripts/[ab].py", {"scripts/a.py"}),
+            ("scripts/[!a]*.py", {"scripts/.hidden.py"}),
+            ("scripts/*/?.py", {"scripts/deep/b.py"}),
+        )
+        binding = (
+            "import glob,importlib.util,json,pathlib,sys;"
+            "spec=importlib.util.spec_from_file_location('plan',sys.argv[1]);"
+            "m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\n"
+            "if hasattr(glob,'translate'):del glob.translate\n"
+            "root=pathlib.Path(sys.argv[2]);out=[]\n"
+            "for pattern in json.loads(sys.argv[3]):\n"
+            " paths,_=m.scope(root,[pattern]);out.append([sorted(paths),m.shared((paths,{pattern}),({'scripts/deep/b.py'},set()))])\n"
+            "print(json.dumps(out))"
+        )
+        result = subprocess.run(
+            [*uv_command(), "-c", binding, str(PLAN_CHECK), str(self.root), json.dumps([p for p, _ in cases])],
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for (pattern, expected), (paths, overlap) in zip(cases, json.loads(result.stdout), strict=True):
+            self.assertEqual(set(paths), expected, pattern)
+            self.assertEqual(
+                set(overlap),
+                {"scripts/deep/b.py"} if "scripts/deep/b.py" in expected else set(),
+            )
+
     @classmethod
     def setUpClass(cls):
         fixture_cache()
@@ -85,7 +126,8 @@ class PlanCheckTest(unittest.TestCase):
         for rel, text in CLEAN.items():
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.root / rel).write_text(text)
-        self.env.update(UV_CACHE_DIR=fixture_cache(), GIT_CONFIG_GLOBAL="/dev/null")
+        self.env = parent_env(Path(temp.name).resolve(), self.env, CLEAN)
+        self.env["GIT_CONFIG_GLOBAL"] = "/dev/null"
         subprocess.run(["git", "init", "-q", str(self.root)], check=True, env=self.env)
 
     def plan_check(self, *args):

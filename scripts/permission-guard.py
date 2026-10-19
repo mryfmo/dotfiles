@@ -8,8 +8,10 @@ import csv
 import difflib
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import subprocess
 import tomllib
 
@@ -17,7 +19,49 @@ import yaml
 
 
 def git(*args: str) -> str:
-    return subprocess.check_output(["git", *args], text=True, stderr=subprocess.PIPE)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    return subprocess.check_output(["/usr/bin/git", *args], text=True, stderr=subprocess.PIPE, env=env)
+
+
+def trusted_ledger(selected: Path | None) -> Path:
+    anchors = re.findall(
+        r"^orchestrator_checkout: (~/[^\s\x00]+)$", (Path.home() / ".agents/agent-config.yaml").read_text(), re.M
+    )
+    if len(anchors) != 1:
+        raise ValueError("missing or ambiguous checkout anchor")
+    anchor = Path(anchors[0]).expanduser().resolve(strict=True)
+    top = Path(git("rev-parse", "--show-toplevel").strip()).resolve(strict=True)
+    common = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()).resolve(strict=True)
+    if top != anchor or common != top / ".git" or not (top / ".git").is_dir() or (top / ".git").is_symlink():
+        raise ValueError("requires canonical primary checkout")
+    boot = f"{Path.home()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    env = dict(HOME=str(Path.home()), PATH=boot)
+    found = subprocess.run(
+        ["/usr/bin/env", "-i", *[f"{k}={v}" for k, v in env.items()], "mise", "which", "gh"],
+        cwd=anchor,
+        text=True,
+        capture_output=True,
+    )
+    gh = found.stdout.strip() if found.returncode == 0 else shutil.which("gh", path=boot)
+    if not gh or not gh.startswith("/") or "/shims/" in gh:
+        raise ValueError("no trusted gh binary")
+    actual = subprocess.check_output(
+        [gh, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], cwd=anchor, env=env, text=True
+    ).strip()
+    origin = re.fullmatch(
+        r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?",
+        git("remote", "get-url", "origin").strip(),
+    )
+    if not origin or origin[1].lower() != actual.lower():
+        raise ValueError("repository identity mismatch")
+    ledger = (selected if selected is not None else anchor / ".orchestration/decisions.tsv").resolve()
+    for entry in git("worktree", "list", "--porcelain", "-z").split("\0"):
+        if entry.startswith("worktree "):
+            tree = Path(entry[9:]).resolve()
+            if tree != anchor and any(p.exists() and p.samefile(tree) for p in (ledger, *ledger.parents)):
+                raise ValueError("decision ledger inside PR worktree")
+    return ledger
 
 
 def surface(ref: str, manifest_path: str) -> dict:
@@ -72,7 +116,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", required=True)
-    parser.add_argument("--decisions", type=Path, default=Path(".orchestration/decisions.tsv"))
+    parser.add_argument("--decisions", type=Path)
     parser.add_argument("--manifest", default="home/dot_agents/agent-config.yaml")
     args = parser.parse_args()
     path = PurePosixPath(args.manifest)
@@ -88,8 +132,9 @@ def main() -> int:
     print(diff, end="")
     print(f"permission diff sha256: {digest}")
     required = {"scope=permission", "approved_by=user", f"diff_sha256={digest}"}
-    if args.decisions.is_file():
-        with args.decisions.open(newline="") as stream:
+    ledger = trusted_ledger(args.decisions)
+    if ledger.is_file():
+        with ledger.open(newline="") as stream:
             for row in csv.DictReader(stream, delimiter="\t"):
                 if re.fullmatch(r"D-[A-Za-z0-9_.-]+", row.get("id", "")) and any(
                     required <= set((row.get(column) or "").split()) for column in ("basis", "what")

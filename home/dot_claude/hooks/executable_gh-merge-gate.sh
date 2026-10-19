@@ -16,27 +16,57 @@
 # @exitcode 0 Always; internal errors ask.
 set -euo pipefail
 
+bootstrap_ask() {
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gh/pr merge/create/update-branch: trusted tools unavailable"}}'
+    exit 0
+}
+trap bootstrap_ask ERR
+[[ ${HOME:-} == /* && -r ${HOME}/.agents/agent-config.yaml ]] || bootstrap_ask
+anchor_re='^orchestrator_checkout: (~/[^[:space:]]+)$' count=0 anchor=
+while IFS= read -r line || [[ -n $line ]]; do
+    if [[ $line =~ $anchor_re ]]; then
+        anchor=${HOME}/${BASH_REMATCH[1]:2}
+        ((count += 1))
+    fi
+done < "${HOME}/.agents/agent-config.yaml"
+[[ $count == 1 ]] || bootstrap_ask
+cd -P -- "$anchor" || bootstrap_ask
+export PATH="${HOME}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+tools=()
+for name in python3 jq gh git; do
+    found=$(/usr/bin/env -i HOME="$HOME" PATH="$PATH" mise which "$name" 2> /dev/null || command -v "$name") || bootstrap_ask
+    [[ $found == /* && $found != */shims/* ]] || bootstrap_ask
+    tools+=("$found")
+done
+bin=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/gh-gate.XXXXXX") || bootstrap_ask
+trap '/bin/rm -rf -- "$bin"' EXIT
+for i in 0 1 2 3; do
+    names=(python3 jq gh git)
+    /bin/ln -s -- "${tools[$i]}" "$bin/${names[$i]}"
+done
+export PATH=$bin
 decide() {
     trap - ERR
     local output log=${XDG_STATE_HOME:-${HOME}/.local/state}/claude/gh-merge-gate.log
-    output=$(jq -n --arg decision "$1" --arg reason "gh-merge-gate: $2" \
-        '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$decision,permissionDecisionReason:$reason}}') || {
+    local filter="{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\$decision,permissionDecisionReason:\$reason}}"
+    output=$("${tools[1]}" -n --arg decision "$1" --arg reason "gh-merge-gate: $2" \
+        "$filter") || {
         output='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gh/pr merge/create/update-branch: jq missing or encoding failed"}}'
         set -- ask "gh/pr merge/create/update-branch: jq missing or encoding failed"
     }
-    { mkdir -p "${log%/*}" && printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >> "$log"; } 2> /dev/null || true
+    { /bin/mkdir -p "${log%/*}" && printf '%s\t%s\t%s\n' "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >> "$log"; } 2> /dev/null || true
     printf '%s\n' "$output"
     exit 0
 }
 trap 'decide ask "unable to inspect gh/pr merge/create/update-branch: internal error"' ERR
 export NO_COLOR=1 CLICOLOR=0 CLICOLOR_FORCE=0 GH_PAGER=cat
 unset GH_FORCE_TTY
-command -v jq > /dev/null 2>&1 || decide ask "jq missing"
 result=$(
-    python3 -I -B /dev/fd/3 3<< 'PY'
-import json, os, re, shlex, subprocess, sys
+    "${tools[0]}" -I -B /dev/fd/3 "${tools[@]}" 3<< 'PY'
+import json, os, re, shlex, subprocess, sys, tempfile
 from pathlib import Path
 gated_words = ''
+tools = dict(zip(('python3', 'jq', 'gh', 'git'), sys.argv[1:]))
 
 class Ask(Exception):
     pass
@@ -46,7 +76,7 @@ def require(condition, reason):
         raise Ask(reason)
 
 def run(*args, data=None):
-    return subprocess.run(args, input=data, text=True, capture_output=True, check=True, timeout=30).stdout.strip()
+    return subprocess.run([tools[args[0]], *args[1:]], input=data, text=True, capture_output=True, check=True, timeout=30).stdout.strip()
 
 def gh(*args):
     return run('gh', *args)
@@ -73,9 +103,17 @@ def canonical_checkout(cwd, selected):
     require(match and match[1].lower() == actual.lower() == selected.lower(), 'repository identity mismatch')
     return top
 
-def safe_file(top, path, allow_empty=False):
-    require(path.is_relative_to(top), 'evidence outside checkout')
-    require(all(not p.is_symlink() for p in (path, *path.parents) if p.is_relative_to(top)), 'symlink evidence path')
+def path_within(path, root, fold=False):
+    return Path(str(path).casefold() if fold else path).is_relative_to(Path(str(root).casefold() if fold else root))
+
+def case_insensitive(root):
+    with tempfile.NamedTemporaryFile(prefix='.gh-Case-', dir=root) as probe:
+        other = Path(probe.name).with_name(Path(probe.name).name.swapcase())
+        return other.exists() and other.samefile(probe.name)
+
+def safe_file(top, path, allow_empty=False, fold=False):
+    require(path_within(path, top, fold), 'evidence outside checkout')
+    require(all(not p.is_symlink() for p in (path, *path.parents) if path_within(p, top, fold)), 'symlink evidence path')
     require(path.is_file() and (allow_empty or path.stat().st_size > 0), 'missing regular evidence file')
     return path.read_text()
 
@@ -209,9 +247,12 @@ def main():
             require(body != Path('-') and '..' not in body.parts and '.git' not in body.parts, 'unsafe body file path')
             body = body if body.is_absolute() else Path.cwd() / body
             top = Path(run('git', 'rev-parse', '--show-toplevel')).resolve(strict=True)
+            resolved = body.resolve(strict=True)
+            fold = case_insensitive(top)
+            require(path_within(resolved, top, fold) and any(p.samefile(top) for p in resolved.parents), 'body outside worktree')
             metadata = run('git', 'rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir').splitlines()
-            require(len(metadata) == 2 and all(not body.is_relative_to(Path(p).resolve(strict=True)) for p in metadata), 'body file is Git metadata')
-            safe_file(top, body, allow_empty=True)
+            require(len(metadata) == 2 and all(not path_within(resolved, Path(p).resolve(strict=True), fold) for p in [*metadata, top / '.git']), 'body file is Git metadata')
+            safe_file(top, body, allow_empty=True, fold=fold)
         base, head = ref(options.get('base')), ref(options.get('head'))
         require(head != default, 'head is default branch')
         sha = api(f'repos/{nwo}/branches/{head}')['commit']['sha']
@@ -251,6 +292,6 @@ if answer is not None:
 PY
 )
 [[ -n $result ]] || exit 0
-decision=$(jq -er '.[0] | select(. == "allow" or . == "ask")' <<< "$result")
-reason=$(jq -er '.[1] | strings' <<< "$result")
+decision=$("${tools[1]}" -er '.[0] | select(. == "allow" or . == "ask")' <<< "$result")
+reason=$("${tools[1]}" -er '.[1] | strings' <<< "$result")
 decide "$decision" "$reason"

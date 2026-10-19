@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import json
+import ast
 import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / "home/dot_claude/hooks/executable_gh-merge-gate.sh"
+JQ = shutil.which("jq")
+if "/shims/" in JQ:
+    JQ = subprocess.check_output(["mise", "which", "jq"], cwd=ROOT, text=True).strip()
 SHA = "3498973bd057ea4fb405823de718e9da6e40e548"
 PINNED = f"gh pr merge 7 --squash --match-head-commit {SHA}"
 DRAFT = "gh pr create --draft --base main --head task/ok --fill"
@@ -140,6 +146,21 @@ class GhMergeGateTest(unittest.TestCase):
         self.anchor.write_text("orchestrator_checkout: ~/repo\n")
         (self.bin / "gh").write_text(GH)
         (self.bin / "gh").chmod(0o755)
+        self.answers = self.tmp / "tools"
+        self.answers.mkdir()
+        for name, found in dict(
+            python3=sys.executable, jq=JQ, gh=str(self.bin / "gh"), git=shutil.which("git")
+        ).items():
+            (self.answers / name).write_text(found + "\n")
+        self.resolver = self.tmp / ".local/bin/mise"
+        self.resolver.parent.mkdir(parents=True)
+        self.resolver.write_text(
+            "#!/bin/bash\n"
+            f'[[ $PWD == "{self.repo}" && -z ${{MISE_CONFIG_FILE:-}}${{MISE_TRUSTED_CONFIG_PATHS:-}} ]] || exit 9\n'
+            f'printf "%s\\n" "$PWD" >> "{self.tmp}/resolved-cwd"\n'
+            f'IFS= read -r found < "{self.answers}/$2"\nprintf "%s\\n" "$found"\n'
+        )
+        self.resolver.chmod(0o755)
         (self.tmp / "default").write_text("main")
         (self.tmp / "nwo").write_text("o/r")
         self.write_pr()
@@ -262,9 +283,11 @@ class GhMergeGateTest(unittest.TestCase):
             }
             self.write_json("compare", {"files": files[name]})
         if name in ("gh-failure", "parser-failure", "json-failure"):
-            target = self.bin / ({"gh-failure": "gh", "parser-failure": "python3", "json-failure": "jq"}[name])
+            tool = {"gh-failure": "gh", "parser-failure": "python3", "json-failure": "jq"}[name]
+            target = self.bin / tool
             target.write_text("#!/bin/sh\nexit 23\n")
             target.chmod(0o755)
+            (self.answers / tool).write_text(str(target) + "\n")
         if name == "malformed-view":
             (self.tmp / "pr.json").write_text("{")
         if name.startswith("payload-"):
@@ -325,6 +348,57 @@ class GhMergeGateTest(unittest.TestCase):
             with self.subTest(status=status):
                 self.write_json("compare", dict(files=[dict(filename=".orchestration/t/task.md", **status)]))
                 self.assertEqual("ask", self.decide(PINNED), self.last_reason)
+
+    def test_gate_resolves_its_binaries_in_the_trusted_root_and_refuses_shims(self) -> None:
+        shims = self.tmp / "mise/shims"
+        shims.mkdir(parents=True)
+        sentinel = self.tmp / "caller-binary-used"
+        for name in ("python3", "jq", "gh", "git"):
+            (shims / name).write_text(f'#!/bin/bash\nprintf "%s\\n" "$0" >> "{sentinel}"\nexit 9\n')
+            (shims / name).chmod(0o755)
+        self.env.update(
+            PATH=f"{shims}:{self.env['PATH']}", MISE_CONFIG_FILE="caller.toml", MISE_TRUSTED_CONFIG_PATHS="caller"
+        )
+        with self.subTest(trusted_resolution=True):
+            self.assertEqual(("allow", False), (self.decide(PINNED), sentinel.exists()), self.last_reason)
+        with self.subTest(resolution_root=True):
+            roots = self.tmp / "resolved-cwd"
+            self.assertEqual({str(self.repo)}, set(roots.read_text().splitlines()) if roots.exists() else set())
+        for name in ("python3", "jq", "gh", "git"):
+            path = self.answers / name
+            original = path.read_text()
+            for answer in ("", "relative/tool", str(shims / name)):
+                with self.subTest(name=name, answer=answer):
+                    path.write_text(answer + "\n")
+                    self.assertEqual("ask", self.decide(PINNED), self.last_reason)
+                    self.assertFalse(sentinel.exists())
+            path.write_text(original)
+
+    def test_gate_excludes_git_metadata_by_filesystem_identity(self) -> None:
+        (self.repo / "body.md").write_text("synthetic public body\n")
+        for path in (".GIT/config", ".Git/config", str(self.repo / ".gIt/config")):
+            with self.subTest(path=path):
+                self.assertEqual("ask", self.decide(DRAFT + " -F " + path), self.last_reason)
+        self.assertEqual("allow", self.decide(DRAFT + " -F body.md"), self.last_reason)
+        self.assertEqual("allow", self.decide(DRAFT + " -F " + str(self.repo / "body.md")), self.last_reason)
+        code = HOOK.read_text().split("3<< 'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+        functions = [
+            n
+            for n in ast.parse(code).body
+            if isinstance(n, ast.FunctionDef) and n.name in ("path_within", "case_insensitive")
+        ]
+        namespace = dict(Path=Path, tempfile=tempfile)
+        exec(compile(ast.Module(body=functions, type_ignores=[]), "gate-path-functions", "exec"), namespace)
+        self.assertIn("path_within", namespace)
+        within = namespace["path_within"]
+        self.assertTrue(within(Path("/Work/.GIT/config"), Path("/work/.git"), True))
+        self.assertFalse(within(Path("/Work/.GIT/config"), Path("/work/.git"), False))
+        self.assertFalse(within(Path("/other/body.md"), Path("/work"), True))
+        self.assertEqual((self.repo / "BODY.MD").exists(), namespace["case_insensitive"](self.repo))
+        calls = [json.loads(line) for line in (self.tmp / "argv.jsonl").read_text().splitlines()]
+        self.assertTrue(
+            all(a[0] != "api" or not any(v in a for v in ("POST", "PATCH", "PUT", "DELETE")) for a in calls)
+        )
 
     def test_body_files_are_regular_and_bound_to_the_invoking_worktree(self) -> None:
         body = self.repo / "body.md"

@@ -83,7 +83,7 @@ class ChainGithubScriptsTest(unittest.TestCase):
         gh.chmod(0o755)
         self.canned = {}
 
-    def run_script(self, name, *args, code=0):
+    def run_script(self, name, *args, code=0, with_stderr=False):
         """Run a script from the repository with stdin closed; return its stdout and the stub's calls."""
         (self.t / "canned.json").write_text(json.dumps(self.canned))
         log = self.t / "gh.log"
@@ -102,7 +102,52 @@ class ChainGithubScriptsTest(unittest.TestCase):
         calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
         # No call read anything on stdin, so none could swallow the threads the loop reads.
         self.assertEqual([], [call["argv"] for call in calls if call["stdin"]])
-        return result.stdout, calls
+        return (result.stdout, calls, result.stderr) if with_stderr else (result.stdout, calls)
+
+    def test_resolve_threads_refuses_a_disposition_the_reply_cannot_carry(self):
+        self.canned = {
+            "graphql query": "101 T_one\n202 T_two\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+            f"{API}/comments/202/replies .id": "9002\n",
+        }
+        table = self.t / "extra.tsv"
+        sweep = self.t / "sweep.json"
+        bad = "not-applicable: evidence=rg 'uses `example`' README.md"
+        for source, cid in (("tsv", "999"), ("sweep", "202")):
+            with self.subTest(source=source):
+                table.write_text("101\tfixed:abc1234\n" + (f"{cid}\t{bad}\n" if source == "tsv" else ""))
+                items = [{"url": f"https://github.com/mryfmo/dotfiles/pull/9#discussion_r{cid}", "disposition": bad}]
+                sweep.write_text(json.dumps({"items": items if source == "sweep" else []}))
+                _, calls, err = self.run_script("resolve-threads.sh", 9, table, "-", sweep, code=2, with_stderr=True)
+                self.assertEqual(
+                    f"resolve-threads: disposition for {cid} holds a backtick; the reply cannot carry it losslessly\n",
+                    err,
+                )
+                self.assertEqual([], calls)
+
+    def test_resolve_threads_refuses_backticks_when_tsv_id_is_empty(self):
+        self.canned = {
+            "graphql query": "101 T_one\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text("\tnot-applicable: evidence=`bad`\n101\tfixed:abc1234\n")
+        _, calls = self.run_script("resolve-threads.sh", 9, table, code=2)
+        self.assertEqual([], calls)
+
+    def test_resolve_threads_skips_comment_rows_during_preflight(self):
+        self.canned = {
+            "graphql query": "101 T_one\n",
+            "graphql mutation": "true\n",
+            f"{API}/comments/101/replies .id": "9001\n",
+        }
+        table = self.t / "extra.tsv"
+        table.write_text("#\tnote about `code`\n101\tfixed:abc1234\n")
+        out, calls = self.run_script("resolve-threads.sh", 9, table)
+        self.assertEqual(["T_one"], thread_ids(calls))
+        self.assertEqual("resolved 1 thread(s); missing rows: 0", out.splitlines()[-1])
 
     def test_resolve_threads_replies_with_the_table_row_and_resolves_only_threads_with_rows(self):
         self.canned = {

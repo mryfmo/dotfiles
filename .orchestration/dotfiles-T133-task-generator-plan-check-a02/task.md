@@ -11,6 +11,7 @@ allowed_files:
   - tests/unit/test_task_from_plan.py
   - tests/unit/test_plan_check.py
   - tests/unit/test_task_consistency_c11_c15.py
+  - tests/unit/test_regime_ci.py
   - tests/unit/test_task_checkers.py
   - .orchestration/dotfiles-T133-task-generator-plan-check-a02/**
 after: []
@@ -32,6 +33,8 @@ threat_table:
     disposition: "residual: temporary task files and repositories isolate premise side effects; explicit trusted hashes authorize only the fixture bytes under test."
   - control: "tests/unit/test_task_checkers.py (amendment 1's C4 fixture disposition and historical expected-set edits)"
     disposition: "residual: only the two amendment-1 edits remain against origin/main; report.md justifies every added historical check id and the audit compares the module's complete diff."
+  - control: "tests/unit/test_regime_ci.py (amendment 1: the regime fixtures' threat-row dispositions gain the C13 grammar; no production change)"
+    disposition: "closed: tests/unit/test_regime_ci.py::RegimeCiTest::test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage"
   - control: ".orchestration/dotfiles-T133-task-generator-plan-check-a02/** (the reset task's branch artifacts)"
     disposition: "residual: artifacts stay in this task's directory, distinguish historical observations from final-head results and identify commands, tested revisions and evidence hashes."
   - control: "the task-file copy on the branch (.orchestration/dotfiles-T133-task-generator-plan-check-a02/task.md) replaces the reset_of task's copy (.orchestration/dotfiles-T133-task-generator-plan-check-a01/task.md)"
@@ -218,6 +221,10 @@ This task is `security: true`. The orchestrator runs the task-level audit and a 
 No `@codex review` comment is posted. Automatic reviews are observed for the inherited bounded window, and absence after 15 minutes is recorded as `bot: none`. Every `gh` command and every Git write runs as an individual command without shell chaining or a wrapper combining writes. A classifier or permission denial produces a blocked PONG with the exact command and output. An alternate command or API does not bypass the denial.
 
 Until P1-14 lands, any string containing the words `gh pr merge` or `gh pr create` is written with the file-edit tool, never in a Bash heredoc or `echo`.
+
+## Amendment 1 (CI-repair round, 2026-10-19T03:4xZ): the regime fixtures under C13
+
+The chain update-branched PR #417 onto main b22a5580 (→ 63b6acae) and the four `test` jobs fail on three regime tests: `test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage` ("C13 disposition is not closed:, residual: or out-of-scope: and a space"), `test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier` and `test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr` (run 39195158133). The regime fixtures (tests/unit/test_regime_ci.py, landed by PR #418) carry threat-row dispositions in the pre-C13 form, and the regime verifier runs this task's checker on them. `tests/unit/test_regime_ci.py` joins allowed_files for the fixture repair only: the fixture dispositions take the C13 grammar (`residual: <sentence>` and so on) and the expected output counts follow; no production file changes. Under C-61 a fixture-only CI repair with no production change is one CI-repair round. Everything else stands.
 
 ## Checks (pasted by the orchestrator before each send)
 

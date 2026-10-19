@@ -393,3 +393,52 @@ $ uv run --no-project .claude/hooks/contextdb_cli.py memory add --kind decision 
 b5f77b7f-dde3-4401-b29c-3860ec126856
 exit=0
 ```
+
+## Amendment 1: the CI-repair round (code head eb0b1c06, on 63b6acae, the update-branch onto b22a5580)
+
+The task copy, amendment 1:
+
+```
+$ shasum -a 256 .orchestration/dotfiles-T133-task-generator-plan-check-a02/task.md
+60d4c2db70ec6e8783945f3b6f2052cafe07da85700d574c0f70e477f7c7d1e9  .orchestration/dotfiles-T133-task-generator-plan-check-a02/task.md
+```
+
+Red: the regime tests on 63b6acae, before the repair:
+
+```
+$ uv run python -m unittest tests.unit.test_regime_ci
+FAIL: test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (reset_of=True, predecessor_copy_kept=True)
+AssertionError: 0 != 1 : regime-ci: warning: t1-a01: predecessor copy .orchestration/t1-a01/task.md (reset_of of t1-a02)
+FAIL: test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (reset_of=True, predecessor_copy_kept=False)
+AssertionError: 0 != 1 : regime-ci: t1-a02: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+FAIL: test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (expected=0, phrase=None)
+AssertionError: 0 != 1 : regime-ci: warning: the diff changes scripts/orchestrator/regime-ci.py; this run executed the base's version, the audit reads the change
+FAIL: test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr
+AssertionError: Tuples differ: (0, 'regime-ci: ok 1 task(s)\n') != (1, 'regime-ci: t1-a01: checker: C13 dispo[1170 chars]l\n')
+FAIL: test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config
+AssertionError: Tuples differ: (0, 'regime-ci: ok 1 task(s)\n') != (1, 'regime-ci: t1-a01: checker: C13 dispo[1170 chars]l\n')
+Ran 15 tests in 20.702s
+FAILED (failures=5)
+```
+
+Green on eb0b1c06: the regime tests, the four task modules and the orchestrator tool tests.
+
+```
+$ uv run python -m unittest tests.unit.test_regime_ci tests.unit.test_task_from_plan tests.unit.test_plan_check tests.unit.test_task_consistency_c11_c15 tests.unit.test_task_checkers tests.unit.test_orchestrator_tools -v
+Ran 101 tests in 125.509s
+OK (skipped=1)
+```
+
+Caps (`git diff --numstat` against the merge base b22a5580, outside `.orchestration/`):
+
+```
+232	0	scripts/orchestrator/plan-check.py
+140	11	scripts/orchestrator/task-consistency-check.py
+242	0	scripts/orchestrator/task-from-plan.py
+34	0	scripts/orchestrator/task-template.md
+166	0	tests/unit/test_plan_check.py
+11	5	tests/unit/test_regime_ci.py
+9	3	tests/unit/test_task_checkers.py
+265	0	tests/unit/test_task_consistency_c11_c15.py
+214	0	tests/unit/test_task_from_plan.py
+```

@@ -186,3 +186,15 @@ The Bot's review of a01 (5562936729, on 35c66022) left three threads on PR #417.
 The task-level audit of 9da0ed3 (three P1, twelve P2) is dispositioned item by item above: items 5 to 19, plus item 20's PR #418 review.
 
 This push: no `@codex review` is posted. CI on the final head and the 15-minute Bot window are in the RESULT line.
+
+## Amendment 1: the CI-repair round
+
+The chain update-branched PR #417 onto main b22a5580 (63b6acae). The regime verifier from PR #418 now runs this task's checker on the fixtures in `tests/unit/test_regime_ci.py`. Their threat rows carried a bare `disposition: residual`, which C13 refuses (and C11, as a payload under 20 characters). Three regime tests failed in CI and five locally (validation.md).
+
+Commit eb0b1c06 gives each of the five fixture rows `'residual: the compensating control of this fixture'` and copies amendment 1's task text. No expected output and no production file changes.
+
+- The regime tests are red on 63b6acae.
+- 101 tests across the regime, task and orchestrator-tool modules are green on eb0b1c06.
+- Caps against the new merge base: 659 of 700 outside `tests/` and 673 of 800 under `tests/`.
+
+This is one CI-repair round under C-61. The worker's pre-push review round of a02 is unchanged.

@@ -1,0 +1,88 @@
+[
+  {
+    "id": "lint-r1-r2-test-word-anywhere",
+    "scope": "file",
+    "path": "scripts/lint-comparisons.py",
+    "body": "P1 (high), class test-word-position: R1 and R2 fired only when `[[`, `[` or `case` opened the line, so `if [[ … ]]`, `elif`, `while`, `! [[` and `cmd && [[` were never checked and five tree hits were missing from the baseline (agent-stop-gate.sh:114, generate-docs.sh:129 and :518, gh-auth.sh:50, dispatch.sh:202). Fixed in 26ed34bb: the test word is found anywhere before the operator and `case` two tokens before `in`; the tree gains 13 rows; tests gain the `if [[ … ]]`, `&& [ … ]` and `while … case` refused forms.",
+    "resolved": true
+  },
+  {
+    "id": "lint-jq-region-anchor",
+    "scope": "file",
+    "path": "scripts/lint-comparisons.py",
+    "body": "P1 (high), class quote-pairing: the jq scan paired single quotes over the whole file, so a program inside \"$(… | jq '…')\" was never a region and an apostrophe in a comment, a heredoc or a double-quoted string desynchronised the rest of the file (herdr-agents ended in an open-quote state from its line 1659). Fixed in 26ed34bb: a jq program is the first single-quoted string after each `jq` word on its logical line; the reviewer's three repros hit, herdr-agents:1716 is found, and the four premise-3 lines stay rows.",
+    "resolved": true
+  },
+  {
+    "id": "lint-cap-284",
+    "scope": "review",
+    "body": "P2 (high): 211 + 73 = 284 changed lines outside tests/ and .orchestration/ against the Check's 200. Resolved by Amendment 2 (D-cap-F2: the baseline is data and leaves the count; the script alone at most 200 lines) and the trim 9fbd0de0; the script is 200 lines at 26ed34bb.",
+    "resolved": true
+  },
+  {
+    "id": "lint-r5-ps-in-substitution-or-after-if",
+    "scope": "file",
+    "path": "scripts/lint-comparisons.py",
+    "body": "P2 (high): R5 missed `$(ps … | grep …)` (the fold ran first) and `if ps … | grep -q …` (the anchor). Fixed in 26ed34bb: R5 runs on the comment-free unfolded line and accepts `if`, `elif`, `while`, `until`, `then`, `do`, `else`, `!` and `$(` before `ps`; both repros are test forms now.",
+    "resolved": true
+  },
+  {
+    "id": "lint-explicit-files-stale-rows",
+    "scope": "file",
+    "path": "scripts/lint-comparisons.py",
+    "body": "P2 (high): with explicit file arguments every row of an unscanned file read stale. Fixed in 26ed34bb: stale rows are reported for the scanned files only when files are given (the default set still reports every row); tested. Not done, declared in the docstring: an explicit path is keyed as typed, so it must be repo-relative as git ls-files prints it (`./x` does not match).",
+    "resolved": true
+  },
+  {
+    "id": "lint-r3-normaliser-both-sides",
+    "scope": "file",
+    "path": "scripts/lint-comparisons.py",
+    "body": "P2 (medium): R3 accepted a `def canonical_path`/`normalise_*` applied to one side and read only the first def. Fixed in 26ed34bb: any def of the program accepts only when its name occurs twice in the operator's expression; the one-sided repro is a refused test form.",
+    "resolved": true
+  },
+  {
+    "id": "tests-r2-accepted-forms-live",
+    "scope": "file",
+    "path": "tests/unit/test_lint_comparisons.py",
+    "body": "P2 (high): the ten R2 accepted forms passed because a `$(…)` operand is no operand, not through the normaliser. Fixed in 26ed34bb: `$(…)` folds to the empty string and the R2 forms keep a literal tail (`case \"$(realpath \"$url\")/x\" in /*)`), so the hit fires and SH_NORM accepts it; the same shape without a normaliser is a refused form.",
+    "resolved": true
+  },
+  {
+    "id": "lint-p3-fixed-and-declared",
+    "scope": "review",
+    "body": "P3s. Fixed in 26ed34bb: comment lines no longer yield R5 or R6 (the rules run on the comment-free line); Python R6 requires `re` as the receiver; a malformed baseline row reads as a stale row instead of a traceback. Declared, not changed: the `escape_regex` accepted form passes because the pattern capture stops at the nested quote (the fold removes the `$name` either way); SH_NORM is line-wide (the task's statement-local shortcut, printed by --list-rules); R4 constants use the general operand literal rule (`/`, `~`, `file://`, `.html`, `%2F`) where the R4 row names `/` alone (the task's own operand sentence is the general one; the row check-agent-runtime.py:677 `value == \"~\"` rests on it); jq fields are `.url` and `.path` as the R3 row names; a Python file that does not parse yields no hits silently (a diagnostic would fail the tree test's empty-stderr assertion for `.py.tmpl` templates); `py_calls` accepts a normaliser anywhere in the operand's subtree by its bare name; a `\"${prefix}/bin\"` operand is read by its leading variable; a placeholder-free `re.search(f\"abc\")` is an R6 hit by the table's letter.",
+    "resolved": true
+  },
+  {
+    "id": "rereview-r2-forms-and-re-receiver-not-applied",
+    "scope": "file",
+    "path": "tests/unit/test_lint_comparisons.py",
+    "body": "P2 (high), class claimed-edit-not-in-diff: the re-review of 26ed34bb found that the R2 accepted forms still folded their only operand away and that Python R6 did not check the receiver, although the worker's update message claimed both; two string replacements had missed the ruff-formatted text and were not asserted. Fixed in e88f8f05 with asserted edits: the R2 forms read `case \"$(realpath \"$path\")/x\" in /*)` (the hit fires, the normaliser accepts; the `foo` shape is refused), and R6 requires `re` as the receiver (`RE.match(f\"{a}/{b}\")` is no hit).",
+    "resolved": true
+  },
+  {
+    "id": "rereview-p3-declared",
+    "scope": "review",
+    "body": "P3s of the re-review, declared and not changed: a single-quoted `--arg` value before the jq program hides the program (no tracked line has that shape); a `==` token after a closed `[[ … ]]` on the same line reads as R1 (contrived, no tree instance); the baseline is deduplicated to one row per distinct (path, rule, line hash) in e88f8f05 (86 hits, 85 rows), which was the row-count remark.",
+    "resolved": true
+  },
+  {
+    "id": "rereview3-r2-python-forms-vacuous",
+    "scope": "file",
+    "path": "tests/unit/test_lint_comparisons.py",
+    "body": "P3 (medium), declared: the three `python3 -I -c` R2 accepted forms pass vacuously, because a `$(…)` substitution that itself holds parentheses is not folded by words() (`\\$\\([^()]*\\)` folds innermost `$( )` groups only) and the `case` word then splits into several tokens, so no R2 hit fires with or without the normaliser; a `case` whose word holds such a substitution is unchecked. The seven other R2 forms and all ten R1 forms are live. Not changed: the script is at the 200-line cap; a follow-up may fold balanced parentheses before `$( )`.",
+    "resolved": true
+  },
+  {
+    "id": "worker-review-approval",
+    "scope": "review",
+    "body": "Round 3 of the independent read-only review approved head e88f8f05 (`Verdict: correct`): tree lint exit 0 silent, 3 unittests OK, ruff check and format pass, script 200 lines, baseline 85 rows with 0 duplicates; the earlier P1 repros still hit, the R2 forms and the `re` receiver confirmed by fixture; no P0 to P2 remains. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  },
+  {
+    "id": "round2-delta-review",
+    "scope": "review",
+    "body": "Round 4 of the independent read-only review, on the revise round's delta 4b843ce9..df8055ce (the three structural checks; the Bot's three P2 4302545078, 4302545082 and 4302545085): `Verdict: correct`, no P0 to P2; confirmed by fixture that a baseline row is consumed once (one row per hit, surplus rows stale), that normalisers match by the qualified callee (`str(Path(x).resolve())` accepted through the nested call, `fake.realpath` and `fake.escape` hits), and that the jq def is required on each operand side. Three P3: `pathlib.Path(x).resolve()` had regressed to a hit (fixed in 12d5d771 with a test form); `from os.path import realpath; realpath(path)` is a hit by the instruction's letter (declared); two different defs, one per jq side, are refused (declared).",
+    "resolved": true
+  }
+]

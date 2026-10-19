@@ -1831,7 +1831,7 @@ if [[ ${add_worker_mode} == true ]]; then
     # Bash retains this inherited flock until spawn.sh registers the identity.
     seat_git_common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir)"
     exec 9>> "${seat_git_common_dir}/herdr-agents-seat.lock"
-    python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
+    (cd / && python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)')
     # worker_cap from the deployed manifest: a seat is a .claude/worktrees/ worktree holding an agmsg identity, as
     # the Stop checklist counts them; re-seating a seated worktree adds none.
     seat_cap="$(sed -n 's/^worker_cap:[[:space:]]*\([1-9][0-9]*\)[[:space:]]*$/\1/p' "${HOME}/.agents/agent-config.yaml" 2> /dev/null | head -n 1)" || seat_cap=''
@@ -1898,7 +1898,7 @@ if [[ ${add_worker_mode} == true ]]; then
     [[ ${seat_kind} != claude ]] || accept_spawned_claude_trust_dialog "${seat_workspace_id}" "${seat_panes}" "${spawn_pid}"
     spawn_rc=0
     wait "${spawn_pid}" || spawn_rc=$?
-    python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_UN)'
+    (cd / && python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_UN)')
     exec 9>&-
     if [[ ${spawn_rc} -ne 0 ]]; then
         printf 'herdr-agents: spawn.sh exited %s for worker %s in workspace %s; confirm linkage with AGMSG-PING before dispatching.\n' "${spawn_rc}" "${seat_name}" "${seat_workspace_id}" >&2

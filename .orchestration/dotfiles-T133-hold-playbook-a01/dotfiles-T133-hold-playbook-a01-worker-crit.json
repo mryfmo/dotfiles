@@ -1,0 +1,50 @@
+[
+  {
+    "id": "hp-r1-worker-review-p3-segment-bound-untested",
+    "scope": "tests/unit/test_hold_playbook.py",
+    "body": "P3 (high, reproduced), fixed in a6c073e5. Removing the `/` exclusion from the entry-`*` branch or the entry-`?` branch of covers() left all nine tests green, although entry lib/* then covers lib/a/b.md. The whole-glob test now adds the allowed entry ab?cd and the globs lib/*/x.md and ab/cd, both expected outside; validation section 5 shows both mutations red.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-utc-untested",
+    "scope": "tests/unit/test_hold_playbook.py",
+    "body": "P3 (high, reproduced), fixed in a6c073e5. The decision test checked only the timestamp's format, so local time with a Z suffix passed. It now parses `when` as UTC and requires it between the test's start and end in UTC; the local-time mutation is red on this JST seat (section 5) and would be green only on a UTC machine.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-unknown-radius-report",
+    "scope": "scripts/orchestrator/hold-playbook.sh",
+    "body": "P3 (high), fixed in a6c073e5. The stdout report printed a hard-coded `blast_radius: []` for remedy unknown; it now prints the class's actual globs, so an unknown remedy with a non-empty radius (which exits 3 and names the globs in the replan and the row) is reported consistently.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-multiline-remedy",
+    "scope": "scripts/orchestrator/hold-playbook.sh",
+    "body": "P3 (high, reproduced), fixed in a6c073e5. A remedy with newlines could forge a filled re-plan line and a Completion section ahead of the real ones. The remedy must now be one line free of tab, newline and carriage return (the globs' existing check), else exit 2 with nothing written; test_record_text_is_never_executed covers it and the mutation that accepts it is red.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-class-slug-control-chars",
+    "scope": "scripts/orchestrator/hold-playbook.sh",
+    "body": "P3 (medium), fixed in a6c073e5. A classes.yaml key holding a tab or newline, passed as the class argument, became a CSV-quoted field that a line-based reader of decisions.tsv would split. The class argument must now be free of tab, newline and carriage return, else exit 2 with nothing written; test_unknown_class_exits_2 covers it with such a key present in the fixture.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-brief-two-lines",
+    "scope": "scripts/orchestrator/hold-playbook.sh",
+    "body": "P3 (medium), fixed in a6c073e5. The @brief spanned two lines, which shdoc reads as one; it is now one line.",
+    "resolved": true
+  },
+  {
+    "id": "hp-r1-worker-review-p3-rows-resource-warning",
+    "scope": "tests/unit/test_hold_playbook.py",
+    "body": "P3 (high), fixed in a6c073e5. rows() left the ledger file open (three ResourceWarnings); it now reads it in a with block, and the module passes under -W error::ResourceWarning.",
+    "resolved": true
+  },
+  {
+    "id": "hp-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "One round by a fresh read-only subagent, given the commit range origin/main..f76db928 and the task file, not the worker's conclusions. Verdict correct: no P0, P1 or P2; items 2 and 3 checked statement by statement; red at 6a72398c and green at f76db928 reproduced; covers() found sound by a brute-force comparison with allowed() over 676 patterns and 19,531 paths; record text never reaches a shell; scope and caps within the task. Its seven P3 are fixed in one worker-side round (a6c073e5), which counts toward INV-6. It also noted that the dispatched threat_table row for the test module says the vocabulary test reads the real tree, which the orchestrator note supersedes; that is orchestrator text, left byte-identical. Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

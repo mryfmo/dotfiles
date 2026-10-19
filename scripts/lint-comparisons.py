@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Refuse string-form comparisons of paths, URLs and processes (C-61 rule 6; plan 023 PR F2).
-python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [<file>...] prints each hit as `<file>:<line>:
-<rule id> <rule text>` and exits 1 when a hit is outside the baseline or a baseline row matches no hit (a normaliser in
-the statement, or `# lint-comparisons: allow <reason>` on the line, accepts; paths as git ls-files prints)."""
+python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [--changed <path>... | --all] [<file>...] prints
+each hit as `<file>:<line>: <rule id> <rule text>` and exits 1 when a hit outside the baseline, or a baseline row matching
+no hit, is in a changed file (a normaliser in the statement, or `# lint-comparisons: allow <reason>` on the line,
+accepts; paths as git ls-files prints). In an unchanged file both are warnings. The changed files are --changed's, else
+`git diff --name-only origin/main...HEAD`'s; --all prints every hit and stale row and exits 0."""
 
 import argparse
 import ast
 import hashlib
+import os
 import re
 import shlex
+import shutil
 import subprocess
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -46,6 +51,8 @@ PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
 RE_FUNCS = ("re.compile", "re.search", "re.match", "re.fullmatch")
+GIT_C = ("core.hooksPath=/dev/null", "core.fsmonitor=false", "protocol.allow=never", "protocol.https.allow=always")
+GIT_C += ("core.attributesFile=/dev/null", "core.sshCommand=false")
 OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
@@ -150,10 +157,15 @@ def python_hits(text):
             yield node.lineno, "R4", py_calls(parts, PY_NORM.match)
 
 
+def git(*args):  # plan 024 5.14 item 2: env -i, a system git by its absolute path, -C, no system or global config
+    exe = shutil.which("git", path=os.defpath) or sys.exit(f"lint-comparisons: no git in {os.defpath}")
+    cmd = [os.path.realpath(exe), "-C", str(ROOT), *(x for c in GIT_C for x in ("-c", c)), *args]  # not PATH's git
+    env = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+    return filter(None, subprocess.run(cmd, env=env, capture_output=True, text=True, check=True).stdout.split("\0"))
+
+
 def default_files():
-    cmd = ["git", "ls-files", "-z", "--", "home", "scripts", "install"]
-    out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    for rel in filter(None, out.split("\0")):
+    for rel in git("ls-files", "-z", "--", "home", "scripts", "install"):
         first = (ROOT / rel).read_text(errors="replace").split("\n", 1)[0]
         if rel.endswith((".sh", ".bash", ".zsh", ".py", ".tmpl")) or SHEBANG.match(first):
             yield rel, ROOT / rel
@@ -173,6 +185,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--list-rules", action="store_true")
     parser.add_argument("--baseline", type=Path, default=ROOT / "scripts/lint-comparisons-baseline.tsv")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--changed", nargs="*", metavar="PATH")
+    mode.add_argument("--all", action="store_true")
     parser.add_argument("files", nargs="*")
     args = parser.parse_args(argv)
     if args.list_rules:
@@ -180,19 +195,30 @@ def main(argv=None):
         return 0
     rows = args.baseline.read_text().splitlines() if args.baseline.is_file() else []
     rows = Counter(tuple((r.split("\t") + ["", ""])[:3]) for r in rows if r.strip())
-    used, scanned, failed = Counter(), set(), False
+    diff = ("diff", "--name-only", "-z", "--no-ext-diff", "--no-textconv", "origin/main...HEAD")
+    changed = None if args.all else set(git(*diff) if args.changed is None else args.changed)
+    used, scanned, failed, warned = Counter(), set(), False, Counter()
+
+    def report(rel, line, kind):  # a changed file's finding fails; an unchanged file's warns; --all prints both
+        nonlocal failed
+        failed |= changed is not None and rel in changed
+        warned[kind] += changed is not None and rel not in changed
+        print(f"warning: {line}" if changed is not None and rel not in changed else line)
+
     for rel, target in sorted([(f, Path(f)) for f in args.files] or default_files()):
         text, _ = target.read_text(errors="replace"), scanned.add(rel)
         for n, rule in sorted(set(lint(rel, text))):
             key = (rel, rule, hashlib.sha256(text.split("\n")[n - 1].strip().encode()).hexdigest())
             if used[key] < rows[key]:
                 used[key] += 1
+                if changed is None:
+                    print(f"{rel}:{n}: {rule} {RULES[rule]} (baseline)")
                 continue
-            print(f"{rel}:{n}: {rule} {RULES[rule]}")
-            failed = True
+            report(rel, f"{rel}:{n}: {rule} {RULES[rule]}", "hit")
     for rel, rule, _ in sorted(r for r in (rows - used).elements() if not args.files or r[0] in scanned):
-        print(f"stale baseline row {rel} {rule}")
-        failed = True
+        report(rel, f"stale baseline row {rel} {rule}", "row")
+    if sum(warned.values()):
+        print(f"warning: {warned['hit']} unbaselined hit(s) and {warned['row']} stale row(s) in unchanged files")
     return int(failed)
 
 

@@ -5,6 +5,7 @@ no test reads or writes the real .orchestration/ tree.
 """
 
 import csv
+import datetime
 import json
 import re
 import shutil
@@ -72,7 +73,8 @@ class HoldPlaybookTests(unittest.TestCase):
         return (self.tree / f".orchestration/tasks/{task}-replan.md").read_text()
 
     def rows(self):
-        return list(csv.reader(self.ledger.open(newline=""), delimiter="\t"))
+        with self.ledger.open(newline="") as ledger:
+            return list(csv.reader(ledger, delimiter="\t"))
 
     def snapshot(self):
         return {str(p.relative_to(self.tree)): p.read_bytes() for p in self.tree.rglob("*") if p.is_file()}
@@ -102,6 +104,7 @@ class HoldPlaybookTests(unittest.TestCase):
                 self.assertEqual(source, (self.tree / f".orchestration/tasks/{task}.md").read_bytes())
 
     def test_uncovered_scope_appends_pending_decision(self):
+        start = datetime.datetime.now(datetime.UTC).replace(microsecond=0)
         result = self.run_script(TASK, "records-form")
         self.assertEqual(3, result.returncode, result.stderr)
         text = self.ledger.read_text()
@@ -112,6 +115,8 @@ class HoldPlaybookTests(unittest.TestCase):
         row = dict(zip(HEADER.split(), rows[2]))
         self.assertEqual(f"D-{TASK}-replan", row["id"])
         self.assertRegex(row["when"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+        when = datetime.datetime.strptime(row["when"], "%Y-%m-%dT%H:%M:%S%z")
+        self.assertTrue(start <= when <= datetime.datetime.now(datetime.UTC), row["when"])  # UTC, not local
         self.assertIn(".orchestration/acceptance/*.md", row["what"])
         self.assertNotIn("acceptance-front-matter.py", row["what"])
         self.assertIn("records-form", row["why"])
@@ -119,11 +124,14 @@ class HoldPlaybookTests(unittest.TestCase):
         self.assertNotRegex(text[len(HEADER + OLD_ROW) :].lower(), r"default|deadline")
 
     def test_unknown_class_exits_2(self):
+        self.classes({**CLASSES, "a\tb": CLASSES["records-form"]})  # a key, but a tab would split the ledger row
         before = self.snapshot()
-        result = self.run_script(TASK, "no-such-class")
-        self.assertEqual(2, result.returncode)
-        self.assertIn("no-such-class", result.stderr)
-        self.assertEqual(before, self.snapshot())
+        for cls in ("no-such-class", "a\tb"):
+            with self.subTest(cls=cls):
+                result = self.run_script(TASK, cls)
+                self.assertEqual(2, result.returncode)
+                self.assertIn(repr(cls), result.stderr)
+                self.assertEqual(before, self.snapshot())
 
     def test_existing_replan_exits_4(self):
         self.assertEqual(3, self.run_script(TASK, "records-form").returncode)
@@ -160,10 +168,12 @@ class HoldPlaybookTests(unittest.TestCase):
             "scripts/orchestrator/hold-playbook.sh",
             "tests/**",
             "lib/*",
+            "ab?cd",
             "docs/a.md",
             f".orchestration/{TASK}/**",
         ]
         radius = ["scripts/orchestrator/hold-playbook.sh", "tests/unit/test_*.py", "scripts/**", "lib/**", "docs/*.md"]
+        radius += ["lib/*/x.md", "ab/cd"]  # neither `*` nor `?` of an entry takes a `/`
         self.classes({"scope-mix": {"remedy": "Fix it within scope.", "blast_radius": radius}})
         self.task(TASK, allowed)
         self.write("lib/x", "")
@@ -176,12 +186,21 @@ class HoldPlaybookTests(unittest.TestCase):
             "`scripts/**`: outside allowed_files",
             "`lib/**`: outside allowed_files",
             "`docs/*.md`: outside allowed_files",
+            "`lib/*/x.md`: outside allowed_files",
+            "`ab/cd`: outside allowed_files",
         ]
         self.assertIn("".join(f"- {line}\n" for line in scope), self.replan())
         what = self.rows()[2][2]
-        self.assertEqual(["docs/*.md", "lib/**", "scripts/**"], sorted(g for g in radius if g in what))
+        self.assertEqual(
+            ["ab/cd", "docs/*.md", "lib/**", "lib/*/x.md", "scripts/**"], sorted(g for g in radius if g in what)
+        )
 
     def test_record_text_is_never_executed(self):
+        forged = "r\n\n## Completion\n\n" + REPLAN_LINE.replace("<fill>", "done")  # would forge the filled sections
+        self.classes({"forged": {"remedy": forged, "blast_radius": []}})
+        before = self.snapshot()
+        self.assertEqual(2, self.run_script(TASK, "forged").returncode)
+        self.assertEqual(before, self.snapshot())
         remedy = "$(touch ran-remedy) `touch ran-tick`; touch ran-semi"
         glob = "$(touch ran-glob)/*.md"
         self.classes({"literal": {"remedy": remedy, "blast_radius": [glob, "`touch ran-glob2`"]}})

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # @file hold-playbook.sh
-# @brief Expand a class's corrective procedure into a replan skeleton, and record a pending decision when it needs files
-#   outside the task's allowed_files.
+# @brief Expand a class's remedy into a replan skeleton and record a pending decision for out-of-scope globs.
 # @description
 #   Plan 024 P1-13 (item (13) of 024-design-programs.md, the class playbook of 024-design-quality.md 5.13). Reads the
 #   class's `remedy:` and `blast_radius:` from `.orchestration/learning/classes.yaml` and the task's `allowed_files`
@@ -128,12 +127,14 @@ def covers(entry, glob):
 def plan(root, task, cls):
     o = Path(root) / ".orchestration"
     classes = vocabulary_of(o / "learning/classes.yaml")
+    if not paths([cls]):
+        fail(f"class {cls!r} is not a slug")
     if cls not in classes:
         fail(f"class {cls!r} is not in .orchestration/learning/classes.yaml")
     entry = classes[cls] if isinstance(classes[cls], dict) else {}
     remedy, radius = entry.get("remedy"), entry.get("blast_radius")
-    if not isinstance(remedy, str) or not remedy.strip() or not paths(radius):
-        fail(f"class {cls!r} has no remedy string or no blast_radius list of globs")
+    if not paths([remedy]) or not remedy.strip() or not paths(radius):
+        fail(f"class {cls!r} has no one-line remedy string or no blast_radius list of globs")
     meta = front(o / f"tasks/{task}.md")
     allowed = meta.get("allowed_files") if isinstance(meta, dict) else None
     if not paths(allowed):
@@ -180,7 +181,7 @@ def plan(root, task, cls):
         out.write("\n".join(lines))
     report = f"hold-playbook: wrote .orchestration/tasks/{task}-replan.md for class {cls}"
     if unknown:
-        report += " (remedy: unknown, blast_radius: [])"
+        report += f" (remedy: unknown, blast_radius: [{', '.join(radius)}])"
     if not outside:
         print(f"{report}; every blast_radius glob is inside allowed_files")
         return 0

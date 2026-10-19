@@ -3,7 +3,7 @@ task_id: dotfiles-T133-ci-efficiency-followup-a02
 seat: claude-standard-dot-a011
 branch: tools/ci-efficiency-followup-a02
 base: 740772ef (origin/main)
-code_commit: 028af504 (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix; update-branch 7329f0ee; revise 1: 4dacbd60 red, 67180e37 fix; update-branch b0d957cc; rebase repair 1: bc19b1ea red, 028af504 fix)
+code_commit: 0117855c (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix; update-branch 7329f0ee; revise 1: 4dacbd60 red, 67180e37 fix; update-branch b0d957cc; rebase repair 1: bc19b1ea red, 028af504 fix, 0117855c the SC2015 form)
 task_sha256: 4aa89584da50f4085651d9fd3cddb9e913d7ae0557fa8ba283c2eb89b6146dc3 (amendment 1; previous 50599bfdb250510004525e48155a53b954ba6c19af4a2be5d520c9352a3f2466)
 ---
 
@@ -75,6 +75,7 @@ PR #415 added `scripts/lint-comparisons.py`. With `main` merged in (`b0d957cc`),
   - At `b0d957cc`: exit 1 with the R1 hit, and `test_lint_comparisons` fails `test_the_changed_files_are_clean_against_the_baseline`.
   - At `028af504`: exit 0. Its only output is the five warnings for `regime-ci.py`, an unchanged file. `test_lint_comparisons`: 14 tests OK. `test_ci_rerun`: 10 tests OK. shellcheck, `shfmt -i 4 -sr -d` and ruff are clean.
 - **Caps** (§9): 36 changed lines outside `tests/` and `.orchestration/` (cap 250), and 68 under `tests/` (cap 350).
+- **A second push** (§10). The first push, `ab5426ce`, failed both `test (ubuntu-24.04, …)` jobs at `Run ShellCheck`: the runner's ShellCheck read the one-line `A && B && C || { … }` as SC2015, which the seat's 0.11.0 does not flag. `0117855c` writes the same test as `if ! { A && B && C; }; then … fi`, and a second push carries it. The amendment asked for one push. The second push is this repair's own CI fix, and nothing else changed.
 
 ## Changed files
 

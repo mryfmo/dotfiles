@@ -413,3 +413,70 @@ tests/: 68 of 350
 [exit 0]
 ````
 
+## 10. Rebase repair 1, CI on the first push: ShellCheck SC2015 on Ubuntu
+
+The first push (`ab5426ce`) failed the two `test (ubuntu-24.04, …)` jobs at `Run ShellCheck` (run 39208512779). The ubuntu-24.04 ShellCheck reads the repair's one-line `A && B && C || { … }` as SC2015. The seat's ShellCheck 0.11.0 does not, and it was clean on that line, including under `-o all`. `0117855c` writes the same test as `if ! { A && B && C; }; then … fi`. The normaliser stays on the comparison's line, so the lint still accepts it. A second push carries it.
+
+````console
+$ gh run view 39208512779 --log-failed | /usr/bin/grep -E "SC[0-9]{4}|In scripts/" | sed "s/^[^\t]*\t[^\t]*\t[0-9TZ:.-]* //"
+test (ubuntu-24.04, server)	Run `ShellCheck`	2026-10-19T06:12:42.8671245Z In scripts/orchestrator/ci-rerun.sh line 47:
+test (ubuntu-24.04, server)	Run `ShellCheck`	2026-10-19T06:12:42.8673550Z                                                                                      ^-- SC2015 (info): Note that A && B || C is not if-then-else. C may run when A is true.
+test (ubuntu-24.04, server)	Run `ShellCheck`	2026-10-19T06:12:42.8675409Z   https://www.shellcheck.net/wiki/SC2015 -- Note that A && B || C is not if-t...
+test (ubuntu-24.04, client)	Run `ShellCheck`	2026-10-19T06:12:48.6465472Z In scripts/orchestrator/ci-rerun.sh line 47:
+test (ubuntu-24.04, client)	Run `ShellCheck`	2026-10-19T06:12:48.6467743Z                                                                                      ^-- SC2015 (info): Note that A && B || C is not if-then-else. C may run when A is true.
+test (ubuntu-24.04, client)	Run `ShellCheck`	2026-10-19T06:12:48.6470202Z   https://www.shellcheck.net/wiki/SC2015 -- Note that A && B || C is not if-t...
+[exit 0]
+````
+
+````console
+$ git rev-parse HEAD; git diff 028af504 HEAD -- scripts/orchestrator/ci-rerun.sh; shellcheck --version | sed -n 2p; shellcheck -x scripts/orchestrator/ci-rerun.sh; git ls-files -z "setup.sh" "install/*.sh" "install/**/*.sh" "scripts/*.sh" | xargs -0 shellcheck -x; shfmt --indent 4 --space-redirects --diff scripts/orchestrator/ci-rerun.sh
+0117855c8b5f92ef40077ad6d2f12df00298b94b
+diff --git a/scripts/orchestrator/ci-rerun.sh b/scripts/orchestrator/ci-rerun.sh
+index b12cb951..8aa4e27d 100755
+--- a/scripts/orchestrator/ci-rerun.sh
++++ b/scripts/orchestrator/ci-rerun.sh
+@@ -44,10 +44,10 @@ trap '/bin/rm -rf -- "${bin}"' EXIT
+ for tool in python3 uv gh jq git mkdir; do
+     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
+     # The directory is judged physically, so a PATH entry that links to a shims directory is refused too.
+-    [[ ${found} == /* ]] && where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)" && [[ ${where}/ != */shims/* ]] || {
++    if ! { [[ ${found} == /* ]] && where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)" && [[ ${where}/ != */shims/* ]]; }; then
+         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
+         exit 1
+-    }
++    fi
+     if [[ ${tool} == python3 ]]; then
+         py=${found}
+     else
+version: 0.11.0
+[exit 0]
+````
+
+````console
+$ uv run --no-project python -I scripts/lint-comparisons.py --changed scripts/orchestrator/ci-rerun.sh
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+[exit 0]
+````
+
+````console
+$ uv run python -m unittest tests.unit.test_ci_rerun tests.unit.test_lint_comparisons > "$SCRATCH/fu2q-ut.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/fu2q-ut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED"
+unittest exit status: 0
+Ran 24 tests in 30.514s
+OK
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD -- scripts tests; git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } { o += $1 + $2 } END { printf "outside tests/ and .orchestration/: %d of 250\ntests/: %d of 350\n", o, t }'
+31	5	scripts/orchestrator/ci-rerun.sh
+67	1	tests/unit/test_ci_rerun.py
+outside tests/ and .orchestration/: 36 of 250
+tests/: 68 of 350
+[exit 0]
+````
+

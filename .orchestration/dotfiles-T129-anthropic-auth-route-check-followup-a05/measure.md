@@ -1,10 +1,76 @@
 # Change measurement
 
-Status: pre-rebase working tree measured against origin/main, not a final committed-range claim.
+Measured code head: 5a8820746b5129599ab78e6abb34b2da8e8e744b, base origin/main 212efe972a14d4d5f209bf739c1b8008471ba775, after the single authorized rebase. Later evidence-only updates do not change the code totals or path inventory below.
 
-Command: git diff --numstat origin/main -- scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+Command: git diff --numstat origin/main...HEAD
 
-Source after the sole consolidated correction: 216 added + 0 deleted = 216/300. Tests: 941 added + 0 deleted = 941/1000. No fixture is omitted to meet the cap. Task evidence and authorized predecessor task-copy deletion are excluded from those two caps. Final rebased committed-range measurement remains pending.
+~~~~text
+3	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/autoskill.md
+7	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/learning.md
+86	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/report.md
+18	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/revise.yaml
+24	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/sandbox.md
+98	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/task.md
+2071	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/validation.md
+7	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/autoskill.md
+11	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/learning.md
+13	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/report.md
+5	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/revise.yaml
+29	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/sandbox.md
+83	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/task.md
+71	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/validation.md
+6	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/a05-worker-receipt.md
+18	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/a05-worker-review.json
+4	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/autoskill.md
+50	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/corpus-inventory.json
+14	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/learning.md
+10	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/measure.md
+21	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/post-round-open.json
+51	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/report.md
+20	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/sandbox.md
+186	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md
+1607	0	.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/validation.md
+216	0	scripts/validate-agent-assets.py
+941	0	tests/unit/test_validate_agent_assets.py
 
-The final record will paste git diff --numstat origin/main...HEAD and the complete changed-file inventory after the required rebase and commit. The only permitted predecessor artifact change is deletion of .orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a04/task.md; the new a05 task copy must hash to 5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925. No new executable, applied home edit, baseline, waiver or dependency is allowed.
+~~~~
+
+Outside tests/ and .orchestration/: 216 added + 0 deleted = 216/300. Tests: 941 added + 0 deleted = 941/1000, including every fixture line. No corpus input or validation is removed to meet the caps. All remaining paths are orchestration records; their counts can grow as command output is appended, and are excluded from the two code caps.
+
+Complete changed-file inventory at that head:
+
+~~~~text
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/autoskill.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/learning.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/report.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/revise.yaml
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/sandbox.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/task.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-a01/validation.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/autoskill.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/learning.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/report.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/revise.yaml
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/sandbox.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/task.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a01/validation.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/a05-worker-receipt.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/a05-worker-review.json
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/autoskill.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/corpus-inventory.json
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/learning.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/measure.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/post-round-open.json
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/report.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/sandbox.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/task.md
+.orchestration/dotfiles-T129-anthropic-auth-route-check-followup-a05/validation.md
+scripts/validate-agent-assets.py
+tests/unit/test_validate_agent_assets.py
+
+~~~~
+
+Reset delta, compared with the rebased predecessor e1512cbc0d146360365caa43bab4ad175e66122a, deletes only the a04 task copy, adds this a05 directory and changes the two permitted code files. The earlier a01/followup-a01 records shown above are inherited and unchanged by this reset. The a05 task copy is byte-identical to the dispatched main-checkout file: sha256 5eb78325f3b09c2cd4a762305c25770f58d94cbc1d081dda6672d85c8ca8d925. No other predecessor artifact change, executable, dependency, workflow, home/ or install/ edit, baseline or waiver is introduced.
+
+Implementation map after rebase: a99521b4 -> 726f92727e83929a8348a968e20fbb2f41ebfa75; sole correction e37be90d -> 5ed00db13a8c7daaaf0b9d95ae4a272210a4c16a. Range-diff equals for all four reset commits, and SHA256 of source/test/task matches pre-rebase. No second source correction or independent review.
 

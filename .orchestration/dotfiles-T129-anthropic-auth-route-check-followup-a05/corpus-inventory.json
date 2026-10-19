@@ -46,5 +46,9 @@
   },
   "implementation_commit": "e37be90d9aef1c2371529cf02b7266e1645f597e",
   "source_sha256": "6d882a00b2c8cbafde397e6cf0abfb342388ef105ade4627a3bc001b592bb451",
-  "tests_sha256": "d1947cfadd5ce7cf59b12db75414c0f30ba038f9a9cce7b376429cd3a641d08d"
+  "tests_sha256": "d1947cfadd5ce7cf59b12db75414c0f30ba038f9a9cce7b376429cd3a641d08d",
+  "rebased_verification_head": "5a8820746b5129599ab78e6abb34b2da8e8e744b",
+  "rebased_base": "212efe972a14d4d5f209bf739c1b8008471ba775",
+  "rebased_implementation_commit": "726f92727e83929a8348a968e20fbb2f41ebfa75",
+  "rebased_fix_commit": "5ed00db13a8c7daaaf0b9d95ae4a272210a4c16a"
 }

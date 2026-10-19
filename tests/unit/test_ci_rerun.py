@@ -315,12 +315,20 @@ class CiRerunTest(unittest.TestCase):
         (shims / "jq").write_text("#!/bin/sh\nexit 1\n")
         (shims / "jq").chmod(0o755)
         base = os.pathsep.join(map(str, (planted, self.t / "bin", os.environ["PATH"])))
-        for name, path, code in (("refused before the pin", f"{shims}{os.pathsep}{base}", 1), ("a full run", base, 0)):
+        (self.t / "linked").symlink_to(shims)  # a PATH entry that links to a shims directory is a shims directory
+        cases = [
+            ("refused before the pin", shims, 1),
+            ("refused through a link", self.t / "linked", 1),
+            ("a full run", "", 0),
+        ]
+        for name, first, code in cases:
+            path = f"{first}{os.pathsep}{base}" if first else base
             with self.subTest(name):
                 self.reset()
                 marker.unlink(missing_ok=True)
                 result = self.finish(self.start("101", PATH=path))
                 self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(bool(code), "no jq outside a shims directory" in result.stderr, result.stderr)
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):

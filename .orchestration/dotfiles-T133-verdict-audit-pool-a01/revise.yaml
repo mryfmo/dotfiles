@@ -1,6 +1,0 @@
-# The revise round of 2026-10-18T07:02:07Z (AGMSG-ACCEPTANCE status=revise), as the message contract asks.
-previous_head: e88ffad953128c777f6356d91fc85740e86fca7b
-reason: "two small own-change P2 of the Bot's first review (C-50): 4305981903, 4305981908"
-checks:
-  - tests/unit/test_audit_pool.py::test_orch_audit_json_mode_rejects_a_generated_at_without_an_offset
-  - tests/unit/test_verdict.py::test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable

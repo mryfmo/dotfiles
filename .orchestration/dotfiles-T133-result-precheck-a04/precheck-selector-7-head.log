@@ -1,6 +1,6 @@
 result-precheck: tests/unit/test_result_precheck.py::test_dispatch_binds_precheck_to_code_head_across_update_branch runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_binds_precheck_to_code_head_across_update_branch
 .
 ----------------------------------------------------------------------
-Ran 1 test in 7.557s
+Ran 1 test in 11.816s
 
 OK

@@ -324,3 +324,133 @@ AGMSG-RESULT v1 task_id=dotfiles-T133-result-precheck-a04 status=ready_for_revie
 d0df4572-a49b-4385-97cf-79e43f7ee164
 exit=0
 ```
+
+## Rebase repair 1 (ACCEPTANCE status=rebase-repair of 2026-10-19T11:51:18Z, previous_head f461d607, head 15380731)
+
+Every block of this section ran inside the sandbox. The orchestrator's update-branch merged main `51ba5801` into the branch (`f461d607` → `15380731`), and all four required unit jobs then failed at "Run Python unit tests" (run 39245744533). The cause is PR #415's changed-file comparison lint, which landed on main after `f461d607`, flagging this task's own line `scripts/orchestrator/result-precheck.sh:127` (R1). The repair `d3eb4249` rewrites that confinement through `python3 -I -c` with `os.path.normpath`, at least as strict as before.
+
+### R1. The failing tests, from the CI log (job 118037084555)
+```console
+$ gh run view --job 118037084555 --log-failed --repo mryfmo/dotfiles > "$TMPDIR/411-failed.log"
+failed to get run log: Get "https://results-receiver.actions.githubusercontent.com/rest/runs/…/logs?…": Forbidden
+[exit 1]   (the sandbox's network filter: deny network-outbound results-receiver.actions.githubusercontent.com:443)
+$ gh run view --job 118037084555 --log-failed --repo mryfmo/dotfiles > "$TMPDIR/411-failed.log"   # re-run with that host in the command's allowed_domains
+failed to get run log: creating cache entry: open ~/.cache/gh/run-log-39245744533-1792409732.zip: operation not permitted
+[exit 1]
+$ mkdir -p "$TMPDIR/gh-cache"; XDG_CACHE_HOME="$TMPDIR/gh-cache" gh run view --job 118037084555 --log-failed --repo mryfmo/dotfiles > "$TMPDIR/411-failed.log"; echo "exit=$?"; wc -l < "$TMPDIR/411-failed.log"
+exit=0
+    1428
+$ grep -E 'FAIL: |AssertionError|Ran [0-9]+ tests|FAILED \(|warning: |scripts/' "$TMPDIR/411-failed.log"   # each line's job, step and timestamp prefix removed
+FAIL: test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline)
+AssertionError: Tuples differ: (0, '') != (1, '')
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+scripts/orchestrator/result-precheck.sh:127: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+Ran 1288 tests in 329.687s
+FAILED (failures=1)
+```
+The `ERROR:` lines elsewhere in the log are expected output of passing tests (`test_generate_agent_configs`).
+
+### R2. The repair
+```console
+$ git diff 15380731 d3eb4249 -- scripts
+diff --git a/scripts/orchestrator/result-precheck.sh b/scripts/orchestrator/result-precheck.sh
+index e3eb92d5..ef745d5e 100755
+--- a/scripts/orchestrator/result-precheck.sh
++++ b/scripts/orchestrator/result-precheck.sh
+@@ -124,7 +124,9 @@ PY
+ #   counts and paths only. Exit 0 clean; 1 a finding, an unreadable or undecodable input, or a detector failure.
+ scan_one() {
+     local dir
+-    [[ -n $2 && $2 != /* && /$2/ != */../* ]] || { # the audit of ddf262d: confined before any destination exists
++    # The audit of ddf262d: confined before any destination exists; an empty or absolute path, one os.path.normpath
++    # would change (a `.` or `..` segment), and one that starts by leaving the directory are refused.
++    python3 -I -c 'import os, sys; p = sys.argv[1]; sys.exit(not p or os.path.isabs(p) or os.path.normpath(p) != p or p.split("/")[0] == "..")' "$2" || {
+         echo "unreadable: ${1:0:7}:$2 is not a path inside the scan directory"
+         return 1
+     }
+```
+
+### R3. The failing selector: red at 15380731 (scratch worktree, removed), green at d3eb4249
+```console
+$ git worktree add --detach -q "$S/red-411" 1538073191a6fdc884a4c540a19b934e4339e997; bash "$S/red-ids.sh" "$S/red-411" tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline
+tree=1538073191a6fdc884a4c540a19b934e4339e997 dirty=0
+$ uv run python -m unittest tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline
+exit=1
+FAIL: test_the_changed_files_are_clean_against_the_baseline
+AssertionError: Tuples differ: (0, '') != (1, '')
+Ran 1 test in 0.418s
+FAILED (failures=1)
+$ grep -h 'result-precheck.sh:' "$S/red-ids.log"
+scripts/orchestrator/result-precheck.sh:127: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+$ bash "$S/red-ids.sh" "$PWD" tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline
+tree=d3eb42493b4e4466134dcc1a04e6c371384176c5 dirty=0
+$ uv run python -m unittest tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline
+exit=0
+Ran 1 test in 0.492s
+OK
+$ git worktree remove --force "$S/red-411"; echo "removed=$?"
+removed=0
+```
+
+### R4. The confinement's cases, the lint gate, ShellCheck and shfmt, the modules
+```console
+$ for p in a/b '' /abs ../x .. a/../b a/./b 'a//b' ..foo/x -x; do python3 -I -c '<the new check>' "$p"; printf '%s=%s ' "[$p]" $?; done
+[a/b]=0 []=1 [/abs]=1 [../x]=1 [..]=1 [a/../b]=1 [a/./b]=1 [a//b]=1 [..foo/x]=0 [-x]=0
+$ uv run --no-project python -I scripts/lint-comparisons.py; echo "gate exit=$?"
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files
+gate exit=0
+$ shellcheck -x scripts/orchestrator/result-precheck.sh; echo "shellcheck exit=$?"; shfmt --indent 4 --space-redirects -d scripts/orchestrator/result-precheck.sh; echo "shfmt exit=$?"
+shellcheck exit=0
+shfmt exit=0
+$ uv run python -m unittest tests/unit/test_result_precheck.py tests/unit/test_orchestrator_tools.py tests/unit/test_lint_comparisons.py
+Ran 97 tests in 168.609s
+OK
+```
+
+### R5. The precheck at d3eb4249 (the same arguments as the final proof)
+```console
+$ scripts/orchestrator/result-precheck.sh dotfiles-T133-result-precheck-a04 --tests tests.unit.test_result_precheck tests.unit.test_orchestrator_tools --previous-head ddf262dec0db404ffc4ba5e1095842f2f17c7e6d --check tests/unit/test_result_precheck.py::<each of the eight revise.yaml selectors>
+result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_fails_closed_when_masking_fails previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_refuses_symlinked_evidence previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_ignores_messages_from_unregistered_identities previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_fixtures_isolate_home previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_blob_scan_rejects_paths_outside_scan_directory previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_masks_logs_when_proof_worktree_creation_fails previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_binds_precheck_to_code_head_across_update_branch previous head exit 1, this head exit 0
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings previous head exit 1, this head exit 0
+precheck=b997a902e29140c8fed7b47a5dd71659524346d7b67391d3722838bd4279e531
+exit=0
+$ shasum -a 256 .orchestration/dotfiles-T133-result-precheck-a04/precheck.json; the record's head, code_head and tree
+b997a902e29140c8fed7b47a5dd71659524346d7b67391d3722838bd4279e531  .orchestration/dotfiles-T133-result-precheck-a04/precheck.json
+{'head': 'd3eb42493b4e4466134dcc1a04e6c371384176c5', 'code_head': 'd3eb42493b4e4466134dcc1a04e6c371384176c5', 'tree': 'dab53c6d0c314de763e7d57b8443dffd63923c3a'}
+$ the unit-test log's summary (both modules)
+Ran 83 tests in 186.832s
+OK
+```
+
+### R6. Caps against origin/main (merge base 51ba5801)
+```console
+$ git diff --numstat origin/main...HEAD -- . ':(exclude).orchestration'
+13	0	.githooks/pre-commit
+36	0	.githooks/pre-push
+108	4	scripts/orchestrator/dispatch.sh
+323	0	scripts/orchestrator/result-precheck.sh
+5	2	tests/unit/test_orchestrator_tools.py
+610	0	tests/unit/test_result_precheck.py
+outside tests/ and .orchestration/: 484 of 500
+under tests/: 617 of 640
+```

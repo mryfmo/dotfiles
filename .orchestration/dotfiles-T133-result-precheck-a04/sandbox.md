@@ -41,3 +41,12 @@ A stopped run and a denied cleanup:
 `make unit-test` fails inside the sandbox on sandbox-denied operations. The failing set is compared with the merge base's in the same sandbox (validation.md), and CI decides the full suite.
 
 effects=none
+
+## Rebase repair 1
+
+Every command of the repair ran inside the sandbox: the CI-log read, the edit and commit, the red worktree of `15380731` (added with `git worktree add --detach`, removed with `git worktree remove --force`), the selectors, the modules, the lint, ShellCheck, shfmt, the precheck and the one push. The refusals, in order:
+
+1. **The log host:** `gh run view --job 118037084555 --log-failed` was refused network access to the Actions log host: `deny network-outbound results-receiver.actions.githubusercontent.com:443`, and gh printed `Forbidden`. The same command was re-run with that host in its `allowed_domains`, inside the sandbox. The orchestrator's order names this command.
+2. **gh's cache:** that re-run reached the host. gh was then refused writing its log cache: `creating cache entry: open ~/.cache/gh/run-log-39245744533-1792409732.zip: operation not permitted`. The same command ran once more, with `XDG_CACHE_HOME="$TMPDIR/gh-cache"`, which puts the cache in the sandbox's own temporary directory, as the `mktemp` template does for the updater. It exited 0.
+
+No permission prompt or classifier refused anything. No command ran outside the sandbox.

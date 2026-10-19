@@ -1,6 +1,6 @@
 result-precheck: tests/unit/test_result_precheck.py::test_precheck_fails_closed_when_masking_fails runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_fails_closed_when_masking_fails
 .
 ----------------------------------------------------------------------
-Ran 1 test in 5.364s
+Ran 1 test in 2.513s
 
 OK

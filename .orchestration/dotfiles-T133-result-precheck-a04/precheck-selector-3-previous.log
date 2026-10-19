@@ -4,7 +4,7 @@ F
 FAIL: test_dispatch_ignores_messages_from_unregistered_identities (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_ignores_messages_from_unregistered_identities)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 374, in test_dispatch_ignores_messages_from_unregistered_identities
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 374, in test_dispatch_ignores_messages_from_unregistered_identities
     self.assertEqual((passed.returncode, sent, "ignored 3 row" in passed.stderr), (0, True, True), passed.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (1, False, False) != (0, True, True)
@@ -18,6 +18,6 @@ First differing element 0:
 
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.691s
+Ran 1 test in 1.196s
 
 FAILED (failures=1)

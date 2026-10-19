@@ -4,7 +4,7 @@ F
 FAIL: test_precheck_fails_closed_when_masking_fails (tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_fails_closed_when_masking_fails)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 298, in test_precheck_fails_closed_when_masking_fails
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 298, in test_precheck_fails_closed_when_masking_fails
     self.assertEqual((result.returncode, self.leaks(result)), (1, False), result.stdout + result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (1, True) != (1, False)
@@ -25,6 +25,6 @@ result-precheck: the masker failed; the logs are removed and no record is writte
 
 
 ----------------------------------------------------------------------
-Ran 1 test in 2.818s
+Ran 1 test in 2.034s
 
 FAILED (failures=1)

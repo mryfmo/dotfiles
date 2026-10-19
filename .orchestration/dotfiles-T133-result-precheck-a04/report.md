@@ -150,6 +150,16 @@ Consolidated so the eight regressions fit the cap, without dropping an assertion
 
 ## Still to come
 
-The evidence commit, the push, CI on the final head, the Bot window and the RESULT.
+The evidence commit, the push, CI on the final head, the Bot window and the RESULT. Done at the time; see the a04 RESULT of 03:31:54Z.
 
 cost: n/a
+
+## Rebase repair 1 (ACCEPTANCE status=rebase-repair, 2026-10-19T11:51:18Z)
+
+- **What failed:** the orchestrator's update-branch merged main `51ba5801` into the branch (`f461d607` → `15380731`). All four required unit jobs then failed at "Run Python unit tests" (run 39245744533). The failing test is the same in each: `tests/unit/test_lint_comparisons.py::test_the_changed_files_are_clean_against_the_baseline`, `(0, '') != (1, '')`. The one changed-file hit was `scripts/orchestrator/result-precheck.sh:127: R1` (validation R1).
+- **The cause is a check that landed on main after `f461d607`:** PR #415's changed-file comparison lint. It applies to this PR's own files, and flagged `scan_one`'s string-form confinement `[[ -n $2 && $2 != /* && /$2/ != */../* ]]`. That makes this order (2), a repair, not order (3).
+- **The repair, `d3eb4249`:** the confinement runs through `python3 -I -c` with `os.path.normpath`, a normaliser R1 names. It is as strict as before or stricter. It refuses an empty path, an absolute one, one that normpath would change (any `.` or `..` segment, or a doubled `/`), and one starting with `..`. Ten cases are probed in validation R4. `test_blob_scan_rejects_paths_outside_scan_directory` stays green. No baseline row was added, so `scripts/lint-comparisons-baseline.tsv` is untouched.
+- **Red, then green:** the failing selector is red at `15380731`, with the same R1 hit CI printed, and green at `d3eb4249`, both inside the sandbox (R3). The two task modules and the lint tests pass, 97 tests. The lint gate exits 0, and ShellCheck and shfmt are clean (R4).
+- **The precheck:** it was re-run at `d3eb4249` with the final proof's arguments and exits 0 with `precheck=b997a902e29140c8fed7b47a5dd71659524346d7b67391d3722838bd4279e531`. The record's head, `code_head` and tree are `d3eb4249`'s, and each of the eight selectors exits 1 at `ddf262de` and 0 here (R5). The regenerated `precheck.json`, `result.txt` and `precheck-*.log` replace the 9f6ec7c9 ones.
+- **Caps against the new merge base `51ba5801`:** 484 of 500 and 617 of 640 (R6).
+- **Sequencing:** the a04 work (`dotfiles-T129-assets-omp-hcom-followup-a04`, PR #430) was committed and pushed before the switch to this branch.

@@ -4,7 +4,7 @@ FFF
 FAIL: test_blob_scan_rejects_paths_outside_scan_directory (tests.unit.test_result_precheck.ResultPrecheckTest.test_blob_scan_rejects_paths_outside_scan_directory) (path='../../victim')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 346, in test_blob_scan_rejects_paths_outside_scan_directory
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 346, in test_blob_scan_rejects_paths_outside_scan_directory
     self.assertEqual((result.returncode != 0, victim.read_text()), (True, "kept\n"), result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (True, '') != (True, 'kept\n')
@@ -23,7 +23,7 @@ First differing element 1:
 FAIL: test_blob_scan_rejects_paths_outside_scan_directory (tests.unit.test_result_precheck.ResultPrecheckTest.test_blob_scan_rejects_paths_outside_scan_directory) (path='a/../../../victim')
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 346, in test_blob_scan_rejects_paths_outside_scan_directory
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 346, in test_blob_scan_rejects_paths_outside_scan_directory
     self.assertEqual((result.returncode != 0, victim.read_text()), (True, "kept\n"), result.stdout)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (True, '') != (True, 'kept\n')
@@ -42,7 +42,7 @@ First differing element 1:
 FAIL: test_blob_scan_rejects_paths_outside_scan_directory (tests.unit.test_result_precheck.ResultPrecheckTest.test_blob_scan_rejects_paths_outside_scan_directory)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 350, in test_blob_scan_rejects_paths_outside_scan_directory
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 350, in test_blob_scan_rejects_paths_outside_scan_directory
     self.assertEqual((result.returncode, out.exists()), (2, False), result.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (0, False) != (2, False)
@@ -59,6 +59,6 @@ First differing element 0:
  : 
 
 ----------------------------------------------------------------------
-Ran 1 test in 1.100s
+Ran 1 test in 0.710s
 
 FAILED (failures=3)

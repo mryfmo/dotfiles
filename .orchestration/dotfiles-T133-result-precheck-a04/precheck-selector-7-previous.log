@@ -4,7 +4,7 @@ F
 FAIL: test_dispatch_binds_precheck_to_code_head_across_update_branch (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_binds_precheck_to_code_head_across_update_branch)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/claude-501/result-precheck.WBcfPy/previous/tests/unit/test_result_precheck.py", line 400, in test_dispatch_binds_precheck_to_code_head_across_update_branch
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 400, in test_dispatch_binds_precheck_to_code_head_across_update_branch
     self.assertEqual((passed.returncode, sent), (0, True), passed.stderr)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (1, False) != (0, True)
@@ -14,10 +14,10 @@ First differing element 0:
 0
 
 - (1, False)
-+ (0, True) : precheck: precheck.json:head 4a0cb62a5788ac0243c284a43a262595c27e4a28..ae5dda4a3c5df7ad1f8343031b884344786bbfba changes paths outside .orchestration/t/
++ (0, True) : precheck: precheck.json:head 4f39e524d2e466024dba9e23702bb9c0ede55fe3..9c26f687fa278a96160fa5f1c61c439095d7466c changes paths outside .orchestration/t/
 
 
 ----------------------------------------------------------------------
-Ran 1 test in 1.465s
+Ran 1 test in 0.868s
 
 FAILED (failures=1)

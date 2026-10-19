@@ -83,6 +83,6 @@ test_three_repeat_prints_the_records_search_line (tests.unit.test_orchestrator_t
 test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout (tests.unit.test_orchestrator_tools.OrchestratorToolsTest.test_three_repeat_rejects_a_class_that_is_not_a_slug_and_runs_the_cli_from_its_own_checkout) ... ok
 
 ----------------------------------------------------------------------
-Ran 83 tests in 168.420s
+Ran 83 tests in 186.832s
 
 OK

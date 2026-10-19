@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Refuse string-form comparisons of paths, URLs and processes (C-61 rule 6; plan 023 PR F2).
-python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [--changed <path>... | --all] [<file>...] prints
+python3 -I scripts/lint-comparisons.py [--list-rules] [--baseline <tsv>] [<file>...] [--changed <path>... | --all] prints
 each hit as `<file>:<line>: <rule id> <rule text>` and exits 1 when a hit outside the baseline, or a baseline row matching
 no hit, is in a changed file (a normaliser in the statement, or `# lint-comparisons: allow <reason>` on the line,
 accepts; paths as git ls-files prints). In an unchanged file both are warnings. The changed files are --changed's, else
-`git diff --name-only origin/main...HEAD`'s; --all prints every hit and stale row and exits 0."""
+`git diff --name-only --no-renames origin/main...HEAD`'s (a rename changes both paths); --all prints every hit and
+stale row and exits 0."""
 
 import argparse
 import ast
@@ -195,7 +196,7 @@ def main(argv=None):
         return 0
     rows = args.baseline.read_text().splitlines() if args.baseline.is_file() else []
     rows = Counter(tuple((r.split("\t") + ["", ""])[:3]) for r in rows if r.strip())
-    diff = ("diff", "--name-only", "-z", "--no-ext-diff", "--no-textconv", "origin/main...HEAD")
+    diff = ("diff", "--name-only", "--no-renames", "-z", "--no-ext-diff", "--no-textconv", "origin/main...HEAD")
     changed = None if args.all else set(git(*diff) if args.changed is None else args.changed)
     used, scanned, failed, warned = Counter(), set(), False, Counter()
 

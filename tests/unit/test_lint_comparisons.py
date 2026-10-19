@@ -7,6 +7,7 @@ The lint runs as a subprocess (`python3 -I`), so nothing of it is imported here.
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -331,7 +332,58 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.lint(cwd=ROOT)  # no mode flag: the lint computes the same changed set itself
         self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
         self.assertEqual([], [x for x in result.stdout.splitlines() if not x.startswith("warning: ")])
-        self.assertEqual([], [x for x in result.stdout.splitlines() for f in changed if f"{f}:" in x or f" {f} " in x])
+        named = [
+            re.match(r"warning: (?:stale baseline row (\S+) R\d|(\S+):\d+: R\d )", x)
+            for x in result.stdout.splitlines()
+        ]
+        self.assertEqual([], [m[1] or m[2] for m in named if m and (m[1] or m[2]) in changed])
+
+    def test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails(self):
+        # the review's P2: the CI entry point's own changed set, in a repository with a real origin/main
+        repo, (_, refused, _) = self.temp / "repo", TABLE["R1"]
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t"}
+        env["GIT_COMMITTER_EMAIL"] = "t@t"
+
+        def git(*args):
+            subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false", *args], check=True, env=env)
+
+        (repo / "scripts").mkdir(parents=True)
+        shutil.copy(LINT, repo / "scripts/lint-comparisons.py")
+        row = hashlib.sha256(refused.strip().encode()).hexdigest()
+        (repo / "scripts/lint-comparisons-baseline.tsv").write_text(f"scripts/old.sh\tR1\t{row}\n")
+        for name, text in (("main.sh", "true\n"), ("old.sh", refused)):
+            (repo / "scripts" / name).write_text(text)
+        for args in (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-qm", "base"), ("switch", "-qc", "pr")):
+            git(*args)
+        (repo / "scripts/pr.sh").write_text(refused)  # the change: a new hit, and a rename that strands old.sh's row
+        for args in (
+            ("mv", "scripts/old.sh", "scripts/new.sh"),
+            ("add", "."),
+            ("commit", "-qm", "pr"),
+            ("switch", "-q", "main"),
+        ):
+            git(*args)
+        (repo / "scripts/main.sh").write_text(refused)  # main gains a hit in a file the change leaves alone
+        for args in (
+            ("commit", "-qam", "main"),
+            ("update-ref", "refs/remotes/origin/main", "main"),
+            ("switch", "-q", "pr"),
+        ):
+            git(*args)
+        git("merge", "-q", "--no-edit", "main")  # update-branch: the PR head now carries main's hit
+        run = [sys.executable, "-I", str(repo / "scripts/lint-comparisons.py")]
+        result = subprocess.run(run, check=False, capture_output=True, text=True)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        lines = sorted(x.split(" R1")[0] for x in result.stdout.splitlines())
+        self.assertEqual(["scripts/new.sh:1:", "scripts/pr.sh:1:", "stale baseline row scripts/old.sh"], lines[:3])
+        self.assertEqual(
+            ["warning: 1 unbaselined hit(s) and 0 stale row(s) in unchanged files", "warning: scripts/main.sh:1:"],
+            lines[3:],
+        )
+        git("update-ref", "-d", "refs/remotes/origin/main")  # no base to diff against: fail closed, never all-unchanged
+        result = subprocess.run(run, check=False, capture_output=True, text=True)
+        self.assertNotEqual(0, result.returncode, result.stdout)
+        self.assertNotIn("warning", result.stdout)
 
 
 if __name__ == "__main__":

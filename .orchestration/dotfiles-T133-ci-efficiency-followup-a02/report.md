@@ -3,7 +3,7 @@ task_id: dotfiles-T133-ci-efficiency-followup-a02
 seat: claude-standard-dot-a011
 branch: tools/ci-efficiency-followup-a02
 base: 740772ef (origin/main)
-code_commit: 02ff2e1c (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix)
+code_commit: 67180e37 (row security:4fe2438:1: 380f86d6 red, 0e42cb06 fix; worker review: 73e59b05 red, 02ff2e1c fix; update-branch 7329f0ee; revise 1: 4dacbd60 red, 67180e37 fix)
 task_sha256: 50599bfdb250510004525e48155a53b954ba6c19af4a2be5d520c9352a3f2466
 ---
 
@@ -45,6 +45,20 @@ Validation sections are cited as §. Everything ran at `02ff2e1c`, inside the sa
 - `make unit-test`, with the sandbox's commit-signing and `mktemp` limits neutralized identically on both sides (§6): 1218 tests at the head and 1216 at the base `740772ef`. Both have the same 44 failures and 10 errors, in `test_agent_stop_gate` (4), `test_gh_auth` (5), `test_herdr_agents` (37) and `test_runtime_health` (8). No test fails at the head that does not also fail at the base. These are inherited failures, not passing.
 - Caps (§7): 34 changed lines outside `tests/` and `.orchestration/` (cap 250); 40 under `tests/` (cap 350).
 - After the push, `gh run list --branch tools/ci-efficiency-followup-a02 --json name,event,conclusion`, the seven required contexts, the absence of a `private-bootstrap` run on the PR, and the Bot window go in the RESULT, because a record cannot hold its own commit's CI.
+
+## Revise 1 (the chain's P1 on the update-branch head 7329f0ee)
+
+The chain's local review found a P1 at `scripts/orchestrator/ci-rerun.sh:42`. The EXIT trap ran `rm` through the caller's PATH, and the refusal path exits before PATH is pinned, so an `rm` planted first on PATH ran at exit. This was round 2's declared P3, which I had left to the orchestrator. The revise item covers every command the script runs before its PATH pin. Besides the trap's `rm`, that includes the `env` around `mise which`, which runs in every pass of the tool loop, on every run.
+
+- **Fix (`67180e37`).**
+  - The trap runs `/bin/rm`, and the loop runs `/usr/bin/env`, as `mktemp` (`/usr/bin/mktemp`) and `ln` (`/bin/ln`) already did.
+  - The description now says so. It also names `mise` as the one program found through PATH. `mise` is the resolver that row `security:4fe2438:1` prescribes, and it has no fixed system path. A caller who controls PATH also controls the `command -v` fallback, which round 2 declared as P3 (a).
+  - Nothing else changed.
+- **Test.** `tests/unit/test_ci_rerun.py::CiRerunTest::test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin` puts an `rm` and an `env` that log their names first on PATH. It runs the script on the refusal path (a `jq` under a `shims/` directory, exit 1) and as a full run (exit 0), and requires that neither logged anything.
+  - Red on `4dacbd60`, the test on `7329f0ee`'s script (validation §8). The refusal run logged `env` four times and then `rm`; the full run logged `env` six times.
+  - Green at `67180e37`: the module's 10 tests pass. shellcheck, `shfmt -i 4 -sr -d` and ruff are clean.
+- **Caps** against the new merge base (§8): 35 changed lines outside `tests/` and `.orchestration/` (cap 250), and 60 under `tests/` (cap 350).
+- **No worker-side review round.** C-61 counts the pre-push round and this revise as the cap, so the revise's evidence is the red-then-green test and the chain's next run.
 
 ## Changed files
 

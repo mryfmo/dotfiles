@@ -210,3 +210,96 @@ tests/: 40 of 350
 [exit 0]
 ````
 
+
+## 8. Revise 1: no PATH-resolved command before the PATH pin
+
+The chain's local review of the update-branch head `7329f0ee` found a P1 at `scripts/orchestrator/ci-rerun.sh:42`: the EXIT trap ran `rm` through the caller's PATH, and the refusal path exits before PATH is pinned. The same holds for the `env` around `mise which`, which runs in every pass of the tool loop. `RED` is the test commit `4dacbd60` (the test on `7329f0ee`'s script), `FIX` is `67180e37` and `TEST` is the new test. The test puts an `rm` and an `env` that log their names first on PATH, then runs the script on the refusal path (a `jq` under a `shims/` directory) and as a full run. `mise` stays the stub from setUp: it is the resolver the design names, the one program found through PATH.
+
+````console
+$ git log --oneline -3; git diff --stat "$PREV" "$FIX"
+67180e37 fix(orchestrator): ci-rerun.sh runs the EXIT trap's rm and the env around mise by their system paths before its PATH pin (T133 ci-efficiency follow-up a02, revise 1)
+4dacbd60 test(orchestrator): ci-rerun.sh runs no PATH-resolved command before its PATH pin (T133 ci-efficiency follow-up a02, revise 1, red)
+7329f0ee Merge branch 'main' into tools/ci-efficiency-followup-a02
+ scripts/orchestrator/ci-rerun.sh |  7 ++++---
+ tests/unit/test_ci_rerun.py      | 20 ++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 3 deletions(-)
+[exit 0]
+````
+
+````console
+$ git worktree add --detach -q "$SCRATCH/fu2r-red" "$RED" && (cd "$SCRATCH/fu2r-red" && uv run python -m unittest "$TEST") > "$SCRATCH/fu2r-red.out" 2>&1; rc=$?; echo "unittest exit status: ${rc}"; < "$SCRATCH/fu2r-red.out" /usr/bin/grep -E -A11 "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (tests\.unit[^)]*)//" | /usr/bin/grep -v "^--$" | cut -c1-200; git worktree remove --force "$SCRATCH/fu2r-red"
+unittest exit status: 1
+FAIL: test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin [refused before the pin]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$SCRATCH/fu2r-red/tests/unit/test_ci_rerun.py", line 324, in test_c
+    self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : env
+env
+env
+env
+rm
+
+FAIL: test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin [a full run]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$SCRATCH/fu2r-red/tests/unit/test_ci_rerun.py", line 324, in test_c
+    self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : env
+env
+env
+env
+env
+env
+Ran 1 test in 1.221s
+
+FAILED (failures=2)
+[exit 0]
+````
+
+````console
+$ git rev-parse HEAD; uv run python -m unittest tests.unit.test_ci_rerun -v
+67180e37d30c58a276eef6816ad1ee4479c43d20
+test_a_failing_gh_exits_1_never_with_the_scripts_own_codes (tests.unit.test_ci_rerun.CiRerunTest.test_a_failing_gh_exits_1_never_with_the_scripts_own_codes) ... ok
+test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin) ... ok
+test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment) ... ok
+test_ci_rerun_refuses_a_superseded_pull_request_head (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_refuses_a_superseded_pull_request_head) ... ok
+test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_requires_signatures_for_timed_out_and_cancelled_jobs) ... ok
+test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature) ... ok
+test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reservations_are_per_run_and_do_not_block_other_runs) ... ok
+test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice) ... ok
+test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path (tests.unit.test_ci_rerun.CiRerunTest.test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path) ... ok
+test_the_production_flake_registry_matches_its_samples_and_no_real_failure (tests.unit.test_ci_rerun.CiRerunTest.test_the_production_flake_registry_matches_its_samples_and_no_real_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 22.095s
+
+OK
+[exit 0]
+````
+
+````console
+$ shellcheck scripts/orchestrator/ci-rerun.sh; shfmt --indent 4 --space-redirects --diff scripts/orchestrator/ci-rerun.sh; ruff format --config ruff.toml --check tests/unit/test_ci_rerun.py; ruff check --config ruff.toml tests/unit/test_ci_rerun.py
+1 file already formatted
+All checks passed!
+[exit 0]
+````
+
+````console
+$ git diff --numstat origin/main...HEAD; git diff --numstat origin/main...HEAD | awk '$3 ~ /^tests\// { t += $1 + $2; next } $3 ~ /^\.orchestration\// { next } { o += $1 + $2 } END { printf "outside tests/ and .orchestration/: %d of 250\ntests/: %d of 350\n", o, t }'
+44	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/dotfiles-T133-ci-efficiency-followup-a02-worker-crit.json
+13	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/dotfiles-T133-ci-efficiency-followup-a02-worker-review-receipt.md
+10	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/learning.md
+61	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/report.md
+14	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/sandbox.md
+51	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md
+212	0	.orchestration/dotfiles-T133-ci-efficiency-followup-a02/validation.md
+30	5	scripts/orchestrator/ci-rerun.sh
+59	1	tests/unit/test_ci_rerun.py
+outside tests/ and .orchestration/: 35 of 250
+tests/: 60 of 350
+[exit 0]
+````
+

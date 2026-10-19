@@ -2,6 +2,8 @@
 task_id: dotfiles-T129-normalised-comparison-lint-followup-a02
 seat: claude-standard-dot-a008
 code_head: 5b6c5a8a
+revise_1_code_head: f6fd955e
+revise_1_previous_head: 1950a4de087261dbfe5bac526de9b9285f7717af
 base: 51ba5801
 ---
 
@@ -1274,5 +1276,175 @@ shfmt --diff tests/install/macos/common/brew.bats: HEAD exit 1, 51ba5801 exit 1
 ruff format --check scripts/lint-comparisons.py: exit 0
 ruff format --check tests/unit/test_lint_comparisons.py: exit 0
 prettier --check .orchestration/dotfiles-T129-normalised-comparison-lint-followup-a02/task.md: exit 0
+[exit 0]
+```
+
+# Revise 1 (AGMSG-ACCEPTANCE status=revise round=1, 2026-10-19T21:00:22Z; previous head 1950a4de, the chain's update-branch head)
+
+- Every block below ran inside the sandbox from this worktree at the revise's code head `f6fd955e`. Its only later commit is this records commit.
+- R2 is the three checks red at `1950a4de` with this head's test file; R3 to R7 are at the code head. §1 to §12b above stay as round 1's evidence at `5b6c5a8a`.
+
+## R1. Revise 1: the branch, origin/main, the merge-base and this round's commits on the update-branch head 1950a4de
+```console
+$ git rev-parse HEAD origin/main; git merge-base origin/main HEAD; git log --oneline $PREV..HEAD; git show --stat --format= HEAD -- .orchestration | tail -n 2
+f6fd955e3d75eb9cf56167c173b6a20568efa518
+c9d99a614173ce4e78a17442fd385504fb287bc3
+1eac64a832ade83f9e149be6a329f7e8fa20180f
+f6fd955e fix(lint): the Bot's three threads: a backslash-newline continues a double-quoted program's closing-quote search, lines join with no separator, shell comments carry quote state across lines and skip heredoc bodies; revise.yaml (T129 normalised-comparison-lint followup a02, revise 1)
+9534b4c8 test(lint): a shell comment past a multi-line program's closing quote marks a hit on its earlier line (T129 normalised-comparison-lint followup a02, revise 1)
+a4523856 test(lint): the continued jq program's hit is expected at its operator's own line (T129 normalised-comparison-lint followup a02, revise 1)
+e8830ee8 test(lint): the three Bot threads of 26f48973: a jq program continued by backslash-newline, a backslash-newline joining a word, a marker inside a multi-line string or heredoc body (T129 normalised-comparison-lint followup a02, revise 1)
+ .../revise.yaml                                                    | 7 +++++++
+ 1 file changed, 7 insertions(+)
+[exit 0]
+```
+## R2. RED at 1950a4de (its lint), with this head's test file, in a scratch worktree: the three checks of the revise
+```console
+$ git -C "$R" rev-parse --short=8 HEAD; git show HEAD:tests/unit/test_lint_comparisons.py > "$R/tests/unit/test_lint_comparisons.py"; cd "$R" && uv run python -m unittest $CHECKS 2>&1 | /usr/bin/grep -E "^FAIL:|^AssertionError|^Ran|^(OK|FAILED)" | sed -E "s/ \(tests\.unit\.test_lint_comparisons\.LintComparisonsTest\.[a-z0-9_]+\)//" | cut -c1-200
+1950a4de
+FAIL: test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies (fixture='jc.sh')
+AssertionError: 1 != 0 : 
+FAIL: test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies (fixture='jc2.sh')
+AssertionError: 1 != 0 : 
+FAIL: test_a_backslash_newline_joins_the_physical_lines_without_a_separator (fixture='wj.sh')
+AssertionError: Tuples differ: (1, True) != (0, False)
+FAIL: test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (fixture='ms.sh')
+AssertionError: Tuples differ: (0, '') != (1, 'ms.sh:2: R0 the allow marker carries no reason\n')
+FAIL: test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (fixture='ms2.sh')
+AssertionError: Tuples differ: (0, '') != (1, 'ms2.sh:2: R0 the allow marker carries no reason\n')
+FAIL: test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (fixture='hd.sh')
+AssertionError: Tuples differ: (0, '') != (1, 'hd.sh:2: R0 the allow marker carries no reason\n')
+FAIL: test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (fixture='hd2.sh')
+AssertionError: Tuples differ: (0, '') != (1, 'hd2.sh:2: R0 the allow marker carries no reason\n')
+Ran 3 tests in 1.027s
+FAILED (failures=7)
+[exit 0]
+```
+## R3. GREEN at the code head: the whole module, verbose
+```console
+$ git rev-parse --short=8 HEAD; uv run python -m unittest tests/unit/test_lint_comparisons.py -v 2>&1 | /usr/bin/grep -E "\.\.\. |^Ran|^(OK|FAILED)"
+f6fd955e
+test_a_backslash_newline_joins_the_physical_lines_without_a_separator (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_backslash_newline_joins_the_physical_lines_without_a_separator) ... ok
+test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails) ... ok
+test_a_baseline_row_matching_no_hit_fails_as_stale (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_matching_no_hit_fails_as_stale) ... ok
+test_a_hit_in_a_changed_file_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_hit_in_a_changed_file_fails) ... ok
+test_a_hit_main_introduced_in_an_unchanged_file_passes_with_a_warning (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_hit_main_introduced_in_an_unchanged_file_passes_with_a_warning) ... ok
+test_a_jq_normaliser_name_inside_a_string_literal_is_no_application (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_jq_normaliser_name_inside_a_string_literal_is_no_application) ... ok
+test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies) ... ok
+test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment) ... ok
+test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) ... ok
+test_a_single_quoted_jq_option_value_is_not_read_as_the_program (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) ... ok
+test_a_stale_row_for_a_changed_file_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_stale_row_for_a_changed_file_fails) ... ok
+test_a_stale_row_for_an_unchanged_file_warns (tests.unit.test_lint_comparisons.LintComparisonsTest.test_a_stale_row_for_an_unchanged_file_warns) ... ok
+test_each_owned_row_is_refused_or_accepted_by_its_fixture (tests.unit.test_lint_comparisons.LintComparisonsTest.test_each_owned_row_is_refused_or_accepted_by_its_fixture) ... ok
+test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted (tests.unit.test_lint_comparisons.LintComparisonsTest.test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted) ... ok
+test_every_f_string_interpolation_in_a_regex_is_escaped (tests.unit.test_lint_comparisons.LintComparisonsTest.test_every_f_string_interpolation_in_a_regex_is_escaped) ... ok
+test_the_changed_files_are_clean_against_the_baseline (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+test_the_jq_normaliser_is_required_on_each_operand_side (tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) ... ok
+test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails (tests.unit.test_lint_comparisons.LintComparisonsTest.test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails) ... ok
+Ran 18 tests in 14.809s
+OK
+[exit 0]
+```
+## R4. Every fix is load-bearing: one mutant per fix (the gaps, the worker review round, this revise), each failing its own fixture or check (the script, then its run over the whole module)
+```console
+$ cat "$TMPDIR/mut-l02.py"; uv run --no-project python -I "$TMPDIR/mut-l02.py" "$Q"
+# Each mutant reverts one fix of followup-a02 (the gaps, then the worker review's round); its fixture must fail.
+import subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1]); f = root / "scripts/lint-comparisons.py"; src = f.read_text()
+M = {  # what the mutant reverts -> (the fixed text, the mutant)
+    "continuations (4306643800 audit:4f5be51:4)": ('if (len(code) - len(code.rstrip("\\\\"))) % 2:', 'if False:'),
+    "shell markers in comments (audit:4f5be51:8 k.sh)": ('        return comments(text)', '        return dict(enumerate(text.split("\\n"), 1))'),
+    "python markers in comment tokens (4306643808 m.py)": ('return {t.start[0]: t.string for t in toks if t.type == tokenize.COMMENT}',
+                                                        'return dict(enumerate(text.split("\\n"), 1))'),
+    "jq strings and comments (audit:4f5be51:5)": ('bare, lits = jq_mask(prog)', 'bare, lits = prog, prog'),
+    "and/or bounds (audit:4f5be51:1)": ('(?:and|or|then|elif|else)(?!\\w)"', '(?!)"'),
+    "double-quoted programs (4306643803 audit:4f5be51:9)": ("""('[^']*'|"(?:[^"\\\\]|\\\\[\\s\\S])*")""", "('[^']*')"),
+    "every escaped fragment (4306643804 audit:4f5be51:2)": ('all(map(escaped, values))', 'all("re.escape" in map(dotted, ast.walk(v)) for v in values)'),
+    "the pgrep pattern word expands (audit:4f5be51:6)": ('any(map(expands, PGREP.findall(line)))', 'any("$" in w for w in PGREP.findall(line))'),
+    "the grep pattern word expands (audit:4f5be51:3)": ('if ere and expands(pattern)', 'if ere and "$" in pattern'),
+    "path pieces beside expansions (audit:4f5be51:7)": ('return bool(name and TOKEN.search(name.group(1))) or bool(',
+                                                      'return bool(TOKEN.search(name.group(1))) if name else bool('),
+    "review: one slot per string character, the P1 (s2.sh)": ('code[i : i + step], lits[i : i + step] = [" "] * step, prog[i : i + step]',
+                                                          'code[i], lits[i : i + len(two)] = " ", (two if c == "\\\\" else c)'),
+    "review: if...end is one operand (l2.sh)": ('"( ", re.sub(r"(?<![\\w.$])end(?!\\w)", "  )", bare)', '"; ", re.sub(r"(?<![\\w.$])end(?!\\w)", "  ;", bare)'),
+    "review: a marker on any line of a continued statement (c2.sh)": ('for k in range(n, last + 1)', 'for k in range(n, n + 1)'),
+    "review: a shell comment past the closing quote (k2.sh)": ('after = comments(code[close:].split("\\n", 1)[0]).get(1, "")', 'after = ""'),
+    "review: no program past a separator (j3.sh)": ("""[^'"\\\\\\n;&|])*+""", """[^'"\\\\\\n])*+"""),
+    "review: a quote ending its line opens a program (j2.sh)": ('(?=[^\\n]*\\S)', ''),
+    "review: a join's separator is a constant (r2.py)": (' and isinstance(node.func.value, ast.Constant)', ''),
+    "revise 1: a backslash-newline continues the closing-quote search (jc.sh, jc2.sh)": ('"(?!(?:[^"\\\\\\n]|\\\\[\\s\\S])*")', '"(?!(?:[^"\\\\\\n]|\\\\.)*")'),
+    "revise 1: lines join with no separator (wj.sh)": ('buf += code[:-1]  #', 'buf += code[:-1] + " "  #'),
+    "revise 1: quotes carried across lines (ms.sh, ms2.sh)": ('        return comments(text)', '        return {n: comments(raw).get(1, "") for n, raw in enumerate(text.split("\\n"), 1)}'),
+    "revise 1: heredoc bodies hold no comment (hd.sh, hd2.sh)": ('        if docs and not q:\n            skip = docs.pop(0)', '        if False:\n            skip = docs.pop(0)'),
+}
+test = "tests.unit.test_lint_comparisons"
+for name, (a, b) in M.items():
+    assert src.count(a) == 1, (name, src.count(a))
+    f.write_text(src.replace(a, b))
+    r = subprocess.run(["uv", "run", "python", "-m", "unittest", test], cwd=root, capture_output=True, text=True)
+    failed = sorted({(l.split("fixture=")[1].rstrip(")") if "fixture=" in l else l.split()[1]) for l in r.stderr.splitlines() if l.startswith("FAIL")})
+    print(f"{name}: {'killed' if r.returncode else 'SURVIVED'}; failing fixtures: {', '.join(failed) or '-'}")
+f.write_text(src)
+continuations (4306643800 audit:4f5be51:4): killed; failing fixtures: 'c.sh', 'wj.sh', (failures=2)
+shell markers in comments (audit:4f5be51:8 k.sh): killed; failing fixtures: 'hd.sh', 'hd2.sh', 'k.sh', 'k3.sh', 'ms.sh', 'ms2.sh', (failures=6)
+python markers in comment tokens (4306643808 m.py): killed; failing fixtures: 'm.py', (failures=1)
+jq strings and comments (audit:4f5be51:5): killed; failing fixtures: 's.sh', (failures=2), test_a_jq_normaliser_name_inside_a_string_literal_is_no_application
+and/or bounds (audit:4f5be51:1): killed; failing fixtures: 'l.sh', (failures=1)
+double-quoted programs (4306643803 audit:4f5be51:9): killed; failing fixtures: 'j.sh', 'j2.sh', 'jc.sh', 'jc2.sh', (failures=5), test_a_single_quoted_jq_option_value_is_not_read_as_the_program
+every escaped fragment (4306643804 audit:4f5be51:2): killed; failing fixtures: 'r.py', 'r2.py', (failures=2)
+the pgrep pattern word expands (audit:4f5be51:6): killed; failing fixtures: 'p2.sh', (failures=1)
+the grep pattern word expands (audit:4f5be51:3): killed; failing fixtures: 'g.sh', (failures=1)
+path pieces beside expansions (audit:4f5be51:7): killed; failing fixtures: 'v.sh', (failures=1)
+review: one slot per string character, the P1 (s2.sh): killed; failing fixtures: 's2.sh', (failures=1)
+review: if...end is one operand (l2.sh): killed; failing fixtures: 'l2.sh', (failures=1)
+review: a marker on any line of a continued statement (c2.sh): killed; failing fixtures: 'c2.sh', (failures=1)
+review: a shell comment past the closing quote (k2.sh): killed; failing fixtures: 'k4.sh', (failures=1)
+review: no program past a separator (j3.sh): killed; failing fixtures: 'j3.sh', (failures=1)
+review: a quote ending its line opens a program (j2.sh): killed; failing fixtures: 'j2.sh', (failures=1)
+review: a join's separator is a constant (r2.py): killed; failing fixtures: 'r2.py', (failures=1)
+revise 1: a backslash-newline continues the closing-quote search (jc.sh, jc2.sh): killed; failing fixtures: 'jc.sh', 'jc2.sh', (failures=2)
+revise 1: lines join with no separator (wj.sh): killed; failing fixtures: 'wj.sh', (failures=1)
+revise 1: quotes carried across lines (ms.sh, ms2.sh): killed; failing fixtures: 'hd.sh', 'hd2.sh', 'ms.sh', 'ms2.sh', (failures=4)
+revise 1: heredoc bodies hold no comment (hd.sh, hd2.sh): killed; failing fixtures: 'hd.sh', 'hd2.sh', (failures=2)
+[exit 0]
+```
+## R5. The tracked tree: --all from this head equals --all from 1950a4de's lint (no hit added or removed); the Check's no-flag lint exits 0
+```console
+$ git show $PREV:scripts/lint-comparisons.py > scripts/.lint-prev.py; uv run --no-project python -I scripts/.lint-prev.py --all > "$TMPDIR/r5-a.txt"; rm -f scripts/.lint-prev.py; uv run --no-project python -I scripts/lint-comparisons.py --all > "$TMPDIR/r5-b.txt"; cmp "$TMPDIR/r5-a.txt" "$TMPDIR/r5-b.txt" && echo "--all identical to 1950a4de's lint"; uv run --no-project python -I scripts/lint-comparisons.py; echo "lint exit $?"
+--all identical to 1950a4de's lint
+warning: scripts/check-regime-boundary.sh:125: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/chain-integrate.sh:93: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/chain-integrate.sh:106: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 8 unbaselined hit(s) and 0 stale row(s) in unchanged files
+lint exit 0
+[exit 0]
+```
+## R6. ruff check and ruff format --check on the two files; --list-rules byte-identical to origin/main's
+```console
+$ ruff check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py; echo "ruff check exit $?"; ruff format --config ruff.toml --check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py; echo "ruff format exit $?"; git show origin/main:scripts/lint-comparisons.py > "$TMPDIR/lm.py"; uv run --no-project python -I "$TMPDIR/lm.py" --list-rules > "$TMPDIR/r-old.txt"; uv run --no-project python -I scripts/lint-comparisons.py --list-rules > "$TMPDIR/r-new.txt"; cmp "$TMPDIR/r-old.txt" "$TMPDIR/r-new.txt" && echo "--list-rules identical"
+All checks passed!
+ruff check exit 0
+2 files already formatted
+ruff format exit 0
+--list-rules identical
+[exit 0]
+```
+## R7. Caps over origin/main...HEAD (additions plus deletions; the baseline outside the first count)
+```console
+$ B=$(git merge-base origin/main HEAD); echo "merge-base ${B:0:8}"; git diff --numstat "$B...HEAD" -- . ":!.orchestration"; git diff --numstat "$B...HEAD" | awk -F "\t" "\$3 ~ /^\\.orchestration\\// {next} \$3 ~ /^tests\\// {t += \$1 + \$2; next} \$3 == \"scripts/lint-comparisons-baseline.tsv\" {b += \$1 + \$2; next} {o += \$1 + \$2} END {printf \"outside tests/ and .orchestration/, without the baseline: %d of 350\nunder tests/: %d of 1000\nthe baseline (outside the count): %d\n\", o, t, b}"
+merge-base 1eac64a8
+3	1	scripts/lint-comparisons-baseline.tsv
+147	32	scripts/lint-comparisons.py
+114	0	tests/unit/test_lint_comparisons.py
+outside tests/ and .orchestration/, without the baseline: 179 of 350
+under tests/: 114 of 1000
+the baseline (outside the count): 4
 [exit 0]
 ```

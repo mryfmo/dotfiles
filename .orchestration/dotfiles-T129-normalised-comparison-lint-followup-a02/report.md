@@ -5,7 +5,9 @@ branch: tools/lint-comparisons-followup-a02
 base: 51ba5801
 test_commits: 883a6ab8 75c3c55c 3b59177f
 fix_commits: 607d4485 5b6c5a8a
-code_head: 5b6c5a8a
+code_head: f6fd955e
+revise_1_previous_head: 1950a4de087261dbfe5bac526de9b9285f7717af
+revise_1_commits: e8830ee8 a4523856 9534b4c8 f6fd955e
 task_sha256: 4198ddc1b8b5e30a66c89ba01e4051a65758806f6d15d0e5dd495876902fca98
 ---
 
@@ -71,5 +73,20 @@ The review is recorded in `dotfiles-T129-normalised-comparison-lint-followup-a02
   - multi-line `"…"` programs;
   - the separator, trailing-backslash and join-separator P3s.
 - **Residual P3s:** a `"…"` program that starts with an expansion is skipped, the re-plan's choice; escaped joins through `sorted()` or a set comprehension are refused, the conservative direction.
+
+## Revise 1 (AGMSG-ACCEPTANCE status=revise round=1, 2026-10-19T21:00:22Z; previous head 1950a4de)
+
+The Codex Bot review of `26f48973` left three P2 threads, unresolved on the chain's update-branch head `1950a4de`. All three are fixed in `f6fd955e`, with `revise.yaml` in the same commit (C-50). This is round 1 of 2 (C-61). The threads are not replied to; the orchestrator replies and resolves.
+
+| Thread | Fix | Check (red at 1950a4de: validation R2; green: R3) |
+|---|---|---|
+| 4313892754: a backslash-newline after content inside a double-quoted jq program made its opening quote look stray, so the program was lost | The stray-quote test's search for a closing quote steps over an escape that is a backslash-newline, continuing to the next line. The unescaping turns a backslash-newline into a newline, so a hit keeps its operator's own line. | `test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies`: `jc.sh` R3 at line 1, `jc2.sh` R3 at line 2, both programs located |
+| 4313892766: joining a continued statement inserted a space, so a word split by a backslash-newline became two | The physical lines join with no separator, as the shell deletes a backslash-newline. | `test_a_backslash_newline_joins_the_physical_lines_without_a_separator`: `[[ "$x" == *\` + `/foo ]]` is R1. Control: a `case` on its variable stays clean. |
+| 4313892783: `comment()` read each physical line alone, so a marker inside a multi-line string, or in a heredoc body, counted as a shell comment | `comments(text)` scans the whole file once. It carries the quote state across lines and skips heredoc bodies (`<<`, `<<-`, quoted or bare delimiters, several per line), and it serves the code stripping, the continuation and R3 markers, and R0. | `test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment`: two multi-line strings and two heredoc bodies carry no marker. Control: a real comment after them is still one, so its reasonless marker is R0. |
+
+- **One more fixture.** `k4.sh` covers a shell comment past a multi-line program's closing quote that marks a hit on an earlier line. The carried quote state had made `k2.sh` alone unable to catch the mutant of that check (R4).
+- **Mutants:** all 21 are killed (R4).
+- **The tracked tree:** `--all` is byte-identical to `1950a4de`'s lint (R5). The no-flag lint exits 0 with the same eight warnings.
+- **Caps, over merge-base `1eac64a8` (R7):** 179 of 350 outside `tests/` without the baseline, and 114 of 1000 under `tests/`.
 
 cost: n/a

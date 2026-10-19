@@ -67,6 +67,12 @@ The baseline rows in files no task owns (their owner tasks are assigned at the l
 
 One PR from a fresh branch off `origin/main` after PR #415 merges. The Completion clause of `.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md` applies as written, with this task's id as the owner of any advisory P2 (`dotfiles-T129-normalised-comparison-lint-followup-a02` is written by the orchestrator when the first one appears) and `task_copy=<sha256 of .orchestration/dotfiles-T129-normalised-comparison-lint-followup-a02/task.md>` in the RESULT.
 
+## Amendment 1 (2026-10-19T11:4xZ)
+
+Caps re-measured against `origin/main` 51ba5801 (C-79; the text of 2026-10-17 measured an older main): `scripts/lint-comparisons.py` is 227 lines there, and the record's re-plan (tokens instead of physical-line regexes: shlex with continuations joined, a string-aware jq scanner bounding operands by `and`/`or`, ast with markers only in comment tokens) adds about 100 lines. The script-length cap is removed. The final diff has at most 350 changed lines outside `tests/`, excluding `scripts/lint-comparisons-baseline.tsv`, and at most 1000 changed lines under `tests/`. These two sentences replace every earlier cap sentence of this text.
+
+Owned rows confirmed as read from the records: the four Bot rows 4306643800, 4306643803, 4306643804 and 4306643808 (the followup-a01 record; the progress note's "ten" was wrong, the record is authoritative) and the nine audit rows `audit:4f5be51:1` to `:9` (the followup-a03 record): 13 ids, 9 distinct gaps (each Bot row duplicates a local row and is closed by the same fixture, both ids named), plus the process rows `audit:4f5be51:12` (verbatim `make format` output with per-file exit status in validation.md) and `:14` (sandbox.md states which Python runs used `-I`). Nothing else changes.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```

@@ -3,7 +3,7 @@ task_id: dotfiles-T129-audit-inherit-replan-json-followup-a02
 seat: claude-standard-dot-a008
 branch: tools/audit-inherit-followup-a02
 base: 3e41e36a
-pr: pending
+pr: 423
 test_commits: 495f51b3 f75c1137 02b6eec1
 fix_commits: 9b59a3bc cdfd3ee5
 code_head: 02b6eec1

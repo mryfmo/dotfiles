@@ -9,6 +9,8 @@ base: 51ba580149fcace54a912358e7e87c5b07cd8760
 
 - **Where:** every block ran inside the sandbox, from this worktree on `tools/assets-omp-hcom-followup-a04`. §1 to §8 ran at the code head `42414b6d`, and §10 to §12 after the PR opened. The later commits add only this directory's records.
 - **Placeholders:** each block prints its commands, their verbatim output and the block's last exit status. `MAIN` is the main checkout, `T` the task id, `$S` the session scratchpad, `$TMPDIR` the sandbox's temporary directory, `<user-temp>` the per-user macOS temporary directory, and `~` the home directory.
+- **The PR's creation** ran inside the sandbox, after the first push of `81b1cd90`. The command was `gh pr create --base main --head tools/assets-omp-hcom-followup-a04 --title "…" --body-file $S/pr-body-a04.md`, which printed `https://github.com/mryfmo/dotfiles/pull/430`. The PR was opened ready for review, not as a draft, and §10 re-reads it.
+- **CI and the Bot:** §11 and §12 are for `81b1cd90`, the head the Bot reviewed when the PR opened. The final head adds only this directory's records on top of it, so its CI is in the RESULT.
 - **Red, then green:** §4r is red at `725b25bf`, inside the sandbox: the selector runs one test and fails by assertion. The old `update_omp`'s untemplated `mktemp -d` ignored `TMPDIR`, and the sandbox refused the per-user default it picked. §6b is green at the code head, and §6 is the Check.
 
 ## 1. Task file (sha256 fc324db7…) and the branch copy
@@ -230,5 +232,57 @@ $ git merge-base origin/main HEAD; git diff --numstat origin/main...HEAD; git di
 21	4	tests/unit/test_update_agent_assets.py
 outside tests/ and .orchestration/: 0 of 120
 under tests/: 25 of 400
+[exit 0]
+```
+
+## 10. The PR: number, creation, draft state and timeline
+```console
+$ gh pr view 430 --json number,url,createdAt,isDraft,state,baseRefName,headRefName,headRefOid; gh api repos/mryfmo/dotfiles/issues/430/timeline --paginate --jq '.[] | select(.event == "ready_for_review" or .event == "convert_to_draft" or .event == "committed") | [.event, (.created_at // .committer.date), (.actor.login // .author.name), ((.sha // "")[0:8])] | @tsv'
+{"baseRefName":"main","createdAt":"2026-10-19T11:51:20Z","headRefName":"tools/assets-omp-hcom-followup-a04","headRefOid":"81b1cd90e83bd5bc36d112a2806e580b1fa52c23","isDraft":false,"number":430,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/430"}
+committed	2026-10-19T11:40:42Z	Fumio Moriya	ecea1a45
+committed	2026-10-19T11:40:44Z	Fumio Moriya	42414b6d
+committed	2026-10-19T11:50:26Z	Fumio Moriya	81b1cd90
+[exit 0]
+```
+
+## 11. CI on 81b1cd90e83bd5bc36d112a2806e580b1fa52c23
+```console
+$ gh pr checks 430; gh api 'repos/mryfmo/dotfiles/commits/81b1cd90e83bd5bc36d112a2806e580b1fa52c23/check-runs?per_page=50' --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+public-bootstrap (macos-14, client)	pass	12s	https://github.com/mryfmo/dotfiles/actions/runs/39247661080/job/118043439093	
+public-bootstrap (ubuntu-24.04, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/39247661080/job/118043439022	
+public-bootstrap (ubuntu-24.04, server)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39247661080/job/118043438819	
+regime	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39247661079/job/118043440374	
+test (macos-14, client)	pass	16s	https://github.com/mryfmo/dotfiles/actions/runs/39247660999/job/118043439288	
+test (ubuntu-24.04, client)	pass	9m57s	https://github.com/mryfmo/dotfiles/actions/runs/39247660999/job/118043439258	
+test (ubuntu-24.04, server)	pass	5m52s	https://github.com/mryfmo/dotfiles/actions/runs/39247660999/job/118043438785	
+test (ubuntu-26.04, client)	pass	8m31s	https://github.com/mryfmo/dotfiles/actions/runs/39247660999/job/118043439289	
+validate	pass	1m49s	https://github.com/mryfmo/dotfiles/actions/runs/39247660974/job/118043437842	
+GitGuardian Security Checks	completed	success
+regime	completed	success
+test (ubuntu-26.04, client)	completed	success
+test (macos-14, client)	completed	success
+test (ubuntu-24.04, client)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+test (ubuntu-24.04, server)	completed	success
+validate	completed	success
+[exit 0]
+```
+
+## 12. The Bot: reviews, review comments, issue comments, and the Codex summary's state
+```console
+$ echo reviews:; gh api repos/mryfmo/dotfiles/pulls/430/reviews --jq '.[] | [.id, .user.login, .state, .submitted_at, .commit_id[0:8]] | @tsv'; echo review-comments:; gh api repos/mryfmo/dotfiles/pulls/430/comments --jq '.[] | [.id, .user.login, .created_at, .path, (.line|tostring)] | @tsv'; echo issue-comments:; gh api repos/mryfmo/dotfiles/issues/430/comments --jq '.[] | [.id, .user.login, .created_at, .updated_at] | @tsv'; echo codex-summary:; gh api repos/mryfmo/dotfiles/issues/430/comments --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .body' | /usr/bin/grep -e 'codex-review-state' -e 'Code Review' -e 'Security Review'
+reviews:
+review-comments:
+issue-comments:
+6266545584	coderabbitai[bot]	2026-10-19T11:51:31Z	2026-10-19T11:51:31Z
+6266546032	chatgpt-codex-connector[bot]	2026-10-19T11:51:33Z	2026-10-19T11:54:23Z
+codex-summary:
+<!-- codex-review-state:v1 {"code_review":{"commit_sha":"81b1cd90e83bd5bc36d112a2806e580b1fa52c23","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"},"security_review":{"commit_sha":"81b1cd90e83bd5bc36d112a2806e580b1fa52c23","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"}} -->
+| 📝 **Code Review** | ✅ **Completed** <relative-time datetime="2026-10-19T11:52:41.823248Z">2026-10-19T11:52:41.823248Z</relative-time> | `81b1cd9` | PR opened |
+| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime="2026-10-19T11:54:22.384873Z">2026-10-19T11:54:22.384873Z</relative-time> | `81b1cd9` | PR opened |
 [exit 0]
 ```

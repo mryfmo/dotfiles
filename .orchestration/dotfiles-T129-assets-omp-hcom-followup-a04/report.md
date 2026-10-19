@@ -2,7 +2,7 @@
 task_id: dotfiles-T129-assets-omp-hcom-followup-a04
 seat: claude-standard-dot-a009
 branch: tools/assets-omp-hcom-followup-a04
-pr: pending (opened after this commit is pushed)
+pr: 430
 base: 51ba580149fcace54a912358e7e87c5b07cd8760
 copy_commit: ecea1a45
 test_commit: 42414b6d
@@ -44,4 +44,9 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 
 ## Completion
 
-- The PR, CI and Bot facts follow in the next records commit, after the PR opens (validation §10 to §12).
+- **PR:** #430, opened ready for review, not as a draft, at 2026-10-19T11:51:20Z on `81b1cd90`, inside the sandbox (validation §10). No `@codex review` comment is posted.
+- **CI on `81b1cd90`:** 11 of 11 checks pass, and the 10 check runs all succeeded (§11).
+- **The Bot:** the PR's opening triggered Codex's code review (completed 11:52:41Z) and security review (11:54:22Z) of `81b1cd90`, both with `has_any_findings: false`. There are no review threads and no review comments (§12). The window from 11:51:20Z closed at 12:06:20Z.
+- **The final head** adds only this directory's records on top of `81b1cd90`. The Bot does not re-review on a push, and the RESULT carries that head's CI.
+- **Open items:** no Bot thread, no advisory row and no open question. Any advisory P2 belongs to `dotfiles-T129-assets-omp-hcom-followup-a05`.
+- **The parallel order:** the rebase repair of PR #411 (the ACCEPTANCE `status=rebase-repair` of 11:51:18Z, `dotfiles-T133-result-precheck-a04`) ran on `tools/result-precheck-a01` after this branch's first push. This branch was committed and pushed before the switch.

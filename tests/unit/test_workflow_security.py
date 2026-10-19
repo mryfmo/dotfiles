@@ -115,9 +115,9 @@ class WorkflowSecurityTest(unittest.TestCase):
         self.assertEqual([], mutable)
 
     def test_the_regime_workflow_takes_its_base_from_the_base_branch_tip_at_run_time(self):
-        # ci:39185982423:1: pull_request.base.sha changes only when a PR synchronizes, so PR #420, opened before the
-        # verifier landed, checked out a base without it; the job checks out the base branch's tip and verifies against
-        # exactly that commit.
+        # ci:39185982423:1: the event's recorded base sha can lag the base branch (on PR #420 it was the head's fork
+        # point, 740772ef, from before the verifier landed), so the job checks out the base branch's tip at run time and
+        # verifies against exactly that commit.
         text = (WORKFLOWS / "regime.yml").read_text()
         self.assertNotIn("pull_request.base.sha", text)
         self.assertIn("ref: refs/heads/${{ github.base_ref }}", [line.strip() for line in text.splitlines()])

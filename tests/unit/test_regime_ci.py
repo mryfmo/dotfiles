@@ -256,16 +256,17 @@ class RegimeCiTest(unittest.TestCase):
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
-            self.assertNotRegex(
-                json.dumps(step.get("with", {})), r"head\.sha|head_ref|pr-head|pull/"
-            )  # refs/heads/ is the base
+            given = json.dumps(step.get("with", {})).replace("refs/heads/", "")  # the base branch's namespace only
+            self.assertNotRegex(given, r"head|merge_commit_sha|event\.after|pull/")
             self.assertFalse(step.get("uses", "x").startswith("./"))
 
     def test_regime_ci_accepts_a_base_that_moved_past_the_merge_base(self):
-        # ci:39185982423:1: the job now verifies against the base branch's tip, which can be ahead of the PR's merge base;
-        # only the PR's own changes count (base...head), so the base's later commits are no violation of the PR's.
-        self.build()
-        self.commit({"README": "base, later\n", "later.txt": "x\n"}, "the base branch moves on")  # the checkout is main
+        # ci:39185982423:1 (PR #420): the job verifies against the base branch's tip, which can be ahead of the PR's merge
+        # base and hold policy the fork point lacked. Only the PR's own changes count (base...head), and the dispatched
+        # text is read at --base: here it exists only on the moved tip, so reading it at the merge base would warn.
+        self.build(dispatched=None)
+        later = {"README": "base, later\n", "later.txt": "x\n", f".orchestration/tasks/{T}.md": TASK}
+        self.commit(later, "the base branch moves on and gains the dispatched text")  # the checkout is main
         result = self.regime()
         self.assertEqual((0, "regime-ci: ok 1 task(s)\n"), (result.returncode, result.stdout), result.stderr)
 

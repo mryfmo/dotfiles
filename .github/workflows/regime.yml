@@ -23,8 +23,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          # The base branch's tip at run time: the event's recorded base sha changes only when the pull request
-          # synchronizes, so it can predate this verifier (PR #420, ci:39185982423:1). The PR cannot move this branch.
+          # The base branch's tip at run time: the event's recorded base sha can lag the branch (on PR #420 it was the
+          # head's fork point, from before this verifier; ci:39185982423:1). The pull request cannot move this branch.
           ref: refs/heads/${{ github.base_ref }}
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0

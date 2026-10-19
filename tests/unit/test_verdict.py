@@ -215,6 +215,26 @@ class VerdictTest(unittest.TestCase):
                 )
                 self.assertEqual(0, check.returncode, check.stderr)
 
+    def test_verdict_validate_refuses_each_rule_the_moved_schema_checker_holds(self):
+        audit = self.repo / f"{V}/{TASK}-audit-{self.head[:7]}.json"
+        good = json.loads(audit.read_text()) | {"findings": [FINDING | {"scope": "code", "rationale": "r"}]}
+        rules = {"date-only": {"generated_at": "2026-10-18"}, "naive": {"generated_at": "2026-10-18T05:00:00"}}
+        rules |= {"no such date": {"generated_at": "2026-02-30T05:00:00Z"}, "extra key": {"x": 1}, "required": {}}
+        rules |= {"anchored pattern": {"head": self.head + "\n"}, "type": {"auditor": 1}}
+        rows = {"minimum": {"line": 0}, "bool is no integer": {"line": True}, "class enum": {"class": "no-such-class"}}
+        rows |= {"status enum": {"status": "open"}, "maxLength": {"rationale": "r" * 401}}
+        docs = [("valid", good)] + [
+            (k, good | v if v else {k: v for k, v in good.items() if k != "auditor"}) for k, v in rules.items()
+        ]
+        docs += [(k, good | {"findings": [good["findings"][0] | v]}) for k, v in rows.items()]
+        for case, doc in docs:
+            with self.subTest(case=case):
+                audit.write_text(json.dumps(doc))
+                check = self.run_in_repo(
+                    "bash", "scripts/orchestrator/verdict.sh", "--validate", ".schemas/audit.json", audit
+                )
+                self.assertEqual(case != "valid", check.returncode != 0, check.stderr)
+
     def test_verdict_reads_the_record_front_matter_offline_and_holds_when_pyyaml_is_unavailable(self):
         online = '[[ "$*" != *pyyaml* || "$*" == *--offline* ]] || { echo "$*" >> "$CALLS/online.log"; exit 1; }'
         cold = f'[[ "$*" == *pyyaml* && -f $CALLS/no-pyyaml ]] && exit 1; exec "{shutil.which("uv")}" "$@"'

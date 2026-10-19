@@ -31,7 +31,7 @@ set -Eeuo pipefail
 shopt -s nullglob
 for a in "$@"; do [[ ${a} != *--admin* && ${a} != *--auto* ]] || { echo "verdict: ${a} is refused" >&2 && exit 2; }; done
 trap '((BASH_SUBSHELL)) || echo "verdict: internal error at line ${LINENO}" >&2; exit 2' ERR
-usage() { echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...]" >&2 && exit 2; }
+usage() { echo "usage: verdict.sh <pr> [--task <id>] [--shadow | --apply --team <t> --from <f> --to <to> --pane <p>] | --loop [...] | --validate <schema> <json>" >&2 && exit 2; }
 stop() { echo "verdict: $1: hold" >&2 && exit 20; }
 if [[ -z ${VERDICT_BIN:-} || ${PATH} != "${VERDICT_BIN}:/usr/bin:/bin" ]]; then # pin, re-run, then read checkouts
     bin="$(mktemp -d "${TMPDIR:-/tmp}/verdict-bin.XXXXXX")" rc=0

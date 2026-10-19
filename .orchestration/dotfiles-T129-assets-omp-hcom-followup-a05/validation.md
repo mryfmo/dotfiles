@@ -8,6 +8,8 @@ base: 1eac64a832ade83f9e149be6a329f7e8fa20180f
 
 - **Where:** every block ran inside the sandbox, from this worktree on `tools/assets-omp-hcom-followup-a05`. §5 ran first, at `1eac64a8` (main, before the task-copy commit; its tree lines say so). §1 to §4 and §6 to §8 ran after the task-copy commit `870aa65d`, which changes no code, and §10 to §12 after the PR opened. No script or test changes (§4).
 - **Placeholders:** each block prints its commands, their verbatim output and the block's last exit status. `MAIN` is the main checkout, `T` the task id, `$S` the session scratchpad, `$TMPDIR` the sandbox's temporary directory, `<user-temp>` the per-user macOS temporary directory, and `~` the home directory.
+- **The PR's creation** ran inside the sandbox, after the first push of `c5c34955`: `gh pr create --base main --head tools/assets-omp-hcom-followup-a05 --title "…" --body-file $S/pr-body-a05.md` printed `https://github.com/mryfmo/dotfiles/pull/433`. The PR was opened ready for review, not as a draft (§10).
+- **CI and the Bot (§11, §12)** are for `c5c34955`. Both Codex reviews triggered at PR open, the code review and the security review, **failed on Codex usage limits**, so no review exists. The final head adds only this directory's records, and its CI is in the RESULT.
 - **The owned row's evidence, §5:**
   - **The shim:** it is printed with its sha256. This machine has no GNU coreutils `mktemp` (§4a), so the shim reproduces GNU's no-template default: `tmp.XXXXXXXXXX` under `$TMPDIR`, else `/tmp`. A call that names a template passes through to the system `mktemp`.
   - **The probe:** with `TMPDIR` set, the shim creates under it, and a templated call passes through. The system `mktemp -d` without a template ignores `TMPDIR`, picks `<user-temp>`, and the sandbox refuses it.
@@ -234,5 +236,60 @@ $ git merge-base origin/main HEAD; git diff --numstat origin/main...HEAD; git di
 57	0	.orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/task.md
 outside tests/ and .orchestration/: 0 of 120
 under tests/: 0 of 400
+[exit 0]
+```
+
+## 10. The PR: number, creation, draft state and timeline
+```console
+$ gh pr view 433 --json number,url,createdAt,isDraft,state,baseRefName,headRefName,headRefOid; gh api repos/mryfmo/dotfiles/issues/433/timeline --paginate --jq '.[] | select(.event == "ready_for_review" or .event == "convert_to_draft" or .event == "committed") | [.event, (.created_at // .committer.date), (.actor.login // .author.name), ((.sha // "")[0:8])] | @tsv'
+{"baseRefName":"main","createdAt":"2026-10-19T20:29:21Z","headRefName":"tools/assets-omp-hcom-followup-a05","headRefOid":"c5c349557164b7b9065192ddc35dabe65e4b5782","isDraft":false,"number":433,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/433"}
+committed	2026-10-19T20:18:43Z	Fumio Moriya	870aa65d
+committed	2026-10-19T20:28:27Z	Fumio Moriya	c5c34955
+[exit 0]
+```
+
+## 11. CI on c5c349557164b7b9065192ddc35dabe65e4b5782
+```console
+$ gh pr checks 433; gh api 'repos/mryfmo/dotfiles/commits/c5c349557164b7b9065192ddc35dabe65e4b5782/check-runs?per_page=50' --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com	
+public-bootstrap (macos-14, client)	pass	12s	https://github.com/mryfmo/dotfiles/actions/runs/39319730961/job/118290363741	
+public-bootstrap (ubuntu-24.04, client)	pass	10s	https://github.com/mryfmo/dotfiles/actions/runs/39319730961/job/118290364091	
+public-bootstrap (ubuntu-24.04, server)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39319730961/job/118290364152	
+regime	pass	17s	https://github.com/mryfmo/dotfiles/actions/runs/39319730890/job/118290364808	
+test (macos-14, client)	pass	16s	https://github.com/mryfmo/dotfiles/actions/runs/39319730545/job/118290441200	
+test (ubuntu-24.04, client)	pass	11s	https://github.com/mryfmo/dotfiles/actions/runs/39319730545/job/118290440686	
+test (ubuntu-24.04, server)	pass	12s	https://github.com/mryfmo/dotfiles/actions/runs/39319730545/job/118290441010	
+test (ubuntu-26.04, client)	pass	15s	https://github.com/mryfmo/dotfiles/actions/runs/39319730545/job/118290441191	
+validate	pass	2m2s	https://github.com/mryfmo/dotfiles/actions/runs/39319730485/job/118290361081	
+test (macos-14, client)	completed	success
+test (ubuntu-26.04, client)	completed	success
+test (ubuntu-24.04, server)	completed	success
+test (ubuntu-24.04, client)	completed	success
+regime	completed	success
+public-bootstrap (ubuntu-24.04, server)	completed	success
+public-bootstrap (ubuntu-24.04, client)	completed	success
+public-bootstrap (macos-14, client)	completed	success
+validate	completed	success
+GitGuardian Security Checks	completed	success
+[exit 0]
+```
+
+## 12. The Bot: reviews, review comments, issue comments, and the Codex summary's state
+```console
+$ echo reviews:; gh api repos/mryfmo/dotfiles/pulls/433/reviews --jq '.[] | [.id, .user.login, .state, .submitted_at, .commit_id[0:8]] | @tsv'; echo review-comments:; gh api repos/mryfmo/dotfiles/pulls/433/comments --jq '.[] | [.id, .user.login, .created_at, .path, (.line|tostring)] | @tsv'; echo issue-comments:; gh api repos/mryfmo/dotfiles/issues/433/comments --jq '.[] | [.id, .user.login, .created_at, .updated_at] | @tsv'; echo codex-summary:; gh api repos/mryfmo/dotfiles/issues/433/comments --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .body' | /usr/bin/grep -e 'codex-review-state' -e 'Code Review' -e 'Security Review' -e 'usage limits'
+reviews:
+review-comments:
+issue-comments:
+6276632316	chatgpt-codex-connector[bot]	2026-10-19T20:29:27Z	2026-10-19T20:29:32Z
+6276632926	chatgpt-codex-connector[bot]	2026-10-19T20:29:29Z	2026-10-19T20:29:29Z
+6276633795	coderabbitai[bot]	2026-10-19T20:29:32Z	2026-10-19T20:29:32Z
+6276634479	chatgpt-codex-connector[bot]	2026-10-19T20:29:34Z	2026-10-19T20:29:34Z
+codex-summary:
+<!-- codex-review-state:v1 {"code_review":{"commit_sha":"c5c349557164b7b9065192ddc35dabe65e4b5782","has_any_findings":true,"has_unresolved_findings":true,"status":"failed"},"security_review":{"commit_sha":"c5c349557164b7b9065192ddc35dabe65e4b5782","has_any_findings":true,"has_unresolved_findings":true,"status":"failed"}} -->
+| 📝 **Code Review** | ⚠️ **Failed** <relative-time datetime="2026-10-19T20:29:24.728371Z">2026-10-19T20:29:24.728371Z</relative-time> | `c5c3495` | PR opened |
+| 🔒 **Security Review** | ⚠️ **Failed** <relative-time datetime="2026-10-19T20:29:30.313495Z">2026-10-19T20:29:30.313495Z</relative-time> | `c5c3495` | PR opened |
+Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.
+The account paying for this security review has reached its Codex usage limits. The payer can check the [Codex usage dashboard](https://chatgpt.com/codex/cloud/settings/usage). For personal accounts, using credits requires enabling “Use credits for security reviews” in [Code review settings](https://chatgpt.com/codex/cloud/settings/code-review). If you do not manage the paying account, contact this repository's admins.
 [exit 0]
 ```

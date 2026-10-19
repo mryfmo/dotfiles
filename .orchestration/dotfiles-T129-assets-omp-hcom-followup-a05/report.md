@@ -2,7 +2,7 @@
 task_id: dotfiles-T129-assets-omp-hcom-followup-a05
 seat: claude-standard-dot-a009
 branch: tools/assets-omp-hcom-followup-a05
-pr: pending (opened after this commit is pushed)
+pr: 433
 base: 1eac64a832ade83f9e149be6a329f7e8fa20180f
 copy_commit: 870aa65d
 code_head: none (no script or test changes; the row is an evidence record)
@@ -38,4 +38,9 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 
 ## Completion
 
-- The PR, CI and Bot facts follow in the next records commit, after the PR opens (validation §10 to §12).
+- **PR:** #433, opened ready for review, not as a draft, at 2026-10-19T20:29:21Z on `c5c34955`, inside the sandbox (validation §10). No `@codex review` comment is posted.
+- **CI on `c5c34955`:** 11 of 11 checks pass (§11).
+- **The Bot, unavailable:** both reviews the PR's opening triggered failed on Codex usage limits. The code review failed at 20:29:24Z: "Codex usage limits have been reached for code reviews". The security review failed at 20:29:30Z: "The account paying for this security review has reached its Codex usage limits". So no Bot review of this change exists. There are no review threads or review comments (§12).
+  - Raising the limit is the repository admins' or the paying account's step, outside this seat. The worker posts no `@codex review`. This is for the orchestrator to decide at the gate.
+- **The final head** adds only this directory's records on top of `c5c34955`. The RESULT carries its CI.
+- **Open items:** no Bot thread, no advisory row and no open question. Any advisory P2 belongs to `dotfiles-T129-assets-omp-hcom-followup-a06`.

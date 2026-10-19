@@ -1,0 +1,12 @@
+# The revise round of 2026-10-19T09:40:27Z for dotfiles-T129-assets-omp-hcom-followup-a03 (AGMSG-ACCEPTANCE status=revise,
+# message 2490), as the message contract asks. Written by its owner task dotfiles-T129-assets-omp-hcom-followup-a04 for
+# audit:9e30542:1, from the a03 acceptance record's facts: that revise line's check= carried prose, not selectors, so the
+# selector below is the test this task adds for the revise's check (1), the updater's mktemp under a sandbox-like TMPDIR.
+task_id: dotfiles-T129-assets-omp-hcom-followup-a03
+round: 2
+revise: 1
+previous_head: 725b25bf731d4612d350c1da6642ecbdc385ede6
+result_head: 9e30542438e0d88404bd1587aa529bf758837aec
+reason: "the task-level audit of 725b25b: P1 three test runs outside the sandbox after mktemp -d was refused; P2 the Bot-wait claim while the PR was a draft; P2 validation.md without PR, CI and Bot outputs; P2 the record's dispatch array without read markers (the orchestrator's); P3 no cost: field"
+checks:
+  - tests/unit/test_update_agent_assets.py::test_update_omp_makes_its_download_directory_under_tmpdir

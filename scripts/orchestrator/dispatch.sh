@@ -34,11 +34,11 @@
 #   (thread 4255272797). A record that is not an existing regular file writable in a
 #   writable directory, or whose `task` is not the line's `task_id`, is refused
 #   before the send, and nothing is sent.
-#   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py`
+#   An AGMSG-TASK line whose `task_file=` fails `task-consistency-check.py --premises-sha <its task_sha256>`
 #   (beside this script, run as `python -I` through `uv run --offline`, PyYAML from the pinned cache only,
 #   with `--no-config`, `--no-project` and a pinned `--python`, from the root, under `env -i` with only
 #   `PATH`, `HOME` (the script owner's passwd home), `UV_CACHE_DIR` (under it), `LANG`, `LC_ALL` and the `AGMSG_*`
-#   variables) is refused with the checker's output, and nothing is sent (C-52).
+#   variables) is refused with the checker's output, and nothing is sent (C-52); a pass forwards its `C14:` lines.
 #   Only a review brief is exempt: a front matter (the text between the first
 #   two `---` lines) that PyYAML parses, refusing a duplicate key, to a mapping
 #   whose `kind` is the string `review`; every other outcome runs the checker.
@@ -57,12 +57,15 @@
 #   (`●` unread, `○` read): agmsg's scripts expose no read_at time, this script
 #   never reads the message database, and it never passes an agent to
 #   history.sh, whose agent argument renames the caller's pane after it.
-#   Plan 024 P1-5: before an `AGMSG-ACCEPTANCE ... status=accepted` send, the task's newest `AGMSG-RESULT v1` in the
-#   pre-send window (none without a record), newer than its latest `status=revise` there, needs one `head=` (a commit
-#   here) and one `precheck=`, the sha256 of the head's `.orchestration/<task>/precheck.json`, whose `head` is the head
-#   or an ancestor whose diff to it is only under `.orchestration/<task>/`. A failure prints `precheck: <field>
-#   <reason>` (exit 1, nothing sent) under `PRECHECK_REQUIRED=1`, else `precheck: warning ...`, and sends (plan 024 0d).
-#   Each selector of the latest revise's `check=` (repeated or comma-separated) needs one passing proof of its `previous_head=`.
+#   Plan 024 P1-5: before an `AGMSG-ACCEPTANCE ... status=accepted` send, the task's rows in the pre-send window (none
+#   without a record) count only between this ACCEPTANCE's own pair: the seat's RESULTs to the orchestrator and the
+#   orchestrator's other lines to the seat (a TASK row of another pair refuses). The newest such RESULT, newer than the
+#   latest such `status=revise`, needs one `head=`, one `precheck_head=` (the tested code commit) and one `precheck=`,
+#   the sha256 of the head's `.orchestration/<task>/precheck.json`, whose `head`, `code_head` and `tree` are that
+#   commit's; after it come only evidence commits and update-branch merges from origin/main that leave the task copy's
+#   code entries alone. Each selector of that revise's `check=` (repeated or comma-separated) needs one passing proof
+#   of its `previous_head=`. A failure prints `precheck: <field> <reason>` (exit 1, nothing sent) under
+#   `PRECHECK_REQUIRED=1`, else `precheck: warning ...`, and sends (plan 024 0d).
 # @arg $1 string agmsg team.
 # @arg $2 string Sender identity.
 # @arg $3 string Recipient identity.
@@ -162,13 +165,19 @@ required=${PRECHECK_REQUIRED:-0}
 # Plan 024 P1-5: argv is the task id and the pre-send window file ('' when none was read); git runs in the root.
 read -r -d '' prechecker << 'PY' || true
 import hashlib, json, re, subprocess, sys
-task, window = sys.argv[1:3]
+task, window, seat, orch = sys.argv[1:5]
 REQUIRED = "unit-test render-check format shellcheck secrets local-review"
 git = lambda *args: subprocess.run(["git", *args], capture_output=True)
 def problem():
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", task): return f"task_id {task} is not a task id"
     if not window: return "result no history window was read (no acceptance record was given)"
-    rows = [row[3].split() for row in json.load(open(window))]
+    # The security review of ddf262d: only this ACCEPTANCE's pair counts, and the task's TASK row agrees with it.
+    rows, mine = json.load(open(window)), lambda r: f"task_id={task}" in r[3].split()
+    tasks = [r for r in rows if r[3].startswith("AGMSG-TASK v1 ") and mine(r)]
+    if tasks and tasks[-1][1:3] != [orch, seat]: return f"result task_id={task} went from {tasks[-1][1]} to {tasks[-1][2]}, this ACCEPTANCE from {orch} to {seat}"
+    ignored = [r for r in rows if mine(r) and r[1:3] != ([seat, orch] if r[3].startswith("AGMSG-RESULT") else [orch, seat])]
+    if ignored: print(f"precheck: note: ignored {len(ignored)} row(s) of task_id={task} from or to other identities", file=sys.stderr)
+    rows = [r[3].split() for r in rows if r not in ignored]
     found = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
     if not found: return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
     result = rows[found[-1]]
@@ -180,11 +189,14 @@ def problem():
     base = [t[14:] for t in revise if t.startswith("previous_head=")]
     if "status=ready_for_review" not in result: return "result the newest RESULT is not status=ready_for_review"
     heads = [t[5:] for t in result if t.startswith("head=")]
+    codes = [t[14:] for t in result if t.startswith("precheck_head=")]
     wants = [t[9:] for t in result if t.startswith("precheck=")]
     if len(heads) != 1 or not re.fullmatch(r"[0-9a-f]{40}", heads[0]): return "head the RESULT needs one head= of 40 hex digits"
+    if len(codes) != 1 or not re.fullmatch(r"[0-9a-f]{40}", codes[0]): return "precheck_head the RESULT needs one precheck_head= of 40 hex digits"
     if len(wants) != 1 or not re.fullmatch(r"[0-9a-f]{64}", wants[0]): return "precheck the RESULT needs one precheck= of 64 hex"
-    head, want, path = heads[0], wants[0], f".orchestration/{task}/precheck.json"
-    if git("cat-file", "-e", f"{head}^{{commit}}").returncode: return f"head {head} is not a commit in this checkout"
+    head, code, want, path = heads[0], codes[0], wants[0], f".orchestration/{task}/precheck.json"
+    for c in (head, code):
+        if git("cat-file", "-e", f"{c}^{{commit}}").returncode: return f"head {c} is not a commit in this checkout"
     blob = git("cat-file", "blob", f"{head}:{path}")
     got = hashlib.sha256(blob.stdout).hexdigest() if blob.returncode == 0 else "nothing (no such file)"
     if got != want: return f"precheck mismatch: the RESULT has {want}, {path} at {head} hashes to {got}"
@@ -192,6 +204,8 @@ def problem():
     except ValueError: doc = None
     field = doc.get("head") if isinstance(doc, dict) else None
     if not isinstance(field, str) or not re.fullmatch(r"[0-9a-f]{40}", field): return f"precheck.json:head {path} has no 40-hex head"
+    if [field, doc.get("code_head")] != [code, code]: return f"precheck_head {path} names head {field} and code_head {doc.get('code_head')}, not precheck_head={code}"
+    if doc.get("tree") != git("rev-parse", f"{code}^{{tree}}").stdout.decode().strip(): return f"precheck.json:tree {path} is not the tree of {code}"
     checks, selectors, required = doc.get("checks"), doc.get("selectors"), REQUIRED.split()
     if not (isinstance(checks, list) and checks): return f"precheck.json:checks {path} lists no checks"
     if not all(isinstance(c, dict) and isinstance(c.get("name"), str) and "ok" in c for c in checks): return f"precheck.json:checks {path} at {head} has an entry without a name and an ok"
@@ -205,8 +219,14 @@ def problem():
     if missing: return f"precheck.json:selectors {path} at {head} lacks exactly one proof of the requested {missing}"
     stale = [s["selector"] for s in selectors if s["selector"] in requested and [s.get("previous_head")] != base]  # bccb2de audit
     if stale: return f"precheck.json:selectors {path} at {head} proves {stale} against another baseline than previous_head={base}"
-    if field != head and git("merge-base", "--is-ancestor", field, head).returncode: return f"precheck.json:head {field} is not an ancestor of {head}"
-    if field != head and git("diff", "--quiet", field, head, "--", ".", f":(exclude).orchestration/{task}/").returncode: return f"precheck.json:head {field}..{head} changes paths outside .orchestration/{task}/"
+    if git("merge-base", "--is-ancestor", code, head).returncode: return f"precheck_head {code} is not an ancestor of {head}"
+    # The audit and security review of ddf262d: evidence commits, or base merges that leave the code entries alone.
+    copy = git("show", f"{head}:.orchestration/{task}/task.md")
+    entries = re.findall(r"^  - (?!\.orchestration/)(\S+)$", copy.stdout.decode().split("\n---\n")[0], re.M) if not copy.returncode else []
+    for sha, *parents in (c.split() for c in git("rev-list", "--first-parent", "--parents", f"{code}..{head}").stdout.decode().splitlines()):
+        evidence_only = len(parents) == 1 and not git("diff", "--quiet", parents[0], sha, "--", ".", f":(exclude).orchestration/{task}/").returncode
+        base_merge = len(parents) == 2 and entries and not git("diff", "--quiet", parents[0], sha, "--", *entries).returncode and not git("merge-base", "--is-ancestor", parents[1], "origin/main").returncode
+        if not (evidence_only or base_merge): return f"precheck_head {code}..{head} holds {sha}, neither evidence-only nor an update-branch merge that leaves the task's code alone"
     return ""
 print(problem())
 PY
@@ -215,7 +235,7 @@ PY
 precheck_gate() {
     local problem
     [[ ${tokens[0]} == AGMSG-ACCEPTANCE && "$(value_of status || true)" == accepted ]] || return 0
-    problem="$(cd -- "${root}" && "${clean[@]}" python3 -I -c "${prechecker}" "$(value_of task_id)" "$1")" ||
+    problem="$(cd -- "${root}" && "${clean[@]}" python3 -I -c "${prechecker}" "$(value_of task_id)" "$1" "${to}" "${from}")" ||
         problem="checker the precheck check itself failed"
     [[ -n ${problem} ]] || return 0
     ((required)) || {
@@ -271,6 +291,7 @@ for t in "${tokens[@]}"; do
     got="$(shasum -a 256 "${path}")" && got=${got%% *}
     [[ ${got} == "${want}" ]] || {
         echo "dispatch: ${field} mismatch: the line has ${want}, ${path} hashes to ${got}" >&2
+        [[ ${field} != task_sha256 ]] || echo "dispatch: C14: not run (no trusted sha)" >&2
         exit 1
     }
 done
@@ -311,11 +332,12 @@ sys.exit(0 if isinstance(front, dict) and front.get("kind") == "review" else 1)
 PY
     # Fail-closed: only a parsed front matter whose kind is review skips the checker.
     if ! uvr python -I -c "${brief}" "${tf}" > /dev/null 2>&1; then
-        out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" "${tf}" 2>&1)" || {
+        out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" "${tf}" --premises-sha "$(value_of task_sha256)" 2>&1)" || {
             echo "dispatch: ${tf} fails the task-consistency check" >&2
             printf '%s\n' "${out}" >&2
             exit 1
         }
+        grep 'C14:' <<< "${out}" >&2 || true # a C14 warning or note is no pass, so it reaches the caller
     fi
 fi
 if [[ -z ${record} ]]; then

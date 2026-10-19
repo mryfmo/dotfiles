@@ -242,22 +242,32 @@ class RegimeCiTest(unittest.TestCase):
             "astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7",
         ]
         self.assertEqual(pins, [s["uses"] for s in steps if "uses" in s])
-        base = "${{ github.event.pull_request.base.sha }}"
+        base = "refs/heads/${{ github.base_ref }}"  # the tip at run time, never a stale base sha (ci:39185982423:1)
         self.assertEqual({"fetch-depth": 0, "ref": base, "persist-credentials": False}, steps[0]["with"])
         self.assertEqual({"enable-cache": False}, steps[1]["with"])
         runs = [s for s in steps if "run" in s]
         fetch, verify = runs
         self.assertIn('git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"', fetch["run"])
         self.assertIn('test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"', fetch["run"])
-        line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "${BASE_SHA}" --head "${HEAD_SHA}"'
+        line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
         self.assertEqual(line, verify["run"])
         head = "${{ github.event.pull_request.head.sha }}"
-        self.assertEqual(({"BASE_SHA": base, "HEAD_SHA": head}, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        self.assertEqual(({"HEAD_SHA": head}, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
-            self.assertNotIn("head", json.dumps(step.get("with", {})))
+            self.assertNotRegex(
+                json.dumps(step.get("with", {})), r"head\.sha|head_ref|pr-head|pull/"
+            )  # refs/heads/ is the base
             self.assertFalse(step.get("uses", "x").startswith("./"))
+
+    def test_regime_ci_accepts_a_base_that_moved_past_the_merge_base(self):
+        # ci:39185982423:1: the job now verifies against the base branch's tip, which can be ahead of the PR's merge base;
+        # only the PR's own changes count (base...head), so the base's later commits are no violation of the PR's.
+        self.build()
+        self.commit({"README": "base, later\n", "later.txt": "x\n"}, "the base branch moves on")  # the checkout is main
+        result = self.regime()
+        self.assertEqual((0, "regime-ci: ok 1 task(s)\n"), (result.returncode, result.stdout), result.stderr)
 
     def test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr(self):
         result = self.build()

@@ -114,6 +114,15 @@ class WorkflowSecurityTest(unittest.TestCase):
                     mutable.append(f"{path.name}:{number}: {reference}")
         self.assertEqual([], mutable)
 
+    def test_the_regime_workflow_takes_its_base_from_the_base_branch_tip_at_run_time(self):
+        # ci:39185982423:1: pull_request.base.sha changes only when a PR synchronizes, so PR #420, opened before the
+        # verifier landed, checked out a base without it; the job checks out the base branch's tip and verifies against
+        # exactly that commit.
+        text = (WORKFLOWS / "regime.yml").read_text()
+        self.assertNotIn("pull_request.base.sha", text)
+        self.assertIn("ref: refs/heads/${{ github.base_ref }}", [line.strip() for line in text.splitlines()])
+        self.assertIn('--base "$(git rev-parse HEAD)"', text)
+
     def test_workflows_have_exact_top_level_permissions(self):
         actual = {path.name: top_level_permissions(path.read_text()) for path in sorted(WORKFLOWS.glob("*.y*ml"))}
         self.assertEqual(EXPECTED_PERMISSIONS, actual)

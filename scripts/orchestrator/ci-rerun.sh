@@ -43,7 +43,8 @@ bin="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")" # system paths
 trap '/bin/rm -rf -- "${bin}"' EXIT
 for tool in python3 uv gh jq git mkdir; do
     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
-    [[ ${found} == /* && ${found} != */shims/* ]] || {
+    # The directory is judged physically, so a PATH entry that links to a shims directory is refused too.
+    [[ ${found} == /* ]] && where="$(cd -P -- "${found%/*}" 2> /dev/null && pwd -P)" && [[ ${where}/ != */shims/* ]] || {
         echo "ci-rerun: no ${tool} outside a shims directory ('${found}')" >&2
         exit 1
     }

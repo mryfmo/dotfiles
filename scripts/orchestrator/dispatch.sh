@@ -173,10 +173,11 @@ def problem():
     if not window: return "result no history window was read (no acceptance record was given)"
     # The security review of ddf262d: only this ACCEPTANCE's pair counts, and the task's TASK row agrees with it.
     rows, mine = json.load(open(window)), lambda r: f"task_id={task}" in r[3].split()
-    tasks = [r for r in rows if r[3].startswith("AGMSG-TASK v1 ") and mine(r)]
-    if tasks and tasks[-1][1:3] != [orch, seat]: return f"result task_id={task} went from {tasks[-1][1]} to {tasks[-1][2]}, this ACCEPTANCE from {orch} to {seat}"
-    ignored = [r for r in rows if mine(r) and r[1:3] != ([seat, orch] if r[3].startswith("AGMSG-RESULT") else [orch, seat])]
-    if ignored: print(f"precheck: note: ignored {len(ignored)} row(s) of task_id={task} from or to other identities", file=sys.stderr)
+    tasks = [r for r in rows if r[3].split()[:2] == ["AGMSG-TASK", "v1"] and mine(r) and r[1] == orch]
+    if tasks and tasks[-1][2] != seat: return f"result task_id={task} went from {orch} to {tasks[-1][2]}, this ACCEPTANCE to {seat}"
+    if not tasks: print(f"dispatch: note: no TASK row of task_id={task} from {orch} in the window; the pair is this ACCEPTANCE's", file=sys.stderr)
+    ignored = [r for r in rows if mine(r) and r[1:3] != ([seat, orch] if r[3].split()[:1] == ["AGMSG-RESULT"] else [orch, seat])]
+    if ignored: print(f"dispatch: note: ignored {len(ignored)} row(s) of task_id={task} from or to other identities", file=sys.stderr)
     rows = [r[3].split() for r in rows if r not in ignored]
     found = [i for i, t in enumerate(rows) if t[:2] == ["AGMSG-RESULT", "v1"] and f"task_id={task}" in t[2:]]
     if not found: return f"result no AGMSG-RESULT v1 row for task_id={task} in the window"
@@ -221,11 +222,12 @@ def problem():
     if stale: return f"precheck.json:selectors {path} at {head} proves {stale} against another baseline than previous_head={base}"
     if git("merge-base", "--is-ancestor", code, head).returncode: return f"precheck_head {code} is not an ancestor of {head}"
     # The audit and security review of ddf262d: evidence commits, or base merges that leave the code entries alone.
-    copy = git("show", f"{head}:.orchestration/{task}/task.md")
+    copy = git("show", f"{code}:.orchestration/{task}/task.md")  # the tested copy: no later evidence commit narrows it
     entries = re.findall(r"^  - (?!\.orchestration/)(\S+)$", copy.stdout.decode().split("\n---\n")[0], re.M) if not copy.returncode else []
     for sha, *parents in (c.split() for c in git("rev-list", "--first-parent", "--parents", f"{code}..{head}").stdout.decode().splitlines()):
         evidence_only = len(parents) == 1 and not git("diff", "--quiet", parents[0], sha, "--", ".", f":(exclude).orchestration/{task}/").returncode
-        base_merge = len(parents) == 2 and entries and not git("diff", "--quiet", parents[0], sha, "--", *entries).returncode and not git("merge-base", "--is-ancestor", parents[1], "origin/main").returncode
+        clean = len(parents) == 2 and git("merge-tree", "--write-tree", *parents).stdout.decode().split("\n")[0] == git("rev-parse", f"{sha}^{{tree}}").stdout.decode().strip()
+        base_merge = clean and entries and not git("diff", "--quiet", parents[0], sha, "--", *entries).returncode and not git("merge-base", "--is-ancestor", parents[1], "origin/main").returncode
         if not (evidence_only or base_merge): return f"precheck_head {code}..{head} holds {sha}, neither evidence-only nor an update-branch merge that leaves the task's code alone"
     return ""
 print(problem())

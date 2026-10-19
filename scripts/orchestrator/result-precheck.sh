@@ -93,7 +93,7 @@ publish_logs() {
     local f rc
     for f in "${work}"/logs/*.log; do
         [[ -e ${f} ]] || continue
-        uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${f}" > /dev/null 2>&1 || { rc=$? && rm -f -- "${f}" && printf 'masking failed: exit %s\n' "${rc}" > "${f}" && echo "${f}" >> "${work}/maskfail"; }
+        uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets "${f}" > /dev/null 2>&1 || { rc=$? && echo "${f}" >> "${work}/maskfail" && rm -f -- "${f}" && printf 'masking failed: exit %s\n' "${rc}" > "${f}"; } || return 1
         publish "${f}" "${evidence}/${f##*/}" || return 1
     done
 }
@@ -129,7 +129,7 @@ scan_one() {
         return 1
     }
     dir="$(mktemp -d "${work}/scan.XXXXXX")" && mkdir -p -- "$(dirname -- "${dir}/$2")" || return
-    if [[ $1 == - ]]; then cp -- "$3" "${dir}/$2"; else git show --no-textconv "$1:$2" > "${dir}/$2"; fi || {
+    if [[ $1 == - ]]; then cp -- "$3" "${dir}/$2"; else git show --no-textconv --end-of-options "$1:$2" > "${dir}/$2"; fi || {
         echo "unreadable: ${1:0:7}:$2 cannot be read"
         return 1
     }
@@ -186,7 +186,7 @@ mode=${secrets:+secrets}${staged:+staged}${blob:+blob}
 if [[ -n ${mode} ]]; then
     [[ ${mode} =~ ^(secrets|staged|blob)$ && -z ${task}${previous} && ${#tests[@]}${#selectors[@]} == 00 ]] || usage
     if [[ ${mode} != staged ]]; then
-        [[ -f ${secrets} || ${blob} == ?*:?* ]] || usage
+        [[ (-f ${secrets} || ${blob} == ?*:?*) && ${blob} != -* ]] || usage # the pre-push review of bf1bce63: never a rev option
         set -- - "${secrets##*/}" "${secrets}"
         [[ -z ${blob} ]] || set -- "${blob%%:*}" "${blob#*:}"
         scan_one "$@"
@@ -216,7 +216,7 @@ while IFS= read -r -d '' entry; do
     }
 done < "${work}/status"
 evidence_ok "${evidence}"/precheck-*.log "${evidence}"/precheck.json "${evidence}"/result.txt || exit 1
-mkdir -p -- "${evidence}" && rm -f -- "${evidence}"/precheck-*.log
+mkdir -p -- "${evidence}" && rm -f -- "${evidence}"/precheck-*.log "${evidence}"/precheck.json "${evidence}"/result.txt "${evidence}"/.publish.*
 # @description Run one check (name, then command) with its output in its private log; record `name<TAB>exit<TAB>log`.
 run_check() {
     local name=$1 rc=0 log="${work}/logs/precheck-$1.log"
@@ -225,7 +225,7 @@ run_check() {
     printf '%s\t%s\t%s\n' "${name}" "${rc}" "${log}" >> "${work}/rows"
     echo "result-precheck: ${name} exit ${rc}"
 }
-# shellcheck disable=SC2329 # run through run_check
+# shellcheck disable=SC2317,SC2329 # run through run_check (SC2317 is the older shellcheck name)
 check_secrets() {
     local f type out bad=''
     git diff --name-only -z --no-renames --diff-filter=d origin/main...HEAD > "${work}/changed" || return
@@ -236,7 +236,7 @@ check_secrets() {
     printf '%s' "${bad}"
     [[ -z ${bad} ]]
 }
-# shellcheck disable=SC2329 # run through run_check
+# shellcheck disable=SC2317,SC2329 # run through run_check (SC2317 is the older shellcheck name)
 check_local_review() {
     local head pr
     head="$(git rev-parse HEAD)" || return
@@ -285,7 +285,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 task, evidence, head, tree, previous, rows, sel_rows = sys.argv[1:8]
 work = os.path.dirname(rows)  # the record and the RESULT line are written here, then published
-failed = set(open(f"{work}/maskfail").read().split()) if os.path.isfile(f"{work}/maskfail") else set()
+failed = set(open(f"{work}/maskfail").read().splitlines()) if os.path.isfile(f"{work}/maskfail") else set()
 digest = lambda path: hashlib.sha256(open(path, "rb").read()).hexdigest()
 ran = lambda log: int((re.search(r"^Ran (\d+) tests? in ", open(log, errors="replace").read(), re.M) or [0, 0])[1])
 # One executed test failing by assertion; an import or runner error, or a run of no test or several, proves nothing.

@@ -47,7 +47,7 @@ SEL_A, SEL_B, BASE = "tests/unit/test_x.py::test_a", "tests/unit/test_x.py::test
 PROOFS = [{"selector": s, "ok": True, "previous_head": BASE} for s in (SEL_A, SEL_B)]
 UNITS = (("missing", {}), ("string", {"ok": "true"}), ("numeric", {"ok": 1}), ("null", {"ok": None}))  # bad ok values
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
-TOKEN = "ghp_" + "A1b2" * 8  # built at run time, so this file holds no literal the secret scan flags
+FAKE_CREDENTIAL = "ghp_" + "A1b2" * 8  # built at run time, so this file holds no literal the secret scan flags
 MATCH, DECODING = r"pre-push: [1-9][0-9]* match\(es\) in ", r"pre-push: decoding: .* cannot be decoded"
 
 
@@ -65,7 +65,7 @@ class ResultPrecheckTest(unittest.TestCase):
             path.write_text("#!/usr/bin/env bash\n" + text)
             path.chmod(0o755)
         # No inherited Git configuration override, and a HOME of the fixture's own (the security review of ddf262d).
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_CONFIG", "XDG_CONFIG"))} | GIT_ENV
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "XDG_CONFIG", "UV_"))} | GIT_ENV
         self.env |= {"HOME": str(self.temp / "home"), "GIT_CONFIG_NOSYSTEM": "1", "CALLS": str(self.calls)}
         self.env |= {"AGMSG_SCRIPTS": str(self.temp / "agmsg"), "TMPDIR": str(self.temp)}
         self.env |= {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
@@ -116,8 +116,8 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertEqual(oks(), dict.fromkeys(names, True))
         path = self.repo / f".orchestration/{TASK}/precheck.json"
         self.assertEqual(result.stdout.splitlines()[-1], f"precheck={hashlib.sha256(path.read_bytes()).hexdigest()}")
-        self.assertEqual(self.record()["head"], head)
-        self.assertIn(f"head={head} precheck=", (path.parent / "result.txt").read_text())
+        self.assertEqual((self.record()["head"], self.record()["code_head"]), (head, head))
+        self.assertIn(f"head={head} precheck_head={head} precheck=", (path.parent / "result.txt").read_text())
         self.assertIn(f"{TASK} {head} 7", (self.calls / "local-review.log").read_text())
         self.assertIn("-x scripts/new.sh", (self.calls / "shellcheck.log").read_text())
         tools = [(n, f"make-{n}-fails") for n in ("unit-test", "render-check")] + [("shellcheck", "shellcheck-fails")]
@@ -129,7 +129,7 @@ class ResultPrecheckTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertEqual(oks(), dict.fromkeys(names, True) | {name: False})
         with self.subTest(check="secrets"):  # a committed token, found by the real detector (a03 item 1)
-            self.write("leak.txt", f"value={TOKEN}\n")
+            self.write("leak.txt", f"value={FAKE_CREDENTIAL}\n")
             self.commit("leak")
             self.assertEqual(self.precheck(env=seat).returncode, 1)
             self.assertEqual(oks()["secrets"], False)
@@ -151,6 +151,7 @@ class ResultPrecheckTest(unittest.TestCase):
         self.assertEqual(healthy.returncode, 0, healthy.stdout + healthy.stderr)
         self.assertIn(DEFERRED, self.record()["checks"])
         self.assertIn("# shortcut: a Claude seat cannot run codex inside its Bash sandbox", PRECHECK.read_text())
+        self.assertIn("# shortcut: inside a Claude seat's sandbox the full suite fails", PRECHECK.read_text())
 
         def failed(*names, env=None):  # the run exits 1 and each named check is ok false with a nonzero exit
             result, checks = self.precheck(env=env), {c["name"]: c for c in self.record()["checks"]}
@@ -287,11 +288,11 @@ class ResultPrecheckTest(unittest.TestCase):
     def leaks(self, result):  # the token in the run's output, its evidence, or a private capture left behind
         files = [*(self.repo / ".orchestration").rglob("*"), *self.temp.glob("result-precheck.*/**/*")]
         texts = [result.stdout, result.stderr, *(f.read_text(errors="replace") for f in files if f.is_file())]
-        return TOKEN in "".join(texts) or bool(list(self.temp.glob("result-precheck.*")))
+        return FAKE_CREDENTIAL in "".join(texts) or bool(list(self.temp.glob("result-precheck.*")))
 
     def test_precheck_fails_closed_when_masking_fails(self):
         # The security review of ddf262d (P1, result-precheck.sh:251): a failed masker leaks nothing it was given.
-        (self.calls / "make-prints").write_text(f"key={TOKEN}\n")
+        (self.calls / "make-prints").write_text(f"key={FAKE_CREDENTIAL}\n")
         (self.calls / "masker-fails").touch()
         result, evidence = self.precheck(), self.repo / f".orchestration/{TASK}"
         self.assertEqual((result.returncode, self.leaks(result)), (1, False), result.stdout + result.stderr)
@@ -301,16 +302,18 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_precheck_masks_logs_when_proof_worktree_creation_fails(self):
         # The audit of ddf262d (P2, result-precheck.sh:235): an early exit still masks, publishes and cleans up.
-        (self.calls / "make-prints").write_text(f"key={TOKEN}\n")
+        (self.calls / "make-prints").write_text(f"key={FAKE_CREDENTIAL}\n")
         git, head, record = self.temp / "bin/git", self.git("rev-parse", "HEAD"), self.repo / f".orchestration/{TASK}"
+        self.assertEqual(self.precheck().returncode, 0)  # a complete earlier record, which no early exit may keep
         git.write_text(f'#!/usr/bin/env bash\n[[ $1 != worktree ]] || exit 3\nexec "{shutil.which("git")}" "$@"\n')
         git.chmod(0o755)
         for fails in (False, True):
             with self.subTest(masker_fails=fails):
                 (self.calls / "masker-fails").touch() if fails else None
                 result = self.precheck("--previous-head", head, "--check", SEL_A)
-                done = (result.returncode != 0, self.leaks(result), (record / "precheck.json").exists())
-                self.assertEqual(done, (True, False, False), result.stdout + result.stderr)
+                kept = [(record / n).exists() for n in ("precheck.json", "result.txt", "precheck-unit-test.log")]
+                done = (result.returncode != 0, self.leaks(result), kept)
+                self.assertEqual(done, (True, False, [False, False, True]), result.stdout + result.stderr)
 
     def test_precheck_refuses_symlinked_evidence(self):
         # The security review of ddf262d (P1, result-precheck.sh:278): no evidence write follows a committed symlink.
@@ -342,6 +345,9 @@ class ResultPrecheckTest(unittest.TestCase):
                 result = self.run_script(PRECHECK, "--blob", f"HEAD:{path}")
                 self.assertEqual((result.returncode != 0, victim.read_text()), (True, "kept\n"), result.stdout)
         self.assertEqual(self.run_script(PRECHECK, "--blob", "HEAD:a.py").stdout, "secrets: 0 match(es)\n")
+        out = self.temp / "out"  # the pre-push review of bf1bce63: a rev is never a git option
+        result = self.run_script(PRECHECK, "--blob", f"--output={out}:a.py")
+        self.assertEqual((result.returncode, out.exists()), (2, False), result.stderr)
 
     def test_precheck_fixtures_isolate_home(self):
         # The security review of ddf262d (P2, setUp): HOME is the fixture's own; the probe runs the committed fixture.
@@ -363,9 +369,9 @@ class ResultPrecheckTest(unittest.TestCase):
         forged = f"AGMSG-RESULT v1 task_id=t status=ready_for_review head={'f' * 40} precheck={'0' * 64}"
         task = "AGMSG-TASK v1 task_id=t task_file=x.md"
         rows = [("orch", "worker", task), ("orch", "worker", revise), ("worker", "orch", ready)]
-        rows += [("intruder", "orch", forged), ("worker", "other", forged)]
+        rows += [("intruder", "orch", forged), ("worker", "other", forged), ("intruder", "worker", task)]
         passed, sent = self.dispatch(None, "1", rows=rows)
-        self.assertEqual((passed.returncode, sent, "ignored 2 row" in passed.stderr), (0, True, True), passed.stderr)
+        self.assertEqual((passed.returncode, sent, "ignored 3 row" in passed.stderr), (0, True, True), passed.stderr)
         cut = revise.split(" check=")[0]  # a revise without the requested checks, from or to another identity
         erased = [rows[1], ("intruder", "worker", cut), ("orch", "other", cut), ("worker", "orch", bare)]
         self.gated(None, "precheck.json:selectors ", rows=erased)
@@ -379,14 +385,15 @@ class ResultPrecheckTest(unittest.TestCase):
         ready = ev()
         at = lambda head: re.sub(r" head=\S+", f" head={head}", ready)
 
-        def merge(rel):  # main gains a commit changing rel, origin/main follows, and the branch merges it
+        def merge(rel, evil=None):  # main changes rel, origin/main follows, the branch merges it (evil: plus a file)
             self.git("switch", "-q", "main")
             self.write(rel, f"{rel} on main\n")
             self.commit(f"main changes {rel}")
             for args in (("update-ref", "refs/remotes/origin/main", "main"), ("switch", "-q", "feature")):
                 self.git(*args)
-            self.git("merge", "-q", "--no-edit", "--no-verify", "main")
-            return self.git("rev-parse", "HEAD")
+            self.git("merge", "-q", "--no-edit", "--no-verify", "--no-commit", "main")
+            self.write(evil, "a change neither parent made\n") if evil else None
+            return self.commit("merge main")
 
         merged = merge("base.txt")
         passed, sent = self.dispatch(at(merged), "1")
@@ -394,7 +401,11 @@ class ResultPrecheckTest(unittest.TestCase):
         self.write("other.txt", "not evidence\n")
         cases = [("precheck_head", at(self.commit("an unexplained commit")))]
         self.git("reset", "-q", "--hard", merged)
-        cases += [("precheck_head", at(merge("a.py")))]  # a post-proof change of the task's code
+        cases += [("precheck_head", at(merge("b.txt", evil="scripts/evil.sh")))]  # the pre-push review of bf1bce63
+        self.git("reset", "-q", "--hard", merged)
+        self.write(".orchestration/t/task.md", "---\nallowed_files:\n  - nothing.txt\n---\n")  # a narrowed copy
+        self.commit("an evidence commit narrows the task copy")
+        cases += [("precheck_head", at(merge("a.py")))]  # a post-proof change of the tested copy's code
         self.git("reset", "-q", "--hard", merged)
         orphan = self.git("commit-tree", f"{code}^{{tree}}", "-m", "unrelated")
         cases += [("precheck_head", ready.replace(f" precheck_head={code}", ""))]
@@ -469,7 +480,7 @@ class ResultPrecheckTest(unittest.TestCase):
         env = {**self.env, "PATH": os.environ["PATH"]}  # the real uv and the real detector
         run = ["git", "push", "origin", branch]
         result = subprocess.run(run, cwd=self.repo, env=env, capture_output=True, text=True, timeout=300, check=False)
-        self.assertNotIn(TOKEN, result.stdout + result.stderr)
+        self.assertNotIn(FAKE_CREDENTIAL, result.stdout + result.stderr)
         self.assertEqual(bool(self.git("ls-remote", "origin", branch)), result.returncode == 0, result.stderr)
         return result.returncode, result.stderr
 
@@ -477,12 +488,12 @@ class ResultPrecheckTest(unittest.TestCase):
         """The precheck's `secrets` check on the current branch: the shared per-blob scan with the real detector."""
         result = self.precheck()
         logs = "".join(p.read_text() for p in (self.repo / f".orchestration/{TASK}").glob("precheck-*.log"))
-        self.assertNotIn(TOKEN, result.stdout + result.stderr + logs)
+        self.assertNotIn(FAKE_CREDENTIAL, result.stdout + result.stderr + logs)
         return next(c for c in self.record()["checks"] if c["name"] == "secrets")["ok"]
 
     def test_pre_push_hook_stops_a_push_whose_diff_matches_the_secret_pattern(self):
         # Thread 4305945403: a token added and removed again before the push is still in the pushed history.
-        secret, clean = {"value.txt": f"value={TOKEN}\n".encode()}, {"value.txt": b"value=clean\n"}
+        secret, clean = {"value.txt": f"value={FAKE_CREDENTIAL}\n".encode()}, {"value.txt": b"value=clean\n"}
         for branch, commits in (("secret", [secret]), ("removed", [secret, clean]), ("clean", [clean])):
             with self.subTest(branch=branch):
                 code, err = self.push(branch, *commits)
@@ -491,7 +502,7 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_pre_push_scans_binary_marked_blobs_in_every_pushed_commit(self):
         # Local review of a5cb73b4 (P1, pre-push:19-20): binary classification never hides pushed content (a03 item 4).
-        secret, clean, cred = f"key={TOKEN}\n".encode(), b"key=clean\n", {".gitattributes": b"*.cred -diff\n"}
+        secret, clean, cred = f"key={FAKE_CREDENTIAL}\n".encode(), b"key=clean\n", {".gitattributes": b"*.cred -diff\n"}
         for branch, commits, refusal in (
             ("diff-attr", [{**cred, "a.cred": secret}], MATCH),
             ("binary-attr", [{".gitattributes": b"*.dat binary\n", "a.dat": secret}], MATCH),
@@ -509,13 +520,13 @@ class ResultPrecheckTest(unittest.TestCase):
 
     def test_pre_push_scans_each_blob_on_its_own_boundary(self):
         # Local review of 9cd5514 (P1, pre-push:27): a blob's last word never joins the token opening the next blob.
-        code, err = self.push("joined", {"a.txt": b"word", "b.txt": TOKEN.encode() + b"\n"})
+        code, err = self.push("joined", {"a.txt": b"word", "b.txt": FAKE_CREDENTIAL.encode() + b"\n"})
         self.assertEqual(code, 1, err)
         self.assertRegex(err, MATCH)
 
     def test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding(self):
         # Local review of 4ed1b27 (P1, pre-push:27-31): a JSON-escaped credential is found in its own document.
-        cred, clean = b'{"key": "\\u0067' + TOKEN[1:].encode() + b'"}\n', b'{"key": "clean"}\n'
+        cred, clean = b'{"key": "\\u0067' + FAKE_CREDENTIAL[1:].encode() + b'"}\n', b'{"key": "clean"}\n'
         for data, code in ((cred, 1), (cred + clean, 0)):
             (self.temp / "joined.json").write_bytes(data)
             self.assertEqual(self.scan(self.temp / "joined.json").returncode, code)
@@ -551,12 +562,12 @@ class ResultPrecheckTest(unittest.TestCase):
         blob, found, refused = self.temp / "blob", r"^secrets: 1 match\(es\)\n$", "^decoding: "
         for encoding, stdout in (("utf-8", found), ("utf-16", found), ("utf-16-le", refused), ("utf-16-be", refused)):
             with self.subTest(encoding=encoding):
-                blob.write_bytes(f"key={TOKEN}\r\n".encode(encoding))
+                blob.write_bytes(f"key={FAKE_CREDENTIAL}\r\n".encode(encoding))
                 result = self.scan(blob)
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertRegex(result.stdout, stdout)
-                self.assertNotIn(TOKEN, result.stdout + result.stderr)
-                self.assertEqual(blob.read_bytes(), f"key={TOKEN}\r\n".encode(encoding))
+                self.assertNotIn(FAKE_CREDENTIAL, result.stdout + result.stderr)
+                self.assertEqual(blob.read_bytes(), f"key={FAKE_CREDENTIAL}\r\n".encode(encoding))
         blob.write_bytes("key=clean\r\n".encode("utf-16"))
         self.assertEqual(self.scan(blob).returncode, 0)
 

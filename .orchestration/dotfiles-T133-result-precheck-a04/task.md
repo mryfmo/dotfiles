@@ -9,6 +9,7 @@ allowed_files:
   - .githooks/pre-commit
   - .githooks/pre-push
   - tests/unit/test_result_precheck.py
+  - tests/unit/test_orchestrator_tools.py
   - .orchestration/dotfiles-T133-result-precheck-a04/**
 after: []
 reset_of: [dotfiles-T133-result-precheck-a03]
@@ -23,6 +24,8 @@ threat_table:
     disposition: "closed: tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_and_keeps_json_decoding"
   - control: "tests/unit/test_result_precheck.py (retained coverage and eight hardening regressions use temporary repositories, a temporary HOME established in setUp, recorded commands and fake bus identities)"
     disposition: "residual: fixtures never read the operator's HOME or contact a live bus, GitHub or Codex; generated credentials, outside-directory sentinels and a committed-fixture probe exercise the stated controls without changing operator state."
+  - control: "tests/unit/test_orchestrator_tools.py (the dispatch.sh argv assertions and the stub checker; amendment 1)"
+    disposition: "closed: tests/unit/test_orchestrator_tools.py::test_dispatch_refuses_a_task_file_failing_the_checker"
   - control: ".orchestration/dotfiles-T133-result-precheck-a04/** (the reset task's branch artifacts)"
     disposition: "residual: artifacts stay in this task's directory, distinguish historical observations from fresh results, and bind commands, hashes, proof baselines and tested code heads for final-head review."
   - control: "the task-file copy on the branch (.orchestration/dotfiles-T133-result-precheck-a04/task.md) replaces the reset_of task's copy (.orchestration/dotfiles-T133-result-precheck-a03/task.md)"
@@ -214,7 +217,7 @@ The a03 revise-1 regressions for baseline comparison, clean-tree query status an
 
 Each red run executes the current regression source against the reviewed production implementation in a temporary checkout and records an assertion failure caused by the reviewed behavior. The production commit and copied test-source hash accompany the command, output, exact id, test count and exit status. A missing test, missing new helper, import error, unavailable runner or checker usage error is not a red regression proof.
 
-`git diff --numstat origin/main...HEAD` shows at most 480 changed lines outside `tests/` and `.orchestration/`, and at most 600 changed lines under `tests/`. Changed lines are additions plus deletions, including fixtures. The final changed-file inventory and both totals appear in validation and the RESULT. No local Bats tests run; GitHub Actions supplies any required Bats result. The orchestrator runs the format-2 task-consistency checker, including C1 to C10 and C7b, before dispatch and at acceptance.
+`git diff --numstat origin/main...HEAD` shows at most 500 changed lines outside `tests/` and `.orchestration/`, and at most 640 changed lines under `tests/` (amendment 1: measured by the worker at 838fc9e9 as 480 and 599, C-79). Changed lines are additions plus deletions, including fixtures. The final changed-file inventory and both totals appear in validation and the RESULT. No local Bats tests run; GitHub Actions supplies any required Bats result. The orchestrator runs the format-2 task-consistency checker, including C1 to C10 and C7b, before dispatch and at acceptance.
 
 ## Completion
 
@@ -232,6 +235,12 @@ The live no-prompt rule governs review requests. No `@codex review` comment is p
 
 Until P1-14 lands, any string containing the words `gh pr merge` or `gh pr create` is written with the file-edit tool, never in a Bash heredoc or `echo`.
 
+## Amendment 1 (round 1, 2026-10-19T01:2xZ): the dispatch.sh argv assertions of test_orchestrator_tools.py
+
+a009's blocked PONG of 01:20:05Z: item 8 passes `--premises-sha` to the checker, and `tests/unit/test_orchestrator_tools.py`, outside allowed_files but inside the Check, asserts the exact substring `task-consistency-check.py --root <root> <task-file>` in `test_dispatch_refuses_a_task_file_failing_the_checker` and `test_dispatch_resolves_its_root_without_inherited_git_variables`, while its stub checker reads the task file as `sys.argv[-1]`. Item 8 stands. `tests/unit/test_orchestrator_tools.py` joins allowed_files for exactly this: the two expected argv strings gain `--premises-sha <sha>` and the stub keeps reading its file as the last argument. The argv order is `--root <root> --premises-sha <sha> <task-file>`, the task file last. The caps are 500 outside `tests/` and 640 under `tests/`, measured by the worker at 838fc9e9 as 480 and 599. Everything else stands.
+
+Integration order, the orchestrator's: PR #417 (P1-12 a02, the checker that accepts `--premises-sha`) merges before PR #411; PR #423 (also editing `tests/unit/test_orchestrator_tools.py`) merges before PR #411, which then takes the new base by `gh pr update-branch`; a conflict in that file is a rebase by the worker, not a round. Push the branch now; the RESULT does not wait for either merge.
+
 ## Checks (pasted by the orchestrator before each send)
 
 ```
@@ -242,3 +251,4 @@ masked 0 match(es) in .orchestration/tasks/dotfiles-T133-result-precheck-a04.md
 
 The fixtures do not validate live bus delivery or live hook deployment.
 Until `PRECHECK_REQUIRED=1` is enabled, invalid precheck evidence warns and acceptance dispatch continues.
+2026-10-19T01:2xZ amendment 1: task=dotfiles-T133-result-precheck-a04 tasks=1 amendments=0 questions=0 results=0 withdrawn=0 revises=0 source=live

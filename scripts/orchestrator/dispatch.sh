@@ -332,7 +332,7 @@ sys.exit(0 if isinstance(front, dict) and front.get("kind") == "review" else 1)
 PY
     # Fail-closed: only a parsed front matter whose kind is review skips the checker.
     if ! uvr python -I -c "${brief}" "${tf}" > /dev/null 2>&1; then
-        out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" "${tf}" --premises-sha "$(value_of task_sha256)" 2>&1)" || {
+        out="$(uvr python -I "${here}/task-consistency-check.py" --root "${root}" --premises-sha "$(value_of task_sha256)" "${tf}" 2>&1)" || {
             echo "dispatch: ${tf} fails the task-consistency check" >&2
             printf '%s\n' "${out}" >&2
             exit 1

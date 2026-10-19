@@ -409,7 +409,7 @@ class ResultPrecheckTest(unittest.TestCase):
         # The P1-12 a02 RESULT (dispatch.sh:238): C14 gets the TASK's own sha, and its warnings reach the caller.
         runs, argv = self.temp / "premise-runs", self.temp / "checker-argv"
         checker = f"import hashlib, pathlib, sys\na = sys.argv[1:]\npathlib.Path({str(argv)!r}).write_text(str(a))\n"
-        checker += "f, sha = pathlib.Path(a[2]), a[a.index('--premises-sha') + 1] if '--premises-sha' in a else None\n"
+        checker += "f, sha = pathlib.Path(a[-1]), a[a.index('--premises-sha') + 1] if '--premises-sha' in a else None\n"
         checker += f"if sha == hashlib.sha256(f.read_bytes()).hexdigest(): open({str(runs)!r}, 'a').write('x')\n"
         checker += "else: print(f'{f.name}: warning: C14: not run (no trusted sha)', file=sys.stderr)\n"
         checker += "print(f'{f.name}: OK'); print(f'{f.name}: warning: C14: tool absent fake', file=sys.stderr)\n"

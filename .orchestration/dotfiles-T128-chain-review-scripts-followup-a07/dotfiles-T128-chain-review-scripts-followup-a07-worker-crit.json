@@ -1,0 +1,38 @@
+[
+  {
+    "id": "a07-r1-p2-replace-ref-steers-the-base",
+    "scope": "scripts/orchestrator/local-review.sh",
+    "body": "P2 (high, reproduced by the reviewer), fixed in 06cc0fe1 (red) and c82e10a8. A planted refs/replace/<canonical sha> in the shared .git changed what the base held, so the review saw no change; design 5.14 item 8 asks for replacement to be disabled. The script exports GIT_NO_REPLACE_OBJECTS=1 before any git call, for itself and the review binary. The seat measured a sibling vector, info/grafts, which moves git merge-base and is not stopped by GIT_NO_REPLACE_OBJECTS; GIT_GRAFT_FILE=/dev/null is exported with it. The replace and graft subtests are red at 06cc0fe1 and green at c82e10a8; each export dropped alone is a red mutant (validation sections 5 and 7).",
+    "resolved": true
+  },
+  {
+    "id": "a07-r1-p3-exit-2-list",
+    "scope": "scripts/orchestrator/local-review.sh",
+    "body": "P3 (high), fixed in c82e10a8: the @exitcode 2 list names no gh outside a shims directory among the causes.",
+    "resolved": true
+  },
+  {
+    "id": "a07-r1-p3-gh-fails-with-a-sha",
+    "scope": "tests/unit/test_chain_review_scripts.py",
+    "body": "P3 (medium), fixed in 06cc0fe1: a refusal row where gh prints canonical main's sha but exits 1; the script was already right (|| base= empties the answer), and the row makes a mutant that keeps the sha red.",
+    "resolved": true
+  },
+  {
+    "id": "a07-r1-p3-chain-integrate-comment",
+    "scope": "scripts/orchestrator/chain-integrate.sh",
+    "body": "P3 (high), declared without a change: chain-integrate.sh:133 says local-review.sh diffs against the main checkout's main, which is stale now; the file is outside allowed_files, so the report names it for the orchestrator.",
+    "resolved": true
+  },
+  {
+    "id": "a07-r1-residual-object-store",
+    "scope": "review",
+    "body": "Reviewer note, declared in the report: a seat that can write the shared .git can still rewrite loose objects, which no environment variable stops; the task's threat_table row for local-review.sh names the refs only. Left to the orchestrator.",
+    "resolved": true
+  },
+  {
+    "id": "a07-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "One round by a fresh read-only subagent on 60a6fb2b..fb264487, given the range, the task file and Item 2, not the worker's conclusions. It reran red at 6a4190f1 and green at fb264487, ran six mutants (all red), checked the gh answer handling in bash 3.2, the resolve() reuse, the callers (test_chain_glue.py 16 OK) and the caps, and returned Verdict: correct with one P2 and three P3, dispositioned above. c82e10a8 came after its range and is covered by validation sections 5 to 8 at c82e10a8. Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

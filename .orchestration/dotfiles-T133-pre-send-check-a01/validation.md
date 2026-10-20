@@ -383,28 +383,126 @@ exit 0
 
 ## 6. CI's validate job on 1364630f, and the fixture fix c7581cc5
 
-- **The failure:** `validate` on `1364630f` failed with `ERROR: possible committed secret in tests/unit/test_pre_send.py`. The validator scans a file's whole text, and two parts of the fixture's source matched: its `= '` fragment and its own variable name `SECRET = "`.
-- **The fix, c7581cc5:** the fixture joins its `=` at runtime and the variable is named `LEAK`.
-- **Checked:** the validator now passes on the whole tree, and the caps are unchanged.
+- **The failure:** `validate` on `1364630f` failed with `ERROR: possible committed secret in tests/unit/test_pre_send.py`. The validator scans a file's whole text, and two parts of the fixture's source matched: its `= '` fragment and its own variable name `<redacted:secret-pattern>s script
 
 ```text
+$ git rev-parse HEAD
+d0679105dd1c4a498b785ce11f302b1d7b5d6192
+$ <the task env -i module command> -v
+test_a_fence_left_open_at_the_end_is_a_bash_block (__main__.PreSendTest.test_a_fence_left_open_at_the_end_is_a_bash_block) ... FAIL
+test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
+test_checker_diagnostics_never_echo_a_secret (__main__.PreSendTest.test_checker_diagnostics_never_echo_a_secret) ... FAIL
+test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
+test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
+test_input_refusal (__main__.PreSendTest.test_input_refusal) ... ok
+test_literal_home_refusal (__main__.PreSendTest.test_literal_home_refusal) ... ok
+test_owner_section_and_rows (__main__.PreSendTest.test_owner_section_and_rows) ... ok
+test_passes_and_prints_final_sha256 (__main__.PreSendTest.test_passes_and_prints_final_sha256) ... ok
+test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_matches_validator) ... ok
+test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
+test_the_owner_task_id_is_read_as_yaml (__main__.PreSendTest.test_the_owner_task_id_is_read_as_yaml) ... FAIL
+test_tilde_fences_are_bash_blocks (__main__.PreSendTest.test_tilde_fences_are_bash_blocks) ... FAIL
+
+======================================================================
+FAIL: test_a_fence_left_open_at_the_end_is_a_bash_block (__main__.PreSendTest.test_a_fence_left_open_at_the_end_is_a_bash_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 159, in test_a_fence_left_open_at_the_end_is_a_bash_block
+    self.refused(
+    ~~~~~~~~~~~~^
+        self.run_send(self.task("\n```bash\necho ok\n```\n\n````bash\nif then\n")), "bash-syntax", "block(s) 2"
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 67, in refused
+    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 4be5b78cfdf5c59181abfae7e5cb2e3473221d63178d667c541eefd553be4f8c
+
+
+======================================================================
+FAIL: test_checker_diagnostics_never_echo_a_secret (__main__.PreSendTest.test_checker_diagnostics_never_echo_a_secret)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 151, in test_checker_diagnostics_never_echo_a_secret
+    self.assertNotIn("hunter2x", result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'hunter2x' unexpectedly found in 'consistency: refused (Traceback (most recent call last): File "$TMPDIR/tmpagg61rya/repo/scripts/orchestrator/task-consistency-check.py", line 150, in <module> sys.exit(main()) ~~~~^^ File "$TMPDIR/tmpagg61rya/repo/scripts/orchestrator/task-consistency-check.py", line 143, in main fails = check(p, args.root) File "$TMPDIR/tmpagg61rya/repo/scripts/orchestrator/task-consistency-check.py", line 48, in check fm = front(text := p.read_text()) File "$TMPDIR/tmpagg61rya/repo/scripts/orchestrator/task-consistency-check.py", line 40, in front return yaml.safe_load(text.split("\\n---\\n", 1)[0].lstrip("-\\n")) ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/__init__.py", line 125, in safe_load return load(stream, SafeLoader) File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/__init__.py", line 81, in load return loader.get_single_data() ~~~~~~~~~~~~~~~~~~~~~~^^ File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/constructor.py", line 49, in get_single_data node = self.get_single_node() File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 36, in get_single_node document = self.compose_document() File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 55, in compose_document node = self.compose_node(None, None) File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 84, in compose_node node = self.compose_mapping_node(anchor) File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 133, in compose_mapping_node item_value = self.compose_node(node, item_key) File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 82, in compose_node node = self.compose_sequence_node(anchor) File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/composer.py", line 110, in compose_sequence_node while not self.check_event(SequenceEndEvent): ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^ File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/parser.py", line 98, in check_event self.current_event = self.state() ~~~~~~~~~~^^ File "~/.cache/uv/archive-v0/31F2mEsBsyaNJEyC/lib/python3.15/site-packages/yaml/parser.py", line 483, in parse_flow_sequence_entry raise ParserError("while parsing a flow sequence", self.marks[-1], "expected \',\' or \']\', but got %r" % token.id, token.start_mark) yaml.parser.ParserError: while parsing a flow sequence in "<unicode string>", line 5, column 6: bad: [ password = \'hunter2x\' ^ expected \',\' or \']\', but got \':\' in "<unicode string>", line 6, column 14: allowed_files: ^)\nsecret-pattern: refused (1 match(es) on line(s) 6)\nsha256: 3ebe931903df368de4a3af508a4b91609d36ad754319145c74b23fbfba2feeab\n'
+
+======================================================================
+FAIL: test_the_owner_task_id_is_read_as_yaml (__main__.PreSendTest.test_the_owner_task_id_is_read_as_yaml)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 167, in test_the_owner_task_id_is_read_as_yaml
+    self.refused(self.run_send(path), "owner-section", "missing")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 67, in refused
+    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 44a79eb2a05a624831591a1b2fef007fca345eb3927b48be9412bd4e9e174a44
+
+
+======================================================================
+FAIL: test_tilde_fences_are_bash_blocks (__main__.PreSendTest.test_tilde_fences_are_bash_blocks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 155, in test_tilde_fences_are_bash_blocks
+    self.refused(self.run_send(self.task("\n~~~bash\nif then\n~~~\n")), "bash-syntax", "block(s) 1")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 67, in refused
+    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 131f000be396b7b91c3fa5df2e072a6ee173a30de081c0afdf442eccb64036d4
+
+
+----------------------------------------------------------------------
+Ran 13 tests in 5.868s
+
+FAILED (failures=4)
+exit 1
+```
+
+## R2. Revise 1, green at c1ba793d: the module, the shell checks, ruff, the preflight on its dispatched text, caps
+
+```text
+$ git rev-parse HEAD
+c1ba793de9e4e79390dcc9f9c7f6a089c65e2a09
+$ <the task env -i module command> -v
+test_a_fence_left_open_at_the_end_is_a_bash_block (__main__.PreSendTest.test_a_fence_left_open_at_the_end_is_a_bash_block) ... ok
+test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
+test_checker_diagnostics_never_echo_a_secret (__main__.PreSendTest.test_checker_diagnostics_never_echo_a_secret) ... ok
+test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
+test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
+test_input_refusal (__main__.PreSendTest.test_input_refusal) ... ok
+test_literal_home_refusal (__main__.PreSendTest.test_literal_home_refusal) ... ok
+test_owner_section_and_rows (__main__.PreSendTest.test_owner_section_and_rows) ... ok
+test_passes_and_prints_final_sha256 (__main__.PreSendTest.test_passes_and_prints_final_sha256) ... ok
+test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_matches_validator) ... ok
+test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
+test_the_owner_task_id_is_read_as_yaml (__main__.PreSendTest.test_the_owner_task_id_is_read_as_yaml) ... ok
+test_tilde_fences_are_bash_blocks (__main__.PreSendTest.test_tilde_fences_are_bash_blocks) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 5.320s
+
+OK
+exit 0
+$ bash -n scripts/orchestrator/pre-send.sh
+exit 0
+$ shellcheck -x scripts/orchestrator/pre-send.sh
+exit 0
+$ shfmt -i 4 -sr -d scripts/orchestrator/pre-send.sh
+exit 0
 $ ruff check --config ruff.toml tests/unit/test_pre_send.py
 All checks passed!
 exit 0
 $ ruff format --config ruff.toml --check tests/unit/test_pre_send.py
 1 file already formatted
 exit 0
-$ uv run --offline --no-project --python <pinned 3.15> --with pyyaml python -I scripts/validate-agent-assets.py | tail -1; echo exit
-agent asset validation ok
+$ scripts/orchestrator/pre-send.sh ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a01.md
+sha256: ebe84d21dc7d36f3896b3873651aa293720b00f3c05dfc9384a899d2195d6be8
 exit 0
-$ git diff --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e...HEAD
-4	0	.orchestration/dotfiles-T133-pre-send-check-a01/autoskill.md
-7	0	.orchestration/dotfiles-T133-pre-send-check-a01/learning.md
-90	0	.orchestration/dotfiles-T133-pre-send-check-a01/report.md
-11	0	.orchestration/dotfiles-T133-pre-send-check-a01/sandbox.md
-99	0	.orchestration/dotfiles-T133-pre-send-check-a01/task.md
-382	0	.orchestration/dotfiles-T133-pre-send-check-a01/validation.md
-89	0	scripts/orchestrator/pre-send.sh
-169	0	tests/unit/test_pre_send.py
-outside tests/ and .orchestration/: 89 of 90; under tests/: 169 of 220
+$ git diff --numstat 230b36767eec123f90dcd79edca76993d9bb9de7 (merge-base) -- scripts tests
+88	0	scripts/orchestrator/pre-send.sh
+193	0	tests/unit/test_pre_send.py
 ```

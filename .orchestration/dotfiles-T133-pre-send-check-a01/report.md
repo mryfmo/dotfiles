@@ -98,3 +98,19 @@ Every test failed before the script existed (validation §1, 20 failures over 9 
 - **The test's interpreter:** CI runs the test on CI's interpreter through the pinned-path symlink, so the test does not prove that the host's 3.15 pin exists.
 
 cost: n/a
+
+## Revise 1 (AGMSG-ACCEPTANCE status=revise round=1, 2026-10-20T10:05:50Z; previous head d0679105)
+
+The local review of `d0679105` found three problems. All three are fixed by running every check as one helper under the checker's own `uv run --no-config --no-project --offline --with pyyaml` interpreter.
+
+- **Commits:** the red tests are `2c437db2` and the fix is `c1ba793d`. Each new test is red at `d0679105` (validation §R1) and green at `c1ba793d` (§R2).
+- **Size:** the script is 88 of 90 lines and the tests are 193 of 220, measured from the merge-base `230b3676`.
+
+| Finding | Fix | Test (`PreSendTest::…`), red at d0679105, green at c1ba793d |
+| --- | --- | --- |
+| local:d067910:1 (P1), the checker's diagnostics printed raw | the helper runs the checker and prints its exit code and output on one line, with `SECRET_PATTERN` matches replaced by `[redacted]`; every refusal line passes through the same redaction | `test_checker_diagnostics_never_echo_a_secret` |
+| local:d067910:2 (P2), `~~~bash` and fences open at EOF were skipped | the fence is three or more backticks or tildes, closed by the same character at least as long, or open to the end of the text | `test_tilde_fences_are_bash_blocks`, `test_a_fence_left_open_at_the_end_is_a_bash_block` |
+| local:d067910:3 (P2), task_id read by sed and tr | task_id comes from `yaml.safe_load` of the front matter, split as the checker splits it | `test_the_owner_task_id_is_read_as_yaml` |
+
+- **Unavailable dependencies:** when uv, PyYAML or the pinned interpreter is missing, the preflight prints `consistency: refused (… unavailable: exit N)` and exits 1.
+- **The task copy:** unchanged (`ebe84d21`).

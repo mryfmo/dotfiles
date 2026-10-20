@@ -87,6 +87,20 @@ HOOK_BOOTSTRAP_PYTHON="/usr/bin/python3"
 
 set -euo pipefail
 
+HOOK_USER_HOME="$(/usr/bin/python3 -I -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
+readonly HOOK_USER_HOME
+readonly HOOK_TOOLS="${HOOK_USER_HOME}/.local/share/mise/installs"
+
+# @description Invoke installed Herdr without loading project mise configuration.
+function herdr() {
+    "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@"
+}
+
+# @description Invoke installed jq without loading project mise configuration.
+function jq() {
+    "${HOOK_TOOLS}/jq/latest/jq" "$@"
+}
+
 # @description Print usage information.
 function usage() {
     cat << 'USAGE'
@@ -483,7 +497,7 @@ function write_spawn_options() {
     fi
     printf '%s:\n' "$(worker_agmsg_type "${kind}")"
     for ((index = 0; index < ${#words[@]}; index += 2)); do
-        if [[ ${kind} == claude && ${words[index]} != --model && ${words[index]} != --effort ]]; then
+        if [[ ${kind} == claude && ${words[index]} != --model && ${words[index]} != --effort && ${words[index]} != --advisor ]]; then
             printf 'worker startup refused: worker profile: %s is an unenumerated launch input\n' "${words[index]}" >&2
             exit 2
         fi
@@ -1506,12 +1520,11 @@ function remove_shadowing_node_global() {
     local mise_tool="$1"
     local npm_package="$2"
 
-    command -v npm > /dev/null 2>&1 || return 0
-    command -v mise > /dev/null 2>&1 || return 0
+    [[ -x ${HOOK_TOOLS}/node/latest/bin/npm && -x ${HOOK_TOOLS}/node/latest/bin/node && -x ${HOOK_USER_HOME}/.local/bin/mise ]] || return 0
     # Never delete the only copy: heal only when the dedicated mise tool install exists.
-    mise where "${mise_tool}" > /dev/null 2>&1 || return 0
-    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
-        npm uninstall -g "${npm_package}" > /dev/null || true
+    "${HOOK_USER_HOME}/.local/bin/mise" where "${mise_tool}" > /dev/null 2>&1 || return 0
+    if "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/node/latest/bin/npm" list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+        "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/node/latest/bin/npm" uninstall -g "${npm_package}" > /dev/null || true
     fi
 }
 
@@ -1582,6 +1595,14 @@ function close_worker_tab() {
 # @arg $1 string Command name.
 function require_command() {
     local command_name="$1"
+
+    case "${command_name}" in
+    herdr) command_name="${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" ;;
+    jq) command_name="${HOOK_TOOLS}/jq/latest/jq" ;;
+    claude) command_name="${HOOK_TOOLS}/npm-anthropic-ai-claude-code/latest/bin/claude" ;;
+    codex) command_name="${HOOK_TOOLS}/npm-openai-codex/latest/bin/codex" ;;
+    node) command_name="${HOOK_TOOLS}/node/latest/bin/node" ;;
+    esac
 
     if ! command -v "${command_name}" > /dev/null 2>&1; then
         printf '%s command not found\n' "${command_name}" >&2
@@ -1912,12 +1933,12 @@ if [[ ${add_worker_mode} == true ]]; then
             if [[ $1 == tab && $2 == create ]]; then
                 local -a bindings=(--env "UV_CACHE_DIR=${UV_CACHE_DIR}" --env "UV_PYTHON_INSTALL_DIR=${UV_PYTHON_INSTALL_DIR}")
                 [[ ${seat_kind} != claude ]] || bindings+=(--env "CLAUDE_CONFIG_DIR=${CLAUDE_CONFIG_DIR}")
-                command herdr "$@" "${bindings[@]}"
+                "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@" "${bindings[@]}"
             else
-                command herdr "$@"
+                "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@"
             fi
         }
-        export seat_kind
+        export seat_kind HOOK_TOOLS
         export -f herdr
         HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
             "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
@@ -2058,6 +2079,7 @@ if [[ ${audit_mode} == true ]]; then
     require_command herdr
     require_command jq
     require_command codex
+    require_command node
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
@@ -2133,8 +2155,8 @@ if [[ ${audit_mode} == true ]]; then
     fi
     audit_last="${audit_out}.last.md"
     # A stale last-message file from an earlier run must never be judged.
-    printf -v audit_inner "cd -- %q && set -o pipefail && rm -f -- %q && codex%s exec --sandbox read-only -C %q -o %q %q 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
-        "${workdir}" "${audit_last}" "$(printf ' %q' "${audit_args[@]}")" "${workdir}" "${audit_last}" "${audit_prompt}" "${audit_out}" "${audit_marker}"
+    printf -v audit_inner "cd -- %q && set -o pipefail && rm -f -- %q && %q %q%s exec --sandbox read-only -C %q -o %q %q 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
+        "${workdir}" "${audit_last}" "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/npm-openai-codex/latest/bin/codex" "$(printf ' %q' "${audit_args[@]}")" "${workdir}" "${audit_last}" "${audit_prompt}" "${audit_out}" "${audit_marker}"
     herdr pane run "${audit_pane}" "bash -c $(printf '%q' "${audit_inner}")" > /dev/null
     # Unwrapped snapshots keep a pane narrower than the marker from hiding it.
     if ! wait_output="$(herdr pane wait-output "${audit_pane}" --regex "${audit_marker}:[0-9]+" --source recent-unwrapped --timeout "$((audit_timeout * 1000))")"; then

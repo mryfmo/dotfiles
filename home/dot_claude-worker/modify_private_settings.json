@@ -89,7 +89,7 @@ def entry(command):
     return {"hooks": [{"type": "command", "command": command, "onFailure": "block"}]}
 
 
-def delivery(role, storage=True):
+def delivery(role, storage=True, legacy_attach=False):
     prefix = PREFIX + "AGMSG_RESOLVE_PROJECT=0 "
     if storage:
         prefix += "AGMSG_STORAGE_PATH=" + shlex.quote(os.environ.get("AGMSG_STORAGE_PATH", "")) + " "
@@ -99,6 +99,8 @@ def delivery(role, storage=True):
     }
     if role == "main":
         attach = 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+        if not legacy_attach:
+            attach += 'HERDR_AGENTS_LAYOUT="${HERDR_AGENTS_LAYOUT}" HERDR_SOCKET_PATH="${HERDR_SOCKET_PATH}" CLAUDE_CODE_SESSION_ID="${CLAUDE_CODE_SESSION_ID}" CLAUDE_PID="${CLAUDE_PID}" AGMSG_AGENT_PID="${AGMSG_AGENT_PID}" '
         hooks["SessionStart"].append(entry(prefix + attach + GUARD + "herdr-agents"))
     return hooks
 
@@ -106,6 +108,10 @@ def delivery(role, storage=True):
 def legacy(hook, event, project):
     if hook.get("type") != "command" or set(hook) - {"type", "command", "onFailure", "timeout"}:
         return False
+    if event == "SessionStart" and any(
+        hook == delivery("main", storage, legacy_attach=True)[event][-1]["hooks"][0] for storage in (True, False)
+    ):
+        return True
     if event in EVENTS:
         old = (
             PREFIX
@@ -121,6 +127,12 @@ def legacy(hook, event, project):
         return False
     if words[:1] in (["bash"], ["/bin/bash"]):
         words = words[1:]
+    if len(words) >= 3 and words[1] == "claude-code" and Path(words[2]).is_absolute():
+        try:
+            if Path(words[2]).samefile(project):
+                words[2] = str(project)
+        except OSError:
+            return False
     expected = (
         [str(home / ".agents/skills/agmsg/scripts" / EVENTS[event]), "claude-code", str(project)]
         if event in EVENTS
@@ -391,6 +403,7 @@ if sys.argv[1:2] == ["--inventory"]:
 elif sys.argv[1:2] == ["--delivery"]:
     path, role = Path(sys.argv[2]), sys.argv[3]
     current = read_json(path) if path.exists() else {}
+    screen(current, path, delivery(role), path.parent.parent)
     write(path, current | {"hooks": delivery(role)})
 elif sys.argv[1:2] == ["--prepare"]:
     worktree, anchor = Path(sys.argv[2]).resolve(), source.parent

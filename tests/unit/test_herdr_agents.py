@@ -314,6 +314,20 @@ fi
         if jq is None:
             self.fail("jq is required for Herdr helper tests")
         (self.bin_dir / "jq").symlink_to(jq)
+        self.script = self.temp_dir / "herdr-agents"
+        probe = "HOOK_USER_HOME=\"$(/usr/bin/python3 -I -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')\""
+        self.script.write_text(SCRIPT.read_text().replace(probe, "HOOK_USER_HOME=" + shlex.quote(str(self.home_dir))))
+        self.write_executable("node", '#!/bin/bash\nexec "$@"\n')
+        for name, relative in {
+            "herdr": "github-ogulcancelik-herdr/latest/herdr",
+            "jq": "jq/latest/jq",
+            "claude": "npm-anthropic-ai-claude-code/latest/bin/claude",
+            "codex": "npm-openai-codex/latest/bin/codex",
+            "node": "node/latest/bin/node",
+        }.items():
+            target = self.home_dir / ".local/share/mise/installs" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(self.bin_dir / name)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -534,7 +548,7 @@ fi
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), *mode, str(self.workdir)],
+            ["bash", str(self.script), *mode, str(self.workdir)],
             cwd=cwd,
             env=env,
             check=False,
@@ -586,7 +600,7 @@ fi
             else {"stdin": stdin_fd if stdin_fd is not None else subprocess.DEVNULL}
         )
         return subprocess.run(
-            ["bash", str(SCRIPT), "--attach"],
+            ["bash", str(self.script), "--attach"],
             cwd=cwd or self.workdir,
             env=env,
             check=False,
@@ -606,7 +620,7 @@ fi
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), "--bootstrap-agmsg", str(self.workdir)],
+            ["bash", str(self.script), "--bootstrap-agmsg", str(self.workdir)],
             cwd=ROOT,
             env=env,
             check=False,
@@ -674,7 +688,7 @@ fi
             env.pop(key, None)
         env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = kind
         return subprocess.run(
-            ["bash", str(SCRIPT), "--directive"],
+            ["bash", str(self.script), "--directive"],
             cwd=cwd or self.workdir,
             env=env,
             check=False,
@@ -1836,6 +1850,10 @@ if [[ $1 == where ]]; then
 fi
 """,
         )
+        (self.home_dir / ".local/share/mise/installs/node/latest/bin/npm").symlink_to(self.bin_dir / "npm")
+        mise = self.home_dir / ".local/bin/mise"
+        mise.parent.mkdir(parents=True, exist_ok=True)
+        mise.symlink_to(self.bin_dir / "mise")
 
     def test_start_removes_node_global_agent_clis_shadowing_mise(self) -> None:
         self.install_npm_fake(installed=True)
@@ -2170,6 +2188,38 @@ exit {despawn_exit}
                 self.assertTrue(tab_creates)
                 self.assertFalse([line for line in tab_creates if "--env GH_" in line])
                 self.assertNotIn("shell_environment_policy.set.", options.read_text())
+
+    def test_add_worker_accepts_the_manifest_generated_advisor_option_and_rejects_configuration_source_overrides(self):
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+        module, manifest = load_generator(), load_manifest_fixture(self.home_dir)
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        generated = module.render_model_profiles_env(manifest)
+        for profile in ("standard", "deep"):
+            profiles.write_text(generated)
+            self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+            self.pane_list_path.write_text('{"result":{"panes":[]}}')
+            result = self.run_helper(
+                "--add-worker", ".claude/worktrees/" + profile, "--kind", "claude", "--profile", profile
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                "  --advisor: " + manifest["model_profiles"][profile]["claude"]["advisor"], options.read_text()
+            )
+        for flag in ("--settings", "--setting-sources", "--plugin-dir", "--mcp-config", "--add-dir"):
+            profiles.write_text(
+                generated
+                + '\nMODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model opus --effort high --advisor fable '
+                + flag
+                + ' payload"\n'
+            )
+            self.calls_path.write_text("")
+            result = self.run_helper(
+                "--add-worker", ".claude/worktrees/rejected", "--kind", "claude", "--profile", "standard"
+            )
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn(flag + " is an unenumerated launch input", result.stderr)
+            self.assertNotIn("spawn ", self.calls_path.read_text())
 
     def test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
@@ -4059,7 +4109,10 @@ esac
         self.assertRegex(
             inner,
             r"^cd -- \S+ && set -o pipefail && rm -f -- .+ && "
-            r"codex --profile audit exec --sandbox read-only -C \S+ -o .+ 2>&1 \| tee -- ",
+            + re.escape(str(self.home_dir / ".local/share/mise/installs/node/latest/bin/node"))
+            + " "
+            + re.escape(str(self.home_dir / ".local/share/mise/installs/npm-openai-codex/latest/bin/codex"))
+            + r" --profile audit exec --sandbox read-only -C \S+ -o .+ 2>&1 \| tee -- ",
         )
         self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
         marker = re.search(r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner)
@@ -4150,7 +4203,7 @@ esac
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            " && codex --profile audit-e2e exec --sandbox read-only -C ",
+            f" && {self.home_dir}/.local/share/mise/installs/node/latest/bin/node {self.home_dir}/.local/share/mise/installs/npm-openai-codex/latest/bin/codex --profile audit-e2e exec --sandbox read-only -C ",
             self.audit_inner_command(),
         )
         calls = self.calls_path.read_text().splitlines()
@@ -4259,7 +4312,8 @@ esac
         self.assertEqual(
             self.audit_codex_words(inner),
             [
-                "codex",
+                str(self.home_dir / ".local/share/mise/installs/node/latest/bin/node"),
+                str(self.home_dir / ".local/share/mise/installs/npm-openai-codex/latest/bin/codex"),
                 "--profile",
                 "audit",
                 "exec",
@@ -4273,7 +4327,7 @@ esac
             ],
         )
         # A stale last-message file from an earlier run is removed first.
-        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last))
+        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && "), str(last))
         self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
         self.assertRegex(inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$")
         self.assertIn(f"Audit last message: {last}\n", result.stdout)
@@ -5848,7 +5902,7 @@ esac
         worktree = self.prepare_boundary_fixture()
         for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
             path.parent.mkdir(parents=True, exist_ok=True)
-            project = worktree if path.parent.name == ".claude-worker" else self.home_dir / "Workspace/dotfiles"
+            project = worktree if path.parent.name == ".claude-worker" else self.workdir.resolve()
             old = shlex.join(
                 [str(self.home_dir / ".agents/skills/agmsg/scripts/check-inbox.sh"), "claude-code", str(project)]
             )

@@ -182,6 +182,50 @@ class ClaudeWorkerSettingsTest(unittest.TestCase):
             self.assertEqual(again.returncode, 0, again.stderr)
             self.assertEqual(again.stdout, result.stdout)
 
+    def test_bootstrap_delivery_migrates_only_recognised_delivery_hooks_and_refuses_unknown_handlers(self):
+        path = self.home / ".claude/settings.local.json"
+        path.parent.mkdir(parents=True)
+        script = ROOT / "home/dot_claude-worker/modify_private_settings.json"
+        env = dict(os.environ, CHEZMOI_HOME_DIR=str(self.home), CHEZMOI_SOURCE_DIR=str(self.home / "source"))
+        legacy = {
+            "type": "command",
+            "command": "/bin/bash "
+            + shlex.quote(str(self.home / ".agents/skills/agmsg/scripts/check-inbox.sh"))
+            + " claude-code "
+            + shlex.quote(str(self.home.resolve())),
+        }
+        path.write_text(json.dumps({"runtimeOnly": "keep", "hooks": {"Stop": [{"hooks": [legacy]}]}}))
+        for _ in range(2):
+            result = subprocess.run(
+                [sys.executable, "-I", str(script), "--delivery", str(path), "main"],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            value = json.loads(path.read_text())
+            self.assertEqual(value["runtimeOnly"], "keep")
+            self.assertEqual(len(value["hooks"]["Stop"]), 1)
+            self.assertIn("orchestrator-only.sh", value["hooks"]["Stop"][0]["hooks"][0]["command"])
+        for event, hook in (
+            ("PermissionRequest", {"type": "command", "command": "local-safety-check"}),
+            ("Stop", {"type": "command", "command": "local-safety-check"}),
+            ("Stop", {"type": "http", "url": "https://payload.invalid"}),
+        ):
+            with self.subTest(event=event, type=hook["type"]):
+                original = json.dumps({"hooks": {event: [{"hooks": [hook]}]}})
+                path.write_text(original)
+                result = subprocess.run(
+                    [sys.executable, "-I", str(script), "--delivery", str(path), "main"],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(path.read_text(), original)
+                self.assertIn(str(path), result.stderr)
+                self.assertIn("hooks." + event, result.stderr)
+
     def test_worker_settings_do_not_import_orchestrator_hooks(self):
         orchestrator = self.home / ".claude/settings.json"
         orchestrator.parent.mkdir()

@@ -622,6 +622,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         attachment = (
             prefix
             + 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+            + 'HERDR_AGENTS_LAYOUT="${HERDR_AGENTS_LAYOUT}" HERDR_SOCKET_PATH="${HERDR_SOCKET_PATH}" CLAUDE_CODE_SESSION_ID="${CLAUDE_CODE_SESSION_ID}" CLAUDE_PID="${CLAUDE_PID}" AGMSG_AGENT_PID="${AGMSG_AGENT_PID}" AGMSG_STORAGE_PATH="${AGMSG_STORAGE_PATH}" '
             + guard
             + "herdr-agents"
         )
@@ -678,6 +679,80 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         absolute = prefix + f'"{self.home_dir}/.claude/hooks/orchestrator-only.sh" format-edited-files.py'
         upgraded = self.merge(managed, json.dumps({"hooks": {"PostToolUse": [entry([absolute])]}}))
         self.assertEqual(json.loads(upgraded)["hooks"]["PostToolUse"], [entry([formatting, mapping])])
+
+    def test_attachment_hook_resolves_herdr_by_absolute_path_and_keeps_its_allowed_environment_under_the_clean_prefix(
+        self,
+    ):
+        from tests.unit.test_herdr_agents import HerdrAgentsTest
+        from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture, render_claude_template
+        from tests.unit.test_claude_worker_settings import run_hook
+
+        fixture = HerdrAgentsTest()
+        fixture.setUp()
+        self.addCleanup(fixture.tearDown)
+        fixture.install_orchestrator_seat_fakes()
+        home, anchor = fixture.home_dir, fixture.workdir.resolve()
+        installed = home / ".local/bin/common/herdr-agents"
+        installed.parent.mkdir(parents=True)
+        installed.write_bytes(fixture.script.read_bytes())
+        manifest = load_manifest_fixture(home)
+        manifest["claude"]["orchestrator_checkout"] = str(anchor)
+        generator = load_generator()
+        guard = home / ".claude/hooks/orchestrator-only.sh"
+        guard.parent.mkdir(parents=True)
+        text = generator.render_orchestrator_guard(
+            manifest, (ROOT / "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl").read_text()
+        )
+        guard.write_text(render_claude_template(text, home, home=str(home), raw=True))
+        guard.chmod(0o755)
+        command = json.loads(self.merge({"hooks": {"SessionStart": []}}, "{}"))["hooks"]["SessionStart"][0]["hooks"][0][
+            "command"
+        ]
+        allowed = dict(
+            HERDR_ENV="1",
+            HERDR_PANE_ID="w-attach:p1",
+            HERDR_WORKSPACE_ID="w-attach",
+            HERDR_AGENTS_LAYOUT="managed",
+            HERDR_SOCKET_PATH=str(home / ".config/herdr/herdr.sock"),
+            CLAUDE_CODE_SESSION_ID="sid-self",
+            CLAUDE_PID="777",
+            AGMSG_AGENT_PID="",
+            AGMSG_STORAGE_PATH=str(home / "store"),
+        )
+        for name in allowed:
+            self.assertIn(name + "=", command)
+        poison = home / "poison"
+        poison.write_text("touch " + str(home / "poison-ran"))
+        for layout in ("managed", ""):
+            with self.subTest(layout=layout):
+                result = run_hook(
+                    command, anchor, HOME=str(home), BASH_ENV=str(poison), **(allowed | {"HERDR_AGENTS_LAYOUT": layout})
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout)
+        self.assertFalse((home / "poison-ran").exists())
+        self.assertIn("PATH=/usr/bin:/bin", command)
+        self.assertIn(".local/share/mise/installs", installed.read_text())
+        self.assertNotIn(".local/share/mise/shims", installed.read_text())
+
+    def test_the_legacy_pretooluse_handler_is_migrated_not_duplicated_when_the_guard_is_added(self):
+        from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture, render_claude_template
+
+        policy = render_claude_template(
+            load_generator().render_claude_settings(load_manifest_fixture(self.source_dir)), self.source_dir
+        )
+        managed = policy["hooks"]["PreToolUse"]
+        custom = {"type": "command", "command": "custom-wrapper enforce-uv.sh"}
+        for legacy in ("~/.claude/hooks/enforce-uv.sh", str(self.home_dir / ".claude/hooks/enforce-uv.sh")):
+            current = {
+                "hooks": {
+                    "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": legacy}, custom]}]
+                }
+            }
+            once = self.merge(policy, json.dumps(current))
+            self.assertEqual(self.merge(policy, once), once)
+            groups = json.loads(once)["hooks"]["PreToolUse"]
+            self.assertEqual(groups, [{"matcher": "Bash", "hooks": [custom]}, *managed])
 
     def test_orchestrator_settings_keep_existing_policy(self):
         from tests.unit.test_generate_agent_configs import load_generator, load_manifest_fixture, render_claude_template

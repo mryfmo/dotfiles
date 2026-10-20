@@ -74,7 +74,13 @@ def is_managed_permission_hook(hook: Any) -> bool:
 
 
 HOOK_PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
-ATTACH_ENV = 'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+LEGACY_ATTACH_ENV = (
+    'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+)
+ATTACH_ENV = (
+    LEGACY_ATTACH_ENV
+    + 'HERDR_AGENTS_LAYOUT="${HERDR_AGENTS_LAYOUT}" HERDR_SOCKET_PATH="${HERDR_SOCKET_PATH}" CLAUDE_CODE_SESSION_ID="${CLAUDE_CODE_SESSION_ID}" CLAUDE_PID="${CLAUDE_PID}" AGMSG_AGENT_PID="${AGMSG_AGENT_PID}" AGMSG_STORAGE_PATH="${AGMSG_STORAGE_PATH}" '
+)
 
 
 def owned_hook_parts(hook: Any) -> list[str]:
@@ -90,9 +96,11 @@ def is_guarded_hook(hook: Any, selectors: dict[str, list[str]]) -> bool:
     if not isinstance(command, str) or not command.startswith(HOOK_PREFIX):
         return False
     tail = command[len(HOOK_PREFIX) :]
-    if tail.startswith(ATTACH_ENV):
-        tail = tail[len(ATTACH_ENV) :]
-        selectors = {"herdr-agents": []} if "herdr-agents" in selectors else {}
+    for attach in (ATTACH_ENV, LEGACY_ATTACH_ENV):
+        if tail.startswith(attach):
+            tail = tail[len(attach) :]
+            selectors = {"herdr-agents": []} if "herdr-agents" in selectors else {}
+            break
     parts = owned_hook_parts({"command": tail})
     if (
         parts
@@ -140,6 +148,18 @@ def is_managed_post_tool_use_hook(hook: Any) -> bool:
     )
 
 
+def is_managed_pre_tool_use_hook(hook: Any) -> bool:
+    return (
+        isinstance(hook, dict)
+        and hook.get("type") == "command"
+        and isinstance(hook.get("command"), str)
+        and (
+            is_guarded_hook(hook, {"enforce-uv.sh": []})
+            or hook["command"] in {"~/.claude/hooks/enforce-uv.sh", str(home_dir() / ".claude/hooks/enforce-uv.sh")}
+        )
+    )
+
+
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
     if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
         return False
@@ -173,6 +193,7 @@ def merge_managed_entries(current_hooks: Any, managed_entries: list[Any], is_man
 
 
 MANAGED_HOOK_PREDICATES = {
+    "PreToolUse": is_managed_pre_tool_use_hook,
     "PermissionRequest": is_managed_permission_hook,
     "SessionStart": is_managed_session_start_hook,
     "PostToolUse": is_managed_post_tool_use_hook,

@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a155be-aa12-72e2-b723-fb121b489cf6
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 指定されたタスク本文・threat_table・参照先の記録を読み、判断した対象と実際の実行対象が結び付く設計かを確認します。agmsg-orchestration と Ponytail の手順を参照し、読み取り専用でレビューします。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 42ms:
 ---
 name: agmsg-orchestration
@@ -286,7 +286,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -342,7 +342,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -1115,13 +1115,13 @@ exec
    769	(pasted at dispatch)
    770	```
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,220p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,220p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n -A 30 'Codex seat worklogs' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A 30 'Codex seat worklogs' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 165ms:
 ---
 name: ponytail
@@ -2113,11 +2113,11 @@ Item 0:
 
 **Managing output size constraints**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '220,410p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '220,410p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-ea3c4fb.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-a286915.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-ea3c4fb.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-a286915.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md' in ~/Workspace/dotfiles
  succeeded in 72ms:
    220	
    221	> ホスト内の制御（本節 1〜10）は事故と prompt injection による損害の抑制であり、文はそう書く。
@@ -2437,7 +2437,7 @@ Verdict: incorrect
 codex
 a02 は既存 worktree の起動前チェックを追加し、実行体の束縛や同一 UID の競合は別タスクの残余として明示しています。現在は、その分担を尊重したうえで、今回追加する設定チェック自体に未検証の実行経路が残るかを確認しています。
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '410,608p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '410,608p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    410	
    411	   These administrative capabilities remain available to every Claude seat; worker user lists cannot revoke them. They grant no worker authorization to leave the sandbox.
@@ -2643,7 +2643,7 @@ exec
 web search: 
 web search: https://code.claude.com/docs/en/settings
 exec
-/bin/zsh -lc "sed -n '30,65p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '30,65p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 - 2026-10-19T04:25:41Z: C-80 fifth review (`…-text-security-08e6ac7.md`): `Verdict: incorrect`, three P1 (converging from seven): (1) GH_CONFIG_DIR separates configuration, not Keychain access: gh keys credentials by host and user, so a same-UID worker reads the orchestrator token → D-024-23: credential separation needs a separate OS user (future P1-16); the GitHub boundary is detection (regime main-push check), stated as such; (2) the agmsg store every seat writes also selects executables: a team's `drivers.partition` path traversal makes storage.sh source a planted file during unsandboxed delivery → an upstream agmsg hardening task (row recorded) and a stated residual; (3) sandbox restrictions in user settings are overridable by project/local settings → the enforcement scope is managed settings (operator `sudo` step) and the worker denies cover `<worktree>/.claude/**` and `.mcp.json`. Design 5.14 items 0 and 1 amended; round 6 follows.
 
@@ -2683,7 +2683,7 @@ text-security:f810c30:1	hook-interpreter-binding
 - 2026-10-19T09:48:02Z: C-80 of the amendment-5 text (772cde0): `Verdict: incorrect` on two P1: the protected-path inventory omits `~/.agents/permgate-policy.yaml` (permgate rereads it per decision: binding the executable leaves its input writable); the hook's uv invocation runs Python without `-I`, so user-site startup code (`.pth`, `usercustomize.py`) could execute before permgate. Root cause (design tier): 5.14 item 1 enumerated executables, not their inputs; item 9 bound interpreters, not interpreter isolation. Design amended (item 1: inventory from inputs; item 9: `python -I` with a planted-user-site test). Decision: amendment 6 by the review-profile context (prompt `p115-a07-redesign-prompt.md`); a010 holds.
 
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-(20|23|26)|GIT_|symlink|case' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-(20|23|26)|GIT_|symlink|case' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 .orchestration/plans/024-design-quality.md:99:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
 .orchestration/plans/024-design-quality.md:103:1. **書き込み境界（前提 6、ランタイム別に正直に）** Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。worker 設定：除外コマンド無し、Herdr socket 無し、sandbox の allowWrite は自席 worktree と agmsg store と席別キャッシュだけ、`failIfUnavailable: true`、信頼パス（anchored checkout の `.claude/worktrees/` 以外、`~/.agents`、`~/.claude*`、`~/.local`、`~/.config`）への Edit deny（公式文書：file tool の permission 検査は要求パスと symlink 解決後のパスの両方に deny を適用し、symlink そのものへの書き込みは拒否する）、sandbox の強制範囲はユーザー設定ではなく **managed settings**（`/Library/Application Support/ClaudeCode/managed-settings.json`、公式文書 "Repository settings under an admin-required sandbox"：project/local 設定は sandbox を無効化したり除外・socket を足したりできない）に置く。chezmoi は user ではこのファイルを書けないので、描画した内容を操作者が `sudo` で一度配置する（操作者手順）。worker 設定は worktree 自身の `.claude/**` と `.mcp.json` への Edit deny（`//<anchored>/.claude/worktrees/*/.claude/**`）を持つ（Bash 側は sandbox 既定の settings/hooks の denyWithinAllow）。agmsg store（全席が書く）から配送 hook が driver や plugin を source する上流の経路（storage.sh の `drivers.partition` traversal、`db/trusted-plugins` と `plugins/partition/shared.sh` による差し替え承認）は別タスク（agmsg hardening）の行で、worker 設定は `~/.agents/skills/agmsg/plugins/**` と `~/.agents/skills/agmsg/db/trusted-plugins` への書き込みを deny し（Edit deny は sandbox の deny にも合流する）、hook 側は store 由来の設定値を検証するまで残余と書く。managed settings の配置先は OS で異なる（macOS `/Library/Application Support/ClaudeCode/managed-settings.json`、Linux `/etc/claude-code/managed-settings.json`）。hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。公式文書：linked worktree の session は **main checkout の `.claude/settings.local.json` を読む**ので、worker 向けの hook を worktree の settings.local.json に書いても読まれず、逆に orchestrator の local hooks が worker session でも走る。したがって orchestrator 側の local hooks も guard 経由にし、worker 側の hook は worker config dir の settings に置く。Edit deny の一覧は `git ls-tree` ではなく描画時の静的一覧（manifest に列挙、`.agents/worklog/**` と `.agents/worklog/uv-cache/**` を含む）とし、`~/.agents/**` の全面 deny は agmsg store の書き込みと矛盾するので、`~/.agents/agent-config.yaml`、`~/.agents/skills/**/scripts/**`、`~/.agents/model-profiles.env` などストア以外を列挙する。公式文書で確認した事実（2026-10-19）：`Edit(path)` の deny は Write/MultiEdit/NotebookEdit にも効き、deny → ask → allow の順で最初の一致が決まる；ただし Read/Edit の deny は **Bash sandbox の設定にも合流する**（"Paths and domains from both sandbox settings and permission rules are merged into the final sandbox configuration"）ので、ユーザー設定（全席共有）に `.orchestration/**` の Edit deny を書くと orchestrator の Bash による記録書き込みも止まる。hook は起動時に固定されず、設定ファイルの編集は file watcher が即座に反映する。`sandbox.failIfUnavailable` の既定は fail-open（依存が無ければ sandbox 無しで実行）。したがって Claude 席の境界は Edit deny 規則ではなく、**ユーザーレベルの PreToolUse hook**（`~/.claude/hooks/worker-write-boundary`、chezmoi が描画、`/bin/sh` または絶対パスの `python3 -I`）で作る：cwd の realpath が `<anchored>/.claude/worktrees/` 配下の session では、Write/Edit/MultiEdit/NotebookEdit の対象が cwd の外、または `<cwd>/.claude/**`・`<cwd>/.mcp.json` のとき `permissionDecision: deny` を返す。Bash 側は sandbox の既定 `denyWithinAllow`（settings、hooks）と `allowWrite`（自席 worktree）が担う。`failIfUnavailable: true` を全席に置く。 Codex 席は sandbox（workspace-write）がツールの書き込み全部を自席の worktree と列挙パスに限る。Claude 席は Seatbelt sandbox が Bash を限るだけで、Write/Edit/MultiEdit/NotebookEdit、hook、MCP プロセスは sandbox 外で動き、permission policy（permgate の決定論ポリシー）が path で拒否しない限り anchored checkout や `~/.agents` にも書ける（2026-10-19 時点、描画済み設定にその deny は無い）。したがって前提 6 は「Codex 席は成立、Claude 席は P1-15 が描画設定に Edit の path deny を入れるまで残余」と書く。P1-15 以前に「worker は信頼ルートに書けない」と書く文は誤りで、C-80 が拒否する。P1-15 が入るまで、承認の出所は項目 8 の「コミット済み台帳」で守る。書き込みは自席の worktree（`.claude/worktrees/<name>`）、scratch、列挙されたツールキャッシュに限る。anchored checkout（`.claude/worktrees/` 以外）、`~/.agents/agent-config.yaml`、`~/.claude/hooks`、信頼ルートのバイナリ、orchestrator の証跡・スナップショット・lock は worker から書けない。render テストが描画後の deny を検証する。残余は「どの席 sandbox にも属さない同一 UID プロセス」と、Worker Playbook step 4 が sandbox 外に出す少数のコマンド（gh）。後者は D-024-17（P1-15）で絶対パスの実行体に束縛する。 The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19).
@@ -2739,7 +2739,7 @@ exec
 web search: 
 web search: '.mcp.json'
 exec
-/bin/zsh -lc "sed -n '21,39p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '21,39p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 52ms:
 - 2026-10-19T03:35:17Z: the revised P1-15 text (prompt `p115-a01r-redesign-prompt.md`, 320 lines) installed: the Claude-seat boundary as the user-level PreToolUse hook `executable_worker-write-boundary.py` (session-cwd classification, canonical target checks), `failIfUnavailable: true`, the Python `-I` gh-trusted wrapper with a subcommand allowlist, the committed ledger at the ls-remote sha, per-seat caches; checker OK; the second C-80 review started 03:38Z.
 - 2026-10-19T03:42:19Z: C-80 second review of the P1-15 text (`…-text-security-67415f5.md`): `Verdict: incorrect`, seven P1: the hook classifies by the mutable event cwd (a worker can cd out) → classify by CLAUDE_PROJECT_DIR; project hooks execute worker-writable scripts (`scripts/agent-stop-gate.sh`, `.claude/hooks/*.py`, PATH-resolved prettier with worker config) → hooks move out of the tracked `.claude/settings.json` into generated local settings, worker seats get a minimal trusted hook set; `python -I` does not neutralize LD_PRELOAD on Linux for the excluded wrapper → the outside-sandbox gh path is abandoned if gh can run inside the sandbox (CA trust experiment 03:4xZ); `gh pr create` runs git against the caller repository without the git controls → moot when gh is sandboxed; `refs/replace` redirects `git show <sha>` → `--no-replace-objects` (5.14 item 8); a worker's own sandboxed background child can swap a validated path before the unsandboxed file-tool write → stated as the residual it is; the hook lacks a failure policy → every error path exits 2 (fail-closed) with tests.
@@ -2762,7 +2762,7 @@ exec
 - 2026-10-19T04:46Z: C-80 seventh review (`…-text-security-519afd7.md`): `Verdict: incorrect`, one P1 and one P2, both consequences of the env -i decision: `env -i` strips CLAUDE_PROJECT_DIR, which the guard needs (every hook would exit 0 without running) → the hook command re-exports the launch identity explicitly after env -i; the pinned PATH removes ruff, prettier and terminal-browser from the orchestrator's formatter and map hooks → in orchestrator sessions the guard runs them with a rendered PATH of the trusted root's absolute tool directories. Round 8 (local) follows.
 
 exec
-/bin/zsh -lc "sed -n '40,56p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '40,56p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 - 2026-10-19T04:5xZ: round-8 P1-15 text installed (env -i with the launch identity re-exported; role-specific PATH in the guard); checker OK; the eighth C-80 review started.
 - 2026-10-19T05:41Z: C-80 ninth review (`…-text-security-435275a.md`): `Verdict: correct`. The text is dispatched to a010 (wJ:p5, worker-e; a012 is on its #412 revise) at 05:4xZ with the counters and the review history pasted in its Checks block; a05 follows on the same seat after this merge.
@@ -2786,16 +2786,16 @@ text-security:f589c7c:1	legacy-hook-binding
 web search: 
 web search: https://code.claude.com/docs/en/settings-reference
 exec
-/bin/zsh -lc '/usr/bin/printenv PATH' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc '/usr/bin/printenv PATH' in ~/Workspace/dotfiles
  succeeded in 0ms:
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 exec
-/bin/zsh -lc 'ls -l /Users/a0004262/.local/bin/claude /Users/a0004262/.local/share/mise/shims/claude /Users/a0004262/.claude/settings.schema.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'ls -l ~/.local/bin/claude ~/.local/share/mise/shims/claude ~/.claude/settings.schema.json' in ~/Workspace/dotfiles
  exited 1 in 0ms:
-ls: /Users/a0004262/.claude/settings.schema.json: No such file or directory
-ls: /Users/a0004262/.local/bin/claude: No such file or directory
-lrwxr-xr-x  1 a0004262  staff  31 Sep 30 13:43 /Users/a0004262/.local/share/mise/shims/claude -> /Users/a0004262/.local/bin/mise
+ls: ~/.claude/settings.schema.json: No such file or directory
+ls: ~/.local/bin/claude: No such file or directory
+lrwxr-xr-x  1 a0004262  staff  31 Sep 30 13:43 ~/.local/share/mise/shims/claude -> ~/.local/bin/mise
 
 **Reviewing environment and class structure**
 codex
@@ -2803,12 +2803,12 @@ codex
 web search: 
 web search: 
 exec
-/bin/zsh -lc 'ls /Users/a0004262/.local/share/mise/installs/claude-code' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'ls ~/.local/share/mise/installs/claude-code' in ~/Workspace/dotfiles
  exited 1 in 0ms:
-ls: /Users/a0004262/.local/share/mise/installs/claude-code: No such file or directory
+ls: ~/.local/share/mise/installs/claude-code: No such file or directory
 
 exec
-/bin/zsh -lc "git show ea3c4fb84bbcf2419a17946fdd1ea68b2355102e:home/dot_local/bin/common/executable_herdr-agents | sed -n '270,460p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git show ea3c4fb84bbcf2419a17946fdd1ea68b2355102e:home/dot_local/bin/common/executable_herdr-agents | sed -n '270,460p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
     local listed
 
@@ -2899,7 +2899,7 @@ function ensure_worker_delivery() {
         if [[ -f ${legacy} ]]; then
             temporary="$(mktemp "${legacy}.XXXXXX")"
             if ! CHEZMOI_HOME_DIR="${HOME}" "${HOOK_BOOTSTRAP_PYTHON}" -I \
-                "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --legacy "${worktree}" < "${legacy}" > "${temporary}"; then
+                "${ORCHESTRATOR_CHECKOUT}~/modify_private_settings.json" --legacy "${worktree}" < "${legacy}" > "${temporary}"; then
                 rm -- "${temporary}"
                 return 1
             fi
@@ -2910,7 +2910,7 @@ function ensure_worker_delivery() {
         [[ -f ${input} ]] || input=/dev/null
         temporary="$(mktemp "${settings}.XXXXXX")"
         CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" \
-            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" < "${input}" > "${temporary}"
+            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}~/modify_private_settings.json" < "${input}" > "${temporary}"
         mv -- "${temporary}" "${settings}"
         write_claude_delivery "${settings}" "${worktree}" worker
         write_claude_delivery "${ORCHESTRATOR_CHECKOUT}/.claude/settings.local.json" "${ORCHESTRATOR_CHECKOUT}" main
@@ -3004,7 +3004,7 @@ function codex_worktree_writable_roots() {
 
 **Verifying script behavior and schema paths**
 exec
-/bin/zsh -lc 'ls /Users/a0004262/.local/share/mise/installs' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'ls ~/.local/share/mise/installs' in ~/Workspace/dotfiles
  succeeded in 0ms:
 age
 aqua-micro-editor-micro
@@ -3049,30 +3049,30 @@ web search: https://code.claude.com/docs/en/settings-reference.md
 web search: 
 web search: site:code.claude.com/docs/en/settings-reference "HOME" "env" ...
 exec
-/bin/zsh -lc "rg --files /Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code | rg '(cli\\.js|schema.*json|package.json)"'$'"'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files ~/.local/share/mise/installs/npm-anthropic-ai-claude-code | rg '(cli\\.js|schema.*json|package.json)"'$'"'" in ~/Workspace/dotfiles
  succeeded in 137ms:
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.291/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.291/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.284/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.286/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.289/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.286/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.289/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.287/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.284/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.287/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.288/lib/node_modules/@anthropic-ai/claude-code/package.json
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.288/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.291/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.291/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.284/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.286/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.289/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.286/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.289/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.287/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.284/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.287/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.288/lib/node_modules/@anthropic-ai/claude-code/package.json
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.288/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/package.json
 
 **Considering static binary extraction**
 exec
-/bin/zsh -lc 'ls -l /Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/bin/claude /Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'ls -l ~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/bin/claude ~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64' in ~/Workspace/dotfiles
  succeeded in 0ms:
-lrwxr-xr-x@ 1 a0004262  staff  60 Oct 18 08:04 /Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/bin/claude -> ../lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
+lrwxr-xr-x@ 1 a0004262  staff  60 Oct 18 08:04 ~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/bin/claude -> ../lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe
 
-/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64:
+~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64:
 total 487440
 -rw-r--r--@ 1 a0004262  staff        147 Oct 18 08:04 LICENSE.md
 -rw-r--r--@ 1 a0004262  staff        153 Oct 18 08:04 README.md
@@ -3080,7 +3080,7 @@ total 487440
 -rw-r--r--@ 1 a0004262  staff        277 Oct 18 08:04 package.json
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '31,144p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '31,144p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
     31	threat_table:
     32	  - control: home/dot_agents/agent-config.yaml
@@ -3201,7 +3201,7 @@ exec
 **Using quoted shell multiline literal**
 exec
 /bin/zsh -lc "/usr/bin/python3 -c 'from pathlib import Path
-p=Path(\"/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude\")
+p=Path(\"~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude\")
 b=p.read_bytes()
 for needle in (b\"BASH_ENV\",b\"LD_PRELOAD\",b\"CLAUDE_CODE_SHELL_PREFIX\",b\"Object.assign(process.env\",b\"process.env.HOME=\"):
  print(\"TOKEN\",needle.decode())
@@ -3210,7 +3210,7 @@ for needle in (b\"BASH_ENV\",b\"LD_PRELOAD\",b\"CLAUDE_CODE_SHELL_PREFIX\",b\"Ob
   i=b.find(needle,start)
   if i<0: break
   print(b[max(0,i-160):i+240].decode(\"utf-8\",\"replace\"))
-  start=i+len(needle)'" in /Users/a0004262/Workspace/dotfiles
+  start=i+len(needle)'" in ~/Workspace/dotfiles
  succeeded in 284ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-zB3jw98n' (errno=Operation not permitted)
@@ -3250,7 +3250,7 @@ TOKEN process.env.HOME=
 **Considering home block filtering**
 exec
 /bin/zsh -lc "/usr/bin/python3 -c 'from pathlib import Path
-b=Path(\"/Users/a0004262/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude\").read_bytes()
+b=Path(\"~/.local/share/mise/installs/npm-anthropic-ai-claude-code/2.1.300/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude\").read_bytes()
 for needle in (b\"filterSettingsEnv(\",b\"\\\"HOME\\\"\",b\"settingsEnvForChildren\"):
  print(\"TOKEN\",needle.decode())
  start=0
@@ -3258,7 +3258,7 @@ for needle in (b\"filterSettingsEnv(\",b\"\\\"HOME\\\"\",b\"settingsEnvForChildr
   i=b.find(needle,start)
   if i<0: break
   print(repr(b[max(0,i-100):i+900].decode(\"utf-8\",\"replace\")))
-  start=i+len(needle)'" in /Users/a0004262/Workspace/dotfiles
+  start=i+len(needle)'" in ~/Workspace/dotfiles
  succeeded in 205ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-nEEOQmZ3' (errno=Operation not permitted)

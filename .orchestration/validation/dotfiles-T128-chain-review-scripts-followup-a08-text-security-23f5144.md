@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a158a6-2bd5-7da1-a34c-802387eacf0c
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 `agmsg-orchestration` と Ponytail の手順を確認し、指定された task、threat_table、引用された acceptance・review 記録を読み取り専用で監査します。実行時に参照されるバイナリ・ファイル・環境へ制御が結び付くかを重点的に確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 14ms:
 ---
 name: agmsg-orchestration
@@ -294,11 +294,11 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 99ms:
      1	---
      2	format: 2
@@ -697,9 +697,9 @@ b8213131f3818de6d14aae1ccb4b79a7ce7a99ba
 
 **Focusing on efficient reading**
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07.md; cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md.last.md; cat .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a07.md; cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-audit-a644a7d.md.last.md; cat .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|41)|Commands|\\(e.?\\)' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/tasks/dotfiles-T133-python-pin-a02.md; cat .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; git show a644a7d9:scripts/orchestrator/local-review.sh" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|41)|Commands|\\(e.?\\)' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/tasks/dotfiles-T133-python-pin-a02.md; cat .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; git show a644a7d9:scripts/orchestrator/local-review.sh" in ~/Workspace/dotfiles
  succeeded in 67ms:
 .orchestration/tasks/dotfiles-T133-python-pin-a02.md:18:  - {control: "workflow and interpreter or environment inputs", disposition: "residual: Commands bind the parent environment, interpreter and gh; dotfiles-T133-ci-efficiency-followup-a04 owns the deployed resolver, and CI retains its current interpreter setup."}
 .orchestration/tasks/dotfiles-T133-python-pin-a02.md:19:  - {control: "new or renamed scripts", disposition: "residual: no new or renamed script is authorized; Commands (d) executes only the inherited intended test module."}
@@ -1381,7 +1381,7 @@ counters: tasks=0 amendments=0 questions=0 results=0; task SHA256 in the AGMSG-T
 
 **Improving output clarity**
 exec
-/bin/zsh -lc "rg -n '"'^### 5'"\\.14|"'^### 5'"\\.15|"'^## |D-024-(21|29|30|41)'"' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^### 5'"\\.14|"'^### 5'"\\.15|"'^## |D-024-(21|29|30|41)'"' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a02.md" in ~/Workspace/dotfiles
  succeeded in 37ms:
 .orchestration/decisions.tsv:67:D-024-21	2026-10-19T04:0xZ	threat model and mechanism of the worker boundary: the host is not a security boundary between seats sharing one OS user; the hard boundary is GitHub (protected main, required checks, the orchestrator identity merge); approvals and gate evidence of record are read from GitHub at a sha through the API inside the sandbox; Claude worker seats run under their own CLAUDE_CONFIG_DIR (~/.claude-worker: no excluded commands, no Herdr socket, Edit denies on trusted paths with symlink coverage, failIfUnavailable true, minimal trusted hooks with onFailure block); host-local controls target accidental and injected damage and the texts say so (design 5.14 items 0, 1, 8)	three C-80 reviews of the P1-15 text (03:24Z, 03:42Z, 03:58Z) found host-level escapes no in-process check closes (symlink swap race, writable object database, hook descendants through shims, Herdr socket RPC, hook timeout fail-open); the documentation confirms per-directory settings and credentials (one operator login for the worker directory), onFailure block (>= 2.1.295; installed 2.1.300), and symlink-aware file-tool deny rules	default under the autonomy directive, reported 2026-10-19 13:0x JST; the worker-directory login is an operator step at the P1-15 deployment; scope=design,permission	applied-to-the-P1-15-text
 .orchestration/decisions.tsv:77:D-024-29	2026-10-19T21:39Z	Design 5.14 is frozen (plan 006 A1: three review rounds, then freeze with a residual list): items 0-10 are the contract; a text review finding that needs a new design sentence is recorded in the design's residual list and as an owner row, not as an amendment of the item and of the text under review, unless it names a P0/P1 that is exploitable in the proposed implementation.	items 1, 2, 3, 8 and 9 were amended five times on 10-19/20 (one per review round of P1-15 and P1-12), each amendment re-opening the texts that quote the item (C-88) and costing a review round each; the texts chased a moving design.	plan 006 A1; M-20261019-05; C-92	applied from 06:40 JST; the residual list is a new subsection `5.14 残余` in 024-design-quality.md (written at the next design edit)
@@ -1579,7 +1579,7 @@ exec
 codex
 a07 の監査が指摘した共有 object store の問題には、今回の private fetch が対応しています。一方、継承する実装はキャッシュを先に返し、ツール解決にも PATH を使っています。これらが参照先の設計契約で実際に制御されるか、Linux の sandbox 前提と合わせて確認しています。読み取り専用のため worklog や証跡ファイルは作成しません。
 exec
-/bin/zsh -lc "sed -n '95,172p' .orchestration/plans/024-design-quality.md; cat .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '95,172p' .orchestration/plans/024-design-quality.md; cat .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ### 5.14 残余（凍結後の計測事実、D-024-29）
 
@@ -1674,11 +1674,11 @@ web search:
 web search: site.mise.jdx.dev shims current directory mise configuration ...
 **Verifying PATH usage**
 exec
-/bin/zsh -lc 'git show a644a7d9:tests/unit/test_chain_review_scripts.py' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git show a644a7d9:tests/unit/test_chain_review_scripts.py' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-dbc8b67.md; cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-a644a7d.md; cat .orchestration/acceptance/dotfiles-T133-python-pin-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-dbc8b67.md; cat .orchestration/validation/dotfiles-T128-chain-review-scripts-followup-a07-local-review-a644a7d.md; cat .orchestration/acceptance/dotfiles-T133-python-pin-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "printf '%s\\n' \""'$PATH"; command -v git gh mise codex; rg -n '"'TMPDIR|/tmp|allowWrite|denyWrite|excludedCommands' home/dot_agents/agent-config.yaml; crit status --json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "printf '%s\\n' \""'$PATH"; command -v git gh mise codex; rg -n '"'TMPDIR|/tmp|allowWrite|denyWrite|excludedCommands' home/dot_agents/agent-config.yaml; crit status --json" in ~/Workspace/dotfiles
  succeeded in 147ms:
 """Exercise the review-side chain scripts (plan 021 step 6.3) in a temporary git repository.
 
@@ -2539,11 +2539,11 @@ text-security:906e395:0	correct
 - 2026-10-20T08:31Z: records PR #443 merged at 08:21:55Z moved main to 1f97c525, so `gh pr update-branch 437` -> head 7315cd9c (C-110); CI reruns; the chain follows in the serial queue (#441 first, started 2026-10-20T08:31Z).
 
  succeeded in 450ms:
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/gh
-/Users/a0004262/.local/bin/mise
-/Users/a0004262/.local/share/mise/shims/codex
+~/.local/share/mise/shims/gh
+~/.local/bin/mise
+~/.local/share/mise/shims/codex
 13:#   The Claude sandbox allowWrite list is rendered from the same entries.
 268:  # commands may write only the working directory, the session TMPDIR, and
 269:  # filesystem.allowWrite. The generator renders allowWrite from
@@ -2554,7 +2554,7 @@ text-security:906e395:0	correct
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -2562,7 +2562,7 @@ text-security:906e395:0	correct
 
 **Finalizing audit findings**
 exec
-/bin/zsh -lc "sed -n '250,315p' home/dot_agents/agent-config.yaml; rg -n 'GH_|GIT_|PATH|shell_environment_policy|review' home/dot_agents/agent-config.yaml home/dot_codex/config.toml.tmpl; git show a644a7d9:scripts/orchestrator/chain-integrate.sh | sed -n '1,155p'; git show a644a7d9:scripts/orchestrator/local-review.sh | nl -ba | sed -n '35,130p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '250,315p' home/dot_agents/agent-config.yaml; rg -n 'GH_|GIT_|PATH|shell_environment_policy|review' home/dot_agents/agent-config.yaml home/dot_codex/config.toml.tmpl; git show a644a7d9:scripts/orchestrator/chain-integrate.sh | sed -n '1,155p'; git show a644a7d9:scripts/orchestrator/local-review.sh | nl -ba | sed -n '35,130p'" in ~/Workspace/dotfiles
  succeeded in 74ms:
       - Bash(gh api -X DELETE:*)
       - Bash(gh api --method DELETE:*)
@@ -2903,7 +2903,7 @@ login=${out}
 There is a lot here about unresolved core security problems, especially around writable temporary directories, cache trustworthiness, and incomplete sandbox isolation on same-user workers. I'm sorting through contradictions about allowed access, test validity, and platform-specific command allowances to understand what can truly be enforced or remains risky.
 **Analyzing token management gaps**
 exec
-/bin/zsh -lc "rg -n 'threat.table|per.*control|closed:|residual:' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '112,133p' home/dot_agents/agent-config.yaml; cat .orchestration/validation/dotfiles-T133-python-pin-a02-text-security-68fd5f2.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a02-text-security-906e395.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'threat.table|per.*control|closed:|residual:' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '112,133p' home/dot_agents/agent-config.yaml; cat .orchestration/validation/dotfiles-T133-python-pin-a02-text-security-68fd5f2.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a02-text-security-906e395.md.last.md" in ~/Workspace/dotfiles
  succeeded in 51ms:
 33:- Delegate all repository-mutating work — file edits, builds, test runs, and git state changes — to seated workers, with at most one seated worker per git worktree and sequential assignments within one worktree. Add worktrees for parallelism; never use parallel `codex exec` or per-task Codex spawning, except that the read-only, non-interactive task-level audit the orchestrator runs during acceptance (the task-level audit bullet below) is not worker spawning and is permitted; it is identity-less. agmsg/herdr control-plane commands (`delivery.sh`, `watch.sh`, `actas-claim.sh`, `send.sh`, `join.sh`, and herdr agent/pane commands) are orchestrator-side exemptions.
 71:- A task that touches a trust boundary (anything the design tier lists, CI that decides a required check, code that executes PR-controlled input) carries a `threat_table` in its front matter: one `{control, disposition}` row per thing the PR or the orchestrator controls (the tree and its tests, task.md, workflow files, interpreter and environment files, in-process effects, new or renamed scripts, metadata separators). The row unit is one row per `allowed_files` entry, one row per listed control that is not a path (task metadata, workflow and interpreter or environment inputs, in-process effects, new or renamed scripts, metadata separators), carried by the declared test module's row where that is where the control acts, and one row per orchestrator effect from the fixed list (forced removal, merge, update-branch); under a wildcard `allowed_files` entry whose files are executed or applied (scripts, workflows, hooks, settings, the rules seats follow), one row per concrete file the PR changes; a wildcard over test fixtures or other data files keeps one row; C4 and C7b of `scripts/orchestrator/task-consistency-check.py` verify the path half before dispatch, and the task-file review checks the rest. A disposition takes one of three forms: `closed: tests/<file>::<name>`, the test that closes the row; `residual: <sentence>`, the compensating control; `out-of-scope: <task id>`, the task that owns the row. The task-file review checks the three shape rules by hand: a `closed` selector names a test present in the PR tree at acceptance, an `out-of-scope` owner is a task id in the design's `implementing_tasks`, a `residual` payload is a sentence of at least 20 characters (the gate's minimum for a reason). For a `closed` row it checks the selector's form only, since the test does not exist before implementation. Substance is the reviewers': the task-file review, the Bot and the auditor judge each row against the diff. The table is the task's completion condition: a missing row is added once, counted as an amendment, never fixed finding by finding.

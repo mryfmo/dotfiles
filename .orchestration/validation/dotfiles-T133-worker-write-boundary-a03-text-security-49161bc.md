@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a157ad-3919-7c22-9e48-ba279a5657e4
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 指定されたタスク文書と参照先の記録を読み、実行時の境界に設計上の制御が結び付くかを確認します。Ponytail と agmsg-orchestration のレビュー・worklog 手順を参照し、ファイルは変更しません。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 13ms:
 ---
 name: agmsg-orchestration
@@ -338,11 +338,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; if test -f .ua/meta.json; then cat .ua/meta.json; fi' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; if test -f .ua/meta.json; then cat .ua/meta.json; fi' in ~/Workspace/dotfiles
  succeeded in 120ms:
      1	---
      2	format: 2
@@ -1271,7 +1271,7 @@ Lists findings, changes no code.
 
 **Avoiding oversized chunks**
 exec
-/bin/zsh -lc "sed -n '170,340p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v170" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '170,340p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v170" in ~/Workspace/dotfiles
  succeeded in 2ms:
    170	  - control: new or renamed scripts
    171	    disposition: "residual: policy stays in the existing renderer, preparation script and guard; no new wrapper, state helper, interpreter resolver or executable-link manager is introduced."
@@ -1446,7 +1446,7 @@ exec
    340	| `local:79ea98a:3-4` | partial-fix | Retain custom-hook preservation and legacy PreToolUse migration. |
 
 exec
-/bin/zsh -lc "sed -n '341,480p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v341" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '341,480p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v341" in ~/Workspace/dotfiles
  succeeded in 18ms:
    341	| `security:c0f50fa:1` | input-inventory | Refuse undeclared credential-chain/provider selectors. |
    342	| `security:c0f50fa:2` | input-inventory | Refuse worker starts for repositories other than the validated anchor. |
@@ -1590,7 +1590,7 @@ exec
    480	15. Worker Playbook step 4 retains this exact test-asserted sentence:
 
 exec
-/bin/zsh -lc "sed -n '480,655p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v480" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '480,655p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | nl -ba -v480" in ~/Workspace/dotfiles
  succeeded in 26ms:
    480	15. Worker Playbook step 4 retains this exact test-asserted sentence:
    481	
@@ -1772,11 +1772,11 @@ exec
 codex
 設計は、起動前の入力検査と、別タスクに移した実行ファイルの固定を明確に分けています。既知の残余リスクはその前提で扱い、今回「拒否できる」「閉じた」とする範囲に検査漏れや実行とのずれがないかを照合しています。
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '"'^##.*5'"\\.14|"'^###.*5'"\\.14|D-024-(26|29|30|31|34|35)' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-{f7af699,9bd6198,efa211d,be969e3}.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^##.*5'"\\.14|"'^###.*5'"\\.14|D-024-(26|29|30|31|34|35)' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-{f7af699,9bd6198,efa211d,be969e3}.md.last.md" in ~/Workspace/dotfiles
  succeeded in 100ms:
 ---
 {
@@ -2001,14 +2001,14 @@ Full review comments:
 .orchestration/decisions.tsv:79:D-024-31	2026-10-20T00:11Z	D-024-28 (an asks-only first slice of P1-14 a05) is withdrawn: the operator's approval D-024-14 binds the three ask-rule removals together with the synchronous hook installation (one digest), so a slice that removes the asks alone is not the approved change and would need its own permission approval from the committed ledger; `make update` therefore stays coupled to the a05 merge, and the idle Claude seats are relieved by converting a seat to Codex (operator step) and by security:false work.	C-80 review 1293d6b of the slice text (2026-10-20T00:04Z): two P1 (replacement control deferred; approval digest covers removals plus hook) that no text amendment can close without a new operator permission approval.	design 5.14 item 8 (approvals from the committed ledger); D-024-13/14; D-024-28; C-80 1293d6b	applied 09:08 JST; the a05 remainder is split later along non-permission lines (proposal 1)
 .orchestration/decisions.tsv:82:D-024-34	2026-10-20T04:12Z	The files the worker's loader consumes at start and the regime need not preserve are launcher-generated at every start: the global state file `CLAUDE_CONFIG_DIR/.claude.json` is written from the declared shape (empty `mcpServers`, `projects` with exactly the validated identities and Boolean trust, `hasCompletedOnboarding: true`) plus identity fields carried from the previous file after screening (`oauthAccount` string members, `userID`); native persisted state (`numStartups`, onboarding, tips and changelog caches, per-project history, allowedTools, cost counters) is neither screened nor preserved; refusal with a named message stays for declared-structure violations (non-empty top-level `mcpServers`, undeclared project keys, non-Boolean trust flags, undeclared object or array members), as evidence of tampering. `CLAUDE_ENV_FILE` (amendment 1) belongs to the same family. A loader that requires another preserved field blocks and retasks (the text's rule), never widens silently.	a010's probe of the installed loader (2.1.300, sha256 475517ca…; reproduced by the orchestrator at 04:10Z) shows the loader itself writes fields outside any exact schema, so the allowlist re-plan's closed schema (D-024-29/30 lineage, a02 -> a03) refuses the worker's own state at the next start; a per-version native-field table would block every loader update until re-probed; generating the file realises design 5.14 item 1 (refuse any executable payload it did not write) by writing the whole file. Second re-plan of the input-inventory family (rows text-security:f7af699:1, worker:5067ed0:1 after the allowlist re-plan).	design 5.14 item 1; D-024-29; D-024-30; a03 record rows; M-20261019-05	applied 13:12 JST as a03 amendment 2 (review-profile text, C-80 round 3); the operator may redirect it once per class (the 13:15 JST report)
 .orchestration/decisions.tsv:83:D-024-35	2026-10-20T04:29Z	The launcher-generated global state file (D-024-34) carries no per-project inventory: `projects` is regenerated empty at every start and the workspace trust of the anchor is established by the launcher's existing acceptance of the trust dialog during spawn's readiness wait (`herdr-agents --add-worker`, SKILL 'Regime activation'), not by pre-generated project keys; sibling worker worktrees that share `CLAUDE_CONFIG_DIR` therefore never reject each other's keys. Refusal with a named message stays for a non-empty top-level `mcpServers` (tamper evidence). A loader needing another preserved field still blocks and retasks.	C-80 round 3 of a03 (efa211d, P2): all Claude workers share `.claude-worker/.claude.json` while S11 accepted only the anchor and the current worktree's keys, so worker B's start would reject worker A's key; enumerating sibling worktrees is the fourth inventory of the family to be found incomplete (2ae9e2c, ebbb71b, c0f50fa1, f7af699, 5067ed0, efa211d), so the inventory is removed rather than extended. Third re-plan of the input-inventory family; the operator may redirect it once per class.	D-024-34; design 5.14 item 1; a03 record rows; SKILL (trust-dialog acceptance)	applied 13:29 JST as a03 amendment 3 (review-profile text, C-80 round 4 under a new re-plan line, C-92)
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
 
 Checked all 85 threat rows, including five closed claims; all 22 allowed-file entries have rows. No additional findings beyond the disclosed residuals. Independent review corroborated the finding.
 
 📝 まとめ: Completed the read-only design and cited-context review; disposition remains with the orchestrator.
 
 Not checked: implementation, CI or live enforcement. No files changed; this finding does not establish a sandbox escape.
-Verdict: incorrectNo new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+Verdict: incorrectNo new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **86 threat rows**, including six narrowly scoped `closed` claims, and coverage of all 22 allowed-file entries. Each closed claim has a suitable proposed refusal fixture. Amendment 1 covers the previously omitted executable contents of `CLAUDE_ENV_FILE`, consistent with its [documented behavior](https://code.claude.com/docs/en/env-vars).
 
@@ -2019,7 +2019,7 @@ Reviewed SHA256: `9bd6198f1abec37ac618757c140b21fa799b987dbf4317c6a66ac16a9cefde
 📝 まとめ: Completed the read-only design and cited-context review; acceptance remains with the orchestrator.
 
 Not checked: implementation, CI or live enforcement. No files changed; deferred execution-binding risks remain.
-Verdict: correct[P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:431](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:431) — All Claude workers share `.claude-worker/.claude.json`, but S11 accepts only the anchor and current worktree’s project keys: after worker A generates valid state, starting worker B rejects A’s key before regeneration—even sequentially; distinguish validated sibling-worktree state from foreign roots and add an A→B startup fixture, since the named same-worktree restart test misses this regression.
+Verdict: correct[P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:431](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:431) — All Claude workers share `.claude-worker/.claude.json`, but S11 accepts only the anchor and current worktree’s project keys: after worker A generates valid state, starting worker B rejects A’s key before regeneration—even sequentially; distinguish validated sibling-worktree state from foreign roots and add an A→B startup fixture, since the named same-worktree restart test misses this regression.
 
 Checked all **87 threat rows**, including **8 closed claims**, and all **22 allowed-file entries**, alongside the cited acceptance records and reviews. No additional actionable finding beyond the explicitly deferred execution-binding risks. The executable-content check addresses the documented behavior of [`CLAUDE_ENV_FILE`](https://code.claude.com/docs/en/env-vars).
 
@@ -2028,7 +2028,7 @@ Reviewed SHA256: `efa211d1fa4e8fc90512fc88acf6e8cad1127d10a74defafe5adab2e2817fa
 📝 まとめ: Completed the read-only design review; one P2 finding is submitted for orchestrator disposition.
 
 Not checked: implementation, CI or live enforcement. No files changed; complete executable binding and same-UID isolation remain unestablished.
-Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:425](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:425) — The design screens `<managed-root>/skills` and explicitly excludes `<managed-root>/.claude/skills`, but the exact pinned Claude 2.1.300 loader consumes the latter; enterprise skill content therefore escapes preflight, while fixture502 tests the wrong directory. Correct the inventory and fixture to match actual consumption. [Official loading locations](https://code.claude.com/docs/en/skills#where-skills-live).
+Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:425](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:425) — The design screens `<managed-root>/skills` and explicitly excludes `<managed-root>/.claude/skills`, but the exact pinned Claude 2.1.300 loader consumes the latter; enterprise skill content therefore escapes preflight, while fixture502 tests the wrong directory. Correct the inventory and fixture to match actual consumption. [Official loading locations](https://code.claude.com/docs/en/skills#where-skills-live).
 
 Static inspection confirmed the loader’s SHA256 matches the task’s recorded `475517ca…2d3`; it constructs `join(UA(), ".claude", "skills")`, with `UA()` returning the platform managed directory. Independent review corroborated this finding.
 
@@ -2045,11 +2045,11 @@ web search:
 web search: https://code.claude.com/docs/en/skills
 **Confirming dependency on existing critical data**
 exec
-/bin/zsh -lc 'crit status --json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'crit status --json' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '90,155p' .orchestration/plans/024-design-quality.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '90,155p' .orchestration/plans/024-design-quality.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '95,220p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '95,220p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md" in ~/Workspace/dotfiles
  succeeded in 231ms:
 | 〃 | 提案: 最小の広げ方と threat_table、現在値との diff、適用後の検証 | AI | `ruleset-request.sh`（望む ruleset JSON と現在値の diff を出す）、`ruleset-verify.sh`（適用後に一致を確認し progress に書く） | P1-14 |
 | 〃 | 承認そのもの。トークンに権限が無い管理者操作（ruleset のトグル）、資格情報の投入（OAuth ログイン、API キー、relay トークン） | **人** | 構造上の制約（権限・資格情報は人が保持）。plan の「ユーザーが必要なこと」欄に時機付きで明記 | ユーザー |
@@ -2169,7 +2169,7 @@ Verdict: incorrect
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -2181,7 +2181,7 @@ web search:
 web search: 'Enterprise'
 **Reviewing plugin and file verification steps**
 exec
-/bin/zsh -lc "sed -n '1,169p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; sed -n '70,110p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; awk '/"'^  - control:/{n++} /disposition: "closed:/{c++} END {print "threat_rows=" n, "closed_rows=" c}'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,169p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; sed -n '70,110p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; awk '/"'^  - control:/{n++} /disposition: "closed:/{c++} END {print "threat_rows=" n, "closed_rows=" c}'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in ~/Workspace/dotfiles
  succeeded in 50ms:
 ---
 format: 2
@@ -2378,7 +2378,7 @@ web search: https://code.claude.com/docs/en/managed-settings
 **Confirming audit closure**
 **Ensuring final output consistency**
 exec
-/bin/zsh -lc "sed -n '55,72p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '55,72p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 local:79ea98a:4	advisory-p2
 local-finding: 79ea98a:4 not-applicable:advisory P2 owned by dotfiles-T133-worker-write-boundary-followup-a01 (- [P2] Screen existing main-local hooks before replacing them — home/dot_claude-worker/modify_private_settings.json:391-); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-followup-a01.md (69aae3928ab04247cb888bab165f9e14d09bcf03680d23a26c11a4cb1bf66e0a)
@@ -2400,7 +2400,7 @@ local:c0f50fa:4	advisory-p2
 local-finding: c0f50fa:4 not-applicable:advisory P2 owned by dotfiles-T133-worker-write-boundary-followup-a01 (- [P2] Reconcile Claude settings after Herdr installs its hook — scripts/generate-agent-configs.py:629-633); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-followup-a01.md (69aae3928ab04247cb888bab165f9e14d09bcf03680d23a26c11a4cb1bf66e0a)
 
 codex
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **87 threat rows**, including **8 closed claims**, and all **22 allowed-file entries**, alongside the cited acceptance records and reviews. The proposed fixtures support their narrowly scoped startup claims. Independent review reached the same conclusion.
 
@@ -2416,7 +2416,7 @@ hook: Stop
 hook: Stop Completed
 tokens used
 111,997
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **87 threat rows**, including **8 closed claims**, and all **22 allowed-file entries**, alongside the cited acceptance records and reviews. The proposed fixtures support their narrowly scoped startup claims. Independent review reached the same conclusion.
 

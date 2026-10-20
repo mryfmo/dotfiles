@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a1576a-fdd5-7250-829c-57434e79cdb0
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll review the task’s stated controls and cited evidence using the Ponytail and agmsg-orchestration guidance, focusing on whether each decision binds what actually executes. This session is read-only; I can’t switch its startup profile.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -338,7 +338,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
  M .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
  M .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
@@ -1094,7 +1094,7 @@ exec
    622	
    623	Not performed by the worker: local Bats, live enforcement, administrative installation, login, permission-policy deployment or session restarts.
 exec
-/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/"'^## /p'"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/"'^## /p'"' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ## Codex seat worklogs
 
@@ -1185,7 +1185,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '1,210p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '1,210p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -1399,7 +1399,7 @@ exec
    210	      ae1088a7fdef88152f6829c18440f9a4616b07dd4bde6381ed0f120d1b06be50.
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '204,395p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '204,395p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    204	premises:
    205	  - claim: >-
@@ -1595,7 +1595,7 @@ exec
    395	Every `CLAUDE_CODE_USE_*`, `AWS_*`, `ANTHROPIC_*`, `*_API_KEY`, `*_TOKEN` and `*_PROFILE` name refuses unless explicitly declared above with its exact allowed value. In particular refuse `CLAUDE_CODE_USE_BEDROCK`, `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE` and `AWS_PROFILE` in settings and launch inputs before any credential lookup or helper execution. Add no AWS configuration parser.
 
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; test ! -f .ua/meta.json || cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; test ! -f .ua/meta.json || cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 17ms:
  M .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
  M .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
@@ -1737,11 +1737,11 @@ exec
 
 **Managing token budget**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '395,493p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '395,493p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-f7af699.md.last.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-f7af699.md.last.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md' in ~/Workspace/dotfiles
  succeeded in 86ms:
    395	Every `CLAUDE_CODE_USE_*`, `AWS_*`, `ANTHROPIC_*`, `*_API_KEY`, `*_TOKEN` and `*_PROFILE` name refuses unless explicitly declared above with its exact allowed value. In particular refuse `CLAUDE_CODE_USE_BEDROCK`, `AWS_CONFIG_FILE`, `AWS_SHARED_CREDENTIALS_FILE` and `AWS_PROFILE` in settings and launch inputs before any credential lookup or helper execution. Add no AWS configuration parser.
    396	
@@ -1911,7 +1911,7 @@ The probes executed the reviewed screening functions with virtual filesystem inp
 
 Not checked: live enforcement and test-suite execution; GitHub CI was unavailable because `gh` could not connect. Runtime consequences above follow the documented loading behavior.
 
-Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
+Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
 
 Checked all 85 threat rows, including five closed claims; all 22 allowed-file entries have rows. No additional findings beyond the disclosed residuals. Independent review corroborated the finding.
 
@@ -2005,7 +2005,7 @@ local:c0f50fa:4	partial-fix
 codex
 The task explicitly defers executable binding and same-user races, so those limits alone are not findings. I’m checking whether its narrower startup guarantees still hold—especially for environment-file contents, Git-based root validation, and the handoff from preflight to launch.
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-f7af699.md.last.md; sed -n '1,48p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; rg -n '5\\.14|D-024-(26|29|30|31)|sanitized|GIT_|gh.*Linux' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-f7af699.md.last.md; sed -n '1,48p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; rg -n '5\\.14|D-024-(26|29|30|31)|sanitized|GIT_|gh.*Linux' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv" in ~/Workspace/dotfiles
  succeeded in 18ms:
 Reviewed [PR #431](https://github.com/mryfmo/dotfiles/pull/431) at `c0f50fa1383416240ad28959dbc4635afa777175`. Found three gaps in the claimed startup controls.
 
@@ -2024,7 +2024,7 @@ The probes executed the reviewed screening functions with virtual filesystem inp
 
 Not checked: live enforcement and test-suite execution; GitHub CI was unavailable because `gh` could not connect. Runtime consequences above follow the documented loading behavior.
 
-Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
+Verdict: incorrect[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
 
 Checked all 85 threat rows, including five closed claims; all 22 allowed-file entries have rows. No additional findings beyond the disclosed residuals. Independent review corroborated the finding.
 
@@ -2097,7 +2097,7 @@ text-security:ac9ce14:0	correct
 .orchestration/plans/024-design-quality.md:117:7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
 
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -35; /usr/bin/python3 -I -c 'import json; g=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in g.get(\"nodes\",[]) if \"herdr-agents\" in str(n.get(\"filePath\",\"\")) or \"claude-worker\" in str(n.get(\"filePath\",\"\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -35; /usr/bin/python3 -I -c 'import json; g=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in g.get(\"nodes\",[]) if \"herdr-agents\" in str(n.get(\"filePath\",\"\")) or \"claude-worker\" in str(n.get(\"filePath\",\"\"))))'" in ~/Workspace/dotfiles
  succeeded in 885ms:
 .claude/contextdb/contextdb/cli.py
 .claude/contextdb/contextdb/config.py
@@ -2186,7 +2186,7 @@ python3: error: couldn't create cache file '/tmp/xcrun_db-WOmHYjN1' (errno=Opera
 
 **Evaluating token limits and review process**
 exec
-/bin/zsh -lc "sed -n '95,128p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '95,128p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ### 5.14 残余（凍結後の計測事実、D-024-29）
 
@@ -2217,7 +2217,7 @@ web search: https://code.claude.com/docs/en/env-vars
 **Analyzing environment and path handling**
 **Verifying environment variable policies**
 exec
-/bin/zsh -lc "rg -n 'decision-not-bound|unbound-evidence|fail-open|D-024-26|binding|5204254' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,115p' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'decision-not-bound|unbound-evidence|fail-open|D-024-26|binding|5204254' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,115p' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 20:- 2026-10-19T03:2xZ: Claude Code documentation facts (the claude-code-guide agent, code.claude.com/docs sandboxing, hooks, permissions pages): excludedCommands match the whole call and every chained sub-command must match; `disableAllHooks` exists but no project-only switch; hooks are not captured at start (a file watcher applies edits); Read/Edit deny rules merge into the sandbox filesystem configuration (so an Edit deny on `.orchestration/**` would block the orchestrator's sandboxed record writes); `failIfUnavailable` is fail-open by default; `Edit(path)` rules cover Write/MultiEdit/NotebookEdit, path forms `//abs`, `~/`, project-relative, deny wins. Consequence (5.14 item 1 amended): the Claude-seat boundary is a user-level PreToolUse hook keyed on the session cwd (worktree sessions: deny file-tool writes outside the cwd and inside `<cwd>/.claude/**`, `<cwd>/.mcp.json`), not Edit deny rules; `failIfUnavailable: true`; the gh wrapper is Python under an absolute `-I` interpreter with a subcommand allowlist; the committed ledger is read at the `git ls-remote` sha.
 25:- 2026-10-19T03:58:10Z: C-80 third review of the P1-15 text (`…-text-security-ecc7ab5.md`): `Verdict: incorrect`, five P1: (1) a sandboxed worker can swap an allowed directory for a symlink after the hook validated, so the unsandboxed file tool overwrites a trusted path (the race is an escape, not a self-harm); (2) the writable object database defeats sha pinning: a replaced intermediate tree object redirects `git show <sha>:path` to an attacker blob (tree traversal does not re-hash intermediate objects); (3) hook descendants still resolve `python3` and `env bash` through shims (herdr-agent-state.sh, delivery scripts); (4) the Herdr unix socket in the worker sandbox lets a sandboxed client request host execution (`pane run`) through the server; (5) a hook timeout or kill is fail-open unless the per-hook `onFailure: "block"` (Claude Code ≥ 2.1.295) is set.
@@ -2358,7 +2358,7 @@ web search:
 web search: 'CLAUDE_ENV_FILE'
 **Analyzing environment variables and test coverage**
 exec
-/bin/zsh -lc "sed -n '78,107p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '49,72p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '78,107p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '49,72p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 re-plan: executable-binding (rows text-security:f810c30:1, text-security:772cde0:2, text-security:e5c055e:1) — specification: the text bound executables one finding at a time (the hook, then Python isolation, then the deploy check) instead of stating one rule for every trusted entrypoint; design: 5.14 items 2 and 9 state the rule for every entrypoint, checkers and test subjects included; implementation: amendment 8 is accepted only if it states the rule once with an enumeration of every command the task renders or runs as a trusted entrypoint (hook commands, the deploy-time check, the test subjects) and the review finds no fourth binding gap; verification: the render test resolves every enumerated command under PATH=/usr/bin:/bin. Decision (default, the operator may override in the map's decisions panel): at a fourth binding finding the executable-binding work splits into its own task (`dotfiles-T133-trusted-entrypoint-binding-a01`) and P1-15 ships the write boundary alone with the hook in its legacy form behind the managed deny rules.
 - Boundary 24 (PR #429) carries the amendment-6 text; the final amendment is pushed to that branch before the operator's approval is requested, so main carries the dispatched text when the P1-15 PR opens (the regime copy check).
@@ -2403,7 +2403,7 @@ local:c0f50fa:4	advisory-p2
 local-finding: c0f50fa:4 not-applicable:advisory P2 owned by dotfiles-T133-worker-write-boundary-followup-a01 (- [P2] Reconcile Claude settings after Herdr installs its hook — scripts/generate-agent-configs.py:629-633); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-followup-a01.md (69aae3928ab04247cb888bab165f9e14d09bcf03680d23a26c11a4cb1bf66e0a)
 
 exec
-/bin/zsh -lc "rg -n 'trusted_paths|excluded_commands|excludedCommands|CLAUDE_ENV_FILE|GIT_' home/dot_agents/agent-config.yaml .claude/worktrees/worker-e/home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl .claude/worktrees/worker-e/home/dot_local/bin/common/executable_herdr-agents | head -90" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'trusted_paths|excluded_commands|excludedCommands|CLAUDE_ENV_FILE|GIT_' home/dot_agents/agent-config.yaml .claude/worktrees/worker-e/home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl .claude/worktrees/worker-e/home/dot_local/bin/common/executable_herdr-agents | head -90" in ~/Workspace/dotfiles
  succeeded in 0ms:
 home/dot_agents/agent-config.yaml:285:    excludedCommands:
 home/dot_agents/agent-config.yaml:293:    linux_excluded_commands:
@@ -2414,7 +2414,7 @@ home/dot_agents/agent-config.yaml:293:    linux_excluded_commands:
 codex
 All six `closed` rows describe startup refusals, and their named fixtures can test those claims. The amended environment-file rule addresses the previous omission. The independent crosscheck also found no new gap beyond the disclosed residuals; I’m finishing the cited-history and threat-row coverage checks.
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 [P1] High confidence `.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:481` — Startup screening covers only four settings files, leaving executable MCP configuration in `<worktree>/.mcp.json` unchecked: existing settings can retain `enableAllProjectMcpServers: true`, and after workspace trust is accepted Claude can execute the unchecked server command; denying subsequent writes does not validate existing content. Item 11 inventories MCP fields but requires checking them only in the covered settings files, so its fixtures and threat row miss the actual execution source. Require screening or disabling that source before launch, with a pre-existing malicious-server fixture. [MCP loading and approval rules](https://code.claude.com/docs/en/mcp#project-server-approvals-and-workspace-trust).
 
@@ -2423,11 +2423,11 @@ All allowed-file entries have threat rows; none claims `closed`. I treated expli
 📝 まとめ: タスク本文・threat_table・参照された受け入れ記録とレビューを確認し、起動前検査の対象漏れを P1 として報告しました。判断は orchestrator に委ねます。
 
 Not checked: implementation tests, CI or live enforcement; no files changed. Unscreened MCP execution remains a design risk.
-Verdict: incorrect- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
+Verdict: incorrect- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
 
-- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
-- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
+- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
 
 All 22 allowed-file entries have threat rows; all 53 rows are residuals, with none claiming closure. Explicitly deferred executable binding, same-UID races and shared capabilities were not re-reported.
 
@@ -2454,7 +2454,7 @@ Complete executable binding, same-UID replacement races, shared capabilities and
 Not checked: implementation, CI or live enforcement; re-fetching plugin-loading documentation failed. No files changed.
 Verdict: correct
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-79ea98a.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-79ea98a.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 task: dotfiles-T133-worker-write-boundary-a02
@@ -2478,7 +2478,7 @@ The patch breaks default Claude worker startup and Herdr attachment. Configurati
 Full review comments:
 
 - [P1] Allow the manifest-generated advisor option for Claude workers — home/dot_local/bin/common/executable_herdr-agents:486-488
-  The committed `standard` and `deep` Claude profiles generate `--advisor fable`, but this allowlist rejects that option and exits 2 before spawning. Since the manifest defaults to a Claude worker with the standard profile, ordinary `herdr-agents --add-worker` now fails. Admit the supported advisor pair while continuing to reject configuration-source overrides, consistent with the [canonical profile rule](/Users/a0004262/.codex/AGENTS.md#L46-L47).
+  The committed `standard` and `deep` Claude profiles generate `--advisor fable`, but this allowlist rejects that option and exits 2 before spawning. Since the manifest defaults to a Claude worker with the standard profile, ordinary `herdr-agents --add-worker` now fails. Admit the supported advisor pair while continuing to reject configuration-source overrides, consistent with the [canonical profile rule](~/.codex/AGENTS.md#L46-L47).
 
 - [P1] Preserve the runtime dependencies of the attachment hook — home/dot_claude/modify_private_settings.json:243-245
   Inside Herdr, the clean prefix removes `HERDR_AGENTS_LAYOUT`, bypassing the managed-pane shortcut, and restricts PATH to `/usr/bin:/bin`. The attachment payload then requires `herdr` by bare name, although this repository installs it through mise. Reproducing that environment returns 127 with `herdr command not found`, preventing orchestrator attachment and seat claiming. Preserve the necessary launch state and make the trusted Herdr executable reachable; this changes agent-hook behavior covered by [AGENTS.md:71](AGENTS.md#L71).
@@ -2493,7 +2493,7 @@ The patch breaks default Claude worker startup and Herdr attachment. Configurati
 Full review comments:
 
 - [P1] Allow the manifest-generated advisor option for Claude workers — home/dot_local/bin/common/executable_herdr-agents:486-488
-  The committed `standard` and `deep` Claude profiles generate `--advisor fable`, but this allowlist rejects that option and exits 2 before spawning. Since the manifest defaults to a Claude worker with the standard profile, ordinary `herdr-agents --add-worker` now fails. Admit the supported advisor pair while continuing to reject configuration-source overrides, consistent with the [canonical profile rule](/Users/a0004262/.codex/AGENTS.md#L46-L47).
+  The committed `standard` and `deep` Claude profiles generate `--advisor fable`, but this allowlist rejects that option and exits 2 before spawning. Since the manifest defaults to a Claude worker with the standard profile, ordinary `herdr-agents --add-worker` now fails. Admit the supported advisor pair while continuing to reject configuration-source overrides, consistent with the [canonical profile rule](~/.codex/AGENTS.md#L46-L47).
 
 - [P1] Preserve the runtime dependencies of the attachment hook — home/dot_claude/modify_private_settings.json:243-245
   Inside Herdr, the clean prefix removes `HERDR_AGENTS_LAYOUT`, bypassing the managed-pane shortcut, and restricts PATH to `/usr/bin:/bin`. The attachment payload then requires `herdr` by bare name, although this repository installs it through mise. Reproducing that environment returns 127 with `herdr command not found`, preventing orchestrator attachment and seat claiming. Preserve the necessary launch state and make the trusted Herdr executable reachable; this changes agent-hook behavior covered by [AGENTS.md:71](AGENTS.md#L71).
@@ -2506,7 +2506,7 @@ Full review comments:
 ```
 
 exec
-/bin/zsh -lc "/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; awk '/"'^allowed_files:/{a=1;next} /''^after:/{a=0} a && /''^  - /{n++;p=substr($0,5);paths[p]=1} /''^  - control: /{c++;p=substr($0,14);controls[p]=1} /''^    disposition: "closed:/{closed++} END{print "allowed_files="n,"threat_rows="c,"closed_rows="closed;for(p in paths) if(!(p in controls))print "missing control:",p}'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; awk '/"'^allowed_files:/{a=1;next} /''^after:/{a=0} a && /''^  - /{n++;p=substr($0,5);paths[p]=1} /''^  - control: /{c++;p=substr($0,14);controls[p]=1} /''^    disposition: "closed:/{closed++} END{print "allowed_files="n,"threat_rows="c,"closed_rows="closed;for(p in paths) if(!(p in controls))print "missing control:",p}'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 9bd6198f1abec37ac618757c140b21fa799b987dbf4317c6a66ac16a9cefde24  .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md
 allowed_files=22 threat_rows=86 closed_rows=6
@@ -2516,7 +2516,7 @@ allowed_files=22 threat_rows=86 closed_rows=6
 
 I am confirming that no unsupported "closed" claims or missing threat rows were found, and the verdict covers only the task text without approving deployment, leaving acceptance to the orchestrator.
 codex
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **86 threat rows**, including six narrowly scoped `closed` claims, and coverage of all 22 allowed-file entries. Each closed claim has a suitable proposed refusal fixture. Amendment 1 covers the previously omitted executable contents of `CLAUDE_ENV_FILE`, consistent with its [documented behavior](https://code.claude.com/docs/en/env-vars).
 
@@ -2532,7 +2532,7 @@ hook: Stop
 hook: Stop Completed
 tokens used
 86,657
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **86 threat rows**, including six narrowly scoped `closed` claims, and coverage of all 22 allowed-file entries. Each closed claim has a suitable proposed refusal fixture. Amendment 1 covers the previously omitted executable contents of `CLAUDE_ENV_FILE`, consistent with its [documented behavior](https://code.claude.com/docs/en/env-vars).
 

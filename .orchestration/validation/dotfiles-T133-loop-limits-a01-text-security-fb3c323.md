@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a15437-3b5f-7b91-87b9-220228e2762f
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-loop-limits-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 タスク本文と参照先の受入記録・レビューを読み、設計上の判断が実際の実行対象に結び付くかを確認します。関連するレビュー手順と Ponytail スキルを使い、読み取り専用で進めます。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -439,11 +439,11 @@ on what you checked.
 Lists findings, changes no code.
 
 exec
-/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-loop-limits-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-loop-limits-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD' in ~/Workspace/dotfiles
  succeeded in 75ms:
      1	---
      2	format: 2
@@ -1398,7 +1398,7 @@ for blocked work, `evidence` (path array), and `tags`.
 
 **Avoiding oversized output**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-loop-limits-a01.md | sed -n '116,260p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-loop-limits-a01.md | sed -n '116,260p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    116	  - {"command": "sed -n '/^## Completion/,/^## Checks/p' .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md | shasum -a 256", "output": "23c9c45bb453ab4f880768874b5366afb4fbbaeadf18f9633eb1a393eea212fd  -"}
    117	  - {"command":"rg -n '\"codex\":|\"PATH\": f' tests/unit/test_orchestrator_tools.py | head -2 | paste -sd '|' -","output":"49:    \"codex\": \"#!/usr/bin/env bash\\n\"|86:            \"PATH\": f\"{bin_dir}{os.pathsep}{os.environ['PATH']}\","}
@@ -1535,13 +1535,13 @@ exec
    248	```
 **Tracking time budget**
 exec
-/bin/zsh -lc 'cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .ua/meta.json' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-loop-limits-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-loop-limits-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '/"'^### 5.14/,/''^### 5.15/p'"' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '/"'^### 5.14/,/''^### 5.15/p'"' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git diff --quiet; printf 'tracked_diff_exit=%s\\n' \""'$?"; command -v crit; command -v python3; command -v uv; command -v git' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --quiet; printf 'tracked_diff_exit=%s\\n' \""'$?"; command -v crit; command -v python3; command -v uv; command -v git' in ~/Workspace/dotfiles
  succeeded in 110ms:
 ---
 {
@@ -1594,22 +1594,22 @@ text-security:9ef8e5b:2	owner-unnamed
 
  succeeded in 241ms:
 tracked_diff_exit=1
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims/python3
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/bin/crit
+~/.local/share/mise/shims/python3
+~/.local/share/mise/shims/uv
 /opt/homebrew/bin/git
 
 **Reviewing read-only critique status**
 codex
 脅威表はすべて residual として記載され、未導入の実行基盤は dispatch 前の前提条件になっています。既知の同一 UID リスクを重ねて指摘するのではなく、残余リスクを認めた上でも制御が効かない箇所と、レビュー回数・入力・送信対象の結び付きを確認しています。
 exec
-/bin/zsh -lc 'crit status --json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'crit status --json' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|"'^0'"\\.|"'^1'"\\.|"'^2'"\\.|"'^3'"\\.|"'^4'"\\.|"'^5'"\\.|"'^6'"\\.|"'^7'"\\.|"'^8'"\\.|"'^9'"\\.|"'^10'"\\.' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|"'^0'"\\.|"'^1'"\\.|"'^2'"\\.|"'^3'"\\.|"'^4'"\\.|"'^5'"\\.|"'^6'"\\.|"'^7'"\\.|"'^8'"\\.|"'^9'"\\.|"'^10'"\\.' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-loop-limits-a01-text-security-{2011d34,4a941fb,9a2a0a4,9ef8e5b,fb3c323}.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-loop-limits-a01-text-security-{2011d34,4a941fb,9a2a0a4,9ef8e5b,fb3c323}.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -20' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -20' in ~/Workspace/dotfiles
  succeeded in 105ms:
 5:5.8 **多重並列時のボトルネック（スケールの天井）と対処。** 第 1 段階は今ある直列点を外すが、席を 4 → 6 → それ以上に増やすと別の天井に当たる。各天井を数で示し、対処と計測を plan に固定する。
 20:5.9 **PR 多重時の CI / Bot の最適化と品質確保（F5 の仕様。品質の後ろ盾は「main への push で全マトリクスが走り、赤なら凍結」）**
@@ -1660,8 +1660,8 @@ Every declared threat row was assessed. None claims `closed`; inherited Git, sym
 📝 まとめ: Completed the read-only design review; three findings remain for orchestrator disposition.
 
 Not checked: implementation, runtime tests, CI or deployed enforcement; no files changed. Same-user replacement and shared credentials remain acknowledged risks.
-Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Verdict mtimes do not preserve review order: restoring historical files can exhaust a renewed budget, as the cited acceptance record already documents at line 34; use persistent review-event ordering and test restoration.
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:180](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:180) — The claimed deferred owner does not name the review launcher or specify a Codex executable binding; passing the budget helper therefore cannot establish the promised bound launch—assign an actual owner and hold launcher activation until that binding is verified.
+Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Verdict mtimes do not preserve review order: restoring historical files can exhaust a renewed budget, as the cited acceptance record already documents at line 34; use persistent review-event ordering and test restoration.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:180](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:180) — The claimed deferred owner does not name the review launcher or specify a Codex executable binding; passing the budget helper therefore cannot establish the promised bound launch—assign an actual owner and hold launcher activation until that binding is verified.
 
 Every threat row was assessed. All ten allowed entries have rows; none claims `closed`. The inherited Git, symlink/case-identity and sandbox controls remain conditional on verified prerequisites.
 
@@ -1676,7 +1676,7 @@ Verdict: incorrectcat: .orchestration/validation/dotfiles-T133-loop-limits-a01-t
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1707,13 +1707,13 @@ Verdict: incorrectcat: .orchestration/validation/dotfiles-T133-loop-limits-a01-t
 **Analyzing graph query constraints**
 **Evaluating review record compatibility**
 exec
-/bin/zsh -lc "rg -n 'review|security|accept|resolver|codex|loop-limits' .orchestration/acceptance/dotfiles-T133-trusted-entrypoint-binding-a01.md .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md .orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a04.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'review|security|accept|resolver|codex|loop-limits' .orchestration/acceptance/dotfiles-T133-trusted-entrypoint-binding-a01.md .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md .orchestration/acceptance/dotfiles-T133-verdict-audit-pool-a04.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,380p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,380p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba scripts/orchestrator/acceptance-front-matter.py | sed -n '1,190p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/orchestrator/acceptance-front-matter.py | sed -n '1,190p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '1,230p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '1,230p'" in ~/Workspace/dotfiles
  succeeded in 114ms:
      1	#!/usr/bin/env bash
      2	# @file regime-counters.sh
@@ -2455,7 +2455,7 @@ exec
 
 **Assessing token budget and environment**
 exec
-/bin/zsh -lc 'cat scripts/regime-counters.sh' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat scripts/regime-counters.sh' in ~/Workspace/dotfiles
  succeeded in 0ms:
 #!/usr/bin/env bash
 # @file regime-counters.sh
@@ -2650,7 +2650,7 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
     (if $hash != "" then "reset: design_sha256=\($hash) redesign_source=\(if $src != "" then $src else "none" end) accepted_by=\($c.accepted_by | if length > 0 then join(",") else "none" end) source=\($s)" else empty end)' <<< "${github}"
 
 exec
-/bin/zsh -lc 'cat scripts/orchestrator/acceptance-front-matter.py' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat scripts/orchestrator/acceptance-front-matter.py' in ~/Workspace/dotfiles
  succeeded in 0ms:
 """acceptance-front-matter.py <task> <sweep-json> <pr-worktree> [--ledger <tsv>] [--audit-dispositions <tsv>]
 
@@ -2788,13 +2788,13 @@ if __name__ == "__main__":
 **Assessing import and lock handling**
 **Checking missing prerequisite entries**
 exec
-/bin/zsh -lc 'cat .orchestration/learning/mistakes/M-20261019-05-text-review-rounds-unbounded.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/learning/mistakes/M-20261019-05-text-review-rounds-unbounded.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'review launcher|Codex|codex|loop-limits' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'review launcher|Codex|codex|loop-limits' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg --files .orchestration/validation | rg '(ci-efficiency-followup-a04|verdict-audit-pool-a04|trusted-entrypoint-binding-a01).*last.md"'$'"'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/validation | rg '(ci-efficiency-followup-a04|verdict-audit-pool-a04|trusted-entrypoint-binding-a01).*last.md"'$'"'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n -A 16 -B 5 'threat.table' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A 16 -B 5 'threat.table' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 106ms:
 66-- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot checks as full verification.
 67-- Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; never delegate them to a worker, and keep `make require-crit-review` as the final integration step. Revisit only if worker-side model capability surpasses the orchestrator tier.
@@ -2878,7 +2878,7 @@ severity: P1
 codex
 レビュー回数の制御に具体的な抜けが見つかりました。同じ hash のレビューを再実行すると、出力ファイルを別名で残しても消費回数が増えない設計です。また、既存の初期レビュー行は新しい hash 形式に合わず、移行手順がないと再計画後も上限到達のままになります。参照先のレビューと照合して確定します。
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-ci-efficiency-followup-a04-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-verdict-audit-pool-a04-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-*.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-ci-efficiency-followup-a04-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-verdict-audit-pool-a04-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-*.md.last.md' in ~/Workspace/dotfiles
  succeeded in 1ms:
 - [P1] High confidence .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md:95 — On Linux, inherited `LD_PRELOAD`/`LD_AUDIT` can execute while loading `/bin/bash`, before `-p` or the first-statement sanitizer runs; require a trusted parent to supply the clean environment before exec. [Loader documentation](https://man7.org/linux/man-pages/man8/ld.so.8.html).
 - [P1] High confidence .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md:107 — Preserving caller-supplied `HOME` and deriving the trusted installation from it lets a counterfeit HOME redirect interpreter selection; deployment checks of the genuine installation do not bind this runtime input—anchor the installation root independently and test forged HOME.
@@ -2982,9 +2982,9 @@ Every threat row was assessed against the cited design, acceptance history and r
 📝 まとめ: Completed the read-only pre-dispatch security review; findings and acceptance authority remain with the orchestrator.
 
 Not checked: implementation tests or deployed enforcement; no files changed. Same-UID mutation and shared credentials remain acknowledged risks.
-Verdict: correct- [P1] High confidence [.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:130](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:130) The required shell-form hook starts an outer shell before `env -i`; no concrete control establishes that shell’s clean launch environment, so inherited Linux loader inputs can execute before the privileged parent validates anything—the “trusted caller” assumption remains unbound. [Hook execution semantics](https://code.claude.com/docs/en/hooks#exec-form-and-shell-form).
+Verdict: correct- [P1] High confidence [.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:130](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:130) The required shell-form hook starts an outer shell before `env -i`; no concrete control establishes that shell’s clean launch environment, so inherited Linux loader inputs can execute before the privileged parent validates anything—the “trusted caller” assumption remains unbound. [Hook execution semantics](https://code.claude.com/docs/en/hooks#exec-form-and-shell-form).
 
-- [P1] High confidence [.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:145](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:145) The mandatory online seed bypasses the bound parent and omits environment clearing, `--isolated`, `--python <verified realpath>` and Python `-I`; `--no-project` still permits virtual-environment discovery, so attacker-influenced Python/startup code can execute while preparing the supposedly trusted cache, before the offline checker runs. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run).
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:145](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md:145) The mandatory online seed bypasses the bound parent and omits environment clearing, `--isolated`, `--python <verified realpath>` and Python `-I`; `--no-project` still permits virtual-environment discovery, so attacker-influenced Python/startup code can execute while preparing the supposedly trusted cache, before the offline checker runs. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run).
 
 Reviewed all 54 threat rows, including the embedded prerequisite, and the cited acceptance/review context. Every allowed file has a row; none claims `closed`. These findings are input for orchestrator disposition.
 
@@ -3008,15 +3008,15 @@ Verdict: incorrect
 **Reviewing task invocation and environment details**
 **Analyzing build and migration issues**
 exec
-/bin/zsh -lc "rg --files .orchestration/validation | rg 'ci-efficiency.*44cb835.*last.md"'$'"'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/validation | rg 'ci-efficiency.*44cb835.*last.md"'$'"'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-hold-playbook-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-hold-playbook-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/acceptance/dotfiles-T133-loop-limits-a01.md | sed -n '18,44p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/acceptance/dotfiles-T133-loop-limits-a01.md | sed -n '18,44p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "awk '/"'^  - control:/ {n++} END {print "threat_rows=" n}'"' .orchestration/tasks/dotfiles-T133-loop-limits-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "awk '/"'^  - control:/ {n++} END {print "threat_rows=" n}'"' .orchestration/tasks/dotfiles-T133-loop-limits-a01.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc '/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-loop-limits-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc '/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-loop-limits-a01.md' in ~/Workspace/dotfiles
  succeeded in 109ms:
     18	
     19	- 2026-10-19T11:42Z: design installed (237 lines, 8 allowed_files; the vocabulary file removed from allowed_files per C2: the orchestrator owns its content); checker OK; C-80 first review started.
@@ -3151,7 +3151,7 @@ fb3c323bbab16d88ff2bbf42744fc87f02bc8241565afb2e2143f0a536a4214f  .orchestration
 **Finalizing summary format**
 **Confirming migration compatibility**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-ci-efficiency-followup-a02-security-44cb835.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-ci-efficiency-followup-a02-security-44cb835.md.last.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 Found one security issue in [PR #424](https://github.com/mryfmo/dotfiles/pull/424), head `44cb835`.
 
@@ -3180,8 +3180,8 @@ No additional changeset-specific injection, unsafe deserialization, path-travers
 Not checked: runtime tests, live CI, or dispatch provenance; filesystem access was read-only and the gh-first API request failed. The remaining risk is checkout-controlled execution with operator authority.
 Verdict: incorrect
 codex
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Counting distinct hashes does not cap review executions: once hash H has an event row, additional uniquely suffixed verdicts for H increase neither consumed hashes nor `unrecorded`; count invocation identities, grouping findings within each invocation.
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — No migration binds the existing `loop-limits-r1/r2/r3` acceptance rows to verdict hashes `9a2a0a4/4a941fb/2011d34`; those three retained verdicts remain unrecorded under the new grammar, exhausting every renewed budget despite re-planning.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Counting distinct hashes does not cap review executions: once hash H has an event row, additional uniquely suffixed verdicts for H increase neither consumed hashes nor `unrecorded`; count invocation identities, grouping findings within each invocation.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — No migration binds the existing `loop-limits-r1/r2/r3` acceptance rows to verdict hashes `9a2a0a4/4a941fb/2011d34`; those three retained verdicts remain unrecorded under the new grammar, exhausting every renewed budget despite re-planning.
 
 Assessed all 30 threat rows and cited acceptance/review context. All allowed entries have rows; none claims `closed`. PATH, inherited Git inputs, symlink/case identity and sandbox controls remain conditional on verified prerequisites.
 
@@ -3193,8 +3193,8 @@ hook: Stop
 hook: Stop Completed
 tokens used
 84,466
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Counting distinct hashes does not cap review executions: once hash H has an event row, additional uniquely suffixed verdicts for H increase neither consumed hashes nor `unrecorded`; count invocation identities, grouping findings within each invocation.
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — No migration binds the existing `loop-limits-r1/r2/r3` acceptance rows to verdict hashes `9a2a0a4/4a941fb/2011d34`; those three retained verdicts remain unrecorded under the new grammar, exhausting every renewed budget despite re-planning.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — Counting distinct hashes does not cap review executions: once hash H has an event row, additional uniquely suffixed verdicts for H increase neither consumed hashes nor `unrecorded`; count invocation identities, grouping findings within each invocation.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-loop-limits-a01.md:176) — No migration binds the existing `loop-limits-r1/r2/r3` acceptance rows to verdict hashes `9a2a0a4/4a941fb/2011d34`; those three retained verdicts remain unrecorded under the new grammar, exhausting every renewed budget despite re-planning.
 
 Assessed all 30 threat rows and cited acceptance/review context. All allowed entries have rows; none claims `closed`. PATH, inherited Git inputs, symlink/case identity and sandbox controls remain conditional on verified prerequisites.
 

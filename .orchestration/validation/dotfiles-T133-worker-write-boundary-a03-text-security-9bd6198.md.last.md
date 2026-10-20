@@ -1,4 +1,4 @@
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **86 threat rows**, including six narrowly scoped `closed` claims, and coverage of all 22 allowed-file entries. Each closed claim has a suitable proposed refusal fixture. Amendment 1 covers the previously omitted executable contents of `CLAUDE_ENV_FILE`, consistent with its [documented behavior](https://code.claude.com/docs/en/env-vars).
 

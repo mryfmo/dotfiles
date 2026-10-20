@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a157fb-a7e5-78e2-be1a-0bb16df04a27
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 `agmsg-orchestration` と Ponytail のレビュー手順を読み、タスク本文・脅威表・参照記録を読み取り専用で確認します。制御の判断と、このホストで実際に実行される対象が結び付いているかを重点的に調べます。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -447,7 +447,7 @@ on what you checked.
 Lists findings, changes no code.
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -556,11 +556,11 @@ exec
    105	```
 
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; nl -ba .orchestration/learning/mistakes/M-20261020-02-boundary-carried-pre-dispatch-snapshots.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; nl -ba .orchestration/learning/mistakes/M-20261020-02-boundary-carried-pre-dispatch-snapshots.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([n for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\",\"records-sync\",\"agent-config\",\"regime-ci\"))],ensure_ascii=False)[:22000])'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([n for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\",\"records-sync\",\"agent-config\",\"regime-ci\"))],ensure_ascii=False)[:22000])'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|33)|trusted|shim|acceptance|review' .orchestration/plans/024-design-quality.md; command -v crit; crit status --json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|33)|trusted|shim|acceptance|review' .orchestration/plans/024-design-quality.md; command -v crit; crit status --json" in ~/Workspace/dotfiles
  succeeded in 259ms:
  M .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
  M .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
@@ -776,13 +776,13 @@ exec
 114:8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
 115:9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
 117:7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
-/Users/a0004262/.local/bin/crit
+~/.local/bin/crit
 {
   "branch": "main",
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -790,9 +790,9 @@ exec
 
 **Setting time budget and focus**
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests; cat .orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'excludedCommands|gh|GIT_CONFIG|PATH|shim' home/dot_agents/agent-config.yaml scripts/orchestrator/trusted-interpreter.sh tests/unit/trusted_exec_contract.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests; cat .orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'excludedCommands|gh|GIT_CONFIG|PATH|shim' home/dot_agents/agent-config.yaml scripts/orchestrator/trusted-interpreter.sh tests/unit/trusted_exec_contract.py" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '101,118p' .orchestration/plans/024-design-quality.md; rg -n 'D-024-(21|29|30|33)' .orchestration/decisions.tsv; cat .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '101,118p' .orchestration/plans/024-design-quality.md; rg -n 'D-024-(21|29|30|33)' .orchestration/decisions.tsv; cat .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md" in ~/Workspace/dotfiles
  succeeded in 52ms:
 結論: 第 1 段階で消えるのは今の直列点（S1 の一部、S2、S8 の一部）。残る天井は S3（hosted runner）、S4/S5（モデルと監査の枠）、S7（hot spot）で、これらは席数の上限 D10（4 → 6）の根拠になる。6 を超える並列は、S3 と S5 の実測が出るまで plan に入れない。
 
@@ -836,7 +836,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -847,7 +847,7 @@ session id: 01a157fb-a7e5-78e2-be1a-0bb16df04a27
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -858,7 +858,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 `agmsg-orchestration` と Ponytail のレビュー手順を読み、タスク本文・脅威表・参照記録を読み取り専用で確認します。制御の判断と、このホストで実際に実行される対象が結び付いているかを重点的に調べます。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -1282,7 +1282,7 @@ on what you checked.
 Lists findings, changes no code.
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -1391,11 +1391,11 @@ exec
    105	```
 
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; nl -ba .orchestration/learning/mistakes/M-20261020-02-boundary-carried-pre-dispatch-snapshots.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; nl -ba .orchestration/learning/mistakes/M-20261020-02-boundary-carried-pre-dispatch-snapshots.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([n for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\",\"records-sync\",\"agent-config\",\"regime-ci\"))],ensure_ascii=False)[:22000])'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([n for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\",\"records-sync\",\"agent-config\",\"regime-ci\"))],ensure_ascii=False)[:22000])'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|33)|trusted|shim|acceptance|review' .orchestration/plans/024-design-quality.md; command -v crit; crit status --json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-(21|29|30|33)|trusted|shim|acceptance|review' .orchestration/plans/024-design-quality.md; command -v crit; crit status --json" in ~/Workspace/dotfiles
  succeeded in 259ms:
  M .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md
  M .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-followup-a02.md
@@ -1611,13 +1611,13 @@ exec
 114:8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
 115:9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
 117:7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
-/Users/a0004262/.local/bin/crit
+~/.local/bin/crit
 {
   "branch": "main",
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1625,9 +1625,9 @@ exec
 
 **Setting time budget and focus**
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests; cat .orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'excludedCommands|gh|GIT_CONFIG|PATH|shim' home/dot_agents/agent-config.yaml scripts/orchestrator/trusted-interpreter.sh tests/unit/trusted_exec_contract.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests; cat .orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'excludedCommands|gh|GIT_CONFIG|PATH|shim' home/dot_agents/agent-config.yaml scripts/orchestrator/trusted-interpreter.sh tests/unit/trusted_exec_contract.py" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '101,118p' .orchestration/plans/024-design-quality.md; rg -n 'D-024-(21|29|30|33)' .orchestration/decisions.tsv; cat .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '101,118p' .orchestration/plans/024-design-quality.md; rg -n 'D-024-(21|29|30|33)' .orchestration/decisions.tsv; cat .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md" in ~/Workspace/dotfiles
 
  exited 2 in 80ms:
 home/.chezmoiexternal.yaml.tmpl
@@ -1885,7 +1885,7 @@ Design 5.14 item 7 shared test helper (test-only; D-024-30 by-reference text). A
 
 - 2026-10-19T23:29:36Z: dispatched to a011 (worker-d); text sha256 dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c.
 - 2026-10-20T01:48:10Z: a011 RESULT round 1 `status=ready_for_review`: PR #436 (draft) head 25dd01e582f5bfa867e4cc9d306e03e529afe607, code head f4eed1cc, base ba318e53, task_copy dd754911…; tests/unit/trusted_exec_contract.py 242/250 lines, tests/unit/test_trusted_exec_contract.py 324/350; nine selectors (each probe detects its condition; shim, hostile git, worker root, swapped file, sanitised environment, trusted parent, passwd home per platform, cleanup after an exception); red at 755d9002 then green at f4eed1cc under uv offline on the exact python 3.15.0 and under the seat's default 3.10; per-probe red on a non-compliant stub then green; 12 wrong implementations each red; the case-alias case ran on APFS and skips on Linux CI with the measured reason; the real dscl was not run (exit 70 inside the sandbox; mocked); the worker's own review: 5 P2 fixed in one worker-side round (f4eed1cc). Adversarial check next: CI on 25dd01e5, caps by numstat in the chain, the owner text written (C-51), the PR marked ready.
-- 2026-10-20T01:53:16Z: measured: 7 required checks, the canary and regime pass on 25dd01e5; GitGuardian (non-required) reports one `Generic Password` in commit 755d9002 at test_trusted_exec_contract.py:299: the synthetic passwd entry `name:x:uid:20:Probe:/home/probe:/bin/bash` of the getent mock, no credential (refutation in 436-extra.tsv with the git show evidence); PR marked ready; ACCEPTANCE pending-integration sent; owner text trusted-exec-contract-tests-followup-a01 written (checker OK); chain next.
+- 2026-10-20T01:53:16Z: measured: 7 required checks, the canary and regime pass on 25dd01e5; GitGuardian (non-required) reports one `Generic Password` in commit 755d9002 at test_trusted_exec_contract.py:299: the synthetic passwd entry `name:x:uid:20:Probe:~:/bin/bash` of the getent mock, no credential (refutation in 436-extra.tsv with the git show evidence); PR marked ready; ACCEPTANCE pending-integration sent; owner text trusted-exec-contract-tests-followup-a01 written (checker OK); chain next.
 - 2026-10-20T02:1xZ: the chain on #436: the base had moved (ba318e53 -> 118daafa), update-branched to 9545e59f; the chain refused at the required-checks step (rc 12: a required check failed on the new head); the failing job read next.
 
 
@@ -2044,7 +2044,7 @@ home/dot_agents/agent-config.yaml:675:    note: install/common/gh_extensions.sh 
 codex
 参照契約は、同一 UID への防御を「防止ではなく被害抑制」と明記しています。その限界自体は指摘せず、タスクが `closed` とする制御や、実際の起動・push 手順との食い違いを確認しています。Crit の既存データはありません。読み取り専用の指定に従い、worklog やレビュー証跡は書き込みません。
 exec
-/bin/zsh -lc "wc -l .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md; tail -n 22 .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md; tail -n 45 .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md; sed -n '116,119p' .orchestration/plans/024-design-quality.md; sed -n '280,301p' home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "wc -l .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md; tail -n 22 .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md; tail -n 45 .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md; sed -n '116,119p' .orchestration/plans/024-design-quality.md; sed -n '280,301p' home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
  succeeded in 21ms:
       17 .orchestration/acceptance/dotfiles-T133-records-sync-pr-a01.md
     2045 .orchestration/validation/dotfiles-T133-records-sync-pr-a01-text-security-801ad66.md
@@ -2146,7 +2146,7 @@ for name in [\"dotfiles-T133-trusted-exec-contract-tests-a01\",\"dotfiles-T133-t
  print(\"RECORD\",p)
  if p.exists():
   for line in p.read_text().splitlines():
-   if line.startswith((\"- 2026\",\"# Acceptance\",\"text-security:\",\"re-plan:\")): print(line[:1600])'" in /Users/a0004262/Workspace/dotfiles
+   if line.startswith((\"- 2026\",\"# Acceptance\",\"text-security:\",\"re-plan:\")): print(line[:1600])'" in ~/Workspace/dotfiles
  succeeded in 8ms:
 D-024-21	2026-10-19T04:0xZ	threat model and mechanism of the worker boundary: the host is not a security boundary between seats sharing one OS user; the hard boundary is GitHub (protected main, required checks, the orchestrator identity merge); approvals and gate evidence of record are read from GitHub at a sha through the API inside the sandbox; Claude worker seats run under their own CLAUDE_CONFIG_DIR (~/.claude-worker: no excluded commands, no Herdr socket, Edit denies on trusted paths with symlink coverage, failIfUnavailable true, minimal trusted hooks with onFailure block); host-local controls target accidental and injected damage and the texts say so (design 5.14 items 0, 1, 8)	three C-80 reviews of the P1-15 text (03:24Z, 03:42Z, 03:58Z) found host-level escapes no in-process check closes (symlink swap race, writable object database, hook descendants through shims, Herdr socket RPC, hook timeout fail-open); the documentation confirms per-directory settings and credentials (one operator login for the worker directory), onFailure block (>= 2.1.295; installed 2.1.300), and symlink-aware file-tool deny rules	default under the autonomy directive, reported 2026-10-19 13:0x JST; the worker-directory login is an operator step at the P1-15 deployment; scope=design,permission	applied-to-the-P1-15-text
 D-024-29	2026-10-19T21:39Z	Design 5.14 is frozen (plan 006 A1: three review rounds, then freeze with a residual list): items 0-10 are the contract; a text review finding that needs a new design sentence is recorded in the design's residual list and as an owner row, not as an amendment of the item and of the text under review, unless it names a P0/P1 that is exploitable in the proposed implementation.	items 1, 2, 3, 8 and 9 were amended five times on 10-19/20 (one per review round of P1-15 and P1-12), each amendment re-opening the texts that quote the item (C-88) and costing a review round each; the texts chased a moving design.	plan 006 A1; M-20261019-05; C-92	applied from 06:40 JST; the residual list is a new subsection `5.14 残余` in 024-design-quality.md (written at the next design edit)
@@ -2156,7 +2156,7 @@ RECORD .orchestration/acceptance/dotfiles-T133-trusted-exec-contract-tests-a01.m
 # Acceptance record: dotfiles-T133-trusted-exec-contract-tests-a01
 - 2026-10-19T23:29:36Z: dispatched to a011 (worker-d); text sha256 dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c.
 - 2026-10-20T01:48:10Z: a011 RESULT round 1 `status=ready_for_review`: PR #436 (draft) head 25dd01e582f5bfa867e4cc9d306e03e529afe607, code head f4eed1cc, base ba318e53, task_copy dd754911…; tests/unit/trusted_exec_contract.py 242/250 lines, tests/unit/test_trusted_exec_contract.py 324/350; nine selectors (each probe detects its condition; shim, hostile git, worker root, swapped file, sanitised environment, trusted parent, passwd home per platform, cleanup after an exception); red at 755d9002 then green at f4eed1cc under uv offline on the exact python 3.15.0 and under the seat's default 3.10; per-probe red on a non-compliant stub then green; 12 wrong implementations each red; the case-alias case ran on APFS and skips on Linux CI with the measured reason; the real dscl was not run (exit 70 inside the sandbox; mocked); the worker's own review: 5 P2 fixed in one worker-side round (f4eed1cc). Adversarial check next: CI on 25dd01e5, caps by numstat in the chain, the owner text written (C-51), the PR marked ready.
-- 2026-10-20T01:53:16Z: measured: 7 required checks, the canary and regime pass on 25dd01e5; GitGuardian (non-required) reports one `Generic Password` in commit 755d9002 at test_trusted_exec_contract.py:299: the synthetic passwd entry `name:x:uid:20:Probe:/home/probe:/bin/bash` of the getent mock, no credential (refutation in 436-extra.tsv with the git show evidence); PR marked ready; ACCEPTANCE pending-integration sent; owner text trusted-exec-contract-tests-followup-a01 written (checker OK); chain next.
+- 2026-10-20T01:53:16Z: measured: 7 required checks, the canary and regime pass on 25dd01e5; GitGuardian (non-required) reports one `Generic Password` in commit 755d9002 at test_trusted_exec_contract.py:299: the synthetic passwd entry `name:x:uid:20:Probe:~:/bin/bash` of the getent mock, no credential (refutation in 436-extra.tsv with the git show evidence); PR marked ready; ACCEPTANCE pending-integration sent; owner text trusted-exec-contract-tests-followup-a01 written (checker OK); chain next.
 - 2026-10-20T02:1xZ: the chain on #436: the base had moved (ba318e53 -> 118daafa), update-branched to 9545e59f; the chain refused at the required-checks step (rc 12: a required check failed on the new head); the failing job read next.
 - 2026-10-20T02:29:42Z: the chain on 9545e59f: every required check passes; the sweep found the GitGuardian check-run of the new head (a new run id, the same synthetic-passwd finding) and one CI download-retry annotation without rows; both dispositioned not-applicable with evidence; chain re-run.
 - 2026-10-20T02:36:37Z: the chain on 9545e59f: sweep 0 gaps; task-level audit `…-audit-9545e59.md` `Verdict: incorrect`: P2 implementation (a same-length overwrite evades assert_untouched: INV-3 violated); P2 evidence (mutation M16 never ran; the twelve-mutation claim invalid); P3 evidence x2 (the 3.10 claim unsupported; the macOS CI claim wrong: test.yaml:119 skips unit tests for a Python-only diff); P2 orchestration (the known timestamp defect was deferred although small: a bounded revise is required); P3 orchestration (the owner text described PR #430: the orchestrator's clone from the assets template, fixed now). Plus the orchestrator's measured finding: passwd_home() calls dscl, which fails inside both seat sandboxes. Revise round 1 to a011 (= the second and last worker round under the inherited clause) with four selectors; the owner text corrected.
@@ -2191,7 +2191,7 @@ web search:
 web search: https://git-scm.com/docs/git-config
 **Reviewing documentation carefully**
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md.last.md .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-audit-9545e59.md.last.md; sed -n '119,140p' .orchestration/plans/024-design-quality.md; rg -n 'step 4|Linux|excluded|sandbox|gh' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md | tail -n 12; /usr/bin/which -a git gh uv sqlite3 dirname" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-trusted-entrypoint-binding-a01-text-security-1cc2a02.md.last.md .orchestration/validation/dotfiles-T133-trusted-exec-contract-tests-a01-audit-9545e59.md.last.md; sed -n '119,140p' .orchestration/plans/024-design-quality.md; rg -n 'step 4|Linux|excluded|sandbox|gh' ~/.agents/skills/agmsg-orchestration/SKILL.md | tail -n 12; /usr/bin/which -a git gh uv sqlite3 dirname" in ~/Workspace/dotfiles
  succeeded in 174ms:
 No reportable findings. Reviewed all **55 threat rows** across both task texts and the cited acceptance/review history; required controls have rows, and none claims `closed`. The independent review agreed.
 
@@ -2239,8 +2239,8 @@ Verdict: incorrect198:2. Switch to the `repo` and read `task_file` before editin
 218:    - Then list the Bot's reviews of the final head with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="<head-sha>")|[.commit_id,.submitted_at]|@tsv'` and the Bot's top-level review comments raised on it with `gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="<head-sha>")|[.id,.original_commit_id,.path]|@tsv'`. A human comment, a CodeRabbit review or an earlier head's review never ends the wait. A comment's `commit_id` moves to the newest head, so findings are matched by `original_commit_id`. Repeat until a review of the final head appears or 15 minutes pass; the report records the latter as `bot: none`. The final head here is the diff head, the last commit that changes the PR's content: a head that only merges the new base with `gh pr update-branch` needs green CI but no new Bot wait. Both endpoints return 30 items per page by default, so keep `--paginate`.
 /opt/homebrew/bin/git
 /usr/bin/git
-/Users/a0004262/.local/share/mise/shims/gh
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/share/mise/shims/gh
+~/.local/share/mise/shims/uv
 /usr/bin/sqlite3
 /usr/bin/dirname
 
@@ -2256,7 +2256,7 @@ web search:
 web search: https://sqlite.org/cli.html
 **Checking CLI help behavior**
 exec
-/bin/zsh -lc '/usr/bin/sqlite3 -help; /usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null /usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always -c url.https://example.invalid/.insteadOf=https://github.com/mryfmo/ ls-remote --get-url https://github.com/mryfmo/dotfiles.git; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc '/usr/bin/sqlite3 -help; /usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null /usr/bin/git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always -c url.https://example.invalid/.insteadOf=https://github.com/mryfmo/ ls-remote --get-url https://github.com/mryfmo/dotfiles.git; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-records-sync-pr-a01.md' in ~/Workspace/dotfiles
  succeeded in 53ms:
 Usage: /usr/bin/sqlite3 [OPTIONS] [FILENAME [SQL...]]
 FILENAME is the name of an SQLite database. A new database is created
@@ -2329,7 +2329,7 @@ exec
 for p in [Path.home()/\".claude/settings.json\",Path.home()/\".claude-worker/settings.json\"]:
  print(p.name, str(p.parent.name), \"exists=\",p.exists())
  if p.exists():
-  d=json.loads(p.read_text()); s=d.get(\"sandbox\",{}); print({k:s.get(k) for k in (\"enabled\",\"excludedCommands\",\"failIfUnavailable\",\"allowUnsandboxedCommands\")})'; rg -n 'linux_excluded_commands' scripts/generate-agent-configs.py; rg -n 'noinit|sqliterc' /usr/share/man/man1/sqlite3.1" in /Users/a0004262/Workspace/dotfiles
+  d=json.loads(p.read_text()); s=d.get(\"sandbox\",{}); print({k:s.get(k) for k in (\"enabled\",\"excludedCommands\",\"failIfUnavailable\",\"allowUnsandboxedCommands\")})'; rg -n 'linux_excluded_commands' scripts/generate-agent-configs.py; rg -n 'noinit|sqliterc' /usr/share/man/man1/sqlite3.1" in ~/Workspace/dotfiles
  succeeded in 118ms:
 settings.json .claude exists= True
 {'enabled': True, 'excludedCommands': ['agmsg-dispatch *'], 'failIfUnavailable': False, 'allowUnsandboxedCommands': True}
@@ -2341,7 +2341,7 @@ settings.json .claude-worker exists= False
 
 **Noticing SQLite init file behavior**
 exec
-/bin/zsh -lc "sed -n '270,302p' /usr/share/man/man1/sqlite3.1; sed -n '375,393p' scripts/generate-agent-configs.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '270,302p' /usr/share/man/man1/sqlite3.1; sed -n '375,393p' scripts/generate-agent-configs.py" in ~/Workspace/dotfiles
  succeeded in 0ms:
 as follows:
 

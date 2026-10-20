@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a159cf-522b-7f60-9d68-a38572bd5582
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,11 +23,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll use the agmsg-orchestration and Ponytail review guidance to assess the stated controls against host execution behavior, then check every threat row and the cited records. This review will remain read-only.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in ~/Workspace/dotfiles
  succeeded in 188ms:
 ---
 name: agmsg-orchestration
@@ -908,11 +908,11 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
    128	## Checks (pasted by the orchestrator before each send)
 **Enforcing output limits**
 exec
-/bin/zsh -lc "sed -n '1,210p' /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,210p' ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in ~/Workspace/dotfiles
  succeeded in 122ms:
 ---
 name: ponytail
@@ -1213,9 +1213,9 @@ Lists findings, changes no code.
 
 **Limiting output length**
 exec
-/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '225,252p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,252p' ~/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in ~/Workspace/dotfiles
  succeeded in 89ms:
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:1:# Acceptance record: dotfiles-T133-worker-sandbox-exclusions-a02
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:3:Lineage: reset of dotfiles-T133-worker-sandbox-exclusions-a01 (INV-6 S2, two amendments before implementation, both orchestrator brief defects). Design 5.14 item 10's Claude half: empty the worker seats' excludedCommands (`agmsg-dispatch *` and the three Linux entries), regenerate the rendered Claude settings, make the validator expect the empty list, update the two tests that assert the old lists. Evidence carried by the orchestrator: this seat sent agmsg messages 2827 and 2830 on 2026-10-20 from sandboxed Bash (Claude sandbox, herdr socket allowlisted since T130); the Codex seat a013 measured `PermissionDenied` on the same socket from its sandbox (13:39Z), the Codex half's open point.
@@ -1244,14 +1244,14 @@ exec
 .orchestration/decisions.tsv:82:D-024-34	2026-10-20T04:12Z	The files the worker's loader consumes at start and the regime need not preserve are launcher-generated at every start: the global state file `CLAUDE_CONFIG_DIR/.claude.json` is written from the declared shape (empty `mcpServers`, `projects` with exactly the validated identities and Boolean trust, `hasCompletedOnboarding: true`) plus identity fields carried from the previous file after screening (`oauthAccount` string members, `userID`); native persisted state (`numStartups`, onboarding, tips and changelog caches, per-project history, allowedTools, cost counters) is neither screened nor preserved; refusal with a named message stays for declared-structure violations (non-empty top-level `mcpServers`, undeclared project keys, non-Boolean trust flags, undeclared object or array members), as evidence of tampering. `CLAUDE_ENV_FILE` (amendment 1) belongs to the same family. A loader that requires another preserved field blocks and retasks (the text's rule), never widens silently.	a010's probe of the installed loader (2.1.300, sha256 475517ca…; reproduced by the orchestrator at 04:10Z) shows the loader itself writes fields outside any exact schema, so the allowlist re-plan's closed schema (D-024-29/30 lineage, a02 -> a03) refuses the worker's own state at the next start; a per-version native-field table would block every loader update until re-probed; generating the file realises design 5.14 item 1 (refuse any executable payload it did not write) by writing the whole file. Second re-plan of the input-inventory family (rows text-security:f7af699:1, worker:5067ed0:1 after the allowlist re-plan).	design 5.14 item 1; D-024-29; D-024-30; a03 record rows; M-20261019-05	applied 13:12 JST as a03 amendment 2 (review-profile text, C-80 round 3); the operator may redirect it once per class (the 13:15 JST report)
 .orchestration/decisions.tsv:85:D-024-37	2026-10-20T06:43Z	New `security: true` mechanism texts are held until the trusted-execution contract (`tests/unit/trusted_exec_contract.py`, PR #436) and the P1-15 launcher (PR #431) are on main; a held text then names those controls by reference (C-88) instead of restating the contract, and takes one C-80 round. Held now: dotfiles-T133-record-json-sync-a01 (two rounds: 1 P1 + 9 P2, all of the trusted-execution family) and dotfiles-T133-records-sync-pr-a01 (round 1: 2 P1 + 2 P2 of the same family; amendment 1 installed, review deferred).	the two texts cost three review rounds in 40 minutes and every finding re-derived the contract the two in-flight PRs land (git configuration isolation, resolved-root binding, replace refs, the agmsg-dispatch exclusion); continuing is the whack-a-mole the operator forbade, while the seats they were meant for (a011, a009) have no other dispatchable text until #438 merges.	C-88; D-024-29/30; M-20261019-05 (text review rounds unbounded); the record-json-sync record	applied 15:43 JST; the Claude seats' idle time until #438 is the operator's approval, not a text gap
 .orchestration/decisions.tsv:93:D-024-45	2026-10-20T11:45Z	Design 5.14 item 10 (every worker command inside the sandbox) contradicts the seat configuration that runs `agmsg-dispatch` through excludedCommands outside the sandbox (audit:7eab146:1, audit:6434c27:1; the a008 seat's sandbox.md:18). The design is frozen (D-024-29), so the choice is the operator's: default = record a control-plane exemption for `agmsg-dispatch` in 5.14 item 10 by a design-amendment task (the bus is the regime's control plane, not a repository mutation; the herdr socket is already in the sandbox allowlist, so the alternative, running it inside, is tested first by a Claude seat); until decided, the finding is recorded as it stands on every affected lineage and never dispositioned fixed. Placed in the project map's decisions panel with that default.	claude-deep-dot
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims/uv
 /usr/bin/make
-/Users/a0004262/.local/share/mise/shims/ruff
-/Users/a0004262/.local/share/mise/shims/gh
+~/.local/share/mise/shims/ruff
+~/.local/share/mise/shims/gh
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/python3
+~/.local/share/mise/shims/python3
    175	reset-config:
    176		chezmoi init --data=false
    177	
@@ -1445,11 +1445,11 @@ Dockerfile
 codex
 The task explicitly leaves same-user isolation and Linux runtime verification unresolved. I’m distinguishing those stated limits from controls claimed to bind execution. One concrete concern is that the prescribed Make targets invoke uv differently from the isolated command in the task.
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
  succeeded in 183ms:
 ---
 {
@@ -2305,7 +2305,7 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-worker-s
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -2316,7 +2316,7 @@ session id: 01a159cf-522b-7f60-9d68-a38572bd5582
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -2327,11 +2327,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll use the agmsg-orchestration and Ponytail review guidance to assess the stated controls against host execution behavior, then check every threat row and the cited records. This review will remain read-only.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in ~/Workspace/dotfiles
  succeeded in 188ms:
 ---
 name: agmsg-orchestration
@@ -3212,11 +3212,11 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
    128	## Checks (pasted by the orchestrator before each send)
 **Enforcing output limits**
 exec
-/bin/zsh -lc "sed -n '1,210p' /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,210p' ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in ~/Workspace/dotfiles
  succeeded in 122ms:
 ---
 name: ponytail
@@ -3517,9 +3517,9 @@ Lists findings, changes no code.
 
 **Limiting output length**
 exec
-/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '225,252p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,252p' ~/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in ~/Workspace/dotfiles
  succeeded in 89ms:
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:1:# Acceptance record: dotfiles-T133-worker-sandbox-exclusions-a02
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:3:Lineage: reset of dotfiles-T133-worker-sandbox-exclusions-a01 (INV-6 S2, two amendments before implementation, both orchestrator brief defects). Design 5.14 item 10's Claude half: empty the worker seats' excludedCommands (`agmsg-dispatch *` and the three Linux entries), regenerate the rendered Claude settings, make the validator expect the empty list, update the two tests that assert the old lists. Evidence carried by the orchestrator: this seat sent agmsg messages 2827 and 2830 on 2026-10-20 from sandboxed Bash (Claude sandbox, herdr socket allowlisted since T130); the Codex seat a013 measured `PermissionDenied` on the same socket from its sandbox (13:39Z), the Codex half's open point.
@@ -3548,14 +3548,14 @@ exec
 .orchestration/decisions.tsv:82:D-024-34	2026-10-20T04:12Z	The files the worker's loader consumes at start and the regime need not preserve are launcher-generated at every start: the global state file `CLAUDE_CONFIG_DIR/.claude.json` is written from the declared shape (empty `mcpServers`, `projects` with exactly the validated identities and Boolean trust, `hasCompletedOnboarding: true`) plus identity fields carried from the previous file after screening (`oauthAccount` string members, `userID`); native persisted state (`numStartups`, onboarding, tips and changelog caches, per-project history, allowedTools, cost counters) is neither screened nor preserved; refusal with a named message stays for declared-structure violations (non-empty top-level `mcpServers`, undeclared project keys, non-Boolean trust flags, undeclared object or array members), as evidence of tampering. `CLAUDE_ENV_FILE` (amendment 1) belongs to the same family. A loader that requires another preserved field blocks and retasks (the text's rule), never widens silently.	a010's probe of the installed loader (2.1.300, sha256 475517ca…; reproduced by the orchestrator at 04:10Z) shows the loader itself writes fields outside any exact schema, so the allowlist re-plan's closed schema (D-024-29/30 lineage, a02 -> a03) refuses the worker's own state at the next start; a per-version native-field table would block every loader update until re-probed; generating the file realises design 5.14 item 1 (refuse any executable payload it did not write) by writing the whole file. Second re-plan of the input-inventory family (rows text-security:f7af699:1, worker:5067ed0:1 after the allowlist re-plan).	design 5.14 item 1; D-024-29; D-024-30; a03 record rows; M-20261019-05	applied 13:12 JST as a03 amendment 2 (review-profile text, C-80 round 3); the operator may redirect it once per class (the 13:15 JST report)
 .orchestration/decisions.tsv:85:D-024-37	2026-10-20T06:43Z	New `security: true` mechanism texts are held until the trusted-execution contract (`tests/unit/trusted_exec_contract.py`, PR #436) and the P1-15 launcher (PR #431) are on main; a held text then names those controls by reference (C-88) instead of restating the contract, and takes one C-80 round. Held now: dotfiles-T133-record-json-sync-a01 (two rounds: 1 P1 + 9 P2, all of the trusted-execution family) and dotfiles-T133-records-sync-pr-a01 (round 1: 2 P1 + 2 P2 of the same family; amendment 1 installed, review deferred).	the two texts cost three review rounds in 40 minutes and every finding re-derived the contract the two in-flight PRs land (git configuration isolation, resolved-root binding, replace refs, the agmsg-dispatch exclusion); continuing is the whack-a-mole the operator forbade, while the seats they were meant for (a011, a009) have no other dispatchable text until #438 merges.	C-88; D-024-29/30; M-20261019-05 (text review rounds unbounded); the record-json-sync record	applied 15:43 JST; the Claude seats' idle time until #438 is the operator's approval, not a text gap
 .orchestration/decisions.tsv:93:D-024-45	2026-10-20T11:45Z	Design 5.14 item 10 (every worker command inside the sandbox) contradicts the seat configuration that runs `agmsg-dispatch` through excludedCommands outside the sandbox (audit:7eab146:1, audit:6434c27:1; the a008 seat's sandbox.md:18). The design is frozen (D-024-29), so the choice is the operator's: default = record a control-plane exemption for `agmsg-dispatch` in 5.14 item 10 by a design-amendment task (the bus is the regime's control plane, not a repository mutation; the herdr socket is already in the sandbox allowlist, so the alternative, running it inside, is tested first by a Claude seat); until decided, the finding is recorded as it stands on every affected lineage and never dispositioned fixed. Placed in the project map's decisions panel with that default.	claude-deep-dot
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims/uv
 /usr/bin/make
-/Users/a0004262/.local/share/mise/shims/ruff
-/Users/a0004262/.local/share/mise/shims/gh
+~/.local/share/mise/shims/ruff
+~/.local/share/mise/shims/gh
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/python3
+~/.local/share/mise/shims/python3
    175	reset-config:
    176		chezmoi init --data=false
    177	
@@ -3749,11 +3749,11 @@ Dockerfile
 codex
 The task explicitly leaves same-user isolation and Linux runtime verification unresolved. I’m distinguishing those stated limits from controls claimed to bind execution. One concrete concern is that the prescribed Make targets invoke uv differently from the isolated command in the task.
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
 ---
 {
   "audit_findings": [
@@ -3958,12 +3958,12 @@ web search:
 web search: https://docs.astral.sh/uv/concepts/cache/
 **Focusing on recent c8d review**
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; rg -n 'cache|same.UID|residual|gh|Linux' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md | tail -18; cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md; cat .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; rg -n 'cache|same.UID|residual|gh|Linux' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md | tail -18; cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md; cat .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md" in ~/Workspace/dotfiles
  succeeded in 34ms:
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -3974,7 +3974,7 @@ session id: 01a159cf-522b-7f60-9d68-a38572bd5582
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -3985,11 +3985,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll use the agmsg-orchestration and Ponytail review guidance to assess the stated controls against host execution behavior, then check every threat row and the cited records. This review will remain read-only.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in ~/Workspace/dotfiles
  succeeded in 188ms:
 ---
 name: agmsg-orchestration
@@ -4870,11 +4870,11 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
    128	## Checks (pasted by the orchestrator before each send)
 **Enforcing output limits**
 exec
-/bin/zsh -lc "sed -n '1,210p' /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,210p' ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in ~/Workspace/dotfiles
  succeeded in 122ms:
 ---
 name: ponytail
@@ -5175,9 +5175,9 @@ Lists findings, changes no code.
 
 **Limiting output length**
 exec
-/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '225,252p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,252p' ~/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in ~/Workspace/dotfiles
  succeeded in 89ms:
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:1:# Acceptance record: dotfiles-T133-worker-sandbox-exclusions-a02
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:3:Lineage: reset of dotfiles-T133-worker-sandbox-exclusions-a01 (INV-6 S2, two amendments before implementation, both orchestrator brief defects). Design 5.14 item 10's Claude half: empty the worker seats' excludedCommands (`agmsg-dispatch *` and the three Linux entries), regenerate the rendered Claude settings, make the validator expect the empty list, update the two tests that assert the old lists. Evidence carried by the orchestrator: this seat sent agmsg messages 2827 and 2830 on 2026-10-20 from sandboxed Bash (Claude sandbox, herdr socket allowlisted since T130); the Codex seat a013 measured `PermissionDenied` on the same socket from its sandbox (13:39Z), the Codex half's open point.
@@ -5206,14 +5206,14 @@ exec
 .orchestration/decisions.tsv:82:D-024-34	2026-10-20T04:12Z	The files the worker's loader consumes at start and the regime need not preserve are launcher-generated at every start: the global state file `CLAUDE_CONFIG_DIR/.claude.json` is written from the declared shape (empty `mcpServers`, `projects` with exactly the validated identities and Boolean trust, `hasCompletedOnboarding: true`) plus identity fields carried from the previous file after screening (`oauthAccount` string members, `userID`); native persisted state (`numStartups`, onboarding, tips and changelog caches, per-project history, allowedTools, cost counters) is neither screened nor preserved; refusal with a named message stays for declared-structure violations (non-empty top-level `mcpServers`, undeclared project keys, non-Boolean trust flags, undeclared object or array members), as evidence of tampering. `CLAUDE_ENV_FILE` (amendment 1) belongs to the same family. A loader that requires another preserved field blocks and retasks (the text's rule), never widens silently.	a010's probe of the installed loader (2.1.300, sha256 475517ca…; reproduced by the orchestrator at 04:10Z) shows the loader itself writes fields outside any exact schema, so the allowlist re-plan's closed schema (D-024-29/30 lineage, a02 -> a03) refuses the worker's own state at the next start; a per-version native-field table would block every loader update until re-probed; generating the file realises design 5.14 item 1 (refuse any executable payload it did not write) by writing the whole file. Second re-plan of the input-inventory family (rows text-security:f7af699:1, worker:5067ed0:1 after the allowlist re-plan).	design 5.14 item 1; D-024-29; D-024-30; a03 record rows; M-20261019-05	applied 13:12 JST as a03 amendment 2 (review-profile text, C-80 round 3); the operator may redirect it once per class (the 13:15 JST report)
 .orchestration/decisions.tsv:85:D-024-37	2026-10-20T06:43Z	New `security: true` mechanism texts are held until the trusted-execution contract (`tests/unit/trusted_exec_contract.py`, PR #436) and the P1-15 launcher (PR #431) are on main; a held text then names those controls by reference (C-88) instead of restating the contract, and takes one C-80 round. Held now: dotfiles-T133-record-json-sync-a01 (two rounds: 1 P1 + 9 P2, all of the trusted-execution family) and dotfiles-T133-records-sync-pr-a01 (round 1: 2 P1 + 2 P2 of the same family; amendment 1 installed, review deferred).	the two texts cost three review rounds in 40 minutes and every finding re-derived the contract the two in-flight PRs land (git configuration isolation, resolved-root binding, replace refs, the agmsg-dispatch exclusion); continuing is the whack-a-mole the operator forbade, while the seats they were meant for (a011, a009) have no other dispatchable text until #438 merges.	C-88; D-024-29/30; M-20261019-05 (text review rounds unbounded); the record-json-sync record	applied 15:43 JST; the Claude seats' idle time until #438 is the operator's approval, not a text gap
 .orchestration/decisions.tsv:93:D-024-45	2026-10-20T11:45Z	Design 5.14 item 10 (every worker command inside the sandbox) contradicts the seat configuration that runs `agmsg-dispatch` through excludedCommands outside the sandbox (audit:7eab146:1, audit:6434c27:1; the a008 seat's sandbox.md:18). The design is frozen (D-024-29), so the choice is the operator's: default = record a control-plane exemption for `agmsg-dispatch` in 5.14 item 10 by a design-amendment task (the bus is the regime's control plane, not a repository mutation; the herdr socket is already in the sandbox allowlist, so the alternative, running it inside, is tested first by a Claude seat); until decided, the finding is recorded as it stands on every affected lineage and never dispositioned fixed. Placed in the project map's decisions panel with that default.	claude-deep-dot
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims/uv
 /usr/bin/make
-/Users/a0004262/.local/share/mise/shims/ruff
-/Users/a0004262/.local/share/mise/shims/gh
+~/.local/share/mise/shims/ruff
+~/.local/share/mise/shims/gh
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/python3
+~/.local/share/mise/shims/python3
    175	reset-config:
    176		chezmoi init --data=false
    177	
@@ -5407,11 +5407,11 @@ Dockerfile
 codex
 The task explicitly leaves same-user isolation and Linux runtime verification unresolved. I’m distinguishing those stated limits from controls claimed to bind execution. One concrete concern is that the prescribed Make targets invoke uv differently from the isolated command in the task.
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
  succeeded in 183ms:
 ---
 {
@@ -6267,7 +6267,7 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-worker-s
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -6278,7 +6278,7 @@ session id: 01a159cf-522b-7f60-9d68-a38572bd5582
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -6289,11 +6289,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll use the agmsg-orchestration and Ponytail review guidance to assess the stated controls against host execution behavior, then check every threat row and the cited records. This review will remain read-only.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md' in ~/Workspace/dotfiles
  succeeded in 188ms:
 ---
 name: agmsg-orchestration
@@ -7174,11 +7174,11 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
    128	## Checks (pasted by the orchestrator before each send)
 **Enforcing output limits**
 exec
-/bin/zsh -lc "sed -n '1,210p' /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,210p' ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/plans/024-design-quality.md | sed -n '/5.14/,/5.15/p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|design tier|task-level audit|pre.dispatch' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain=v1 -uno; cat .ua/meta.json; python3 -I -c 'import json; p=json.load(open(\".ua/knowledge-graph.json\")); ns=p.get(\"nodes\",[]); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"filePath\",\"summary\")}) for n in ns if any(s in str(n.get(\"filePath\",\"\")) for s in (\"agent-config\",\"validate-agent\",\"generate-agent\",\"Makefile\"))))'" in ~/Workspace/dotfiles
  succeeded in 122ms:
 ---
 name: ponytail
@@ -7479,9 +7479,9 @@ Lists findings, changes no code.
 
 **Limiting output length**
 exec
-/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'D-024-(17|21|22|23|29|30)|sandbox-exclusions' .orchestration/decisions.tsv .orchestration/plans/024-design-quality.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions*; command -v crit; printf '%s\\n' \""'$PATH"; command -v uv make ruff gh git python3; nl -ba Makefile | sed -n '"'175,210p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '225,252p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,252p' ~/.agents/skills/agmsg-orchestration/SKILL.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- ':"'!.ua'"' ':"'!.orchestration'"' | head -25; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg '(sandbox-exclusions|T39-|T130-|worker-write-boundary-a01|worker-write-boundary-a06)'" in ~/Workspace/dotfiles
  succeeded in 89ms:
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:1:# Acceptance record: dotfiles-T133-worker-sandbox-exclusions-a02
 .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md:3:Lineage: reset of dotfiles-T133-worker-sandbox-exclusions-a01 (INV-6 S2, two amendments before implementation, both orchestrator brief defects). Design 5.14 item 10's Claude half: empty the worker seats' excludedCommands (`agmsg-dispatch *` and the three Linux entries), regenerate the rendered Claude settings, make the validator expect the empty list, update the two tests that assert the old lists. Evidence carried by the orchestrator: this seat sent agmsg messages 2827 and 2830 on 2026-10-20 from sandboxed Bash (Claude sandbox, herdr socket allowlisted since T130); the Codex seat a013 measured `PermissionDenied` on the same socket from its sandbox (13:39Z), the Codex half's open point.
@@ -7510,14 +7510,14 @@ exec
 .orchestration/decisions.tsv:82:D-024-34	2026-10-20T04:12Z	The files the worker's loader consumes at start and the regime need not preserve are launcher-generated at every start: the global state file `CLAUDE_CONFIG_DIR/.claude.json` is written from the declared shape (empty `mcpServers`, `projects` with exactly the validated identities and Boolean trust, `hasCompletedOnboarding: true`) plus identity fields carried from the previous file after screening (`oauthAccount` string members, `userID`); native persisted state (`numStartups`, onboarding, tips and changelog caches, per-project history, allowedTools, cost counters) is neither screened nor preserved; refusal with a named message stays for declared-structure violations (non-empty top-level `mcpServers`, undeclared project keys, non-Boolean trust flags, undeclared object or array members), as evidence of tampering. `CLAUDE_ENV_FILE` (amendment 1) belongs to the same family. A loader that requires another preserved field blocks and retasks (the text's rule), never widens silently.	a010's probe of the installed loader (2.1.300, sha256 475517ca…; reproduced by the orchestrator at 04:10Z) shows the loader itself writes fields outside any exact schema, so the allowlist re-plan's closed schema (D-024-29/30 lineage, a02 -> a03) refuses the worker's own state at the next start; a per-version native-field table would block every loader update until re-probed; generating the file realises design 5.14 item 1 (refuse any executable payload it did not write) by writing the whole file. Second re-plan of the input-inventory family (rows text-security:f7af699:1, worker:5067ed0:1 after the allowlist re-plan).	design 5.14 item 1; D-024-29; D-024-30; a03 record rows; M-20261019-05	applied 13:12 JST as a03 amendment 2 (review-profile text, C-80 round 3); the operator may redirect it once per class (the 13:15 JST report)
 .orchestration/decisions.tsv:85:D-024-37	2026-10-20T06:43Z	New `security: true` mechanism texts are held until the trusted-execution contract (`tests/unit/trusted_exec_contract.py`, PR #436) and the P1-15 launcher (PR #431) are on main; a held text then names those controls by reference (C-88) instead of restating the contract, and takes one C-80 round. Held now: dotfiles-T133-record-json-sync-a01 (two rounds: 1 P1 + 9 P2, all of the trusted-execution family) and dotfiles-T133-records-sync-pr-a01 (round 1: 2 P1 + 2 P2 of the same family; amendment 1 installed, review deferred).	the two texts cost three review rounds in 40 minutes and every finding re-derived the contract the two in-flight PRs land (git configuration isolation, resolved-root binding, replace refs, the agmsg-dispatch exclusion); continuing is the whack-a-mole the operator forbade, while the seats they were meant for (a011, a009) have no other dispatchable text until #438 merges.	C-88; D-024-29/30; M-20261019-05 (text review rounds unbounded); the record-json-sync record	applied 15:43 JST; the Claude seats' idle time until #438 is the operator's approval, not a text gap
 .orchestration/decisions.tsv:93:D-024-45	2026-10-20T11:45Z	Design 5.14 item 10 (every worker command inside the sandbox) contradicts the seat configuration that runs `agmsg-dispatch` through excludedCommands outside the sandbox (audit:7eab146:1, audit:6434c27:1; the a008 seat's sandbox.md:18). The design is frozen (D-024-29), so the choice is the operator's: default = record a control-plane exemption for `agmsg-dispatch` in 5.14 item 10 by a design-amendment task (the bus is the regime's control plane, not a repository mutation; the herdr socket is already in the sandbox allowlist, so the alternative, running it inside, is tested first by a Claude seat); until decided, the finding is recorded as it stands on every affected lineage and never dispositioned fixed. Placed in the project map's decisions panel with that default.	claude-deep-dot
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
-/Users/a0004262/.local/share/mise/shims/uv
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims/uv
 /usr/bin/make
-/Users/a0004262/.local/share/mise/shims/ruff
-/Users/a0004262/.local/share/mise/shims/gh
+~/.local/share/mise/shims/ruff
+~/.local/share/mise/shims/gh
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/python3
+~/.local/share/mise/shims/python3
    175	reset-config:
    176		chezmoi init --data=false
    177	
@@ -7711,11 +7711,11 @@ Dockerfile
 codex
 The task explicitly leaves same-user isolation and Linux runtime verification unresolved. I’m distinguishing those stated limits from controls claimed to bind execution. One concrete concern is that the prescribed Make targets invoke uv differently from the isolated command in the task.
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a01.md; cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-*.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a01-text-security-*.md.last.md; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-followup-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-text-security-9313f2c.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,100p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01-design-reset.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md .orchestration/acceptance/dotfiles-T130-sandbox-portability-a01.md .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md; sed -n '1,155p' tests/unit/test_generate_agent_configs.py; rg -n 'excludedCommands|linux_excluded|sandbox|GIT_' scripts/validate-agent-assets.py scripts/generate-agent-configs.py home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
 ---
 {
   "audit_findings": [
@@ -8100,9 +8100,9 @@ re-plan: quoting-in-regex-predicates -> specification: a regex predicate of the 
 
 **Managing recursive reading limits**
 exec
-/bin/zsh -lc "rg -n -m 12 'cache|same.UID|residual|Linux' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; rg -n -m 12 'socket|exclusion|PermissionDenied|sandbox' .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md; rg -c '"'^  - control:'"' .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md; ls -ld \""'$HOME/.cache/uv"; readlink "$HOME/.cache/uv"' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -m 12 'cache|same.UID|residual|Linux' .orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md; rg -n -m 12 'socket|exclusion|PermissionDenied|sandbox' .orchestration/acceptance/dot-claude-sandbox-manifest-T39-a01.md .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md; shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md; rg -c '"'^  - control:'"' .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md; ls -ld \""'$HOME/.cache/uv"; readlink "$HOME/.cache/uv"' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,130p' tests/unit/test_generate_agent_configs.py; sed -n '945,1015p' scripts/validate-agent-assets.py; rg -n -C 3 'excludedCommands' scripts/validate-agent-assets.py home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json; sed -n '555,610p' tests/unit/test_claude_settings_merge.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,130p' tests/unit/test_generate_agent_configs.py; sed -n '945,1015p' scripts/validate-agent-assets.py; rg -n -C 3 'excludedCommands' scripts/validate-agent-assets.py home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json; sed -n '555,610p' tests/unit/test_claude_settings_merge.py" in ~/Workspace/dotfiles
  succeeded in 104ms:
 #!/usr/bin/env python3
 """Exercise focused checks in generate-agent-configs.py."""
@@ -8430,7 +8430,7 @@ if __name__ == "__main__":
 .orchestration/acceptance/dotfiles-T130-claude-sandbox-integration-a01.md:74:  task=dotfiles-T130-claude-sandbox-integration-a01 tasks=7 amendments=6 questions=4 results=1 withdrawn=0 revises=0 first_result_head=85547ca5348d9e0a61c3ae9ae30d324db1897f0f bot_p1_heads_after_result=0 audits=unknown wall=2026-10-17T12:36:23Z..2026-10-17T14:30:01Z (1:53) source=live
 9313f2cc72f6b522a5eafe5762cb5697a7d9fc3d9a0401a5a59848f59dc01a3f  .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md
 28
-drwxr-xr-x@ 12 a0004262  staff  384 Oct 20 23:56 /Users/a0004262/.cache/uv
+drwxr-xr-x@ 12 a0004262  staff  384 Oct 20 23:56 ~/.cache/uv
 
 **Evaluating cache security and control limitations**
 **Analyzing file copy behavior and cache symlinks**

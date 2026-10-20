@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a1575d-9101-7d63-8fe2-a218b7957549
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -24,7 +24,7 @@ codex
 指定されたタスクと参照先を読み、実行時の境界に制御が結び付くかを確認します。Ponytail と agmsg-orchestration の該当手順を適用し、読み取り専用でレビューします。
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -287,7 +287,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; cat .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; cat .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -952,11 +952,11 @@ a03 initial counters: worker_fix_rounds 0; independent pre-push reviews 0; later
 Not performed by the worker: local Bats, live enforcement, administrative installation, login, permission-policy deployment or session restarts.
 Residual risks: same-UID access, shared credentials/capabilities, agmsg sourcing, consumption races, later reloads, legacy PermissionRequest and deferred executable binding.
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '1,175p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '1,175p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n -A 28 -B 2 'Codex seat worklogs' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A 28 -B 2 'Codex seat worklogs' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; command -v git; command -v gh; command -v python3; command -v uv; command -v crit' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json; command -v git; command -v gh; command -v python3; command -v uv; command -v crit' in ~/Workspace/dotfiles
  succeeded in 84ms:
      1	---
      2	format: 2
@@ -1354,17 +1354,17 @@ Never cut: validation at trust boundaries, error handling that prevents data los
   "analyzedFiles": 368
 }
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/gh
-/Users/a0004262/.local/share/mise/shims/python3
-/Users/a0004262/.local/share/mise/shims/uv
-/Users/a0004262/.local/bin/crit
+~/.local/share/mise/shims/gh
+~/.local/share/mise/shims/python3
+~/.local/share/mise/shims/uv
+~/.local/bin/crit
 
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '174,350p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '174,350p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md' in ~/Workspace/dotfiles
  succeeded in 124ms:
    174	  - control: "5.14 item 3: 信頼パスの境界検査"
    175	    disposition: "residual: canonical root and component containment checks precede startup, including aliases; executable realpath binding remains with the binding task."
@@ -1716,7 +1716,7 @@ Full review comments:
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -1727,7 +1727,7 @@ session id: 01a155ee-948a-7cb0-a849-13fd7ff03278
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -1738,7 +1738,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 タスク本文と threat_table、引用された acceptance・review を読み、判定時に検証した対象と実行時の対象が結び付いているかを確認します。読み取り専用で進め、Ponytail と agmsg-orchestration の該当手順を参照します。
 exec
-/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
  succeeded in 21ms:
 ---
 format: 2
@@ -2853,7 +2853,7 @@ Legacy PermissionRequest execution, formatter availability, same-UID access, sha
 
 This re-planned text claims no implementation-test, CI or live-deployment results. Same-UID access, shared capabilities, consumption races and the transferred executable-binding work remain risks.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 6ms:
 ---
 name: agmsg-orchestration
@@ -3116,7 +3116,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 11ms:
 ---
 name: ponytail
@@ -3173,11 +3173,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Planning controlled reads**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '1,220p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '1,220p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat .ua/meta.json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat .ua/meta.json" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --short; git rev-parse HEAD; command -v crit; printf '%s\\n' \""'$PATH"' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --short; git rev-parse HEAD; command -v crit; printf '%s\\n' \""'$PATH"' in ~/Workspace/dotfiles
  succeeded in 94ms:
      1	---
      2	format: 2
@@ -4153,11 +4153,11 @@ for blocked work, `evidence` (path array), and `tags`.
 ?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md
 ?? .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md
 1eac64a832ade83f9e149be6a329f7e8fa20180f
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.162.1/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '122,143p;220,420p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '122,143p;220,420p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    122	  - control: <plugin-lsp-file>
    123	    disposition: "residual: S23 default or manifest-selected language-server commands and arguments have no worker canonical operation and refuse; tests/unit/test_herdr_agents.py::HerdrAgentsTest::test_each_documented_loading_source_refuses_payload_before_launch checks the selected file with an absent server marker."
@@ -4384,7 +4384,7 @@ exec
    420	      - https://code.claude.com/docs/en/hooks
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '421,660p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '421,660p'" in ~/Workspace/dotfiles
  succeeded in 70ms:
    421	      - https://code.claude.com/docs/en/mcp
    422	      - https://code.claude.com/docs/en/plugins/manifest-reference
@@ -4631,7 +4631,7 @@ exec
 codex
 本文では実行体の束縛を別タスクへ移し、全 threat row を residual としています。その既知の残余と、今回の起動前検査が実際には保証できない主張を分けて確認しています。read-only 指定に従い、worklog やレビュー証跡のファイルは作成していません。
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '661,890p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '661,890p'" in ~/Workspace/dotfiles
  succeeded in 3ms:
    661	   Retain `tests/unit/test_claude_settings_merge.py::ClaudeSettingsMergeTest::test_prefixed_guarded_managed_hooks_replace_legacy_hooks_idempotently` and existing stale-ccgate, ordering, PostToolUse, tilde and custom-hook cases. Add no executable subprocess to template rendering.
    662	
@@ -4865,7 +4865,7 @@ exec
    890	    ```
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '891,1120p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | sed -n '891,1120p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
    891	
    892	    Compare the home-expanded equivalent for rendered settings. Keep non-empty-string validation and reject `gh *`, extra, missing, reordered or substituted entries on either platform.
@@ -5091,7 +5091,7 @@ exec
   1112	This re-planned text claims no implementation-test, CI or live-deployment results. Same-UID access, shared capabilities, consumption races and the transferred executable-binding work remain risks.
 **Seeking full acceptance**
 exec
-/bin/zsh -lc 'wc -l .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-ea3c4fb.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-a286915.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'wc -l .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-ea3c4fb.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a01-security-a286915.md.last.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
       94 .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md
       32 .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md
@@ -5104,11 +5104,11 @@ All allowed-file entries have threat rows; none claims `closed`. I treated expli
 📝 まとめ: タスク本文・threat_table・参照された受け入れ記録とレビューを確認し、起動前検査の対象漏れを P1 として報告しました。判断は orchestrator に委ねます。
 
 Not checked: implementation tests, CI or live enforcement; no files changed. Unscreened MCP execution remains a design risk.
-Verdict: incorrect- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
+Verdict: incorrect- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
 
-- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
-- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
+- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
 
 All 22 allowed-file entries have threat rows; all 53 rows are residuals, with none claiming closure. Explicitly deferred executable binding, same-UID races and shared capabilities were not re-reported.
 
@@ -5150,7 +5150,7 @@ Reviewed the pinned [PR #431](https://github.com/mryfmo/dotfiles/pull/431) diff 
 Not checked: full tests, live enforcement, deployment, or CI (`gh` API access failed). Shared credentials, agmsg sourcing, path races, and deferred executable binding remain risks.
 Verdict: incorrect
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 {
@@ -5283,9 +5283,9 @@ text-security:b2a186e:2	repository-binding
 **Analyzing environment and config handling**
 web search: 
 exec
-/bin/zsh -lc "sed -n '45,67p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,180p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '45,67p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; sed -n '1,180p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'crit status --json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'crit status --json' in ~/Workspace/dotfiles
  succeeded in 87ms:
 - 2026-10-19T06:01:06Z: a010 `status=running question=2`: the tracked `.claude/settings.json` is not a chezmoi template, so literal rendered HOME/anchor/interpreter paths would bind it to this macOS host; it proposes HOME-relative paths in the tracked file with the host-specific absolute paths only inside the rendered guard, and CLAUDE_PROJECT_DIR never selecting an executable. The reading is right and the text is wrong. This is the second question PONG (the first 05:50:16Z) → INV-6 S2: `status=withdrawn` 06:1xZ (branch, 8 green tests, fixtures and evidence kept); the reset a02 = the a01 text with both clarifications folded in and the Codex `network_access` item removed (routing: a Codex seat edits no Codex-boundary source; that item becomes a small Claude-seat task), redesigned by the review profile and passed through C-80 before dispatch.
 - correction (2026-10-19T06:13Z): the S2 line above was premature: `regime-counters.sh --history-only` counts `status=question` PONGs and reports questions=0, because a010 sent its two questions as `status=running question=N` (a Codex-seat form deviation of the PONG contract, recorded as a conformance note; C-87: the counter also reads a `question=` field). By the counter INV-6 S2 did not fire; no withdrawal was sent (the send was guarded on the counter). Both questions are answered by interpretation notes (note 1 at 05:5xZ; note 2 at 06:13Z: $HOME-relative paths in the tracked file, host-specific paths only in the rendered guard) and amendment 1 folds both into the text and removes the Codex network_access item (routing); the running redesign output becomes that amendment text (same task id, no reset).
@@ -5497,7 +5497,7 @@ premises:
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -5518,7 +5518,7 @@ web search: 'GIT_' in https://code.claude.com/docs/en/env-vars
 codex
 過去の指摘だった非 command hook と GitHub API のホスト選択は、今回の本文に拒否条件と検証ケースが追加されています。残る確認点は、Git が決める linked-worktree の読込先と起動前検査の対象が一致するかです。Crit の既存データがなかったため、AGENTS.md 指定の独立レビューも並行しています。
 exec
-/bin/zsh -lc "rg -n '"'^### 5'"\\.14|"'^### 5'"\\.15|D-024-26' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; sed -n '45,60p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^### 5'"\\.14|"'^### 5'"\\.15|D-024-26' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; sed -n '45,60p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 5ms:
 .orchestration/decisions.tsv:74:D-024-26	2026-10-19T11:2xZ	P1-15 (worker-write-boundary-a01) ships the write boundary alone: the executable-binding work (exact installation layouts probed on the host for uv, Python and node, the bound PermissionRequest hook through the rendered absolute uv and isolated Python, the deploy-time effective-settings check, the formatter PATH) splits into dotfiles-T133-trusted-entrypoint-binding-a01 (after P1-15 and ci-efficiency-followup-a04, whose trusted interpreter resolver it consumes); until it lands the PermissionRequest hook keeps its current form behind the managed deny rules	the fourth executable-binding finding of the P1-15 text review (5204254) after the re-plan line of 20:1x JST; M-20261019-05; the operator's standing order that a third finding of one class re-plans rather than patches
 - 2026-10-19T06:01:06Z: a010 `status=running question=2`: the tracked `.claude/settings.json` is not a chezmoi template, so literal rendered HOME/anchor/interpreter paths would bind it to this macOS host; it proposes HOME-relative paths in the tracked file with the host-specific absolute paths only inside the rendered guard, and CLAUDE_PROJECT_DIR never selecting an executable. The reading is right and the text is wrong. This is the second question PONG (the first 05:50:16Z) → INV-6 S2: `status=withdrawn` 06:1xZ (branch, 8 green tests, fixtures and evidence kept); the reset a02 = the a01 text with both clarifications folded in and the Codex `network_access` item removed (routing: a Codex seat edits no Codex-boundary source; that item becomes a small Claude-seat task), redesigned by the review profile and passed through C-80 before dispatch.
@@ -5539,7 +5539,7 @@ text-security:f589c7c:1	legacy-hook-binding
 text-security:f810c30:1	hook-interpreter-binding
 
 exec
-/bin/zsh -lc "sed -n '181,410p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '181,410p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
     sources:
       - .orchestration/decisions.tsv
@@ -5776,7 +5776,7 @@ Retained responses to the earlier findings are the static input inventory, narro
 **Reviewing potential risk mitigations**
 **Summarizing assessment and verdict**
 exec
-/bin/zsh -lc "rg -n '5\\.14|5\\.15' .orchestration/plans/024-design-quality.md; /usr/bin/python3 -I -c 'from pathlib import Path; import re; s=Path(\".orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md\").read_text(); a=s.split(\"allowed_files:\\n\",1)[1].split(\"\\nafter:\",1)[0]; allowed=re.findall(r\""'^  - (.+)$",a,re.M); t=s.split("threat_table:'"\\n\",1)[1].split(\"\\npremises:\",1)[0]; rows=re.findall(r\""'^  - control: (.+)$",t,re.M); print("allowed_files:",len(allowed)); print("threat_rows:",len(rows)); print("missing allowed_file rows:",[x for x in allowed if x not in rows]); print("dispositions:", {x:len(re.findall(r"disposition: '"\\\"\"+x+\":\",t)) for x in (\"closed\",\"residual\",\"out-of-scope\")})'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|5\\.15' .orchestration/plans/024-design-quality.md; /usr/bin/python3 -I -c 'from pathlib import Path; import re; s=Path(\".orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md\").read_text(); a=s.split(\"allowed_files:\\n\",1)[1].split(\"\\nafter:\",1)[0]; allowed=re.findall(r\""'^  - (.+)$",a,re.M); t=s.split("threat_table:'"\\n\",1)[1].split(\"\\npremises:\",1)[0]; rows=re.findall(r\""'^  - control: (.+)$",t,re.M); print("allowed_files:",len(allowed)); print("threat_rows:",len(rows)); print("missing allowed_file rows:",[x for x in allowed if x not in rows]); print("dispositions:", {x:len(re.findall(r"disposition: '"\\\"\"+x+\":\",t)) for x in (\"closed\",\"residual\",\"out-of-scope\")})'" in ~/Workspace/dotfiles
  succeeded in 104ms:
 99:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
@@ -5792,7 +5792,7 @@ web search:
 web search: https://code.claude.com/docs/en/plugins/loading.md
 **Reviewing design document**
 exec
-/bin/zsh -lc "sed -n '99,153p' .orchestration/plans/024-design-quality.md; sed -n '411,590p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '99,153p' .orchestration/plans/024-design-quality.md; sed -n '411,590p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
 
@@ -5992,7 +5992,7 @@ This task does not write that task file. It names the owner and prerequisites wi
 
 **Finishing output segment**
 exec
-/bin/zsh -lc "sed -n '591,725p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md; sed -n '113p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '591,725p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md; sed -n '113p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 The managed PermissionRequest keeps its current direct command behind the managed deny rules. Its interpreter discovery, startup environment and execution remain unverified here. No sanitized-prefix claim includes that exception.
 
@@ -6166,13 +6166,13 @@ codex
 a03 は実行ファイルの完全な束縛や同一 UID の競合を別タスクへ残しています。その留保と、今回「closed」とする起動前拒否の保証を区別し、設定・環境・リポジトリ選択の抜けを確認しています。
 
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'D-024-(26|29|30|31)' .orchestration/decisions.tsv; rg -n '"'^### 5.14|''^### 5.15|無害化した環境|残余|GIT_|symlink|case.insensitive'"' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'D-024-(26|29|30|31)' .orchestration/decisions.tsv; rg -n '"'^### 5.14|''^### 5.15|無害化した環境|残余|GIT_|symlink|case.insensitive'"' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '350,610p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '350,610p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; tail -n 85 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; tail -n 45 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md; tail -n 40 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; tail -n 85 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; tail -n 45 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md; tail -n 40 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ebbb71b.md.last.md' in ~/Workspace/dotfiles
  succeeded in 100ms:
 ---
 {
@@ -6643,11 +6643,11 @@ All 22 allowed-file entries have threat rows; all 79 rows are residuals, with no
 
 Not checked: implementation tests, CI or live enforcement. No files changed; the identified design gaps remain.
 Verdict: incorrect
-- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
 
-- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
-- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
+- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
 
 All 22 allowed-file entries have threat rows; all 53 rows are residuals, with none claiming closure. Explicitly deferred executable binding, same-UID races and shared capabilities were not re-reported.
 
@@ -6657,7 +6657,7 @@ Not checked: implementation tests, CI or live enforcement; unscreened execution 
 Verdict: incorrect
 **Adjusting output budget and calls**
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; tail -n 38 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; sed -n '95,106p' .orchestration/plans/024-design-quality.md; sed -n '110,122p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md; tail -n 38 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; sed -n '95,106p' .orchestration/plans/024-design-quality.md; sed -n '110,122p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 9ms:
 Reviewed [PR #431](https://github.com/mryfmo/dotfiles/pull/431) at `c0f50fa1383416240ad28959dbc4635afa777175`. Found three gaps in the claimed startup controls.
 
@@ -6739,7 +6739,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 web search: 
 web search: https://code.claude.com/docs/en/settings
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 {
@@ -6829,7 +6829,7 @@ local:c0f50fa:4	partial-fix
 web search: 
 web search: 'CLAUDE_ENV_FILE'
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '460,609p'; sed -n '1,80p' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md; tail -n 30 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md | sed -n '460,609p'; sed -n '1,80p' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md; tail -n 30 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-2ae9e2c.md" in ~/Workspace/dotfiles
  succeeded in 9ms:
    460	
    461	| Selector | Required coverage |
@@ -7100,7 +7100,7 @@ codex
 web search: 
 web search: https://code.claude.com/docs/en/plugins/loading
 exec
-/bin/zsh -lc "sed -n '35,56p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; sed -n '563,609p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'CLAUDE_ENV_FILE|env-file|environment file' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; tail -n 27 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '35,56p' .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; sed -n '563,609p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; rg -n 'CLAUDE_ENV_FILE|env-file|environment file' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; tail -n 27 .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-b2a186e.md" in ~/Workspace/dotfiles
  succeeded in 20ms:
 text-security:b2a186e:1	input-inventory
 text-security:b2a186e:2	repository-binding
@@ -7208,7 +7208,7 @@ Verdict: incorrect
 web search: 
 web search: 'CLAUDE_ENV_FILE'
 exec
-/bin/zsh -lc "sed -n '563,610p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; /usr/bin/ruby -e 's = File.read(ARGV[0]); a = s.split(\"allowed_files:\\n\",2)[1].split(\"after:\",2)[0].scan(/"'^  - (.+)$/).flatten; c = s.scan(/''^  - control: (.+)$/).flatten; puts "allowed=#{a.length} threats=#{c.length} closed=#{s.scan(/disposition: '"\\\"closed:/).length}\"; puts \"missing_allowed_rows=#{(a-c).inspect}\"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '563,610p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md; /usr/bin/ruby -e 's = File.read(ARGV[0]); a = s.split(\"allowed_files:\\n\",2)[1].split(\"after:\",2)[0].scan(/"'^  - (.+)$/).flatten; c = s.scan(/''^  - control: (.+)$/).flatten; puts "allowed=#{a.length} threats=#{c.length} closed=#{s.scan(/disposition: '"\\\"closed:/).length}\"; puts \"missing_allowed_rows=#{(a-c).inspect}\"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md" in ~/Workspace/dotfiles
  succeeded in 110ms:
 Retain the inherited formatting reproduction at historical base `205fe85c` for the 12 out-of-scope shell files; do not repair them here. Run no local Bats tests. Required Bats results and all required checks come from GitHub Actions before RESULT.
 
@@ -7269,7 +7269,7 @@ I'm analyzing how settings, environment files, and runtime inputs are handled, f
 **Finalizing report formatting**
 **Reviewing environment variable risks**
 codex
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
 
 Checked all 85 threat rows, including five closed claims; all 22 allowed-file entries have rows. No additional findings beyond the disclosed residuals. Independent review corroborated the finding.
 
@@ -7281,7 +7281,7 @@ hook: Stop
 hook: Stop Completed
 tokens used
 96,521
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md:374) — `CLAUDE_ENV_FILE` selects shell code executed before each Bash command, but the design binds only its pathname and omits its contents from S01–S23, threat coverage and refusal tests; pre-existing contents can execute commands or restore rejected environment variables. Require empty or explicitly trusted generated contents before forwarding, with a planted-content regression. This admission-time omission is separate from deferred replacement races. [Documented behavior](https://code.claude.com/docs/en/env-vars).
 
 Checked all 85 threat rows, including five closed claims; all 22 allowed-file entries have rows. No additional findings beyond the disclosed residuals. Independent review corroborated the finding.
 

@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a15735-4aef-7193-abcc-6e4a7705783b
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-python-pin-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 タスク本文、threat_table、参照された acceptance・review 記録を読み、設計上の判断が実際の実行対象に結び付くかを確認します。Ponytail と agmsg-orchestration の関連手順を使います。指定どおり読み取り専用で進めます。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -286,7 +286,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -342,7 +342,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short && git rev-parse HEAD && nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short && git rev-parse HEAD && nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
  succeeded in 17ms:
  M .orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
@@ -1284,11 +1284,11 @@ exec
    129	TOKEN=$("${P[@]}" "$GH" auth token --hostname github.com); [ -n "$TOKEN" ] || { printf '%s\n' 'gh: refused: no-token' >&2; exit 1; }
    130	GHC=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ghcfg.XXXXXX")
    131	"${P[@]}" "$GH" --version
-   132	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
+   132	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
    133	# (f) Substitute the recorded full SHAs before execution; never execute placeholders.
-   134	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
+   134	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
    135	# (f') Completeness of (f): refuse a list of 300 files (GitHub's cap) or one that differs from the PR's changedFiles; <pr> is this task's PR, so (f') runs at RESULT, not at dispatch.
-   136	n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
+   136	n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
    137	[ "$n" -lt 300 ] && [ "$n" = "$c" ] || { printf '%s\n' "compare: refused: files=$n changedFiles=$c" >&2; exit 1; }
    138	# (g) Read-only declaration and existing-policy probe.
    139	"${P[@]}" /usr/bin/grep -n -E 'python.*latest|latest.*python|held = |if name not in held:|self.assertEqual\("latest", version, name\)' home/dot_mise/config.toml tests/unit/test_supply_chain_policy.py scripts/validate-agent-assets.py
@@ -1352,11 +1352,11 @@ exec
    197	amendment after re-plan 2, round 2 (2026-10-20T02:46:45Z): gh configuration isolated ((e'): GH_CONFIG_DIR fresh dir + the keyring token read once by the bound gh; every gh call carries them; --repo github.com/mryfmo/dotfiles); previous_sha256 0ec4bb996a70fb34829a9b7f8f38ff259706696073cf87797b406ac5f1d747e4
    198	```
 exec
-/bin/zsh -lc 'ls .ua/meta.json .ua/knowledge-graph.json && cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'ls .ua/meta.json .ua/knowledge-graph.json && cat .ua/meta.json' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|task-level audit|Worker Playbook' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md && cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|threat.table|task-level audit|Worker Playbook' ~/.agents/skills/agmsg-orchestration/SKILL.md && cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,100p' .orchestration/tasks/dotfiles-T133-python-pin-a01.md && git status --short && git rev-parse HEAD" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,100p' .orchestration/tasks/dotfiles-T133-python-pin-a01.md && git status --short && git rev-parse HEAD" in ~/Workspace/dotfiles
  succeeded in 140ms:
 ---
 format: 2
@@ -2346,13 +2346,13 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Managing token budget efficiently**
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-25|D-024-29|D-024-30|python-pin|security.*review|Linux|gh ' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-25|D-024-29|D-024-30|python-pin|security.*review|Linux|gh ' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select(.filePath == \"tests/unit/test_supply_chain_policy.py\" or .filePath == \"home/dot_mise/config.toml\") | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home tests scripts | head -20" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select(.filePath == \"tests/unit/test_supply_chain_policy.py\" or .filePath == \"home/dot_mise/config.toml\") | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home tests scripts | head -20" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '217,242p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md && sed -n '187,209p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '217,242p' ~/.agents/skills/agmsg-orchestration/SKILL.md && sed -n '187,209p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 124ms:
 9:| S1 | orchestrator の受け入れ判定と最終マージが 1 席の直列 | P1-4〜P1-6 の後、1 RESULT の受け入れは verdict ファイル確認 + 記録生成 + `gh pr merge` で約 2〜5 分 → 12〜20 件/時。6 席が同時に RESULT を出すと最大 30 分待ち | 受け入れは RESULT 到着順で 1 件ずつ、判定に要る情報は P1-5 の precheck 証跡と review verdict に集約して読む量を固定。第 2 段階 H3 で review verdict を両ベンダーの席が返す。受け入れ権限は orchestrator に残す（rules） | 受け入れ待ち時間の分布を bus 履歴から出す（RESULT → ACCEPTANCE の時刻差） |
 11:| S3 | GitHub-hosted runner の同時実行 20 ジョブ / macOS 5 ジョブ（Free〜Team 共通） | PR 1 本 = validate 1 + test 3（うち macOS 1）+ public-bootstrap 3（うち macOS 1）+ private-bootstrap 3（うち macOS 1）= 10 ジョブ・macOS 3。同時に走るのは PR 2 本分。F5 後は 7 ジョブ・macOS 1〜2 → PR 3〜5 本分 | F5（concurrency、private-bootstrap を PR から外す、in-job skip）。それでも天井は PR 3〜5 本の同時 CI。それ以上はキュー。self-hosted runner は公開リポジトリでは GitHub docs が非推奨（fork PR が任意コードを実行）なので採らない。macOS の test も対象ファイルが OS 非依存（`scripts/*.py`、`tests/unit/**` のみ）のときは in-job skip を検討（品質への影響を F5 の item 0 で判断） | `gh run list --json` から queued 時間の中央値 |
@@ -2507,11 +2507,11 @@ home/dot_agents/skills/gh-first-workflow/SKILL.md
 codex
 現行本文は、PATH 経由の shim、テスト discovery、ローカル Git ref による証跡取得を避けています。一方、実行ファイルの解決先と、GitHub 証跡を読む gh の設定境界を確認中です。過去のレビューで明示的に残余としたリスクも照合し、今回の欠陥と区別します。
 exec
-/bin/zsh -lc "tail -22 .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; sed -n '103,117p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "tail -22 .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; sed -n '103,117p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg --files .orchestration/validation | rg 'python-pin.*(last.md|crit.json)"'$'"'; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/validation | rg 'python-pin.*(last.md|crit.json)"'$'"'; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '345,440p'; rg -n 'python|\\[tools\\]' home/dot_mise/config.toml; cat /Users/a0004262/.agents/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '345,440p'; rg -n 'python|\\[tools\\]' home/dot_mise/config.toml; cat ~/.agents/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 120ms:
 text-security:e4316e1:2	tool-environment
 - 2026-10-20T01:42Z: C-80 round 3 (`…-text-security-9f757da.md`) `Verdict: incorrect`, one P2: `unittest discover -p test_mise_config.py` imports subpackage initialisers whatever the pattern (an untracked tests/unit/<pkg>/__init__.py would execute with `Ran 1 test` unchanged); execute the test file directly under `-I`. Fourth finding of the tool-environment family on this text (7771c92:2, e4316e1:1, e4316e1:2, 9f757da:1) and the third review: S1 and the C-92 cap both fire. Re-examination: the text wrote its commands ad hoc in several places (prerequisite probes, validation, cap evidence, the test invocation), so each review found another leaky invocation; the whole fix is one command block defined once.
@@ -2705,15 +2705,15 @@ text-security:ce-a04-r6:1	threat-row-selector
 1:[tools]
 5:python = "latest"
 69:idiomatic_version_file_enable_tools = ["python"]
-cat: /Users/a0004262/.agents/skills/ponytail-review/SKILL.md: No such file or directory
+cat: ~/.agents/skills/ponytail-review/SKILL.md: No such file or directory
 
 **Ensuring complete review reading**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-*.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-*.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '109,112p' .orchestration/plans/024-design-quality.md; rg -n '"'^D-024-(25|29|30)'"' .orchestration/decisions.tsv; sed -n '242,260p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '109,112p' .orchestration/plans/024-design-quality.md; rg -n '"'^D-024-(25|29|30)'"' .orchestration/decisions.tsv; sed -n '242,260p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md; wc -l .orchestration/tasks/dotfiles-T133-python-pin-a01.md; /usr/bin/git diff --no-ext-diff --no-textconv -- .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md; wc -l .orchestration/tasks/dotfiles-T133-python-pin-a01.md; /usr/bin/git diff --no-ext-diff --no-textconv -- .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
  succeeded in 80ms:
 [P2] High confidence .orchestration/tasks/dotfiles-T133-python-pin-a01.md:129 — The clean environment still loads gh’s persistent configuration: `hosts.github.com.api_host` can redirect requests and credentials despite `--hostname github.com`, while line 133’s unqualified `--repo` can select another configured host; row 62’s authenticated-evidence mitigation therefore needs configuration isolation or validation, not just executable and argument binding. [GitHub CLI implementation](https://github.com/cli/cli/blob/v2.102.0/pkg/cmd/api/api.go), [credential handling](https://github.com/cli/cli/blob/v2.102.0/api/http_client.go).
 
@@ -2916,11 +2916,11 @@ git: error: couldn't create cache file '/tmp/xcrun_db-0Zs6xIHi' (errno=Operation
 
 I’m thinking through security implications of using a temporary GH_CONFIG_DIR in a sandbox, how tokens might be read outside isolation, and how test execution and error handling work in this context. I’m also considering potential errors from paginated API calls and verification steps for token presence.
 exec
-/bin/zsh -lc "rg -n 'GH_CONFIG_DIR|api_host|github.com|auth token|keyring' .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-0ec4bb9.md | tail -16; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md | sed -n '118,199p'; rg -n 'line.*cap|185|count.*line|splitlines|Checks \\(' scripts/orchestrator/task-consistency-check.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'GH_CONFIG_DIR|api_host|github.com|auth token|keyring' .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-0ec4bb9.md | tail -16; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md | sed -n '118,199p'; rg -n 'line.*cap|185|count.*line|splitlines|Checks \\(' scripts/orchestrator/task-consistency-check.py" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,95p' .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md; sed -n '1,65p' .orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,95p' .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md; sed -n '1,65p' .orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md" in ~/Workspace/dotfiles
  succeeded in 85ms:
-1280:   133	n=$("${P[@]}" GH_TOKEN="${GH_TOKEN-}" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_TOKEN="${GH_TOKEN-}" "$GH" pr view <pr> --repo mryfmo/dotfiles --json changedFiles --jq .changedFiles)
+1280:   133	n=$("${P[@]}" GH_<redacted:secret-pattern> "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_<redacted:secret-pattern> "$GH" pr view <pr> --repo mryfmo/dotfiles --json changedFiles --jq .changedFiles)
 1324:   177	Create one English draft PR under the Worker Playbook. All gh operations retain the Commands (e) binding and clean environment and explicitly identify github.com/mryfmo/dotfiles.
 1406:    62	    disposition: "residual: Commands (e) binds the base and Commands (f) obtains cap evidence from github.com's fixed repository API at full 40-hex SHAs; acceptance verifies the final head against GitHub content."
 2640:0. **脅威モデル（D-024-21）** 席は同じ OS ユーザで動き、ホストは席間の信頼境界ではない（同一 UID のプロセスは symlink 差し替え、共有 `.git` の object 差し替え、hook の子プロセス、Herdr socket 経由の host 実行で、ホスト内のどの検査も迂回できる）。regime の硬い境界は GitHub（保護された main、必須チェック、orchestrator の identity によるマージ）。ただしこの境界は **worker 席が orchestrator の GitHub 資格情報を共有しない**ときだけ成立する（D-024-22：worker 席は専用の GitHub identity（別アカウントまたは App のトークン）で `gh` に login し、ruleset の bypass 一覧に入らない。orchestrator の keychain トークンを worker の config dir に持ち込まない。identity が分かれるまで「GitHub が境界」は未成立と書く）。**同一 macOS ユーザでは資格情報は分離できない**（gh は keychain の項目を host/user で引き、同じ UID の gh は orchestrator のトークンを読める。`GH_CONFIG_DIR` は設定を分けるだけ）。防止には worker 席を別の OS ユーザ（または別ホスト）で動かすしかなく、それは D-024-23 の将来項目（P1-16、操作者の判断）。それまで GitHub 境界は **検知**で守る：記録は boundary の記録 PR まで main に無いので、検知は次の記録 PR の regime ジョブで行う（`.orchestration/acceptance/**` に触れる PR で、前回 boundary 以降の main の各マージ commit に、gate 通過の証跡を持つ受け入れ記録が対応することを検査し、無ければその PR を失敗させる；P1-11 owner a02 の行 `ci:detection:1`）。main push 時点の検知は記録が無いので不可能であり、文は「次の記録 PR で検知、防止ではない」と書く。悪意ある worker に耐えるべき入力（承認台帳、gate が読む証跡 of record）は GitHub から sha 指定で API 経由（sandbox 内）に読み、ローカルファイルやローカル object database からは読まない。ホスト内の制御（本節 1〜10）は事故と prompt injection による損害の抑制であり、文はそう書く。
@@ -2950,11 +2950,11 @@ exec
    129	TOKEN=$("${P[@]}" "$GH" auth token --hostname github.com); [ -n "$TOKEN" ] || { printf '%s\n' 'gh: refused: no-token' >&2; exit 1; }
    130	GHC=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ghcfg.XXXXXX")
    131	"${P[@]}" "$GH" --version
-   132	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
+   132	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
    133	# (f) Substitute the recorded full SHAs before execution; never execute placeholders.
-   134	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
+   134	"${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
    135	# (f') Completeness of (f): refuse a list of 300 files (GitHub's cap) or one that differs from the PR's changedFiles; <pr> is this task's PR, so (f') runs at RESULT, not at dispatch.
-   136	n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
+   136	n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_<redacted:secret-pattern> "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
    137	[ "$n" -lt 300 ] && [ "$n" = "$c" ] || { printf '%s\n' "compare: refused: files=$n changedFiles=$c" >&2; exit 1; }
    138	# (g) Read-only declaration and existing-policy probe.
    139	"${P[@]}" /usr/bin/grep -n -E 'python.*latest|latest.*python|held = |if name not in held:|self.assertEqual\("latest", version, name\)' home/dot_mise/config.toml tests/unit/test_supply_chain_policy.py scripts/validate-agent-assets.py
@@ -3188,7 +3188,7 @@ web search: https://cli.github.com/manual/gh_help_environment
 codex
 全 threat row と過去の指摘を照合しました。gh の設定分離は前回の設定経由の迂回に対応しており、Codex 専用・sandbox 外への再試行禁止も明記されています。新たなセキュリティ上の欠陥は確認できていませんが、本文が自ら定めた 185 行上限を超えており、バイト一致のコピー要件と両立しない点を確認しています。
 exec
-/bin/zsh -lc "awk 'END {print \"task logical lines:\", NR}' .orchestration/tasks/dotfiles-T133-python-pin-a01.md; awk '/"'^```bash$/ {code=1; next} code && /''^```$/ {exit} code {print}'"' .orchestration/tasks/dotfiles-T133-python-pin-a01.md | /bin/bash --noprofile --norc -p -n; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "awk 'END {print \"task logical lines:\", NR}' .orchestration/tasks/dotfiles-T133-python-pin-a01.md; awk '/"'^```bash$/ {code=1; next} code && /''^```$/ {exit} code {print}'"' .orchestration/tasks/dotfiles-T133-python-pin-a01.md | /bin/bash --noprofile --norc -p -n; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md" in ~/Workspace/dotfiles
  succeeded in 17ms:
 task logical lines: 198
 b657a897d337b524e1a2d403417da2898c507b59b67e008ef5b05c703ea011cd  .orchestration/tasks/dotfiles-T133-python-pin-a01.md

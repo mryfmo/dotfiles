@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a159c9-0afb-7ad0-ba86-a9940ea37442
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll read the task, its cited evidence, and the host execution controls, then assess whether each stated control binds what actually runs. I’m using the Ponytail review and agmsg-orchestration instructions for this read-only review; the session’s model profile cannot be changed mid-session.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 28ms:
 ---
 name: agmsg-orchestration
@@ -447,11 +447,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "command -v crit; crit status --json; rg -n 'threat.table|task-level audit' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "command -v crit; crit status --json; rg -n 'threat.table|task-level audit' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 290ms:
      1	---
      2	format: 2
@@ -892,13 +892,13 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
 }
 
  succeeded in 610ms:
-/Users/a0004262/.local/bin/crit
+~/.local/bin/crit
 {
   "branch": "main",
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -917,11 +917,11 @@ f7f3806749815ba9dfd90e7ff9ee390ca6079014
 codex
 The task explicitly defers executable selection, inherited `GIT_DIR`, and sandbox exclusions to follow-ups. I’ll check whether those deferrals are properly owned and whether the rows still marked `closed` make claims their tests cannot establish. The read-only constraint means I won’t write worklogs or review receipts.
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-regime-ci-token-a01.md; cat .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-regime-ci-token-a01.md; cat .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'nl -ba scripts/orchestrator/regime-ci.py; nl -ba .github/workflows/regime.yml; nl -ba tests/unit/test_regime_ci.py' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba scripts/orchestrator/regime-ci.py; nl -ba .github/workflows/regime.yml; nl -ba tests/unit/test_regime_ci.py' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "/usr/bin/python3 -I -c 'import json; g=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([{k:n.get(k) for k in (\"name\",\"summary\",\"filePath\")} for n in g.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"regime-ci\", \"agent-config\", \"task-consistency\"))],ensure_ascii=False))'; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home .github tests; rg --files .orchestration/validation .orchestration/tasks | rg 'regime-ci-token|worker-sandbox-exclusions-a02'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/python3 -I -c 'import json; g=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([{k:n.get(k) for k in (\"name\",\"summary\",\"filePath\")} for n in g.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"regime-ci\", \"agent-config\", \"task-consistency\"))],ensure_ascii=False))'; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home .github tests; rg --files .orchestration/validation .orchestration/tasks | rg 'regime-ci-token|worker-sandbox-exclusions-a02'" in ~/Workspace/dotfiles
  succeeded in 116ms:
 ---
 {
@@ -2446,7 +2446,7 @@ tests/unit/test_workflow_security.py
 
 **Seeking clearer direction**
 exec
-/bin/zsh -lc "sed -n '1,175p' scripts/orchestrator/regime-ci.py; cat .github/workflows/regime.yml; sed -n '1,210p' tests/unit/test_regime_ci.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,175p' scripts/orchestrator/regime-ci.py; cat .github/workflows/regime.yml; sed -n '1,210p' tests/unit/test_regime_ci.py" in ~/Workspace/dotfiles
  succeeded in 23ms:
 """Check a pull request against its task copies with the base's verifier: the regime CI job (plan 024 P1-11, T133 a02).
 
@@ -2878,27 +2878,27 @@ class RegimeCiTest(unittest.TestCase):
         for extra in ({}, {f".orchestration/tasks/{T}.md": TASK}):
 
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-c32513e.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-eaf8c47.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-d44acec.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-2c8c05a.md.last.md; cat .orchestration/tasks/dotfiles-T133-regime-ci-token-followup-a01.md; rg -n '"'^### 5.14|''^## |D-024-(21|29|30)|regime-ci-token-followup|worker-sandbox-exclusions-a02'"' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; rg -n 'test_the_regime_workflow|uv_config' tests/unit/test_regime_ci.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-c32513e.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-eaf8c47.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-d44acec.md.last.md .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-2c8c05a.md.last.md; cat .orchestration/tasks/dotfiles-T133-regime-ci-token-followup-a01.md; rg -n '"'^### 5.14|''^## |D-024-(21|29|30)|regime-ci-token-followup|worker-sandbox-exclusions-a02'"' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; rg -n 'test_the_regime_workflow|uv_config' tests/unit/test_regime_ci.py" in ~/Workspace/dotfiles
  succeeded in 80ms:
-- [P1] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:38](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:38) — “Every command inside its sandbox” is not enforced: the manifest still excludes Linux `gh *` and `agmsg-dispatch *`, and the exclusions-removal acceptance records deployment as pending; excluded commands run outside immediately, so “stop on refusal” never activates. [Sandbox semantics](https://code.claude.com/docs/en/sandboxing#run-commands-outside-the-sandbox-with-excludedcommands).
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:38](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:38) — “Every command inside its sandbox” is not enforced: the manifest still excludes Linux `gh *` and `agmsg-dispatch *`, and the exclusions-removal acceptance records deployment as pending; excluded commands run outside immediately, so “stop on refusal” never activates. [Sandbox semantics](https://code.claude.com/docs/en/sandboxing#run-commands-outside-the-sandbox-with-excludedcommands).
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:22](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:22) — The environment-dictionary test cannot close executable selection: unchanged `CHECKER_RUN` resolves `uv` through this host’s mise-first PATH and does not pin Python, so credentials reach the selected launcher/interpreter before checker validation; `--no-project` still permits discovery of a local or parent virtual environment. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run--no-project).
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:22](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:22) — The environment-dictionary test cannot close executable selection: unchanged `CHECKER_RUN` resolves `uv` through this host’s mise-first PATH and does not pin Python, so credentials reach the selected launcher/interpreter before checker validation; `--no-project` still permits discovery of a local or parent virtual environment. [uv semantics](https://docs.astral.sh/uv/reference/cli/#uv-run--no-project).
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:32](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:32) — Retained “base-only execution” is not bound on this host: regime-ci’s Git reads inherit `GIT_DIR`, while execution opens the checker beneath `root`; a read-only probe returned this repository’s HEAD from `/tmp`, demonstrating that the HEAD decision need not identify the executed filesystem tree, even without a symlink race. [Git environment semantics](https://git-scm.com/docs/git#Documentation/git.txt-GITDIR).
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:32](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:32) — Retained “base-only execution” is not bound on this host: regime-ci’s Git reads inherit `GIT_DIR`, while execution opens the checker beneath `root`; a read-only probe returned this repository’s HEAD from `/tmp`, demonstrating that the HEAD decision need not identify the executed filesystem tree, even without a symlink race. [Git environment semantics](https://git-scm.com/docs/git#Documentation/git.txt-GITDIR).
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23) — Workflow `contents: read` constrains its generated token, not arbitrary parent `GH_TOKEN`/`GITHUB_TOKEN` values preserved by line 67; a local write-capable credential retains that authority, so this residual does not establish the claimed absence of write or merge authority. [Token permissions](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token#modifying-the-permissions-for-the-github_token).
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23) — Workflow `contents: read` constrains its generated token, not arbitrary parent `GH_TOKEN`/`GITHUB_TOKEN` values preserved by line 67; a local write-capable credential retains that authority, so this residual does not establish the claimed absence of write or merge authority. [Token permissions](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token#modifying-the-permissions-for-the-github_token).
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:77](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:77) — The prescribed clean PATH omits uv, which existing fixtures launch by name; invoking the named workflow test under that environment reproduced `FileNotFoundError: 'uv'`, preventing the required green validation independently of implementation correctness.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:77](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:77) — The prescribed clean PATH omits uv, which existing fixtures launch by name; invoking the named workflow test under that environment reproduced `FileNotFoundError: 'uv'`, preventing the required green validation independently of implementation correctness.
 
 📝 まとめ: Reviewed the text, every threat row, and related records without modifying files; full suites and live Linux sandbox behavior were not tested, and the execution-binding risks above remain unresolved.
-Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23) — This row and line 33 defer executable selection and `GIT_DIR` binding to followup-a01, but that task already merged as #425 and its explicitly bounded owned rows contain neither fix; the named owner therefore supplies no mitigation for credentials reaching a PATH-selected executable or Git validation identifying a different execution tree.
+Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23) — This row and line 33 defer executable selection and `GIT_DIR` binding to followup-a01, but that task already merged as #425 and its explicitly bounded owned rows contain neither fix; the named owner therefore supplies no mitigation for credentials reaching a PATH-selected executable or Git validation identifying a different execution tree.
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78) — “Not excluded” does not establish sandbox confinement: deployed settings retain `failIfUnavailable: false`, so missing sandbox dependencies permit unsandboxed execution without a refusal; the prescribed stop-on-refusal control cannot enforce this claim. [Documented fallback behavior](https://code.claude.com/docs/en/sandboxing#get-started).
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78) — “Not excluded” does not establish sandbox confinement: deployed settings retain `failIfUnavailable: false`, so missing sandbox dependencies permit unsandboxed execution without a refusal; the prescribed stop-on-refusal control cannot enforce this claim. [Documented fallback behavior](https://code.claude.com/docs/en/sandboxing#get-started).
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — The required validation setup cannot run as specified: this host has mise at `~/.local/bin/mise`, neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; consequently the required red/green execution remains blocked independently of implementation.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — The required validation setup cannot run as specified: this host has mise at `~/.local/bin/mise`, neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; consequently the required red/green execution remains blocked independently of implementation.
 
 📝 まとめ: Reviewed every threat row and cited records without edits. Implementation tests and live Linux sandbox behavior were not exercised; the execution-binding and confinement gaps above remain.
-Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — Required validation cannot run as specified: neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; line 82 therefore cannot provide the required executable. Specify the actual pin source and verified installation directory before dispatch.
+Verdict: incorrect- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — Required validation cannot run as specified: neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; line 82 therefore cannot provide the required executable. Specify the actual pin source and verified installation directory before dispatch.
 
 📝 まとめ: Reviewed the threat rows and related records without edits. Implementation tests and live Linux sandbox behavior were not exercised; the explicitly deferred execution-binding risks remain.
 Verdict: incorrectNo findings in the reviewed text (`SHA256: 2c8c05a5d60867ccb9351b3359d64544f66785866e779a0199721158bdc0b4f2`).
@@ -2979,9 +2979,9 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-regime-c
 **Analyzing token handling and debugging behavior**
 **Verifying test design and token handling**
 exec
-/bin/zsh -lc "sed -n '95,170p' .orchestration/plans/024-design-quality.md; sed -n '225,262p' tests/unit/test_regime_ci.py; sed -n '245,330p' scripts/orchestrator/regime-ci.py; cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-cef7ebe.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '95,170p' .orchestration/plans/024-design-quality.md; sed -n '225,262p' tests/unit/test_regime_ci.py; sed -n '245,330p' scripts/orchestrator/regime-ci.py; cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-cef7ebe.md.last.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '21f52c7|2cb5848|local:21|local-review|review_source|caller-dependency' .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md; rg -n 'excludedCommands|failIfUnavailable|sandbox|mise/shims' home/dot_agents/agent-config.yaml home/dot_zshrc home/dot_config/claude/sandbox-linux.json home/.chezmoitemplates/claude-settings-managed.json; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '21f52c7|2cb5848|local:21|local-review|review_source|caller-dependency' .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md; rg -n 'excludedCommands|failIfUnavailable|sandbox|mise/shims' home/dot_agents/agent-config.yaml home/dot_zshrc home/dot_config/claude/sandbox-linux.json home/.chezmoitemplates/claude-settings-managed.json; cat .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md" in ~/Workspace/dotfiles
  succeeded in 89ms:
 ### 5.14 残余（凍結後の計測事実、D-024-29）
 
@@ -3083,7 +3083,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 
 if __name__ == "__main__":
     sys.exit(main())
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72) — The required exclusion of unrelated parent variables contradicts line 70’s explicit preservation of full environment inheritance; rows 22 and 31 still claim a checker-child allowlist, so the closing test cannot pass without violating the amended design. Reconcile those assertions and threat dispositions with the intended inherited-environment behavior.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72) — The required exclusion of unrelated parent variables contradicts line 70’s explicit preservation of full environment inheritance; rows 22 and 31 still claim a checker-child allowlist, so the closing test cannot pass without violating the amended design. Reconcile those assertions and threat dispositions with the intended inherited-environment behavior.
 
 📝 まとめ: Reviewed every threat row and related acceptance/review records without edits; the amended environment contract remains inconsistent.
 Not checked: implementation suites or live Linux enforcement; executable binding, inherited Git configuration, and same-user substitution remain declared residual risks.
@@ -3287,7 +3287,7 @@ print('unchanged checker propagates synthetic token from child stderr:', sentine
 PY
 sed -n '225,264p' tests/unit/test_regime_ci.py
 sed -n '245,320p' scripts/orchestrator/regime-ci.py
-rg -n '21f52c7|2cb5848|local-review|caller-dependency' .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md" in /Users/a0004262/Workspace/dotfiles
+rg -n '21f52c7|2cb5848|local-review|caller-dependency' .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md" in ~/Workspace/dotfiles
  succeeded in 55ms:
 zsh:1: can't create temp file for here document: operation not permitted
     def test_the_regime_workflow_runs_base_code_only(self):
@@ -3382,9 +3382,9 @@ if __name__ == "__main__":
 
 **Reviewing test scope and security audit**
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-cef7ebe.md.last.md; cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-21f52c7.md; sed -n '130,205p' .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-d4798eb.md; git show 2cb584823ccf5f22069ea925b252d8cefb020844:scripts/orchestrator/task-consistency-check.py | sed -n '105,205p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-cef7ebe.md.last.md; cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-local-review-21f52c7.md; sed -n '130,205p' .orchestration/validation/dotfiles-T133-regime-ci-token-a01-text-security-d4798eb.md; git show 2cb584823ccf5f22069ea925b252d8cefb020844:scripts/orchestrator/task-consistency-check.py | sed -n '105,205p'" in ~/Workspace/dotfiles
  succeeded in 72ms:
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72) — The required exclusion of unrelated parent variables contradicts line 70’s explicit preservation of full environment inheritance; rows 22 and 31 still claim a checker-child allowlist, so the closing test cannot pass without violating the amended design. Reconcile those assertions and threat dispositions with the intended inherited-environment behavior.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72) — The required exclusion of unrelated parent variables contradicts line 70’s explicit preservation of full environment inheritance; rows 22 and 31 still claim a checker-child allowlist, so the closing test cannot pass without violating the amended design. Reconcile those assertions and threat dispositions with the intended inherited-environment behavior.
 
 📝 まとめ: Reviewed every threat row and related acceptance/review records without edits; the amended environment contract remains inconsistent.
 Not checked: implementation suites or live Linux enforcement; executable binding, inherited Git configuration, and same-user substitution remain declared residual risks.
@@ -3611,7 +3611,7 @@ def main_bytes(root, name):
 **Verifying current SHA**
 **Ensuring precise validation**
 exec
-/bin/zsh -lc "shasum -a 256 .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md; sed -n '13,39p' .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md; sed -n '68,74p' .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "shasum -a 256 .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md; sed -n '13,39p' .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md; sed -n '68,74p' .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md" in ~/Workspace/dotfiles
  succeeded in 59ms:
 d4798ebf298a380ab939d55c94f753019891e2c42a39626a1e5be3940dfc626b  .orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md
   - {control: ".github/workflows/regime.yml", disposition: "closed: tests/unit/test_regime_ci.py::RegimeCiTest::test_the_regime_workflow_runs_base_code_only"}

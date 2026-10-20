@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a15704-5c2c-7522-a390-d601da866804
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-python-pin-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 agmsg-orchestration と Ponytail の手順を確認し、タスク本文・threat_table・参照先の証跡を読み取り専用で監査します。実行時の解決先に各制御が結び付くかを重点的に確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -286,7 +286,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -342,7 +342,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
  succeeded in 120ms:
  M .orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
@@ -1232,7 +1232,7 @@ exec
     95	Definitions occur only here. Start Commands (parent) from the trusted launcher; execute the lettered sections inside that parent from the verified checkout root. Stop at any failed prerequisite.
     96	```bash
     97	# (parent) Clear inherited inputs before starting the shell; never print the token.
-    98	/usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GH_TOKEN="${GH_TOKEN-}" /bin/bash --noprofile --norc -p -o pipefail
+    98	/usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GH_<redacted:secret-pattern> /bin/bash --noprofile --norc -p -o pipefail
     99	# (a) Anchor home to the real user's account record.
    100	case "$(/usr/bin/uname -s)" in
    101	  Darwin) home=$(dscl . -read /Users/"$(id -un)" NFSHomeDirectory | awk '{print $2}');;
@@ -1254,7 +1254,7 @@ exec
    117	printf '%s\n' "$GH"
    118	case "$GH" in ""|*/mise/shims/*) printf '%s\n' 'gh: refused: missing-or-shim' >&2; exit 1;; esac
    119	[ -f "$GH" ] && [ -x "$GH" ] || { printf '%s\n' 'gh: refused: not-executable' >&2; exit 1; }
-   120	"${P[@]}" GH_TOKEN="${GH_TOKEN-}" "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
+   120	"${P[@]}" GH_<redacted:secret-pattern> "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
    121	# (f) Substitute the recorded full SHAs before execution; never execute placeholders.
    122	"${P[@]}" /usr/bin/git -c core.worktree= -c include.path= diff --numstat "<base40>...<head40>"
    123	# (g) Read-only declaration and existing-policy probe.
@@ -1313,11 +1313,11 @@ exec
    176	```
 **Reducing output size**
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |5'"\\.14|step 4|Linux|gh ' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |5'"\\.14|step 4|Linux|gh ' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain -uno; git rev-parse HEAD; cat .ua/meta.json; rg -n 'T133|5\\.14|D-024-29|D-024-30|tool-environment' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain -uno; git rev-parse HEAD; cat .ua/meta.json; rg -n 'T133|5\\.14|D-024-29|D-024-30|tool-environment' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 166ms:
 ---
 name: ponytail
@@ -1459,11 +1459,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Checking system for Python and jq**
 exec
-/bin/zsh -lc "sed -n '217,250p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '80,160p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '217,250p' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '80,160p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'T133-(python-pin|ci-efficiency|worker-write)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'T133-(python-pin|ci-efficiency|worker-write)'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"T133|mise/config|test_supply_chain|agent-config|pr-integration\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts tests install" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"T133|mise/config|test_supply_chain|agent-config|pr-integration\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts tests install" in ~/Workspace/dotfiles
  succeeded in 109ms:
 ## Codex seat worklogs
 
@@ -1904,7 +1904,7 @@ tests/unit/test_workflow_security.py
 
 **Managing output length**
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 {
@@ -1990,11 +1990,11 @@ text-security:ce-a04-r6:1	threat-row-selector
 codex
 本文は、継承環境の除去・Python の固定パス・テストの直接実行を明記し、同一 UID による差し替えも残余リスクとして扱っています。一方、gh の選定と Git のローカル設定については、実行先を十分に拘束できているか、過去の指摘と照合中です。読み取り専用のため、worklog や証跡ファイルは作成しません。
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-7771c92.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e4316e1.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-9f757da.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e74aec4.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-7771c92.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e4316e1.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-9f757da.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e74aec4.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '107,135p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '107,135p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '360,455p'; rg -n 'python|held|latest' home/dot_mise/config.toml scripts/validate-agent-assets.py; rg -n 'D-024-(25|29|30)' .orchestration/decisions.tsv" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '360,455p'; rg -n 'python|held|latest' home/dot_mise/config.toml scripts/validate-agent-assets.py; rg -n 'D-024-(25|29|30)' .orchestration/decisions.tsv" in ~/Workspace/dotfiles
  succeeded in 102ms:
 - [P2] High confidence .orchestration/tasks/dotfiles-T133-python-pin-a01.md:90 — The prerequisite checks `latest/bin/python3`, but validation executes `3.15.0/bin/python3`; listing the directory does not establish that these resolve to the same executable, so the version decision is not bound to execution.
 - [P2] High confidence .orchestration/tasks/dotfiles-T133-python-pin-a01.md:103 — Bare `uv` resolves through this host’s mise shim before its flags apply, while `$HOME` and Python startup inputs remain inherited; the future resolver does not constrain this validation command, leaving the environment row’s mitigation incomplete. [Mise resolution](https://mise.jdx.dev/dev-tools/shims.html), [Python environment](https://docs.python.org/3/using/cmdline.html).
@@ -2025,7 +2025,7 @@ Not checked: implementation, CI or deployment; no files changed. The discovery c
 Verdict: incorrectReading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -2036,7 +2036,7 @@ session id: 01a15704-5c2c-7522-a390-d601da866804
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-python-pin-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -2047,7 +2047,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 agmsg-orchestration と Ponytail の手順を確認し、タスク本文・threat_table・参照先の証跡を読み取り専用で監査します。実行時の解決先に各制御が結び付くかを重点的に確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -2310,7 +2310,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -2366,7 +2366,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
  succeeded in 120ms:
  M .orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
@@ -3256,7 +3256,7 @@ exec
     95	Definitions occur only here. Start Commands (parent) from the trusted launcher; execute the lettered sections inside that parent from the verified checkout root. Stop at any failed prerequisite.
     96	```bash
     97	# (parent) Clear inherited inputs before starting the shell; never print the token.
-    98	/usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GH_TOKEN="${GH_TOKEN-}" /bin/bash --noprofile --norc -p -o pipefail
+    98	/usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GH_<redacted:secret-pattern> /bin/bash --noprofile --norc -p -o pipefail
     99	# (a) Anchor home to the real user's account record.
    100	case "$(/usr/bin/uname -s)" in
    101	  Darwin) home=$(dscl . -read /Users/"$(id -un)" NFSHomeDirectory | awk '{print $2}');;
@@ -3278,7 +3278,7 @@ exec
    117	printf '%s\n' "$GH"
    118	case "$GH" in ""|*/mise/shims/*) printf '%s\n' 'gh: refused: missing-or-shim' >&2; exit 1;; esac
    119	[ -f "$GH" ] && [ -x "$GH" ] || { printf '%s\n' 'gh: refused: not-executable' >&2; exit 1; }
-   120	"${P[@]}" GH_TOKEN="${GH_TOKEN-}" "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
+   120	"${P[@]}" GH_<redacted:secret-pattern> "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
    121	# (f) Substitute the recorded full SHAs before execution; never execute placeholders.
    122	"${P[@]}" /usr/bin/git -c core.worktree= -c include.path= diff --numstat "<base40>...<head40>"
    123	# (g) Read-only declaration and existing-policy probe.
@@ -3337,11 +3337,11 @@ exec
    176	```
 **Reducing output size**
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |5'"\\.14|step 4|Linux|gh ' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |5'"\\.14|step 4|Linux|gh ' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --porcelain -uno; git rev-parse HEAD; cat .ua/meta.json; rg -n 'T133|5\\.14|D-024-29|D-024-30|tool-environment' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --porcelain -uno; git rev-parse HEAD; cat .ua/meta.json; rg -n 'T133|5\\.14|D-024-29|D-024-30|tool-environment' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 166ms:
 ---
 name: ponytail
@@ -3483,11 +3483,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Checking system for Python and jq**
 exec
-/bin/zsh -lc "sed -n '217,250p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '80,160p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '217,250p' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '80,160p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'T133-(python-pin|ci-efficiency|worker-write)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'T133-(python-pin|ci-efficiency|worker-write)'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"T133|mise/config|test_supply_chain|agent-config|pr-integration\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts tests install" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"T133|mise/config|test_supply_chain|agent-config|pr-integration\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts tests install" in ~/Workspace/dotfiles
  succeeded in 109ms:
 ## Codex seat worklogs
 
@@ -3928,7 +3928,7 @@ tests/unit/test_workflow_security.py
 
 **Managing output length**
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-python-pin-a01.md; cat .orchestration/acceptance/dotfiles-T133-ci-efficiency-followup-a04.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 {
@@ -4014,11 +4014,11 @@ text-security:ce-a04-r6:1	threat-row-selector
 codex
 本文は、継承環境の除去・Python の固定パス・テストの直接実行を明記し、同一 UID による差し替えも残余リスクとして扱っています。一方、gh の選定と Git のローカル設定については、実行先を十分に拘束できているか、過去の指摘と照合中です。読み取り専用のため、worklog や証跡ファイルは作成しません。
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-7771c92.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e4316e1.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-9f757da.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e74aec4.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-7771c92.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e4316e1.md.last.md .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-9f757da.md.last.md; cat .orchestration/validation/dotfiles-T133-python-pin-a01-text-security-e74aec4.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '107,135p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '107,135p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '360,455p'; rg -n 'python|held|latest' home/dot_mise/config.toml scripts/validate-agent-assets.py; rg -n 'D-024-(25|29|30)' .orchestration/decisions.tsv" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba tests/unit/test_supply_chain_policy.py | sed -n '360,455p'; rg -n 'python|held|latest' home/dot_mise/config.toml scripts/validate-agent-assets.py; rg -n 'D-024-(25|29|30)' .orchestration/decisions.tsv" in ~/Workspace/dotfiles
 
  succeeded in 122ms:
 5. **出力と予約の同一性** 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
@@ -4183,13 +4183,13 @@ web search: https://git-scm.com/docs/git-diff
 **Checking GH binary path**
 web search: 
 exec
-/bin/zsh -c "ls -ld /opt/homebrew/bin/gh /usr/local/bin/gh /Users/a0004262/.local/share/mise/installs/github-cli* /Users/a0004262/.local/share/mise/installs/github-cli-cli* /Users/a0004262/.local/share/mise/shims/gh; sed -n '105,110p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -c "ls -ld /opt/homebrew/bin/gh /usr/local/bin/gh ~/.local/share/mise/installs/github-cli* ~/.local/share/mise/installs/github-cli-cli* ~/.local/share/mise/shims/gh; sed -n '105,110p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ls: /opt/homebrew/bin/gh: No such file or directory
 ls: /usr/local/bin/gh: No such file or directory
-drwxr-xr-x  8 a0004262  staff  256 Oct 14 23:11 /Users/a0004262/.local/share/mise/installs/github-cli-cli
-drwxr-xr-x  8 a0004262  staff  256 Oct 14 23:11 /Users/a0004262/.local/share/mise/installs/github-cli-cli
-lrwxr-xr-x  1 a0004262  staff   31 Sep 30 13:44 /Users/a0004262/.local/share/mise/shims/gh -> /Users/a0004262/.local/bin/mise
+drwxr-xr-x  8 a0004262  staff  256 Oct 14 23:11 ~/.local/share/mise/installs/github-cli-cli
+drwxr-xr-x  8 a0004262  staff  256 Oct 14 23:11 ~/.local/share/mise/installs/github-cli-cli
+lrwxr-xr-x  1 a0004262  staff   31 Sep 30 13:44 ~/.local/share/mise/shims/gh -> ~/.local/bin/mise
 3. **信頼パスの境界検査** 仕組みが信頼するパス（スクリプト、台帳、証跡、worktree、lock、出力先）は realpath で解決し、`.claude/worktrees/` または manifest の worker ルート配下なら拒否（ask/hold）。symlink 構成要素は解決後に比較し、大小文字を区別しないファイルシステムでは同一性比較を大小文字非依存で行う。 A validator or scanner enumerates its inputs by walking the filesystem under fixed roots (every regular file, ignored or untracked included), never by asking git which files exist: `git ls-files` trusts the index and the working-tree `.gitignore` rules, which a same-UID writer edits without a commit (a07 C-80 rounds 1 to 3, 2026-10-19); git is consulted only to confirm the root (`--show-toplevel` equality with a real `.git` directory) and never as an exclusion authority.
 4. **検証したものを実行し、検証した内容を渡す** 検証した実行体はその realpath で実行する（再探索しない）。検証したファイル内容は信頼ルート配下のスナップショット（0600、一意名）として渡し、使用直前に sha256 を再照合する。判断に読んだ証跡は sha256 を出力に記録する。
 5. **出力と予約の同一性** 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
@@ -4198,7 +4198,7 @@ lrwxr-xr-x  1 a0004262  staff   31 Sep 30 13:44 /Users/a0004262/.local/share/mis
 8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
 
 exec
-/bin/zsh -c '/usr/bin/env -i PATH=/usr/bin:/bin HOME=/Users/a0004262 LANG=C.UTF-8 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_LAZY_FETCH=1 /usr/bin/git -c core.worktree= diff --numstat 118daafa4610549d3bc280800cf8b1d36fb851dc...118daafa4610549d3bc280800cf8b1d36fb851dc' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -c '/usr/bin/env -i PATH=/usr/bin:/bin HOME=~ LANG=C.UTF-8 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_LAZY_FETCH=1 /usr/bin/git -c core.worktree= diff --numstat 118daafa4610549d3bc280800cf8b1d36fb851dc...118daafa4610549d3bc280800cf8b1d36fb851dc' in ~/Workspace/dotfiles
  succeeded in 0ms:
 git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 git: error: couldn't create cache file '/tmp/xcrun_db-a3I84D8Z' (errno=Operation not permitted)
@@ -4215,13 +4215,13 @@ codex
 
 I'm inspecting token use and verifying that config and environment settings don’t introduce trust or API issues, focusing on read-only conditions and specific version pinning. I’m making sure any referencing is clear and concise with local file links as the user prefers.
 exec
-/bin/zsh -c 'ls -l /Users/a0004262/.local/share/mise/installs/github-cli-cli/*/bin/gh; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -c 'ls -l ~/.local/share/mise/installs/github-cli-cli/*/bin/gh; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-python-pin-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
--rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 /Users/a0004262/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh
--rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 /Users/a0004262/.local/share/mise/installs/github-cli-cli/2.102/bin/gh
--rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 /Users/a0004262/.local/share/mise/installs/github-cli-cli/2/bin/gh
--rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 /Users/a0004262/.local/share/mise/installs/github-cli-cli/global/bin/gh
--rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 /Users/a0004262/.local/share/mise/installs/github-cli-cli/latest/bin/gh
+-rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 ~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh
+-rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 ~/.local/share/mise/installs/github-cli-cli/2.102/bin/gh
+-rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 ~/.local/share/mise/installs/github-cli-cli/2/bin/gh
+-rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 ~/.local/share/mise/installs/github-cli-cli/global/bin/gh
+-rwxr-xr-x@ 1 a0004262  staff  39834784 Oct 10 06:20 ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh
 e74aec42bb62e59d3875eb9c628f3760486c3eee80fb65513bb1e89c92a537af  .orchestration/tasks/dotfiles-T133-python-pin-a01.md
 
 **Assessing security verdict and mitigation**

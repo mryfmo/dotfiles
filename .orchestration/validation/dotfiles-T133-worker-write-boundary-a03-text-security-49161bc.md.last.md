@@ -1,4 +1,4 @@
-No new actionable findings in the [task text](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
+No new actionable findings in the [task text](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md).
 
 Checked all **87 threat rows**, including **8 closed claims**, and all **22 allowed-file entries**, alongside the cited acceptance records and reviews. The proposed fixtures support their narrowly scoped startup claims. Independent review reached the same conclusion.
 

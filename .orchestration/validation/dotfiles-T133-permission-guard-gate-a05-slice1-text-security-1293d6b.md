@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.162.1
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a1569c-e517-7571-8f62-2e29f35f3305
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll review the task’s stated controls, every threat row, and the cited evidence against this host’s execution boundaries. I’m using the security review and orchestration guidance; this will remain read-only.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -286,7 +286,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 format: 2
@@ -436,7 +436,7 @@ Implementation tests and live deployment were not performed during authoring; re
 ```
 ```
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail-review
@@ -542,13 +542,13 @@ Lists findings, changes no code.
 
 **Focusing on efficient output and planning**
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |threat.table|security review'"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^## |threat.table|security review'"' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in d.get(\"nodes\",[]) if any(s in str(n).lower() for s in (\"merge-gate\",\"permission-guard\",\"write-boundary\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in d.get(\"nodes\",[]) if any(s in str(n).lower() for s in (\"merge-gate\",\"permission-guard\",\"write-boundary\"))))'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|D-024-(13|14|25|28|30)|C-80|a05-slice1' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; cat .ua/meta.json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|D-024-(13|14|25|28|30)|C-80|a05-slice1' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv; cat .ua/meta.json" in ~/Workspace/dotfiles
  succeeded in 173ms:
 10:## Architecture
 17:## Regime activation and progress
@@ -1501,7 +1501,7 @@ ba318e5369b14a79d6f515e87b685c9bcb30c12e
  succeeded in 248ms:
 **Avoiding truncation**
 exec
-/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '/## Codex seat worklogs/,/## Pitfalls/p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ## Codex seat worklogs
 
@@ -1540,7 +1540,7 @@ for blocked work, `evidence` (path array), and `tags`.
 ## Pitfalls
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '95,135p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '95,135p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
     95	5.12 **プログラム仕様** は `024-design-programs.md` に分離（17 項目: verdict.sh、audit-pool.sh と orch-audit.sh --json、schemas、result-precheck.sh、dispositions.py、regime.yml、dispatch.sh --next、acceptance-front-matter.py、git hooks、handoff.sh、flakes、task-from-plan.py）。
     96	
@@ -1563,7 +1563,7 @@ exec
    113	7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
 
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -25; rg --files .orchestration/acceptance .orchestration/validation | rg '(permission-guard-gate|pinned-merge-gate|worker-write-boundary)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -25; rg --files .orchestration/acceptance .orchestration/validation | rg '(permission-guard-gate|pinned-merge-gate|worker-write-boundary)'" in ~/Workspace/dotfiles
  succeeded in 625ms:
 .claude/contextdb/contextdb/cli.py
 .claude/contextdb/contextdb/config.py
@@ -1669,13 +1669,13 @@ exec
 codex
 The draft blocks dispatch on two known scope problems. I’m treating those as acknowledged blockers and checking the separate question: whether removing the prompts depends on gate protections that this slice defers to a05.
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-permission-guard-gate-a03-security-31d6c32.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a04-security-911f520.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a05-text-security.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-permission-guard-gate-a03-security-31d6c32.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a04-security-911f520.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a05-text-security.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a03.md .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a03.md .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | sed -n '96,155p'; rg -n 'gh|anchor|sha|GIT_|PATH|symlink|case|ledger' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | sed -n '96,155p'; rg -n 'gh|anchor|sha|GIT_|PATH|symlink|case|ledger' .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05.md" in ~/Workspace/dotfiles
  succeeded in 235ms:
 ---
 {
@@ -2285,7 +2285,7 @@ Not checked: implementation tests, live sandbox enforcement or deployment; the c
 Verdict: incorrect
 **Handling output truncation issues**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-permission-guard-gate-a03-security-31d6c32.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a04-security-911f520.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a05-text-security.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-permission-guard-gate-a03-security-31d6c32.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a04-security-911f520.md.last.md .orchestration/validation/dotfiles-T133-permission-guard-gate-a05-text-security.md.last.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 Reviewed [PR #420](https://github.com/mryfmo/dotfiles/pull/420) at `31d6c322988ebb21eebe1e8bf88d5b3910c11f4d`.
 
@@ -2348,7 +2348,7 @@ Not checked: implementation tests, live sandbox enforcement or deployment; the c
 Verdict: incorrect
 **Assessing need for subagent**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | sed -n '96,151p'; rg -n 'gh_merge_gate|gh-merge|excludedCommands|gh \\*|permissions:|settings_path|mise' home/dot_agents/agent-config.yaml; rg --files home/dot_claude/hooks scripts | rg '(gh-merge-gate|permission-guard)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | sed -n '96,151p'; rg -n 'gh_merge_gate|gh-merge|excludedCommands|gh \\*|permissions:|settings_path|mise' home/dot_agents/agent-config.yaml; rg --files home/dot_claude/hooks scripts | rg '(gh-merge-gate|permission-guard)'" in ~/Workspace/dotfiles
  exited 1 in 42ms:
     96	      39:      "Bash(gh pr update-branch:*)",
     97	---
@@ -2419,7 +2419,7 @@ exec
 482:    note: chezmoi signs its checksums with cosign only, which a fresh host cannot run; the newest cooled-down release installs only when an authenticated gh can check its release attestation before it runs, otherwise the fallback release does, and mise's own chezmoi takes over after the bootstrap.
 
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T133-permission-guard-gate-a04.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 {
@@ -2490,7 +2490,7 @@ local-finding: 911f520:2 not-applicable:advisory P2 owned by dotfiles-T133-permi
 
 **Checking live hook installation**
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md; rg -n 'gh|sandbox|anchor|gate|deploy|GIT_|same.UID' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | tail -45" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T131-claude-pinned-merge-gate-review-a01.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-text-security-ac9ce14.md.last.md; rg -n 'gh|sandbox|anchor|gate|deploy|GIT_|same.UID' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | tail -45" in ~/Workspace/dotfiles
  succeeded in 55ms:
 ---
 {
@@ -2629,7 +2629,7 @@ Verdict: correct896:    Preserve schema, model/effort, formatter markers, permis
 1114:This re-planned text claims no implementation-test, CI or live-deployment results. Same-UID access, shared capabilities, consumption races and the transferred executable-binding work remain risks.
 
 exec
-/bin/zsh -lc "rg -n 'gh-merge|permgate|PreToolUse|ask|sandbox' home/dot_agents/agent-config.yaml scripts/validate-agent-assets.py | head -65; rg -n 'gh pr|subprocess|Popen|run\\(|GIT_|command -v|body.file|allow|updatedInput|origin/main' /Users/a0004262/.claude/hooks/gh-merge-gate.sh" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'gh-merge|permgate|PreToolUse|ask|sandbox' home/dot_agents/agent-config.yaml scripts/validate-agent-assets.py | head -65; rg -n 'gh pr|subprocess|Popen|run\\(|GIT_|command -v|body.file|allow|updatedInput|origin/main' ~/.claude/hooks/gh-merge-gate.sh" in ~/Workspace/dotfiles
  succeeded in 33ms:
 home/dot_agents/agent-config.yaml:12:# - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
 home/dot_agents/agent-config.yaml:13:#   The Claude sandbox allowWrite list is rendered from the same entries.
@@ -2722,7 +2722,7 @@ scripts/validate-agent-assets.py:1208:    permgate_text = permgate_path.read_tex
 codex
 The cited reviews found gaps between what the hook checks and what later executes. P1-15’s text explicitly defers executable binding, so its merge does not close those gaps. The slice also defers the approval-ledger consumer to a05; I’m checking whether its threat rows make either dependency a prerequisite for prompt removal.
 exec
-/bin/zsh -lc "sed -n '1,90p' /Users/a0004262/.claude/hooks/gh-merge-gate.sh; sed -n '150,215p' /Users/a0004262/.claude/hooks/gh-merge-gate.sh; sed -n '374,414p' scripts/validate-agent-assets.py; sed -n '690,775p' tests/unit/test_generate_agent_configs.py; nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | head -48" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,90p' ~/.claude/hooks/gh-merge-gate.sh; sed -n '150,215p' ~/.claude/hooks/gh-merge-gate.sh; sed -n '374,414p' scripts/validate-agent-assets.py; sed -n '690,775p' tests/unit/test_generate_agent_configs.py; nl -ba .orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md | head -48" in ~/Workspace/dotfiles
  succeeded in 36ms:
 #!/usr/bin/env bash
 # @file gh-merge-gate.sh
@@ -3054,7 +3054,7 @@ CODEX_HOOK_EVENTS = frozenset(
     48	  - claim: "Authoring HEAD and origin/main agree; all following probes describe this observed base, not the future merged P1-15 base."
 
 exec
-/bin/zsh -lc "rg -n '5\\.14|scope=permission|permission.*guard|decision|security' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md | tail -18; tail -16 .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; sed -n '58,79p' .orchestration/decisions.tsv" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|scope=permission|permission.*guard|decision|security' ~/.agents/skills/agmsg-orchestration/SKILL.md | tail -18; tail -16 .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md; sed -n '58,79p' .orchestration/decisions.tsv" in ~/Workspace/dotfiles
  succeeded in 0ms:
 20:- On activation, verify CompactionDB opt-in for the active repository and install it with `compactiondb-install` if missing. Regime start is operator-initiated consent to the install; acceptance-time decision consolidation then applies.
 31:- Add and remove parallel workers only with `herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME]` and `herdr-agents --remove-worker <worktree> [--force]` (worktree under `.claude/worktrees/`). For Codex, seat ordinary tasks with `--profile standard`; use `--profile security` only for trust-boundary tasks (permgate, redaction or secret handling, sandbox or permission policy), per the model-selection rule, with an identity such as `codex-security-dot-aNNN`. Add-worker seats the worker in its own tab of the pair workspace, labeled `<team>:<name>` with the pair tab untouched (in its own workspace only when no pair workspace exists, as in the pane-less bring-up), through upstream `spawn.sh --project <worktree> --terminal-driver herdr` with the profile's launch args in a generated spawn options file, so a placement record exists and `poke.sh`/`despawn.sh` work. Remove-worker despawns it, then turns delivery off, leaves, and closes that tab (or workspace), refusing a dirty worktree without `--force`. Keep about three concurrent workers at most; raw herdr topology commands stay forbidden (T21 G7).
@@ -3112,7 +3112,7 @@ web search:
 web search: https://mise.jdx.dev/dev-tools/shims.html
 **Evaluating hook preservation**
 exec
-/bin/zsh -lc "rg -n 'gh-merge|gh_merge|hook|managed' home/dot_claude/modify_private_settings.json | head -60; rg -n 'gh-merge|gh_merge|ask|merge|create' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | head -24; sed -n '165,192p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; rg -n 'PATH=.*mise|mise/shims' home/dot_zshrc* home/dot_zsh* home/dot_config/zsh*" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'gh-merge|gh_merge|hook|managed' home/dot_claude/modify_private_settings.json | head -60; rg -n 'gh-merge|gh_merge|ask|merge|create' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md | head -24; sed -n '165,192p' ~/.agents/skills/agmsg-orchestration/SKILL.md; rg -n 'PATH=.*mise|mise/shims' home/dot_zshrc* home/dot_zsh* home/dot_config/zsh*" in ~/Workspace/dotfiles
  succeeded in 55ms:
 2:"""Merge managed Claude settings with Claude-owned runtime state.
 5:managed baseline so `chezmoi apply` does not fail on a malformed runtime file.
@@ -3239,11 +3239,11 @@ I’m gathering key details about code lines affecting vulnerabilities, pending 
 
 I’m organizing detailed counts and references for sixteen threat rows from a specific file, preparing a concise markdown summary with precise line citations and avoiding redundant sources to meet the user’s request for a focused, high-confidence report.
 codex
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118) Prompt removal precedes its replacement control: the tracked hook, anchor and gate rebuild remain deferred, while P1-15 explicitly defers executable binding; the retained live hook still authorizes bare `gh`, inherits `GIT_*`, and consumes mutable paths, so rendering the expected policy cannot close the cited shim, redirected-checkout, case-alias or file-swap findings. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html), [Git environment](https://git-scm.com/docs/git#_environment_variables).
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118) Prompt removal precedes its replacement control: the tracked hook, anchor and gate rebuild remain deferred, while P1-15 explicitly defers executable binding; the retained live hook still authorizes bare `gh`, inherits `GIT_*`, and consumes mutable paths, so rendering the expected policy cannot close the cited shim, redirected-checkout, case-alias or file-swap findings. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html), [Git environment](https://git-scm.com/docs/git#_environment_variables).
 
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46) Deferring both the approval-ledger consumer and permission-decision row supplies no mitigation for this slice’s own permission change: D-024-14’s recorded digest covers removals **plus hook installation**, whereas this slice removes only the asks; require the slice’s exact final-head permission digest to match approval fetched from the canonical GitHub ledger before integration.
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46) Deferring both the approval-ledger consumer and permission-decision row supplies no mitigation for this slice’s own permission change: D-024-14’s recorded digest covers removals **plus hook installation**, whereas this slice removes only the asks; require the slice’s exact final-head permission digest to match approval fetched from the canonical GitHub ledger before integration.
 
-[P2] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45) The threat table stops after design items 1 and 8, omitting D-024-30’s required rows for 0, 2–7, 9 and 10, plus the PR-publication effect; consequently environment isolation, filesystem identity, execution binding, cache provenance and removal of Linux’s unsandboxed `gh` exemption lack explicit dispositions.
+[P2] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45) The threat table stops after design items 1 and 8, omitting D-024-30’s required rows for 0, 2–7, 9 and 10, plus the PR-publication effect; consequently environment isolation, filesystem identity, execution binding, cache provenance and removal of Linux’s unsandboxed `gh` exemption lack explicit dispositions.
 
 📝 まとめ: Reviewed all 16 threat rows and related acceptance/review evidence; three findings remain for orchestrator disposition.
 
@@ -3253,11 +3253,11 @@ hook: Stop
 hook: Stop Completed
 tokens used
 99,935
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118) Prompt removal precedes its replacement control: the tracked hook, anchor and gate rebuild remain deferred, while P1-15 explicitly defers executable binding; the retained live hook still authorizes bare `gh`, inherits `GIT_*`, and consumes mutable paths, so rendering the expected policy cannot close the cited shim, redirected-checkout, case-alias or file-swap findings. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html), [Git environment](https://git-scm.com/docs/git#_environment_variables).
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118) Prompt removal precedes its replacement control: the tracked hook, anchor and gate rebuild remain deferred, while P1-15 explicitly defers executable binding; the retained live hook still authorizes bare `gh`, inherits `GIT_*`, and consumes mutable paths, so rendering the expected policy cannot close the cited shim, redirected-checkout, case-alias or file-swap findings. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html), [Git environment](https://git-scm.com/docs/git#_environment_variables).
 
-[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46) Deferring both the approval-ledger consumer and permission-decision row supplies no mitigation for this slice’s own permission change: D-024-14’s recorded digest covers removals **plus hook installation**, whereas this slice removes only the asks; require the slice’s exact final-head permission digest to match approval fetched from the canonical GitHub ledger before integration.
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46) Deferring both the approval-ledger consumer and permission-decision row supplies no mitigation for this slice’s own permission change: D-024-14’s recorded digest covers removals **plus hook installation**, whereas this slice removes only the asks; require the slice’s exact final-head permission digest to match approval fetched from the canonical GitHub ledger before integration.
 
-[P2] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45) The threat table stops after design items 1 and 8, omitting D-024-30’s required rows for 0, 2–7, 9 and 10, plus the PR-publication effect; consequently environment isolation, filesystem identity, execution binding, cache provenance and removal of Linux’s unsandboxed `gh` exemption lack explicit dispositions.
+[P2] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45) The threat table stops after design items 1 and 8, omitting D-024-30’s required rows for 0, 2–7, 9 and 10, plus the PR-publication effect; consequently environment isolation, filesystem identity, execution binding, cache provenance and removal of Linux’s unsandboxed `gh` exemption lack explicit dispositions.
 
 📝 まとめ: Reviewed all 16 threat rows and related acceptance/review evidence; three findings remain for orchestrator disposition.
 

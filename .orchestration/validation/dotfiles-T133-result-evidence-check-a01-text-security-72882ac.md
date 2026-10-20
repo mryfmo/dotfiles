@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a1590c-76ab-7351-93ff-d9fbe18f8083
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 2026-10-20T11:22:36.462943Z ERROR codex_models_manager::manager: failed to refresh available models: request timed out
 hook: SessionStart
 hook: SessionStart
@@ -24,7 +24,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 I’ll review the task’s stated controls and cited evidence against the host conditions you listed. I’m using the agmsg-orchestration and Ponytail review guidance; this session is read-only, so I won’t update worklogs or evidence files.
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -295,11 +295,11 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 120ms:
      1	---
      2	format: 2
@@ -714,15 +714,15 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 
 **Prioritizing data review**
 exec
-/bin/zsh -lc "sed -n '85,166p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md
-rg --files .orchestration/validation .orchestration/acceptance | rg '(result-evidence|result-precheck|task-generator-plan-check-a06)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '85,166p' ~/.agents/skills/agmsg-orchestration/SKILL.md
+rg --files .orchestration/validation .orchestration/acceptance | rg '(result-evidence|result-precheck|task-generator-plan-check-a06)'" in ~/Workspace/dotfiles
 exec
 /bin/zsh -lc "/usr/bin/python3 -I -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in d.get(\"nodes\",[]) if any(x in str(n.get(\"filePath\",\"\")) for x in (\"orchestrator\",\"agent-config\",\"mise\"))))'
-git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD" in /Users/a0004262/Workspace/dotfiles
+git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD" in ~/Workspace/dotfiles
 exec
 /bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-result-evidence-check-a01.md
 cat .agents/worklog/orchestrator-glue/result-evidence-check.sh
-rg -n '5\\.14|D-024-29|D-024-30|M-20261020-04|C-112|C-113' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/learning" in /Users/a0004262/Workspace/dotfiles
+rg -n '5\\.14|D-024-29|D-024-30|M-20261020-04|C-112|C-113' .orchestration/plans/024-design-quality.md .orchestration/decisions.tsv .orchestration/learning" in ~/Workspace/dotfiles
  succeeded in 212ms:
 ---
 {
@@ -6146,17 +6146,17 @@ The revised text addresses the earlier empty-CI and explicit-repository findings
 exec
 /bin/zsh -lc "sed -n '103,175p' .orchestration/plans/024-design-quality.md
 cat .orchestration/validation/dotfiles-T133-result-evidence-check-a01-text-security-99c37ca.md.last.md
-cat .orchestration/learning/mistakes/M-20261020-04-result-claims-against-own-counts.md" in /Users/a0004262/Workspace/dotfiles
+cat .orchestration/learning/mistakes/M-20261020-04-result-claims-against-own-counts.md" in ~/Workspace/dotfiles
 exec
 /bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-task-generator-plan-check-a06-checker.md
 cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-security-b8bf806.md.last.md
 cat .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-text-security-73ac933.md.last.md
-rg -n 'D-024-29|D-024-30' .orchestration/decisions.tsv" in /Users/a0004262/Workspace/dotfiles
+rg -n 'D-024-29|D-024-30' .orchestration/decisions.tsv" in ~/Workspace/dotfiles
 exec
 /bin/zsh -lc "/usr/bin/python3 -I -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); nodes=[n for n in d.get(\"nodes\",[]) if n.get(\"filePath\")==\"home/dot_agents/agent-config.yaml\"]; print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in nodes[:1]))'
 git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home/dot_agents/agent-config.yaml
 rg -n 'mise/shims|mise.*activate|PATH=' home/dot_zshenv home/dot_zshrc home/dot_config/zsh 2>/dev/null
-rg -n 'security:|sandbox|excludedCommands|gh|model_reasoning' home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+rg -n 'security:|sandbox|excludedCommands|gh|model_reasoning' home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
  succeeded in 201ms:
 ## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
 
@@ -6173,13 +6173,13 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
 10. **worker は sandbox 外でコマンドを実行しない（D-024-17 の改訂）** 2026-10-19T03:45Z の実測で `gh api` は Claude sandbox の中から成功した（sandbox の proxy は CONNECT 型で TLS を終端しない；keychain のトークンも読めた）。worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。Codex 席は `sandbox_workspace_write.network_access = true` で同じ状態にし、permgate の codex ポリシーは sandbox 外への escape を承認しない（permgate の変更は操作者の手順）。wrapper 方式（絶対パス、env -i、固定 GH_CONFIG_DIR）は LD_PRELOAD と引数転送（`gh repo clone -- --config`）を閉じられないので採らない。
 7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76) The prescribed clean environment puts this host’s `mise/shims` first again, while line 68 requires PATH-selected fake `gh`; this contradicts the referenced execution contract’s verified-executable binding, because shims select executables and environment from the current project. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76) The prescribed clean environment puts this host’s `mise/shims` first again, while line 68 requires PATH-selected fake `gh`; this contradicts the referenced execution contract’s verified-executable binding, because shims select executables and environment from the current project. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25) `test_validation_at_head` tests working-tree divergence and a shell sentinel only; it cannot close the stated in-process-effects row against inherited `GIT_*`, executable resolution, or Git-triggered subprocesses, and the sanitized test launcher removes hostile environment inputs before exercising the script. [Git environment documentation](https://git-scm.com/docs/git)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25) `test_validation_at_head` tests working-tree divergence and a shell sentinel only; it cannot close the stated in-process-effects row against inherited `GIT_*`, executable resolution, or Git-triggered subprocesses, and the sanitized test launcher removes hostile environment inputs before exercising the script. [Git environment documentation](https://git-scm.com/docs/git)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) The CI query never uses `<pr>` to bind the repository and omits an explicit host/repository, so local configuration or `GH_REPO` can select a fork containing the same SHA and supply unrelated green results. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) The CI query never uses `<pr>` to bind the repository and omits an explicit host/repository, so local configuration or `GH_REPO` can select a fork containing the same SHA and supply unrelated green results. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) Checking every returned row permits `[]` to pass before checks appear and overlooks runs beyond `gh run list`’s default 20-result limit; the named refusal test cannot establish that the head’s CI is entirely green without empty-result and completeness cases. [GitHub CLI documentation](https://cli.github.com/manual/gh_run_list)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) Checking every returned row permits `[]` to pass before checks appear and overlooks runs beyond `gh run list`’s default 20-result limit; the named refusal test cannot establish that the head’s CI is entirely green without empty-result and completeness cases. [GitHub CLI documentation](https://cli.github.com/manual/gh_run_list)
 
 Reviewed all 13 threat rows and related acceptance/review records. All allowed-file entries have coverage. Declared same-UID tampering remains a residual; the text authorizes no Linux sandbox escape.
 
@@ -6741,15 +6741,15 @@ web search: https://git-scm.com/docs/git
 exec
 /bin/zsh -lc "cat .orchestration/validation/dotfiles-T133-result-evidence-check-a01-text-security-99c37ca.md.last.md
 sed -n '120,132p' .orchestration/plans/024-design-quality.md
-cat .orchestration/learning/mistakes/M-20261020-04-result-claims-against-own-counts.md" in /Users/a0004262/Workspace/dotfiles
+cat .orchestration/learning/mistakes/M-20261020-04-result-claims-against-own-counts.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76) The prescribed clean environment puts this host’s `mise/shims` first again, while line 68 requires PATH-selected fake `gh`; this contradicts the referenced execution contract’s verified-executable binding, because shims select executables and environment from the current project. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76) The prescribed clean environment puts this host’s `mise/shims` first again, while line 68 requires PATH-selected fake `gh`; this contradicts the referenced execution contract’s verified-executable binding, because shims select executables and environment from the current project. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25) `test_validation_at_head` tests working-tree divergence and a shell sentinel only; it cannot close the stated in-process-effects row against inherited `GIT_*`, executable resolution, or Git-triggered subprocesses, and the sanitized test launcher removes hostile environment inputs before exercising the script. [Git environment documentation](https://git-scm.com/docs/git)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25) `test_validation_at_head` tests working-tree divergence and a shell sentinel only; it cannot close the stated in-process-effects row against inherited `GIT_*`, executable resolution, or Git-triggered subprocesses, and the sanitized test launcher removes hostile environment inputs before exercising the script. [Git environment documentation](https://git-scm.com/docs/git)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) The CI query never uses `<pr>` to bind the repository and omits an explicit host/repository, so local configuration or `GH_REPO` can select a fork containing the same SHA and supply unrelated green results. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) The CI query never uses `<pr>` to bind the repository and omits an explicit host/repository, so local configuration or `GH_REPO` can select a fork containing the same SHA and supply unrelated green results. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) Checking every returned row permits `[]` to pass before checks appear and overlooks runs beyond `gh run list`’s default 20-result limit; the named refusal test cannot establish that the head’s CI is entirely green without empty-result and completeness cases. [GitHub CLI documentation](https://cli.github.com/manual/gh_run_list)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) Checking every returned row permits `[]` to pass before checks appear and overlooks runs beyond `gh run list`’s default 20-result limit; the named refusal test cannot establish that the head’s CI is entirely green without empty-result and completeness cases. [GitHub CLI documentation](https://cli.github.com/manual/gh_run_list)
 
 Reviewed all 13 threat rows and related acceptance/review records. All allowed-file entries have coverage. Declared same-UID tampering remains a residual; the text authorizes no Linux sandbox escape.
 
@@ -6780,7 +6780,7 @@ exec
 sed -n '267,299p' home/dot_agents/agent-config.yaml
 cat home/dot_zshenv
 /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md
-/usr/bin/env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE GIT_COMMON_DIR=/nonexistent-result-evidence-check-probe /usr/bin/git -C /Users/a0004262/Workspace/dotfiles rev-parse --git-common-dir" in /Users/a0004262/Workspace/dotfiles
+/usr/bin/env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE GIT_COMMON_DIR=/nonexistent-result-evidence-check-probe /usr/bin/git -C ~/Workspace/dotfiles rev-parse --git-common-dir" in ~/Workspace/dotfiles
  exited 128 in 102ms:
 8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
 9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
@@ -6863,7 +6863,7 @@ exec
 /bin/zsh -lc "sed -n '1,85p' .orchestration/acceptance/dotfiles-T133-result-precheck-a01.md
 sed -n '1,120p' .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-text-security-b9e04cb.md.last.md
 sed -n '1,100p' .orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-text-security-4a49ed9.md.last.md
-ls -l scripts/orchestrator/result-evidence-check.sh tests/unit/test_result_evidence_check.py" in /Users/a0004262/Workspace/dotfiles
+ls -l scripts/orchestrator/result-evidence-check.sh tests/unit/test_result_evidence_check.py" in ~/Workspace/dotfiles
  exited 1 in 16ms:
 ---
 {
@@ -6943,15 +6943,15 @@ ls: tests/unit/test_result_evidence_check.py: No such file or directory
 **Summarizing five key findings**
 **Clarifying residual risks and findings**
 codex
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25) `test_git_environment_cannot_redirect_root` covers only `GIT_DIR`; the prescribed command still honors `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and injected Git configuration, so it cannot close the broader in-process-effects row. [Git documentation](https://git-scm.com/docs/git)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25) `test_git_environment_cannot_redirect_root` covers only `GIT_DIR`; the prescribed command still honors `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and injected Git configuration, so it cannot close the broader in-process-effects row. [Git documentation](https://git-scm.com/docs/git)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27) Sanitizing the test launcher does not bind production executables: runtime `git`, `python3` and `gh` still resolve through inherited PATH, including project-sensitive mise shims; isolated Python acts only after that selection. The stated residual control therefore does not mitigate production executable substitution. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27) Sanitizing the test launcher does not bind production executables: runtime `git`, `python3` and `gh` still resolve through inherited PATH, including project-sensitive mise shims; isolated Python acts only after that selection. The stated residual control therefore does not mitigate production executable substitution. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61) Reading the shared repository with replacement refs enabled lets a worker substitute passing evidence for the supplied head; working-tree-divergence tests cannot detect this, and the prescribed source contradicts the cited design item 8’s authenticated-source requirement. [Git replacement documentation](https://git-scm.com/docs/git-replace)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61) Reading the shared repository with replacement refs enabled lets a worker substitute passing evidence for the supplied head; working-tree-divergence tests cannot detect this, and the prescribed source contradicts the cited design item 8’s authenticated-source requirement. [Git replacement documentation](https://git-scm.com/docs/git-replace)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64) Clearing `GH_REPO` and specifying `mryfmo/dotfiles` leaves the host selectable through `GH_HOST`; another host can supply unrelated green runs, while the fake-gh argument test passes. Bind `github.com/mryfmo/dotfiles` and test hostile host selection. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64) Clearing `GH_REPO` and specifying `mryfmo/dotfiles` leaves the host selectable through `GH_HOST`; another host can supply unrelated green runs, while the fake-gh argument test passes. Bind `github.com/mryfmo/dotfiles` and test hostile host selection. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77) The sandbox-only instruction has no effective-policy prerequisite: the repository’s Linux configuration excludes `gh *`, so required direct gh commands can execute outside the sandbox without encountering the refusal this paragraph relies on.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77) The sandbox-only instruction has no effective-policy prerequisite: the repository’s Linux configuration excludes `gh *`, so required direct gh commands can execute outside the sandbox without encountering the refusal this paragraph relies on.
 
 Reviewed all 13 threat rows and the cited acceptance/review history. All allowed-file entries have coverage; no symlink or case-insensitive identity defense is specified or demonstrated.
 
@@ -6962,15 +6962,15 @@ hook: Stop
 hook: Stop Completed
 tokens used
 78,665
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25) `test_git_environment_cannot_redirect_root` covers only `GIT_DIR`; the prescribed command still honors `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and injected Git configuration, so it cannot close the broader in-process-effects row. [Git documentation](https://git-scm.com/docs/git)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25) `test_git_environment_cannot_redirect_root` covers only `GIT_DIR`; the prescribed command still honors `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and injected Git configuration, so it cannot close the broader in-process-effects row. [Git documentation](https://git-scm.com/docs/git)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27) Sanitizing the test launcher does not bind production executables: runtime `git`, `python3` and `gh` still resolve through inherited PATH, including project-sensitive mise shims; isolated Python acts only after that selection. The stated residual control therefore does not mitigate production executable substitution. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27) Sanitizing the test launcher does not bind production executables: runtime `git`, `python3` and `gh` still resolve through inherited PATH, including project-sensitive mise shims; isolated Python acts only after that selection. The stated residual control therefore does not mitigate production executable substitution. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61) Reading the shared repository with replacement refs enabled lets a worker substitute passing evidence for the supplied head; working-tree-divergence tests cannot detect this, and the prescribed source contradicts the cited design item 8’s authenticated-source requirement. [Git replacement documentation](https://git-scm.com/docs/git-replace)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61) Reading the shared repository with replacement refs enabled lets a worker substitute passing evidence for the supplied head; working-tree-divergence tests cannot detect this, and the prescribed source contradicts the cited design item 8’s authenticated-source requirement. [Git replacement documentation](https://git-scm.com/docs/git-replace)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64) Clearing `GH_REPO` and specifying `mryfmo/dotfiles` leaves the host selectable through `GH_HOST`; another host can supply unrelated green runs, while the fake-gh argument test passes. Bind `github.com/mryfmo/dotfiles` and test hostile host selection. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64) Clearing `GH_REPO` and specifying `mryfmo/dotfiles` leaves the host selectable through `GH_HOST`; another host can supply unrelated green runs, while the fake-gh argument test passes. Bind `github.com/mryfmo/dotfiles` and test hostile host selection. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
 
-- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77) The sandbox-only instruction has no effective-policy prerequisite: the repository’s Linux configuration excludes `gh *`, so required direct gh commands can execute outside the sandbox without encountering the refusal this paragraph relies on.
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77) The sandbox-only instruction has no effective-policy prerequisite: the repository’s Linux configuration excludes `gh *`, so required direct gh commands can execute outside the sandbox without encountering the refusal this paragraph relies on.
 
 Reviewed all 13 threat rows and the cited acceptance/review history. All allowed-file entries have coverage; no symlink or case-insensitive identity defense is specified or demonstrated.
 

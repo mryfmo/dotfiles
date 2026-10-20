@@ -39,13 +39,13 @@ threat_table:
 premises: []
 ---
 
-# AGMSG-TASK dotfiles-T128-chain-review-scripts-followup-a07 — the chain-review-scripts lineage's sixth owner task (advisory P2 of PR #402)
+# AGMSG-TASK dotfiles-T128-chain-review-scripts-followup-a07 — the chain-review-scripts lineage's sixth owner task (advisory P2 of PR #434)
 
-Written 2026-10-20 by the orchestrator seat before the first advisory disposition of PR #402 (C-51: the owner task exists before the first advisory row). It owns the advisory rows recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a07` in `.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md` (plan 020 step 1.2); it is dispatched after PR #402 merges, to a seat the orchestrator names.
+Written 2026-10-20 by the orchestrator seat before the first advisory disposition of PR #434 (C-51: the owner task exists before the first advisory row). It owns the advisory rows recorded under `## Owned by dotfiles-T128-chain-review-scripts-followup-a07` in `.orchestration/acceptance/dotfiles-T128-chain-review-scripts-followup-a06.md` (plan 020 step 1.2); it is dispatched after PR #434 merges, to a seat the orchestrator names.
 
 ## Item 1
 
-Each owned row (any advisory P2 of the local review or the task-level audit of PR #402's final head, and any Bot P2 the orchestrator records under this owner; rows are read from the record at dispatch; a records-only row is realised by the record it names, with no test) gets its fix and, where the row names a test or code, one red-then-green test in `tests/unit/test_chain_review_scripts.py`, named in report.md against the row id. Nothing outside the owned rows; any other file joins `allowed_files` only by an amendment that names the row needing it.
+Each owned row (any advisory P2 of the local review or the task-level audit of PR #434's final head, and any Bot P2 the orchestrator records under this owner; rows are read from the record at dispatch; a records-only row is realised by the record it names, with no test) gets its fix and, where the row names a test or code, one red-then-green test in `tests/unit/test_chain_review_scripts.py`, named in report.md against the row id. Nothing outside the owned rows; any other file joins `allowed_files` only by an amendment that names the row needing it.
 
 ## Item 2
 
@@ -58,7 +58,7 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T128-chain-re
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-dispatch to claude-standard-dot-a011, 2026-10-19T20:1xZ; task-consistency-check.py: OK; security: false (no C-80); D-024-25 order: owner rows of a merged lineage, files disjoint from every in-flight task
-task=dotfiles-T128-chain-review-scripts-followup-a07 tasks=0 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=none..none (-) source=live
-detail: pr=none authors=- tasks=- results=- questions=- withdrawn=- bot_heads=- source=live
+pasted 2026-10-20T04:29Z before send 2 (amendment 1) to a011 (Claude, worker-d): PR number #402 -> #434 in four places (the lineage template named the predecessor's PR; #402 was a05, whose advisory row a06 realised); `## Owned by dotfiles-T128-chain-review-scripts-followup-a07` written in the a06 record with zero rows, so Item 1 is vacuous and Item 2 carries the task; the message of 04:22:08Z (2710) carried the unamended sha256 ae03f009… by an orchestrator script error and is superseded by this send; task-consistency-check.py OK; SECRET_PATTERN 0; home paths 0; previous_sha256 ae03f0097a5f8b9b58cb6f6a709e4c664569992bd46b38577b2a071166523a75
+predecessor dotfiles-T128-chain-review-scripts-followup-a06 merged as PR #434 at 118daafa (in origin/main 60a6fb2b); security: false (no C-80); allowed code files disjoint from every in-flight task (loop-limits, a05-checker, lint a04, P1-15 a03, python-pin)
+counters: tasks=0 amendments=0 questions=0 results=0; task SHA256 in the AGMSG-TASK line, computed over these final bytes; the read marker is recorded in the acceptance record
 ```

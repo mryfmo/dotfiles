@@ -7,6 +7,7 @@ security: true
 allowed_files:
   - home/dot_mise/config.toml
   - tests/unit/test_mise_config.py
+  - tests/unit/test_supply_chain_policy.py
   - .orchestration/dotfiles-T133-python-pin-a02/**
 after: []
 threat_table:
@@ -20,6 +21,7 @@ threat_table:
   - {control: "metadata separators: task-copy and evidence front matter", disposition: "residual: front-matter parsing and whole-file comparison expose changed separators; evidence remains untrusted input to review."}
   - {control: "in-process effects", disposition: "residual: Commands (d) executes only the intended repository test file, using standard-library imports and TOML data; it does not discover packages or run the supply-chain test's PATH-resolved chezmoi launch."}
   - {control: "evidence records under .orchestration/dotfiles-T133-python-pin-a02/", disposition: "residual: records identify Commands sections, operands, exit statuses and output; the orchestrator compares them with the final changeset and CI."}
+  - {control: "tests/unit/test_supply_chain_policy.py", disposition: "closed: tests/unit/test_supply_chain_policy.py::SupplyChainPolicyTest::test_mise_tools_track_latest_behind_the_cooldown"}
   - {control: "task copy: .orchestration/dotfiles-T133-python-pin-a02/task.md", disposition: "residual: the copy must match the dispatched text byte-for-byte and its dispatch SHA-256; the orchestrator compares both before acceptance."}
   - {control: "predecessor copy: .orchestration/dotfiles-T133-python-pin-a01/task.md", disposition: "residual: unchanged on the branch at its a01 dispatched bytes (SHA-256 30185a5a…); regime-ci checks only the latest copy of a reset_of lineage, and the orchestrator compares the predecessor copy with the a01 dispatch at acceptance."}
   - {control: "design 5.14 item 0: 脅威モデル（D-024-21）", disposition: "residual: shared credentials and unrestricted same-UID replacement remain possible; host checks reduce accidents and prompt injection, and missing acceptance evidence is detected at the next records PR rather than prevented."}
@@ -174,7 +176,8 @@ Not performed by this authoring context: worker tests, CI or deployment. Executa
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-pasted 2026-10-20T04:49Z before send 1 to a013 (Codex, worker-h): reset of dotfiles-T133-python-pin-a01 after INV-6 S2 (a01 counters at 04:31Z: tasks=3 amendments=2 questions=1 results=5 revises=4; audit e9819d4 P1); task-consistency-check.py OK (C3 predecessor-copy row present); validate-agent-assets.py SECRET_PATTERN 0; bash -n OK; literal home paths 0; 176 lines (self cap 190)
+pasted 2026-10-20T05:03Z before send 2 (amendment 1) to a013 (Codex, worker-h): `tests/unit/test_supply_chain_policy.py` added to allowed_files with its closed row (a01 admitted it through its probe rule; the reset omitted it, which regime-ci on head 7f7665b9 reported); task-consistency-check.py OK; SECRET_PATTERN 0; bash -n OK; literal home paths 0; 181 lines (self cap 190); previous_sha256 b9752ec2b910b56079c959b9fa41a4b5a93da0dc6be2eff289486132faa12138
+C-80: 68fd5f2 correct (round 1); 906e395 correct (round 2, this amendment); the probes in premises were executed read-only by the orchestrator at 2026-10-20T04:31:20Z
 C-80 round 1 of this text: 68fd5f2 `Verdict: correct`; the probes in premises were executed read-only by the orchestrator at 2026-10-20T04:31:20Z (Commands (a),(b),(c),(e),(g)); PR #437 continues on task/dotfiles-T133-python-pin-a01 from head e9819d45 (implementation 09c81cc3 unchanged); the a01 copy stays as the predecessor copy
-this text's counters at paste: task=dotfiles-T133-python-pin-a02 tasks=0 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=unknown audits=unknown wall=none..none (-) source=li; task SHA256 in the AGMSG-TASK line, computed over these final bytes; the read marker is recorded in the acceptance record
+this text's counters at paste: task=dotfiles-T133-python-pin-a02 tasks=1 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-20T04:49:46Z..none (-) source=live; task SHA256 in the AGMSG-TASK line, computed over these final bytes
 ```

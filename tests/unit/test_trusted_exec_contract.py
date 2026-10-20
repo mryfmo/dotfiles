@@ -94,7 +94,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
     def runner_fixture(self):
         """A fixture root whose script records its argv and its children's environment; the directory-service
         response and the root discovery are the only substitutions."""
-        base = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        base = Path(self.enter(tempfile.TemporaryDirectory)).resolve()
         root, home, out = base / "root", base / "home", base / "out"
         for d in (root / "scripts", home, out):
             d.mkdir(parents=True)
@@ -102,8 +102,8 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         script.write_text(f'printf "%s\\0" "$0" "$@" > "{out}/argv"\n/usr/bin/env -0 > "{out}/env"\n')
         linux = f"me:x:{os.getuid()}:0::{home}:/bin/sh\n"
         response = f"NFSHomeDirectory: {home}\n" if sys.platform == "darwin" else linux
-        self.enterContext(mock.patch.object(tec, "_directory_service", return_value=response))
-        self.enterContext(mock.patch.object(tec, "repository_root", return_value=root))
+        self.enter(mock.patch.object, tec, "_directory_service", return_value=response)
+        self.enter(mock.patch.object, tec, "repository_root", return_value=root)
 
         def check(args):
             argv = [a.decode() for a in (out / "argv").read_bytes().split(b"\0")[:-1]]
@@ -170,7 +170,8 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def case_trusted_parent(self):
         fx = self.runner_fixture()
-        run(["/bin/bash", str(fx.script), *ARGS], dict(os.environ), cwd=fx.base)  # inherits the caller's environment
+        inherited = os.environ | {"HOME": str(fx.home), "BASH_ENV": ""}  # the caller's names; never the real home
+        run(["/bin/bash", str(fx.script), *ARGS], inherited, cwd=fx.base)
         with self.assertRaisesRegex(AssertionError, "undeclared") as red:
             fx.check(ARGS)
         result = tec.run_under_trusted_parent(fx.script, *ARGS)
@@ -307,7 +308,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
     def test_probes_clean_up_after_an_exception(self):
         before = dict(os.environ)
         for factory in (tec.shim_path, tec.hostile_git, tec.worker_root, tec.swapped_file):
-            with self.subTest(factory.__name__):
+            with self.subTest(factory.args[0].__name__):
                 with self.assertRaises(RuntimeError), factory() as probe:
                     base = probe.base
                     raise RuntimeError("deliberate")

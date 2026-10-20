@@ -250,6 +250,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
             ("", 1, "canonical main could not be read"),
             ("main", 0, "canonical main could not be read"),
             ("0" * 40, 0, "is not a local commit (fetch origin main first)"),
+            (canonical, 1, "canonical main could not be read"),  # a sha printed by a failing call is no answer
         ):
             with self.subTest(answer=answer, status=status):
                 self.gh(answer, status)
@@ -259,10 +260,32 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.gh(canonical)
         self.run_tool("local-review.sh", "t-a", head, 9, env=env)
         api = "argv: api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha\n"
-        self.assertEqual(api * 4, self.log("gh"))
+        self.assertEqual(api * 5, self.log("gh"))
         self.assertEqual(f"{ARGV}{canonical}\n", self.log("codex").splitlines(keepends=True)[0])
         out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
         self.assertIn(f"\nbase: {canonical}\n", out.read_text())
+        # Design 5.14 item 8: refs/replace/ and info/grafts in the shared .git can make canonical main look like a
+        # descendant of the head, so a review from the merge base, as codex takes it, would see no change at all.
+        merge = self.temp / "bin/merge-review"
+        merge.write_text(
+            '#!/bin/bash\nb=$(git merge-base "${@: -1}" HEAD)\nprintf "codex\\n"\n'
+            'git diff --name-only "$b" HEAD | sed "s/.*/- [P2] &:1 changed/"\n'
+        )
+        merge.chmod(0o755)
+        fake = self.git("commit-tree", "-p", head, "-m", "fake", canonical + "^{tree}")
+        grafts = self.repo / ".git/info/grafts"
+        for name, plant, unplant in (
+            ("replace", lambda: self.git("replace", canonical, fake), lambda: self.git("replace", "-d", canonical)),
+            ("graft", lambda: grafts.write_text(f"{canonical} {head}\n"), grafts.unlink),
+        ):
+            with self.subTest(name):
+                plant()
+                try:
+                    merged = {**env, "CODEX_BIN": str(merge)}
+                    stdout = self.run_tool("local-review.sh", f"t-{name}", head, 9, code=3, env=merged)
+                    self.assertIn("- [P2] b.txt:1 changed", stdout)
+                finally:
+                    unplant()
 
     def test_local_review_resolves_the_review_binary_before_the_checkout(self):
         # audit:b6ce4ff:4: mise answers while the review worktree is still where the run found it, not at the head.

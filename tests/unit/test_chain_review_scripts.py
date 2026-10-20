@@ -22,7 +22,11 @@ STUB = (
     '"$(pwd -P)" "$(git rev-parse HEAD)" "$PATH" "$(cat)"; }} >> "$CALLS/{name}.log"\n'
     'cat "$CALLS/transcript"\nexit "$(cat "$CALLS/status" 2> /dev/null || echo 0)"\n'
 )
-ARGV = "argv: --profile review -s read-only review --base "  # then canonical main's sha, as the gh stub prints it
+POLICY = (
+    '-c shell_environment_policy.set.GIT_NO_REPLACE_OBJECTS="1" '
+    '-c shell_environment_policy.set.GIT_GRAFT_FILE="/dev/null"'
+)
+ARGV = f"argv: --profile review -s read-only {POLICY} review --base "  # then canonical main's sha, as gh prints it
 SCAN_HIT = "sandbox scan: unsandboxed mutation calls above (C-29); judge before the audit"
 
 
@@ -286,6 +290,25 @@ class ChainReviewScriptsTest(unittest.TestCase):
                     self.assertIn("- [P2] b.txt:1 changed", stdout)
                 finally:
                     unplant()
+
+    def test_local_review_passes_no_replace_and_no_graft_to_the_commands_codex_spawns(self):
+        # Local review of dbc8b67: Codex's shell_environment_policy.inherit=core drops exported variables from the
+        # commands it spawns, so the two values reach them only as shell_environment_policy.set overrides.
+        _, head, env = self.review_head()
+        codex = self.temp / "bin/policy-codex"
+        codex.write_text(
+            '#!/bin/bash\nkept=()\nfor a in "$@"; do\n    case $a in shell_environment_policy.set.*)\n'
+            '        echo "override: $a" >> "$CALLS/policy.log"\n        kv=${a#shell_environment_policy.set.}\n'
+            '        v=${kv#*=}; v=${v#\\"}; kept+=("${kv%%=*}=${v%\\"}") ;;\n    esac\ndone\n'
+            "# inherit=core: the spawned command starts from an empty environment plus the set overrides.\n"
+            'env -i PATH=/usr/bin:/bin "${kept[@]}" /usr/bin/env | /usr/bin/grep "^GIT_" | sort >> "$CALLS/spawned.log"\n'
+            'printf "codex\\nNo findings.\\n"\n'
+        )
+        codex.chmod(0o755)
+        self.run_tool("local-review.sh", "t-a", head, 9, env={**env, "CODEX_BIN": str(codex)})
+        overrides = [f"override: {o.removeprefix('-c ')}" for o in POLICY.split(" -c ")]
+        self.assertEqual(overrides, self.log("policy").splitlines())
+        self.assertEqual(["GIT_GRAFT_FILE=/dev/null", "GIT_NO_REPLACE_OBJECTS=1"], self.log("spawned").splitlines())
 
     def test_local_review_resolves_the_review_binary_before_the_checkout(self):
         # audit:b6ce4ff:4: mise answers while the review worktree is still where the run found it, not at the head.

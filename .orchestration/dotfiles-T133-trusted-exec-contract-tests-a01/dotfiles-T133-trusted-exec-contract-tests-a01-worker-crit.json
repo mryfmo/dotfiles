@@ -1,0 +1,68 @@
+[
+  {
+    "id": "tec-r1-p2-content-check-unasserted",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "P2 (high, reproduced as M33), fixed in f4eed1cc. The hostile-Git red regexes required only the root and the hook, so a no-op content check passed every test. The red reasons are now required in full (root, content and hook for the environment attack; root and content for the local worktree; the hook for the local include); validation section 7 shows M33 red in the aggregate and the individual selector.",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p2-environment-attack-parts-inert",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "P2 (high, reproduced as M04 and M05), fixed in f4eed1cc. Only the GIT_DIR redirect was asserted, so inert config, ceiling or alternates values passed. test_hostile_git_probe now shows each of the six GIT_* names, alone, changing what git does in the legitimate repository (the git dir, the work tree, the global and system config, discovery from a subdirectory, and an attacker object made readable); M04 and M05 are red (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p2-runner-argv-unasserted",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "P2 (high, reproduced as M14, M15, M16), fixed in f4eed1cc. A spy that wraps subprocess.run (still executing) now asserts the exact parent argv and env={} in the trusted-parent case, so dropping -i, the bash flags or the empty environment fails the aggregate and the individual selector (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p2-fifo-hang",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "P2 (high, reproduced), fixed in f4eed1cc. The single-served input FIFO hung a second read or a write-open. The worker-root probe no longer uses a FIFO or a thread: the input is a regular file whose zeroed access time shows a read (measured live on a scratch file at construction; the probe refuses a filesystem where a read leaves it at 0), so repeated reads and appends cannot hang.",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p2-fifo-cleanup-and-replace",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "P2 (high, reproduced), fixed in f4eed1cc. An unlinked input broke cleanup and leaked the directory and thread; an atomic replace went undetected. With no FIFO or thread, the fixture context manager always removes its directory, and test_worker_root_probe covers a shell append, a shell replacement (a changed inode) and an unlink (reported as removed).",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p3-fifo-not-regular",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "P3 (medium), fixed in f4eed1cc by the same redesign: the input is a regular file, so a consumer that rejects non-regular files cannot pass the input subcase for the wrong reason.",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p3-relative-refusal-untested",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "P3 (high, reproduced as M18), fixed in f4eed1cc. Each refusal subtest now asserts its message (not an absolute path, outside, not a regular file), so removing the relative-path refusal is red (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p3-root-independence-unexercised",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "P3 (medium, reproduced as M25), fixed in f4eed1cc. test_trusted_parent_probe first asserts the real repository_root() equals the checkout under hostile GIT_DIR and GIT_WORK_TREE, before any fixture substitutes it; M25 is red (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p3-environment-in-red-reasons",
+    "scope": ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/validation.md",
+    "body": "P3 (high), addressed in the evidence. The validation printer elides the inherited variable names to a count and the inherited PATH to a placeholder before pasting, so no seat environment or home path reaches the record.",
+    "resolved": true
+  },
+  {
+    "id": "tec-r1-p3-notes-declared",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "P3 notes, declared without a code change. (a) dscl . -read fails inside the worker sandbox (exit 70), so an unmocked run_under_trusted_parent raises on macOS under that sandbox; consumer tests substitute _directory_service, and the report states it. (b) Ruff rules outside the repository configuration (E501 on the shim template line, E731 on one test lambda) are not enabled in ruff.toml; ruff check with the repository configuration is clean.",
+    "resolved": true
+  },
+  {
+    "id": "tec-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "One round by a fresh read-only subagent on origin/main..4729b83c, given the commit range and the task file. Verdict incorrect: five P2 and five P3, from a 36-mutant run (eight survivors). The P2 and the P3 that had a code effect were fixed in one worker-side round (f4eed1cc); the eight survivors and four further no-op assertions are red at f4eed1cc (validation section 7); both interpreters pass (section 5). Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

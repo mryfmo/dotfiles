@@ -60,9 +60,87 @@
     "resolved": true
   },
   {
+    "id": "tec-rev1-p2-same-length-overwrite",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "Audit P2 of 9545e59f (trusted_exec_contract.py:111), fixed in 65c81c98. An immediate same-length overwrite kept the inode, the size and a coarse mtime, so assert_untouched() missed it. The probe now sets a fixed past mtime (2001) on both files and compares the whole content, read only from the same inode with its access time put back. test_worker_root_probe_detects_a_same_length_overwrite writes in place, puts the mtime back, asserts inode, size and mtime unchanged, and requires 'wrote'; it is red at bb539aa7 for input and output (validation section 4) and green at eda9b5ee; dropping the content compare is red (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-p2-m16-never-ran",
+    "scope": ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/validation.md",
+    "body": "Audit P2 (validation.md:253), fixed in the evidence. M16's replacement matched twice, so the uniqueness assertion stopped it and the block printed M15's output. M16 is now anchored on the runner's own check=False call; every block truncates its output first, asserts one match and prints mutated: only when it applied. Section 7 has 16 blocks, 16 mutated: lines and 16 red runs, M16 among them.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-p3-python-310-claim",
+    "scope": ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/report.md",
+    "body": "Audit P3 (report.md:84), fixed in the evidence. The cited run was 3.15, because a temporary HOME makes uv fall back to mise. The 3.10 suite now runs uv's 3.10 by absolute path and prints 3.10.22 in the same block (section 5); section 2 shows uv picking 3.10 under the seat's HOME and 3.15 under a temporary one.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-p3-macos-ci-claim",
+    "scope": ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/report.md",
+    "body": "Audit P3 (report.md:94), fixed in the evidence. test.yaml skips the macOS unit suite for a pull request whose relevant paths are all Python, docs or records. The report says so, and section 9 pastes the rule and the macOS job's skipped test steps on 25dd01e5; the macOS evidence is the seat's local runs.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-dscl-in-seat-sandboxes",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "Orchestrator's measured finding, fixed in 65c81c98. dscl fails in both seat sandboxes. passwd_home() now reads pwd.getpwuid(os.getuid()).pw_dir and runs dscl or getent only as a cross-check: a failed lookup leaves the entry standing, a disagreeing or malformed answer is refused. test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check is red at bb539aa7 in six subtests (section 4); live on this seat dscl exits 70 and passwd_home() equals the getpwuid home, not HOME (section 6); the cross-check and the tolerated-failure mutants are red (section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-non-absolute-home-uncovered",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "Found by the worker during revise 1, fixed in eda9b5ee. After the lookup moved to getpwuid, no case exercised the non-absolute home refusal, so removing it survived. A win32 row with a relative passwd home now requires the refusal; the mutant that removes it is red (section 7).",
+    "resolved": true
+  },
+  {
     "id": "tec-worker-review-scope-and-approval",
     "scope": "review",
     "body": "One round by a fresh read-only subagent on origin/main..4729b83c, given the commit range and the task file. Verdict incorrect: five P2 and five P3, from a 36-mutant run (eight survivors). The P2 and the P3 that had a code effect were fixed in one worker-side round (f4eed1cc); the eight survivors and four further no-op assertions are red at f4eed1cc (validation section 7); both interpreters pass (section 5). Local process evidence, not the task-level audit.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-p3-atime-restore-untested",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "Revise review P3 (high, reproduced), fixed in 7d3ecd4f. The probe's own content read puts the access time back, but no test checked a probe twice, so dropping that line survived. The compliant worker-root case now checks its probe twice; the mutant that drops the put-back is red (validation section 7).",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-p3-non-absolute-home-and-labels",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "Revise review P3 (medium). The non-absolute home refusal had no case at 65c81c98: fixed in eda9b5ee (a win32 row with a relative home; its mutant is red). The two win32 rows shared a subtest label: fixed in 7d3ecd4f (labels carry the outcome). Declared: the newline half of the home check has no row, for want of a line under the 350 cap; the home is passed as a single HOME= argument, so a newline cannot split it.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-p3-worker-root-gaps",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "Revise review P3 (medium, reproduced), declared and proposed as a follow-up. Older than this changeset and not claimed by the probe: a sibling or other new file in the seat, a read of the output, a chmod or a rename away and back, and identical bytes written with the mtime put back go unseen. A seat-directory listing and the access-time check on both files would close the first two, but their tests need lines the caps no longer hold (helper 247 of 250, tests 350 of 350).",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-p3-recycled-inode",
+    "scope": "tests/unit/trusted_exec_contract.py",
+    "body": "Revise review P3 (low), fixed by construction in 7d3ecd4f. The probe records each file's inode with its mode and reads content only when both match, so a symlink or FIFO given a recycled inode number is never read. No test forces inode reuse (APFS does not reuse); detection held through the mtime already.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-p3-one-unexplained-failure",
+    "scope": "tests/unit/test_trusted_exec_contract.py",
+    "body": "Revise review P3 (low, observation), declared in the report. test_worker_root_probe failed once without a subtest label, during a mutant run whose mutation cannot reach it, and not in 52 later unmutated runs; the reviewer's unverified guess is an outside reader touching the input's access time. The validation's runs on this seat did not show it.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-review-task-text-authority",
+    "scope": ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/report.md",
+    "body": "Revise review process note, addressed in the report. The task text names dscl or getent as the home's source; the report cites revise 1's check (4) in the orchestrator's ACCEPTANCE as the authority for getpwuid first with dscl or getent as a cross-check.",
+    "resolved": true
+  },
+  {
+    "id": "tec-rev1-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "Revise 1 review: one round by a fresh read-only subagent on 9545e59f..65c81c98, given the range, the task file and the revise checks, not the worker's conclusions. It reran red at 9545e59f and green on 3.15 and 3.10, ran 12 mutants, and returned Verdict: correct with no P0 to P2 and five P3 plus a process note, dispositioned in the records above. eda9b5ee and 7d3ecd4f came after its range and are covered by validation sections 5 and 7 at 7d3ecd4f. Local process evidence, not the task-level audit.",
     "resolved": true
   }
 ]

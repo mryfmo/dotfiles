@@ -18,8 +18,10 @@ Every command ran inside the Claude Code sandbox from `.claude/worktrees/worker-
   - The `rm -rf` command line above (permission gate).
   - `ps`, to check a background read, refused with `operation not permitted` in the previous task. It was not used here.
   - Nothing else.
-- **Network.** `gh` read CI job logs inside the sandbox. The log download needed GitHub's log storage hosts as allowed domains for those commands. No directory-service command ran against the real account: the passwd lookups are tested with standard-library mocks.
+- **Network.** `gh` read CI job logs and job steps inside the sandbox. The log download needed GitHub's log storage hosts as allowed domains for those commands. One directory-service command ran against the real account: revise 1's live check (validation §6) ran `dscl . -read` once, which exited 70 inside the sandbox. It read no file under the home.
 - **The worker review.** One read-only subagent round, which ran its tests in its own scratch worktrees.
+- **Revise 1.** The branch carried the orchestrator's update-branch merge `9545e59f`. The four revise commits (`bb539aa7`, `65c81c98`, `eda9b5ee`, `7d3ecd4f`) were single `git add` and `git commit -c commit.gpgsign=false` commands. The mutants and the red runs used detached scratch worktrees under the scratchpad, each removed with `git worktree remove --force` in its own block; no `git worktree prune` ran. No command was refused in this round.
+- **The revise review.** One read-only subagent round on `9545e59f..65c81c98`, with its own scratch worktrees under `$TMPDIR`.
 - **After this record.** The push and the draft PR are stated in the RESULT. The push runs over an HTTPS pushurl, because the global pushInsteadOf rewrites HTTPS to SSH, which fails here.
 
 No `@codex review` comment is posted.

@@ -1,0 +1,32 @@
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 scripts/orchestrator/task-consistency-check.py
+1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 tests/unit/test_task_consistency_c11_c15.py
+20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f tests/unit/test_task_checkers.py
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 103, in __init__
+    self.parseArgs(argv)
+    ~~~~~~~~~~~~~~^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 142, in parseArgs
+    self.createTests()
+    ~~~~~~~~~~~~~~~~^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 153, in createTests
+    self.test = self.testLoader.loadTestsFromNames(self.testNames,
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+                                                   self.module)
+                                                   ^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/loader.py", line 214, in loadTestsFromNames
+    suites = [self.loadTestsFromName(name, module) for name in names]
+              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 16, in <module>
+    UV = str(Path(shutil.which("uv")).resolve())
+             ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/pathlib/__init__.py", line 153, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'

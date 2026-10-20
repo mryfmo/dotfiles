@@ -10,3 +10,5 @@ Validated observations:
 - Pass a clean child environment as subprocess env rather than NAME=value arguments to env when preserving credentials; argument-boundary assertions must accompany received-environment assertions.
 
 No skill, memory, canonical decision or broad repository rule was promoted. The repairs are validated by saved real-CLI regressions,24 killed mutations and fresh independent review; the root recorded re-plan:glob-filter and a separate owner for regime fixture grammar. AutoSkill status is separate. Parent execution and cache-hardening requirements remain their named owners' work.
+
+Validated after owner2750: run the repository's changed-file comparison-lint regression before publication, since a baseline-clean file can acquire statement-local R4 hits after selective porting. Existing lexical normalization and POSIX path APIs satisfy that rule without new baseline rows; actual pre-fix6R4/exit1 and post-fix CI-named test/exit0. Temporary tool paths can disappear across task turns: preserve exact command/runtime hashes and obtain an explicit owner rebuild disposition rather than silently switching tools after an unavailable operation.

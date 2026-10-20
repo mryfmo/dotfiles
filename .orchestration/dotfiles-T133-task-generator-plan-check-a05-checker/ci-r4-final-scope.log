@@ -1,0 +1,11 @@
+b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 scripts/orchestrator/task-consistency-check.py
+1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 tests/unit/test_task_consistency_c11_c15.py
+20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f tests/unit/test_task_checkers.py
+d0ad49f43aae4be0360cb88339b5d9f23e92e5588d38e3a93a3fbc58a6fe5faa .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/task.md
+canonical dispatched copy byte-identical;245lines before exact Checks heading;four allowed_files
+373	24	scripts/orchestrator/task-consistency-check.py
+35	22	tests/unit/test_task_checkers.py
+527	0	tests/unit/test_task_consistency_c11_c15.py
+
+source/test git diff --check exit0
+

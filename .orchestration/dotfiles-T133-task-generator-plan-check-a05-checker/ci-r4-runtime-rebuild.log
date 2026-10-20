@@ -1,0 +1,18 @@
+Owner2754 authorizes rebuilding missing temporary validation runtime; environment loss, no correction round.
+Created mode0700 temporary directory /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e and parent-bin; symlinks to exact original native executables:
+{
+  "git": "/usr/bin/git",
+  "uv": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+  "gh": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+  "bash": "/bin/bash"
+}
+Command: ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv --no-config --cache-dir ~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache python install --install-dir /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/python --no-bin 3.12.15
+error: Failed to install cpython-3.12.15-macos-aarch64-none
+  cause: Request failed after 3 retries in 5.5s
+  cause: Failed to download `https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz`
+  cause: error sending request for url (https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz)
+  cause: client error (Connect)
+  cause: dns error
+  cause: failed to lookup address information: nodename nor servname provided, or not known
+
+exit=1

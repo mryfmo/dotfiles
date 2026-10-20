@@ -62,7 +62,7 @@ def normalise_name(value):
     if not isinstance(value, str):
         return None
     parts = value.split("/")
-    if not value or value[0] == "/" or "\0" in value or ".." in parts:
+    if not value or pathlib.PurePosixPath(value).is_absolute() or "\0" in value or ".." in parts:
         return None
     name = "/".join(p for p in parts if p not in ("", "."))
     if not name or name[0] in ":!":
@@ -88,7 +88,9 @@ def trusted(path):
         sys.exit("refused: absolute non-shim trusted path required")
     manifest = TRUST_ROOT / "home/dot_agents/agent-config.yaml"
     worker = (yaml.safe_load(manifest.read_text()) or {}).get("worker_worktree") if manifest.is_file() else None
-    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+    if ".claude/worktrees" in os.path.normpath(path).casefold() or (
+        worker and confined(TRUST_ROOT / worker, path) is not None
+    ):
         sys.exit("refused: worker-root trusted path")
     if not path.is_file() or not os.access(path, os.X_OK):
         sys.exit("refused: trusted executable must be an absolute regular executable file")
@@ -217,7 +219,7 @@ def main_contains(root, pattern, names, literal=False):
 
 def match(name, pattern, partial=False, fold=os.path.normcase):
     names = fold(name).split("/")
-    parts = fold(pattern + ("**" if pattern.endswith("/") else "")).split("/")
+    parts = fold(pattern + ("**" if normalise_name(pattern).endswith("/") else "")).split("/")
 
     @cache
     def step(i, j):
@@ -258,7 +260,7 @@ def hits(control, allowed, root):
         choices = [
             a
             for a, p in prefixes.items()
-            if token in (a, p) or match(token, a) and ("/" in token or (root / token).exists())
+            if token in (a, p) or match(token, a) and ("/" in normalise_name(token) or (root / token).exists())
         ]
         if choices:
             found.add(max(choices, key=lambda a: (a == token, len(prefixes[a]))))
@@ -402,7 +404,7 @@ def check(p, root, premises_sha=None):
         load = d[len(form) :]
         selector = re.fullmatch(r"([^:]+)::(?:[A-Za-z_]\w*::)?[A-Za-z_]\w*", load)
         path = normalise_name(selector[1]) if selector else None
-        if form == "closed: " and not (path and path.startswith("tests/") and confined(root, path)):
+        if form == "closed: " and not (path and normalise_name(path).startswith("tests/") and confined(root, path)):
             fails.append(f"C11 closed: payload is not tests/<path>::<identifier>: {load[:60]}")
         tid_ok = re.fullmatch(r"[A-Za-z0-9][\w.-]*", load) and (root / f".orchestration/tasks/{load}.md").is_file()
         if form == "out-of-scope: " and not tid_ok:
@@ -432,7 +434,7 @@ def check(p, root, premises_sha=None):
             applied = (
                 kind in map(fold, ("AGENTS.md", "Makefile"))
                 or kind.endswith(APPLIED)
-                or kind.startswith(APPLIED_DIRS)
+                or normalise_name(kind).startswith(APPLIED_DIRS)
                 or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)
             )
             if file.is_file() and applied and not exempt and not named:

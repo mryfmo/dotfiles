@@ -77,5 +77,11 @@
     "path": "tests/unit/test_task_consistency_c11_c15.py",
     "body": "Resolved under owner disposition2730: compose the observed token-name/equal prefixes rather than spelling a scanner-shaped literal. Production SHA24d7f55 is unchanged; final test SHA1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8. Complete29 modules pass both runtimes, required16 historical methods retain18 assertion reds with0errors/skips, and24mutations are killed. This CI spelling correction is not another post-review repair; no scanner suppression or scope change.",
     "resolved": true
+  },
+  {
+    "id": "a05-r4-ci-b91-approval",
+    "body": "Independent fresh-context security-profile verification of six R4 edits at source b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 found no P0-P3 regression. Actual AST-extracted equivalence self-check passed16146 normalization cases,2394 accepted idempotent/non-None folded values,95760 match comparisons and6resolved paths. Exact command/output in independent-r4-review-transcript.md. Scope excludes final task audit/integration authority. Owner2750 calls this CI correction, not another repair round.",
+    "scope": "review",
+    "resolved": true
   }
 ]

@@ -34515,3 +34515,1979 @@ Worker review only; no final integration audit, deployment, Bats or live CI. Par
 
 
 The intermediate cap probe that split at a quoted heading reported226 and was discarded as invalid. The final probe finds the exact heading line, reports245 before Checks/four allowed entries, and binds the unchanged task SHA. This did not alter production/tests or the dispatched copy.
+
+## Owner2754 authorized runtime rebuild, blocked by unavailable network
+
+The old temporary parent-bin and Python312 installation disappeared. Owner2754 classifies that environment loss as no review/correction round and authorizes the same native-uv/CPython3.12.15 temporary reconstruction. The new mode0700 parent bindings directory was successfully created at /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin. Its symlinks target the original /usr/bin/git, /bin/bash, native uv0.13.1 and GitHub CLI2.102.0; it changes no production caller/environment or boundary claim.
+
+Python install uses an explicit TMPDIR-local install directory and --no-bin, so no optional home-bin alias write is attempted. Actual install exit1: download could not resolve github.com after uv's internal three retries. No alternative downloader, tool, network route, broader permission or retry was attempted. Complete command/output follows. Required Python312/module/mutation proofs and commit/push/CI remain held; only the R4 changed-file lint regression is currently verified after this patch.
+
+````text
+Owner2754 authorizes rebuilding missing temporary validation runtime; environment loss, no correction round.
+Created mode0700 temporary directory /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e and parent-bin; symlinks to exact original native executables:
+{
+  "git": "/usr/bin/git",
+  "uv": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+  "gh": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+  "bash": "/bin/bash"
+}
+Command: ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv --no-config --cache-dir ~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache python install --install-dir /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/python --no-bin 3.12.15
+error: Failed to install cpython-3.12.15-macos-aarch64-none
+  cause: Request failed after 3 retries in 5.5s
+  cause: Failed to download `https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz`
+  cause: error sending request for url (https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz)
+  cause: client error (Connect)
+  cause: dns error
+  cause: failed to lookup address information: nodename nor servname provided, or not known
+
+exit=1
+
+````
+
+# R4 CI correction and runtime recovery
+
+## Latest CI correction, owner2750/2754/2757
+
+Current source SHA256 b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 (373 additions+24 deletions=397<=400). New and legacy tests are byte-identical to published8fd3ae7e:1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 and20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f;562 additions22 deletions. Task copy remainsd0ad49f43aae4be0360cb88339b5d9f23e92e5588d38e3a93a3fbc58a6fe5faa,245 lines before exact Checks heading,four allowed entries.
+
+Owner2750 reports actual first-head Linux CI had7 failures/job:6 RegimeCiTest fixture cases owned by separate#441, plus the in-scope changed-file comparison-lint failure with6 R4 statements. The real lint was captured before correction:6findings/exit1 (ci-r4-red.log). The fix uses POSIX path absolute classification, normalized resolved executable path, and existing normalise_name at the lexical comparison sites. No lint baseline, other file, parent caller or C13 relaxation is changed. The named CI lint regression now passes/exit0 in ci-r4-final-lint.log. This is an owner-classified in-scope CI correction, not an added review repair round.
+
+After old temporary tools disappeared, owner2754 authorized rebuild. Parent-bin was reconstructed in writable TMPDIR; native uv Python3.12 download actually failed with DNS/exit1. No alternate route or escalation was attempted. Owner2757 installed the same native3.12.15 through the host tool manager outside this worker, then authorized binding it by absolute path. Its SHA2563274dde21f9767655564d093e63c9a5faacefbf1d41bc1e6bf8b6f6e5a441903 and exact binding/rebuild commands are in sandbox.md and ci-r4-runtime-bindings.json. Launch/import failures remain preserved and are not behavioral proofs.
+
+Both complete29-test modules on these current source bytes actually exit0:3.15.0 in31.689s;3.12.15 in41.585s. Mutations actually exit0 on both runtimes:24 killed24 survived0,zero errors/skips. Complete command/source/runtime bindings and per-mutant outputs are ci-r4-final-commands.json and ci-r4-final-{modules315,modules312,mutations,mutations312}.log/.json. The unchanged test source retains its recorded historical16-method/18-assertion red proofs at7a201eab; those are not rerun against a new historical implementation.
+
+Publication observations from first head8fd3ae7e are historical: actual validate/regime/bootstrap/macOS success, Linux test reds; GitGuardian failed incident38438680 on a digest of the synthetic test token marker, confirmed by local equality to hashlib.sha256 of that constant. Proposed not-applicable disposition goes into root's complete sweep. Codex code/security review usage limits prevented actual review; CodeRabbit skipped automatic review. The earlier Bot monitoring stopped with the prior tool session before15minutes; it is not represented as a completed bounded wait. A fresh applicable CI/Bot observation follows the subsequent push; no current all-green or ready_for_review RESULT is claimed before observing that head. Worker never merges or update-branches.
+
+
+## ci-r4-red.log
+
+Command:
+
+````sh
+python3.15 -I scripts/lint-comparisons.py scripts/orchestrator/task-consistency-check.py --changed scripts/orchestrator/task-consistency-check.py
+````
+
+Actual exit:1
+
+````text
+scripts/orchestrator/task-consistency-check.py:65: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:91: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:220: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:261: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:405: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:435: R4 Python compares a path or URL by its string form
+
+exit=1
+
+````
+
+## ci-r4-lint-green.log
+
+Command:
+
+````sh
+python3.15 -I -c 'import sys,unittest;sys.path.insert(0,"tests/unit");unittest.main(module=None,argv=["tests","test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline","-v"])'
+````
+
+Actual exit:0
+
+````text
+test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.349s
+
+OK
+
+````
+
+## ci-r4-runtime-rebuild.log
+
+Command:
+
+````sh
+See full native uv command and new temporary parent bindings recorded verbatim in log and sandbox.md; Python3.12.15 install failed at github.com DNS resolution before any fallback attempt.
+````
+
+Actual exit:1
+
+````text
+Owner2754 authorizes rebuilding missing temporary validation runtime; environment loss, no correction round.
+Created mode0700 temporary directory /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e and parent-bin; symlinks to exact original native executables:
+{
+  "git": "/usr/bin/git",
+  "uv": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+  "gh": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+  "bash": "/bin/bash"
+}
+Command: ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv --no-config --cache-dir ~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache python install --install-dir /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/python --no-bin 3.12.15
+error: Failed to install cpython-3.12.15-macos-aarch64-none
+  cause: Request failed after 3 retries in 5.5s
+  cause: Failed to download `https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz`
+  cause: error sending request for url (https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz)
+  cause: client error (Connect)
+  cause: dns error
+  cause: failed to lookup address information: nodename nor servname provided, or not known
+
+exit=1
+
+````
+
+## ci-r4-native312-binding.log
+
+Command:
+
+````sh
+sha256 validated native Python312 absolute file, linked into reconstructed parent-bin; python3.12 -I -c 'import sys;print(sys.executable);print(sys.version)'
+````
+
+Actual exit:0
+
+````text
+Owner2757 provided native host tool-manager Python3.12.15, no worker download. Absolute selected interpreter ~/.local/share/mise/installs/python/3.12.15/bin/python3.12; SHA256 3274dde21f9767655564d093e63c9a5faacefbf1d41bc1e6bf8b6f6e5a441903; rebuilt runtime link /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin/python3.12. Probe exit0:
+~/.local/share/mise/installs/python/3.12.15/bin/python3.12
+3.12.15 (main, Oct 14 2026, 00:55:37) [Clang 23.1.3 ]
+
+````
+
+## ci-r4-final-modules315.log
+
+Command:
+
+````sh
+PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' -I -u -c 'import pathlib,sys,unittest,hashlib
+root=pathlib.Path.cwd().resolve();sys.path.insert(0,str(root/"tests/unit"))
+print("runtime",sys.executable,sys.version,flush=True)
+for name in ("scripts/orchestrator/task-consistency-check.py","tests/unit/test_task_consistency_c11_c15.py","tests/unit/test_task_checkers.py"):
+ print(hashlib.sha256((root/name).read_bytes()).hexdigest(),name,flush=True)
+unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-modules315.log' 2>&1
+````
+
+Actual exit:0
+
+````text
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 scripts/orchestrator/task-consistency-check.py
+1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 tests/unit/test_task_consistency_c11_c15.py
+20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f tests/unit/test_task_checkers.py
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... ok
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... ok
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... ok
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... ok
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... ok
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... ok
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... ok
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... native-case-insensitive=True
+ok
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... ok
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... ok
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... ok
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... ok
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... ok
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... ok
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... ok
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... ok
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... ok
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... ok
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... ok
+test_ledger_check_counts_an_audit_and_its_inherited_copy_once (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_an_audit_and_its_inherited_copy_once) ... ok
+test_ledger_check_counts_what_the_gate_counts (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_what_the_gate_counts) ... ok
+test_ledger_check_passes_a_complete_record (test_task_checkers.TaskCheckersTest.test_ledger_check_passes_a_complete_record) ... ok
+test_ledger_check_reads_inherited_audit_ids_from_the_marker (test_task_checkers.TaskCheckersTest.test_ledger_check_reads_inherited_audit_ids_from_the_marker) ... ok
+test_ledger_check_reports_the_gaps_of_the_pre_fix_record (test_task_checkers.TaskCheckersTest.test_ledger_check_reports_the_gaps_of_the_pre_fix_record) ... ok
+test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) ... ok
+test_task_consistency_check_c9_probes_the_landed_checker_path (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c9_probes_the_landed_checker_path) ... ok
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... ok
+test_task_consistency_check_passes_a_complete_task_file (test_task_checkers.TaskCheckersTest.test_task_consistency_check_passes_a_complete_task_file) ... ok
+test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 31.689s
+
+OK
+
+````
+
+## ci-r4-final-modules312.log
+
+Command:
+
+````sh
+PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.12.15/bin/python3.12' '~/.local/share/mise/installs/python/3.12.15/bin/python3.12' -I -u -c 'import pathlib,sys,unittest,hashlib
+root=pathlib.Path.cwd().resolve();sys.path.insert(0,str(root/"tests/unit"))
+print("runtime",sys.executable,sys.version,flush=True)
+for name in ("scripts/orchestrator/task-consistency-check.py","tests/unit/test_task_consistency_c11_c15.py","tests/unit/test_task_checkers.py"):
+ print(hashlib.sha256((root/name).read_bytes()).hexdigest(),name,flush=True)
+unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-modules312.log' 2>&1
+````
+
+Actual exit:0
+
+````text
+runtime ~/.local/share/mise/installs/python/3.12.15/bin/python3.12 3.12.15 (main, Oct 14 2026, 00:55:37) [Clang 23.1.3 ]
+b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 scripts/orchestrator/task-consistency-check.py
+1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 tests/unit/test_task_consistency_c11_c15.py
+20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f tests/unit/test_task_checkers.py
+fixture-seed python=~/.local/share/mise/installs/python/3.12.15/bin/python3.12 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+Installed 1 package in 2ms
+
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... ok
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... ok
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... ok
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... ok
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... ok
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... ok
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... ok
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... native-case-insensitive=True
+ok
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... ok
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... ok
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... ok
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... ok
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... ok
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... ok
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... ok
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... ok
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... ok
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... ok
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... ok
+test_ledger_check_counts_an_audit_and_its_inherited_copy_once (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_an_audit_and_its_inherited_copy_once) ... ok
+test_ledger_check_counts_what_the_gate_counts (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_what_the_gate_counts) ... ok
+test_ledger_check_passes_a_complete_record (test_task_checkers.TaskCheckersTest.test_ledger_check_passes_a_complete_record) ... ok
+test_ledger_check_reads_inherited_audit_ids_from_the_marker (test_task_checkers.TaskCheckersTest.test_ledger_check_reads_inherited_audit_ids_from_the_marker) ... ok
+test_ledger_check_reports_the_gaps_of_the_pre_fix_record (test_task_checkers.TaskCheckersTest.test_ledger_check_reports_the_gaps_of_the_pre_fix_record) ... ok
+test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) ... ok
+test_task_consistency_check_c9_probes_the_landed_checker_path (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c9_probes_the_landed_checker_path) ... ok
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... ok
+test_task_consistency_check_passes_a_complete_task_file (test_task_checkers.TaskCheckersTest.test_task_consistency_check_passes_a_complete_task_file) ... ok
+test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 41.585s
+
+OK
+
+````
+
+## ci-r4-final-mutations.log
+
+Command:
+
+````sh
+PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' -I -u -c 'import pathlib,sys,hashlib,json,tempfile,unittest,io
+root=pathlib.Path.cwd().resolve()
+sys.path.insert(0,str(root/"tests/unit"))
+import test_task_consistency_c11_c15 as t
+source=root/"scripts/orchestrator/task-consistency-check.py"
+text=source.read_text()
+cases=[
+("resolver-priority","test_interpreter_resolution_order","if resolver.exists() or resolver.is_symlink():","if False:"),
+("dispatch-optional-bindings","test_dispatch_env_i_invocation",'\''elif "TRUSTED_PYTHON" in os.environ:'\'','\''elif "TRUSTED_PYTHON" not in os.environ:\n    sys.exit("refused: mandatory TRUSTED_PYTHON")\nelif "TRUSTED_PYTHON" in os.environ:'\''),
+("probe-status","test_c14_rejects_failed_probe_with_matching_stdout","if got is None or code or ","if got is None or "),
+("gh-token-preservation","test_gh_child_preserves_parent_tokens",'\''env.update({k: os.environ[k] for k in ("GH_TOKEN", "GITHUB_TOKEN") if k in os.environ})'\'',"env.update({})"),
+("canonical-design-only","test_c15_uses_canonical_main_only","shown = main_bytes(root, design) if design else None","shown = (root / design).read_bytes() if design and (root / design).is_file() else None"),
+("canonical-design-hash","test_c6_receipt_uses_canonical_design_bytes",'\''dr["design_sha256"] != hashlib.sha256(shown).hexdigest()'\'',"False"),
+["reject-git-pathspec","test_path_grammar_distinguishes_globs_from_git_pathspecs","name[0] in \":!\"","False"],
+("root-applied-files","test_path_grammar_covers_root_files",'\''kind in map(fold, ("AGENTS.md", "Makefile"))'\'',"False"),
+("directory-child-rows","test_path_grammar_separates_directory_and_child_rows","found.add(max(choices, key=lambda a: (a == token, len(prefixes[a]))))","found.update(choices)"),
+("dot-normalisation","test_path_grammar_normalises_dot_spellings",'\''p not in ("", ".")'\'','\''p != ""'\''),
+("escaping-scope","test_path_grammar_rejects_escaping_scopes",'\'' or ".." in parts'\'',""),
+("resolved-exemption","test_exempt_symlink_to_applied_file_is_finding",'\''name.startswith(e) and resolved.startswith(e) and confined(root / e, target) is not None'\'',"name.startswith(e)"),
+("case-identity","test_exempt_case_alias_to_applied_file_is_finding","fold = str.casefold if alias.exists() and alias.samefile(root) else os.path.normcase","fold = lambda value: value"),
+("applied-skill","test_c12_covers_applied_skill_instructions",'\''or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)'\'',"or False"),
+("c16-coverage","test_c16_requires_reference_and_all_item_rows",'\''if fm.get("security") is True and any('\'', '\''if False and any('\''),
+("reset-hidden-predecessor","test_reset_scope_rejects_hidden_predecessor_artifacts",'\''if m and m.group(1) != tid:'\'',"if False:"),
+("c11-payload","test_retained_c11_c13_and_fixed_probe_controls",'\''if form == "residual: " and len(load) < 20:'\'',"if False:"),
+("c13-disposition","test_retained_c11_c13_and_fixed_probe_controls",'\''form = next((f for f in FORMS if d.startswith(f)), None)'\'','\''form = next((f for f in FORMS if d.startswith(f)), "residual: ")'\''),
+("untrusted-binding","test_checker_rejects_untrusted_bindings_and_git_configuration","if confined(pathlib.Path(root).resolve(), binary) is not None:","if False:"),
+("same-consumed-bytes","test_isolated_child_and_same_bytes_survive_hostile_startup_inputs","hashlib.sha256(data).hexdigest() != premises_sha","hashlib.sha256(p.read_bytes()).hexdigest() != premises_sha"),
+]
+cases.extend([["directory-symlink-prefix","test_path_grammar_rejects_escaping_scopes"," or file.is_symlink() and match(name, a, partial=True, fold=fold)",""],["equal-root-globs","test_path_grammar_separates_directory_and_child_rows","if token in (a, p) or match(token, a) and (\"/\" in normalise_name(token) or (root / token).exists())","if re.match(re.escape(p) + r\"(?=$|[/\\s*?\\[])\", token)"],["one-item-per-row","test_c16_requires_reference_and_all_item_rows","re.findall(r\"5\\.14\\s+item\\s+(\\d+)\", r.get(\"control\") or \"\", re.IGNORECASE) == [str(i)]","bool(re.search(rf\"5\\.14\\s+item\\s+{i}(?!\\d)\", r.get(\"control\") or \"\", re.IGNORECASE))"]])
+cases.extend([["tokens-stay-out-of-argv","test_gh_child_preserves_parent_tokens","[str(binary), *map(str, args)], cwd=root, env=env, capture_output=True, text=True, check=False","[\"/usr/bin/env\", \"-i\", *(f\"{k}={v}\" for k, v in env.items()), str(binary), *map(str, args)], cwd=root, env={}, capture_output=True, text=True, check=False"]])
+print("runtime",sys.executable,sys.version,flush=True)
+print("source-sha256",hashlib.sha256(source.read_bytes()).hexdigest(),flush=True)
+print("tests-sha256",hashlib.sha256(pathlib.Path(t.__file__).read_bytes()).hexdigest(),flush=True)
+records=[]
+with tempfile.TemporaryDirectory(prefix="a05-mutants-") as tmp:
+ for ident,method,old,new in cases:
+  assert text.count(old)==1,(ident,text.count(old))
+  mutant=pathlib.Path(tmp)/"scripts/orchestrator/task-consistency-check.py"
+  mutant.parent.mkdir(parents=True,exist_ok=True)
+  mutant.write_text(text.replace(old,new))
+  t.CHECKER=mutant
+  output=io.StringIO()
+  result=unittest.TextTestRunner(stream=output,verbosity=2).run(unittest.TestSuite([t.TaskConsistencyC11C15Test(method)]))
+  killed=bool(result.failures) and not result.errors and not result.skipped and result.testsRun==1
+  print("MUTATION",ident,"selector="+method,"outcome="+("killed" if killed else "UNEXPLAINED"),"errors="+str(len(result.errors)),"skipped="+str(len(result.skipped)),flush=True)
+  print(output.getvalue(),flush=True)
+  records.append(dict(id=ident,selector="tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::"+method,killed=killed,errors=len(result.errors),skipped=len(result.skipped),mutant_sha256=hashlib.sha256(mutant.read_bytes()).hexdigest()))
+pathlib.Path(".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations.json").write_text(json.dumps(records,indent=2)+"\n")
+killed=sum(r["killed"] for r in records)
+print(f"mutations={len(records)} killed={killed} survived={len(records)-killed}",flush=True)
+sys.exit(killed!=len(records))
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations.log' 2>&1
+````
+
+Actual exit:0
+
+````text
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+source-sha256 b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0
+tests-sha256 1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+MUTATION resolver-priority selector=test_interpreter_resolution_order outcome=killed errors=0 skipped=0
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... FAIL
+
+======================================================================
+FAIL: test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 177, in test_interpreter_resolution_order
+    self.assertEqual(self.check(env=env)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 1.932s
+
+FAILED (failures=1)
+
+MUTATION dispatch-optional-bindings selector=test_dispatch_env_i_invocation outcome=killed errors=0 skipped=0
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... FAIL
+
+======================================================================
+FAIL: test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 215, in test_dispatch_env_i_invocation
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : refused: mandatory TRUSTED_PYTHON
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.235s
+
+FAILED (failures=1)
+
+MUTATION probe-status selector=test_c14_rejects_failed_probe_with_matching_stdout outcome=killed errors=0 skipped=0
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... 
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref') ... FAIL
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.441s
+
+FAILED (failures=3)
+
+MUTATION gh-token-preservation selector=test_gh_child_preserves_parent_tokens outcome=killed errors=0 skipped=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 246, in test_gh_child_preserves_parent_tokens
+    self.assertEqual(call["tokens"], expected)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {} != {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+- {}
++ {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.823s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-only selector=test_c15_uses_canonical_main_only outcome=killed errors=0 skipped=0
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... FAIL
+
+======================================================================
+FAIL: test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 250, in test_c15_uses_canonical_main_only
+    self.finding("C15")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.329s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-hash selector=test_c6_receipt_uses_canonical_design_bytes outcome=killed errors=0 skipped=0
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 291, in test_c6_receipt_uses_canonical_design_bytes
+    self.finding("C6")
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 1056876532805f40e170f9d2e2fdcc516f6c2b40bbbf5099ecc6a08a25fa82f9
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.815s
+
+FAILED (failures=1)
+
+MUTATION reject-git-pathspec selector=test_path_grammar_distinguishes_globs_from_git_pathspecs outcome=killed errors=0 skipped=0
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 282, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    self.finding("C12")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 't-a01.md: FAIL\n  C4 allowed path has no threat_table row naming it: :(glob)scripts/**\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.353s
+
+FAILED (failures=1)
+
+MUTATION root-applied-files selector=test_path_grammar_covers_root_files outcome=killed errors=0 skipped=0
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 316, in test_path_grammar_covers_root_files
+    out = self.finding("C12")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.615s
+
+FAILED (failures=1)
+
+MUTATION directory-child-rows selector=test_path_grammar_separates_directory_and_child_rows outcome=killed errors=0 skipped=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 324, in test_path_grammar_separates_directory_and_child_rows
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.578s
+
+FAILED (failures=1)
+
+MUTATION dot-normalisation selector=test_path_grammar_normalises_dot_spellings outcome=killed errors=0 skipped=0
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 347, in test_path_grammar_normalises_dot_spellings
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.665s
+
+FAILED (failures=1)
+
+MUTATION escaping-scope selector=test_path_grammar_rejects_escaping_scopes outcome=killed errors=0 skipped=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 353, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.584s
+
+FAILED (failures=1)
+
+MUTATION resolved-exemption selector=test_exempt_symlink_to_applied_file_is_finding outcome=killed errors=0 skipped=0
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 371, in test_exempt_symlink_to_applied_file_is_finding
+    self.assertIn("hidden.py", self.finding("C12"))
+                               ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.862s
+
+FAILED (failures=1)
+
+MUTATION case-identity selector=test_exempt_case_alias_to_applied_file_is_finding outcome=killed errors=0 skipped=0
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 377, in test_exempt_case_alias_to_applied_file_is_finding
+    self.assertIn("agent.py", self.finding("C12", prefix=prefix))
+                              ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.589s
+
+FAILED (failures=1)
+
+MUTATION applied-skill selector=test_c12_covers_applied_skill_instructions outcome=killed errors=0 skipped=0
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... FAIL
+
+======================================================================
+FAIL: test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 387, in test_c12_covers_applied_skill_instructions
+    self.assertIn("SKILL.md", self.finding("C12"))
+                              ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.578s
+
+FAILED (failures=1)
+
+MUTATION c16-coverage selector=test_c16_requires_reference_and_all_item_rows outcome=killed errors=0 skipped=0
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 400, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.582s
+
+FAILED (failures=1)
+
+MUTATION reset-hidden-predecessor selector=test_reset_scope_rejects_hidden_predecessor_artifacts outcome=killed errors=0 skipped=0
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... FAIL
+
+======================================================================
+FAIL: test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 432, in test_reset_scope_rejects_hidden_predecessor_artifacts
+    self.finding("C2")
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.791s
+
+FAILED (failures=1)
+
+MUTATION c11-payload selector=test_retained_c11_c13_and_fixed_probe_controls outcome=killed errors=0 skipped=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 443, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.598s
+
+FAILED (failures=1)
+
+MUTATION c13-disposition selector=test_retained_c11_c13_and_fixed_probe_controls outcome=killed errors=0 skipped=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 443, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C13 ' not found in 't-a01.md: FAIL\n  C11 residual: payload is shorter than 20 characters: fixture approval\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.597s
+
+FAILED (failures=1)
+
+MUTATION untrusted-binding selector=test_checker_rejects_untrusted_bindings_and_git_configuration outcome=killed errors=0 skipped=0
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... FAIL
+
+======================================================================
+FAIL: test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 469, in test_checker_rejects_untrusted_bindings_and_git_configuration
+    self.assertIn("checkout executable", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'checkout executable' not found in 'refused: Git configuration: /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wzwrzxaw/repo/git: line 2: touch: command not found\n\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.439s
+
+FAILED (failures=1)
+
+MUTATION same-consumed-bytes selector=test_isolated_child_and_same_bytes_survive_hostile_startup_inputs outcome=killed errors=0 skipped=0
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... FAIL
+
+======================================================================
+FAIL: test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 522, in test_isolated_child_and_same_bytes_survive_hostile_startup_inputs
+    self.assertNotIn("C14: not run (no trusted sha)", out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'C14: not run (no trusted sha)' unexpectedly found in 't-a01.md: OK\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\nt-a01.md: warning: C14: not run (no trusted sha)\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.922s
+
+FAILED (failures=1)
+
+MUTATION directory-symlink-prefix selector=test_path_grammar_rejects_escaping_scopes outcome=killed errors=0 skipped=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 364, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.209s
+
+FAILED (failures=1)
+
+MUTATION equal-root-globs selector=test_path_grammar_separates_directory_and_child_rows outcome=killed errors=0 skipped=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 341, in test_path_grammar_separates_directory_and_child_rows
+    self.finding("C7b")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.084s
+
+FAILED (failures=1)
+
+MUTATION one-item-per-row selector=test_c16_requires_reference_and_all_item_rows outcome=killed errors=0 skipped=0
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.560s
+
+FAILED (failures=1)
+
+MUTATION tokens-stay-out-of-argv selector=test_gh_child_preserves_parent_tokens outcome=killed errors=0 skipped=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 244, in test_gh_child_preserves_parent_tokens
+    self.assertFalse(any(observed), "token values entered subprocess argv")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : token values entered subprocess argv
+
+----------------------------------------------------------------------
+Ran 1 test in 1.205s
+
+FAILED (failures=1)
+
+mutations=24 killed=24 survived=0
+
+````
+
+## ci-r4-final-lint.log
+
+Command:
+
+````sh
+PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' -I -c 'import sys,unittest;sys.path.insert(0,"tests/unit");unittest.main(module=None,argv=["tests","test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline","-v"])' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-lint.log' 2>&1
+````
+
+Actual exit:0
+
+````text
+test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.414s
+
+OK
+
+````
+
+## ci-r4-final-mutations312.log
+
+Command:
+
+````sh
+PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.12.15/bin/python3.12' '~/.local/share/mise/installs/python/3.12.15/bin/python3.12' -I -u -c 'import pathlib,sys,hashlib,json,tempfile,unittest,io
+root=pathlib.Path.cwd().resolve()
+sys.path.insert(0,str(root/"tests/unit"))
+import test_task_consistency_c11_c15 as t
+source=root/"scripts/orchestrator/task-consistency-check.py"
+text=source.read_text()
+cases=[
+("resolver-priority","test_interpreter_resolution_order","if resolver.exists() or resolver.is_symlink():","if False:"),
+("dispatch-optional-bindings","test_dispatch_env_i_invocation",'\''elif "TRUSTED_PYTHON" in os.environ:'\'','\''elif "TRUSTED_PYTHON" not in os.environ:\n    sys.exit("refused: mandatory TRUSTED_PYTHON")\nelif "TRUSTED_PYTHON" in os.environ:'\''),
+("probe-status","test_c14_rejects_failed_probe_with_matching_stdout","if got is None or code or ","if got is None or "),
+("gh-token-preservation","test_gh_child_preserves_parent_tokens",'\''env.update({k: os.environ[k] for k in ("GH_TOKEN", "GITHUB_TOKEN") if k in os.environ})'\'',"env.update({})"),
+("canonical-design-only","test_c15_uses_canonical_main_only","shown = main_bytes(root, design) if design else None","shown = (root / design).read_bytes() if design and (root / design).is_file() else None"),
+("canonical-design-hash","test_c6_receipt_uses_canonical_design_bytes",'\''dr["design_sha256"] != hashlib.sha256(shown).hexdigest()'\'',"False"),
+["reject-git-pathspec","test_path_grammar_distinguishes_globs_from_git_pathspecs","name[0] in \":!\"","False"],
+("root-applied-files","test_path_grammar_covers_root_files",'\''kind in map(fold, ("AGENTS.md", "Makefile"))'\'',"False"),
+("directory-child-rows","test_path_grammar_separates_directory_and_child_rows","found.add(max(choices, key=lambda a: (a == token, len(prefixes[a]))))","found.update(choices)"),
+("dot-normalisation","test_path_grammar_normalises_dot_spellings",'\''p not in ("", ".")'\'','\''p != ""'\''),
+("escaping-scope","test_path_grammar_rejects_escaping_scopes",'\'' or ".." in parts'\'',""),
+("resolved-exemption","test_exempt_symlink_to_applied_file_is_finding",'\''name.startswith(e) and resolved.startswith(e) and confined(root / e, target) is not None'\'',"name.startswith(e)"),
+("case-identity","test_exempt_case_alias_to_applied_file_is_finding","fold = str.casefold if alias.exists() and alias.samefile(root) else os.path.normcase","fold = lambda value: value"),
+("applied-skill","test_c12_covers_applied_skill_instructions",'\''or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)'\'',"or False"),
+("c16-coverage","test_c16_requires_reference_and_all_item_rows",'\''if fm.get("security") is True and any('\'', '\''if False and any('\''),
+("reset-hidden-predecessor","test_reset_scope_rejects_hidden_predecessor_artifacts",'\''if m and m.group(1) != tid:'\'',"if False:"),
+("c11-payload","test_retained_c11_c13_and_fixed_probe_controls",'\''if form == "residual: " and len(load) < 20:'\'',"if False:"),
+("c13-disposition","test_retained_c11_c13_and_fixed_probe_controls",'\''form = next((f for f in FORMS if d.startswith(f)), None)'\'','\''form = next((f for f in FORMS if d.startswith(f)), "residual: ")'\''),
+("untrusted-binding","test_checker_rejects_untrusted_bindings_and_git_configuration","if confined(pathlib.Path(root).resolve(), binary) is not None:","if False:"),
+("same-consumed-bytes","test_isolated_child_and_same_bytes_survive_hostile_startup_inputs","hashlib.sha256(data).hexdigest() != premises_sha","hashlib.sha256(p.read_bytes()).hexdigest() != premises_sha"),
+]
+cases.extend([["directory-symlink-prefix","test_path_grammar_rejects_escaping_scopes"," or file.is_symlink() and match(name, a, partial=True, fold=fold)",""],["equal-root-globs","test_path_grammar_separates_directory_and_child_rows","if token in (a, p) or match(token, a) and (\"/\" in normalise_name(token) or (root / token).exists())","if re.match(re.escape(p) + r\"(?=$|[/\\s*?\\[])\", token)"],["one-item-per-row","test_c16_requires_reference_and_all_item_rows","re.findall(r\"5\\.14\\s+item\\s+(\\d+)\", r.get(\"control\") or \"\", re.IGNORECASE) == [str(i)]","bool(re.search(rf\"5\\.14\\s+item\\s+{i}(?!\\d)\", r.get(\"control\") or \"\", re.IGNORECASE))"]])
+cases.extend([["tokens-stay-out-of-argv","test_gh_child_preserves_parent_tokens","[str(binary), *map(str, args)], cwd=root, env=env, capture_output=True, text=True, check=False","[\"/usr/bin/env\", \"-i\", *(f\"{k}={v}\" for k, v in env.items()), str(binary), *map(str, args)], cwd=root, env={}, capture_output=True, text=True, check=False"]])
+print("runtime",sys.executable,sys.version,flush=True)
+print("source-sha256",hashlib.sha256(source.read_bytes()).hexdigest(),flush=True)
+print("tests-sha256",hashlib.sha256(pathlib.Path(t.__file__).read_bytes()).hexdigest(),flush=True)
+records=[]
+with tempfile.TemporaryDirectory(prefix="a05-mutants-") as tmp:
+ for ident,method,old,new in cases:
+  assert text.count(old)==1,(ident,text.count(old))
+  mutant=pathlib.Path(tmp)/"scripts/orchestrator/task-consistency-check.py"
+  mutant.parent.mkdir(parents=True,exist_ok=True)
+  mutant.write_text(text.replace(old,new))
+  t.CHECKER=mutant
+  output=io.StringIO()
+  result=unittest.TextTestRunner(stream=output,verbosity=2).run(unittest.TestSuite([t.TaskConsistencyC11C15Test(method)]))
+  killed=bool(result.failures) and not result.errors and not result.skipped and result.testsRun==1
+  print("MUTATION",ident,"selector="+method,"outcome="+("killed" if killed else "UNEXPLAINED"),"errors="+str(len(result.errors)),"skipped="+str(len(result.skipped)),flush=True)
+  print(output.getvalue(),flush=True)
+  records.append(dict(id=ident,selector="tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::"+method,killed=killed,errors=len(result.errors),skipped=len(result.skipped),mutant_sha256=hashlib.sha256(mutant.read_bytes()).hexdigest()))
+pathlib.Path(".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations312.json").write_text(json.dumps(records,indent=2)+"\n")
+killed=sum(r["killed"] for r in records)
+print(f"mutations={len(records)} killed={killed} survived={len(records)-killed}",flush=True)
+sys.exit(killed!=len(records))
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations312.log' 2>&1
+````
+
+Actual exit:0
+
+````text
+runtime ~/.local/share/mise/installs/python/3.12.15/bin/python3.12 3.12.15 (main, Oct 14 2026, 00:55:37) [Clang 23.1.3 ]
+source-sha256 b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0
+tests-sha256 1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8
+fixture-seed python=~/.local/share/mise/installs/python/3.12.15/bin/python3.12 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+Installed 1 package in 1ms
+
+MUTATION resolver-priority selector=test_interpreter_resolution_order outcome=killed errors=0 skipped=0
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... FAIL
+
+======================================================================
+FAIL: test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 177, in test_interpreter_resolution_order
+    self.assertEqual(self.check(env=env)[0], 0)
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 1.610s
+
+FAILED (failures=1)
+
+MUTATION dispatch-optional-bindings selector=test_dispatch_env_i_invocation outcome=killed errors=0 skipped=0
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... FAIL
+
+======================================================================
+FAIL: test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 215, in test_dispatch_env_i_invocation
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+AssertionError: 1 != 0 : refused: mandatory TRUSTED_PYTHON
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.350s
+
+FAILED (failures=1)
+
+MUTATION probe-status selector=test_c14_rejects_failed_probe_with_matching_stdout outcome=killed errors=0 skipped=0
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... 
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref') ... FAIL
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 2.447s
+
+FAILED (failures=3)
+
+MUTATION gh-token-preservation selector=test_gh_child_preserves_parent_tokens outcome=killed errors=0 skipped=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 246, in test_gh_child_preserves_parent_tokens
+    self.assertEqual(call["tokens"], expected)
+AssertionError: {} != {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+- {}
++ {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+
+----------------------------------------------------------------------
+Ran 1 test in 1.257s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-only selector=test_c15_uses_canonical_main_only outcome=killed errors=0 skipped=0
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... FAIL
+
+======================================================================
+FAIL: test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 250, in test_c15_uses_canonical_main_only
+    self.finding("C15")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.418s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-hash selector=test_c6_receipt_uses_canonical_design_bytes outcome=killed errors=0 skipped=0
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 291, in test_c6_receipt_uses_canonical_design_bytes
+    self.finding("C6")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 1056876532805f40e170f9d2e2fdcc516f6c2b40bbbf5099ecc6a08a25fa82f9
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.007s
+
+FAILED (failures=1)
+
+MUTATION reject-git-pathspec selector=test_path_grammar_distinguishes_globs_from_git_pathspecs outcome=killed errors=0 skipped=0
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 282, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    self.finding("C12")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertIn(name + " ", out)
+AssertionError: 'C12 ' not found in 't-a01.md: FAIL\n  C4 allowed path has no threat_table row naming it: :(glob)scripts/**\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.715s
+
+FAILED (failures=1)
+
+MUTATION root-applied-files selector=test_path_grammar_covers_root_files outcome=killed errors=0 skipped=0
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 316, in test_path_grammar_covers_root_files
+    out = self.finding("C12")
+          ^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.653s
+
+FAILED (failures=1)
+
+MUTATION directory-child-rows selector=test_path_grammar_separates_directory_and_child_rows outcome=killed errors=0 skipped=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 324, in test_path_grammar_separates_directory_and_child_rows
+    self.assertEqual(self.check()[0], 0)
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.716s
+
+FAILED (failures=1)
+
+MUTATION dot-normalisation selector=test_path_grammar_normalises_dot_spellings outcome=killed errors=0 skipped=0
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 347, in test_path_grammar_normalises_dot_spellings
+    self.assertEqual(self.check()[0], 0)
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.676s
+
+FAILED (failures=1)
+
+MUTATION escaping-scope selector=test_path_grammar_rejects_escaping_scopes outcome=killed errors=0 skipped=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 353, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.718s
+
+FAILED (failures=1)
+
+MUTATION resolved-exemption selector=test_exempt_symlink_to_applied_file_is_finding outcome=killed errors=0 skipped=0
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 371, in test_exempt_symlink_to_applied_file_is_finding
+    self.assertIn("hidden.py", self.finding("C12"))
+                               ^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.097s
+
+FAILED (failures=1)
+
+MUTATION case-identity selector=test_exempt_case_alias_to_applied_file_is_finding outcome=killed errors=0 skipped=0
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 377, in test_exempt_case_alias_to_applied_file_is_finding
+    self.assertIn("agent.py", self.finding("C12", prefix=prefix))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.729s
+
+FAILED (failures=1)
+
+MUTATION applied-skill selector=test_c12_covers_applied_skill_instructions outcome=killed errors=0 skipped=0
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... FAIL
+
+======================================================================
+FAIL: test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 387, in test_c12_covers_applied_skill_instructions
+    self.assertIn("SKILL.md", self.finding("C12"))
+                              ^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.714s
+
+FAILED (failures=1)
+
+MUTATION c16-coverage selector=test_c16_requires_reference_and_all_item_rows outcome=killed errors=0 skipped=0
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 400, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.730s
+
+FAILED (failures=1)
+
+MUTATION reset-hidden-predecessor selector=test_reset_scope_rejects_hidden_predecessor_artifacts outcome=killed errors=0 skipped=0
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... FAIL
+
+======================================================================
+FAIL: test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 432, in test_reset_scope_rejects_hidden_predecessor_artifacts
+    self.finding("C2")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.123s
+
+FAILED (failures=1)
+
+MUTATION c11-payload selector=test_retained_c11_c13_and_fixed_probe_controls outcome=killed errors=0 skipped=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 443, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.633s
+
+FAILED (failures=1)
+
+MUTATION c13-disposition selector=test_retained_c11_c13_and_fixed_probe_controls outcome=killed errors=0 skipped=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 443, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertIn(name + " ", out)
+AssertionError: 'C13 ' not found in 't-a01.md: FAIL\n  C11 residual: payload is shorter than 20 characters: fixture approval\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.960s
+
+FAILED (failures=1)
+
+MUTATION untrusted-binding selector=test_checker_rejects_untrusted_bindings_and_git_configuration outcome=killed errors=0 skipped=0
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... FAIL
+
+======================================================================
+FAIL: test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 469, in test_checker_rejects_untrusted_bindings_and_git_configuration
+    self.assertIn("checkout executable", out)
+AssertionError: 'checkout executable' not found in 'refused: Git configuration: /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-f11op2w5/repo/git: line 2: touch: command not found\n\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.536s
+
+FAILED (failures=1)
+
+MUTATION same-consumed-bytes selector=test_isolated_child_and_same_bytes_survive_hostile_startup_inputs outcome=killed errors=0 skipped=0
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... FAIL
+
+======================================================================
+FAIL: test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 522, in test_isolated_child_and_same_bytes_survive_hostile_startup_inputs
+    self.assertNotIn("C14: not run (no trusted sha)", out)
+AssertionError: 'C14: not run (no trusted sha)' unexpectedly found in 't-a01.md: OK\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\nt-a01.md: warning: C14: not run (no trusted sha)\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.986s
+
+FAILED (failures=1)
+
+MUTATION directory-symlink-prefix selector=test_path_grammar_rejects_escaping_scopes outcome=killed errors=0 skipped=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 364, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.307s
+
+FAILED (failures=1)
+
+MUTATION equal-root-globs selector=test_path_grammar_separates_directory_and_child_rows outcome=killed errors=0 skipped=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 341, in test_path_grammar_separates_directory_and_child_rows
+    self.finding("C7b")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.396s
+
+FAILED (failures=1)
+
+MUTATION one-item-per-row selector=test_c16_requires_reference_and_all_item_rows outcome=killed errors=0 skipped=0
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 167, in finding
+    self.assertEqual(rc, 1, out)
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.623s
+
+FAILED (failures=1)
+
+MUTATION tokens-stay-out-of-argv selector=test_gh_child_preserves_parent_tokens outcome=killed errors=0 skipped=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 244, in test_gh_child_preserves_parent_tokens
+    self.assertFalse(any(observed), "token values entered subprocess argv")
+AssertionError: True is not false : token values entered subprocess argv
+
+----------------------------------------------------------------------
+Ran 1 test in 1.126s
+
+FAILED (failures=1)
+
+mutations=24 killed=24 survived=0
+
+````
+
+# Independent R4 CI verification
+
+Independent agent /root/a05_r4_ci_review; fresh context; manifest security profile gpt-6-astra/high. Read-only scoped approval, high confidence; no P0-P3 findings. Current source b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 compared with published8fd3ae7ead7c6c5973dc1deef5f0330fb46810cb.
+
+The reviewer verified leading POSIX slash rejection, equivalence of normpath on an already resolved Path, valid production match-pattern call sites, tokens() filtering rejected names, the closed-selector truth guard, and normalized relative-path/casefold inputs. It read connected source/callers, task/report and test fixtures. It observed both complete-module/mutation logs without claiming to have independently rerun them. No files changed, Bats/browser/Crit/agmsg/commit/full-suite run. This is six-edit verification, no final audit/integration authority.
+
+Read-only inspection commands: git diff -- scripts/orchestrator/task-consistency-check.py; git rev-parse HEAD; shasum -a 256 scripts/orchestrator/task-consistency-check.py; sed -n '1,480p' scripts/orchestrator/task-consistency-check.py; nl -ba scripts/orchestrator/task-consistency-check.py | sed -n '395,510p'; rg -n '\b(match|files|hits|normalise_name|trusted)\(' scripts/orchestrator/task-consistency-check.py; git diff --check -- scripts/orchestrator/task-consistency-check.py. Source binding and empty diff-check were verified.
+
+Exact independent self-check command:
+
+````sh
+~/.local/share/mise/installs/python/3.12.15/bin/python3.12 -I -B - <<'PY'
+import ast, hashlib, itertools, os, pathlib, re, subprocess, unicodedata, fnmatch
+from functools import cache
+path = pathlib.Path('scripts/orchestrator/task-consistency-check.py')
+new = path.read_text()
+old = subprocess.check_output(['git', 'show', '8fd3ae7ead7c6c5973dc1deef5f0330fb46810cb:scripts/orchestrator/task-consistency-check.py'], text=True)
+assert hashlib.sha256(new.encode()).hexdigest() == 'b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0'
+def load(source):
+    tree = ast.parse(source)
+    tree.body = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in ('normalise_name', 'match', 'tokens', 'hits')]
+    env = dict(pathlib=pathlib, os=os, re=re, unicodedata=unicodedata, fnmatch=fnmatch, cache=cache)
+    exec(compile(tree, '<extracted-functions>', 'exec'), env)
+    return env
+before, after = load(old), load(new)
+segments = ['', '.', '..', 'a', 'scripts', 'tests', ':x', '!x', 'é', 'e\u0301', 'ß', '*', '**', 'x?', '[a]', '\0']
+cases = {None, 7, '', '/', '//', '///', './', '/.', 'a/./', 'a//'}
+for count in range(1, 4):
+    for parts in itertools.product(segments, repeat=count):
+        raw = '/'.join(parts)
+        cases.update((raw, '/' + raw, raw + '/', raw + '/.'))
+valid = set()
+for value in cases:
+    a, b = before['normalise_name'](value), after['normalise_name'](value)
+    assert a == b, repr(value)
+    if b:
+        assert after['normalise_name'](b) == b, repr(value)
+        assert after['normalise_name'](b.casefold()) is not None, repr(value)
+        valid.add(b)
+patterns = ['*', '**', 'scripts/', 'scripts/*.py', 'scripts/**', 'tests/fixtures/**', '.claude/skills/*/SKILL.md', '.orchestration/t-a01/**', '[a]', 'ß/']
+count = 0
+for pattern in patterns:
+    assert after['normalise_name'](pattern) is not None
+    for name in valid:
+        for partial in (False, True):
+            for fold in (os.path.normcase, str.casefold):
+                assert before['match'](name, pattern, partial, fold) == after['match'](name, pattern, partial, fold), (name, pattern)
+                count += 1
+for value in ('/', '//a', '///a', '/a/../b', '/a//b', '/.claude/worktrees/g/python'):
+    resolved = pathlib.Path(value).resolve()
+    assert ('.claude/worktrees' in str(resolved).casefold()) == ('.claude/worktrees' in os.path.normpath(resolved).casefold())
+print(f'PASS: {len(cases)} normalization cases; {len(valid)} accepted idempotent/non-None casefold values; {count} match comparisons; 6 resolved-path comparisons')
+PY
+````
+
+Complete captured combined stdout/stderr (no stderr text):
+
+````text
+PASS: 16146 normalization cases; 2394 accepted idempotent/non-None casefold values; 95760 match comparisons; 6 resolved-path comparisons
+````
+
+Actual exit0;0.4841s. No new tests performed when retrieving this transcript.
+
+Verdict: correct
+
+# Preserved initial R4 runtime launch failures
+
+# CI correction runtime blocker
+
+AGMSG-PONG v1 task_id=dotfiles-T133-task-generator-plan-check-a05-checker status=blocked boundary=unavailable-temporary-validation-runtime-not-sandbox-denial. Owner2750 in-scope R4 correction applied only to own production file,373add24del=397<=400; test sources unchanged. Actual pre-fix real lint exit1/6R4; after-fix changed-file lint regression exit0. Both complete-module/mutation reruns could not launch: previous /private/tmp/a012-t133-a04-parent-bin has disappeared (uv shutil.which returnsNone causing import TypeError on315 exit1/mutations exit1), and /private/tmp/a012-t133-a04-python/cpython-3.12.15-macos-aarch64-none/bin/python3.12 disappeared (exit127 zsh:no such file). Exact expanded commands and full outputs are in ci-r4-runtime-blocker.md and ci-r4-{modules315,modules312,mutations}.log under own D. No import/launch failure represented as behavioral red or green. New sourceb91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 remains uncommitted; PR440 head remains8fd3ae7e. Per Worker Playbook4 no alternate tool/path/retry/escalation: holding dependent revalidation/push for re-tasking. Parent network permissions also now restricted (no network attempt yet), no claim of push availability.
+
+
+## ci-r4-modules315.log
+
+````sh
+PATH=/private/tmp/a012-t133-a04-parent-bin:/usr/bin:/bin UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' -I -u -c 'import pathlib,sys,unittest,hashlib
+root=pathlib.Path.cwd().resolve();sys.path.insert(0,str(root/"tests/unit"))
+print("runtime",sys.executable,sys.version,flush=True)
+for name in ("scripts/orchestrator/task-consistency-check.py","tests/unit/test_task_consistency_c11_c15.py","tests/unit/test_task_checkers.py"):
+ print(hashlib.sha256((root/name).read_bytes()).hexdigest(),name,flush=True)
+unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-modules315.log' 2>&1
+````
+
+````text
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 scripts/orchestrator/task-consistency-check.py
+1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 tests/unit/test_task_consistency_c11_c15.py
+20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f tests/unit/test_task_checkers.py
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 103, in __init__
+    self.parseArgs(argv)
+    ~~~~~~~~~~~~~~^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 142, in parseArgs
+    self.createTests()
+    ~~~~~~~~~~~~~~~~^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/main.py", line 153, in createTests
+    self.test = self.testLoader.loadTestsFromNames(self.testNames,
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+                                                   self.module)
+                                                   ^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/loader.py", line 214, in loadTestsFromNames
+    suites = [self.loadTestsFromName(name, module) for name in names]
+              ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 16, in <module>
+    UV = str(Path(shutil.which("uv")).resolve())
+             ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/pathlib/__init__.py", line 153, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+
+````
+
+
+## ci-r4-modules312.log
+
+````sh
+PATH=/private/tmp/a012-t133-a04-parent-bin:/usr/bin:/bin UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='/private/tmp/a012-t133-a04-python/cpython-3.12.15-macos-aarch64-none/bin/python3.12' '/private/tmp/a012-t133-a04-python/cpython-3.12.15-macos-aarch64-none/bin/python3.12' -I -u -c 'import pathlib,sys,unittest,hashlib
+root=pathlib.Path.cwd().resolve();sys.path.insert(0,str(root/"tests/unit"))
+print("runtime",sys.executable,sys.version,flush=True)
+for name in ("scripts/orchestrator/task-consistency-check.py","tests/unit/test_task_consistency_c11_c15.py","tests/unit/test_task_checkers.py"):
+ print(hashlib.sha256((root/name).read_bytes()).hexdigest(),name,flush=True)
+unittest.main(module=None,argv=["tests","test_task_consistency_c11_c15","test_task_checkers","-v"])
+' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-modules312.log' 2>&1
+````
+
+````text
+zsh:1: no such file or directory: /private/tmp/a012-t133-a04-python/cpython-3.12.15-macos-aarch64-none/bin/python3.12
+
+````
+
+
+## ci-r4-lint-green.log
+
+````sh
+~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys,unittest;sys.path.insert(0,"tests/unit");unittest.main(module=None,argv=["tests","test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline","-v"])' > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-lint-green.log' 2>&1
+````
+
+````text
+test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.349s
+
+OK
+
+````
+
+
+## ci-r4-mutations.log
+
+````sh
+PATH=/private/tmp/a012-t133-a04-parent-bin:/usr/bin:/bin UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' -I -u /private/tmp/a012-a05-ci-r4-mutations.py > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-mutations.log' 2>&1
+````
+
+````text
+Traceback (most recent call last):
+  File "/private/tmp/a012-a05-ci-r4-mutations.py", line 4, in <module>
+    import test_task_consistency_c11_c15 as t
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 16, in <module>
+    UV = str(Path(shutil.which("uv")).resolve())
+             ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/pathlib/__init__.py", line 153, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+
+````
+
+# Final R4 selected-tree assets and worker gate
+
+Asset process actually exited0 on selected staged tree b9680ba922744b61d58b6b1054e59f03dfebd35e; source SHA b91d8d3 was verified in that clean checkout. Subsequent changes update evidence only. This tree is local validation provenance, never canonical design authority. The unrelated foreign untracked predecessor evidence remains untouched/outside this PR.
+
+## ci-r4-clean-assets.log
+
+````sh
+~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -u -c 'from pathlib import Path
+import subprocess,json,os,shlex,hashlib
+d=Path(".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker").resolve()
+bindings=json.loads((d/"ci-r4-runtime-bindings.json").read_text())
+base=Path(bindings["base"])
+clone=base/"clean-selected"
+tree=subprocess.check_output(["git","write-tree"],text=True).strip()
+commands=[
+ ["git","clone","--shared","--no-checkout",".",str(clone)],
+ ["git","-C",str(clone),"read-tree",tree],
+ ["git","-C",str(clone),"checkout-index","-a"]]
+log=d/"ci-r4-clean-assets.log"
+with log.open("w") as f:
+ f.write("Selected staged tree "+tree+"\n")
+ for args in commands:
+  f.write("Command: "+shlex.join(args)+"\n");f.flush()
+  r=subprocess.run(args,stdout=f,stderr=subprocess.STDOUT)
+  f.write("exit="+str(r.returncode)+"\n");f.flush()
+  if r.returncode:raise SystemExit(r.returncode)
+ assert hashlib.sha256((clone/"scripts/orchestrator/task-consistency-check.py").read_bytes()).hexdigest()=="b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0"
+ env={**os.environ,"PATH":"~/.local/share/mise/installs/python/3.15.0/bin:"+bindings["parent_bin"]+":/usr/bin:/bin","UV_CACHE_DIR":str(Path(".uv-cache").resolve()),"UV_PYTHON":"~/.local/share/mise/installs/python/3.15.0/bin/python3.15","TRUSTED_PYTHON":"~/.local/share/mise/installs/python/3.15.0/bin/python3.15"}
+ f.write("Source SHA b91d8d3 verified; make validate-agent-assets with recorded native315/PATH/private fixture seed bindings\n");f.flush()
+ r=subprocess.run(["make","validate-agent-assets"],cwd=clone,env=env,stdout=f,stderr=subprocess.STDOUT)
+ f.write("\nactual-make-exit="+str(r.returncode)+"\n")
+print("clean_selected_tree",tree,"asset_actual_exit",r.returncode,flush=True)
+raise SystemExit(r.returncode)
+'
+````
+
+Actual exit0; complete captured stdout/stderr:
+
+````text
+Selected staged tree b9680ba922744b61d58b6b1054e59f03dfebd35e
+Command: git clone --shared --no-checkout . /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/clean-selected
+Cloning into '/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/clean-selected'...
+done.
+exit=0
+Command: git -C /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/clean-selected read-tree b9680ba922744b61d58b6b1054e59f03dfebd35e
+exit=0
+Command: git -C /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/clean-selected checkout-index -a
+exit=0
+Source SHA b91d8d3 verified; make validate-agent-assets with recorded native315/PATH/private fixture seed bindings
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: no agmsg identity at the active seat /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/clean-selected (expected one)
+WARN: regime-boundary: dotfiles-T114-canonical-clone-reconcile-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T118-rolling-tools-single-update-a01 S2: revises 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T119-rolling-release-assets-a01 S2: questions 8 >= 2 source=live
+WARN: regime-boundary: dotfiles-T120-npm-provenance-and-claude-channel-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave1-task-validator-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 S2: amendments 9 >= 2 source=live
+WARN: regime-boundary: dotfiles-T124-wave3b-audit-grammar-a01 waiver-unanchored
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-audit-s1-report-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-aws-cli-macos-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-a01-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-github-scripts-followup-a02-review-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-finish-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-glue-integrate-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-a01-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a06 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-a07 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-chain-review-scripts-followup-review-a03 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-a03-amend-review-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-evidence-redesign-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-gate-wrapper-path-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-a05-amend-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a02-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-a03 S2: revises 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-followup-review-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a02 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-orchestrator-tools-redesign-a04 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-playbook-rules-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-pane-open-a01-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-a01-amend-review-a02 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-project-map-reload-hook-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-regime-v3-inv6-redesign-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-s1-replan-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: revises 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: amendments 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-rules-step8-review-a01 S2: amendments 12 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-s1-replan-gate-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-launch-args-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-followup-review-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-seat-liveness-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: revises 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: amendments 7 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-a01 S2: questions 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: revises 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-settings-hook-dedupe-review-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: revises 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-a01-amend-review-a02 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-followup-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-checkers-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: revises 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-task-review-t718-a02 S2: amendments 11 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T128-worker-s1-stop-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-anthropic-auth-route-check-followup-a05 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-assets-omp-hcom-a01 S2: questions 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-integration-seat-result-gate-cap-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T129-normalised-comparison-lint-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-claude-sandbox-integration-a01 S2: questions 4 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-codex-local-review-exclusion-a01 S2: amendments 6 >= 2 source=live
+WARN: regime-boundary: dotfiles-T130-sandbox-portability-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T131-claude-pinned-merge-gate-review-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-ci-efficiency-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-ci-efficiency-followup-a02 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-ci-efficiency-followup-a02 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-permission-guard-gate-a01 S2: questions 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-permission-guard-gate-a03 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-result-precheck-a01 S2: amendments 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-result-precheck-a01 S2: questions 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-task-generator-plan-check-a02 S2: revises 2 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-task-generator-plan-check-a03 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-worker-cap-hookspath-a01 S2: amendments 3 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-worker-write-boundary-a01 S2: amendments 5 >= 2 source=live
+WARN: regime-boundary: dotfiles-T133-worker-write-boundary-a02 S2: amendments 3 >= 2 source=live
+agent asset validation ok
+
+actual-make-exit=0
+
+````
+
+## ci-r4-worker-gate.log
+
+````sh
+PATH='~/.local/share/mise/installs/python/3.15.0/bin:/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' AGENT_REVIEWED=1 REVIEW_EVIDENCE='.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/dotfiles-T133-task-generator-plan-check-a05-checker-worker-review-receipt.md' make require-crit-review > '.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-worker-gate.log' 2>&1
+````
+
+Actual exit0; complete captured stdout/stderr:
+
+````text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+````
+
+## ci-r4-evidence-mask.log
+
+````sh
+Native uv0.13.1 offline native315 with pyyaml scripts/validate-agent-assets.py --mask-secrets on all own data artifacts except exact dispatched snapshots and timestamped worklogs; full per-file output follows.
+````
+
+Actual exit0; complete captured stdout/stderr:
+
+````text
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format-final.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-python-format-final.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-python-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/autoskill.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/base-assets.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/base-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/base-unit-final.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/base-unit.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/candidate-assets-masked.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/candidate-assets.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/candidate-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/candidate-unit-final.log
+masked 15 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-commands.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-lint.log
+masked 3 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-modules312.log
+masked 3 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-modules315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations.json
+masked 47 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations312.json
+masked 47 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-final-mutations312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-lint-green.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-modules312.log
+masked 8 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-modules315.log
+masked 2 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-mutations.log
+masked 2 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-native312-binding.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-red.log
+masked 3 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-runtime-bindings.json
+masked 18 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-runtime-blocker.md
+masked 4 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ci-r4-runtime-rebuild.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/clean-candidate-assets.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/crit-status.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/diff-check.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/dispatched-copy-checker.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/dotfiles-T133-task-generator-plan-check-a05-checker-worker-crit.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/dotfiles-T133-task-generator-plan-check-a05-checker-worker-review-receipt.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/draft-two-modules.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/draft-two-modules2.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/draft-two-modules3.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/draft-two-modules4.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/draft-two-modules5.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/evidence-mask.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-dispatched-copy-checker.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-historical-red312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-historical-red315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-inventory-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-local-validation.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-modules-green312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-modules-green315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-preimplementation-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-preimplementation-red312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-preimplementation-red315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/final-source-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/frozen-historical-red312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/frozen-historical-red315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/graph-freshness.log
+masked 1 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/independent-r4-review-transcript.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/independent-review-transcript.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/independent-security-review-transcript.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/initial-red-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/initial-sixteen-red.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/initial-sixteen-red312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/learning.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/measure.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/module-green-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/modules-green312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/modules-green315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-final.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-final.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-round2.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-round2.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-scanner-fixed.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-scanner-fixed.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/open-security-note.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/post-stage-blocker.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/pr-body.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/precommit-assets.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/prerequisite-435.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/prerequisite-design.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/prerequisite-grep.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/publication-bot-observations.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/publication-findings.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/publication-observations.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/regime-caller-probe.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/report.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/required-selectors.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/review-round1-four-red-valid.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/review-round1-four-red.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/review-round1-red.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round1-modules-green312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round1-modules-green315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-diff-check.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-final-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-historical-red312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-historical-red315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-modules-green312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-modules-green315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/round2-scoped-python-format.log
+masked 6 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/sandbox.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-assets.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-bindings.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-historical312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-historical315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-modules312.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scanner-fixed-modules315.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scoped-python-format.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/scoped-ruff-lint-initial.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/secret-scanner-diagnostic.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/source-diff-check-final.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/token-argv-red.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/unit-comparison.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/unit-comparison.log
+masked 15 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/validation-commands.json
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/validation-scope.md
+masked 144 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/validation.md
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/worker-gate-round2.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/worker-gate-scanner-fixed.log
+masked 0 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/worker-gate.log
+
+exit=0
+
+````
+
+# Masked-path launcher correction
+
+Final evidence-mask launcher initially read the already masked native-uv path literally from ci-r4-runtime-bindings.json, causing FileNotFoundError for '~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv' before invoking uv. That launcher attempt exit1 is invalid, not a validator failure or a behavioral proof. The documented masking procedure explicitly restores local HOME spelling before execution; Path.expanduser now restores the same authorized native executable. No alternate executable, downloader, environment privilege or network route is selected. No production/test byte changed.

@@ -670,6 +670,50 @@ class LintComparisonsTest(unittest.TestCase):
         # worker review round 1: 300 chained commands nest the AST 300 deep; the walk is iterative
         self.assert_hits([("lc.sh", "true && " * 300 + "[[ $path == /x ]]\n", [("R1", 1)])])
 
+    def test_audit_2_heredoc_data_never_supplies_a_normaliser(self):
+        # audit:6434c27:2: a heredoc body is data for acceptance too; a normaliser written in it accepts nothing
+        self.assert_hits([("ha.sh", "[[ $path == /x ]] && cat <<EOF\nrealpath\nEOF\n", [("R1", 1)])])
+
+    def test_audit_3_a_test_behind_command_or_builtin_is_read(self):
+        # audit:6434c27:3: the command word comes after the command, builtin and exec wrappers
+        forms = ('command [ "$path" = "$other" ]\n', 'builtin test "$path" = /x\n', "command -p [ $url != /y ]\n")
+        self.assert_hits([(f"w{i}.sh", f, [("R1", 1)]) for i, f in enumerate(forms)])
+
+    def test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read(self):
+        # audit:6434c27:4: each pipeline stage resolves through subshells, blocks and inner pipes to its command
+        forms = ("(ps aux) | grep needle\n", "{ ps aux; } | grep needle\n", "ps aux | (grep needle)\n")
+        self.assert_hits([(f"pp{i}.sh", f, [("R5", 1)]) for i, f in enumerate(forms)])
+        self.assert_hits([("pq.sh", "(ps -o pid= -p 1) | grep x\n", [])])
+
+    def test_audit_5_an_expansion_led_word_is_no_option(self):
+        # audit:6434c27:5: an option is a word whose first part is literal text starting with -
+        self.assert_hits([("ox.sh", 'pgrep -f "$name-x"\n', [("R5", 1)]), ("oy.sh", 'grep -E "$v-x" f\n', [("R6", 1)])])
+
+    def test_audit_6_jq_is_the_command_word_only(self):
+        # audit:6434c27:6: a jq inside another command's argument runs no program there; j"q" and command jq do
+        self.assert_hits(
+            [
+                ("jx.sh", "echo \"$(jq -r .name input)\" 'select(.url == $p)'\n", []),
+                ("jy.sh", "j\"q\" 'select(.url == $p)'\n", [("R3", 1)]),
+                ("jz.sh", "command jq -r 'select(.url == $p)'\n", [("R3", 1)]),
+            ]
+        )
+
+    def test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table(self):
+        # audit:6434c27:7: $'…' hex, octal and unicode escapes reach jq decoded, as bash hands them over
+        forms = ("$'select(.url \\x3d\\x3d $p)'", "$'select(.url \\075\\075 $p)'", "$'select(.url \\u003d\\u003d $p)'")
+        self.assert_hits([(f"ae{i}.sh", f"jq -r {f}\n", [("R3", 1)]) for i, f in enumerate(forms)])
+        self.assert_hits([("af.sh", "jq -r $'select(.url \\x3e $p)'\n", [])])  # \x3e is >, no string comparison
+
+    def test_audit_8_a_normaliser_counts_only_where_it_is_invoked(self):
+        # audit:6434c27:8: a definition or an object key named canonical_path applies nothing; jq is tokenised
+        unused = 'def canonical_path: error("unused"); {canonical_path: "/x"} == {canonical_path: $p}'
+        self.assert_hits([("nu.sh", f"jq -n '{unused}'\n", [("R3", 1)])])
+        used = "def canonical_path: .; (.url | canonical_path) == ($p | canonical_path)"
+        self.assert_hits([("nv.sh", f"jq -n '{used}'\n", [])])
+        # a jq comment is a comment token: a reasonless marker in one is R0 (audit:6434c27:13)
+        self.assert_hits([("nw.sh", "jq -r '. # lint-comparisons: allow'\n", [("R0", 1)])])
+
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []
         for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order

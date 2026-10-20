@@ -1,0 +1,10 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:245](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:245) Fixed PATH and absolute Bash do not neutralize inherited `BASH_ENV`: a read-only probe executed startup code and replaced PATH before the command body, defeating the claimed descendant binding; the named shim tests omit this input. [Bash startup semantics](https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html).
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:104](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:104) The agmsg row omits writable `db/trusted-plugins`: together with undenied `plugins/partition/shared.sh`, it lets a Claude worker authorize a replacement that installed `storage.sh:208–228` selects and sources; basename validation still accepts `shared`, so the named upstream fix does not mitigate this separate trust-file route.
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:271](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:271) The installation command always targets macOS’s directory, while Linux reads `/etc/claude-code/managed-settings.json`; following the specified deployment leaves Linux without the administrative policy, and the staging test validates the wrong destination. [Managed-settings locations](https://code.claude.com/docs/en/managed-settings#deploy-a-managed-settings-file).
+
+📝 まとめ: Reviewed every threat row and cited acceptance/review context; three findings remain for orchestrator disposition. No files changed.
+
+Not checked: implementation or live enforcement; execution binding and Linux policy deployment remain unestablished.
+Verdict: incorrect

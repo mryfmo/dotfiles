@@ -66,5 +66,6 @@ One PR from a fresh branch off `origin/main` after PR #386 merges. The Completio
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-(pending: pasted at dispatch)
+dotfiles-T128-chain-review-scripts-followup-a05.md: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a05.md
 ```

@@ -8,8 +8,8 @@
 #   literal home paths by the validator's own home pattern, the text's self cap (`at or under N lines` against
 #   `wc -l`), `/bin/bash -n` over every fenced bash block, and the `## Owned by <task_id>` section it reads. Each
 #   refusal prints one named line, and a readable text's sha256 is printed last. Python runs as the pinned 3.15
-#   interpreter with -I, and uv runs with --no-config --offline. This preflight catches mistakes; it is no trust
-#   boundary against a hostile same-user process.
+#   interpreter with -I: the checks run as one helper under the checker's own `uv run --no-config --offline --with
+#   pyyaml`, which reads task_id from the parsed front matter. It catches mistakes; it is no hostile-user boundary.
 # @arg $1 string The task text to check.
 # @exitcode 0 Every check passes.
 # @exitcode 1 A check refuses, or the argument is missing or unreadable.
@@ -25,65 +25,64 @@ if [[ ! -f ${task} || ! -r ${task} ]]; then
     echo "input: refused (not a readable file: ${task})"
     exit 1
 fi
-rc=0
-refuse() {
-    echo "$1: refused ($2)"
-    rc=1
-}
-
-checker="${root}/scripts/orchestrator/task-consistency-check.py"
-out="$(uv run --no-config --no-project --offline --python "${py}" --with pyyaml python -I "${checker}" --root "${root}" "${task}" 2>&1)" ||
-    refuse consistency "$(printf '%s' "${out}" | tr -s '\n ' ' ')"
-
 # SECRET_PATTERN and the home pattern come from the validator's syntax tree, neither imported nor copied (its
-# compiled_home_path_pattern runs alone, with no host home); fenced blocks are parsed, never run.
-"${py}" -I - "${root}" "${task}" << 'PY' || rc=1
-import ast, pathlib, re, subprocess, sys
-tree = ast.parse(open(f"{sys.argv[1]}/scripts/validate-agent-assets.py", encoding="utf-8").read())
+# compiled_home_path_pattern runs alone, with no host home); fenced blocks are parsed, never run; every refusal is
+# printed with SECRET_PATTERN matches redacted, the checker's diagnostics too.
+uv run --no-config --no-project --offline --python "${py}" --with pyyaml python -I - "${root}" "${task}" << 'PY'
+import ast, pathlib, re, subprocess, sys, yaml
+root, task = sys.argv[1], sys.argv[2]
+tree = ast.parse(open(f"{root}/scripts/validate-agent-assets.py", encoding="utf-8").read())
 calls = [n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "SECRET_PATTERN"]
 try:
     pattern = re.compile(*map(ast.literal_eval, calls[0].args))
 except (IndexError, ValueError, TypeError, re.error):
     sys.exit(print("secret-pattern: refused (no literal SECRET_PATTERN in the validator)") or 1)
-text, rc = open(sys.argv[2], encoding="utf-8", errors="replace").read(), 0
+text, rc = open(task, encoding="utf-8", errors="replace").read(), 0
+def refuse(name, why):
+    global rc
+    rc = print(f"{name}: refused ({pattern.sub('[redacted]', why)})") or 1
+run = subprocess.run([sys.executable, "-I", f"{root}/scripts/orchestrator/task-consistency-check.py", "--root", root, task], capture_output=True, text=True)
+if run.returncode:
+    refuse("consistency", f"exit {run.returncode}: " + " ".join((run.stdout + run.stderr).split()))
 hits = [str(i) for i, line in enumerate(text.split("\n"), 1) if pattern.search(line)]
 if hits:
-    rc = print(f"secret-pattern: refused ({len(hits)} match(es) on line(s) {','.join(hits)})") or 1
+    refuse("secret-pattern", f"{len(hits)} match(es) on line(s) {','.join(hits)}")
 fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "compiled_home_path_pattern")
 fn.decorator_list, scope = [], {"re": re, "Path": pathlib.Path}
 exec(compile(ast.Module([fn], []), "validate-agent-assets.py", "exec"), scope)
-home = scope[fn.name](pathlib.Path(sys.argv[1]), "")
-homes = [str(i) for i, line in enumerate(text.split("\n"), 1) if home.search(line)]
-if homes:
-    rc = print(f"literal-home: refused (line(s) {','.join(homes)})") or 1
-fence = r"^ {0,3}(`{3,})[ \t]*(?:bash|sh)[ \t]*\n(.*?)^ {0,3}\1`*[ \t]*$"  # CommonMark: longer or indented fences
-blocks = [m[1] for m in re.findall(fence, text, re.DOTALL | re.MULTILINE)]
-bad = [str(n) for n, b in enumerate(blocks, 1) if subprocess.run(["/bin/bash", "-n"], input=b, text=True, capture_output=True).returncode]
-if bad:
-    rc = print(f"bash-syntax: refused (block(s) {','.join(bad)})") or 1
+home = scope[fn.name](pathlib.Path(root), "")
+if homes := [str(i) for i, line in enumerate(text.split("\n"), 1) if home.search(line)]:
+    refuse("literal-home", f"line(s) {','.join(homes)}")
+fence = r"^ {0,3}((`|~)\2{2,})[ \t]*(?:bash|sh)[ \t]*\n(.*?)(?:^ {0,3}\1\2*[ \t]*$|\Z)"  # CommonMark: ``` or ~~~, open to the end
+blocks = [m[2] for m in re.findall(fence, text, re.DOTALL | re.MULTILINE)]
+if bad := [str(n) for n, b in enumerate(blocks, 1) if subprocess.run(["/bin/bash", "-n"], input=b, text=True, capture_output=True).returncode]:
+    refuse("bash-syntax", f"block(s) {','.join(bad)}")
+lines, cap = open(task, "rb").read().count(b"\n"), re.search(r"at or under \*{0,2}(\d+) lines", text)
+if cap and lines > int(cap[1]):
+    refuse("self-cap", f"{lines} lines over the cap of {cap[1]}")
+try:  # the checker's own reading of the front matter
+    front = yaml.safe_load(text.split("\n---\n", 1)[0].lstrip("-\n")) if text.startswith("---") else None
+except yaml.YAMLError:
+    front = None
+me = str(front.get("task_id") or "") if isinstance(front, dict) else ""
+if me and f"## Owned by {me}" in text:  # the named record resolves from the root; its section ends at the next ##
+    rec, head = re.search(r"\.orchestration/acceptance/[A-Za-z0-9._-]+\.md", text), f"## Owned by {me}"
+    path, rows, found, inside = pathlib.Path(root, rec[0]) if rec else None, 0, False, False
+    for line in path.read_text(errors="replace").split("\n") if path and path.is_file() else []:
+        if line == head or line.startswith(head + " "):
+            found = inside = True
+            continue
+        inside = inside and not line.startswith("## ")
+        rows += inside and bool(re.match(r"[^\t ]+\t[^\t ]|- [^ ]", line))
+    if not (path and path.is_file()):
+        refuse("owner-section", f"record {rec[0] if rec else '<none named>'} missing")
+    elif not found:
+        refuse("owner-section", f"no '{head}' section in {rec[0]}")
+    elif not rows and len(re.findall(r"^## Item", text, re.MULTILINE)) <= 1:
+        refuse("owner-section", f"no row under '{head}' in {rec[0]}, and no other Item")
 sys.exit(rc)
 PY
-
-lines="$(wc -l < "${task}" | tr -d ' ')"
-cap="$(/usr/bin/grep -oE 'at or under [*]{0,2}[0-9]+ lines' "${task}" | head -n 1 | tr -dc '0-9')"
-[[ -z ${cap} || ${lines} -le ${cap} ]] || refuse self-cap "${lines} lines over the cap of ${cap}"
-
-# The record a text reads its `## Owned by <task_id>` rows from resolves from the root; its section ends at the next ##.
-self="$(sed -n '1,/^---$/s/^task_id:[[:space:]]*//p' "${task}" | head -n 1 | tr -d "\"' ")"
-if [[ -n ${self} ]] && /usr/bin/grep -qF "## Owned by ${self}" "${task}"; then
-    rec="$(/usr/bin/grep -oE '\.orchestration/acceptance/[A-Za-z0-9._-]+\.md' "${task}" | head -n 1)"
-    items="$(/usr/bin/grep -c '^## Item' "${task}")"
-    rows="$(awk -v h="## Owned by ${self}" '$0 == h || index($0, h " ") == 1 { p = f = 1; next }
-        p && /^## / { p = 0 } p && (/^[^\t ]+\t[^\t ]/ || /^- [^ ]/) { n++ } END { print f ? n + 0 : "none" }' \
-        "${root}/${rec:-/nonexistent}" 2> /dev/null)"
-    if [[ -z ${rec} || ! -f "${root}/${rec}" ]]; then
-        refuse owner-section "record ${rec:-<none named>} missing"
-    elif [[ ${rows} == none ]]; then
-        refuse owner-section "no '## Owned by ${self}' section in ${rec}"
-    elif [[ ${rows} -eq 0 && ${items} -le 1 ]]; then
-        refuse owner-section "no row under '## Owned by ${self}' in ${rec}, and no other Item"
-    fi
-fi
-
+rc=$?
+[[ ${rc} -le 1 ]] || { echo "consistency: refused (uv, PyYAML or the pinned interpreter is unavailable: exit ${rc})" && rc=1; }
 echo "sha256: $("${py}" -I -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "${task}")"
 exit "${rc}"

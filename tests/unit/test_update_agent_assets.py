@@ -192,9 +192,9 @@ class UpdateAgentAssetsTest(unittest.TestCase):
     def test_update_omp_downloads_verifies_the_tarball_hash_and_installs_at_the_pin(self):
         self.exercise_update("omp")
 
-    def update_omp_in(self, home, version, spelling=""):
-        # update_omp with the fixture curl and npm on PATH and HOME=<home><spelling>; the caller has placed any entry at
-        # ~/.local/bin/omp.
+    def update_omp_in(self, home, version, spelling="", tmpdir=None):
+        # update_omp with the fixture curl and npm on PATH, HOME=<home><spelling> and any TMPDIR; the caller has placed
+        # any entry at ~/.local/bin/omp.
         binary = home / ".local/bin"
         binary.mkdir(parents=True, exist_ok=True)
         for name in ("curl", "npm"):
@@ -212,13 +212,30 @@ class UpdateAgentAssetsTest(unittest.TestCase):
                 "CALLS": str(home / "calls.jsonl"),
                 "PAYLOAD": str(payload),
                 "FIXTURE_VERSION": version,
-            },
+            }
+            | ({"TMPDIR": str(tmpdir)} if tmpdir else {}),
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=30,
             check=False,
         )
+
+    def test_update_omp_makes_its_download_directory_under_tmpdir(self):
+        # audit:9e30542:1: the download directory takes its mktemp template from TMPDIR, as a sandbox sets it, never the
+        # per-user default macOS mktemp picks without a template (which the agent sandbox refuses).
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            sandbox_tmp = home / "sandbox-tmp"
+            sandbox_tmp.mkdir()
+            result = self.update_omp_in(home, "18.11.3", tmpdir=sandbox_tmp)
+            log = home / "calls.jsonl"
+            calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+            outputs = [Path(row["argv"][row["argv"].index("-o") + 1]) for row in calls if row["tool"] == "curl"]
+            output = result.stdout + result.stderr
+            self.assertEqual([sandbox_tmp], [path.parent.parent for path in outputs], output)
+            self.assertTrue(outputs[0].parent.name.startswith("update-agent-assets."), output)
+            self.assertEqual(0, result.returncode, output)
 
     def test_a_link_target_escaping_the_npm_prefix_is_refused(self):
         # The Bot's P2 4307029052: npm resolves the link before its ownership check (bin-links check-bin), so a target

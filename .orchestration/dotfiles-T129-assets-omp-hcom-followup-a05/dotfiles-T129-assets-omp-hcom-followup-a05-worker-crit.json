@@ -1,0 +1,37 @@
+[
+ {
+  "id": "r1-approval",
+  "scope": "review",
+  "path": "",
+  "body": "Round 1 (the uncommitted records on 870aa65d; no script or test change), Verdict: correct; no P0, P1 or P2. The reviewer found the owned row met: validation §5 holds the command, the shim source with its sha256 (bb72936e…, matching the scratchpad copy), the red run at 725b25bf (failures=1 at line 237, not an error) and two green runs, matching the raw transcript apart from placeholders. The shim matches GNU coreutils' no-template default (tmp.XXXXXXXXXX under $TMPDIR, else /tmp), the only call the test reaches (mktemp -d at scripts/update-agent-assets.sh:958 in 725b25bf); it does not emulate -p/--tmpdir=DIR without a template, --suffix or the trailing-X rule, none of which the test uses. The reviewer reproduced it independently: red at 725b25bf with the shim at line 237; without it, red at line 236 on the mkdtemp refusal; green at the head with and without the shim. No GNU coreutils on the machine; no home path or secret in the records.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-where-and-head",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/validation.md",
+  "body": "Round 1, P3 high: validation.md and report.md said §5 ran after the task-copy commit 870aa65d and was green at this head; the run's own tree lines print 1eac64a8, the run predating that commit. Fixed in the records commit: §5 ran first, at 1eac64a8 (main), and is green there; the task copy changes no code.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-python-isolation",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/sandbox.md",
+  "body": "Round 1, P3 high: sandbox.md said every Python run used uv run … python -I; the unittest runs are uv run python -m unittest. Fixed: the scripts and the helper run with -I, the unittest runs without.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-probe-name",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/sandbox.md",
+  "body": "Round 1, P3 high: sandbox.md quoted the probe's refused path from an earlier run (tmp.mTx3l9JNlo), not the recorded one (tmp.cN4e5Hyg9O in validation §5). Fixed to quote the recorded run.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-download-path-source",
+  "scope": "file",
+  "path": ".orchestration/dotfiles-T129-assets-omp-hcom-followup-a05/report.md",
+  "body": "Round 1, P3 medium: report.md said the traceback carries the download path; the path comes from the separate helper run after it. Fixed: the report names the helper run as the source.",
+  "resolved": true
+ }
+]

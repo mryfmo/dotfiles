@@ -546,8 +546,8 @@ class LintComparisonsTest(unittest.TestCase):
 
     def test_heredoc_data_is_excluded_from_shell_rules(self):
         # audit:b24d313:5: a heredoc body is data: no shell rule reads it, nor a command substitution inside it
-        body = "[[ $path == /x ]] # lint-comparisons: allow reason\n"
-        hu = f"cat <<EOF\n{body}$([[ $path == /y ]] && echo y)\nEOF\n"
+        body = "[[ $path == /x ]]\n"  # no marker: read as code, it would be R1
+        hu = f"cat <<EOF\n{body}$([[ $path == /y ]] && echo y)\n$(true # lint-comparisons: allow\n)\nEOF\n"
         self.assert_hits([("hq.sh", f"cat <<'EOF'\n{body}EOF\n", []), ("hu.sh", hu, [])])
 
     def test_ansi_c_quotes_preserve_following_marker_comments(self):
@@ -582,23 +582,27 @@ class LintComparisonsTest(unittest.TestCase):
         self.assertIn("bad.sh: 1:5: reached EOF without matching `{` with `}`", result.stderr)
         result = self.lint("--baseline", str(self.temp / "none.tsv"), "bad.sh", "--all")
         self.assertNotEqual(0, result.returncode)  # --all is no way around a parse failure
-        fake = self.temp / "bin/shfmt"  # a shfmt that answers with no JSON
+        fake = self.temp / "bin/shfmt"  # a shfmt that answers with no JSON, or with JSON that is no file node
         fake.parent.mkdir()
-        fake.write_text("#!/bin/sh\necho not-json\n")
-        fake.chmod(0o755)
         (self.temp / "ok.sh").write_text("echo ok\n")
         env = {"PATH": f"{fake.parent}:/usr/bin:/bin"}
-        result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("ok.sh: shfmt gave no JSON", result.stderr)
+        for answer in ("not-json", "{}", "null", '{"Type": "Word"}'):
+            with self.subTest(answer=answer):
+                fake.write_text(f"#!/bin/sh\necho '{answer}'\n")
+                fake.chmod(0o755)
+                result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("ok.sh: shfmt gave no JSON AST", result.stderr)
 
     def test_shfmt_falls_back_to_the_pinned_mise_form_with_the_file_dialect_and_blanked_actions(self):  # amendment 1
         fake = self.temp / "mise-only/mise"  # no shfmt on PATH, so the pinned mise form runs; it logs argv and input
         fake.parent.mkdir()
-        fake.write_text('#!/bin/sh\necho "$*" >> "$0.log"\n[ "$5" = --version ] || /bin/cat >> "$0.log"\necho "{}"\n')
+        fake.write_text(
+            '#!/bin/sh\necho "$*" >> "$0.log"\n[ "$5" = --version ] || /bin/cat >> "$0.log"\necho \'{"Type": "File"}\'\n'
+        )
         fake.chmod(0o755)
         files = {
-            "t.sh.tmpl": '(\n{{ include "x" }}\n)\necho "{{ .y }}"\n',
+            "t.sh.tmpl": '(\n{{ include "x" }}\n)\n{{ includeTemplate "y" }}\necho "{{ .y }}"\n',
             "z.zsh": "echo\n",
             "zs": "#!/bin/zsh\necho\n",
         }
@@ -608,11 +612,63 @@ class LintComparisonsTest(unittest.TestCase):
             "--baseline", str(self.temp / "none.tsv"), *files, "--changed", env={"PATH": str(fake.parent)}
         )
         self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
-        run, blanked = "x shfmt@3.14.1 -- shfmt", f'(\n:{" " * 16}\n)\necho "{" " * 8}"\n'  # an include alone is `:`
+        run, blanked = (
+            "x shfmt@3.14.1 -- shfmt",
+            f'(\n:{" " * 16}\n)\n:{" " * 24}\necho "{" " * 8}"\n',
+        )  # an include alone is `:`
         log = (
             f"{run} --version\n{run} -ln bash --tojson\n{blanked}{run} -ln zsh --tojson\necho\n{run} -ln zsh --tojson\n"
         )
         self.assertEqual(log + "#!/bin/zsh\necho\n", Path(f"{fake}.log").read_text())
+        shfmt = fake.parent / "shfmt"  # shfmt on PATH comes first: the mise form runs no more
+        shfmt.write_text(fake.read_text())
+        shfmt.chmod(0o755)
+        args = ("--baseline", str(self.temp / "none.tsv"), "z.zsh", "--changed")
+        result = self.lint(*args, env={"PATH": str(fake.parent)})
+        found = (result.returncode, result.stdout + result.stderr, Path(f"{shfmt}.log").read_text())
+        self.assertEqual((0, "", "--version\n-ln zsh --tojson\necho\n"), found)
+        self.assertEqual(log + "#!/bin/zsh\necho\n", Path(f"{fake}.log").read_text())
+
+    def test_jq_hit_lines_follow_the_source_through_escapes_and_continuations(self):
+        # worker review round 1: a decoded $'\n' adds no source line and an unquoted backslash-newline still ends one; a
+        # double-quoted program is unescaped as the shell hands it over
+        self.assert_hits(
+            [
+                (
+                    "an.sh",
+                    "jq -n $'.a\\n| select(.url == $p)'\necho ok # lint-comparisons: allow unrelated\n",
+                    [("R3", 1)],
+                ),
+                ("uc.sh", "jq -r .url\\\n==\\$p f\n", [("R3", 2)]),
+                ("dq.sh", 'jq -r "select(.a == \\"\\\\\\\\\\") | select(.url == \\$p)"\n', [("R3", 1)]),
+            ]
+        )
+
+    def test_a_chained_or_continued_statement_is_one_statement_for_markers_and_normalisers(self):
+        # worker review round 1: as on one physical line, a marker or a normaliser anywhere in its && chain accepts it
+        self.assert_hits(
+            [
+                ("ch.sh", "[[ $path == /x ]] \\\n  && echo y # lint-comparisons: allow the fixture\n", []),
+                ("ch2.sh", 'case "$url" \\\n  in file://*) ;; esac # lint-comparisons: allow the fixture\n', []),
+                ("ch3.sh", 'cd -P "$dir" && [[ "$PWD" == /x/* ]]\nx=$(realpath "$p") && [[ $x == /y ]]\n', []),
+                ("ch4.sh", 're=$(escape_regex "$x"); grep -E "^$re" f\n', []),
+                ("ch5.sh", "[[ $path == /x ]] && echo y\necho z # lint-comparisons: allow the next one\n", [("R1", 1)]),
+            ]
+        )
+
+    def test_an_extglob_pattern_is_literal_text_and_a_length_is_no_path(self):
+        # worker review round 1: @(…) and +(…) keep their literal path pieces; ${#path} is a number; '' is empty
+        self.assert_hits(
+            [
+                ("eg.sh", "[[ $x == @(/a|/b) ]]\n[[ $x == +(/foo) ]]\n", [("R1", 1), ("R1", 2)]),
+                ("ln.sh", "[[ ${#path} == 0 ]]\n", []),
+                ("e0.sh", "[[ '' == $path ]]\n", [("R1", 1)]),
+            ]
+        )
+
+    def test_a_long_and_chain_is_read_without_recursion(self):
+        # worker review round 1: 300 chained commands nest the AST 300 deep; the walk is iterative
+        self.assert_hits([("lc.sh", "true && " * 300 + "[[ $path == /x ]]\n", [("R1", 1)])])
 
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []

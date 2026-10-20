@@ -71,7 +71,7 @@ def shfmt():  # the first shfmt invocation that runs
 def blank(m):  # a chezmoi action is no shell: blanked to spaces, newlines and offsets kept; an include alone on its
     # line is the no-op `:`, since it expands to whole statements (a subshell of includes alone would be empty)
     head, tail = m.string[: m.start()].rpartition("\n")[2], m.string[m.end() :].partition("\n")[0]
-    lone = not head.strip() and not tail.strip() and re.match(r"\{\{-?\s*(?:include|template)\b", m[0])
+    lone = not head.strip() and not tail.strip() and re.match(r"\{\{-?\s*(?:include|includeTemplate|template)\b", m[0])
     return (":" if lone else " ") + re.sub(r"[^\n]", " ", m[0][1:])
 
 
@@ -84,17 +84,37 @@ def shfmt_tree(rel, text):  # (AST, text as parsed): shfmt's JSON AST is the onl
     if run.returncode:
         sys.exit(f"lint-comparisons: {rel}: {run.stderr.strip()}")
     try:
-        return json.loads(run.stdout), text
-    except ValueError:
-        sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON")
+        tree = json.loads(run.stdout)
+    except (ValueError, RecursionError):
+        tree = None
+    if not isinstance(tree, dict) or tree.get("Type") != "File":  # JSON that is no shfmt file node is no AST either
+        sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON AST")
+    return tree, text
 
 
-def nodes(n):  # every node at or below n; a heredoc body is data and is left out
-    if isinstance(n, dict):
-        yield n
-        yield from (x for k, v in n.items() if k != "Hdoc" for x in nodes(v))
-    elif isinstance(n, list):
-        yield from (x for v in n for x in nodes(v))
+def nodes(n):  # every node at or below n, iteratively (a long && chain nests deep); heredoc bodies are data
+    todo = [n]
+    while todo:
+        n = todo.pop()
+        if isinstance(n, dict):
+            yield n
+            todo.extend(v for k, v in n.items() if k != "Hdoc")
+        elif isinstance(n, list):
+            todo.extend(n)
+
+
+def stmts(tree):  # each statement with the outermost statement of its &&, || or | chain; heredoc bodies left out
+    todo = [(tree, None)]
+    while todo:
+        n, top = todo.pop()
+        if isinstance(n, list):
+            todo.extend((x, top) for x in n)
+        elif isinstance(n, dict):
+            if "Cmd" in n:
+                top = top or n
+                yield n, top
+            keep = ("X", "Y") if n.get("Type") == "BinaryCmd" else ("Cmd",)  # the chain goes on; elsewhere a new one
+            todo.extend((v, top if k in keep else None) for k, v in n.items() if k != "Hdoc")
 
 
 def flat(word):  # a word's parts with its double quotes opened: (part, quoted)
@@ -102,39 +122,47 @@ def flat(word):  # a word's parts with its double quotes opened: (part, quoted)
         yield from ((x, True) for x in part.get("Parts") or []) if part["Type"] == "DblQuoted" else [(part, False)]
 
 
-def unquote(part, quoted):  # a literal part's text after the shell's quote removal; None for an expansion
-    value = part.get("Value", "")
-    if part["Type"] == "SglQuoted":  # $'…' decodes its escapes
-        decode = {"n": "\n", "t": "\t", "r": "\r"}
-        return re.sub(r"\\(.)", lambda m: decode.get(m[1], m[1]), value) if part.get("Dollar") else value
-    if part["Type"] == "Lit":
-        return re.sub(r'\\([\\"$`])', r"\1", value) if quoted else re.sub(r"\\(.)", r"\1", value, flags=re.DOTALL)
-    return None
+def chars(part, quoted, raw=None):  # (character, source line) of a literal part after the shell's quote removal, an
+    # extglob's pattern as written, nothing for an expansion; raw: a Lit's source, which keeps the backslash-newlines its
+    # Value drops, so each character keeps its own source line
+    kind, line, i = part["Type"], part["Pos"]["Line"], 0
+    if kind not in ("Lit", "SglQuoted", "ExtGlob"):
+        return
+    dollar = kind == "SglQuoted" and part.get("Dollar")  # $'…' decodes its escapes, on the line they are written on
+    if raw is None:  # shfmt omits an empty Value ('' or @())
+        raw = (part.get("Pattern") or {}).get("Value", "") if kind == "ExtGlob" else part.get("Value", "")
+    while i < len(raw):
+        c, n = raw[i], raw[i + 1 : i + 2]
+        if c == "\\" and not n and kind == "Lit":  # a backslash-newline split between two parts (the next has its line)
+            break
+        if c == "\\" and n and (dollar or kind == "Lit" and (not quoted or n in '\\"$`\n')):
+            if not (kind == "Lit" and n == "\n"):  # bash deletes a backslash-newline
+                yield ({"n": "\n", "t": "\t", "r": "\r"}.get(n, n) if dollar else n), line
+            line, i = line + (n == "\n"), i + 2
+            continue
+        yield c, line
+        line, i = line + (c == "\n"), i + 1
 
 
 def static(word):  # the literal text of a word, its runtime expansions left out
-    return "".join(x for part, quoted in flat(word) if (x := unquote(part, quoted)) is not None)
+    return "".join(c for part, quoted in flat(word) for c, _ in chars(part, quoted))
 
 
 def expands(node):  # a parameter expansion below: a name, or a positional or special parameter ($1, ${10}, $@, $?)
     return any(n.get("Type") == "ParamExp" for n in nodes(node))
 
 
-def operand(word):  # a path-named variable first, or a literal path piece beside any expansion
+def operand(word):  # a path-named variable first (not its ${#length}), or a literal path piece beside any expansion
     first = next(flat(word), ({}, False))[0]
-    named = first.get("Type") == "ParamExp" and TOKEN.search((first.get("Param") or {}).get("Value", ""))
-    return bool(named) or bool(LITERAL.search(static(word)))
+    name = first.get("Type") == "ParamExp" and not first.get("Length") and (first.get("Param") or {}).get("Value")
+    return bool(name and TOKEN.search(name) or LITERAL.search(static(word)))
 
 
-def program(word):  # the jq program one shell word hands over, its fragments in order: (text, line per character)
-    text, lines = [], []
+def program(word, src):  # the jq program one shell word hands over, its fragments in order: (text, line per character)
+    pairs = []  # shortcut: an expansion is runtime text and is left out; scan it if one hides a hit
     for part, quoted in flat(word):
-        line = part["Pos"]["Line"]  # shortcut: an expansion is runtime text and is left out; scan it if one hides a hit
-        for ch in unquote(part, quoted) or "":
-            text.append(ch)
-            lines.append(line)
-            line += ch == "\n"
-    return "".join(text), lines
+        pairs += chars(part, quoted, src(part) if part["Type"] == "Lit" else None)
+    return "".join(c for c, _ in pairs), [n for _, n in pairs]
 
 
 def jq_mask(prog):  # (code, literals): prog with its strings and comments blanked, and with all but string characters
@@ -185,34 +213,41 @@ def span(prog, p, fn):
 def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; a marker counts only in a comment node
     tree, text = shfmt_tree(rel, text)
     data, hits = text.encode(), []
-    note = {c["Hash"]["Line"]: "#" + c["Text"] for c in nodes(tree) if "Hash" in c and "Text" in c}
+    comments = [c for c in nodes(tree) if "Hash" in c and "Text" in c]
+    note = {c["Hash"]["Line"]: "#" + c["Text"] for c in comments}
+    code = bytearray(data)  # the source with its comments blanked: a normaliser counts in code only
+    for c in comments:
+        code[c["Pos"]["Offset"] : c["End"]["Offset"]] = b" " * (c["End"]["Offset"] - c["Pos"]["Offset"])
+    code = code.decode(errors="replace").split("\n")
 
     def src(n):
         return data[n["Pos"]["Offset"] : n["End"]["Offset"]].decode(errors="replace")
 
-    def marked(lo, hi):  # a marker with its reason in a comment on lines lo..hi
+    def accepted(lo, hi, norm=None):  # a normaliser in the code of lines lo..hi, or a marker with its reason there
+        if norm and re.search(norm, "\n".join(code[lo - 1 : hi])):
+            return True
         return any((m := MARKER.search(note.get(k, ""))) and m.group(1) for k in range(lo, hi + 1))
 
-    for stmt in (n for n in nodes(tree) if "Cmd" in n):  # each statement's own command, its parts below it
-        cmd, rows = stmt["Cmd"], (stmt["Pos"]["Line"], stmt["End"]["Line"])
+    for stmt, top in stmts(tree):  # a statement's lines are its whole chain's, continued lines included
+        cmd, lo, hi = stmt["Cmd"], top["Pos"]["Line"], top["End"]["Line"]
         if not isinstance(cmd, dict):
             continue
         t, args = cmd.get("Type"), cmd.get("Args") or []
         words, at = [static(a) for a in args], cmd["Pos"]["Line"]
         tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
         if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
-            hits.append((at, "R1", SH_NORM.search(src(stmt)) or marked(*rows)))
+            hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
         if t == "CallExpr" and words[:1] in (["["], ["test"]):
             pairs = [(args[i - 1], args[i + 1]) for i in range(2, len(args) - 1) if words[i] in ("==", "!=", "=")]
             if any(operand(x) or operand(y) for x, y in pairs):
-                hits.append((at, "R1", SH_NORM.search(src(stmt)) or marked(*rows)))
-        if t == "CaseClause" and operand(cmd["Word"]):
-            hits.append((at, "R2", SH_NORM.search(src(cmd["Word"])) or marked(at, cmd["Word"]["End"]["Line"])))
+                hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
+        if t == "CaseClause" and operand(cmd["Word"]):  # for this, the statement ends at its `in`
+            hits.append((at, "R2", accepted(lo, cmd.get("In", cmd["Word"]["End"])["Line"], SH_NORM)))
         if t == "BinaryCmd" and cmd["Op"] == "|":  # ps piped to a text reader, unless ps -o <fields>= -p
             ps, reader = ([static(a) for a in (x.get("Cmd") or {}).get("Args") or []] for x in (cmd["X"], cmd["Y"]))
             fields = ps[1:2] == ["-o"] and ps[2:3] and ps[2].endswith("=") and ps[3:4] == ["-p"]
             if ps[:1] == ["ps"] and not fields and reader[:1] in (["grep"], ["awk"], ["cut"], ["sed"]):
-                hits.append((at, "R5", marked(*rows)))
+                hits.append((at, "R5", accepted(lo, hi)))
         tool = next((i for i, w in enumerate(words) if os.path.basename(w) in ("pgrep", "grep", "egrep")), None)
         if t == "CallExpr" and tool is not None:  # also git grep, command grep, xargs grep
             name, k = os.path.basename(words[tool]), tool + 1
@@ -220,10 +255,10 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
                 k += 1
             flags, pattern = words[tool + 1 : k], args[k] if k < len(args) else {}
             if name == "pgrep" and any(re.fullmatch(r"-\w*f\w*", f) for f in flags) and expands(pattern):
-                hits.append((at, "R5", marked(*rows)))
+                hits.append((at, "R5", accepted(lo, hi)))
             ere = name == "egrep" or any(re.match(r"-\w*E|--extended-regexp", f) for f in flags)
             if name != "pgrep" and ere and "-F" not in flags and expands(pattern):
-                hits.append((at, "R6", "escape_regex" in src(stmt) or marked(*rows)))
+                hits.append((at, "R6", accepted(lo, hi, "escape_regex")))
         jq = next((i for i, a in enumerate(args) if re.search(r"\bjq\b", src(a))), None)
         if t == "CallExpr" and jq is not None:  # also "$jq" and "$(command -v jq)"
             i = jq + 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
@@ -231,8 +266,8 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
                 if words[i].startswith("-") or not words[i] and expands(args[i]):
                     i += 1 + JQ_SKIP.get(words[i], 0)
                     continue
-                prog, lines = program(args[i])
-                hits.extend((lines[p], "R3", ok or marked(*rows)) for p, ok in jq_hits(prog))
+                prog, lines = program(args[i], src)
+                hits.extend((lines[p], "R3", ok or accepted(lo, hi)) for p, ok in jq_hits(prog))
                 break
     return hits, note
 

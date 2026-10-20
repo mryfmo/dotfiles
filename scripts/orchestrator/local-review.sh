@@ -7,7 +7,9 @@
 #   this head is reused and re-reported; one that records another head is refused. Otherwise the clean review
 #   worktree (`$ORCH_REVIEW_WORKTREE`, else `.claude/worktrees/orchestrator-review`), a path with its own `.git`
 #   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review
-#   -s read-only review --base main`. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
+#   -s read-only review --base <sha>`. The sha is canonical main as `gh api repos/mryfmo/dotfiles/git/ref/heads/main`
+#   reports it (design 5.14 item 8), read before the checkout with gh resolved as codex is; the local main and
+#   origin/main refs are never the base. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
 #   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
 #   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
 #   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR
@@ -22,7 +24,7 @@
 # @exitcode 0 No finding.
 # @exitcode 2 A precondition failed: a malformed task id or head, a review file of another head, the head is not a
 #   local commit, the review worktree is not a worktree root or not clean, no review binary outside a shims
-#   directory, or an env -S shebang the script does not split.
+#   directory, an env -S shebang the script does not split, or canonical main unread or not a local commit.
 # @exitcode 3 One or more findings.
 # @exitcode 4 The review binary failed; no file is written, and its transcript stays in `$TMPDIR`.
 # @example
@@ -105,12 +107,22 @@ if [[ $first =~ ^\#![[:space:]]*[^[:space:]]*/env[[:space:]]+(-S[[:space:]]+)?([
     resolve "$interpreter" "review binary's interpreter"
     run=("$found" ${words[@]+"${words[@]}"} "${run[0]}")
 fi
+# A worker seat can move the local main and origin/main refs in the shared .git, so the base is what GitHub reports.
+resolve gh "GitHub CLI"
+base=$("$found" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha < /dev/null) || base=
+[[ $base =~ ^[0-9a-f]{40}$ ]] || {
+    echo "local-review: canonical main could not be read with gh api; no review base"
+    exit 2
+}
+git -C "$R" cat-file -e "$base^{commit}" 2> /dev/null || {
+    echo "local-review: canonical main $base is not a local commit (fetch origin main first)"
+    exit 2
+}
 git -C "$W" checkout -q --detach "$head"
-base=$(git -C "$W" merge-base main HEAD)
 t0=$(date -u +%FT%TZ)
 tmp=$(mktemp "${TMPDIR:-/tmp}/local-review.XXXXXX")
 rc=0
-(cd "$W" && "${run[@]}" --profile review -s read-only review --base main < /dev/null > "$tmp" 2>&1) || rc=$?
+(cd "$W" && "${run[@]}" --profile review -s read-only review --base "$base" < /dev/null > "$tmp" 2>&1) || rc=$?
 if [ "$rc" != 0 ]; then
     # A failed review is no sample: no file, so the next run reviews again (PR #357 thread 4270918132).
     echo "local-review: codex exited $rc; no review file written (transcript $tmp)"
@@ -124,7 +136,7 @@ final=${final//"$prefix"/}
 findings=$(printf '%s\n' "$final" | /usr/bin/grep -E '^- \[P[0-3]\]' | sort -u || true)
 n=$(printf '%s' "$findings" | /usr/bin/grep -c . || true)
 {
-    printf -- '---\ntask: %s\nhead: %s\npr: %s\nbase: %s\nstarted: %s\nfinished: %s\nfindings: %s\nengine: codex review --base main (profile review, read-only)\n---\n\n' "$task" "$head" "$pr" "$base" "$t0" "$(date -u +%FT%TZ)" "$n"
+    printf -- '---\ntask: %s\nhead: %s\npr: %s\nbase: %s\nstarted: %s\nfinished: %s\nfindings: %s\nengine: codex review --base %s (profile review, read-only)\n---\n\n' "$task" "$head" "$pr" "$base" "$t0" "$(date -u +%FT%TZ)" "$n" "$base"
     printf '%s\n\n' "$findings"
     echo '```text'
     printf '%s\n' "$final" | cut -c1-2000

@@ -1,0 +1,538 @@
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pass	6m45s	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+regime	fail	13s	https://github.com/mryfmo/dotfiles/actions/runs/39373035271/job/118464926551	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142447	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142551	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145627	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145467	
+test (ubuntu-24.04, server)	pass	6m45s	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145553	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037078/job/118465142510	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/39373037083/job/118465145787	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+GitGuardian Security Checks	pass	2s	https://dashboard.gitguardian.com	
+validate	pass	2m56s	https://github.com/mryfmo/dotfiles/actions/runs/39373037082/job/118464930962	

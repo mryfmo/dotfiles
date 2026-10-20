@@ -22,7 +22,7 @@ TID = "dotfiles-T999-fixture-a01"
 LINKS = ("scripts/orchestrator/pre-send.sh", "scripts/orchestrator/task-consistency-check.py")
 LINKS += ("scripts/validate-agent-assets.py",)
 LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
-TOKEN = "q8R2v7Kd1Mx9Tz4Lp6Hc3Wn5Bj0Fs"  # no 8-character run of it may reach the output
+TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
 GRAMMAR = re.compile(r"[a-z-]+: refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}")
 
@@ -165,7 +165,7 @@ class PreSendTest(unittest.TestCase):
 
     def test_checker_diagnostics_never_echo_secret_fragments(self):
         # local:d067910:1 and local:09e2e95:1 (P1): a clipped excerpt of a secret-shaped line leaks no 8-character run
-        result = self.run_send(self.task(front=f"bad: [ token = '{TOKEN}'\n"))
+        result = self.run_send(self.task(front="bad: [ " + "=".join(("tok" + "en ", f" '{TOKEN}'")) + "\n"))
         self.refused(result, "consistency")
         self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
 

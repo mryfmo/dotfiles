@@ -1,0 +1,18 @@
+source-sha256 07c61e3136d370dbb6114b363f08ba63e674a83b3782653d352ddb3d1fd962a0 tests-sha256 c07059071e08011f55b38779792fd8642970b88549484183c90cdd186455d10f
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 244, in test_gh_child_preserves_parent_tokens
+    self.assertFalse(any(observed), "token values entered subprocess argv")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : token values entered subprocess argv
+
+----------------------------------------------------------------------
+Ran 1 test in 2.234s
+
+FAILED (failures=1)

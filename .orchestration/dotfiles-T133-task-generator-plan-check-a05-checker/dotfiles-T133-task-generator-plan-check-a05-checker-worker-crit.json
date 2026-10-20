@@ -1,0 +1,81 @@
+[
+  {
+    "id": "a05-review-1",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 420,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Escaping directory symlink bypasses confinement: scripts/link/*.py skips the link before confinement. Check relevant symlink prefixes before full-match filtering. Resolved in source07c61e31/test8f99539c; named CLI regression passes, independent repair verification and mutation proof recorded.",
+    "resolved": true
+  },
+  {
+    "id": "a05-review-2",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 66,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Forbidden Git magic is checked before ./ normalization; ./ : exclusion spelling without the space evades validation. Validate normalized prefix. Resolved in source07c61e31/test8f99539c; named CLI regression passes, independent repair verification and mutation proof recorded.",
+    "resolved": true
+  },
+  {
+    "id": "a05-review-3",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 264,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Distinct *.py and *.sh globs with one fixed prefix map concrete tokens to the first entry, allowing a combined row. Associate full matching patterns. Resolved in source07c61e31/test8f99539c; named CLI regression passes, independent repair verification and mutation proof recorded.",
+    "resolved": true
+  },
+  {
+    "id": "a05-review-4",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 469,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "One row naming all eleven 5.14 items passes; require each counted row to name one distinct item. Resolved in source07c61e31/test8f99539c; named CLI regression passes, independent repair verification and mutation proof recorded.",
+    "resolved": true
+  },
+  {
+    "id": "a05-mutation-gap",
+    "scope": "line",
+    "path": "tests/unit/test_task_consistency_c11_c15.py",
+    "line": 495,
+    "priority": "P2",
+    "confidence": "high",
+    "body": "Same-consumed-bytes positive fixture checks only exit0; reread authorization mutant emits warning and passes. Assert the unauthorized warning is absent. Resolved in source07c61e31/test8f99539c; named CLI regression passes, independent repair verification and mutation proof recorded.",
+    "resolved": true
+  },
+  {
+    "id": "a05-repair-review-approved",
+    "scope": "review",
+    "body": "Independent fresh-context worker reviewer verified all four repairs and six real CLI methods on native3.15.0 (19.502s, exit0); source400 and tests552 additions22 deletions verified. Worker review scope approved. Full-suite downstream regime fixture migration is separately blocked outside allowed_files; this record is not final task audit, security review or integration authority.",
+    "resolved": true
+  },
+  {
+    "id": "a05-round2-token-argv",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 135,
+    "priority": "P1",
+    "confidence": "high",
+    "body": "Resolved: preserved gh credentials formerly appeared in env NAME=value argv. The observed argument-boundary regression failed at07c61e31 in2.234s; direct validated-binary execution with the same clean environment removes token-bearing argv at24d7f55. All four token combinations still reach gh exactly, no token values are logged, both29-test modules pass315/312, and the restored-wrapper mutant is killed.",
+    "resolved": true
+  },
+  {
+    "id": "a05-round2-security-review-24d7f55",
+    "scope": "review",
+    "body": "Independent read-only security-profile worker review (manifest gpt-6-astra/high) found no new defects in source SHA25624d7f55fc0929239c4052a519fcc65a227f8f52dd49f0e9f4f91a1189da801b5, new tests c07059071e08011f55b38779792fd8642970b88549484183c90cdd186455d10f, legacy20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f. Six independently executed credential, executable-binding, startup-isolation, canonical-API, receipt and confinement tests passed in8.756s. Source395/test additions562/deletions22 verified. Worker pre-push evidence is not final task/security audit or integration authority; parent execution, shared cache, same UID and shared credentials remain owned residuals.",
+    "resolved": true
+  },
+  {
+    "id": "a05-ci-fixture-scanner-2730",
+    "scope": "file",
+    "path": "tests/unit/test_task_consistency_c11_c15.py",
+    "body": "Resolved under owner disposition2730: compose the observed token-name/equal prefixes rather than spelling a scanner-shaped literal. Production SHA24d7f55 is unchanged; final test SHA1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8. Complete29 modules pass both runtimes, required16 historical methods retain18 assertion reds with0errors/skips, and24mutations are killed. This CI spelling correction is not another post-review repair; no scanner suppression or scope change.",
+    "resolved": true
+  }
+]

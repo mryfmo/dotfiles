@@ -1,0 +1,5 @@
+# Exact candidate validation scope
+
+The worktree-wide make validate-agent-assets invocation returns2 on .orchestration/dotfiles-T133-task-generator-plan-check-a03/validation-commands.json, an unrelated untracked predecessor record with a home path. The new fixture's secret refusal is gone. Task scope forbids importing/deleting predecessor directories and excludes editing that record; it remains untouched.
+
+Validation therefore exports the selected staged Git tree into a temporary clean checkout, with source24d7f55/newtests1efd2ebf and only this task's artifact directory. The clone's own index and worktree receive the staged tree before the same make validate-agent-assets command. This tests the candidate content that will be committed, excludes unrelated untracked history that is absent from the PR, and changes no parent runtime, permission boundary, task scope or canonical approval authority. The task snapshot, selected tree, command and actual exit are retained. Local Git tree identity is validation provenance, not canonical GitHub authority. No sandbox denial or unavailable operation is retried elsewhere.

@@ -1,0 +1,76 @@
+source-sha256 0f8ded3f60750f0fd13f15aced1a1b7d0e8f9d346d66c8de4373aaee3a2b7990 tests-sha256 57fb5841b75619dfcfff15f655c868b7fbd3f0ff44fc1e552af6a4104b645af4
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 273, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    self.finding("C12")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 353, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 395, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 330, in test_path_grammar_separates_directory_and_child_rows
+    self.finding("C7b")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 168, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 10.144s
+
+FAILED (failures=4)

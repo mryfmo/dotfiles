@@ -1,23 +1,22 @@
 """Run scripts/orchestrator/task-consistency-check.py and ledger-check.py as subprocesses (plan 007 T704).
 
-Each checker runs under `uv run --no-project --with pyyaml python -I` with a stub `git` first on PATH (set inside
-`uv run`, which prepends its own directories) that answers only the checks' two probes: `cat-file -e` succeeds when STUB_CAT_FILE is `present`, `grep -q` when STUB_GREP is
-`found`; the subprocess pattern of tests/unit/test_orchestrator_tools.py. tests/fixtures/lessons/ holds copies from
-origin/main: the front matter of the ten historical task files and the pre-fix record triple of process-rules-a05.
+Historical rule fixtures stub baseline reads in-process; real checker launch/API behavior is covered separately
+by test_task_consistency_c11_c15. tests/fixtures/lessons/ retains the ten historical front matters and record triple.
 """
 
 import json
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
+from test_task_consistency_c11_c15 import PYTHON, fixture_cache, uv
+
 ROOT = Path(__file__).resolve().parents[2]
 LESSONS = ROOT / "tests/fixtures/lessons"
-GIT = "#!/usr/bin/env bash\ncase $1 in\ncat-file) [[ $STUB_CAT_FILE == present ]] ;;\ngrep) [[ $STUB_GREP == found ]] ;;\n"
+GIT = "#!/usr/bin/env bash\ncase $1 in\nrev-parse) pwd ;;\ncat-file) [[ $STUB_CAT_FILE == present ]] ;;\ngrep) [[ $STUB_GREP == found ]] ;;\n"
 GIT += "*) exit 99 ;;\nesac\n"
 ROW_UNIT = "task metadata|metadata separators|in-process effects|workflow and interpreter or environment inputs"
 ROW_UNIT += "|new or renamed scripts|orchestrator effect merge|orchestrator effect update-branch"
@@ -33,17 +32,30 @@ class TaskCheckersTest(unittest.TestCase):
         (self.temp / "bin").mkdir()
         (self.temp / "bin/git").write_text(GIT)
         (self.temp / "bin/git").chmod(0o755)
+        (self.temp / "design.md").write_text("---\ndesign_review:\n  receipt: receipt.md\n---\n")
 
     def run_check(self, script, *args, code, cat_file="present", grep="found"):
-        # uv run puts its environment's and its base interpreter's bin directories before PATH (on the macOS runner
-        # Homebrew's, which holds a git), so the stub goes first inside uv run, right before python starts.
-        stub_first = ["sh", "-c", 'PATH="$STUB_BIN:$PATH" exec python -I "$@"', "sh"]
+        binding = []
+        if script == "task-consistency-check.py":
+            code_string = (
+                "import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);"
+                f"m.git=lambda cwd,*a:subprocess.run([{str(self.temp / 'bin/git')!r},*a],cwd=cwd,capture_output=True,text=True,check=False)\n"
+                f"def presence(root,name):\n with open({str(self.temp / 'canonical-probes.txt')!r},'a') as f:f.write(name+'\\n')\n return {{}} if os.environ['STUB_CAT_FILE']=='present' else None\n"
+                "m.main_entry=presence;m.main_bytes=lambda root,name:(root/name).read_bytes() if (root/name).is_file() else b'';m.main_contains=lambda *a,**kw:os.environ['STUB_GREP']=='found';sys.exit(m.main())"
+            )
+            binding = ["-c", code_string]
         result = subprocess.run(
-            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", *stub_first]
-            + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
+            [*uv(), *binding] + [str(ROOT / "scripts/orchestrator" / script), *map(str, args)],
             capture_output=True,
             text=True,
-            env={**os.environ, "STUB_BIN": str(self.temp / "bin"), "STUB_CAT_FILE": cat_file, "STUB_GREP": grep},
+            env={
+                **os.environ,
+                "UV_CACHE_DIR": fixture_cache(),
+                "TRUSTED_PYTHON": PYTHON,
+                "STUB_BIN": str(self.temp / "bin"),
+                "STUB_CAT_FILE": cat_file,
+                "STUB_GREP": grep,
+            },
             timeout=120,
             check=False,
         )
@@ -81,8 +93,8 @@ class TaskCheckersTest(unittest.TestCase):
         c2467, c467, c23467 = {"C2", "C4", "C6", "C7"}, {"C4", "C6", "C7"}, {"C2", "C3", "C4", "C6", "C7"}
         expected = {"process-rules-a01": {"C2", "C6"}, "process-rules-a05": c467, "process-rules-a06": c467}
         expected |= dict.fromkeys(["process-rules-a02", "process-rules-a03", "process-rules-a04"], c2467)
-        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467)
-        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467)
+        expected |= dict.fromkeys(["regime-counters-a01", "ci-skip-orchestration-a01"], c2467 | {"C11", "C15"})
+        expected |= dict.fromkeys(["regime-counters-a02", "ci-skip-orchestration-a02"], c23467 | {"C11", "C15"})
         expected = {f"dotfiles-T128-{t}.md": ids for t, ids in expected.items()}
         self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
 
@@ -116,17 +128,12 @@ class TaskCheckersTest(unittest.TestCase):
     def test_task_consistency_check_c9_probes_the_landed_checker_path(self):
         # Owned row local:c1f60f7:3: `task-consistency-check C<n>` names scripts/orchestrator/task-consistency-check.py,
         # where the checker landed; a stub git that knows only that path answers present.
-        (self.temp / "bin/git").write_text(
-            '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$STUB_BIN/git.log"\n'
-            "case $1 in\ncat-file) [[ $3 == origin/main:scripts/orchestrator/task-consistency-check.py ]] ;;\n"
-            "grep) true ;;\n*) exit 99 ;;\nesac\n"
-        )
         design = "---\ndesign_review:\n  receipt: receipt.md\n---\n\n# Design\n"
         (self.temp / "design.md").write_text(design)
         path = self.task(kind="docs", body='"every task file passes task-consistency-check C4 before its dispatch"')
         self.assertEqual({"t-a01.md": set()}, self.failing_checks(path, root=self.temp, code=0))
-        probes = (self.temp / "bin/git.log").read_text().splitlines()
-        self.assertIn("cat-file -e origin/main:scripts/orchestrator/task-consistency-check.py", probes)
+        probes = (self.temp / "canonical-probes.txt").read_text().splitlines()
+        self.assertIn("scripts/orchestrator/task-consistency-check.py", probes)
 
     def ledger(self, *args, code):
         return self.run_check("ledger-check.py", *args, code=code).splitlines()
@@ -198,7 +205,13 @@ class TaskCheckersTest(unittest.TestCase):
         for after in (".bak", "", " and its test", "/task.md", ") and more", '" and more', ", and more", "* and more"):
             with self.subTest(after=after):
                 path = self.task(
-                    uncovered=("scripts/foo.py",), rows=[{"control": f"the PR adds scripts/foo.py{after}"}]
+                    uncovered=("scripts/foo.py",),
+                    rows=[
+                        {
+                            "control": f"the PR adds scripts/foo.py{after}",
+                            "disposition": "residual: a compensating control",
+                        }
+                    ],
                 )
                 found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
                 self.assertEqual({"C4"} if after == ".bak" else set(), found)

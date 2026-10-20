@@ -1,0 +1,32 @@
+test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) ... 
+  test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) (expected=0, phrase=None) ... FAIL
+
+======================================================================
+FAIL: test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) (expected=0, phrase=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_regime_ci.py", line 140, in test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier
+    self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : regime-ci: warning: the diff changes scripts/orchestrator/regime-ci.py; this run executed the base's version, the audit reads the change
+regime-ci: warning: the diff changes scripts/orchestrator/task-consistency-check.py; this run executed the base's version, the audit reads the change
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+regime-ci: t1-a01: checker: C13 disposition is not closed:, residual: or out-of-scope: and a space: residual
+Installed 1 package in 1ms
+
+
+----------------------------------------------------------------------
+Ran 1 test in 7.433s
+
+FAILED (failures=1)

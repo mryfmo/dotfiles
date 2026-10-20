@@ -1,0 +1,699 @@
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... FAIL
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... 
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref') ... FAIL
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... FAIL
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... FAIL
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... FAIL
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... FAIL
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... FAIL
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... FAIL
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... FAIL
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... FAIL
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... FAIL
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... FAIL
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... FAIL
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+test_ledger_check_counts_an_audit_and_its_inherited_copy_once (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_an_audit_and_its_inherited_copy_once) ... ok
+test_ledger_check_counts_what_the_gate_counts (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_what_the_gate_counts) ... ok
+test_ledger_check_passes_a_complete_record (test_task_checkers.TaskCheckersTest.test_ledger_check_passes_a_complete_record) ... ok
+test_ledger_check_reads_inherited_audit_ids_from_the_marker (test_task_checkers.TaskCheckersTest.test_ledger_check_reads_inherited_audit_ids_from_the_marker) ... ok
+test_ledger_check_reports_the_gaps_of_the_pre_fix_record (test_task_checkers.TaskCheckersTest.test_ledger_check_reports_the_gaps_of_the_pre_fix_record) ... ok
+test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) ... 
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='.bak') ... ERROR
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=' and its test') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='/task.md') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=') and more') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='" and more') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=', and more') ... FAIL
+  test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='* and more') ... FAIL
+test_task_consistency_check_c9_probes_the_landed_checker_path (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c9_probes_the_landed_checker_path) ... FAIL
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... FAIL
+test_task_consistency_check_passes_a_complete_task_file (test_task_checkers.TaskCheckersTest.test_task_consistency_check_passes_a_complete_task_file) ... FAIL
+test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) ... 
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C1') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C2') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C5') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C7b') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C8') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C9') ... ERROR
+  test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C10') ... ERROR
+
+======================================================================
+ERROR: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='.bak')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a02.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C2')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C5')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a02.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C7b')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C8')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C9')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+ERROR: test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) (check='C10')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 125, in test_task_consistency_check_reaches_every_other_check
+    self.assertIn(check, self.failing_checks(path, root=self.temp, **stub)[path.name])
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 't-a01.md'
+
+======================================================================
+FAIL: test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 359, in test_c12_covers_applied_skill_instructions
+    self.assertIn("SKILL.md", self.finding("C12"))
+                              ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-3snwwcwd/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 225, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C14 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 225, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C14 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 225, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C14 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-plrq30ox/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 227, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.assertEqual(self.check(digest=True)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 241, in test_c15_uses_canonical_main_only
+    self.finding("C15")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C15 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-eqmwemgc/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 372, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C16 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-yo126bma/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 280, in test_c6_receipt_uses_canonical_design_bytes
+    self.finding("C6")
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C6 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 d2c8985c89b29a842ac4946d13bdbc297709f44f20bb968faf9682664b211db6\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-wcqye5hf/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 453, in test_checker_rejects_untrusted_bindings_and_git_configuration
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 216, in test_dispatch_env_i_invocation
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : warning: interpreter fallback to real sys.executable
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: 'maxsplit' is passed as positional argument
+  if re.match(re.escape(re.split(r"[*?\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\s*?\[])", token)
+/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: 'maxsplit' is passed as positional argument
+  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\[]", a, 1)[0]))))
+Traceback (most recent call last):
+  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main
+    fails = check(p, args.root, args.premises_sha)
+  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check
+    for file in files(root, a):
+                ~~~~~^^^^^^^^^
+  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files
+    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):
+                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 431, in walk
+  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable
+    raise error
+  File "<frozen os>", line 395, in walk
+FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-66om2f1k/repo/.orchestration/t-a01'
+
+
+======================================================================
+FAIL: test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 354, in test_exempt_case_alias_to_applied_file_is_finding
+    self.assertIn("agent.py", self.finding("C12", prefix=prefix))
+                              ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "<string>", line 2, in <module>\n    import sys,runpy;sys.argv.pop(0);runpy.run_path(sys.argv[0],run_name=\'__main__\')\n                                     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen runpy>", line 292, in run_path\n  File "<frozen runpy>", line 97, in _run_module_code\n  File "<frozen runpy>", line 87, in _run_code\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-nj6k4bvx/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 346, in test_exempt_symlink_to_applied_file_is_finding
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 235, in test_gh_child_preserves_parent_tokens
+    self.assertEqual(self.check(env=env)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 178, in test_interpreter_resolution_order
+    self.assertEqual(self.check(env=env)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 476, in test_isolated_child_and_same_bytes_survive_hostile_startup_inputs
+    self.assertEqual(self.check(env=env)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 307, in test_path_grammar_covers_root_files
+    out = self.finding("C12")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-pqu4w3vx/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 265, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    out = self.finding("C12")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-tlju404y/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 330, in test_path_grammar_normalises_dot_spellings
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 336, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-s0fae6dz/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 315, in test_path_grammar_separates_directory_and_child_rows
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 397, in test_reset_scope_rejects_hidden_predecessor_artifacts
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 412, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 169, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C11 ' not found in 'canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py:316: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  if re.match(re.escape(re.split(r"[*?\\[]", a, 1)[0].rstrip("/")) + r"(?=$|[/\\s*?\\[])", token)\n/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py:319: DeprecationWarning: \'maxsplit\' is passed as positional argument\n  found.add(max(choices, key=lambda a: (a == token, len(re.split(r"[*?\\[]", a, 1)[0]))))\nTraceback (most recent call last):\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py", line 577, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py", line 565, in main\n    fails = check(p, args.root, args.premises_sha)\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py", line 498, in check\n    for file in files(root, a):\n                ~~~~~^^^^^^^^^\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py", line 294, in files\n    for folder, dirs, names in os.walk(base, followlinks=False, onerror=unreadable):\n                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "<frozen os>", line 431, in walk\n  File "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/trusted/scripts/orchestrator/task-consistency-check.py", line 292, in unreadable\n    raise error\n  File "<frozen os>", line 395, in walk\nFileNotFoundError: [Errno 2] No such file or directory: \'/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/checker-case-too5_rif/repo/.orchestration/t-a01\'\n'
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=' and its test')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='/task.md')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=') and more')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='" and more')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after=', and more')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) (after='* and more')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 215, in test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary
+    found = self.failing_checks(path, root=self.temp, code=1 if after == ".bak" else 0)[path.name]
+            ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpyc6gwlhr/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_c9_probes_the_landed_checker_path (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c9_probes_the_landed_checker_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 133, in test_task_consistency_check_c9_probes_the_landed_checker_path
+    self.assertEqual({"t-a01.md": set()}, self.failing_checks(path, root=self.temp, code=0))
+                                          ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpjrksey76/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+======================================================================
+FAIL: test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 98, in test_task_consistency_check_detects_the_ten_historical_files
+    self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'dotfiles-T128-process-rules-a01.md': {'C[657 chars]15'}} != {}
+Diff is 1553 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_task_consistency_check_passes_a_complete_task_file (test_task_checkers.TaskCheckersTest.test_task_consistency_check_passes_a_complete_task_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 104, in test_task_consistency_check_passes_a_complete_task_file
+    self.assertEqual({"t-a01.md": set()}, self.failing_checks(path, root=self.temp, code=0))
+                                          ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 67, in failing_checks
+    for line in self.run_check("task-consistency-check.py", "--root", root, *files, code=code, **stub).splitlines():
+                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 61, in run_check
+    self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import importlib.util,sys,subprocess,os;spec=importlib.util.spec_from_file_location('checker',sys.argv.pop(1));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);m.git=lambda cwd,*a:subprocess.run(['/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/tmpjedg6443/bin/git',*a],cwd=cwd,capture_output=True,text=True,check=False)
+                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "<frozen importlib._bootstrap_external>", line 747, in exec_module
+  File "<frozen importlib._bootstrap>", line 549, in _call_with_frames_removed
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 114, in <module>
+    PYTHON = trusted(selected)
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 90, in trusted
+    if ".claude/worktrees" in str(path).casefold() or (worker and confined(TRUST_ROOT / worker, path) is not None):
+                                                                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in confined
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                   ^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/scripts/orchestrator/task-consistency-check.py", line 66, in <genexpr>
+    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+                                      ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "<frozen genericpath>", line 147, in samefile
+FileNotFoundError: [Errno 2] No such file or directory: '~/Workspace/dotfiles/.claude/worktrees/worker-g/.claude/worktrees/worker-c'
+
+
+----------------------------------------------------------------------
+Ran 29 tests in 16.093s
+
+FAILED (failures=32, errors=8)

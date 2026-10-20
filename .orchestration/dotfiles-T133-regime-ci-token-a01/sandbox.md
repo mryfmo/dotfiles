@@ -14,7 +14,8 @@ permission_gated_commands: none
 
 1. **Network for uv:** without the proxy variables (the first text's module command), `uv run --with pyyaml` failed on `dns error` 11 times. `env -i` strips `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`. This was reported as question 2876, and amendment 1 passes the three variables through.
 2. **Network for prettier:** `npx --no-install prettier --version` gave `deny network-outbound registry.npmjs.org:443`. It was not retried; formatting is CI's.
-3. **The push's upstream setting:** the task's `push -u` form writes upstream configuration, which this sandbox refuses (seen on earlier tasks). The push itself lands. If refused, it is recorded here with its output.
+3. **The push's upstream setting:** the task's `push -u` landed (`git ls-remote` shows `085142f0`). Its upstream write was refused (`hint: … git branch --set-upstream-to=…`, the sandbox's read-only shared configuration). It was not retried; later pushes name the branch.
+4. **`timeout`:** `timeout 560 gh pr checks … --watch` failed with `zsh: command not found: timeout`, because macOS has no `timeout`. The watch then ran directly under the tool's time limit and exited 0.
 
 | # | Command | Where |
 |--:|---|---|

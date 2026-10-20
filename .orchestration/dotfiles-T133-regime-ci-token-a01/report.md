@@ -3,7 +3,7 @@ task_id: dotfiles-T133-regime-ci-token-a01
 seat: claude-standard-dot-a009
 amendment: 1
 branch: ci/regime-ci-token-a01
-pr: pending (opened after this commit is pushed)
+pr: 446
 base: f7f3806749815ba9dfd90e7ff9ee390ca6079014
 task_sha256: d4798ebf298a380ab939d55c94f753019891e2c42a39626a1e5be3940dfc626b
 cost: n/a (the seat's token and time usage is not visible to the worker)
@@ -67,4 +67,9 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 
 ## Completion
 
-- The PR, CI and Bot facts follow in the next records commit, after the PR opens.
+- **PR:** https://github.com/mryfmo/dotfiles/pull/446, opened ready for review, not as a draft, at 2026-10-20T21:26:54Z on `085142f0`, inside the sandbox (validation §8).
+- **CI on `085142f0`:** `gh pr checks 446 --repo mryfmo/dotfiles --watch` exited 0. All 11 checks pass, and the 10 check runs all succeeded (§9).
+- **The Bot:** Codex's code review (completed 21:38:17Z) and security review (21:29:43Z) of `085142f0` were triggered when the PR opened. Both report `has_any_findings: false`, with no review threads and no comments (§10). No `@codex review` was posted.
+- **The final head** adds only this directory's records on top of `085142f0`. The RESULT carries its CI.
+- **The push:** the task's `push -u` landed; only its upstream write was refused (sandbox record).
+- **Open items:** none. Any advisory P2 goes to the owner the orchestrator names.

@@ -280,20 +280,9 @@ claude:
     failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
-    # Patterns need a trailing wildcard for arguments; every chained command must match.
-    # Exclusion retains the normal permission flow (sandboxing docs, T130).
-    excludedCommands:
-      # agmsg-dispatch: inserts one agmsg row and sends a herdr wake. From
-      # sandboxed Bash the herdr socket is PermissionDenied (T39 leg 1);
-      # outside the sandbox it delivered msgs 545-577 with read_at within
-      # seconds (T49 E2E, 2026-10-01).
-      - agmsg-dispatch *
-    # Linux blocks gh's keyring and herdr-agents -> actas-claim.sh socket calls;
-    # child-script patterns cannot match the parent, but the absolute pattern covers direct calls.
-    linux_excluded_commands:
-      - gh *
-      - herdr-agents *
-      - "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
+    # T39 recorded Herdr PermissionDenied on 2026-10-01; T130 added $HOME/.config/herdr/herdr.sock to allowUnixSockets; the orchestrator sent sandboxed Bash messages 2827 and 2830 on 2026-10-20.
+    excludedCommands: []
+    linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
       # roots. ~/.cache/uv: every `uv run` target (make unit-test,

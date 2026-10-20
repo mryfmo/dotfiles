@@ -1,0 +1,3 @@
+error: Unable to create '$HOME/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
+[task/dotfiles-T133-python-pin-a01 8c727728] docs(orchestration): admit inherited Python policy hold
+ 1 file changed, 5 insertions(+), 2 deletions(-)

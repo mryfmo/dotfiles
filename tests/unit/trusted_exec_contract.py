@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import threading
 from pathlib import Path
 
 SHIMS = ("uv", "python3", "gh", "git", "bash")
@@ -99,38 +98,35 @@ class HostileGit:
 
 
 class WorkerRoot:
-    """An input, an output and a new output under a worker root; the input is a served FIFO, so a read is observed."""
+    """An input, an output and a new output under a worker root. A read shows as the input's access time leaving 0; a
+    filesystem where a read leaves it at 0 (measured on a scratch file) refuses the probe instead of passing vacuously."""
 
     def __init__(self, base):
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.output.write_text(LEGIT)
-        self._before = os.lstat(self.output).st_mtime_ns
-        os.mkfifo(self.input)
-        self._read, self._closing = threading.Event(), False
-        self._server = threading.Thread(target=self._serve, name="worker-root-probe", daemon=True)
-        self._server.start()
+        check = base / "atime-check"
+        for path in (check, self.input, self.output):
+            path.write_text(LEGIT)
+            os.utime(path, ns=(0, os.stat(path).st_mtime_ns))
+        if check.read_text() and os.stat(check).st_atime_ns == 0:
+            raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
+        self._before = {path: self._identity(os.lstat(path)) for path in (self.input, self.output)}
 
-    def _serve(self):
-        with open(self.input, "w") as fifo:  # returns once something opens the input for reading
-            if not self._closing:
-                self._read.set()
-                fifo.write(ATTACKER)
-
-    def close(self):
-        if self._server.is_alive():
-            self._closing = True
-            fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK)  # releases the server when nothing read
-            self._server.join(5)
-            os.close(fd)
+    @staticmethod
+    def _identity(st):
+        return st.st_ino, st.st_size, st.st_mtime_ns
 
     def assert_untouched(self):
-        self.close()
-        found = [f"read {self.input}"] if self._read.is_set() else []
-        out = self.output
-        if not out.is_file() or out.read_text() != LEGIT or os.lstat(out).st_mtime_ns != self._before:
-            found.append(f"wrote {self.output}")
+        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory."""
+        found = []
+        for path, before in self._before.items():
+            if not os.path.lexists(path):
+                found.append(f"removed {path}")
+                continue
+            st = os.lstat(path)
+            found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
+            found += [f"wrote {path}"] if self._identity(st) != before else []
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
@@ -164,12 +160,10 @@ class SwappedFile:
 
 @contextlib.contextmanager
 def _probe(cls, *args):
-    base, probe = Path(tempfile.mkdtemp(prefix="trusted-exec-")).resolve(), None
+    base = Path(tempfile.mkdtemp(prefix="trusted-exec-")).resolve()
     try:
-        probe = cls(base, *args)
-        yield probe
+        yield cls(base, *args)
     finally:
-        getattr(probe, "close", lambda: None)()
         shutil.rmtree(base, ignore_errors=True)
 
 

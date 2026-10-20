@@ -1,9 +1,5 @@
-"""Exercise tests/unit/trusted_exec_contract.py, the shared probes of design-quality 5.14 item 7.
-
-Each probe meets a deliberately noncompliant consumer stub, whose probe assertion must fail for the intended reason
-(an inert attack or a no-op assertion fails the test), then a compliant stub, which must pass; each case returns the
-failure text for the validation record. Fixtures are temporary; no test reads the real home or this repo's Git config.
-"""
+"""Exercise tests/unit/trusted_exec_contract.py: each probe fails for the intended reason on a noncompliant consumer stub
+(so an inert attack or a no-op assertion fails the test), then passes a compliant one; fixtures are temporary."""
 
 import hashlib
 import os
@@ -11,7 +7,6 @@ import pwd
 import subprocess
 import sys
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -28,11 +23,8 @@ SAFE_GIT = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"]
 GIT_CLEAN = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 ATTACK_NAMES = {"GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"}
 ATTACK_NAMES |= {"GIT_CEILING_DIRECTORIES", "GIT_ALTERNATE_OBJECT_DIRECTORIES"}
-ATTACKS = (
-    ("environment", "attacker root"),
-    ("local-worktree", "attacker root"),
-    ("local-include", "attacker hook ran"),
-)
+REDIRECTED, HOOK = "attacker root .*; attacker content", "attacker hook ran"  # whole reasons: no part goes inert
+ATTACKS = (("environment", f"{REDIRECTED}; {HOOK}"), ("local-worktree", REDIRECTED), ("local-include", HOOK))
 
 
 def run(argv, env, **kw):
@@ -81,8 +73,7 @@ def by_path(path, sha, between):
 
 def by_snapshot(path, sha, between):
     """Compliant: checks and uses one snapshot, read through one descriptor that refuses a link."""
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    with os.fdopen(fd, "rb") as handle:
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as handle:
         data = handle.read()
     if hashlib.sha256(data).hexdigest() != sha:
         raise ValueError("check failed")
@@ -92,8 +83,7 @@ def by_snapshot(path, sha, between):
 
 class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
     def runner_fixture(self):
-        """A fixture root whose script records its argv and its children's environment; the directory-service
-        response and the root discovery are the only substitutions."""
+        """A root whose script records its argv and environment; only the passwd response and the root are substituted."""
         base = Path(self.enter(tempfile.TemporaryDirectory)).resolve()
         root, home, out = base / "root", base / "home", base / "out"
         for d in (root / "scripts", home, out):
@@ -174,9 +164,13 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         run(["/bin/bash", str(fx.script), *ARGS], inherited, cwd=fx.base)
         with self.assertRaisesRegex(AssertionError, "undeclared") as red:
             fx.check(ARGS)
-        result = tec.run_under_trusted_parent(fx.script, *ARGS)
+        with mock.patch.object(tec.subprocess, "run", wraps=subprocess.run) as spy:  # still runs; argv and env observed
+            result = tec.run_under_trusted_parent(fx.script, *ARGS)
         self.assertEqual(0, result.returncode, result.stderr)
         fx.check(ARGS)
+        argv = ["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", f"HOME={fx.home}", "LANG=C.UTF-8"]
+        argv += ["/bin/bash", "--noprofile", "--norc", "-p", str(fx.script), *ARGS]
+        self.assertEqual((argv, {}), (spy.call_args.args[0], spy.call_args.kwargs["env"]))
         return str(red.exception)
 
     CASES = ("shim_on_path", "hostile_git", "worker_root", "swapped_file", "sanitized_environment", "trusted_parent")
@@ -206,6 +200,20 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertNotIn("worktree", (probe.legit / ".git" / "config").read_text())
         with probe.attack("environment") as env:
             self.assertEqual(ATTACK_NAMES, {k for k in env if k.startswith("GIT_")})
+            oid = run(["git", "-C", str(probe.attacker), "rev-parse", ":probe.txt"], env).stdout.decode().strip()
+            legit, sub, plain = probe.legit, probe.legit / "sub", {"PATH": "/usr/bin:/bin", "HOME": str(probe.base)}
+            sub.mkdir()
+            has = lambda text: lambda r: text in r.stdout
+            for name, args, where, effect in (  # each hostile name alone changes what git does in the legitimate repo
+                ("GIT_DIR", ["rev-parse", "--absolute-git-dir"], legit, has(b"attacker")),
+                ("GIT_WORK_TREE", ["rev-parse", "--show-toplevel"], legit, has(b"attacker")),
+                ("GIT_CONFIG_GLOBAL", ["config", "--global", "core.fsmonitor"], legit, has(b"hook")),
+                ("GIT_CONFIG_SYSTEM", ["config", "--system", "core.fsmonitor"], legit, has(b"hook")),
+                ("GIT_CEILING_DIRECTORIES", ["rev-parse", "--show-toplevel"], sub, lambda r: r.returncode),
+                ("GIT_ALTERNATE_OBJECT_DIRECTORIES", ["cat-file", "-e", oid], legit, lambda r: not r.returncode),
+            ):
+                alone, without = (run(["git", "-C", str(where), *args], e) for e in (plain | {name: env[name]}, plain))
+                self.assertTrue(effect(alone) and not effect(without), name)
         with probe.attack("local-worktree") as env:  # the local attack alone, in an environment without GIT_*
             self.assertFalse([k for k in env if k.startswith("GIT_")])
             self.assertIn("worktree", (probe.legit / ".git" / "config").read_text())
@@ -213,10 +221,14 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def test_worker_root_probe(self):
         self.case_worker_root()
+        shell = lambda line: lambda p: run(["/bin/sh", "-c", line, str(p.input)], ALLOWED_ENV)  # a subprocess consumer
         for name, act, reason in (
             ("read", lambda p: Path(p.input).read_text(), "read "),
             ("wrote", lambda p: Path(p.output).write_text("x"), "wrote "),
             ("created", lambda p: (Path(p.new_output).parent.mkdir(), Path(p.new_output).write_text("x")), "created "),
+            ("appended", shell('echo x >> "$0"'), "wrote "),
+            ("replaced", shell('echo x > "$0.t"; mv "$0.t" "$0"'), "wrote "),
+            ("removed", lambda p: os.unlink(p.input), "removed "),
         ):
             with self.subTest(name):
                 probe = self.worker_root_probe()
@@ -244,18 +256,19 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def test_sanitized_environment_probe(self):
         self.case_sanitized_environment()
-        allowed = ALLOWED_ENV
-        tec.assert_sanitized_env(allowed | {"SHLVL": "1"}, declared=("SHLVL",))
+        tec.assert_sanitized_env(ALLOWED_ENV | {"SHLVL": "1"}, declared=("SHLVL",))
         for observed, declared, reason in (
             ({"PATH": "/usr/bin:/bin", "HOME": "/h"}, (), r"missing: \['LANG'\]"),
-            (allowed | {"PATH": "/usr/local/bin:/usr/bin:/bin"}, (), "PATH is"),
-            (allowed | {"SHLVL": "1"}, (), r"undeclared: \['SHLVL'\]"),
-            (allowed, ("SHLVL",), r"missing: \['SHLVL'\]"),
+            (ALLOWED_ENV | {"PATH": "/usr/local/bin:/usr/bin:/bin"}, (), "PATH is"),
+            (ALLOWED_ENV | {"SHLVL": "1"}, (), r"undeclared: \['SHLVL'\]"),
+            (ALLOWED_ENV, ("SHLVL",), r"missing: \['SHLVL'\]"),
         ):
             with self.subTest(reason), self.assertRaisesRegex(AssertionError, reason):
                 tec.assert_sanitized_env(observed, declared)
 
     def test_trusted_parent_probe(self):
+        with mock.patch.dict(os.environ, {"GIT_DIR": "/nonexistent", "GIT_WORK_TREE": "/nonexistent"}):
+            self.assertEqual(ROOT, tec.repository_root())  # the real discovery, before any fixture substitutes it
         self.case_trusted_parent()
         fx = self.runner_fixture()
         env = {"PATH": "/usr/bin:/bin", "HOME": str(fx.home), "LANG": "C.UTF-8"}
@@ -268,15 +281,15 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         (fx.root.parent / "root-evil").mkdir()
         (fx.root.parent / "root-evil" / "x.sh").write_text(f'echo ran > "{fx.out}/marker"\n')
         (fx.root / "link.sh").symlink_to(outside / "x.sh")
-        for name, script in (
-            ("relative", "scripts/observe.sh"),
-            ("traversal", f"{fx.root}/../outside/x.sh"),
-            ("sibling-prefix", f"{fx.root}-evil/x.sh"),
-            ("symlink escape", f"{fx.root}/link.sh"),
-            ("directory", f"{fx.root}/scripts"),
-            ("missing", f"{fx.root}/scripts/none.sh"),
+        for name, script, reason in (
+            ("relative", "scripts/observe.sh", "not an absolute path"),
+            ("traversal", f"{fx.root}/../outside/x.sh", "outside"),
+            ("sibling-prefix", f"{fx.root}-evil/x.sh", "outside"),
+            ("symlink escape", f"{fx.root}/link.sh", "outside"),
+            ("directory", f"{fx.root}/scripts", "not a regular file"),
+            ("missing", f"{fx.root}/scripts/none.sh", "not a regular file"),
         ):
-            with self.subTest(name), self.assertRaises(tec.TrustedExecRefused):
+            with self.subTest(name), self.assertRaisesRegex(tec.TrustedExecRefused, reason):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
@@ -284,26 +297,21 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         name, uid = pwd.getpwuid(os.getuid()).pw_name, os.getuid()
         dscl = ["/usr/bin/dscl", ".", "-read", f"/Users/{name}", "NFSHomeDirectory"]
         getent, entry = ["/usr/bin/getent", "passwd", str(uid)], f"{name}:x:{uid}:20:Probe:/home/probe:/bin/bash\n"
-        for platform, argv, response, home in (
+        for platform, argv, response, home in (  # home None: the response must be refused
             ("darwin", dscl, "NFSHomeDirectory: /Users/probe\n", "/Users/probe"),
             ("darwin", dscl, "NFSHomeDirectory:\n /Users/long name\n", "/Users/long name"),
             ("linux", getent, entry, "/home/probe"),
+            ("darwin", dscl, "No such key: NFSHomeDirectory\n", None),
+            ("linux", getent, "a:b\n", None),
+            ("win32", None, "", None),
         ):
-            with (
-                self.subTest(response),
-                mock.patch.object(sys, "platform", platform),
-                mock.patch.object(tec, "_directory_service", return_value=response) as service,
-            ):
-                self.assertEqual(home, tec.passwd_home())
-                service.assert_called_once_with(argv)
-        for platform, response in (("darwin", "No such key: NFSHomeDirectory\n"), ("linux", "a:b\n"), ("win32", "")):
-            with (
-                self.subTest(platform),
-                mock.patch.object(sys, "platform", platform),
-                mock.patch.object(tec, "_directory_service", return_value=response),
-                self.assertRaises(RuntimeError),
-            ):
-                tec.passwd_home()
+            with self.subTest(response), mock.patch.object(sys, "platform", platform):
+                with mock.patch.object(tec, "_directory_service", return_value=response) as service:
+                    if home is None:
+                        self.assertRaises(RuntimeError, tec.passwd_home)
+                    else:
+                        self.assertEqual(home, tec.passwd_home())
+                self.assertEqual(argv, service.call_args.args[0] if service.call_args else None)
 
     def test_probes_clean_up_after_an_exception(self):
         before = dict(os.environ)
@@ -313,5 +321,4 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                     base = probe.base
                     raise RuntimeError("deliberate")
                 self.assertFalse(base.exists())
-        self.assertFalse([t for t in threading.enumerate() if t.name == "worker-root-probe"])
         self.assertEqual(before, dict(os.environ))

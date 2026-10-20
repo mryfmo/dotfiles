@@ -569,9 +569,8 @@ class LintComparisonsTest(unittest.TestCase):
 
     def test_shfmt_missing_refuses_without_fallback(self):
         (self.temp / "m.sh").write_text("[[ $path == /x ]]\n")
-        result = self.lint(
-            "--baseline", str(self.temp / "none.tsv"), "m.sh", "--changed", "m.sh", env={"PATH": "/usr/bin:/bin"}
-        )
+        env = {"PATH": str(self.temp / "empty")}  # neither shfmt nor mise, whatever the host has in /usr/bin
+        result = self.lint("--baseline", str(self.temp / "none.tsv"), "m.sh", "--changed", "m.sh", env=env)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("shfmt missing", result.stderr)
         self.assertEqual("", result.stdout)  # no regex scan stands in for the parser
@@ -591,6 +590,39 @@ class LintComparisonsTest(unittest.TestCase):
         result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("ok.sh: shfmt gave no JSON", result.stderr)
+
+    def test_shfmt_falls_back_to_the_pinned_mise_form_with_the_file_dialect_and_blanked_actions(self):  # amendment 1
+        fake = self.temp / "mise-only/mise"  # no shfmt on PATH, so the pinned mise form runs; it logs argv and input
+        fake.parent.mkdir()
+        fake.write_text('#!/bin/sh\necho "$*" >> "$0.log"\n[ "$5" = --version ] || /bin/cat >> "$0.log"\necho "{}"\n')
+        fake.chmod(0o755)
+        files = {
+            "t.sh.tmpl": '(\n{{ include "x" }}\n)\necho "{{ .y }}"\n',
+            "z.zsh": "echo\n",
+            "zs": "#!/bin/zsh\necho\n",
+        }
+        for name, text in files.items():
+            (self.temp / name).write_text(text)
+        result = self.lint(
+            "--baseline", str(self.temp / "none.tsv"), *files, "--changed", env={"PATH": str(fake.parent)}
+        )
+        self.assertEqual((0, ""), (result.returncode, result.stdout + result.stderr))
+        run, blanked = "x shfmt@3.14.1 -- shfmt", f'(\n:{" " * 16}\n)\necho "{" " * 8}"\n'  # an include alone is `:`
+        log = (
+            f"{run} --version\n{run} -ln bash --tojson\n{blanked}{run} -ln zsh --tojson\necho\n{run} -ln zsh --tojson\n"
+        )
+        self.assertEqual(log + "#!/bin/zsh\necho\n", Path(f"{fake}.log").read_text())
+
+    def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
+        runs = []
+        for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order
+            exe = shutil.which(cmd[0])
+            run = exe and subprocess.run([exe, *cmd[1:], "--version"], check=False, capture_output=True, text=True)
+            runs.append(bool(run) and run.returncode == 0)
+            print(
+                f"\nshfmt probe: {' '.join(cmd)}: {exe} {run and (run.returncode, run.stdout.strip())}", file=sys.stderr
+            )
+        self.assertTrue(any(runs), "shfmt missing: the lint refuses every shell file")
 
 
 if __name__ == "__main__":

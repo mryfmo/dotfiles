@@ -187,6 +187,8 @@ Retain a02's own fixtures under these selectors, including all `OWNED_ROWS` case
 
 Add `tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_shfmt_missing_refuses_without_fallback` and `tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_shfmt_parse_failure_refuses_with_original_message`; the latter also covers unusable JSON. Retain the stale-row selector named in the threat table.
 
+Amendment 1 (2026-10-20T00:21:41Z, a008's question q1/q2 of 00:19Z): the dialect follows the file (`-ln zsh` for a `.zsh` name or a zsh shebang, else `-ln bash`); a `.tmpl` file is a target only when its name without `.tmpl` or its shebang is shell or Python; chezmoi template actions (`{{ ... }}`) in a shell template are blanked to spaces before shfmt parses it (offsets and newlines kept); shfmt is invoked as `shfmt` on PATH or, when absent, as `mise x shfmt@3.14.1 -- shfmt` (the pinned form `.github/workflows/test.yaml:313` already uses, so the unit jobs need no workflow change); when neither runs, the lint refuses with `shfmt missing`; a real parse failure refuses with shfmt's message, never falls back to a regex scan and never enters the baseline. validation.md records which invocation ran locally and in CI (the job log line).
+
 ## Check
 
 The final diff has at most **450 changed lines outside `tests/` and `.orchestration/`, excluding `scripts/lint-comparisons-baseline.tsv`**, measured by `git diff --numstat origin/main...HEAD`; changed lines mean additions plus deletions. The same diff has at most **1200 added lines under `tests/`**. Both totals include inherited branch changes. There is no separate script-length cap. RESULT records the final per-file numstat and both totals without raising either cap.
@@ -219,4 +221,5 @@ Local Bats and deployment are not checked by this task; CI supplies required Bat
 
 ```
 dispatch to a008 (worker-f), 2026-10-20T00:03:38Z; task-consistency-check.py: OK; security: false (no C-80); reset_of dotfiles-T129-normalised-comparison-lint-followup-a02 (its PR #432 continues: ten hand-parser findings after the a02 tokenizer re-plan -> shfmt AST design, re-plan line in the a02 record); predecessor counters (regime-counters.sh): task=dotfiles-T129-normalised-comparison-lint-followup-a02 tasks=2 amendments=1 questions=1 results=2 withdrawn=0 revises=1 first_result_head=26f4897313cef4ad4be3f27c3a3985e63707aab5 bot_p1_heads_after_result=0 audits=unknown wall=2026-10-19T11:36:30Z..2026-10-19T21:37:51Z (10:01) source=live; design 5.14 by reference (D-024-30); measured text: 221 lines, 4 allowed files
+amendment 1, 2026-10-20T00:21:41Z: dialect per file, .tmpl targeting, chezmoi actions blanked, pinned mise exec for shfmt when absent (previous_sha256 e58d51b185769577911b5661796529d12f873fb2ffb0f25d1826b47029958b10); checker re-run; S2 counter: amendments 1, questions 1
 ```

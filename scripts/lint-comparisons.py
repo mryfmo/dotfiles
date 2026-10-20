@@ -5,15 +5,17 @@ each hit as `<file>:<line>: <rule id> <rule text>` and exits 1 when a hit outsid
 no hit, is in a changed file (a normaliser in the statement, or `# lint-comparisons: allow <reason>` on the line,
 accepts; paths as git ls-files prints). In an unchanged file both are warnings. The changed files are --changed's, else
 `git diff --name-only --no-renames origin/main...HEAD`'s (a rename changes both paths); --all prints every hit and
-stale row and exits 0."""
+stale row and exits 0. Shell is read only from shfmt's JSON AST (`-ln zsh` for zsh, else bash): a missing shfmt, a parse
+failure or output that is no JSON refuses, and nothing stands in for the parser."""
 
 import argparse
 import ast
+import functools
 import hashlib
 import io
+import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -43,19 +45,8 @@ SH_NORM = re.compile(
 )
 JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
 JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
-JQ_QUOTE = re.compile(
-    r"""(?:\\[\s\S]|"\$(?:[^"\\]|\\[\s\S])*"|"(?!(?:[^"\\\n]|\\[\s\S])*")(?=[^\n]*\S)|[^'"\\\n;&|])*+"""
-    r"""('[^']*'|"(?:[^"\\]|\\[\s\S])*")"""
-)  # the first quoted word after the jq word, before a separator, that is no "$expansion" and no stray closing quote
-# (a " closed nowhere later on its line, a backslash-newline continuing that line, with text after it, as in
-# "$(command -v jq)"); a "…" may span lines
-JQ_ARG = re.compile(r"(?<!\S)(?:--(?:arg|argjson|slurpfile|rawfile)(?:[\s\\]+\S+)?|--indent|-L|--library-path)[\s\\]+$")
-PS = re.compile(
-    r"(?:^|[|;&(!]|\$\(|\b(?:if|elif|while|until|then|do|else)\b)\s*ps\s(?!-o\s+\S+=\s+-p\s)[^|]*\|\s*(?:grep|awk|cut|sed)\b"
-)
-WORD = r"""(?:'[^']*'|"(?:[^"\\]|\\.)*"|\\.|[^\s'"\\;&|])+"""  # one shell word, its quoted pieces whole
-PGREP = re.compile(r"\bpgrep\s+-\w*f\w*(?:\s+-\S+)*\s+(" + WORD + ")")
-GREP = re.compile(r"\b(e?grep)((?:\s+-\S+)*)\s+(" + WORD + ")")
+JQ_SKIP = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
+SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
 )
@@ -65,68 +56,85 @@ GIT_C += ("core.attributesFile=/dev/null", "core.sshCommand=false")
 OPS = (ast.Eq, ast.NotEq, ast.In, ast.NotIn)
 
 
-def operand(tok):  # a path-named variable, or a literal path piece beside any expansion
-    name = re.match(r"\$\{?([A-Za-z_]\w*)", tok)
-    return bool(name and TOKEN.search(name.group(1))) or bool(LITERAL.search(re.sub(r"\$\{[^}]*\}|\$\w+", "", tok)))
-
-
-def expands(word):  # the shell expands a variable in this word: a $name outside '…' and after no backslash
-    pieces = re.findall(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.|[^'"\\]+""", word)
-    return any(re.search(r"\$\{?[A-Za-z_]", re.sub(r"\\.", "", p)) for p in pieces if p[0] not in "'\\")
-
-
-def comments(text):  # each line's shell comment: an unquoted # that starts a word, quotes carried across lines
-    out, q, docs, skip = {}, "", [], None  # docs: the heredocs a line opens; skip: the one whose body is being read
-    for n, line in enumerate(text.split("\n"), 1):
-        if skip:  # a heredoc body holds no comment; its delimiter line ends it (after tabs, for <<-)
-            if (line.lstrip("\t") if skip[1] else line) == skip[0]:
-                skip = docs.pop(0) if docs else None
+@functools.cache
+def shfmt():  # the first shfmt invocation that runs
+    for cmd in SHFMT:
+        try:
+            run = subprocess.run([*cmd, "--version"], stdin=subprocess.DEVNULL, capture_output=True, check=False)
+        except OSError:
             continue
-        i = 0
-        while i < len(line):
-            c = line[i]
-            if c == "\\" and q != "'":
-                i += 2
-                continue
-            if q:
-                q = "" if c == q else q
-            elif c in "'\"":
-                q = c
-            elif c == "#" and (i == 0 or line[i - 1] in " \t;|&("):
-                out[n] = line[i:]
-                break
-            elif (doc := re.match(r"<<(-?)[ \t]*(['\"]?)([A-Za-z_]\w*)\2", line[i:])) and line[i - 1 : i] != "<":
-                docs.append((doc[3], bool(doc[1])))
-                i += len(doc[0])
-                continue
-            i += 1
-        if docs and not q:
-            skip = docs.pop(0)
-    return out
+        if run.returncode == 0:
+            return cmd
+    sys.exit("lint-comparisons: shfmt missing")
 
 
-def words(line):
-    while (folded := re.sub(r"\$\([^()]*\)", "", line)) != line:
-        line = folded
+def blank(m):  # a chezmoi action is no shell: blanked to spaces, newlines and offsets kept; an include alone on its
+    # line is the no-op `:`, since it expands to whole statements (a subshell of includes alone would be empty)
+    head, tail = m.string[: m.start()].rpartition("\n")[2], m.string[m.end() :].partition("\n")[0]
+    lone = not head.strip() and not tail.strip() and re.match(r"\{\{-?\s*(?:include|template)\b", m[0])
+    return (":" if lone else " ") + re.sub(r"[^\n]", " ", m[0][1:])
+
+
+def shfmt_tree(rel, text):  # (AST, text as parsed): shfmt's JSON AST is the only shell reader, and it refuses
+    zsh = rel.removesuffix(".tmpl").endswith(".zsh") or re.match(r"#!.*\bzsh\b", text)
+    if rel.endswith(".tmpl"):
+        text = re.sub(r"\{\{.*?\}\}", blank, text, flags=re.DOTALL)
+    cmd = [*shfmt(), "-ln", "zsh" if zsh else "bash", "--tojson"]
+    run = subprocess.run(cmd, input=text, capture_output=True, text=True, check=False)
+    if run.returncode:
+        sys.exit(f"lint-comparisons: {rel}: {run.stderr.strip()}")
     try:
-        return shlex.split(line)
+        return json.loads(run.stdout), text
     except ValueError:
-        return line.split()
+        sys.exit(f"lint-comparisons: {rel}: shfmt gave no JSON")
 
 
-def programs(code):
-    for m in re.finditer(r"\bjq\b[\"})]*", code):  # also "$jq", "${jq}" and "$(command -v jq)"
-        rest = code[m.end() :]
-        while (folded := re.sub(r"\$\([^()]*\)", lambda f: "$" + "_" * (len(f[0]) - 1), rest)) != rest:
-            rest = folded  # an argument's command substitution is one "$…" word: its inner quotes fold, same length
-        q = JQ_QUOTE.match(rest)  # the program, after the options and their arguments (jq 1.8 --help)
-        while q and JQ_ARG.search(rest, 0, q.start(1)):
-            q = JQ_QUOTE.match(rest, q.end())
-        if q:  # the program's text, a double-quoted one as the shell hands it to jq
-            begin, close = m.end() + q.start(1) + 1, m.end() + q.end(1)
-            inner = code[begin : close - 1]  # the original text: the folding above only located it
-            # unescaped as the shell does; a backslash-newline becomes a newline, so the line numbers hold
-            yield begin, re.sub(r'\\([\\"$`\n])', r"\1", inner) if q[1][0] == '"' else inner, close
+def nodes(n):  # every node at or below n; a heredoc body is data and is left out
+    if isinstance(n, dict):
+        yield n
+        yield from (x for k, v in n.items() if k != "Hdoc" for x in nodes(v))
+    elif isinstance(n, list):
+        yield from (x for v in n for x in nodes(v))
+
+
+def flat(word):  # a word's parts with its double quotes opened: (part, quoted)
+    for part in word.get("Parts") or []:
+        yield from ((x, True) for x in part.get("Parts") or []) if part["Type"] == "DblQuoted" else [(part, False)]
+
+
+def unquote(part, quoted):  # a literal part's text after the shell's quote removal; None for an expansion
+    value = part.get("Value", "")
+    if part["Type"] == "SglQuoted":  # $'…' decodes its escapes
+        decode = {"n": "\n", "t": "\t", "r": "\r"}
+        return re.sub(r"\\(.)", lambda m: decode.get(m[1], m[1]), value) if part.get("Dollar") else value
+    if part["Type"] == "Lit":
+        return re.sub(r'\\([\\"$`])', r"\1", value) if quoted else re.sub(r"\\(.)", r"\1", value, flags=re.DOTALL)
+    return None
+
+
+def static(word):  # the literal text of a word, its runtime expansions left out
+    return "".join(x for part, quoted in flat(word) if (x := unquote(part, quoted)) is not None)
+
+
+def expands(node):  # a parameter expansion below: a name, or a positional or special parameter ($1, ${10}, $@, $?)
+    return any(n.get("Type") == "ParamExp" for n in nodes(node))
+
+
+def operand(word):  # a path-named variable first, or a literal path piece beside any expansion
+    first = next(flat(word), ({}, False))[0]
+    named = first.get("Type") == "ParamExp" and TOKEN.search((first.get("Param") or {}).get("Value", ""))
+    return bool(named) or bool(LITERAL.search(static(word)))
+
+
+def program(word):  # the jq program one shell word hands over, its fragments in order: (text, line per character)
+    text, lines = [], []
+    for part, quoted in flat(word):
+        line = part["Pos"]["Line"]  # shortcut: an expansion is runtime text and is left out; scan it if one hides a hit
+        for ch in unquote(part, quoted) or "":
+            text.append(ch)
+            lines.append(line)
+            line += ch == "\n"
+    return "".join(text), lines
 
 
 def jq_mask(prog):  # (code, literals): prog with its strings and comments blanked, and with all but string characters
@@ -174,48 +182,76 @@ def span(prog, p, fn):
     return lo, hi
 
 
-def shell_hits(text):
-    lines, buf, at, note = text.split("\n"), "", 0, comments(text)
-    for n, raw in enumerate(lines, 1):
-        code, at = raw[: len(raw) - len(note.get(n, ""))], at if buf else n
-        # a continuation (an odd run of trailing backslashes): the statement goes on, reported at its first line
-        if (len(code) - len(code.rstrip("\\"))) % 2:
-            buf += code[:-1]  # the shell deletes a backslash-newline: the lines join with no separator
+def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; a marker counts only in a comment node
+    tree, text = shfmt_tree(rel, text)
+    data, hits = text.encode(), []
+    note = {c["Hash"]["Line"]: "#" + c["Text"] for c in nodes(tree) if "Hash" in c and "Text" in c}
+
+    def src(n):
+        return data[n["Pos"]["Offset"] : n["End"]["Offset"]].decode(errors="replace")
+
+    def marked(lo, hi):  # a marker with its reason in a comment on lines lo..hi
+        return any((m := MARKER.search(note.get(k, ""))) and m.group(1) for k in range(lo, hi + 1))
+
+    for stmt in (n for n in nodes(tree) if "Cmd" in n):  # each statement's own command, its parts below it
+        cmd, rows = stmt["Cmd"], (stmt["Pos"]["Line"], stmt["End"]["Line"])
+        if not isinstance(cmd, dict):
             continue
-        line, buf, last, n = buf + code, "", n, at  # a marker on any line of the statement accepts it
-        marked = any((m := MARKER.search(note.get(k, ""))) and m.group(1) for k in range(n, last + 1))
-        toks = words(line)
-        for i, tok in enumerate(toks):
-            test = tok in ("==", "!=", "=") and 0 < i < len(toks) - 1 and ("[[" in toks[:i] or "[" in toks[:i])
-            if test and (operand(toks[i - 1]) or operand(toks[i + 1])):
-                yield n, "R1", SH_NORM.search(line) or marked
-            if tok == "in" and i > 1 and toks[i - 2] == "case" and operand(toks[i - 1]):
-                yield n, "R2", SH_NORM.search(line) or marked
-        if PS.search(line) or any(map(expands, PGREP.findall(line))):
-            yield n, "R5", marked
-        for cmd, flags, pattern in GREP.findall(line):
-            ere = cmd == "egrep" or re.search(r"\s-\w*E|--extended-regexp", flags)
-            if ere and expands(pattern) and "-F" not in flags.split():
-                yield n, "R6", "escape_regex" in line or marked
-    code = "\n".join("" if line.lstrip().startswith("#") else line for line in lines)
-    for begin, region, close in programs(code):
-        prog, first = region, code.count("\n", 0, begin) + 1
-        bare, lits = jq_mask(prog)  # strings and comments hold no operator and apply no normaliser
-        view = bare  # the program's code alone, before its keywords become bounds
-        bare = re.sub(r"(?<![\w.$])(?:and|or|then|elif|else)(?!\w)", lambda m: ";" * len(m[0]), bare)  # bounds
-        bare = re.sub(r"(?<![\w.$])if(?!\w)", "( ", re.sub(r"(?<![\w.$])end(?!\w)", "  )", bare))  # one operand
-        after = comments(code[close:].split("\n", 1)[0]).get(1, "")  # a shell comment past the closing quote
-        for op in JQ_OP.finditer(bare):
-            lo, hi = span(bare, op.start(), op.group(0).endswith("("))
-            expr, sides = bare[lo:hi], (bare[lo : op.start()], bare[op.start() : hi])
-            hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
-            if hit or LITERAL.search(lits[lo:hi]):
-                ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in sides) for d in JQ_DEF.findall(bare))
-                row, end = prog.rfind("\n", 0, op.start()) + 1, (prog.find("\n", op.start()) + 1 or len(prog) + 1) - 1
-                sharp = [i for i in range(row, end) if prog[i] == "#" and view[i] == lits[i] == " "]  # a jq comment
-                notes = (note.get(first, ""), after, prog[sharp[0] : end] if sharp else "")
-                marked = any((m := MARKER.search(x)) and m.group(1) for x in notes)
-                yield first + prog.count("\n", 0, op.start()), "R3", ok or marked
+        t, args = cmd.get("Type"), cmd.get("Args") or []
+        words, at = [static(a) for a in args], cmd["Pos"]["Line"]
+        tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
+        if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
+            hits.append((at, "R1", SH_NORM.search(src(stmt)) or marked(*rows)))
+        if t == "CallExpr" and words[:1] in (["["], ["test"]):
+            pairs = [(args[i - 1], args[i + 1]) for i in range(2, len(args) - 1) if words[i] in ("==", "!=", "=")]
+            if any(operand(x) or operand(y) for x, y in pairs):
+                hits.append((at, "R1", SH_NORM.search(src(stmt)) or marked(*rows)))
+        if t == "CaseClause" and operand(cmd["Word"]):
+            hits.append((at, "R2", SH_NORM.search(src(cmd["Word"])) or marked(at, cmd["Word"]["End"]["Line"])))
+        if t == "BinaryCmd" and cmd["Op"] == "|":  # ps piped to a text reader, unless ps -o <fields>= -p
+            ps, reader = ([static(a) for a in (x.get("Cmd") or {}).get("Args") or []] for x in (cmd["X"], cmd["Y"]))
+            fields = ps[1:2] == ["-o"] and ps[2:3] and ps[2].endswith("=") and ps[3:4] == ["-p"]
+            if ps[:1] == ["ps"] and not fields and reader[:1] in (["grep"], ["awk"], ["cut"], ["sed"]):
+                hits.append((at, "R5", marked(*rows)))
+        tool = next((i for i, w in enumerate(words) if os.path.basename(w) in ("pgrep", "grep", "egrep")), None)
+        if t == "CallExpr" and tool is not None:  # also git grep, command grep, xargs grep
+            name, k = os.path.basename(words[tool]), tool + 1
+            while k < len(args) and words[k].startswith("-"):
+                k += 1
+            flags, pattern = words[tool + 1 : k], args[k] if k < len(args) else {}
+            if name == "pgrep" and any(re.fullmatch(r"-\w*f\w*", f) for f in flags) and expands(pattern):
+                hits.append((at, "R5", marked(*rows)))
+            ere = name == "egrep" or any(re.match(r"-\w*E|--extended-regexp", f) for f in flags)
+            if name != "pgrep" and ere and "-F" not in flags and expands(pattern):
+                hits.append((at, "R6", "escape_regex" in src(stmt) or marked(*rows)))
+        jq = next((i for i, a in enumerate(args) if re.search(r"\bjq\b", src(a))), None)
+        if t == "CallExpr" and jq is not None:  # also "$jq" and "$(command -v jq)"
+            i = jq + 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
+            while i < len(args) and words[i] not in ("-f", "--from-file"):
+                if words[i].startswith("-") or not words[i] and expands(args[i]):
+                    i += 1 + JQ_SKIP.get(words[i], 0)
+                    continue
+                prog, lines = program(args[i])
+                hits.extend((lines[p], "R3", ok or marked(*rows)) for p, ok in jq_hits(prog))
+                break
+    return hits, note
+
+
+def jq_hits(prog):  # (offset, accepted) per string-form comparison in one whole jq program
+    bare, lits = jq_mask(prog)  # strings and comments hold no operator and apply no normaliser
+    view = bare  # the program's code alone, before its keywords become bounds
+    bare = re.sub(r"(?<![\w.$])(?:and|or|then|elif|else)(?!\w)", lambda m: ";" * len(m[0]), bare)  # bounds
+    bare = re.sub(r"(?<![\w.$])if(?!\w)", "( ", re.sub(r"(?<![\w.$])end(?!\w)", "  )", bare))  # one operand
+    for op in JQ_OP.finditer(bare):
+        lo, hi = span(bare, op.start(), op.group(0).endswith("("))
+        expr, sides = bare[lo:hi], (bare[lo : op.start()], bare[op.start() : hi])
+        hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
+        if hit or LITERAL.search(lits[lo:hi]):
+            ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in sides) for d in JQ_DEF.findall(bare))
+            row, end = prog.rfind("\n", 0, op.start()) + 1, (prog.find("\n", op.start()) + 1 or len(prog) + 1) - 1
+            sharp = [i for i in range(row, end) if prog[i] == "#" and view[i] == lits[i] == " "]  # a jq comment
+            mark = MARKER.search(prog[sharp[0] : end]) if sharp else None
+            yield op.start(), ok or bool(mark and mark.group(1))
 
 
 def python_hits(text):
@@ -272,13 +308,11 @@ def git(*args):  # plan 024 5.14 item 2: env -i, a system git by its absolute pa
 def default_files():
     for rel in git("ls-files", "-z", "--", "home", "scripts", "install"):
         first = (ROOT / rel).read_text(errors="replace").split("\n", 1)[0]
-        if rel.endswith((".sh", ".bash", ".zsh", ".py", ".tmpl")) or SHEBANG.match(first):
+        if rel.removesuffix(".tmpl").endswith((".sh", ".bash", ".zsh", ".py")) or SHEBANG.match(first):
             yield rel, ROOT / rel
 
 
-def notes(text, py):  # each line's comment, where alone the allow marker counts (Python: its comment tokens)
-    if not py:
-        return comments(text)
+def notes(text):  # each line's Python comment token, where alone the allow marker counts
     try:
         toks = tokenize.generate_tokens(io.StringIO(text).readline)
         return {t.start[0]: t.string for t in toks if t.type == tokenize.COMMENT}
@@ -289,8 +323,8 @@ def notes(text, py):  # each line's comment, where alone the allow marker counts
 def lint(rel, text):
     lines = text.split("\n")
     py = rel.removesuffix(".tmpl").endswith(".py") or re.match(r"#!.*python", lines[0])
-    note = notes(text, py)
-    for n, rule, accepted in python_hits(text) if py else shell_hits(text):
+    hits, note = (python_hits(text), notes(text)) if py else shell_hits(rel, text)
+    for n, rule, accepted in hits:
         mark = MARKER.search(note.get(n, ""))
         if not accepted and not (mark and mark.group(1)):
             yield n, "R0" if mark else rule

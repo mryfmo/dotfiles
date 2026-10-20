@@ -1,0 +1,28 @@
+OFFLINE FIXTURE ONLY: fake GitHub API, no live canonical or dispatch authority
+runtime /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-cache-task-copy/builds-v0/.tmpOmkAOJ/bin/python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)] task-sha256 b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+DISPATCHED-BYTES 0 dotfiles-T133-task-generator-plan-check-a06-checker.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 c06baff99fff14f11ab876a570ac3a015f923e61c985e9c16a495c0309e65e5f
+api-input-sha256 69459bd871aa689d59686731bc55f56ce9f67906a81442af529608c3c5ef6fbd
+dotfiles-T133-task-generator-plan-check-a06-checker.md: warning: C14: not run (no trusted sha)
+
+RETAINED-IS-NOT-EDIT-SCOPE 1 dotfiles-T133-task-generator-plan-check-a06-checker.md: FAIL
+  C2 allowed_files names another task directory: .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/**
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 c06baff99fff14f11ab876a570ac3a015f923e61c985e9c16a495c0309e65e5f
+api-input-sha256 69459bd871aa689d59686731bc55f56ce9f67906a81442af529608c3c5ef6fbd
+dotfiles-T133-task-generator-plan-check-a06-checker.md: warning: C14: not run (no trusted sha)
+
+COPY-ROWS-REQUIRED 1 dotfiles-T133-task-generator-plan-check-a06-checker.md: FAIL
+  C3 no threat_table row names dotfiles-T133-task-generator-plan-check-a05-checker task.md
+  C3 no threat_table row names dotfiles-T133-task-generator-plan-check-a06-checker task.md
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 c06baff99fff14f11ab876a570ac3a015f923e61c985e9c16a495c0309e65e5f
+api-input-sha256 69459bd871aa689d59686731bc55f56ce9f67906a81442af529608c3c5ef6fbd
+dotfiles-T133-task-generator-plan-check-a06-checker.md: warning: C14: not run (no trusted sha)
+

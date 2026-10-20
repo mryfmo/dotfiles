@@ -1,0 +1,38 @@
+test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths) ... fixture-seed python=~/.local/share/mise/installs/python/3.12.15/bin/python3.12 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+ok
+test_c12_classifies_backslash_filenames_from_resolved_ancestry (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry) ... ok
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... ok
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... ok
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... ok
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... ok
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... ok
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... ok
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... native-NFC-NFD-distinct=False
+
+  test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) [native two-file collision] ... skipped 'observed NFC/NFD samefile alias; modeled collision and one-file control ran'
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... ok
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... ok
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... native-case-insensitive=True
+ok
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... ok
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... ok
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... ok
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... ok
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... ok
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... ok
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... ok
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... ok
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... ok
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... ok
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... ok
+test_security_c12_prunes_with_normalised_directory_names (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names) ... ok
+test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias) ... ok
+test_security_c12_resolves_original_unicode_path (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path) ... ok
+test_security_c16_rejects_multi_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_rejects_multi_item_rows) ... ok
+test_security_c16_uses_resolved_literal_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 48.377s
+
+OK (skipped=1)

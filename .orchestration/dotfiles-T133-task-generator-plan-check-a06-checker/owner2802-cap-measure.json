@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-10-20T08:37:40.460610+00:00",
+  "status": "blocked-cap-owner2802",
+  "command": [
+    "git",
+    "diff",
+    "--numstat",
+    "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+    "--",
+    "scripts/orchestrator/task-consistency-check.py",
+    "tests/unit/test_task_consistency_c11_c15.py",
+    "tests/unit/test_task_checkers.py"
+  ],
+  "exit": 0,
+  "stdout": "415\t27\tscripts/orchestrator/task-consistency-check.py\n35\t22\ttests/unit/test_task_checkers.py\n643\t0\ttests/unit/test_task_consistency_c11_c15.py\n",
+  "stderr": "",
+  "rows": [
+    {
+      "path": "scripts/orchestrator/task-consistency-check.py",
+      "added": 415,
+      "deleted": 27
+    },
+    {
+      "path": "tests/unit/test_task_checkers.py",
+      "added": 35,
+      "deleted": 22
+    },
+    {
+      "path": "tests/unit/test_task_consistency_c11_c15.py",
+      "added": 643,
+      "deleted": 0
+    }
+  ],
+  "production_changed": 442,
+  "test_changed": 700,
+  "production_cap": 440,
+  "test_cap": 700,
+  "source_increase_since_review": 4,
+  "attribution": {
+    "preserve_directory_intent_added": 2,
+    "C10_original_token_extraction_added": 1,
+    "C10_original_token_extraction_deleted": 1
+  },
+  "working_sha256": {
+    "scripts/orchestrator/task-consistency-check.py": "98c0904f4291b7d3971beb643321dff1c557c13d9b30f3af46760df1385b0f3c",
+    "tests/unit/test_task_consistency_c11_c15.py": "7ba89c81cca29144d5702c056f45547cee8ce83d2ed7c4572f9fc8819de7ed61",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "head": "06ffefbc633fe37bcef107385ea96810b2a9a0c5",
+  "committed": false,
+  "green_claim": false
+}

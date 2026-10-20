@@ -1,0 +1,54 @@
+[
+  {
+    "name": "python315",
+    "path": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "resolved": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "sha256": "cb7eda29a44cc53c3093a315b80b784eef7f97906f64e0b1cc22cf66e422d133",
+    "argv": [
+      "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "Python 3.15.0\n",
+    "stderr": ""
+  },
+  {
+    "name": "python312",
+    "path": "~/.local/share/mise/installs/python/3.12.15/bin/python3.12",
+    "resolved": "~/.local/share/mise/installs/python/3.12.15/bin/python3.12",
+    "sha256": "3274dde21f9767655564d093e63c9a5faacefbf1d41bc1e6bf8b6f6e5a441903",
+    "argv": [
+      "~/.local/share/mise/installs/python/3.12.15/bin/python3.12",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "Python 3.12.15\n",
+    "stderr": ""
+  },
+  {
+    "name": "uv",
+    "path": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+    "resolved": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+    "sha256": "c7634fea71703a48913e793c65997d63351f492ee0c38f6c20f0878fb2795d18",
+    "argv": [
+      "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "uv 0.13.1 (62faed335 2026-10-13 aarch64-apple-darwin)\n",
+    "stderr": ""
+  },
+  {
+    "name": "ruff",
+    "path": "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff",
+    "resolved": "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+    "sha256": "1cd36902264ba39d8eada510c026a44236ddb55f67937694d8a22b2708fdc0e0",
+    "argv": [
+      "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff",
+      "--version"
+    ],
+    "exit": 0,
+    "stdout": "ruff 0.17.1\n",
+    "stderr": ""
+  }
+]

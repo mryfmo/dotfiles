@@ -62,7 +62,7 @@ def normalise_name(value):
     if not isinstance(value, str):
         return None
     parts = value.split("/")
-    if not value or pathlib.PurePosixPath(value).is_absolute() or "\0" in value or ".." in parts:
+    if not value or pathlib.PurePosixPath(value).is_absolute() or "\0" in value or ".." in parts or "\\" in value:
         return None
     name = "/".join(p for p in parts if p not in ("", "."))
     if not name or name[0] in ":!":
@@ -74,7 +74,18 @@ def confined(root, rel):
     if not root.exists():
         return None
     path = (root / rel).resolve()
-    return path if any(p.exists() and os.path.samefile(p, root) for p in (path, *path.parents)) else None
+    return next(
+        ((path, path.relative_to(p)) for p in (path, *path.parents) if p.exists() and os.path.samefile(p, root)), None
+    )
+
+
+def path_entry(root, value, fold=os.path.normcase):
+    raw = root / value if isinstance(value, pathlib.Path) or normalise_name(value) else None
+    found = confined(root, raw) if raw is not None else None
+    key = fold(unicodedata.normalize("NFC", raw.relative_to(root).as_posix())) if raw is not None else None
+    if key and str(value).endswith(("/", "/.")):
+        key += "/"
+    return raw, found[0] if found else None, key
 
 
 def front(text):
@@ -218,8 +229,8 @@ def main_contains(root, pattern, names, literal=False):
 
 
 def match(name, pattern, partial=False, fold=os.path.normcase):
-    names = fold(name).split("/")
-    parts = fold(pattern + ("**" if normalise_name(pattern).endswith("/") else "")).split("/")
+    names = fold(unicodedata.normalize("NFC", name)).split("/")
+    parts = fold(normalise_name(pattern) + ("**" if normalise_name(pattern).endswith("/") else "")).split("/")
 
     @cache
     def step(i, j):
@@ -235,32 +246,40 @@ def match(name, pattern, partial=False, fold=os.path.normcase):
 
 
 def files(root, pattern, fold=os.path.normcase):
+    if not re.search(r"[*?\[]", pattern) and not (root / pattern).exists() and not (root / pattern).is_symlink():
+        yield root / pattern
+        return
+
     def unreadable(error):
         raise error
 
     for folder, dirs, names in os.walk(root, followlinks=False, onerror=unreadable):
         base = pathlib.Path(folder)
-        rel = base.relative_to(root)
         links = [n for n in dirs if (base / n).is_symlink()]
-        dirs[:] = [n for n in dirs if n != ".git" and n not in links]
-        dirs[:] = [n for n in dirs if match((rel / n).as_posix(), pattern, True, fold)]
+        dirs[:] = [n for n in dirs if fold(n) != ".git" and n not in links]
+        dirs[:] = [n for n in dirs if match(path_entry(root, base / n, fold)[2], pattern, True, fold)]
         for name in [*names, *links]:
-            if name != ".git":
+            if fold(name) != fold(".git"):
                 yield base / name
 
 
 def tokens(control):
-    return [name for token in re.findall(r"[^\s\"'(),;]+", control) if (name := normalise_name(token.strip(chr(96))))]
+    return [
+        token.strip(chr(96)) for token in re.findall(r"[^\s\"'(),;]+", control) if normalise_name(token.strip(chr(96)))
+    ]
 
 
-def hits(control, allowed, root):
+def hits(control, allowed, root, fold=os.path.normcase):
     prefixes = {a: re.split(r"[*?\[]", a, maxsplit=1)[0].rstrip("/") for a in allowed}
     found = set()
-    for token in tokens(control):
+    for raw in tokens(control):
+        _, target, token = path_entry(root, raw, fold)
         choices = [
             a
             for a, p in prefixes.items()
-            if token in (a, p) or match(token, a) and ("/" in normalise_name(token) or (root / token).exists())
+            if token in (fold(a), fold(p))
+            or match(token, a, fold=fold)
+            and ("/" in normalise_name(token) or target is not None and target.exists())
         ]
         if choices:
             found.add(max(choices, key=lambda a: (a == token, len(prefixes[a]))))
@@ -282,8 +301,7 @@ def rerun(cmd, root):
         run = git(root, "rev-parse", "--verify", "--end-of-options", ref)
         return run.stdout, run.returncode, run.stderr
     if (len(words) == 3 and op in (["test", "-e"], ["test", "-f"])) or (len(words) == 4 and op == ["grep", "-c"]):
-        name = normalise_name(words[-1])
-        path = confined(root, name) if name else None
+        _, path, _ = path_entry(root, words[-1])
         if path is not None:
             if words[0] == "test":
                 return "", int(not (path.exists() if words[1] == "-e" else path.is_file())), ""
@@ -317,18 +335,20 @@ def check(p, root, premises_sha=None):
             fails.append(f"C2 allowed_files names another task directory: {a}")
     rows = fm.get("threat_table") or []
     rowtext = "\n".join((r.get("control") or "") + " " + (r.get("disposition") or "") for r in rows)
+    controls = " || ".join((r.get("control") or "") for r in rows)
+    row_paths = [path_entry(root, token, fold) for token in tokens(controls)]
     reset_of = fm.get("reset_of") or []
     for rid in reset_of + [tid] if reset_of else []:
         if not re.search(rf"(?:{re.escape(rid)}|-{rid.rsplit('-', 1)[-1]})/task\.md", rowtext):
             fails.append(f"C3 no threat_table row names {rid} task.md")
     for a in allowed:
         # a row's control names the entry only at a path boundary: scripts/foo.py.bak does not name scripts/foo.py
-        named = re.compile(re.escape(a.split("*")[0].rstrip("/")) + r"(?=$|[ /\"'(),*?\[])")
-        if rows and not any(named.search(" ".join(tokens(r.get("control") or ""))) for r in rows):
+        named = re.compile(re.escape(fold(a).split("*")[0].rstrip("/")) + r"(?=$|[ /\"'(),*?\[])")
+        if rows and not named.search(" ".join(key for _, _, key in row_paths)):
             fails.append(f"C4 allowed path has no threat_table row naming it: {a}")
     dr = fm.get("design_review") or {}
-    design = normalise_name(dr["design"]) if dr.get("design") else None
-    if dr.get("design") and (not design or not confined(root, design)):
+    _, design_target, design = path_entry(root, dr.get("design"))
+    if dr.get("design") and design_target is None:
         fails.append("C6 design path is outside the checkout")
         shown = None
     else:
@@ -348,14 +368,13 @@ def check(p, root, premises_sha=None):
         m = re.search(r"names the (a\d\d) file's hash", r.get("disposition") or "")
         if m and m.group(1) != suffix:
             fails.append(f"C5 residual binds the {m.group(1)} hash, the task is {suffix}: {r.get('control')[:60]}")
-    controls = " || ".join((r.get("control") or "") for r in rows)
     for name in C7_NAMES:
         if rows and name not in controls.lower():
             fails.append(f"C7 threat_table has no row named for: {name}")
     for r in rows:
         if (r.get("control") or "").lstrip('"').startswith(NONPATH):
             continue  # a non-path control may describe several files
-        hit = hits(r.get("control") or "", allowed, root)
+        hit = hits(r.get("control") or "", allowed, root, fold)
         if len(hit) > 1:
             fails.append(f"C7b one row names {len(hit)} allowed_files entries ({', '.join(hit)}); one row per entry")
     body = text.split("\n---\n", 1)[1] if "\n---\n" in text else ""
@@ -367,8 +386,8 @@ def check(p, root, premises_sha=None):
                 fails.append(f"C8 the task adds input {var} but no threat row controls it")
     sentences = re.findall(r'"([^"]{20,})"', body) if fm.get("kind") == "docs" else []
     for sent in sentences:  # C10
-        for scr in set(re.findall(r"scripts/[\w./-]+\.(?:sh|py)", sent)):
-            if not confined(root, scr):
+        for scr in set(re.findall(r"scripts/[^\s\"'`,;()]+\.(?:sh|py)", sent)):
+            if path_entry(root, scr)[1] is None:
                 fails.append(f"C10 rule sentence names {scr}, a path outside the checkout")
                 continue
             if main_entry(root, scr) is None:
@@ -403,42 +422,61 @@ def check(p, root, premises_sha=None):
             continue
         load = d[len(form) :]
         selector = re.fullmatch(r"([^:]+)::(?:[A-Za-z_]\w*::)?[A-Za-z_]\w*", load)
-        path = normalise_name(selector[1]) if selector else None
-        if form == "closed: " and not (path and normalise_name(path).startswith("tests/") and confined(root, path)):
+        _, target, path = path_entry(root, selector[1] if selector else None)
+        if form == "closed: " and not (path and normalise_name(path).startswith("tests/") and target is not None):
             fails.append(f"C11 closed: payload is not tests/<path>::<identifier>: {load[:60]}")
-        tid_ok = re.fullmatch(r"[A-Za-z0-9][\w.-]*", load) and (root / f".orchestration/tasks/{load}.md").is_file()
-        if form == "out-of-scope: " and not tid_ok:
+        tid_ok = re.fullmatch(r"[A-Za-z0-9][\w.-]*", load)
+        owner = path_entry(root, f".orchestration/tasks/{load}.md")[1] if tid_ok else None
+        if form == "out-of-scope: " and not (owner is not None and owner.is_file()):
             fails.append(f"C11 out-of-scope: {load[:60]} is not a task under .orchestration/tasks/")
         if form == "residual: " and len(load) < 20:
             fails.append(f"C11 residual: payload is shorter than 20 characters: {load}")
-    for a in allowed:
-        if not re.search(r"[*?\[]", a):
-            if not confined(root, a) or (root / a).is_symlink() and (root / a).is_dir():
-                fails.append(f"C12 confinement: {a}")
+    resolved_names, entries, seen, collisions = [], {}, {}, set()
+    for raw in fm.get("allowed_files") or []:
+        _, _, a = path_entry(root, raw, fold)
+        if a is None:
             continue
-        for file in files(root, a, fold):
-            name = normalise_name(file.relative_to(root).as_posix())
+        for file in files(root, raw, fold):
+            entry = path_entry(root, file, fold)
+            name = entry[2]
             if not (match(name, a, fold=fold) or file.is_symlink() and match(name, a, partial=True, fold=fold)):
                 continue
-            target = confined(root, file)
-            if target is None:
-                fails.append(f"C12 confinement: {name}")
-                continue
-            resolved = normalise_name(target.relative_to(root.resolve()).as_posix())
-            exempt = any(
-                name.startswith(e) and resolved.startswith(e) and confined(root / e, target) is not None
-                for e in ("tests/fixtures/", own_dir)
+            entries[file] = raw, entry
+            prior = seen.setdefault(name, file)
+            if prior.parts != file.parts:
+                collisions.add(name)
+                fails.append(
+                    f"C12 path collision: {prior.relative_to(root)} and {file.relative_to(root)} normalise to the same key"
+                )
+    for file, (raw, (_, target, name)) in entries.items():
+        _, scope_target, a = path_entry(root, raw, fold)
+        if target is None:
+            fails.append(f"C12 confinement: {file.relative_to(root)}")
+            continue
+        resolved = path_entry(root, target, fold)[2]
+        resolved_names.append(resolved)
+        exempt = any(
+            file.relative_to(root).as_posix().startswith(e)
+            and resolved.startswith(fold(e))
+            and confined(root / e, target) is not None
+            for e in ("tests/fixtures/", own_dir)
+        )
+        named = name not in collisions and (
+            not re.search(r"[*?\[]", raw)
+            and scope_target is not None
+            and confined(scope_target, target) is not None
+            or any(
+                key == name and other is not None and other.exists() and target.samefile(other)
+                for _, other, key in row_paths
             )
-            named = any(name in tokens(r.get("control") or "") for r in rows)
-            kind = fold(resolved)
-            applied = (
-                kind in map(fold, ("AGENTS.md", "Makefile"))
-                or kind.endswith(APPLIED)
-                or normalise_name(kind).startswith(APPLIED_DIRS)
-                or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)
-            )
-            if file.is_symlink() and file.is_dir() or file.is_file() and applied and not exempt and not named:
-                fails.append(f"C12 the glob {a} matches unsafe or unnamed {name}")
+        )
+        applied = resolved in map(fold, ("AGENTS.md", "Makefile")) or resolved.endswith(APPLIED)
+        applied = applied or any(
+            pathlib.PurePosixPath(d) in pathlib.PurePosixPath(resolved).parents for d in APPLIED_DIRS
+        )
+        applied = applied or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)
+        if file.is_symlink() and file.is_dir() or file.is_file() and applied and not exempt and not named:
+            fails.append(f"C12 the scope {a} matches unsafe or unnamed {file.relative_to(root)}")
     premises = fm.get("premises") or []
     # Only the caller's dispatched-byte digest authorizes C14; branch bytes supply no authority.
     if premises and hashlib.sha256(data).hexdigest() != premises_sha:
@@ -462,7 +500,10 @@ def check(p, root, premises_sha=None):
             fails += [f"C15 invariant {k} is not one {design} assigns to {tid}" for k in mine if k not in ids]
         bad = [k for k, v in mine.items() if (ids is None or k in ids) and canon.get(k) != v]
         fails += [f"C15 invariant {k} is not byte-equal to {design} on origin/main" for k in bad]
-    if fm.get("security") is True and any(match("scripts/orchestrator", a, partial=True, fold=fold) for a in allowed):
+    if fm.get("security") is True and (
+        any(match("scripts/orchestrator", a, partial=True, fold=fold) for a in allowed)
+        or any(fold(n).startswith(fold("scripts/orchestrator/")) for n in resolved_names)
+    ):
         if not re.search(r"5\.14[^\n]*(?:reference|参照)", body, re.IGNORECASE):
             fails.append("C16 design 5.14 must apply by reference")
         item_rows = [re.findall(r"5\.14\s+item\s+(\d+)", r.get("control") or "", re.IGNORECASE) for r in rows]

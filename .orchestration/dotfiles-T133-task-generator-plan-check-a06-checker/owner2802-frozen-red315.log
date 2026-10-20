@@ -1,0 +1,44 @@
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+source-sha256 5c09a95ad36f07ad28958ee9d9efcbb25cb8db64795ed8d655485047121a3cf3 test-sha256 7ba89c81cca29144d5702c056f45547cee8ce83d2ed7c4572f9fc8819de7ed61
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+FAIL
+test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 330, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 143, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 413, in test_c10_confines_original_unicode_script_paths
+    self.finding("C10")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 143, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.359s
+
+FAILED (failures=2)
+RESULT 2 failures 2 errors 0 skips 0

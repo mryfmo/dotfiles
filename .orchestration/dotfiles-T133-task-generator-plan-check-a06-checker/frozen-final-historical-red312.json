@@ -1,0 +1,78 @@
+[
+  {
+    "group": "historical16",
+    "tests": 16,
+    "failures": 18,
+    "errors": 0,
+    "skips": 0,
+    "source_sha256": "088edfe17d9ae3f2106b16cf0bb6f712349d87d36345a43c2bc052130781265a",
+    "selectors": [
+      "test_c12_covers_applied_skill_instructions",
+      "test_c14_rejects_failed_probe_with_matching_stdout",
+      "test_c15_uses_canonical_main_only",
+      "test_c16_requires_reference_and_all_item_rows",
+      "test_c6_receipt_uses_canonical_design_bytes",
+      "test_dispatch_env_i_invocation",
+      "test_exempt_case_alias_to_applied_file_is_finding",
+      "test_exempt_symlink_to_applied_file_is_finding",
+      "test_gh_child_preserves_parent_tokens",
+      "test_interpreter_resolution_order",
+      "test_path_grammar_covers_root_files",
+      "test_path_grammar_distinguishes_globs_from_git_pathspecs",
+      "test_path_grammar_normalises_dot_spellings",
+      "test_path_grammar_rejects_escaping_scopes",
+      "test_path_grammar_separates_directory_and_child_rows",
+      "test_reset_scope_rejects_hidden_predecessor_artifacts"
+    ]
+  },
+  {
+    "group": "security-cedc7f5",
+    "tests": 3,
+    "failures": 3,
+    "errors": 0,
+    "skips": 0,
+    "source_sha256": "b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0",
+    "selectors": [
+      "test_security_c12_resolves_original_unicode_path",
+      "test_security_c12_rejects_internal_directory_alias",
+      "test_security_c16_rejects_multi_item_rows"
+    ]
+  },
+  {
+    "group": "security-06ffefb",
+    "tests": 4,
+    "failures": 4,
+    "errors": 0,
+    "skips": 0,
+    "source_sha256": "f350d3c622ccd9b0e909b3d50b1ef63471394def291861dec7446245f3014bcb",
+    "selectors": [
+      "test_security_c12_prunes_with_normalised_directory_names",
+      "test_security_c16_uses_resolved_literal_alias",
+      "test_canonical_path_pipeline_preserves_identity",
+      "test_canonical_path_pipeline_rejects_normalised_collisions"
+    ]
+  },
+  {
+    "group": "review-5c09a95a",
+    "tests": 2,
+    "failures": 2,
+    "errors": 0,
+    "skips": 0,
+    "source_sha256": "5c09a95ad36f07ad28958ee9d9efcbb25cb8db64795ed8d655485047121a3cf3",
+    "selectors": [
+      "test_path_grammar_rejects_escaping_scopes",
+      "test_c10_confines_original_unicode_script_paths"
+    ]
+  },
+  {
+    "group": "review-1779440f",
+    "tests": 1,
+    "failures": 1,
+    "errors": 0,
+    "skips": 0,
+    "source_sha256": "1779440ff4274ccdcf19dc68193a73ca78dea904528bb2647419ece1e8d201b7",
+    "selectors": [
+      "test_c12_classifies_backslash_filenames_from_resolved_ancestry"
+    ]
+  }
+]

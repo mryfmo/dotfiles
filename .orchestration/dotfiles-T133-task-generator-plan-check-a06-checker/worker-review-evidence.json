@@ -1,0 +1,68 @@
+[
+  {
+    "id": "a06-final-pipeline:1",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: directory intent is preserved in the comparison key after original-path resolution. Independent real-CLI escaping-scope and directory/child valid-control regressions passed on Python 3.15.0 and 3.12.15.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 86,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-pipeline:2",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: C10 preserves original non-delimited Unicode script spelling through extraction and confinement. Independent real-CLI NFD/NFC escaping-path and confined controls passed on Python 3.15.0 and 3.12.15.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 389,
+    "resolved": true
+  },
+  {
+    "id": "a06-lint-adjustment:1",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: applied-directory classification uses PurePosixPath ancestry of the already-resolved comparison name, preserving real backslash filenames without changing operand grammar or resolving again. The new real-CLI regression rejects the unnamed extensionless scripts/evil\\name and accepts the ordinary named extensionless control after removal. Both runtimes passed; backslash operand rejection remains tested.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 475,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-verification:approval",
+    "body": "Approved the source/test changes bound in independent-final-verification.md after connected-code inspection and independent 13-selector real-CLI runs on Python 3.15.0 and 3.12.15, both exit 0, with before/after hashes unchanged. No remaining substantive finding. Each run skips only the explicitly observed native Unicode two-file collision case; deterministic distinct-file and same-target collisions, overlap deduplication, valid controls and operand-grammar checks run. This is local process evidence, not reviewer authentication or a replacement for final-head CI, task audit, owner acceptance and integration gates.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "a06-final-pipeline:1",
+    "body": "Resolved on unchanged production SHA-256 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: directory intent remains in comparison keys after original-path resolution. The independent 13-selector proof in independent-final-verification.md remains valid for these unchanged source bytes.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 86,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-pipeline:2",
+    "body": "Resolved on unchanged production SHA-256 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: original Unicode C10 operands reach confinement. The independent NFC/NFD negative and valid controls are preserved in the earlier 13-selector proof.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 389,
+    "resolved": true
+  },
+  {
+    "id": "a06-lint-adjustment:1",
+    "body": "Resolved on unchanged production SHA-256 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: applied-file classification uses resolved-name PurePosixPath ancestry without relaxing operand grammar. The independent backslash-filename negative and ordinary named-file valid controls are preserved in the earlier 13-selector proof.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 475,
+    "resolved": true
+  },
+  {
+    "id": "a06-test-strengthening:approval",
+    "body": "Approved final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e and test SHA-256 55c31abd30f195965013a26b21ded96b6fefd758a6675d10d7836700a6358080. Independently proved that the only test changes are the modeled target suffix and three added identity-coverage lines by reconstructing the prior exact SHA-256. The strengthened real-CLI method passed on Python 3.15.0 and 3.12.15 with exit 0, running its new no-collision identity check and existing modeled controls before the disclosed native collision subtest skip. Earlier complete-code review and 13-selector proof are preserved. No new finding; final-head CI, mutation validation, owner acceptance and integration gates remain separate.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "a06-finding-assertion:approval",
+    "body": "Approved unchanged source SHA-256 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e with final test SHA-256 09db2fd0ed46a0ed77da3c13eead96a9c864ff5f4ab5ba3c3068d42cee7e17cc. The sole assertion change requires actual C6/C11/C14 finding-line prefixes instead of accepting an ordinary C6 warning. Reversing that one line in memory reconstructs the exact prior test hash 55c31abd30f195965013a26b21ded96b6fefd758a6675d10d7836700a6358080. Independent real-CLI identity-selector runs passed on Python 3.15.0 and 3.12.15, one test each, exit 0, no failures/errors/skips, with before/after bindings unchanged. Prior complete-code review, all three resolved findings, the 13-selector proof and collision-fixture strengthening evidence remain preserved. No new finding. This process approval does not certify a mutation total or replace final-head CI, owner acceptance and integration gates.",
+    "scope": "review",
+    "resolved": true
+  }
+]

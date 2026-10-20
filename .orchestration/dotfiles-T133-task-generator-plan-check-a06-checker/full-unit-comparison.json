@@ -1,0 +1,2857 @@
+{
+  "base": {
+    "actual_make_exit": 2,
+    "tests": 1267,
+    "seconds": 842.479,
+    "failures": 150,
+    "errors": 128,
+    "skipped": 3,
+    "multiplicities": [
+      {
+        "kind": "ERROR",
+        "selector": "test_absent_path_without_old_ref_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_absent_path_without_old_ref_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits (test_herdr_agents.HerdrAgentsTest.test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_cap_count_and_registration_are_serialized_under_one_lock (test_herdr_agents.HerdrAgentsTest.test_add_worker_cap_count_and_registration_are_serialized_under_one_lock)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path (test_herdr_agents.HerdrAgentsTest.test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_derives_the_default_herdr_socket_for_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_derives_the_default_herdr_socket_for_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_emits_no_override_for_an_unparseable_codex_config (test_herdr_agents.HerdrAgentsTest.test_add_worker_emits_no_override_for_an_unparseable_codex_config)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_exits_zero_when_a_timed_out_spawn_still_links (test_herdr_agents.HerdrAgentsTest.test_add_worker_exits_zero_when_a_timed_out_spawn_still_links)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array (test_herdr_agents.HerdrAgentsTest.test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_failure_prints_the_invocation_and_the_query (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_failure_prints_the_invocation_and_the_query)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_from_another_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_from_another_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_pong_older_than_this_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_pong_older_than_this_ping)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_refuses_a_placement_conflict (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_a_placement_conflict)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_refuses_several_orchestrator_identities (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_several_orchestrator_identities)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_resolves_an_id_keyed_placement_record (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_resolves_an_id_keyed_placement_record)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_survives_a_non_numeric_pong_wait (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_lock_helpers_ignore_repository_python_modules (test_herdr_agents.HerdrAgentsTest.test_add_worker_lock_helpers_ignore_repository_python_modules)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_names_the_seat_from_a_codex_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_add_worker_names_the_seat_from_a_codex_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_an_undefined_profile_before_any_change (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_an_undefined_profile_before_any_change)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_rejects_a_worktree_outside_claude_worktrees (test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_linkage_ok_after_a_ready_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_ok_after_a_ready_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_linkage_unreached_after_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_unreached_after_a_failed_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_shallow_metadata_as_not_granted (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reuses_a_seat_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seat_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reuses_a_seated_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_uses_git_common_dir_for_the_seat_lock (test_herdr_agents.HerdrAgentsTest.test_add_worker_uses_git_common_dir_for_the_seat_lock)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_without_a_worktree_refuses_an_ambiguous_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_add_worker_without_a_worktree_refuses_an_ambiguous_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_writes_no_git_configuration (test_herdr_agents.HerdrAgentsTest.test_add_worker_writes_no_git_configuration)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_added_worker_boot_keeps_the_inherited_github_environment (test_herdr_agents.HerdrAgentsTest.test_added_worker_boot_keeps_the_inherited_github_environment)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_from_the_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_worktree_exits_quietly)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_in_a_linked_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_in_a_linked_worker_worktree_exits_quietly)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_names_stale_seats (test_herdr_agents.HerdrAgentsTest.test_attach_names_stale_seats)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_without_herdr_environment_names_the_seated_worker (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_names_the_seated_worker)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff (test_herdr_agents.HerdrAgentsTest.test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_names_a_txt_artifact_when_no_md_one_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_a_txt_artifact_when_no_md_one_exists)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_names_only_the_task_file_when_no_artifact_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_only_the_task_file_when_no_artifact_exists)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_normalises_home_paths_with_the_repository_masker (test_herdr_agents.HerdrAgentsTest.test_audit_task_normalises_home_paths_with_the_repository_masker)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work (test_herdr_agents.HerdrAgentsTest.test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_bootstrap_adds_claude_worker_merge_denials (test_herdr_agents.HerdrAgentsTest.test_bootstrap_adds_claude_worker_merge_denials)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_chmod_only_change_keeps_the_source_unchanged_note (test_ua_symbol_coverage.UaSymbolCoverageTest.test_chmod_only_change_keeps_the_source_unchanged_note)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_claude_sandbox_renders_per_os_from_the_manifest (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_claude_sandbox_validator_refuses_each_forbidden_form (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_codex_orchestrator_kind_leaves_a_worker_worktree_attach_quiet (test_herdr_agents.HerdrAgentsTest.test_codex_orchestrator_kind_leaves_a_worker_worktree_attach_quiet)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_codex_orchestrator_kind_refuses_attach_in_another_linked_worktree (test_herdr_agents.HerdrAgentsTest.test_codex_orchestrator_kind_refuses_attach_in_another_linked_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_comment_lines_are_not_definitions (test_ua_symbol_coverage.UaSymbolCoverageTest.test_comment_lines_are_not_definitions)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_def_column_reads_the_new_graph_revision (test_ua_symbol_coverage.UaSymbolCoverageTest.test_def_column_reads_the_new_graph_revision)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_deleted_path_with_old_ref_is_explained (test_ua_symbol_coverage.UaSymbolCoverageTest.test_deleted_path_with_old_ref_is_explained)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_directive_looks_up_a_codex_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_directive_looks_up_a_codex_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_directive_prints_the_regime_line_without_herdr (test_herdr_agents.HerdrAgentsTest.test_directive_prints_the_regime_line_without_herdr)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_flags_unexplained_symbol_loss_only (test_ua_symbol_coverage.UaSymbolCoverageTest.test_flags_unexplained_symbol_loss_only)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_grammar_file_missing_from_graph_fails_in_covered_directories (test_ua_symbol_coverage.UaSymbolCoverageTest.test_grammar_file_missing_from_graph_fails_in_covered_directories)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_low_similarity_move_with_no_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_low_similarity_move_with_no_symbols_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_managed_claude_sandbox_excludes_agmsg_dispatch (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_mise_apply_replaces_live_symlinks_with_independent_copies (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_apply_replaces_live_symlinks_with_independent_copies)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_mise_tools_track_latest_behind_the_cooldown (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_tools_track_latest_behind_the_cooldown)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_partial_deletion_in_changed_source_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partial_deletion_in_changed_source_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_partially_covered_new_file_is_not_flagged (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partially_covered_new_file_is_not_flagged)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='dot and parent segments')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded event URL')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded tab URL')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event symlink')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event trailing slash')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='home')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='quoted URL query')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='symlinked cwd')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab symlink')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///other/.project-map/index.html')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///repo/.project-map/index.html')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///unsaved-form')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_python_defs_inside_strings_do_not_count (test_ua_symbol_coverage.UaSymbolCoverageTest.test_python_defs_inside_strings_do_not_count)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_accepts_a_clean_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_accepts_a_clean_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_accepts_an_empty_manifest_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_accepts_an_empty_manifest_worker_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_counts_names_across_runtime_types_at_the_main_seat (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_counts_names_across_runtime_types_at_the_main_seat)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_finds_worker_workspaces_from_a_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_finds_worker_workspaces_from_a_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_flags_a_seated_main_checkout_off_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_a_seated_main_checkout_off_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_flags_empty_seats_only (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_empty_seats_only)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_leaves_an_unseated_detached_checkout_alone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_leaves_an_unseated_detached_checkout_alone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_canonical_clone_that_differs_from_origin_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_canonical_clone_that_differs_from_origin_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_stash_in_the_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_stash_in_the_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_scans_every_worktree_for_untracked_evidence (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_scans_every_worktree_for_untracked_evidence)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_skips_a_canonical_clone_that_is_the_working_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_skips_a_canonical_clone_that_is_the_working_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_skips_the_canonical_clone_without_chezmoi (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_skips_the_canonical_clone_without_chezmoi)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record (test_herdr_agents.HerdrAgentsTest.test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_closes_only_its_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_remove_worker_closes_only_its_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes (test_herdr_agents.HerdrAgentsTest.test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_force_retries_a_failed_graceful_despawn (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_retries_a_failed_graceful_despawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_forces_despawn_when_graceful_reports_needs_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_when_graceful_reports_needs_force)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent (test_herdr_agents.HerdrAgentsTest.test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_refuses_a_dirty_worktree_without_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_refuses_a_dirty_worktree_without_force)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_keeps_the_record_when_cleanup_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_keeps_the_record_when_cleanup_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_retires_a_seat_whose_pane_is_gone (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_retires_a_seat_whose_pane_is_gone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stops_when_a_graceful_despawn_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_a_graceful_despawn_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stops_when_the_forced_retry_also_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_the_forced_retry_also_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_rename_dropping_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_dropping_symbols_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_rename_preserving_symbols_is_ok (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_preserving_symbols_is_ok)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_ruby_visibility_prefixed_defs_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_ruby_visibility_prefixed_defs_are_counted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_shell_names_with_punctuation_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_shell_names_with_punctuation_are_counted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unchanged_source_loss_is_noted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_loss_is_noted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unreadable_candidate_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unreadable_candidate_fails_closed)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unresolvable_ref_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unresolvable_ref_fails_closed)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_uv_run_script_shebang_is_python (test_ua_symbol_coverage.UaSymbolCoverageTest.test_uv_run_script_shebang_is_python)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_worker_seat_is_skipped_outside_a_git_main_checkout (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_outside_a_git_main_checkout)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_a_malformed_replans_entry_is_refused_at_any_threshold (test_require_crit_review.ReviewGuardTest.test_a_malformed_replans_entry_is_refused_at_any_threshold)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_accepts_a_dispatch_list (test_require_crit_review.ReviewGuardTest.test_acceptance_record_accepts_a_dispatch_list)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_head_must_be_head (test_require_crit_review.ReviewGuardTest.test_acceptance_record_head_must_be_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_acceptance_record_is_not_counted_as_a_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_ledger_must_cover_a_badged_review_body (test_require_crit_review.ReviewGuardTest.test_acceptance_record_ledger_must_cover_a_badged_review_body)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_ledger_must_cover_swept_findings (test_require_crit_review.ReviewGuardTest.test_acceptance_record_ledger_must_cover_swept_findings)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_pr_must_be_the_swept_pr (test_require_crit_review.ReviewGuardTest.test_acceptance_record_pr_must_be_the_swept_pr)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_prose_is_not_read (test_require_crit_review.ReviewGuardTest.test_acceptance_record_prose_is_not_read)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_a_duplicate_key (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_a_duplicate_key)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_a_non_finite_number (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_a_non_finite_number)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_an_unknown_key (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_an_unknown_key)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_finding_reason_may_quote_the_grammar (test_require_crit_review.ReviewGuardTest.test_audit_finding_reason_may_quote_the_grammar)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [bad name]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [other task]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [outside validation]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [wrong sha]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_a_correct_audit_of_head (test_require_crit_review.ReviewGuardTest.test_base_accepts_a_correct_audit_of_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) (base='HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) (base='main')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='not JSON')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{\"baseRefOid\": \"-HEAD\"}')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{}')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_ref', value='feature')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value='HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value=None)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='HEAD')",
+        "count": 2
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='feature')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='absorbed')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='unrelated')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/alias.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/other.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/test.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/validation/test.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [S6]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a closing line that is not exactly ---]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a duplicate key]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a list, not an object]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a non-finite number]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [audit_findings entry]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [format]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [head]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [ledger class]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [ledger id]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [no block]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [not JSON]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [pr of another PR]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [pr]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [searches records]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [searches twice for one class]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [task]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_audit_evidence_for_a_reviewed_change (test_require_crit_review.ReviewGuardTest.test_base_requires_audit_evidence_for_a_reviewed_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_pr_feedback_evidence (test_require_crit_review.ReviewGuardTest.test_base_requires_pr_feedback_evidence)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_reviews_committed_branch_changes (test_require_crit_review.ReviewGuardTest.test_base_reviews_committed_branch_changes)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) [verdict is blocked]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) [verdict is missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_broad_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_broad_orchestration_only_pr_needs_no_audit)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_character_device_placeholder_is_skipped (test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_clean_orchestrator_passes (test_agent_stop_gate.AgentStopGateTest.test_clean_orchestrator_passes)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_companion_must_be_this_audits_own_last_message (test_require_crit_review.ReviewGuardTest.test_companion_must_be_this_audits_own_last_message)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: \"code\"\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: code\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: code\\nkind: review\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: review\\n: broken\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: review\\nkind: code\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_resolves_its_root_without_inherited_git_variables (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_resolves_its_root_without_inherited_git_variables)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispositions_of_2026_10_12_without_evidence_are_refused (test_require_crit_review.ReviewGuardTest.test_dispositions_of_2026_10_12_without_evidence_are_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispositions_with_an_evidence_command_are_accepted (test_require_crit_review.ReviewGuardTest.test_dispositions_with_an_evidence_command_are_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_feedback_accepts_absolute_path_through_a_repository_parent_alias (test_require_crit_review.ReviewGuardTest.test_feedback_accepts_absolute_path_through_a_repository_parent_alias)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent (test_require_crit_review.ReviewGuardTest.test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_github_lookup_ignores_environment_repository_override (test_require_crit_review.ReviewGuardTest.test_github_lookup_ignores_environment_repository_override)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_github_lookup_rejects_evidence_from_another_repository (test_require_crit_review.ReviewGuardTest.test_github_lookup_rejects_evidence_from_another_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [a fix]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [accepted]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [empty evidence]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [integer n]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [no audit_findings]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [no evidence]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [one missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [out of range]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [same finding twice]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [short reason]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [zero n]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_without_findings_fails (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_without_findings_fails)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_missing_base_collector_falls_back_only_after_binding (test_require_crit_review.ReviewGuardTest.test_missing_base_collector_falls_back_only_after_binding)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_older_base_must_not_be_on_the_head_first_parent_chain (test_require_crit_review.ReviewGuardTest.test_older_base_must_not_be_on_the_head_first_parent_chain)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_orchestration_only_pr_needs_no_audit)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_accepts_complete_evidence_without_a_bot_review (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_evidence_without_a_bot_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_accepts_complete_root_cause_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_root_cause_dispositions)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='different body')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='masked with --mask-secrets')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='placeholder dropped from a body without a match')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='placeholder on another line, masked')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='quoted assignment, masked')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='unmasked assignment with another value')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='verbatim body')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_evidence_file_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_pr_feedback_evidence_file_is_not_counted_as_a_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fails_when_the_collector_cannot_run (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fails_when_the_collector_cannot_run)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) (case='not in HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) (case='predates the base')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_matches_a_masked_path_but_not_an_edited_one (test_require_crit_review.ReviewGuardTest.test_pr_feedback_matches_a_masked_path_but_not_an_edited_one) (case='path masked with --mask-secrets')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_be_collected_for_the_current_head (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_be_collected_for_the_current_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) (case='hand-written empty list')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) (case='one item missing')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_evidence_outside_the_repository (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_evidence_outside_the_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='a second evidence delimiter as the reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='a second evidence delimiter padding a failure reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='empty evidence command')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='empty reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='missing disposition')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='no evidence clause')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='not an items document')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short cancelled reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short failure reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short in-progress reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='stopgap wording')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='unknown commit')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_requires_the_github_head_to_match (test_require_crit_review.ReviewGuardTest.test_pr_feedback_requires_the_github_head_to_match)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_uses_the_base_collector_not_the_prs_own (test_require_crit_review.ReviewGuardTest.test_pr_feedback_uses_the_base_collector_not_the_prs_own)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_recollection_must_match_the_authenticated_repository (test_require_crit_review.ReviewGuardTest.test_recollection_must_match_the_authenticated_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_retired_audit_dispositions_is_not_read (test_require_crit_review.ReviewGuardTest.test_retired_audit_dispositions_is_not_read)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='design')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='implementation')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='specification')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='verification')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_the_four_keys_is_accepted (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_the_four_keys_is_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_without_a_replans_object_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_without_a_replans_object_is_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_replan_is_read_from_the_record_block_json (test_require_crit_review.ReviewGuardTest.test_s1_replan_is_read_from_the_record_block_json)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_class_at_three_with_the_matching_searches_entry_is_accepted (test_require_crit_review.ReviewGuardTest.test_s6_class_at_three_with_the_matching_searches_entry_is_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_class_at_three_without_a_searches_entry_is_refused (test_require_crit_review.ReviewGuardTest.test_s6_class_at_three_without_a_searches_entry_is_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7 (test_require_crit_review.ReviewGuardTest.test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a pasted command for its records]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a record missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a record too many]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [another class's entry]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [none where nothing matches]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [the matching set]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_sandbox_placeholders_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_sandbox_placeholders_on_a_separate_filesystem_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_on_a_separate_filesystem_are_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_swept_ids_come_from_authenticated_authors (test_require_crit_review.ReviewGuardTest.test_swept_ids_come_from_authenticated_authors)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_the_gate_has_no_github_identity_check (test_require_crit_review.ReviewGuardTest.test_the_gate_has_no_github_identity_check)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_verdict_comes_only_from_the_last_message_file (test_require_crit_review.ReviewGuardTest.test_verdict_comes_only_from_the_last_message_file)",
+        "count": 1
+      }
+    ]
+  },
+  "candidate": {
+    "actual_make_exit": 2,
+    "tests": 1295,
+    "seconds": 871.916,
+    "failures": 156,
+    "errors": 128,
+    "skipped": 4,
+    "multiplicities": [
+      {
+        "kind": "ERROR",
+        "selector": "test_absent_path_without_old_ref_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_absent_path_without_old_ref_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits (test_herdr_agents.HerdrAgentsTest.test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_cap_count_and_registration_are_serialized_under_one_lock (test_herdr_agents.HerdrAgentsTest.test_add_worker_cap_count_and_registration_are_serialized_under_one_lock)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path (test_herdr_agents.HerdrAgentsTest.test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_derives_the_default_herdr_socket_for_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_derives_the_default_herdr_socket_for_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_emits_no_override_for_an_unparseable_codex_config (test_herdr_agents.HerdrAgentsTest.test_add_worker_emits_no_override_for_an_unparseable_codex_config)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_exits_zero_when_a_timed_out_spawn_still_links (test_herdr_agents.HerdrAgentsTest.test_add_worker_exits_zero_when_a_timed_out_spawn_still_links)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array (test_herdr_agents.HerdrAgentsTest.test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_failure_prints_the_invocation_and_the_query (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_failure_prints_the_invocation_and_the_query)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_placement_record_from_another_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_from_another_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_ignores_a_pong_older_than_this_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_pong_older_than_this_ping)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_refuses_a_placement_conflict (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_a_placement_conflict)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_refuses_several_orchestrator_identities (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_several_orchestrator_identities)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_resolves_an_id_keyed_placement_record (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_resolves_an_id_keyed_placement_record)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_survives_a_non_numeric_pong_wait (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_lock_helpers_ignore_repository_python_modules (test_herdr_agents.HerdrAgentsTest.test_add_worker_lock_helpers_ignore_repository_python_modules)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_names_the_seat_from_a_codex_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_add_worker_names_the_seat_from_a_codex_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_a_seat_beyond_the_manifest_worker_cap)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_an_undefined_profile_before_any_change (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_an_undefined_profile_before_any_change)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_rejects_a_worktree_outside_claude_worktrees (test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_linkage_ok_after_a_ready_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_ok_after_a_ready_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_linkage_unreached_after_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_unreached_after_a_failed_spawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reports_shallow_metadata_as_not_granted (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reuses_a_seat_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seat_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_reuses_a_seated_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_uses_git_common_dir_for_the_seat_lock (test_herdr_agents.HerdrAgentsTest.test_add_worker_uses_git_common_dir_for_the_seat_lock)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_without_a_worktree_refuses_an_ambiguous_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_add_worker_without_a_worktree_refuses_an_ambiguous_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_add_worker_writes_no_git_configuration (test_herdr_agents.HerdrAgentsTest.test_add_worker_writes_no_git_configuration)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_added_worker_boot_keeps_the_inherited_github_environment (test_herdr_agents.HerdrAgentsTest.test_added_worker_boot_keeps_the_inherited_github_environment)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_from_the_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_worktree_exits_quietly)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_in_a_linked_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_in_a_linked_worker_worktree_exits_quietly)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_names_stale_seats (test_herdr_agents.HerdrAgentsTest.test_attach_names_stale_seats)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_without_herdr_environment_names_the_seated_worker (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_names_the_seated_worker)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff (test_herdr_agents.HerdrAgentsTest.test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_names_a_txt_artifact_when_no_md_one_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_a_txt_artifact_when_no_md_one_exists)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_names_only_the_task_file_when_no_artifact_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_only_the_task_file_when_no_artifact_exists)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_normalises_home_paths_with_the_repository_masker (test_herdr_agents.HerdrAgentsTest.test_audit_task_normalises_home_paths_with_the_repository_masker)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work (test_herdr_agents.HerdrAgentsTest.test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_bootstrap_adds_claude_worker_merge_denials (test_herdr_agents.HerdrAgentsTest.test_bootstrap_adds_claude_worker_merge_denials)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_chmod_only_change_keeps_the_source_unchanged_note (test_ua_symbol_coverage.UaSymbolCoverageTest.test_chmod_only_change_keeps_the_source_unchanged_note)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_claude_sandbox_renders_per_os_from_the_manifest (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_per_os_from_the_manifest)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_claude_sandbox_validator_refuses_each_forbidden_form (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_validator_refuses_each_forbidden_form)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_codex_orchestrator_kind_leaves_a_worker_worktree_attach_quiet (test_herdr_agents.HerdrAgentsTest.test_codex_orchestrator_kind_leaves_a_worker_worktree_attach_quiet)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_codex_orchestrator_kind_refuses_attach_in_another_linked_worktree (test_herdr_agents.HerdrAgentsTest.test_codex_orchestrator_kind_refuses_attach_in_another_linked_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_comment_lines_are_not_definitions (test_ua_symbol_coverage.UaSymbolCoverageTest.test_comment_lines_are_not_definitions)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_def_column_reads_the_new_graph_revision (test_ua_symbol_coverage.UaSymbolCoverageTest.test_def_column_reads_the_new_graph_revision)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_deleted_path_with_old_ref_is_explained (test_ua_symbol_coverage.UaSymbolCoverageTest.test_deleted_path_with_old_ref_is_explained)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_directive_looks_up_a_codex_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_directive_looks_up_a_codex_orchestrator_identity)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_directive_prints_the_regime_line_without_herdr (test_herdr_agents.HerdrAgentsTest.test_directive_prints_the_regime_line_without_herdr)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_flags_unexplained_symbol_loss_only (test_ua_symbol_coverage.UaSymbolCoverageTest.test_flags_unexplained_symbol_loss_only)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_grammar_file_missing_from_graph_fails_in_covered_directories (test_ua_symbol_coverage.UaSymbolCoverageTest.test_grammar_file_missing_from_graph_fails_in_covered_directories)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation (test_generate_agent_configs.GenerateAgentConfigsTest.test_linux_sandbox_excludes_the_top_level_herdr_agents_invocation)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_low_similarity_move_with_no_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_low_similarity_move_with_no_symbols_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_managed_claude_sandbox_excludes_agmsg_dispatch (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_mise_apply_replaces_live_symlinks_with_independent_copies (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_apply_replaces_live_symlinks_with_independent_copies)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_mise_tools_track_latest_behind_the_cooldown (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_tools_track_latest_behind_the_cooldown)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_partial_deletion_in_changed_source_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partial_deletion_in_changed_source_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_partially_covered_new_file_is_not_flagged (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partially_covered_new_file_is_not_flagged)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='dot and parent segments')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded event URL')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='encoded tab URL')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event symlink')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='event trailing slash')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='home')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='quoted URL query')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='symlinked cwd')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab symlink')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_compares_canonical_paths_for_every_path_form (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_compares_canonical_paths_for_every_path_form) (form='tab trailing slash')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///other/.project-map/index.html')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///repo/.project-map/index.html')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_project_map_reload_hook_guards_against_a_tab_navigating_away (test_generate_agent_configs.GenerateAgentConfigsTest.test_project_map_reload_hook_guards_against_a_tab_navigating_away) (url='file:///unsaved-form')",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_python_defs_inside_strings_do_not_count (test_ua_symbol_coverage.UaSymbolCoverageTest.test_python_defs_inside_strings_do_not_count)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_accepts_a_clean_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_accepts_a_clean_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_accepts_an_empty_manifest_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_accepts_an_empty_manifest_worker_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_counts_names_across_runtime_types_at_the_main_seat (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_counts_names_across_runtime_types_at_the_main_seat)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_finds_worker_workspaces_from_a_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_finds_worker_workspaces_from_a_worktree)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_flags_a_seated_main_checkout_off_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_a_seated_main_checkout_off_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_flags_empty_seats_only (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_empty_seats_only)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_leaves_an_unseated_detached_checkout_alone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_leaves_an_unseated_detached_checkout_alone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_canonical_clone_that_differs_from_origin_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_canonical_clone_that_differs_from_origin_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_staged_only_change_in_the_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_stale_canonical_head_whose_dirty_bytes_match_origin_main)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_a_stash_in_the_canonical_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_a_stash_in_the_canonical_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_scans_every_worktree_for_untracked_evidence (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_scans_every_worktree_for_untracked_evidence)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_skips_a_canonical_clone_that_is_the_working_clone (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_skips_a_canonical_clone_that_is_the_working_clone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_regime_boundary_check_skips_the_canonical_clone_without_chezmoi (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_skips_the_canonical_clone_without_chezmoi)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record (test_herdr_agents.HerdrAgentsTest.test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_closes_only_its_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_remove_worker_closes_only_its_tab_in_the_pair_workspace)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes (test_herdr_agents.HerdrAgentsTest.test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_force_retries_a_failed_graceful_despawn (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_retries_a_failed_graceful_despawn)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_forces_despawn_when_graceful_reports_needs_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_when_graceful_reports_needs_force)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent (test_herdr_agents.HerdrAgentsTest.test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_refuses_a_dirty_worktree_without_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_refuses_a_dirty_worktree_without_force)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_keeps_the_record_when_cleanup_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_keeps_the_record_when_cleanup_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stale_retires_a_seat_whose_pane_is_gone (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stale_retires_a_seat_whose_pane_is_gone)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stops_when_a_graceful_despawn_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_a_graceful_despawn_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_remove_worker_stops_when_the_forced_retry_also_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_the_forced_retry_also_fails)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_rename_dropping_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_dropping_symbols_is_regression)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_rename_preserving_symbols_is_ok (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_preserving_symbols_is_ok)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_ruby_visibility_prefixed_defs_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_ruby_visibility_prefixed_defs_are_counted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_shell_names_with_punctuation_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_shell_names_with_punctuation_are_counted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unchanged_source_loss_is_noted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_loss_is_noted)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unreadable_candidate_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unreadable_candidate_fails_closed)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_unresolvable_ref_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unresolvable_ref_fails_closed)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_uv_run_script_shebang_is_python (test_ua_symbol_coverage.UaSymbolCoverageTest.test_uv_run_script_shebang_is_python)",
+        "count": 1
+      },
+      {
+        "kind": "ERROR",
+        "selector": "test_worker_seat_is_skipped_outside_a_git_main_checkout (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_outside_a_git_main_checkout)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_a_malformed_replans_entry_is_refused_at_any_threshold (test_require_crit_review.ReviewGuardTest.test_a_malformed_replans_entry_is_refused_at_any_threshold)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_accepts_a_dispatch_list (test_require_crit_review.ReviewGuardTest.test_acceptance_record_accepts_a_dispatch_list)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_head_must_be_head (test_require_crit_review.ReviewGuardTest.test_acceptance_record_head_must_be_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_acceptance_record_is_not_counted_as_a_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_ledger_must_cover_a_badged_review_body (test_require_crit_review.ReviewGuardTest.test_acceptance_record_ledger_must_cover_a_badged_review_body)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_ledger_must_cover_swept_findings (test_require_crit_review.ReviewGuardTest.test_acceptance_record_ledger_must_cover_swept_findings)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_pr_must_be_the_swept_pr (test_require_crit_review.ReviewGuardTest.test_acceptance_record_pr_must_be_the_swept_pr)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_prose_is_not_read (test_require_crit_review.ReviewGuardTest.test_acceptance_record_prose_is_not_read)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_a_duplicate_key (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_a_duplicate_key)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_a_non_finite_number (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_a_non_finite_number)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_acceptance_record_refuses_an_unknown_key (test_require_crit_review.ReviewGuardTest.test_acceptance_record_refuses_an_unknown_key)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_finding_reason_may_quote_the_grammar (test_require_crit_review.ReviewGuardTest.test_audit_finding_reason_may_quote_the_grammar)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [bad name]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [other task]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [outside validation]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) [wrong sha]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_a_correct_audit_of_head (test_require_crit_review.ReviewGuardTest.test_base_accepts_a_correct_audit_of_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) (base='HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) (base='main')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='not JSON')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{\"baseRefOid\": \"-HEAD\"}')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) (metadata='{}')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_ref', value='feature')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value='HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) (field='base_sha', value=None)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='HEAD')",
+        "count": 2
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) (base='feature')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='absorbed')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) (base='unrelated')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/alias.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/other.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/acceptance/test.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) (value='.orchestration/validation/test.md')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [S6]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a closing line that is not exactly ---]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a duplicate key]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a list, not an object]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [a non-finite number]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [audit_findings entry]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [format]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [head]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [ledger class]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [ledger id]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [no block]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [not JSON]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [pr of another PR]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [pr]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [searches records]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [searches twice for one class]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_an_acceptance_record_under_acceptance (test_require_crit_review.ReviewGuardTest.test_base_requires_an_acceptance_record_under_acceptance) [task]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_audit_evidence_for_a_reviewed_change (test_require_crit_review.ReviewGuardTest.test_base_requires_audit_evidence_for_a_reviewed_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_requires_pr_feedback_evidence (test_require_crit_review.ReviewGuardTest.test_base_requires_pr_feedback_evidence)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_base_reviews_committed_branch_changes (test_require_crit_review.ReviewGuardTest.test_base_reviews_committed_branch_changes)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) [verdict is blocked]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) [verdict is missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_broad_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_broad_orchestration_only_pr_needs_no_audit)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_character_device_placeholder_is_skipped (test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_clean_orchestrator_passes (test_agent_stop_gate.AgentStopGateTest.test_clean_orchestrator_passes)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_companion_must_be_this_audits_own_last_message (test_require_crit_review.ReviewGuardTest.test_companion_must_be_this_audits_own_last_message)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: \"code\"\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: code\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: code\\nkind: review\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: review\\n: broken\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_refuses_a_task_file_failing_the_checker (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_refuses_a_task_file_failing_the_checker) (kind='kind: review\\nkind: code\\n')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_resolves_its_root_without_inherited_git_variables (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_resolves_its_root_without_inherited_git_variables)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state (test_orchestrator_tools.OrchestratorToolsTest.test_dispatch_runs_uv_on_a_pinned_interpreter_whatever_the_caller_state)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispositions_of_2026_10_12_without_evidence_are_refused (test_require_crit_review.ReviewGuardTest.test_dispositions_of_2026_10_12_without_evidence_are_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_dispositions_with_an_evidence_command_are_accepted (test_require_crit_review.ReviewGuardTest.test_dispositions_with_an_evidence_command_are_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_feedback_accepts_absolute_path_through_a_repository_parent_alias (test_require_crit_review.ReviewGuardTest.test_feedback_accepts_absolute_path_through_a_repository_parent_alias)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent (test_require_crit_review.ReviewGuardTest.test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_github_lookup_ignores_environment_repository_override (test_require_crit_review.ReviewGuardTest.test_github_lookup_ignores_environment_repository_override)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_github_lookup_rejects_evidence_from_another_repository (test_require_crit_review.ReviewGuardTest.test_github_lookup_rejects_evidence_from_another_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [a fix]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [accepted]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [empty evidence]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [integer n]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [no audit_findings]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [no evidence]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [one missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [out of range]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [same finding twice]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [short reason]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_needs_audit_findings (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_audit_findings) [zero n]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_incorrect_audit_without_findings_fails (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_without_findings_fails)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_missing_base_collector_falls_back_only_after_binding (test_require_crit_review.ReviewGuardTest.test_missing_base_collector_falls_back_only_after_binding)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_older_base_must_not_be_on_the_head_first_parent_chain (test_require_crit_review.ReviewGuardTest.test_older_base_must_not_be_on_the_head_first_parent_chain)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_orchestration_only_pr_needs_no_audit)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_accepts_complete_evidence_without_a_bot_review (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_evidence_without_a_bot_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_accepts_complete_root_cause_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_root_cause_dispositions)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='different body')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='masked with --mask-secrets')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='placeholder dropped from a body without a match')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='placeholder on another line, masked')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='quoted assignment, masked')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='unmasked assignment with another value')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) (case='verbatim body')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_evidence_file_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_pr_feedback_evidence_file_is_not_counted_as_a_change)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fails_when_the_collector_cannot_run (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fails_when_the_collector_cannot_run)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) (case='not in HEAD')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) (case='predates the base')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_matches_a_masked_path_but_not_an_edited_one (test_require_crit_review.ReviewGuardTest.test_pr_feedback_matches_a_masked_path_but_not_an_edited_one) (case='path masked with --mask-secrets')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_be_collected_for_the_current_head (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_be_collected_for_the_current_head)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) (case='hand-written empty list')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) (case='one item missing')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_evidence_outside_the_repository (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_evidence_outside_the_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='a second evidence delimiter as the reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='a second evidence delimiter padding a failure reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='empty evidence command')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='empty reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='missing disposition')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='no evidence clause')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='not an items document')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short cancelled reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short failure reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='short in-progress reason')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='stopgap wording')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) (case='unknown commit')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_requires_the_github_head_to_match (test_require_crit_review.ReviewGuardTest.test_pr_feedback_requires_the_github_head_to_match)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_pr_feedback_uses_the_base_collector_not_the_prs_own (test_require_crit_review.ReviewGuardTest.test_pr_feedback_uses_the_base_collector_not_the_prs_own)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_recollection_must_match_the_authenticated_repository (test_require_crit_review.ReviewGuardTest.test_recollection_must_match_the_authenticated_repository)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_accepts_a_base_that_moved_past_the_merge_base (test_regime_ci.RegimeCiTest.test_regime_ci_accepts_a_base_that_moved_past_the_merge_base)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=False)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=True)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) (expected=0, phrase=None)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (test_regime_ci.RegimeCiTest.test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config (test_regime_ci.RegimeCiTest.test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_retired_audit_dispositions_is_not_read (test_require_crit_review.ReviewGuardTest.test_retired_audit_dispositions_is_not_read)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='design')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='implementation')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='specification')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_a_missing_key_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_a_missing_key_is_refused) (missing='verification')",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_with_the_four_keys_is_accepted (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_with_the_four_keys_is_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_class_at_three_without_a_replans_object_is_refused (test_require_crit_review.ReviewGuardTest.test_s1_class_at_three_without_a_replans_object_is_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s1_replan_is_read_from_the_record_block_json (test_require_crit_review.ReviewGuardTest.test_s1_replan_is_read_from_the_record_block_json)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_class_at_three_with_the_matching_searches_entry_is_accepted (test_require_crit_review.ReviewGuardTest.test_s6_class_at_three_with_the_matching_searches_entry_is_accepted)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_class_at_three_without_a_searches_entry_is_refused (test_require_crit_review.ReviewGuardTest.test_s6_class_at_three_without_a_searches_entry_is_refused)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7 (test_require_crit_review.ReviewGuardTest.test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a pasted command for its records]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a record missing]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [a record too many]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [another class's entry]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [none where nothing matches]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_s6_searches_entry_must_equal_the_recomputed_records_search (test_require_crit_review.ReviewGuardTest.test_s6_searches_entry_must_equal_the_recomputed_records_search) [the matching set]",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_sandbox_placeholders_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_sandbox_placeholders_on_a_separate_filesystem_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_on_a_separate_filesystem_are_skipped)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_swept_ids_come_from_authenticated_authors (test_require_crit_review.ReviewGuardTest.test_swept_ids_come_from_authenticated_authors)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_the_gate_has_no_github_identity_check (test_require_crit_review.ReviewGuardTest.test_the_gate_has_no_github_identity_check)",
+        "count": 1
+      },
+      {
+        "kind": "FAIL",
+        "selector": "test_verdict_comes_only_from_the_last_message_file (test_require_crit_review.ReviewGuardTest.test_verdict_comes_only_from_the_last_message_file)",
+        "count": 1
+      }
+    ]
+  },
+  "added": [
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_accepts_a_base_that_moved_past_the_merge_base (test_regime_ci.RegimeCiTest.test_regime_ci_accepts_a_base_that_moved_past_the_merge_base)",
+      "count": 1
+    },
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=False)",
+      "count": 1
+    },
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=True)",
+      "count": 1
+    },
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) (expected=0, phrase=None)",
+      "count": 1
+    },
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (test_regime_ci.RegimeCiTest.test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr)",
+      "count": 1
+    },
+    {
+      "kind": "FAIL",
+      "selector": "test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config (test_regime_ci.RegimeCiTest.test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config)",
+      "count": 1
+    }
+  ],
+  "removed": [],
+  "candidate_snapshot_limit": "Exact final production42183ecc; test55c31abd before the one finding-line assertion strengthening to09db; final modules/mutations/historical reds run09db.",
+  "method": "Counter of unittest FAIL/ERROR headers bracketed by exactly 70 equals and hyphens, preserving subcase multiplicity. Bare ERROR diagnostics from fixture negative controls are not unittest results. Header totals cross-check footer failure+error counts."
+}

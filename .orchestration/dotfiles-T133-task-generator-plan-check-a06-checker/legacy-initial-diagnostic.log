@@ -1,0 +1,72 @@
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+FAIL
+
+======================================================================
+FAIL: test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 99, in test_task_consistency_check_detects_the_ten_historical_files
+    self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'dot[40 chars] 'C6'}, 'dotfiles-T128-process-rules-a05.md': [608 chars]C6'}} != {'dot[40 chars] 'C6', 'C12'}, 'dotfiles-T128-process-rules-a0[678 chars]C7'}}
+  {'dotfiles-T128-ci-skip-orchestration-a01.md': {'C11',
++                                                 'C12',
+                                                  'C15',
+                                                  'C2',
+                                                  'C4',
+                                                  'C6',
+                                                  'C7'},
+   'dotfiles-T128-ci-skip-orchestration-a02.md': {'C11',
++                                                 'C12',
+                                                  'C15',
+                                                  'C2',
+                                                  'C3',
+                                                  'C4',
+                                                  'C6',
+                                                  'C7'},
+-  'dotfiles-T128-process-rules-a01.md': {'C2', 'C6'},
+-  'dotfiles-T128-process-rules-a02.md': {'C7', 'C4', 'C2', 'C6'},
+-  'dotfiles-T128-process-rules-a03.md': {'C7', 'C4', 'C2', 'C6'},
+-  'dotfiles-T128-process-rules-a04.md': {'C7', 'C4', 'C2', 'C6'},
+-  'dotfiles-T128-process-rules-a05.md': {'C4', 'C6', 'C7'},
+?                                 ^         ^           ^
+
++  'dotfiles-T128-process-rules-a01.md': {'C2', 'C6', 'C12'},
+?                                 ^         ^           ^^
+
+-  'dotfiles-T128-process-rules-a06.md': {'C4', 'C6', 'C7'},
+?                                 ^
+
++  'dotfiles-T128-process-rules-a02.md': {'C4', 'C2', 'C12', 'C6', 'C7'},
+?                                 ^             +++++++++++++
+
+-  'dotfiles-T128-regime-counters-a01.md': {'C15', 'C4', 'C2', 'C11', 'C6', 'C7'},
+?                   ^^^ --------    ^       -------               ^
+
++  'dotfiles-T128-process-rules-a03.md': {'C4', 'C2', 'C12', 'C6', 'C7'},
+?                 + ++ ^^^^^^     ^                      ^
+
++  'dotfiles-T128-process-rules-a04.md': {'C4', 'C2', 'C12', 'C6', 'C7'},
++  'dotfiles-T128-process-rules-a05.md': {'C4', 'C6', 'C7', 'C12'},
++  'dotfiles-T128-process-rules-a06.md': {'C4', 'C6', 'C7', 'C12'},
++  'dotfiles-T128-regime-counters-a01.md': {'C11',
++                                           'C12',
++                                           'C15',
++                                           'C2',
++                                           'C4',
++                                           'C6',
++                                           'C7'},
+   'dotfiles-T128-regime-counters-a02.md': {'C11',
++                                           'C12',
+                                            'C15',
+                                            'C2',
+                                            'C3',
+                                            'C4',
+                                            'C6',
+                                            'C7'}}
+
+----------------------------------------------------------------------
+Ran 1 test in 1.532s
+
+FAILED (failures=1)

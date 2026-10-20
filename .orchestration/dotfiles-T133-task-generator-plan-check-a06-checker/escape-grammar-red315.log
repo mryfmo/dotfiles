@@ -1,0 +1,26 @@
+runtime ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+source-sha256 c716ac38cf776eb37eea986302cbc92116ac49db29ed6540cee3f9e2b2147f31 test-sha256 7d762d5c06b5a3ef6c3c4782a7f873409cc685374b6d899e58aad50b8aba485b
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 271, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    self.finding("C12")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 155, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.526s
+
+FAILED (failures=1)

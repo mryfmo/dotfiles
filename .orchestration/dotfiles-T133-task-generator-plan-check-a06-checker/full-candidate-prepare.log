@@ -1,0 +1,5 @@
+Cloning into '/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e'...
+done.
+HEAD is now at 06ffefbc fix(orchestrator): confine enumerated paths and reject ambiguous coverage
+[detached HEAD c52e74e1] test: freeze checker validation snapshot
+ 2 files changed, 247 insertions(+), 129 deletions(-)

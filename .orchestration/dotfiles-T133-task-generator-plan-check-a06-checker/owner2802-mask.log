@@ -1,0 +1,6 @@
+masked 4 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-red-commands.json
+masked 4 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-frozen-red-commands.json
+masked 7 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-repair-red315.log
+masked 7 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-repair-red312.log
+masked 7 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-frozen-red315.log
+masked 7 match(es) in .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/owner2802-frozen-red312.log

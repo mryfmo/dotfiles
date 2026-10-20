@@ -1,0 +1,10 @@
+[
+  {
+    "id": "a06-lint-adjustment:1",
+    "body": "P2 high confidence: applying normalise_name to enumerated resolved names drops APPLIED_DIRS classification for valid POSIX filenames containing backslashes. A real CLI fixture with extensionless scripts/evil\\name under scripts/** and no concrete row exits 0 / OK; replacing only the prefix-classification expression with the previously reviewed resolved.startswith(APPLIED_DIRS) in the disposable fixture copy exits 1 / C12 unsafe or unnamed. Source SHA-256 1779440ff4274ccdcf19dc68193a73ca78dea904528bb2647419ece1e8d201b7. Owner disposition is needed before repair.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 476,
+    "resolved": false
+  }
+]

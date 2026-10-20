@@ -1,0 +1,51 @@
+{
+  "tree": "93f7fe61058e5365b5a1e81f97424a35f02e1ed8",
+  "cwd": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-selected-assets-jyz50kbe",
+  "argv": [
+    "make",
+    "validate-agent-assets"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-cache-assets-3u7jqn06",
+    "UV_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1",
+    "UV_NO_CONFIG": "1",
+    "UV_NO_PROJECT": "1",
+    "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15"
+  },
+  "prepare": [
+    [
+      "/usr/bin/git",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-selected-assets-jyz50kbe"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-selected-assets-jyz50kbe",
+      "read-tree",
+      "93f7fe61058e5365b5a1e81f97424a35f02e1ed8"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-selected-assets-jyz50kbe",
+      "checkout-index",
+      "-a"
+    ]
+  ],
+  "code_binding": {
+    "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+    "tests/unit/test_task_consistency_c11_c15.py": "09db2fd0ed46a0ed77da3c13eead96a9c864ff5f4ab5ba3c3068d42cee7e17cc",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "scope": "clean selected-tree snapshot; later result logs and status documentation are data-only and receive final secret/home-path validation"
+}

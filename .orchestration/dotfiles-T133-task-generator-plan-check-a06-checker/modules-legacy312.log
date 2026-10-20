@@ -1,0 +1,26 @@
+test_ledger_check_counts_an_audit_and_its_inherited_copy_once (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_an_audit_and_its_inherited_copy_once) ... fixture-seed python=~/.local/share/mise/installs/python/3.12.15/bin/python3.12 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+ok
+test_ledger_check_counts_what_the_gate_counts (test_task_checkers.TaskCheckersTest.test_ledger_check_counts_what_the_gate_counts) ... ok
+test_ledger_check_passes_a_complete_record (test_task_checkers.TaskCheckersTest.test_ledger_check_passes_a_complete_record) ... ok
+test_ledger_check_reads_inherited_audit_ids_from_the_marker (test_task_checkers.TaskCheckersTest.test_ledger_check_reads_inherited_audit_ids_from_the_marker) ... ok
+test_ledger_check_reports_the_gaps_of_the_pre_fix_record (test_task_checkers.TaskCheckersTest.test_ledger_check_reports_the_gaps_of_the_pre_fix_record) ... ok
+test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary) ... ok
+test_task_consistency_check_c9_probes_the_landed_checker_path (test_task_checkers.TaskCheckersTest.test_task_consistency_check_c9_probes_the_landed_checker_path) ... ok
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... FAIL
+test_task_consistency_check_passes_a_complete_task_file (test_task_checkers.TaskCheckersTest.test_task_consistency_check_passes_a_complete_task_file) ... ok
+test_task_consistency_check_reaches_every_other_check (test_task_checkers.TaskCheckersTest.test_task_consistency_check_reaches_every_other_check) ... ok
+
+======================================================================
+FAIL: test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 99, in test_task_consistency_check_detects_the_ten_historical_files
+    self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
+AssertionError: {'dot[32 chars]: {'C2', 'C6'}, 'dotfiles-T128-process-rules-a[616 chars]C2'}} != {'dot[32 chars]: {'C12', 'C2', 'C6'}, 'dotfiles-T128-process-[686 chars]15'}}
+Diff is 2814 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 10 tests in 8.098s
+
+FAILED (failures=1)

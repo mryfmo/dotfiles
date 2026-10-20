@@ -1,0 +1,9 @@
+3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.930s
+
+OK

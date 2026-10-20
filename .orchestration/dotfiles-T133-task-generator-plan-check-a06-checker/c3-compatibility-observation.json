@@ -1,0 +1,11 @@
+{
+  "fixed_base": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+  "C3_expression_equal_to_base": true,
+  "C3_block": "    for rid in reset_of + [tid] if reset_of else []:\n        if not re.search(rf\"(?:{re.escape(rid)}|-{rid.rsplit('-', 1)[-1]})/task\\.md\", rowtext):\n            fails.append(f\"C3 no threat_table row names {rid} task.md\")\n",
+  "task_has_both_explicit_copy_rows": true,
+  "own_only_removal_actual_cli_exit": 0,
+  "initial_exploration_driver_exit": 1,
+  "both_copy_removal_actual_cli_exit": 1,
+  "both_copy_removal_driver_exit": 0,
+  "disposition": "Reported to owner; unchanged behavior retained, no task expansion or private repair. No readiness/integration authority inferred."
+}

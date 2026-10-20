@@ -20,18 +20,14 @@ DESIGN = ".orchestration/plans/design.md"
 NAMES = "task metadata|metadata separators|in-process effects|workflow and interpreter or environment inputs|new or renamed scripts|orchestrator effect merge|orchestrator effect update-branch|orchestrator effect forced worker removal".split(
     "|"
 )
+RESIDUAL = "residual: fixture data and checked boundaries"
+REFERENCE = "Design 5.14 applies by reference."
 _CACHE = None
 
 
 def uv(offline=True):
-    return [UV, "run", "--no-config", "--no-project", "--offline"][: 4 + offline] + [
-        "--python",
-        PYTHON,
-        "--with",
-        "pyyaml",
-        "python",
-        "-I",
-    ]
+    args = [UV, "run", "--no-config", "--no-project", "--offline"][: 4 + offline]
+    return [*args, "--python", PYTHON, "--with", "pyyaml", "python", "-I"]
 
 
 def fixture_cache():
@@ -41,13 +37,9 @@ def fixture_cache():
         seed = os.environ.get("UV_CACHE_DIR", "")
         if os.path.isabs(seed) and Path(seed).is_dir():
             shutil.copytree(seed, _CACHE.name, dirs_exist_ok=True, symlinks=True)
-        result = subprocess.run(
-            [*uv(bool(seed)), "-c", "import yaml"],
-            env={**os.environ, "UV_CACHE_DIR": _CACHE.name, "PATH": os.defpath},
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        command = [*uv(bool(seed)), "-c", "import yaml"]
+        env = {**os.environ, "UV_CACHE_DIR": _CACHE.name, "PATH": os.defpath}
+        result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
         print(
             f"fixture-seed python={PYTHON} uv={UV} exit={result.returncode}\n{result.stdout}{result.stderr}", flush=True
         )
@@ -57,10 +49,6 @@ def fixture_cache():
 
 
 class TaskConsistencyC11C15Test(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        fixture_cache()
-
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="checker-case-")
         self.addCleanup(temp.cleanup)
@@ -101,17 +89,14 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             "TRUSTED_PYTHON": PYTHON,
             "TRUSTED_BIN_DIR": str(self.bin),
             "GIT_CONFIG_GLOBAL": "/dev/null",
-            "GIT_AUTHOR_NAME": "fixture",
-            "GIT_AUTHOR_EMAIL": "fixture@example.test",
-            "GIT_COMMITTER_NAME": "fixture",
-            "GIT_COMMITTER_EMAIL": "fixture@example.test",
         }
+        self.env.update(dict.fromkeys(("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"), "fixture"))
+        self.env.update(dict.fromkeys(("GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"), "fixture@example.test"))
         self.git("init", "-q", "-b", "main")
         self.put("scripts/tool.py", "print('tool')\n")
         self.put(DESIGN, self.canonical[DESIGN])
         self.git("add", ".")
         self.git("commit", "-qm", "fixture")
-        self.path = self.repo / ".orchestration/tasks/t-a01.md"
         self.task()
 
     def git(self, *args):
@@ -127,17 +112,9 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
 
     def task(self, allowed=None, extra=(), body="", **updates):
         allowed = [*(allowed or ["scripts/tool.py"]), ".orchestration/t-a01/**"]
-        rows = [
-            {"control": p, "disposition": "residual: fixture data and checked boundaries"} for p in [*allowed, *NAMES]
-        ]
-        fm = dict(
-            format=2,
-            task_id="t-a01",
-            kind="code",
-            allowed_files=allowed,
-            threat_table=rows + list(extra),
-            design_review=dict(design=DESIGN),
-        )
+        rows = [{"control": p, "disposition": RESIDUAL} for p in [*allowed, *NAMES]]
+        fm = dict(format=2, task_id="t-a01", kind="code", design_review=dict(design=DESIGN))
+        fm.update(allowed_files=allowed, threat_table=rows + list(extra))
         fm.update(updates)
         self.fm = fm
         self.path = self.put(".orchestration/tasks/t-a01.md", "---\n" + json.dumps(fm) + "\n---\n" + body)
@@ -148,17 +125,16 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         args = [str(self.script), "--root", str(self.repo), str(self.path)]
         if digest:
             args[1:1] = ["--premises-sha", hashlib.sha256(self.path.read_bytes()).hexdigest()]
-        command = [
-            *uv(),
-            *(
-                ["-c", prefix + "\nimport sys,runpy;sys.argv.pop(0);runpy.run_path(sys.argv[0],run_name='__main__')"]
-                if prefix
-                else []
-            ),
-            *args,
-        ]
+        if prefix:
+            prefix += "\nimport sys,runpy;sys.argv.pop(0);runpy.run_path(sys.argv[0],run_name='__main__')"
+            args[:0] = ["-c", prefix]
         result = subprocess.run(
-            command, env=self.env if env is None else env, cwd=self.repo, capture_output=True, text=True, check=False
+            [*uv(), *args],
+            env=self.env if env is None else env,
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         return result.returncode, result.stdout + result.stderr
 
@@ -277,7 +253,8 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             if "**" in pattern:
                 self.assertIn("nested/b.py", out)
                 self.assertIn("scripts/a.py", out)
-        for pattern in (":(glob)scripts/**", ":(exclude)scripts/**", ":!scripts/**", "/scripts/**", "./:!scripts/**"):
+        invalid = r":(glob)scripts/** :(exclude)scripts/** :!scripts/** /scripts/** ./:!scripts/** scripts/\*.py"
+        for pattern in invalid.split():
             self.task(allowed=[pattern])
             self.finding("C12")
 
@@ -324,19 +301,13 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.assertEqual(self.check()[0], 0)
         self.task(
             allowed=["scripts/", "scripts/tool.py"],
-            extra=[
-                dict(
-                    control="scripts/ and scripts/tool.py", disposition="residual: both independent paths have one row"
-                )
-            ],
+            extra=[dict(control="scripts/ and scripts/tool.py", disposition=RESIDUAL)],
         )
         self.finding("C7b")
         self.put("scripts/tool.sh", "fixture\n")
         self.task(
             allowed=["scripts/*.py", "scripts/*.sh"],
-            extra=[
-                dict(control="scripts/tool.py and scripts/tool.sh", disposition="residual: combined concrete paths")
-            ],
+            extra=[dict(control="scripts/tool.py and scripts/tool.sh", disposition=RESIDUAL)],
         )
         self.finding("C7b")
 
@@ -354,8 +325,9 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         outside = self.temp / "outside.py"
         outside.write_text("outside\n")
         (self.repo / "scripts/escape.py").symlink_to(outside)
-        self.task(allowed=["scripts/*.py"])
-        self.assertIn("confin", self.finding("C12"))
+        for scope in ("scripts/*.py", "scripts/", "scripts/**"):
+            self.task(allowed=[scope])
+            self.assertIn("confin", self.finding("C12"))
         directory = self.temp / "external"
         directory.mkdir()
         (directory / "tool.py").write_text("outside\n")
@@ -369,6 +341,112 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.assertEqual(self.check()[0], 0)
         (self.repo / "tests/fixtures/hidden.py").symlink_to(self.repo / "scripts/tool.py")
         self.assertIn("hidden.py", self.finding("C12"))
+
+    def test_security_c12_prunes_with_normalised_directory_names(self):
+        raw = "scripts/cafe\u0301/tool.py"
+        self.put(raw, "applied\n")
+        self.task(allowed=["scripts/cafe\u0301/*.py"])
+        prefix = (
+            "import os,unicodedata;_walk=os.walk\n"
+            "def walk(*a,**k):\n for folder,dirs,names in _walk(*a,**k):\n  dirs[:]=[unicodedata.normalize('NFD',n) for n in dirs]\n  yield folder,dirs,names\n"
+            "os.walk=walk"
+        )
+        self.assertIn("tool.py", self.finding("C12", prefix=prefix))
+        row = dict(control=raw, disposition=RESIDUAL)
+        outside = self.temp / "outside.py"
+        outside.write_text("outside\n")
+        alias = self.repo / "scripts/cafe\u0301/escape.py"
+        alias.symlink_to(outside)
+        self.task(allowed=["scripts/cafe\u0301/*.py"], extra=[row])
+        self.assertIn("confin", self.finding("C12", prefix=prefix))
+        alias.unlink()
+        self.assertEqual(self.check(prefix=prefix)[0], 0)
+
+    def test_security_c16_uses_resolved_literal_alias(self):
+        target = self.put("scripts/orchestrator/tool.py", "applied\n")
+        alias = self.repo / "tests/fixtures/audit-alias.py"
+        alias.parent.mkdir(parents=True)
+        alias.symlink_to(target)
+        self.task(allowed=["tests/fixtures/audit-alias.py"], security=True)
+        self.finding("C16")
+        items = [dict(control=f"5.14 item {i}: reference", disposition=RESIDUAL) for i in range(11)]
+        self.task(allowed=["tests/fixtures/audit-alias.py"], extra=items, security=True, body=REFERENCE)
+        self.assertEqual(self.check()[0], 0)
+
+    def test_canonical_path_pipeline_rejects_normalised_collisions(self):
+        nfc, nfd = "scripts/caf\u00e9.py", "scripts/cafe\u0301.py"
+        first = self.put(nfd, "applied\n")
+        rows = [dict(control=n, disposition=RESIDUAL) for n in ("scripts/tool.py", nfd)]
+        self.task(allowed=["scripts/**"], extra=rows)
+        self.assertEqual(self.check()[0], 0)
+        self.task(allowed=["scripts/**", nfd], extra=rows)
+        self.assertEqual(self.check()[0], 0)
+        targets = [self.put(f"tests/fixtures/target-{i}.py", "fixture\n") for i in range(2)]
+        for destinations in (targets, [targets[0]] * 2):
+            prefix = (
+                "import os,pathlib,unicodedata;_walk=os.walk;_resolve=pathlib.Path.resolve\n"
+                f"mapping={dict(zip([str(self.repo / n) for n in (nfc, nfd)], map(str, destinations)))!r}\n"
+                "def resolve(p,*a,**k):\n return pathlib.Path(mapping[str(p)]) if str(p) in mapping else _resolve(p,*a,**k)\n"
+                f"def walk(*a,**k):\n for folder,dirs,names in _walk(*a,**k):\n  if folder=={str(self.repo / 'scripts')!r}:names=[n for n in names if unicodedata.normalize('NFC',n)!={Path(nfc).name!r}]+{[Path(nfc).name, Path(nfd).name]!r}\n  yield folder,dirs,names\n"
+                "os.walk=walk;pathlib.Path.resolve=resolve"
+            )
+            self.assertIn("path collision:", self.finding("C12", prefix=prefix))
+            if destinations is targets:
+                one = prefix.replace(repr([Path(nfc).name, Path(nfd).name]), repr([Path(nfc).name]))
+                self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+        second = self.put(nfc, "different applied file\n")
+        distinct = not first.samefile(second)
+        print(f"native-NFC-NFD-distinct={distinct}", flush=True)
+        with self.subTest("native two-file collision"):
+            if not distinct:
+                self.skipTest("observed NFC/NFD samefile alias; modeled collision and one-file control ran")
+            out = self.finding("C12")
+            self.assertIn("path collision:", out)
+            for name in (nfc, nfd):
+                self.assertIn(name, out)
+
+    def test_c10_confines_original_unicode_script_paths(self):
+        outside = self.temp / "outside.py"
+        outside.write_text("outside\n")
+        for name in ("scripts/cafe\u0301.py", "scripts/caf\u00e9.py"):
+            path = self.repo / name
+            path.unlink(missing_ok=True)
+            path.symlink_to(outside)
+            self.task(kind="docs", body=f'"{name} must support mode=1 once the separate feature lands."')
+            self.finding("C10")
+            path.unlink()
+            self.put(name, "confined control\n")
+            self.assertEqual(self.check()[0], 0)
+
+    def test_canonical_path_pipeline_preserves_identity(self):
+        raw = [".orchestration/plans/cafe\u0301.md", "tests/cafe\u0301.py", "scripts/cafe\u0301.py"]
+        benign = self.put("tests/fixtures/benign.txt", "marker\n")
+        outside = self.temp / "outside"
+        outside.write_text("outside secret\n")
+        for name in raw:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.symlink_to(outside)
+        self.canonical[".orchestration/plans/caf%C3%A9.md"] = self.canonical[DESIGN]
+        prefix = (
+            "import pathlib,unicodedata;_resolve=pathlib.Path.resolve\n"
+            f"nfc={{unicodedata.normalize('NFC',str(p)) for p in {[str(self.repo / n) for n in raw]!r}}}\n"
+            f"def resolve(p,*a,**k):\n return pathlib.Path({str(benign)!r}) if str(p) in nfc else _resolve(p,*a,**k)\n"
+            "pathlib.Path.resolve=resolve"
+        )
+        self.task(
+            extra=[dict(control="selector", disposition=f"closed: {raw[1]}::test_ok")],
+            design_review=dict(design=raw[0], receipt="r1"),
+            premises=[dict(command=f"grep -c marker {raw[2]}", output="1")],
+        )
+        rc, out = self.check(digest=True, prefix=prefix)
+        self.assertEqual(rc, 1, out)
+        for finding in ("C6 ", "C11 ", "C14 "):
+            self.assertIn("\n  " + finding, out)
+        for name in raw:
+            (self.repo / name).unlink()
+            self.put(name, "marker\n")
+        self.assertEqual(self.check(digest=True, prefix=prefix)[0], 0)
 
     def test_security_c12_resolves_original_unicode_path(self):
         benign = self.put("tests/fixtures/ordinary.py", "fixture\n")
@@ -395,7 +473,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             self.assertIn("alias", self.finding("C12"))
         self.task(
             allowed=["tests/fixtures/**"],
-            extra=[dict(control="tests/fixtures/alias", disposition="residual: alias has an explicit row")],
+            extra=[dict(control="tests/fixtures/alias", disposition=RESIDUAL)],
         )
         self.finding("C12")
         alias.unlink()
@@ -404,18 +482,15 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
 
     def test_security_c16_rejects_multi_item_rows(self):
         self.put("scripts/orchestrator/tool.py", "fixture\n")
-        items = [
-            dict(control=f"5.14 item {i}: reference", disposition="residual: design applies by reference here")
-            for i in range(11)
-        ]
-        concrete = dict(control="scripts/orchestrator/tool.py", disposition="residual: concrete path covered")
+        items = [dict(control=f"5.14 item {i}: reference", disposition=RESIDUAL) for i in range(11)]
+        concrete = dict(control="scripts/orchestrator/tool.py", disposition=RESIDUAL)
         for pair, trim in (((0, 1), 0), ((0, 0), 0), ((11, 12), 0), ((0, 1), 2)):
             combined = dict(control=" and ".join(f"5.14 item {i}" for i in pair), disposition=items[0]["disposition"])
             self.task(
                 allowed=["scripts/orchestrator/*.py"],
                 extra=[concrete, *items[trim:], combined],
                 security=True,
-                body="Design 5.14 applies by reference.",
+                body=REFERENCE,
             )
             out = self.finding("C16")
             if pair == (0, 0):
@@ -432,6 +507,15 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         if native:
             self.assertIn("agent.py", self.finding("C12"))
 
+    def test_c12_classifies_backslash_filenames_from_resolved_ancestry(self):
+        weird = self.put("scripts/evil\\name", "applied\n")
+        self.put("scripts/named", "named applied control\n")
+        rows = [dict(control=n, disposition=RESIDUAL) for n in ("scripts/tool.py", "scripts/named")]
+        self.task(allowed=["scripts/**"], extra=rows)
+        self.assertIn("scripts/evil\\name", self.finding("C12"))
+        weird.unlink()
+        self.assertEqual(self.check()[0], 0)
+
     def test_c12_covers_applied_skill_instructions(self):
         self.put(".claude/skills/example/SKILL.md", "instructions\n")
         self.task(allowed=[".claude/skills/**"])
@@ -440,40 +524,33 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
     def test_c16_requires_reference_and_all_item_rows(self):
         allowed = ["scripts/orchestrator/*.py"]
         self.put("scripts/orchestrator/tool.py", "fixture\n")
-        items = [
-            dict(control=f"5.14 item {i}: reference", disposition="residual: design applies by reference here")
-            for i in range(11)
-        ]
-        concrete = dict(
-            control="scripts/orchestrator/tool.py", disposition="residual: covered concrete production path"
-        )
+        items = [dict(control=f"5.14 item {i}: reference", disposition=RESIDUAL) for i in range(11)]
+        concrete = dict(control="scripts/orchestrator/tool.py", disposition=RESIDUAL)
         self.task(allowed=allowed, extra=[concrete, *items], security=True)
         self.finding("C16")
         for rows in (items[:-1], [*items, items[1]]):
-            self.task(allowed=allowed, extra=[concrete, *rows], security=True, body="Design 5.14 applies by reference.")
+            self.task(allowed=allowed, extra=[concrete, *rows], security=True, body=REFERENCE)
             self.finding("C16")
         combined = dict(control=" and ".join(r["control"] for r in items), disposition=items[0]["disposition"])
-        self.task(allowed=allowed, extra=[concrete, combined], security=True, body="Design 5.14 applies by reference.")
+        self.task(allowed=allowed, extra=[concrete, combined], security=True, body=REFERENCE)
         self.finding("C16")
-        self.task(allowed=allowed, extra=[concrete, *items], security=True, body="Design 5.14 applies by reference.")
+        self.task(allowed=allowed, extra=[concrete, *items], security=True, body=REFERENCE)
         self.assertEqual(self.check()[0], 0)
         self.task(security=False)
         self.assertEqual(self.check()[0], 0)
         self.task(allowed=["AGENTS.md"], security=True)
         self.assertEqual(self.check()[0], 0)
-        base = dict(control="scripts/tool.py", disposition="residual: covered concrete production path")
+        base = dict(control="scripts/tool.py", disposition=RESIDUAL)
         for scope in ("scripts/**", "**/tool.py"):
             self.task(allowed=[scope], extra=[base, concrete, *items], security=True)
             self.finding("C16")
-            self.task(
-                allowed=[scope], extra=[base, concrete, *items], security=True, body="Design 5.14 applies by reference."
-            )
+            self.task(allowed=[scope], extra=[base, concrete, *items], security=True, body=REFERENCE)
             self.assertEqual(self.check()[0], 0)
 
     def test_reset_scope_rejects_hidden_predecessor_artifacts(self):
         row = dict(
             control="task metadata reset copies: .orchestration/t-a00/task.md and .orchestration/t-a01/task.md",
-            disposition="residual: lineage names carry no retained artifact scope",
+            disposition=RESIDUAL,
         )
         self.task(extra=[row], reset_of=["t-a00"], retained_predecessor_directories=[])
         self.assertEqual(self.check()[0], 0)

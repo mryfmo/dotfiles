@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-10-20T07:40:08.257703+00:00",
+  "status": "blocked-cap",
+  "command": [
+    "git",
+    "diff",
+    "--numstat",
+    "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+    "--",
+    "scripts/orchestrator/task-consistency-check.py",
+    "tests/unit/test_task_consistency_c11_c15.py",
+    "tests/unit/test_task_checkers.py"
+  ],
+  "exit": 0,
+  "stdout": "396\t24\tscripts/orchestrator/task-consistency-check.py\n35\t22\ttests/unit/test_task_checkers.py\n647\t0\ttests/unit/test_task_consistency_c11_c15.py\n",
+  "stderr": "",
+  "rows": [
+    {
+      "added": 396,
+      "deleted": 24,
+      "path": "scripts/orchestrator/task-consistency-check.py"
+    },
+    {
+      "added": 35,
+      "deleted": 22,
+      "path": "tests/unit/test_task_checkers.py"
+    },
+    {
+      "added": 647,
+      "deleted": 0,
+      "path": "tests/unit/test_task_consistency_c11_c15.py"
+    }
+  ],
+  "production_changed": 420,
+  "production_cap": 400,
+  "test_added": 682,
+  "test_deleted": 22,
+  "test_cap_added": 700,
+  "head": "06ffefbc633fe37bcef107385ea96810b2a9a0c5",
+  "working_sha256": {
+    "scripts/orchestrator/task-consistency-check.py": "7c050d9c7b51fb6e7b14e390a2f8dd032f621ce3586b60ac2c7f47bc873d7f80",
+    "tests/unit/test_task_consistency_c11_c15.py": "2d8b727c2e6942eb5eea54069065156e07f6584fa19e5a62f3a92fc252e75ac7",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "green_claim": false,
+  "committed": false
+}

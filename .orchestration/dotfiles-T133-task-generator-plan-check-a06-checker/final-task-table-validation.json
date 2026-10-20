@@ -1,0 +1,23 @@
+{
+  "closed_selector_count": 14,
+  "selectors": [
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_interpreter_resolution_order",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_gh_child_preserves_parent_tokens",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c15_uses_canonical_main_only",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c6_receipt_uses_canonical_design_bytes",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_symlink_to_applied_file_is_finding",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_case_alias_to_applied_file_is_finding",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_resolves_original_unicode_path",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_prunes_with_normalised_directory_names",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c16_requires_reference_and_all_item_rows",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_uses_resolved_literal_alias",
+    "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c6_receipt_uses_canonical_design_bytes"
+  ],
+  "four_allowed_entries": true,
+  "both_task_copies_secret_home_path_clean": true,
+  "task_copy_byte_identity_preserved": true,
+  "verification": "AST selectors and canonical validator pattern scan; source tests not executed here"
+}

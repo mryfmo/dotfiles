@@ -1,0 +1,24 @@
+[
+  {
+    "id": "a06-final-pipeline:1",
+    "body": "Resolved P1: path_entry preserves trailing-directory intent in the comparison key after resolving the original operand. Independent real-CLI regression rejects escaping descendants under scripts/, scripts/*.py and scripts/** on Python 3.15.0 and 3.12.15; directory/child valid controls also pass. Verified source SHA-256 98c0904f4291b7d3971beb643321dff1c557c13d9b30f3af46760df1385b0f3c.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 86,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-pipeline:2",
+    "body": "Resolved P2: C10 extracts the original non-delimited script spelling, including Unicode combining marks, before path_entry confinement. Independent real-CLI tests reject both NFD and NFC escaping paths and accept both confined controls on Python 3.15.0 and 3.12.15. Verified source SHA-256 98c0904f4291b7d3971beb643321dff1c557c13d9b30f3af46760df1385b0f3c.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 389,
+    "resolved": true
+  },
+  {
+    "id": "a06-repair-verification:approval",
+    "body": "Approved the repaired source/test changes bound in independent-repair-verification.md after connected-code inspection and 10 independent pipeline regression tests on each of Python 3.15.0 and 3.12.15, both exit 0. Each run skips only the native two-file Unicode collision subtest because this filesystem aliases the names; modeled distinct-file and same-target collisions and valid controls run. No remaining finding from this review. This local process record does not replace final-head CI, task audit, owner acceptance or integration gates.",
+    "scope": "review",
+    "resolved": true
+  }
+]

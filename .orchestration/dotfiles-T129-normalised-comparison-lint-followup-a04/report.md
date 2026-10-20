@@ -11,6 +11,7 @@ test_commit: 762682d7
 fix_commits: eb6a58f0 c929569b
 review_round_1_commit: d74204e6
 code_head: d74204e6dd27a205e6d1bd1d83af704fed942f9b
+records_commits: 09a51c50 (first push) and the validation commit after it (records only)
 task_sha256: e7019c3c0dffc989bae6027d7b0d045d409a5d8ca3eb391bfe19fd08ce8afa39
 correction_rounds: 1 of 2 (the pre-push worker review)
 ---
@@ -130,8 +131,17 @@ The review is recorded in `dotfiles-T129-normalised-comparison-lint-followup-a04
 ## Dependency observations
 
 - **Locally:** PATH's shfmt runs (`~/.local/share/mise/installs/shfmt/latest/shfmt`, v3.14.1); `mise x shfmt@3.14.1 -- shfmt` also answers v3.14.1 (§11).
-- **In CI:** the unit step installs no shfmt, but the job's earlier `Run shfmt` step has run `mise x shfmt@3.14.1`, and mise-action puts mise on PATH. The CI job-log line from `test_the_job_log_records_the_shfmt_probes` is quoted in §11 once CI has run.
+- **In CI (validation §11, §13), on `09a51c50`, in all four test jobs:** PATH's `shfmt` is a mise shim that exits 1, because no mise config selects a version. The lint runs the pinned `mise x shfmt@3.14.1 -- shfmt` (v3.14.1), and the unit step passes 1286 tests. The fallback in amendment 1 is what makes the unit jobs work without a workflow change.
 - **No version pin for PATH's shfmt:** a different version on PATH would be used as amendment 1 orders. Its version is printed, not enforced.
+
+## Blocker: the `regime` check (validation §13)
+
+- **Status:** every test, validate and public-bootstrap job passes, and `regime` fails.
+- **Why:** regime-ci collapses a reset_of lineage to its latest copy only when both copies equal their dispatched texts at the base.
+  - `origin/main` `ba318e53` holds neither `.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a02.md` nor `…-a04.md`, so both copies are unverifiable and a02's copy stays a target.
+  - Against that copy, a04's records fall outside its `allowed_files`, and the 304 changed lines exceed the 200-line cap its Check text gives.
+  - The fix is outside this task's `allowed_files`: landing the dispatched texts on main (the boundary records), then re-running the job. Neither copy may be edited (the threat table).
+- **Also, a warning only:** a04's cap sentence puts the number in `**…**`, which regime-ci's `at most (\d+) changed lines` pattern cannot read ("no outside cap in the copy's ## Check section").
 
 ## Limits (residual, as the threat table states)
 

@@ -9,8 +9,10 @@
 #   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review
 #   -s read-only review --base <sha>`. The sha is canonical main as `gh api repos/mryfmo/dotfiles/git/ref/heads/main`
 #   reports it (design 5.14 item 8), read before the checkout with gh resolved as codex is; the local main and
-#   origin/main refs are never the base, and git reads no replace ref or graft. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
-#   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
+#   origin/main refs are never the base. Neither git here nor the git codex spawns reads a replace ref or graft:
+#   the script exports `GIT_NO_REPLACE_OBJECTS=1` and `GIT_GRAFT_FILE=/dev/null` and passes both to codex as
+#   `-c shell_environment_policy.set.…` overrides. The binary is `$CODEX_BIN`, else codex as `mise which` answers it
+#   under `env -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
 #   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
 #   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR
 #   worktree. A `-S` string holding a quote, a backslash, a `$` or a word starting with `#` is refused, since env -S
@@ -126,7 +128,10 @@ git -C "$W" checkout -q --detach "$head"
 t0=$(date -u +%FT%TZ)
 tmp=$(mktemp "${TMPDIR:-/tmp}/local-review.XXXXXX")
 rc=0
-(cd "$W" && "${run[@]}" --profile review -s read-only review --base "$base" < /dev/null > "$tmp" 2>&1) || rc=$?
+# Codex's inherit=core policy drops exported variables from the commands it spawns, so its own git gets the two values
+# as set overrides (the local review of dbc8b67); TOML strings, as the set table holds.
+policy=(-c 'shell_environment_policy.set.GIT_NO_REPLACE_OBJECTS="1"' -c 'shell_environment_policy.set.GIT_GRAFT_FILE="/dev/null"')
+(cd "$W" && "${run[@]}" --profile review -s read-only "${policy[@]}" review --base "$base" < /dev/null > "$tmp" 2>&1) || rc=$?
 if [ "$rc" != 0 ]; then
     # A failed review is no sample: no file, so the next run reviews again (PR #357 thread 4270918132).
     echo "local-review: codex exited $rc; no review file written (transcript $tmp)"

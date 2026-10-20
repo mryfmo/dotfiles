@@ -3,7 +3,7 @@ task_id: dotfiles-T133-regime-ci-fixture-grammar-a01
 seat: claude-standard-dot-a009
 amendment: 1
 branch: tools/regime-ci-fixture-grammar-a01
-pr: pending (opened after this commit is pushed)
+pr: 441
 base: 60a6fb2b324d0381c4a6e539b37c650105154a7e
 copy_commit: 53c9e23f
 code_head: 15bc046ef0bc50476879e92cfaa42e5952f6878b
@@ -59,4 +59,8 @@ Two conflicts in round 1's text were measured and asked about, and amendment 1 a
 
 ## Completion
 
-- The PR, CI and Bot facts follow in the next records commit, after the PR opens (validation §10 to §12).
+- **PR:** https://github.com/mryfmo/dotfiles/pull/441, opened ready for review, not as a draft, at 2026-10-20T05:09:57Z on `56faa442`, inside the sandbox (validation §10). No `@codex review` comment is posted.
+- **CI on `56faa442`:** 11 of 11 checks pass, and the merge state is CLEAN (§11).
+- **The Bot, unavailable:** both Codex reviews the PR's opening triggered failed on Codex usage limits. The code review failed at 05:10:00Z and the security review at 05:10:07Z, as on PR #433. There are no review threads or comments (§12). Raising the limit is outside this seat; the orchestrator decides at the gate.
+- **The final head** adds only this directory's records on top of `56faa442`.
+- **Open items:** none.

@@ -20,7 +20,9 @@ permission_gated_commands: none
 1. **Round 1's Check command, on the unmodified module (validation §4h):** `FileNotFoundError: … 'uv'` (`PATH=/usr/bin:/bin`), then 21 times `git init … returned non-zero exit status 128`. Under `env -i`, `TMPDIR` is unset, so `tempfile` fell back to the worktree, because the sandbox does not allow `/tmp` or `/var/tmp`. Raised as a question; amendment 1 changed the command.
 2. **The proxy variables:** under `env -i`, `uv`'s fetch of `https://pypi.org/simple/pyyaml/` failed with `dns error`. The sandbox's proxy variables were stripped. Reported as an addendum; §4 and §6 also run with the three variables passed by name.
 3. **The shell's mise hook:** an earlier command printed `deny network-outbound mise-versions.jdx.dev:443`. That came from the shell's mise activation, not the command.
-4. **No permission prompt or classifier refusal.**
+4. **The push's upstream setting:** the task's `push -u` landed (`git ls-remote` shows `56faa442`). Only its upstream write was refused (`error: unable to write upstream branch configuration`). Later pushes name the branch, and nothing was retried.
+5. **The session restart:** a restart cleared the session scratchpad, with its validation runner scripts. The committed records were unaffected, and §10 to §12 were run directly inside the sandbox.
+6. **No permission prompt or classifier refusal.**
 
 | # | Command | Where |
 |--:|---|---|

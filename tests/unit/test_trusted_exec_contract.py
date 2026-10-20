@@ -304,14 +304,13 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 with open(path, "r+b") as handle:  # opened to write only; nothing is read
                     handle.write(tec.LEGIT.upper().encode())
                 os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
-                self.assertEqual(
-                    identity(st), identity(os.stat(path))
-                )  # the precondition: inode, size, mtime unchanged
+                self.assertEqual(identity(st), identity(os.stat(path)), "precondition: inode, size, mtime unchanged")
                 with self.assertRaisesRegex(AssertionError, "wrote "):
                     probe.assert_untouched()
 
     def test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check(self):
         entry = pwd.struct_passwd(("probe", "*", uid := os.getuid(), 20, "Probe", "/home/probe", "/bin/sh"))
+        relative = pwd.struct_passwd(entry[:5] + ("probe", "/bin/sh"))  # a passwd home that is not absolute
         dscl = ["/usr/bin/dscl", ".", "-read", "/Users/probe", "NFSHomeDirectory"]
         getent, ds = ["/usr/bin/getent", "passwd", str(uid)], "_directory_service"
         refused = subprocess.CalledProcessError(70, dscl)  # what both seat sandboxes answer for dscl
@@ -325,11 +324,12 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             ("linux", getent, OSError("no getent"), "/home/probe"),
             ("linux", getent, "a:b\n", "disagree"),
             ("win32", None, None, "/home/probe"),
+            ("win32", None, None, "no absolute"),
         ):
             side = {"side_effect": answer} if isinstance(answer, BaseException) else {"return_value": answer}
             with self.subTest(f"{platform} {answer!r}"), mock.patch.object(sys, "platform", platform):
                 with (
-                    mock.patch.object(tec.pwd, "getpwuid", return_value=entry),
+                    mock.patch.object(tec.pwd, "getpwuid", return_value=relative if "absolute" in outcome else entry),
                     mock.patch.object(tec, ds, **side) as service,
                 ):
                     if outcome.startswith("/"):

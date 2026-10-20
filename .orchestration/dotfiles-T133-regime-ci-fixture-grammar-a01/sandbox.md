@@ -6,7 +6,7 @@ permission_gated_commands: none
 
 # Sandbox record: dotfiles-T133-regime-ci-fixture-grammar-a01
 
-- **Seat and arrivals:** `claude-standard-dot-a009` in `.claude/worktrees/worker-c`. The AGMSG-TASK came at 04:34:08Z (sha `2fc20d23…`) and amendment 1 at 04:47:06Z (sha `c2bfda03…`).
+- **Seat and arrivals:** `claude-standard-dot-a009` in `.claude/worktrees/worker-c`. The AGMSG-TASK came at 04:34:08Z (sha `2fc20d23…`) and amendment 1 at 04:47:06Z (sha `c2bfda03…`). Amendment 2 (message 2732, sha `509e4c54…`) arrived at 04:53:03Z and was read only after the session restart, at the orchestrator's PING of 05:42Z.
 - **Branch:** `tools/regime-ci-fixture-grammar-a01`, created with `git switch -q --no-track -c tools/regime-ci-fixture-grammar-a01 60a6fb2b…`, one command.
 - **Everything ran inside the sandbox:**
   - every edit and commit (`git -c commit.gpgsign=false`), `git fetch`, and the push in the task's HTTPS form;

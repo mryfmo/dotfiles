@@ -1,7 +1,7 @@
 ---
 task_id: dotfiles-T133-regime-ci-fixture-grammar-a01
 seat: claude-standard-dot-a009
-amendment: 1
+amendment: 2
 base: 60a6fb2b324d0381c4a6e539b37c650105154a7e
 code_head: 15bc046ef0bc50476879e92cfaa42e5952f6878b
 ---
@@ -244,5 +244,15 @@ codex-summary:
 | 🔒 **Security Review** | ⚠️ **Failed** <relative-time datetime="2026-10-20T05:10:07.914758Z">2026-10-20T05:10:07.914758Z</relative-time> | `56faa44` | PR opened |
 Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.
 The account paying for this security review has reached its Codex usage limits. The payer can check the [Codex usage dashboard](https://chatgpt.com/codex/cloud/settings/usage). For personal accounts, using credits requires enabling “Use credits for security reviews” in [Code review settings](https://chatgpt.com/codex/cloud/settings/code-review). If you do not manage the paying account, contact this repository's admins.
+[exit 0]
+```
+
+## 1b. The task copy updated to amendment 2 (sha256 509e4c54…)
+```console
+$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical; wc -l < ".orchestration/$T/task.md"
+509e4c5430069deb70e35779ea1e36ff49bb7779c1a7615b1e627453242173d6  ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md
+509e4c5430069deb70e35779ea1e36ff49bb7779c1a7615b1e627453242173d6  .orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md
+byte-identical
+      66
 [exit 0]
 ```

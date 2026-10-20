@@ -1,19 +1,20 @@
 ---
 task_id: dotfiles-T133-regime-ci-fixture-grammar-a01
 seat: claude-standard-dot-a009
-amendment: 1
+amendment: 2
 branch: tools/regime-ci-fixture-grammar-a01
 pr: 441
 base: 60a6fb2b324d0381c4a6e539b37c650105154a7e
 copy_commit: 53c9e23f
 code_head: 15bc046ef0bc50476879e92cfaa42e5952f6878b
-task_sha256: c2bfda037d2012e3703f12b7eedc2e976f79f5259ec5e47798248d544a69cc2b
+task_sha256: 509e4c5430069deb70e35779ea1e36ff49bb7779c1a7615b1e627453242173d6
 cost: n/a (the seat's token and time usage is not visible to the worker)
 ---
 
 # Report: dotfiles-T133-regime-ci-fixture-grammar-a01 (the regime-ci fixtures use the disposition grammar)
 
 - **Seat and task:** `claude-standard-dot-a009` in `.claude/worktrees/worker-c`. The AGMSG-TASK of 04:34:08Z had sha `2fc20d23…`. Amendment 1, sha `c2bfda03…` at 04:47:06Z, answered my question of 04:40Z. The branch copy is byte-identical to amendment 1, at 66 lines against the cap of 90 (validation §1), and the task-consistency check passes (§1a).
+- **Amendment 2** (message 2732, 04:53:03Z, sha `509e4c54…`) answered my addendum: the Check command also passes `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` through, which §4 and §6 already ran. A session restart left 2732 unread, so the copy was first committed at amendment 1. After the orchestrator's PING of 05:42Z it is now byte-identical to amendment 2 (validation §1b). No code change.
 - **Branch:** a fresh `tools/regime-ci-fixture-grammar-a01` from the dispatch branch point `60a6fb2b` (§2).
 
 ## The question round (before any edit)

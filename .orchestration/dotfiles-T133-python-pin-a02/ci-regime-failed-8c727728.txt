@@ -1,0 +1,20 @@
+regime	Check the pull request with the base's verifier	﻿2026-10-20T05:05:51.9020845Z ##[group]Run uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9021669Z ^[[36;1muv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"^[[0m
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082142Z shell: /usr/bin/bash -e {0}
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082362Z env:
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082593Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082912Z   HEAD_SHA: 8c72772807c9d7a722a74d0f1add083a7d67dcc4
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9083149Z ##[endgroup]
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:52.1909665Z Installed 1 package in 1ms
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5671304Z regime-ci: warning: dotfiles-T133-python-pin-a01: task copy unverifiable (no dispatched text at base)
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5672087Z regime-ci: warning: dotfiles-T133-python-pin-a01: checker skipped: the copy is unverifiable, and the base's checker reads only the base's text
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5672786Z regime-ci: warning: dotfiles-T133-python-pin-a01: precheck absent
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5673242Z regime-ci: warning: dotfiles-T133-python-pin-a01: no outside cap in the copy's ## Check section
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5673724Z regime-ci: warning: dotfiles-T133-python-pin-a01: no tests/ cap in the copy's ## Check section
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5674316Z regime-ci: dotfiles-T133-python-pin-a01: allowed-files: .orchestration/dotfiles-T133-python-pin-a02/task.md is outside allowed_files
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5674921Z regime-ci: warning: dotfiles-T133-python-pin-a02: task copy unverifiable (no dispatched text at base)
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5675536Z regime-ci: warning: dotfiles-T133-python-pin-a02: checker skipped: the copy is unverifiable, and the base's checker reads only the base's text
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5676058Z regime-ci: warning: dotfiles-T133-python-pin-a02: precheck absent
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5676459Z regime-ci: warning: dotfiles-T133-python-pin-a02: no outside cap in the copy's ## Check section
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5677049Z regime-ci: warning: dotfiles-T133-python-pin-a02: no tests/ cap in the copy's ## Check section
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:53.5774524Z ##[error]Process completed with exit code 1.

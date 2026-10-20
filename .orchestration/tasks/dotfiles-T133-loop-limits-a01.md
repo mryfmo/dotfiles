@@ -242,7 +242,5 @@ Bindings for this new task: create a fresh `tools/loop-limits-a01` branch and on
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-(pasted at dispatch)
-Not checked: implementation, runtime tests, CI or live dispatch.
-Risk: execution prerequisites remain pending; same-UID replacement and shared credentials remain residual.
+dispatch to a012 (worker-g), 2026-10-20T00:55:43Z; task-consistency-check.py: OK; C-80 correct (74f72c2, 2026-10-20 05:05 JST, after a re-plan on the legacy evidence binding); security: true (Codex seat, D-024-25); files disjoint from every in-flight task (P1-15 a02, lint a04, review-scripts a06, trusted-exec-contract-tests-a01); measured text: 248 lines, 10 allowed files; Codex queue item 1 of the 08:48 bottleneck analysis
 ```

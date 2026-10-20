@@ -31,5 +31,11 @@
     "scope": "review",
     "body": "Independent read-only reviewer t133_independent_review approved the portable-home correction with no new findings and explicitly acknowledged that its previous records approval missed this compliance gap. Both CI logs change only their line6 home prefix, preserving timestamps, commands, head IDs and diagnostics. Initial actual masker output confirms one replacement per log and zero in41 other original records. Independent in-memory application of the extracted mask functions to46 records found zero matches and zero changed buffers. Implementation, both task copies and all31 a01 artifacts are unchanged. Documentation corrects the prior scan scope and retains CI-head attribution. Live CI/full validator/tests were not run; transport and subsequent CI remain orchestrator-owned.",
     "resolved": true
+  },
+  {
+    "id": "t133-a02-remote-merge-independent-approval",
+    "scope": "review",
+    "body": "Independent read-only reviewer t133_independent_review approved the mechanical merge with high confidence and no findings. First parent96619a0fbf275974f0f69b35a29422b5f965cce4, second parent841e9f1c90a6892bb227967291d8dbf844041d70 and common basef816d9e84cd74c0b8b161ab59283c923fbf8d936 are verified. Incoming10 task paths and existing11 local record paths are disjoint; before process evidence the index is their exact blob union with no conflicts and treeb93a6ddfd226e25f3d6fcd4bde33dd7605e89964. Incoming record data has zero secret/home mask matches. Both author tasks match worker copies byte-for-byte, implementation is unchanged and all31 a01 artifacts remain intact. Review covers mechanical merge/scope/privacy only; task-instruction correctness, tests, full validator and remote CI are not checked and integration is not authorized by this record.",
+    "resolved": true
   }
 ]

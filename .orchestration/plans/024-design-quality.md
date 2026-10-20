@@ -92,6 +92,10 @@
 
 結論: 5 項目のうち機械とAI で吸収できる部分を除くと、人に残るのは (a) 方向と価値の決定、(b) P0/P1 の残存リスクの受容、(c) 権限・信頼境界を広げる変更の承認、(d) トークンに権限が無い管理者操作と資格情報の投入、の 4 つ。(c)(d) は能力ではなく権限の所在による。新規タスクは P1-13（hold playbook）と P1-14（permission guard と ruleset 補助）の 2 本。
 
+### 5.14 残余（凍結後の計測事実、D-024-29）
+
+- 2026-10-20: 項目 2 の「passwd home を dscl/getent で読む」は、両席の sandbox 内で `dscl` が失敗する（Claude sandbox: `Operation failed with error: eServerError`、Codex sandbox: exit 70、helper task RESULT）ため、同じディレクトリサービスを libc 経由で読む `/usr/bin/id -P | cut -d: -f9`（macOS）/ `getent passwd "$(id -un)" | cut -d: -f6`（Linux）/ Python の `pwd.getpwuid(os.getuid()).pw_dir` を passwd home の読み方とする。項目の意図（HOME は passwd のもの、継承値ではない）は不変。
+
 5.12 **プログラム仕様** は `024-design-programs.md` に分離（17 項目: verdict.sh、audit-pool.sh と orch-audit.sh --json、schemas、result-precheck.sh、dispositions.py、regime.yml、dispatch.sh --next、acceptance-front-matter.py、git hooks、handoff.sh、flakes、task-from-plan.py）。
 
 結論: 第 1 段階で消えるのは今の直列点（S1 の一部、S2、S8 の一部）。残る天井は S3（hosted runner）、S4/S5（モデルと監査の枠）、S7（hot spot）で、これらは席数の上限 D10（4 → 6）の根拠になる。6 を超える並列は、S3 と S5 の実測が出るまで plan に入れない。

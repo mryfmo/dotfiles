@@ -1,0 +1,10 @@
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:118) Prompt removal precedes its replacement control: the tracked hook, anchor and gate rebuild remain deferred, while P1-15 explicitly defers executable binding; the retained live hook still authorizes bare `gh`, inherits `GIT_*`, and consumes mutable paths, so rendering the expected policy cannot close the cited shim, redirected-checkout, case-alias or file-swap findings. [Shim resolution](https://mise.jdx.dev/dev-tools/shims.html), [Git environment](https://git-scm.com/docs/git#_environment_variables).
+
+[P1] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:46) Deferring both the approval-ledger consumer and permission-decision row supplies no mitigation for this slice’s own permission change: D-024-14’s recorded digest covers removals **plus hook installation**, whereas this slice removes only the asks; require the slice’s exact final-head permission digest to match approval fetched from the canonical GitHub ledger before integration.
+
+[P2] High confidence [.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-permission-guard-gate-a05-slice1.md:45) The threat table stops after design items 1 and 8, omitting D-024-30’s required rows for 0, 2–7, 9 and 10, plus the PR-publication effect; consequently environment isolation, filesystem identity, execution binding, cache provenance and removal of Linux’s unsandboxed `gh` exemption lack explicit dispositions.
+
+📝 まとめ: Reviewed all 16 threat rows and related acceptance/review evidence; three findings remain for orchestrator disposition.
+
+Not checked: implementation tests, CI or live deployment; this read-only review establishes no runtime enforcement.
+Verdict: incorrect

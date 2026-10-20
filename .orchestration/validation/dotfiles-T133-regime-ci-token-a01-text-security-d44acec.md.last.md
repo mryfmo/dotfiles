@@ -1,0 +1,4 @@
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — Required validation cannot run as specified: neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; line 82 therefore cannot provide the required executable. Specify the actual pin source and verified installation directory before dispatch.
+
+📝 まとめ: Reviewed the threat rows and related records without edits. Implementation tests and live Linux sandbox behavior were not exercised; the explicitly deferred execution-binding risks remain.
+Verdict: incorrect

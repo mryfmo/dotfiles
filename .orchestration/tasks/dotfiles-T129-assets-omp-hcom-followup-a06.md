@@ -51,7 +51,7 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T129-assets-o
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-dispatch to claude-standard-dot-a009, 2026-10-19T20:1xZ; task-consistency-check.py: OK; security: false (no C-80); D-024-25 order: owner rows of a merged lineage, files disjoint from every in-flight task
-task=dotfiles-T129-assets-omp-hcom-followup-a06 tasks=0 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=none..none (-) source=live
-detail: pr=none authors=- tasks=- results=- questions=- withdrawn=- bot_heads=- source=live
+pasted 2026-10-20T04:13Z before send 1 to a009 (Claude, worker-c): task-consistency-check.py: `dotfiles-T129-assets-omp-hcom-followup-a06.md: OK`; validate-agent-assets.py SECRET_PATTERN: 0 matches; literal home paths: 0; 57 lines before this paste
+predecessor dotfiles-T129-assets-omp-hcom-followup-a05 merged as PR #433 at ba318e53 (in origin/main 60a6fb2b); security: false (no C-80); allowed code files disjoint from every in-flight task (loop-limits, a05-checker, lint a04, P1-15 a03, python-pin, T128 a07)
+counters: tasks=0 amendments=0 questions=0 results=0; task SHA256 in the AGMSG-TASK line, computed over these final bytes; the read marker is recorded in the acceptance record
 ```

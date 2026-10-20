@@ -1,0 +1,5 @@
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:72) — The required exclusion of unrelated parent variables contradicts line 70’s explicit preservation of full environment inheritance; rows 22 and 31 still claim a checker-child allowlist, so the closing test cannot pass without violating the amended design. Reconcile those assertions and threat dispositions with the intended inherited-environment behavior.
+
+📝 まとめ: Reviewed every threat row and related acceptance/review records without edits; the amended environment contract remains inconsistent.
+Not checked: implementation suites or live Linux enforcement; executable binding, inherited Git configuration, and same-user substitution remain declared residual risks.
+Verdict: incorrect

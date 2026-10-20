@@ -1,0 +1,13 @@
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:76) The prescribed clean environment puts this host’s `mise/shims` first again, while line 68 requires PATH-selected fake `gh`; this contradicts the referenced execution contract’s verified-executable binding, because shims select executables and environment from the current project. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:25) `test_validation_at_head` tests working-tree divergence and a shell sentinel only; it cannot close the stated in-process-effects row against inherited `GIT_*`, executable resolution, or Git-triggered subprocesses, and the sanitized test launcher removes hostile environment inputs before exercising the script. [Git environment documentation](https://git-scm.com/docs/git)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) The CI query never uses `<pr>` to bind the repository and omits an explicit host/repository, so local configuration or `GH_REPO` can select a fork containing the same SHA and supply unrelated green results. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-precheck-a01.md:63) Checking every returned row permits `[]` to pass before checks appear and overlooks runs beyond `gh run list`’s default 20-result limit; the named refusal test cannot establish that the head’s CI is entirely green without empty-result and completeness cases. [GitHub CLI documentation](https://cli.github.com/manual/gh_run_list)
+
+Reviewed all 13 threat rows and related acceptance/review records. All allowed-file entries have coverage. Declared same-UID tampering remains a residual; the text authorizes no Linux sandbox escape.
+
+📝 まとめ: Completed the read-only design review; four findings remain for orchestrator disposition.
+Not checked: future implementation, runtime tests or Linux deployment; executable and evidence binding remain unproven.
+Verdict: incorrect

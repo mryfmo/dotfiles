@@ -59,7 +59,8 @@
 | #378 chain-finish.sh、#375 lossless dispositions | BEHIND、CI 緑、スレッド 5 / 1、受け入れ済 | 統合チェーン（gh/git のみ） | **merge** | Plan 023 の分類どおり高価値、omp 後も残る |
 | #398 A follow-up（hcom wheel receipt）、#405 T132（dangling omp link、uv upgrade skip） | BEHIND スレッド 3 / draft CLEAN | 1・4（A） | **merge** / **continue → merge**（a011） | A の仕上げ。make update の再現性 |
 | #402 local-advisory.sh 修正 | draft BEHIND | 統合チェーン | **continue → merge**（a011） | gh/git のみ、小さい |
-| #387 F2 正規化 lint + follow-up 445c32dd（PR 無し） | BEHIND、CI 失敗、スレッド 6 | 5（F） | **continue、後順**（a011、Wave 2） | lint はハーネス非依存。CI 赤を先に直す |
+| #387 F2 正規化 lint + follow-up 445c32dd（PR 無し） | 10-20 再分類: #432（a04、head 7eab146d）draft、監査 incorrect（P1 1、P2 11、P3 1、merge base からの退行 3） | 5（F） | **stop + hold**（D-024-44。第 1 段階後に別コンテキストが a06 リセット） | 10-17 の D-S1-387 で S1 到達済みの系統を gate-only に分類したのが前提誤り。退行を main に入れない |
+| #417 P1-12 a03（task-from-plan / plan-check の初版） | open、UNKNOWN | 5.10 | **close**（a05/a06 に置換、#440 が後継） | 10-20 再分類: 追跡漏れ。#378 は merge、#396 と #404 は continue のまま（担当と順序は進捗表） |
 | #400 gate hook（+ push HTTPS 化） | BEHIND、スレッド 3、T131 レビュー 11 件、live に手作業適用 | 切替までの暫定 | **merge（D3）**、E で削除 | 上記 |
 | #393 F4 | BLOCKED、監査 incorrect、D-393-hold | 5（F）→ 要件は P1-4/P1-5/P1-7（D4） | **stop + close（D4）** | 上記 |
 | #399 Codex 除外 | BEHIND、D-399-A | Codex 専用 | **close（D5）** | 上記 |
@@ -73,6 +74,8 @@
 | F3 タスク文 `dotfiles-T129-orchestrator-load-mechanisms-a01` | 未 dispatch | 5 | **stop、要件を第 1 段階の P1-4/P1-6 へ（D8）** | 上記 |
 | Grok 残置物: 手編集 `~/.claude/settings.json`（バックアップ 4 本）、`~/.config/git/config` の pushInsteadOf 撤去、`~/.local/state/grokbot/*`、`dotfiles-operator`（削除済） | — | 環境の不整合 | **是正 5.3 で吸収** | DoD2 |
 
+2026-10-20 23:2x JST の再分類（D-024-47、操作者承認済み）: 上の 2 行を書き換え、分類表の merge / continue 行がすべて `024-progress.tsv` の行を持つことを境界の確認項目に加える（`plan-table-sync-a01`）。
+
 ## 6. 波（並列。席: a008 Claude worker-f、a009 Claude worker-c、a010 Codex worker-e、a011 Claude worker-d。allowed_files は波の中で互いに素）
 
 ### 第 1 段階（現環境のボトルネック解消。見込み 10〜12 時間 = 5 波 P-W0〜P-W4、AI 基準、人の待ちは 2 トグルと #401 の承認のみ。第 8 節と design-quality 5.10）
@@ -84,6 +87,7 @@
 | P-W2（〜2 時間） | P1-5/P1-6 の revise 対応、DoD-P1 の計測スクリプト（idle 間隔、revise 率、CI 中央値を bus 履歴と `gh run list` から出す） | P1-4 の 2 本目の統合を実演（#387 か F5 を席側で完走） | P1-7/P1-8 の revise 対応、#396 マージ後の #389 follow-up 片付け | F5 の revise 対応、テスト並列化（item 0 で可なら） | 受け入れ・マージ |
 | P-W3（〜2 時間、design 5.10 の追加分） | P1-12 タスク文生成とチェッカー拡張（plan-check を含む） | P1-10 所見 disposition の自動化（second-opinion を含む） | P1-11 CI regime ジョブ（workflows、threat_table） | P1-13 hold playbook（`.orchestration/learning/classes.yaml` の remedy、hold-playbook.sh。`dispatch.sh` の変更は P1-6 マージ後） | 受け入れ・マージ |
 | P-W4（〜2 時間、design 5.13 の追加分） | P1-4 の revise 対応、計測。空きで B-2 item 0（omp hook の実測、0e） | P1-12/P1-10 の revise 対応。空きで C-1a（新規スクリプトのみ、0e） | P1-14 permission guard と ruleset 補助（validator、Claude 境界の権限面を扱うので Codex 席）。終わり次第 G-a | P1-13 の revise 対応。空きで H6 watch-pr（0e） | DoD-P1 の全項目（a〜l）を確認して記録。満たしたら第 2 段階へ。B-1 のマージは P1-14 の後（0e 条件 3） |
+| P-W5（2026-10-20 追加、D-024-46/47: 設計 5.14 項目 10 と regime CI の割当漏れ） | P1-17 regime CI トークン（`regime-ci-token-a01`: regime.yml が `GH_TOKEN` を渡し、regime-ci.py がチェッカー環境へ転送。#440 の依存） | P1-6 pre-send-check a02（#442 続行） | P1-16 項目 10 Claude 側（`worker-sandbox-exclusions-a02`、a013）。Codex 側（manifest `network_access`）は #431 の後 | #436 の a02 記録のみラウンド、P1-13 | P1-18 転送手順（D-024-36）を agmsg-orchestration SKILL の Playbook に 1 項目: 共有本文なので Routing 規則により操作者編集（orchestrator が本文案を用意） |
 
 ### 第 2 段階（方向転換。DoD-P1 の後）
 
@@ -145,3 +149,5 @@
 - 2026-10-18 10:5x JST ユーザー指示「2 つに分けるべき」により 0b（第 1 段階 = 現環境のボトルネック解消 P1-1〜P1-9 と退出条件 DoD-P1、第 2 段階 = 方向転換）を新設。D4/D8 を第 1 段階へ、第 6 節の波表を 2 段階に、C stage 2 を移植のみに、B/C stage 1 の実装は draft で退避に変更。
 - 2026-10-18 11:0x JST ユーザー指摘「一枚に詰め込むと LLM に不利」により、読む時機で 5 文書に分割: この plan（最初に読む）、`024-design.md`（必要に応じて）、`024-todo.md`（作業項目と完了条件）、`024-checklists.md`（終了時: DoD-P1 と DoD）、`024-progress.tsv`（進捗、boundary ごとに更新）。本文は節単位で移しただけで文言は変えていない。分割前の全文は席の scratchpad に `024-full-backup.md` として保持。
 - 2026-10-18 12:5x JST 網羅精査（独立の読み手 fork の所見 49 件: P0 2、P1 12、P2 22、P3 13、と機械照合で見つけた旧参照 31 箇所）を反映。主な修正: 0b の「merge しない」を live 運用を変える PR に限定し 0e と整合、5.1 のマージ順から B/C を外す、#401 はユーザーの承認 1 回（live gate は記録 PR を merge 経路で ask）、D3 に (d) の分岐と T131-fix タスク、`herdr-agents`（P1-5 → P1-7）と `dispatch.sh`（P1-6 → P1-13）の衝突を直列化、`security: true` の列挙を P1-3/P1-4/P1-7/P1-13/P1-14 に拡大、Q-D の凍結条件を第 7 節に追加、見積もりを 13 PR・5 波・10〜12 時間に統一、verdict の出力パスと `.orchestration/learning/classes.yaml`・`.schemas/`・`.github/flakes.yaml`・`.githooks/` の規約を統一、progress.tsv に P1-10〜P1-14 と暫定項目、checklists に P1-m〜P1-p、programs に (17) integrate-seat、execution にユーザー操作の時機順一覧と `make update` の退避と rollback、旧波表 2 つを削除。
+
+- 2026-10-20 23:2x JST 操作者承認（D-024-47）により第 3 節を再分類（#387/#432 stop + hold、#417 close、追跡漏れの明記）、第 6 節に P-W5（P1-16 項目 10、P1-17 regime CI トークン、P1-18 転送手順）を追加。退出条件 DoD-P1 は変えない。

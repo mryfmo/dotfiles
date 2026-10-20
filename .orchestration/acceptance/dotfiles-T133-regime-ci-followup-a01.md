@@ -78,3 +78,6 @@ audit:380e7f4:1	evidence-head-mismatch
 
 - `ci:39239649184:1` evidence-sync-task-dir: on the records-only PR #429 the regime job treated three task directories as task PRs (1,790 paths outside their allowed files) because the orchestrator's evidence sync (#422, the evidence-sync exemption) placed worker evidence into directories that already hold a task.md; the regime check recognises a records-only boundary PR (branch prefix `orchestration/boundary-` and no code change) and an orchestrator evidence sync, instead of applying the task-PR copy rules to it.
 ci:39239649184:1	evidence-sync-task-dir
+- 2026-10-20T00:25:06Z: regime job false positive on the records boundary PR #435 (run 39346975816): the job inferred the task dotfiles-T128-chain-github-scripts-followup-a02 from the restored task copy the boundary carries and then reported every other record file as `outside allowed_files` (3 warnings, 12+ allowed-files lines). A records boundary (branch `orchestration/boundary-*`, PR by the orchestrator) is not a task PR; regime-ci.py needs to recognise it (skip the allowed-files and task-copy checks, keep the secrets and home-path scans). Owned by the regime-ci owner lineage (followup-a02): row below. Non-required check; the boundary merges on the operator's approval.
+local:8f7b976:1	boundary-pr-misread-as-task
+

@@ -1,0 +1,8 @@
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:23) — This row and line 33 defer executable selection and `GIT_DIR` binding to followup-a01, but that task already merged as #425 and its explicitly bounded owned rows contain neither fix; the named owner therefore supplies no mitigation for credentials reaching a PATH-selected executable or Git validation identifying a different execution tree.
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:78) — “Not excluded” does not establish sandbox confinement: deployed settings retain `failIfUnavailable: false`, so missing sandbox dependencies permit unsandboxed execution without a refusal; the prescribed stop-on-refusal control cannot enforce this claim. [Documented fallback behavior](https://code.claude.com/docs/en/sandboxing#get-started).
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md:80) — The required validation setup cannot run as specified: this host has mise at `~/.local/bin/mise`, neither named pin file exists, and installed uv resides under `<version>/uv-aarch64-apple-darwin/`, not `<version>/bin`; consequently the required red/green execution remains blocked independently of implementation.
+
+📝 まとめ: Reviewed every threat row and cited records without edits. Implementation tests and live Linux sandbox behavior were not exercised; the execution-binding and confinement gaps above remain.
+Verdict: incorrect

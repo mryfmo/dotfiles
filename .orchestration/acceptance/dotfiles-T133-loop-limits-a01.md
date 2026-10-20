@@ -1,7 +1,9 @@
 ---
 {
   "audit_findings": [],
-  "dispatch": [],
+  "dispatch": [
+    "AGMSG-TASK v1 task_id=dotfiles-T133-loop-limits-a01 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-g task_file=.orchestration/tasks/dotfiles-T133-loop-limits-a01.md task_sha256=cf1bd9412b9821abe0b5e8d96f8fb3368f559b70414e4539c797a7e7a615e87c deadline=none done_signal=AGMSG-RESULT note=a012:loop-limits(mechanised-S1/S2-counters,the-C-92-review-cap,task-consumers,review_budget;C-80-correct);fresh-branch-from-origin/main;keep-tools/task-generator-plan-check-a01-untouched;security:true;the-Checks-block-at-the-end-carries-the-counters"
+  ],
   "format": 1,
   "head": null,
   "ledger": [],
@@ -44,3 +46,7 @@ text-security:fb3c323:2	budget-ordering
 re-plan: legacy-evidence-binding (row text-security:74f72c2:1) — specification: legacy label rows were bound to verdict hashes by file mtime order, which the boundary masking had scrambled; design: legacy rows bind from the review launcher logs (each `c80-*.log` names the verdict file it wrote) or from the record's own chronology, never from mtimes, and the loop-limits helper treats a non-sha7 id as a legacy event without rebinding it; implementation: the three rows corrected in this record (r1 9a2a0a4 interpreter-isolation/installation-binding/record-in-allowed-files, r2 4a941fb guard-bypass-launcher/message-file-binding/budget-renewal, r3 2011d34 executable-binding), no text change; verification: the next review of the unchanged text 74f72c2 confirms the binding claim holds.
 text-security:74f72c2:1	legacy-evidence-binding
 - 2026-10-19T20:05:36Z: C-80 (first after the legacy-binding re-plan; the unchanged text 74f72c2): `Verdict: correct`. The text is ready for the first free Codex seat (D-024-25; a010 and a012 hold their reset texts; both Claude seats a009/a011 are free but D-024-20 keeps this orchestrator-side task off them until P1-15 deploys).
+- 2026-10-20T00:55:43Z: dispatched to a012 (worker-g) after the P1-12 a04 withdrawal; text sha256 cf1bd9412b9821abe0b5e8d96f8fb3368f559b70414e4539c797a7e7a615e87c.
+- 2026-10-20T00:58:32Z: a012 PONG `blocked` at the dispatch-prerequisite preflight (correctly): `git ls-tree --name-only origin/main -- scripts/orchestrator/trusted-interpreter.sh tests/unit/trusted_exec_contract.py .orchestration/learning/classes.yaml` is empty (all three absent on main ba318e53); the Makefile and the chain callers are not contract-compliant either; no edits. The orchestrator dispatched before the text's own prerequisites were on main (C-89 miss: the prerequisites section was not enumerated at dispatch; recorded 2026-10-20T00:59:51Z). PING: hold; the prerequisites land in order (classes.yaml with #435, the fixture with the helper task, the resolver with its creator); the next TASK within the hour.
+- 2026-10-20T01:02:39Z/01:03:39Z: a012 PONGs `blocked` (holding without edits; the PING of 00:59 acknowledged; the prerequisite order understood; exact copy and blocked evidence preserved in worker-g; no self-provisioning).
+

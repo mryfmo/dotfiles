@@ -545,9 +545,10 @@ class LintComparisonsTest(unittest.TestCase):
         )
 
     def test_heredoc_data_is_excluded_from_shell_rules(self):
-        # audit:b24d313:5: a heredoc body is data: no shell rule reads it
+        # audit:b24d313:5: a heredoc body is data: no shell rule reads it, nor a command substitution inside it
         body = "[[ $path == /x ]] # lint-comparisons: allow reason\n"
-        self.assert_hits([("hq.sh", f"cat <<'EOF'\n{body}EOF\n", []), ("hu.sh", f"cat <<EOF\n{body}EOF\n", [])])
+        hu = f"cat <<EOF\n{body}$([[ $path == /y ]] && echo y)\nEOF\n"
+        self.assert_hits([("hq.sh", f"cat <<'EOF'\n{body}EOF\n", []), ("hu.sh", hu, [])])
 
     def test_ansi_c_quotes_preserve_following_marker_comments(self):
         # audit:b24d313:6: $'…' closes at its unescaped quote; the comment after the next statement is one

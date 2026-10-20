@@ -195,4 +195,5 @@ Production behavior and live deployment are not checked here; a defective helper
 ## Checks (pasted by the orchestrator before each send)
 
 ```
+dispatch to a011 (worker-d), 2026-10-19T23:29:36Z; task-consistency-check.py: OK; security: false (test-only helper; no C-80); design 5.14 by reference (D-024-30); files disjoint from every in-flight task (a010 P1-15, a012 P1-12, a008 #432, a011 #434 records); measured text: 198 lines, 3 allowed files; the operator's relayed direction of 2026-10-19T22:59Z suggestion (b)
 ```

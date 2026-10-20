@@ -163,3 +163,27 @@ The review is recorded in `dotfiles-T129-normalised-comparison-lint-followup-a04
 - **Plan Mode:** not used.
 
 cost: n/a
+
+## Revise 1 (AGMSG-ACCEPTANCE status=revise round=1, 2026-10-20T09:12:24Z; previous head 6434c27c)
+
+The task-level audit of `6434c27c` found seven P2s where a shell fact did not come from shfmt's AST. This round is worker fix round 1 of 2: the re-plan's completion, with every shell fact now read from AST nodes and jq programs tokenised. The red tests are `ad2fbe8e` and the fix is `863f88e3`. Each finding has one test, red at `6434c27c` (validation R1) and green at `863f88e3` (R2), and a killed mutant (R3, 9 of 9).
+
+| Finding | Fix in `scripts/lint-comparisons.py` | Test (`LintComparisonsTest::…`) | Mutant |
+| --- | --- | --- | --- |
+| audit:6434c27:2 | the acceptance code view blanks heredoc bodies by node type (`Hdoc`), newlines kept | `test_audit_2_heredoc_data_never_supplies_a_normaliser` | K2, K2b |
+| audit:6434c27:3 | `command()`: the command word comes after `command`, `builtin` and `exec` and their options | `test_audit_3_a_test_behind_command_or_builtin_is_read` | K3 |
+| audit:6434c27:4 | `stage()`: each pipeline stage resolves through a subshell, a block or an inner pipe to its `CallExpr` | `test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read` | K4 |
+| audit:6434c27:5 | `option()`: a word is an option only when its first part is literal text starting with `-` | `test_audit_5_an_expansion_led_word_is_no_option` | K5 |
+| audit:6434c27:6 | `is_jq()`: jq is the command word only: written out (`j"q"`, `$bin/jq.exe`), a `jq` parameter, or `$(command -v jq)` | `test_audit_6_jq_is_the_command_word_only` | K6 |
+| audit:6434c27:7 | `$'…'` decodes by bash's whole table: octal, `\x`, `\u`, `\U`, `\c` and the letters; an unknown escape stays as written | `test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table` | K7 |
+| audit:6434c27:8 | `jq_tokens()` replaces the masking scanner: strings, comments, fields, variables, identifiers, punctuation and operators. A normaliser applies only where it is invoked, never as its definition or as an object key | `test_audit_8_a_normaliser_counts_only_where_it_is_invoked` | K8 |
+
+- **Comments as tokens:** jq comments are now comment tokens. A reasonless jq marker is R0, which covers audit:6434c27:13 (P3), and a reasoned one marks its line (mutant K8b).
+- **Found while fixing:** blanking a heredoc body first blanked its newlines too, which shifted every later line. The tracked-tree comparison caught it (3 lost acceptances), and fixture `hb.sh` with mutant K2b pin it.
+- **The tracked tree:** `--all` is byte-identical to `b24d3136`'s lint (97 lines), and the no-flag lint exits 0 (R2).
+- **Caps, over `origin/main`:** 408 of 450 outside `tests/` and `.orchestration/`, and 346 of 1200 added under `tests/` (R2).
+- **The P1 and the orchestration findings:** the P1 (`agmsg-dispatch` outside the sandbox) and audit findings 11 and 12 were dispositioned by the orchestrator.
+- **The evidence P2 (audit:6434c27:10):** sandbox.md now names the CompactionDB call's exception.
+- **Not in this round's list:** audit:6434c27:9 (the Python R6 path for fully escaped concatenations) and the P3 at :14 (mutation evidence truncation). This round's mutation log keeps each run's full stdout and stderr (R3).
+- **Not re-run:** the full repository suite. CI's `make unit-test` covers it.
+- **Earlier mutants:** a04's 34 earlier mutants were anchored to code this round replaced (`jq_mask`, `span`). The inherited fixtures they relied on all pass at `863f88e3`.

@@ -1526,3 +1526,610 @@ regime	Check the pull request with the base's verifier	2026-10-20T01:40:39.74297
 regime	Check the pull request with the base's verifier	2026-10-20T01:40:39.7539039Z ##[error]Process completed with exit code 1.
 ```
 
+
+## R1. Revise 1, red: the seven audit tests at 6434c27c's lint (tests committed in ad2fbe8e)
+
+```text
+$ git rev-parse HEAD; shasum -a 256 tests/unit/test_lint_comparisons.py scripts/lint-comparisons.py
+6434c27c762aecc134f075bd220a34c0d6e20037
+1004bcee532ae30cd7ee7457e104e2b6c48ce6fd7652775e49a184a3e98531b1  tests/unit/test_lint_comparisons.py
+d96cefa27baf19153e696c7236d74d4f9e076900c0531e773ed49207e9230b0a  scripts/lint-comparisons.py
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_ -v
+test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) ... 
+  test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) (fixture='ha.sh') ... FAIL
+test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) ... 
+  test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w0.sh') ... FAIL
+  test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w1.sh') ... FAIL
+  test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w2.sh') ... FAIL
+test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) ... 
+  test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp0.sh') ... FAIL
+  test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp1.sh') ... FAIL
+  test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp2.sh') ... FAIL
+test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) ... 
+  test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='ox.sh') ... FAIL
+  test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='oy.sh') ... FAIL
+test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) ... 
+  test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) (fixture='jx.sh') ... FAIL
+  test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) (fixture='jy.sh') ... FAIL
+test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) ... 
+  test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae0.sh') ... FAIL
+  test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae1.sh') ... FAIL
+  test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae2.sh') ... FAIL
+test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) ... 
+  test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nu.sh') ... FAIL
+  test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nw.sh') ... FAIL
+
+======================================================================
+FAIL: test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) (fixture='ha.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='ox.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='oy.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) (fixture='jx.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : jx.sh:1: R3 jq compares a URL or path by its string form
+
+
+======================================================================
+FAIL: test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) (fixture='jy.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nu.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nw.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.612s
+
+FAILED (failures=16)
+exit 1
+```
+
+## R2. Revise 1, green at 863f88e3: the module, ruff, the no-flag lint, the tree against b24d3136's lint, the caps
+
+```text
+$ git rev-parse HEAD
+863f88e3db6d684a12b394229c262af135d408a0
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -v
+test_a_backslash_newline_joins_the_physical_lines_without_a_separator (test_lint_comparisons.LintComparisonsTest.test_a_backslash_newline_joins_the_physical_lines_without_a_separator) ... ok
+test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails (test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_is_consumed_once_so_a_duplicate_hit_fails) ... ok
+test_a_baseline_row_matching_no_hit_fails_as_stale (test_lint_comparisons.LintComparisonsTest.test_a_baseline_row_matching_no_hit_fails_as_stale) ... ok
+test_a_chained_or_continued_statement_is_one_statement_for_markers_and_normalisers (test_lint_comparisons.LintComparisonsTest.test_a_chained_or_continued_statement_is_one_statement_for_markers_and_normalisers) ... ok
+test_a_hit_in_a_changed_file_fails (test_lint_comparisons.LintComparisonsTest.test_a_hit_in_a_changed_file_fails) ... ok
+test_a_hit_main_introduced_in_an_unchanged_file_passes_with_a_warning (test_lint_comparisons.LintComparisonsTest.test_a_hit_main_introduced_in_an_unchanged_file_passes_with_a_warning) ... ok
+test_a_jq_normaliser_name_inside_a_string_literal_is_no_application (test_lint_comparisons.LintComparisonsTest.test_a_jq_normaliser_name_inside_a_string_literal_is_no_application) ... ok
+test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies (test_lint_comparisons.LintComparisonsTest.test_a_jq_program_continued_by_backslash_newline_is_located_and_r3_applies) ... ok
+test_a_long_and_chain_is_read_without_recursion (test_lint_comparisons.LintComparisonsTest.test_a_long_and_chain_is_read_without_recursion) ... ok
+test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment (test_lint_comparisons.LintComparisonsTest.test_a_marker_inside_a_multiline_string_or_heredoc_body_is_not_a_comment) ... ok
+test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails (test_lint_comparisons.LintComparisonsTest.test_a_normaliser_is_matched_by_its_qualified_name_so_a_foreign_receiver_fails) ... ok
+test_a_single_quoted_jq_option_value_is_not_read_as_the_program (test_lint_comparisons.LintComparisonsTest.test_a_single_quoted_jq_option_value_is_not_read_as_the_program) ... ok
+test_a_stale_row_for_a_changed_file_fails (test_lint_comparisons.LintComparisonsTest.test_a_stale_row_for_a_changed_file_fails) ... ok
+test_a_stale_row_for_an_unchanged_file_warns (test_lint_comparisons.LintComparisonsTest.test_a_stale_row_for_an_unchanged_file_warns) ... ok
+test_all_valid_heredoc_delimiters_exclude_body_markers (test_lint_comparisons.LintComparisonsTest.test_all_valid_heredoc_delimiters_exclude_body_markers) ... ok
+test_an_extglob_pattern_is_literal_text_and_a_length_is_no_path (test_lint_comparisons.LintComparisonsTest.test_an_extglob_pattern_is_literal_text_and_a_length_is_no_path) ... ok
+test_ansi_c_quotes_preserve_following_marker_comments (test_lint_comparisons.LintComparisonsTest.test_ansi_c_quotes_preserve_following_marker_comments) ... ok
+test_arithmetic_shift_keeps_following_marker_comments (test_lint_comparisons.LintComparisonsTest.test_arithmetic_shift_keeps_following_marker_comments) ... ok
+test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) ... ok
+test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) ... ok
+test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) ... ok
+test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) ... ok
+test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) ... ok
+test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) ... ok
+test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) ... ok
+test_double_quoted_jq_joins_split_operator_and_path (test_lint_comparisons.LintComparisonsTest.test_double_quoted_jq_joins_split_operator_and_path) ... ok
+test_each_owned_row_is_refused_or_accepted_by_its_fixture (test_lint_comparisons.LintComparisonsTest.test_each_owned_row_is_refused_or_accepted_by_its_fixture) ... ok
+test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted (test_lint_comparisons.LintComparisonsTest.test_each_rule_refuses_its_fixture_and_each_normaliser_and_the_marker_are_accepted) ... ok
+test_every_f_string_interpolation_in_a_regex_is_escaped (test_lint_comparisons.LintComparisonsTest.test_every_f_string_interpolation_in_a_regex_is_escaped) ... ok
+test_heredoc_data_is_excluded_from_shell_rules (test_lint_comparisons.LintComparisonsTest.test_heredoc_data_is_excluded_from_shell_rules) ... ok
+test_jq_hit_lines_follow_the_source_through_escapes_and_continuations (test_lint_comparisons.LintComparisonsTest.test_jq_hit_lines_follow_the_source_through_escapes_and_continuations) ... ok
+test_jq_program_concatenates_all_word_parts (test_lint_comparisons.LintComparisonsTest.test_jq_program_concatenates_all_word_parts) ... ok
+test_process_patterns_include_positional_and_special_parameters (test_lint_comparisons.LintComparisonsTest.test_process_patterns_include_positional_and_special_parameters) ... ok
+test_shfmt_falls_back_to_the_pinned_mise_form_with_the_file_dialect_and_blanked_actions (test_lint_comparisons.LintComparisonsTest.test_shfmt_falls_back_to_the_pinned_mise_form_with_the_file_dialect_and_blanked_actions) ... ok
+test_shfmt_missing_refuses_without_fallback (test_lint_comparisons.LintComparisonsTest.test_shfmt_missing_refuses_without_fallback) ... ok
+test_shfmt_parse_failure_refuses_with_original_message (test_lint_comparisons.LintComparisonsTest.test_shfmt_parse_failure_refuses_with_original_message) ... ok
+test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+test_the_job_log_records_the_shfmt_probes (test_lint_comparisons.LintComparisonsTest.test_the_job_log_records_the_shfmt_probes) ... 
+shfmt probe: shfmt: ~/.local/share/mise/installs/shfmt/latest/shfmt (0, 'v3.14.1')
+
+shfmt probe: mise x shfmt@3.14.1 -- shfmt: ~/.local/bin/mise (0, 'v3.14.1')
+ok
+test_the_jq_normaliser_is_required_on_each_operand_side (test_lint_comparisons.LintComparisonsTest.test_the_jq_normaliser_is_required_on_each_operand_side) ... ok
+test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails (test_lint_comparisons.LintComparisonsTest.test_with_no_mode_flag_the_change_is_origin_main_to_head_and_a_missing_base_fails) ... ok
+
+----------------------------------------------------------------------
+Ran 40 tests in 19.309s
+
+OK
+exit 0
+$ ruff check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py
+All checks passed!
+exit 0
+$ ruff format --check scripts/lint-comparisons.py tests/unit/test_lint_comparisons.py
+2 files already formatted
+exit 0
+$ python3.15 -I scripts/lint-comparisons.py
+warning: scripts/check-regime-boundary.sh:125: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/chain-integrate.sh:93: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/chain-integrate.sh:106: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 8 unbaselined hit(s) and 0 stale row(s) in unchanged files
+exit 0
+$ --all of b24d3136 lint vs this head: wc, sha256, diff
+      97
+      97
+8986de4bb72435e9a6608fc2677f978b8dbadd7016b1dfda63bed93387a30f2c
+8986de4bb72435e9a6608fc2677f978b8dbadd7016b1dfda63bed93387a30f2c
+diff exit 0
+$ git diff --numstat origin/main...HEAD
+3	1	scripts/lint-comparisons-baseline.tsv
+337	71	scripts/lint-comparisons.py
+346	4	tests/unit/test_lint_comparisons.py
+outside: 408 of 450; tests added: 346 of 1200
+```
+
+## R3. Revise 1 mutants (9, at least one per finding; full stdout and stderr of each run)
+
+The harness:
+
+```python
+import subprocess
+import sys
+from pathlib import Path
+
+LINT = Path("scripts/lint-comparisons.py")
+ORIG = LINT.read_text()
+MUTANTS = [  # (id, finding, why, old, new, selector)
+    ("K2", "audit:6434c27:2", "heredoc bodies stay in the code view",
+     'for c in comments + [r["Hdoc"] for r in nodes(tree) if r.get("Hdoc")]:', "for c in comments:",
+     "test_audit_2_heredoc_data_never_supplies_a_normaliser"),
+    ("K2b", "audit:6434c27:2", "blanking also blanks newlines (later lines shift)",
+     'rb"[^\\n]", b" "', 'rb"[\\s\\S]", b" "', "test_audit_2_heredoc_data_never_supplies_a_normaliser"),
+    ("K3", "audit:6434c27:3", "no wrapper is skipped",
+     'static(args[i]) in ("command", "builtin", "exec")', "static(args[i]) in ()",
+     "test_audit_3_a_test_behind_command_or_builtin_is_read"),
+    ("K4", "audit:6434c27:4", "a stage is not resolved through subshells or blocks",
+     'if cmd.get("Type") in ("Subshell", "Block") and cmd.get("Stmts"):', "if False:",
+     "test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read"),
+    ("K5", "audit:6434c27:5", "options classified on the expansion-free text",
+     'return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"', 'return static(word)[:1] == "-"',
+     "test_audit_5_an_expansion_led_word_is_no_option"),
+    ("K6", "audit:6434c27:6", "jq located by a raw search of every argument",
+     'if t == "CallExpr" and args and is_jq(args[0]):',
+     'if t == "CallExpr" and args and any(re.search(r"\\bjq\\b", src(a)) for a in args):',
+     "test_audit_6_jq_is_the_command_word_only"),
+    ("K7", "audit:6434c27:7", "numeric ANSI-C escapes not decoded",
+     "num = int(o, 8) if o else int(h, 16) if h else int(u or big, 16) if u or big else None", "num = None",
+     "test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table"),
+    ("K8", "audit:6434c27:8", "identifier presence taken for application",
+     'return g[i] == name and prev != "def" and nxt != ":" and not (inner[i] == "{" and prev in ("{", ","))',
+     "return g[i] == name", "test_audit_8_a_normaliser_counts_only_where_it_is_invoked"),
+    ("K8b", "audit:6434c27:13 (P3)", "jq comments never reach the markers",
+     "                    note.setdefault(lines[p], text)\n", "                    pass\n",
+     "test_audit_8_a_normaliser_counts_only_where_it_is_invoked"),
+]
+killed = 0
+try:
+    for mid, row, why, old, new, sel in MUTANTS:
+        assert ORIG.count(old) == 1, (mid, ORIG.count(old))
+        LINT.write_text(ORIG.replace(old, new))
+        compile(LINT.read_text(), str(LINT), "exec")  # a mutant must be valid Python to count
+        cmd = [sys.executable, "-I", "-m", "unittest", "discover", "-s", "tests/unit", "-p", "test_lint_comparisons.py", "-k", sel]
+        run = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        dead = run.returncode != 0 and "Ran 1 test" in run.stderr
+        killed += dead
+        print(f"### {mid} ({row}): {why}\n--- {old!r}\n+++ {new!r}")
+        print(f"$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k {sel}\nexit {run.returncode}")
+        print("stdout:", run.stdout or "(empty)")
+        print("stderr:\n" + run.stderr.rstrip())
+        print(f"=> {'killed' if dead else 'SURVIVED'}\n")
+finally:
+    LINT.write_text(ORIG)
+print(f"killed {killed}/{len(MUTANTS)}")
+```
+
+The run:
+
+```text
+### K2 (audit:6434c27:2): heredoc bodies stay in the code view
+--- 'for c in comments + [r["Hdoc"] for r in nodes(tree) if r.get("Hdoc")]:'
++++ 'for c in comments:'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_2_heredoc_data_never_supplies_a_normaliser
+exit 1
+stdout: (empty)
+stderr:
+F
+======================================================================
+FAIL: test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) (fixture='ha.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.193s
+
+FAILED (failures=1)
+=> killed
+
+### K2b (audit:6434c27:2): blanking also blanks newlines (later lines shift)
+--- 'rb"[^\\n]", b" "'
++++ 'rb"[\\s\\S]", b" "'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_2_heredoc_data_never_supplies_a_normaliser
+exit 1
+stdout: (empty)
+stderr:
+F
+======================================================================
+FAIL: test_audit_2_heredoc_data_never_supplies_a_normaliser (test_lint_comparisons.LintComparisonsTest.test_audit_2_heredoc_data_never_supplies_a_normaliser) (fixture='hb.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : hb.sh:5: R1 shell [[ ]] or [ ] compares a path or URL operand by its string form
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.173s
+
+FAILED (failures=1)
+=> killed
+
+### K3 (audit:6434c27:3): no wrapper is skipped
+--- 'static(args[i]) in ("command", "builtin", "exec")'
++++ 'static(args[i]) in ()'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_3_a_test_behind_command_or_builtin_is_read
+exit 1
+stdout: (empty)
+stderr:
+FFF
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_3_a_test_behind_command_or_builtin_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_3_a_test_behind_command_or_builtin_is_read) (fixture='w2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.256s
+
+FAILED (failures=3)
+=> killed
+
+### K4 (audit:6434c27:4): a stage is not resolved through subshells or blocks
+--- 'if cmd.get("Type") in ("Subshell", "Block") and cmd.get("Stmts"):'
++++ 'if False:'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read
+exit 1
+stdout: (empty)
+stderr:
+FFF
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read (test_lint_comparisons.LintComparisonsTest.test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read) (fixture='pp2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.346s
+
+FAILED (failures=3)
+=> killed
+
+### K5 (audit:6434c27:5): options classified on the expansion-free text
+--- 'return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"'
++++ 'return static(word)[:1] == "-"'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_5_an_expansion_led_word_is_no_option
+exit 1
+stdout: (empty)
+stderr:
+FF
+======================================================================
+FAIL: test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='ox.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_5_an_expansion_led_word_is_no_option (test_lint_comparisons.LintComparisonsTest.test_audit_5_an_expansion_led_word_is_no_option) (fixture='oy.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.162s
+
+FAILED (failures=2)
+=> killed
+
+### K6 (audit:6434c27:6): jq located by a raw search of every argument
+--- 'if t == "CallExpr" and args and is_jq(args[0]):'
++++ 'if t == "CallExpr" and args and any(re.search(r"\\bjq\\b", src(a)) for a in args):'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_6_jq_is_the_command_word_only
+exit 1
+stdout: (empty)
+stderr:
+F
+======================================================================
+FAIL: test_audit_6_jq_is_the_command_word_only (test_lint_comparisons.LintComparisonsTest.test_audit_6_jq_is_the_command_word_only) (fixture='jy.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.235s
+
+FAILED (failures=1)
+=> killed
+
+### K7 (audit:6434c27:7): numeric ANSI-C escapes not decoded
+--- 'num = int(o, 8) if o else int(h, 16) if h else int(u or big, 16) if u or big else None'
++++ 'num = None'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table
+exit 1
+stdout: (empty)
+stderr:
+FFF
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae0.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae1.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table (test_lint_comparisons.LintComparisonsTest.test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table) (fixture='ae2.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.312s
+
+FAILED (failures=3)
+=> killed
+
+### K8 (audit:6434c27:8): identifier presence taken for application
+--- 'return g[i] == name and prev != "def" and nxt != ":" and not (inner[i] == "{" and prev in ("{", ","))'
++++ 'return g[i] == name'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_8_a_normaliser_counts_only_where_it_is_invoked
+exit 1
+stdout: (empty)
+stderr:
+F
+======================================================================
+FAIL: test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nu.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.239s
+
+FAILED (failures=1)
+=> killed
+
+### K8b (audit:6434c27:13 (P3)): jq comments never reach the markers
+--- '                    note.setdefault(lines[p], text)\n'
++++ '                    pass\n'
+$ python3.15 -I -m unittest discover -s tests/unit -p test_lint_comparisons.py -k test_audit_8_a_normaliser_counts_only_where_it_is_invoked
+exit 1
+stdout: (empty)
+stderr:
+F
+======================================================================
+FAIL: test_audit_8_a_normaliser_counts_only_where_it_is_invoked (test_lint_comparisons.LintComparisonsTest.test_audit_8_a_normaliser_counts_only_where_it_is_invoked) (fixture='nw.sh')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_lint_comparisons.py", line 508, in assert_hits
+    self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 1 test in 0.239s
+
+FAILED (failures=1)
+=> killed
+
+killed 9/9
+```

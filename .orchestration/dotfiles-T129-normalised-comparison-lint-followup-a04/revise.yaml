@@ -1,0 +1,11 @@
+# The revise round of 2026-10-20T09:12:24Z (AGMSG-ACCEPTANCE status=revise round=1), as the message contract asks.
+previous_head: 6434c27c762aecc134f075bd220a34c0d6e20037
+reason: "the task-level audit of 6434c27c (Verdict incorrect): seven P2 on scripts/lint-comparisons.py where a shell fact did not come from the AST (audit:6434c27:2 heredoc data accepted a normaliser; :3 a test behind command/builtin; :4 a subshell ps producer; :5 an expansion-led word read as an option; :6 jq searched in raw arguments; :7 a partial ANSI-C table; :8 identifier presence taken for normaliser application); a re-plan completion, not seven patches"
+checks:
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_2_heredoc_data_never_supplies_a_normaliser
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_3_a_test_behind_command_or_builtin_is_read
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_4_a_ps_producer_inside_a_subshell_or_block_is_read
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_5_an_expansion_led_word_is_no_option
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_6_jq_is_the_command_word_only
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_7_ansi_c_quotes_decode_by_bash_s_whole_table
+  - tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_audit_8_a_normaliser_counts_only_where_it_is_invoked

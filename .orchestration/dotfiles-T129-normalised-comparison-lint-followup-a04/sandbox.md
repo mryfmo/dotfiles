@@ -27,3 +27,5 @@ permission_gated_commands: none (agmsg-dispatch only, through excludedCommands)
   - In the full suite, `-I` keeps the checkout root off `sys.path`, so `test_validate_agent_assets`, which imports the `tests` package, fails to load (`ModuleNotFoundError: No module named 'tests'`, validation §7).
   - The sandbox also caused failures in other modules: temporary-repo `git commit` exits 128, `out of pty devices`, `mktemp` is denied under `/var/folders`, and `--base 'main'` does not resolve in a worktree.
   - No failing module runs the lint. CI's `make unit-test` (`uv run python -m unittest discover -s tests/unit -v`) is the suite's authority.
+
+- **Correction (revise 1, audit:6434c27:10):** one Python call was the exception to the `-I` claim above: the CompactionDB `memory add` ran as `uv run --no-project .claude/hooks/contextdb_cli.py`, without `-I` or a named interpreter (validation §2).

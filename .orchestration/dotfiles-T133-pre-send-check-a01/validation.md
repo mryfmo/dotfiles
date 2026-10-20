@@ -279,11 +279,51 @@ FAILED (failures=20)
 exit 1
 ```
 
-## 2. Green: the module with the script (head 5e0ea536)
+## 2. The Bot's two P2s on 6a9edf5b, red against that script
+
+- **4322154981:** root home literals.
+- **4322154977:** longer or indented bash fences.
+- **The run:** the strengthened cases ran against `6a9edf5b`'s script, swapped into the worktree and restored afterwards.
 
 ```text
-$ /usr/bin/env -i PATH="$(dirname "$(command -v uv)"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" HTTPS_PROXY="${HTTPS_PROXY-}" HTTP_PROXY="${HTTP_PROXY-}" NO_PROXY="${NO_PROXY-}" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py -v
-5e0ea5363508854d3e74360fc4bd4690f5e4504c
+$ git show 6a9edf5b:scripts/orchestrator/pre-send.sh > scripts/orchestrator/pre-send.sh; <the task's env -i module command> -k home -k fenced
+FF
+======================================================================
+FAIL: test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 115, in test_fenced_bash_syntax
+    self.refused(self.run_send(path), "bash-syntax", "block(s) 2,3,4")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 70, in refused
+    self.assertIn(detail, lines[0])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: 'block(s) 2,3,4' not found in 'bash-syntax: refused (block(s) 2)'
+
+======================================================================
+FAIL: test_literal_home_refusal (__main__.PreSendTest.test_literal_home_refusal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 93, in test_literal_home_refusal
+    self.refused(self.run_send(path), "literal-home", "line(s) 14,16,17,18")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 70, in refused
+    self.assertIn(detail, lines[0])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: 'line(s) 14,16,17,18' not found in 'literal-home: refused (line(s) 14,16)'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.438s
+
+FAILED (failures=2)
+exit 1
+```
+
+## 3. Green: the module at the fix head 0bfa4eda
+
+```text
+$ <the task's env -i module command> -v
+0bfa4eda24d35e9b474cd202e49cd985a98c9710
 test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
 test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
 test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
@@ -295,13 +335,13 @@ test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_
 test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 4.437s
+Ran 9 tests in 4.708s
 
 OK
 exit 0
 ```
 
-## 3. Static checks, the comparison lint, the preflight on its own dispatched text, and line counts
+## 4. Static checks, the comparison lint and the preflight on its own dispatched text (0bfa4eda)
 
 ```text
 $ bash -n scripts/orchestrator/pre-send.sh
@@ -321,20 +361,21 @@ exit 0
 $ scripts/orchestrator/pre-send.sh ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a01.md
 sha256: 907cb3d4735fa9803827aa5b358e3db98a5ee57aa622b97fe138431b4fe43f5b
 exit 0
-$ wc -l scripts/orchestrator/pre-send.sh tests/unit/test_pre_send.py
-      83 scripts/orchestrator/pre-send.sh
-     165 tests/unit/test_pre_send.py
-     248 total
 ```
 
-## 4. Caps and the crit gate
+## 5. Caps and the crit gate
 
 ```text
 $ git diff --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e...HEAD
+4	0	.orchestration/dotfiles-T133-pre-send-check-a01/autoskill.md
+7	0	.orchestration/dotfiles-T133-pre-send-check-a01/learning.md
+77	0	.orchestration/dotfiles-T133-pre-send-check-a01/report.md
+11	0	.orchestration/dotfiles-T133-pre-send-check-a01/sandbox.md
 99	0	.orchestration/dotfiles-T133-pre-send-check-a01/task.md
-83	0	scripts/orchestrator/pre-send.sh
-165	0	tests/unit/test_pre_send.py
-outside tests/ and .orchestration/: 83 of 90; under tests/: 165 of 220
+341	0	.orchestration/dotfiles-T133-pre-send-check-a01/validation.md
+89	0	scripts/orchestrator/pre-send.sh
+169	0	tests/unit/test_pre_send.py
+outside tests/ and .orchestration/: 89 of 90; under tests/: 169 of 220
 $ make require-crit-review
 Review not required: no meaningful review trigger found.
 exit 0

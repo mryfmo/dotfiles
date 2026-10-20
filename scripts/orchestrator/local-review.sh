@@ -9,7 +9,7 @@
 #   entry, is checked out detached at the head and left there, and the review binary runs in it as `--profile review
 #   -s read-only review --base <sha>`. The sha is canonical main as `gh api repos/mryfmo/dotfiles/git/ref/heads/main`
 #   reports it (design 5.14 item 8), read before the checkout with gh resolved as codex is; the local main and
-#   origin/main refs are never the base. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
+#   origin/main refs are never the base, and git reads no replace ref or graft. The binary is `$CODEX_BIN`, else codex as `mise which` answers it under `env
 #   -i` in the root, else `command -v`; it is resolved before the checkout, and a path under a `shims` directory is
 #   refused. When its first line is an env shebang (`#!/usr/bin/env NAME` or `env -S NAME ARG…`), NAME is resolved the
 #   same way and runs with the `-S` form's ARG words, then the binary, so no interpreter comes from PATH in the PR
@@ -24,12 +24,16 @@
 # @exitcode 0 No finding.
 # @exitcode 2 A precondition failed: a malformed task id or head, a review file of another head, the head is not a
 #   local commit, the review worktree is not a worktree root or not clean, no review binary outside a shims
-#   directory, an env -S shebang the script does not split, or canonical main unread or not a local commit.
+#   directory, an env -S shebang the script does not split, no gh outside a shims directory, or canonical main
+#   unread or not a local commit.
 # @exitcode 3 One or more findings.
 # @exitcode 4 The review binary failed; no file is written, and its transcript stays in `$TMPDIR`.
 # @example
 #   scripts/orchestrator/local-review.sh dotfiles-T128-x-a01 "$(git rev-parse FETCH_HEAD)" 356
 set -euo pipefail
+# A seat can write refs/replace/ and info/grafts in the shared .git, and either would change what the base and the
+# head hold or which commit is their merge base (design 5.14 item 8), so git and the review binary read neither.
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null
 task=$1 head=$2 pr=$3
 # Both name the review file, so a / in either would write outside the validation directory (the audit of b6ce4ff).
 [[ $task =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && $head =~ ^[0-9a-f]{40}$ ]] || {

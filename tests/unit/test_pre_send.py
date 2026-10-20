@@ -142,6 +142,30 @@ class PreSendTest(unittest.TestCase):
                 else:
                     self.passed(path)
 
+    def test_checker_diagnostics_never_echo_a_secret(self):
+        # local:d067910:1 (P1): PyYAML quotes the malformed line; the refusal shows it with SECRET_PATTERN redacted
+        path = self.task()
+        path.write_text(path.read_text().replace("security: false\n", f"security: false\nbad: [ {LEAK}\n"))
+        result = self.run_send(path)
+        self.refused(result, "consistency")
+        self.assertNotIn("hunter2x", result.stdout + result.stderr)
+
+    def test_tilde_fences_are_bash_blocks(self):
+        # local:d067910:2: a ~~~bash fence is a code block like a backtick one
+        self.refused(self.run_send(self.task("\n~~~bash\nif then\n~~~\n")), "bash-syntax", "block(s) 1")
+
+    def test_a_fence_left_open_at_the_end_is_a_bash_block(self):
+        # local:d067910:2: an unclosed fence runs to the end of the text
+        self.refused(
+            self.run_send(self.task("\n```bash\necho ok\n```\n\n````bash\nif then\n")), "bash-syntax", "block(s) 2"
+        )
+
+    def test_the_owner_task_id_is_read_as_yaml(self):
+        # local:d067910:3: a trailing YAML comment is no part of task_id, so the owner check still runs
+        path = self.task(f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/none.md.\n")
+        path.write_text(path.read_text().replace(f"task_id: {TID}\n", f"task_id: {TID} # owner\n"))
+        self.refused(self.run_send(path), "owner-section", "missing")
+
     def test_all_refusals_are_reported(self):
         sentinel = self.tmp / "sentinel"
         body = f"\n{LEAK}\n{HOMES[0]}\nat or under 3 lines\n`## Owned by {TID}` in .orchestration/acceptance/x.md\n"

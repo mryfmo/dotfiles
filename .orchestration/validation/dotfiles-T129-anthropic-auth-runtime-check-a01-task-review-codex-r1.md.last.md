@@ -1,0 +1,17 @@
+[P2] high .orchestration/tasks/dotfiles-T129-anthropic-auth-runtime-check-a01.md:9 `allowed_files` omits a fixture that needs updating: `tests/unit/test_runtime_health.py:1229` inherits `os.environ`, while lines 1240–1243 pin success and warning counts. An inherited `ANTHROPIC_OAUTH_TOKEN` changes those results; inherited `PI_CODING_AGENT_DIR` can direct the new probe to a live store despite the isolation claim at task line 30. Allow this module, add its threat row, and require both variables to be isolated.
+
+[P2] high .orchestration/tasks/dotfiles-T129-anthropic-auth-runtime-check-a01.md:64 An existing store that cannot be queried produces only an optional warning. Consequently, an otherwise healthy `make doctor` can succeed while that store contains Anthropic OAuth credentials. This contradicts the unconditional failure promised at line 58 and plan 023’s D requirement. Specify a required failure when an existing store cannot be verified.
+
+[P2] medium .orchestration/tasks/dotfiles-T129-anthropic-auth-runtime-check-a01.md:82 VERIFY 1 establishes table names, but leaves the schema and its retrieval unresolved. The prescribed npm tarball fetch failed through the available web tool. GitHub’s v18.11.3 source does expose `provider`, `credential_type`, and `data`, with OAuth represented as `oauth`, so the probe is implementable once a readable source tied to the pin is supplied or authorized. The exact tarball contents remain unverified. `PONG status=question` adequately stops on version skew; it does not close this pre-dispatch verification. ([Pinned schema](https://github.com/can1357/oh-my-pi/blob/v18.11.3/packages/ai/src/auth/sqlite-credential-store.ts#L778-L789))
+
+The remaining requested checks:
+
+- **Identity and design:** SHA-256 matches exactly. The design was read with `git show origin/main:…`. This task has no `invariants` key, so the implementing-task mapping check does not apply.
+- **Premises:** Both commands were replayed verbatim. They returned `f32c02b8 feat(agents): pin verified omp and hcom assets (#388)` and `0 1`.
+- **Touch points:** `rg` and `git grep` found Makefile doctor, `scripts/run_unit_test.sh` through the workflow, runtime-health tests, `private_layer.bats`, `lifecycle.bats`, and `test_apparmor_userns.py`. The caller and isolated-function interfaces can remain unchanged; the runtime-health environment fixture is the scope gap above.
+- **Threat-table shape:** All three declared paths and all fixed controls have rows. The Bats `@test` description is acceptable as the name in `tests/<file>::<name>`; pytest syntax is not required. All 12 residual payloads exceed 20 characters, and there are no out-of-scope dispositions to validate.
+- **Other VERIFY items:** VERIFY 2–5 state defaults or conditional follow-up. A CLI replacement needs an amendment, and skipped SQLite cases must be reported as skipped.
+- **PR #398:** The exact requested `git diff --stat origin/main...origin/tools/assets-hcom-receipt -- scripts/check-tools.sh tests/install/common/check_tools.bats` returned empty output. The no-diff statement is true.
+
+📝 まとめ: Completed one read-only review. No Bats, implementation tests, or live credential reads were performed; the findings require revision before dispatch.
+Review: revise

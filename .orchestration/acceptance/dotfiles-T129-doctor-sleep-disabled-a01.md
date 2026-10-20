@@ -1,19 +1,26 @@
 ---
 {
-  "audit_findings": [],
-  "dispatch": [
-    "AGMSG-TASK v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T129-doctor-sleep-disabled-a01.md task_sha256=fae13584c35f000a8e6474db3e4b1eb93a85e4ba2546ff09d11c8937c071f31c deadline=none done_signal=AGMSG-RESULT note=the-monitor-s-22:40-JST-item-2-under-the-operator-s-21:49-directive:make-doctor-fails-on-a-Mac-that-may-sleep(pmset-g-SleepDisabled),warn-only-on-Linux;small:one-script,one-Makefile-line,one-test;do-this-first,then-the-portability-TASK-that-follows;your-387-branch-stays-for-its-integration;fresh-branch-from-origin/main read_at=read",
-    "AGMSG-TASK v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 round=1 amendment=1 previous_task_sha256=fae13584c35f000a8e6474db3e4b1eb93a85e4ba2546ff09d11c8937c071f31c repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T129-doctor-sleep-disabled-a01.md task_sha256=f7c8ffd8f63c0acd8d329539cd06d70936f83e4219843a449225b60b6789f756 deadline=none note=answer-to-your-14:08Z-question:option-A-adopted:tests/unit/test_runtime_health.py-joins-allowed_files-for-one-shutil.copy-of-check-sleep.sh-beside-the-check-tools-copy-in-each-of-the-three-make-doctor-fixtures(three-lines,one-commit,no-assertion-change);option-B-refused(a-missing-check-would-pass-silently);the-file-is-also-PR-388-s,so-this-PR-merges-after-388-and-rebases-first;push,ready-the-PR,wait-CI-and-the-Bot,RESULT;then-the-portability-TASK-already-in-your-inbox;read-Amendment-1;copy-the-amended-text-as-task.md read_at=read",
-    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 status=accepted reason=head-cb9c7bfa-verified(copy-f7c8ffd8,files-exact,caps-36/60-and-64/200,CI-13-green,no-Bot-review-or-comment-within-the-window) next_action=pending-integration:keep-the-branch;resolve-no-thread;the-chain-runs-in-the-monitor-s-23:10-order(after-392;this-PR-shares-test_runtime_health.py-with-388-and-rebases-after-it);start-the-portability-TASK-already-in-your-inbox-now read_at=unread"
-  ],
   "format": 1,
-  "head": null,
-  "ledger": [],
-  "pr": null,
+  "task": "dotfiles-T129-doctor-sleep-disabled-a01",
+  "head": "b8bb9a7d5d18f3881a30543be82fe1b0cac92e71",
+  "pr": 394,
+  "ledger": [
+    {
+      "id": "audit:b8bb9a7:1",
+      "class": "evidence-diagnosis"
+    }
+  ],
   "searches": [],
-  "task": "dotfiles-T129-doctor-sleep-disabled-a01"
+  "audit_findings": [
+    {
+      "n": "1",
+      "reason": "a record finding on the worker's report, never a merge stop (C-61), and the auditor is right about the diagnosis, which is corrected here: the `make doctor` run in the RESULT (validation.md section with the doctor output) shows the sleep check passing (`SleepDisabled is 1`) and `runtime=failed` coming from `ERROR: Codex config managed keys differ or config is missing`, that is the live ~/.codex config differing from the manifest's rendering on the worker's Mac, not from mise's blocked network request as report.md:30 says; the drift is the operator's item at the quiet boundary (the deferred full `make update`, then `make doctor`), outside this PR's files; a records-only push to reword the report would move the head and need another audit for no code change",
+      "evidence": "git show refs/remotes/pr/394:.orchestration/dotfiles-T129-doctor-sleep-disabled-a01/validation.md | /usr/bin/grep -nE 'Codex config managed keys|SleepDisabled'"
+    }
+  ]
 }
 ---
+
 # Acceptance record: dotfiles-T129-doctor-sleep-disabled-a01
 
 make doctor fails on a Mac that may sleep (pmset -g SleepDisabled), warn-only on Linux; the overnight monitor's 22:40 JST item 2 under the operator's 21:49 JST directive. Seat: claude-review-dot-a005 (worker-d), the first of its two tasks of 22:4x JST.
@@ -29,3 +36,17 @@ make doctor fails on a Mac that may sleep (pmset -g SleepDisabled), warn-only on
   audits=unknown: no audit file of this task yet: 0.
 - finding classes: none (no Bot or local finding yet).
 - 2026-10-17T14:34Z acceptance action: status=accepted, pending integration in the monitor's 23:10 JST order (after #392; the PR shares tests/unit/test_runtime_health.py with #388 and rebases after it); the line in the dispatch list of the block above.
+
+## Dispatch (bus lines)
+
+- AGMSG-TASK v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T129-doctor-sleep-disabled-a01.md task_sha256=fae13584c35f000a8e6474db3e4b1eb93a85e4ba2546ff09d11c8937c071f31c deadline=none done_signal=AGMSG-RESULT note=the-monitor-s-22:40-JST-item-2-under-the-operator-s-21:49-directive:make-doctor-fails-on-a-Mac-that-may-sleep(pmset-g-SleepDisabled),warn-only-on-Linux;small:one-script,one-Makefile-line,one-test;do-this-first,then-the-portability-TASK-that-follows;your-387-branch-stays-for-its-integration;fresh-branch-from-origin/main read_at=read
+- AGMSG-TASK v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 round=1 amendment=1 previous_task_sha256=fae13584c35f000a8e6474db3e4b1eb93a85e4ba2546ff09d11c8937c071f31c repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T129-doctor-sleep-disabled-a01.md task_sha256=f7c8ffd8f63c0acd8d329539cd06d70936f83e4219843a449225b60b6789f756 deadline=none note=answer-to-your-14:08Z-question:option-A-adopted:tests/unit/test_runtime_health.py-joins-allowed_files-for-one-shutil.copy-of-check-sleep.sh-beside-the-check-tools-copy-in-each-of-the-three-make-doctor-fixtures(three-lines,one-commit,no-assertion-change);option-B-refused(a-missing-check-would-pass-silently);the-file-is-also-PR-388-s,so-this-PR-merges-after-388-and-rebases-first;push,ready-the-PR,wait-CI-and-the-Bot,RESULT;then-the-portability-TASK-already-in-your-inbox;read-Amendment-1;copy-the-amended-text-as-task.md read_at=read
+- AGMSG-ACCEPTANCE v1 task_id=dotfiles-T129-doctor-sleep-disabled-a01 status=accepted reason=head-cb9c7bfa-verified(copy-f7c8ffd8,files-exact,caps-36/60-and-64/200,CI-13-green,no-Bot-review-or-comment-within-the-window) next_action=pending-integration:keep-the-branch;resolve-no-thread;the-chain-runs-in-the-monitor-s-23:10-order(after-392;this-PR-shares-test_runtime_health.py-with-388-and-rebases-after-it);start-the-portability-TASK-already-in-your-inbox-now read_at=unread
+
+## Audit of b8bb9a7d (the final chain; the update-branch merge of cb9c7bfa onto main a8a747af; Verdict: incorrect, one evidence finding, no implementation or security defect) dispositioned 2026-10-17T16:25Z
+
+audit-finding: b8bb9a7:1 not-applicable:a record finding on the worker's report, never a merge stop (C-61), and the auditor is right about the diagnosis, which is corrected here: the `make doctor` run in the RESULT (validation.md section with the doctor output) shows the sleep check passing (`SleepDisabled is 1`) and `runtime=failed` coming from `ERROR: Codex config managed keys differ or config is missing`, that is the live ~/.codex config differing from the manifest's rendering on the worker's Mac, not from mise's blocked network request as report.md:30 says; the drift is the operator's item at the quiet boundary (the deferred full `make update`, then `make doctor`), outside this PR's files; a records-only push to reword the report would move the head and need another audit for no code change; evidence=git show refs/remotes/pr/394:.orchestration/dotfiles-T129-doctor-sleep-disabled-a01/validation.md | /usr/bin/grep -nE 'Codex config managed keys|SleepDisabled'
+- 2026-10-17T16:25Z acceptance action under D-ask-rules-night: the record block, then the gate (read-only); the merge `gh pr merge --squash --match-head-commit b8bb9a7d5d18f3881a30543be82fe1b0cac92e71 394` is a gh write and waits for a human: approval-pending, recorded below once the gate passes.
+
+audit:b8bb9a7:1	evidence-diagnosis
+- 2026-10-17T16:26Z the gate passed (`orch-gate.sh dotfiles-T129-doctor-sleep-disabled-a01 b8bb9a7d5d18f3881a30543be82fe1b0cac92e71 394`: feedback, acceptance, audit and review evidence accepted, rc 0, run inside the sandbox). approval-pending (D-ask-rules-night): the merge is a gh write for a human: `gh pr merge --squash --match-head-commit b8bb9a7d5d18f3881a30543be82fe1b0cac92e71 394`, then the fast-forward (`.agents/worklog/orchestrator-glue/ff-main-safe.sh`) and the ACCEPTANCE status=accepted to a005. No thread to resolve (the sweep held no Bot thread). The audited head b8bb9a7d stays valid while main stays a8a747af; a merge before it needs a new update-branch, CI and audit.

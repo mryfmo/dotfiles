@@ -1,12 +1,1 @@
-[
-  {
-    "id": "dotfiles-T128-chain-github-scripts-followup-a02-pr375-review-1",
-    "scope": "review",
-    "resolved": true,
-    "author": "claude-code",
-    "head": "157d8f3fd12109579fd5183da5a7111f30744313",
-    "pr": "375",
-    "reviewed_at": "2026-10-17T11:30:51Z",
-    "body": "Independent orchestrator review of PR #375 at the head the chain fetches after the update-branch onto the current main (the worker's head 7bd14725; the audit of 59eca2af's two worker-side P2 fixed there: a TSV row with an empty or malformed ID is rejected before the backtick scan, revise.yaml committed for the C-50 round; task dotfiles-T128-chain-github-scripts-followup-a02, the chain-github lineage's owner task, pair-confirmed at c8307a64; branch fix/resolve-threads-lossless-disposition on base 1d418126): the diff touches the two files the task's allowed_files name, scripts/orchestrator/resolve-threads.sh (the owned row audit:e9404a6:1: a disposition the backticked reply cannot carry back losslessly is refused before any reply; the C-50 round 7c2f4177: the preflight skips TSV comment rows, backticks in them included) and tests/unit/test_chain_github_scripts.py (test_resolve_threads_refuses_a_disposition_the_reply_cannot_carry, test_resolve_threads_skips_comment_rows_during_preflight; 7 tests green), plus the task's evidence directory with the five evidence files committed at a05cc0aa; CI pass; the Bot's single review 5554178852 left one P2, 4299756161, fixed:7c2f4177 (operator decision D-S2-375 A); no P0/P1."
-  }
-]
+[{"id": "dotfiles-T128-chain-github-scripts-followup-a02-pr375-review-1", "scope": "review", "resolved": true, "author": "claude-code", "head": "c87546e9b8f5093206d9f504d66998e21516f302", "pr": "375", "reviewed_at": "2026-10-19T20:37:06Z", "body": "orchestrator integration review of PR #375 at c87546e9b8f5093206d9f504d66998e21516f302: local review 1 finding(s), each with its line in the acceptance record; sweep complete"}]

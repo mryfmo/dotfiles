@@ -253,7 +253,8 @@ class RegimeCiTest(unittest.TestCase):
         line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
         self.assertEqual(line, verify["run"])
         head = "${{ github.event.pull_request.head.sha }}"
-        self.assertEqual(({"HEAD_SHA": head}, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        token = {"GH_TOKEN": "${{ github.token }}"}
+        self.assertEqual(({"HEAD_SHA": head} | token, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
@@ -422,6 +423,48 @@ class RegimeCiTest(unittest.TestCase):
         self.assertIn(
             f"regime-ci: warning: the diff changes {CHECKER}; this run executed the base's version", result.stdout
         )
+
+    def record_checker(self, rc=0):
+        # a fake base checker that records its argv and environment in the fixture repository's .git, then answers `rc`
+        return (
+            "import json, os, sys\nfrom pathlib import Path\n"
+            "root = Path(sys.argv[sys.argv.index('--root') + 1])\n"
+            "(root / '.git' / 'checker.json').write_text(json.dumps({'argv': sys.argv, 'env': dict(os.environ)}))\n"
+            f"print('task.md: OK' if {rc} == 0 else 'crash')\nsys.exit({rc})\n"
+        )
+
+    def test_regime_ci_child_sees_parent_tokens(self):
+        # P1-17: the checker inherits regime-ci's environment, so GH_TOKEN reaches it exactly when regime-ci holds it
+        self.env = {k: v for k, v in self.env.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN")} | {"PROBE_KEPT": "1"}
+        self.build(checker=self.record_checker())
+        names = ("GH_TOKEN", "GITHUB_TOKEN")
+        for given in ({}, {"GH_TOKEN": "gho_fixture_a"}, {"GITHUB_TOKEN": "ghs_fixture_b"}, dict(zip(names, "ab"))):
+            with self.subTest(given=sorted(given)):
+                result = self.regime(**given)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                env = json.loads((self.repo / ".git" / "checker.json").read_text())["env"]
+                self.assertEqual(given, {k: env[k] for k in names if k in env})
+                self.assertEqual("1", env.get("PROBE_KEPT"))  # inheritance, not an allowlist
+
+    def test_regime_ci_keeps_tokens_out_of_argv_and_output(self):
+        tokens = {"GH_TOKEN": "gho_fixture_secret_a", "GITHUB_TOKEN": "ghs_fixture_secret_b"}
+        for rc in (0, 3):  # the verdict and the no-verdict diagnostic
+            with self.subTest(rc=rc):
+                self.build(checker=self.record_checker(rc))
+                result = self.regime(**tokens)
+                record = json.loads((self.repo / ".git" / "checker.json").read_text())
+                self.assertEqual(rc == 3, "no verdict (exit 3)" in result.stdout, result.stdout)
+                self.assertEqual(tokens, {k: record["env"].get(k) for k in tokens})  # present in the child
+                for value in tokens.values():
+                    self.assertNotIn(value, json.dumps(record["argv"]) + result.stdout + result.stderr)
+
+    def test_regime_yml_sets_the_token(self):
+        read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
+        cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
+        doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
+        verify = [s for s in doc["jobs"]["regime"]["steps"] if "regime-ci.py" in s.get("run", "")]
+        self.assertEqual(["${{ github.token }}"], [s.get("env", {}).get("GH_TOKEN") for s in verify])
+        self.assertEqual({"contents": "read"}, doc["permissions"])
 
 
 if __name__ == "__main__":

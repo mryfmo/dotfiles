@@ -133,7 +133,7 @@ The artifact wildcard permits task records only, never an additional executable 
 
    Pass argv directly, without shell interpolation, and give the initial subprocess an empty inherited environment. Preserve each argument as one argument.
 
-   Obtain the real UID's passwd home through `/usr/bin/dscl . -read` with the account record formed from `"/Users/"` and the real UID's username on macOS, or `/usr/bin/getent passwd` with the real UID on Linux. Do not derive it from `HOME`, a caller sentinel or a PATH lookup.
+   Obtain the real UID's passwd home from its passwd entry (`pwd.getpwuid(os.getuid()).pw_dir`), never from `HOME`, a caller sentinel or a PATH lookup. Cross-check it with `/usr/bin/dscl . -read` on the account record formed from `"/Users/"` and the real UID's username on macOS, or `/usr/bin/getent passwd` with the real UID on Linux, when that lookup can run; both seat sandboxes refuse `dscl` (measured at revise 1, ACCEPTANCE of 2026-10-20), so a lookup that cannot run leaves the passwd entry standing alone, and a lookup that answers differently or malformed is refused. Amendment 1 (2026-10-20T12:2xZ; `previous_sha256: dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c`) records the measured behaviour of revise 1 and changes no code; the task copy on the branch is updated to these bytes in a records-only commit.
 
    Determine the repository root independently of hostile Git environment variables. Refuse before script execution if the script path is relative, resolves outside that root or is not a regular file. Test traversal, sibling-prefix and symlink escapes. Do not add an alternative production launch path or a caller-selected executable directory.
 

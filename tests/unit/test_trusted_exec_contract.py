@@ -90,8 +90,11 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             d.mkdir(parents=True)
         script = root / "scripts" / "observe.sh"
         script.write_text(f'printf "%s\\0" "$0" "$@" > "{out}/argv"\n/usr/bin/env -0 > "{out}/env"\n')
-        linux = f"me:x:{os.getuid()}:0::{home}:/bin/sh\n"
+        linux = f"me:*:{os.getuid()}:0::{home}:/bin/sh\n"
         response = f"NFSHomeDirectory: {home}\n" if sys.platform == "darwin" else linux
+        self.enter(
+            mock.patch.object, tec.pwd, "getpwuid", return_value=pwd.struct_passwd(("me", "*", 0, 0, "", str(home), ""))
+        )
         self.enter(mock.patch.object, tec, "_directory_service", return_value=response)
         self.enter(mock.patch.object, tec, "repository_root", return_value=root)
 
@@ -275,8 +278,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         run(["/bin/bash", "-c", f"/bin/bash {fx.script} " + " ".join(ARGS[:2])], env, cwd=fx.base)  # word-split argv
         with self.assertRaisesRegex(AssertionError, "argv"):
             fx.check(ARGS[:2])
-        outside = fx.base / "outside"
-        outside.mkdir()
+        (outside := fx.base / "outside").mkdir()
         (outside / "x.sh").write_text(f'echo ran > "{fx.out}/marker"\n')
         (fx.root.parent / "root-evil").mkdir()
         (fx.root.parent / "root-evil" / "x.sh").write_text(f'echo ran > "{fx.out}/marker"\n')
@@ -293,24 +295,47 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 tec.run_under_trusted_parent(script)
             self.assertFalse((fx.out / "marker").exists())
 
-    def test_passwd_home_reads_the_directory_service_of_each_platform(self):
-        name, uid = pwd.getpwuid(os.getuid()).pw_name, os.getuid()
-        dscl = ["/usr/bin/dscl", ".", "-read", f"/Users/{name}", "NFSHomeDirectory"]
-        getent, entry = ["/usr/bin/getent", "passwd", str(uid)], f"{name}:x:{uid}:20:Probe:/home/probe:/bin/bash\n"
-        for platform, argv, response, home in (  # home None: the response must be refused
-            ("darwin", dscl, "NFSHomeDirectory: /Users/probe\n", "/Users/probe"),
-            ("darwin", dscl, "NFSHomeDirectory:\n /Users/long name\n", "/Users/long name"),
-            ("linux", getent, entry, "/home/probe"),
-            ("darwin", dscl, "No such key: NFSHomeDirectory\n", None),
-            ("linux", getent, "a:b\n", None),
-            ("win32", None, "", None),
+    def test_worker_root_probe_detects_a_same_length_overwrite(self):
+        identity = lambda st: (st.st_ino, st.st_size, st.st_mtime_ns)
+        for name in ("input", "output"):  # in place, same length, the mtime put back: what a coarse clock leaves behind
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+                path, st = getattr(probe, name), os.stat(getattr(probe, name))
+                with open(path, "r+b") as handle:  # opened to write only; nothing is read
+                    handle.write(tec.LEGIT.upper().encode())
+                os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
+                self.assertEqual(
+                    identity(st), identity(os.stat(path))
+                )  # the precondition: inode, size, mtime unchanged
+                with self.assertRaisesRegex(AssertionError, "wrote "):
+                    probe.assert_untouched()
+
+    def test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check(self):
+        entry = pwd.struct_passwd(("probe", "*", uid := os.getuid(), 20, "Probe", "/home/probe", "/bin/sh"))
+        dscl = ["/usr/bin/dscl", ".", "-read", "/Users/probe", "NFSHomeDirectory"]
+        getent, ds = ["/usr/bin/getent", "passwd", str(uid)], "_directory_service"
+        refused = subprocess.CalledProcessError(70, dscl)  # what both seat sandboxes answer for dscl
+        for platform, argv, answer, outcome in (  # outcome: the home returned, or the refusal's reason
+            ("darwin", dscl, "NFSHomeDirectory: /home/probe\n", "/home/probe"),
+            ("darwin", dscl, "NFSHomeDirectory:\n /home/probe\n", "/home/probe"),
+            ("darwin", dscl, refused, "/home/probe"),
+            ("darwin", dscl, "NFSHomeDirectory: /Users/other\n", "disagree"),
+            ("darwin", dscl, "No such key: NFSHomeDirectory\n", "disagree"),
+            ("linux", getent, f"probe:*:{uid}:20:Probe:/home/probe:/bin/sh\n", "/home/probe"),
+            ("linux", getent, OSError("no getent"), "/home/probe"),
+            ("linux", getent, "a:b\n", "disagree"),
+            ("win32", None, None, "/home/probe"),
         ):
-            with self.subTest(response), mock.patch.object(sys, "platform", platform):
-                with mock.patch.object(tec, "_directory_service", return_value=response) as service:
-                    if home is None:
-                        self.assertRaises(RuntimeError, tec.passwd_home)
+            side = {"side_effect": answer} if isinstance(answer, BaseException) else {"return_value": answer}
+            with self.subTest(f"{platform} {answer!r}"), mock.patch.object(sys, "platform", platform):
+                with (
+                    mock.patch.object(tec.pwd, "getpwuid", return_value=entry),
+                    mock.patch.object(tec, ds, **side) as service,
+                ):
+                    if outcome.startswith("/"):
+                        self.assertEqual(outcome, tec.passwd_home())
                     else:
-                        self.assertEqual(home, tec.passwd_home())
+                        self.assertRaisesRegex(RuntimeError, outcome, tec.passwd_home)
                 self.assertEqual(argv, service.call_args.args[0] if service.call_args else None)
 
     def test_probes_clean_up_after_an_exception(self):

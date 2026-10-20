@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TID = "dotfiles-T999-fixture-a01"
 LINKS = ("scripts/orchestrator/pre-send.sh", "scripts/orchestrator/task-consistency-check.py")
 LINKS += ("scripts/validate-agent-assets.py",)
-SECRET = "pass" + "word = 'hunt" + "er2x'"  # matches the validator's pattern only once assembled
+LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
 
 
@@ -78,7 +78,7 @@ class PreSendTest(unittest.TestCase):
         self.refused(self.run_send(self.task(name="dotfiles-T999-other-a01")), "consistency", "C1 task_id")
 
     def test_secret_pattern_matches_validator(self):
-        path = self.task(f"\nkeep {SECRET}\npassword: none\n\n## Checks\n\n```\n{SECRET}\n```\n")
+        path = self.task(f"\nkeep {LEAK}\npassword: none\n\n## Checks\n\n```\n{LEAK}\n```\n")
         lines = [i for i, line in enumerate(path.read_text().split("\n"), 1) if validator_pattern().search(line)]
         self.assertEqual(2, len(lines))  # the body line and the last Checks line, not the near miss
         result = self.run_send(path)
@@ -144,7 +144,7 @@ class PreSendTest(unittest.TestCase):
 
     def test_all_refusals_are_reported(self):
         sentinel = self.tmp / "sentinel"
-        body = f"\n{SECRET}\n{HOMES[0]}\nat or under 3 lines\n`## Owned by {TID}` in .orchestration/acceptance/x.md\n"
+        body = f"\n{LEAK}\n{HOMES[0]}\nat or under 3 lines\n`## Owned by {TID}` in .orchestration/acceptance/x.md\n"
         path = self.task(body + f"\n```bash\ntouch {sentinel}\nif then\n```\n", name="dotfiles-T999-other-a01")
         result = self.run_send(path)
         for reason in ("consistency", "secret-pattern", "literal-home", "self-cap", "bash-syntax", "owner-section"):

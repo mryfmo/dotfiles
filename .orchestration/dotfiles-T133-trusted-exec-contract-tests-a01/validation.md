@@ -15,8 +15,8 @@ The final head adds only records under `.orchestration/dotfiles-T133-trusted-exe
 Names used below:
 
 - `MAIN`: the main checkout. `SCRATCH`: the seat's scratchpad.
-- `PY` and `PY310`: the absolute 3.15 and 3.10 interpreters. `UT`: the uv prefix that runs them.
-- `RED` and `RED2`: the two red test commits. `PREV`: the audited head.
+- The commands are recorded literally: the 3.15 and 3.10 interpreters by their `~/` paths, the red test commits `755d9002` and `bb539aa7`, and the code head `7d3ecd4f` the mutants check out. Amendment 1's records round replaced the generator's `$UT`, `$PY`, `$PY310`, `$H`, `$RED`, `$RED2` and `$T` with these values; the outputs are unchanged.
+- `PREV`: the audited head of revise 1, `9545e59f`.
 - `$HOME_OF_THE_SEAT`: the seat's home directory, which appears only in interpreter paths and in the live passwd lookup of section 6.
 
 Each block ends with the exit status of the command shown.
@@ -26,7 +26,7 @@ The repository's mask (`scripts/validate-agent-assets.py --mask-secrets`) rewrit
 ## 1. Task copy
 
 ````console
-$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"; cmp "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md" && echo byte-identical
+$ shasum -a 256 "$MAIN/.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md" ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/task.md"; cmp "$MAIN/.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md" ".orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/task.md" && echo byte-identical
 dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c  $MAIN/.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md
 dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c  .orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/task.md
 byte-identical
@@ -34,7 +34,7 @@ byte-identical
 ````
 
 ````console
-$ uv run --offline --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root "$PWD" "$MAIN/.orchestration/tasks/$T.md"
+$ uv run --offline --no-project --with pyyaml python -I scripts/orchestrator/task-consistency-check.py --root "$PWD" "$MAIN/.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md"
 dotfiles-T133-trusted-exec-contract-tests-a01.md: OK
 [exit 0]
 ````
@@ -42,7 +42,7 @@ dotfiles-T133-trusted-exec-contract-tests-a01.md: OK
 ## 2. Premises, re-run at worker start, and the observed interpreters
 
 ````console
-$ python3 --version; uname -s; python3 -c 'import shutil; print("dscl=" + str(shutil.which("dscl"))); print("getent=" + str(shutil.which("getent")))'; git ls-tree --name-only origin/main -- tests/unit/trusted_exec_contract.py; echo "ls-tree exit $?"; git merge-base --is-ancestor ba318e53 origin/main && echo "ba318e53 is on origin/main"; "$PY" -c "import platform; print(platform.python_version())"; "$PY310" -c "import platform; print(platform.python_version())"
+$ python3 --version; uname -s; python3 -c 'import shutil; print("dscl=" + str(shutil.which("dscl"))); print("getent=" + str(shutil.which("getent")))'; git ls-tree --name-only origin/main -- tests/unit/trusted_exec_contract.py; echo "ls-tree exit $?"; git merge-base --is-ancestor ba318e53 origin/main && echo "ba318e53 is on origin/main"; ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -c "import platform; print(platform.python_version())"; ~/.local/share/uv/python/cpython-3.10-macos-aarch64-none/bin/python3.10 -c "import platform; print(platform.python_version())"
 Python 3.15.0
 Darwin
 dscl=/usr/bin/dscl
@@ -96,7 +96,7 @@ A	tests/unit/trusted_exec_contract.py
 At the first test commit the helper did not exist. At the revise's test commit `bb539aa7` (on the audited head `9545e59f`), the two new tests run against the old helper: the same-length overwrite goes unseen, and the passwd lookup fails when dscl cannot run, accepts a disagreeing directory answer, or refuses a platform without one.
 
 ````console
-$ git worktree add --detach -q "$SCRATCH/tec-red" "$RED" && (cd "$SCRATCH/tec-red" && $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-red.out" 2>&1; echo "unittest exit status: $?"; /usr/bin/grep -E "Error|^Ran|^FAILED" "$SCRATCH/tec-red.out"; git worktree remove --force "$SCRATCH/tec-red"
+$ git worktree add --detach -q "$SCRATCH/tec-red" 755d9002 && (cd "$SCRATCH/tec-red" && uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-red.out" 2>&1; echo "unittest exit status: $?"; /usr/bin/grep -E "Error|^Ran|^FAILED" "$SCRATCH/tec-red.out"; git worktree remove --force "$SCRATCH/tec-red"
 unittest exit status: 1
 ImportError: Failed to import test module: test_trusted_exec_contract
 ModuleNotFoundError: No module named 'trusted_exec_contract'. Did you mean: 'test_trusted_exec_contract'?
@@ -106,7 +106,7 @@ FAILED (errors=1)
 ````
 
 ````console
-$ git worktree add --detach -q "$SCRATCH/tec-red" "$RED2" && (cd "$SCRATCH/tec-red" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-red.out" 2>&1; echo "unittest exit status: $?"; /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^FAILED" "$SCRATCH/tec-red.out" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-170; git worktree remove --force "$SCRATCH/tec-red"
+$ git worktree add --detach -q "$SCRATCH/tec-red" bb539aa7 && (cd "$SCRATCH/tec-red" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-red.out" 2>&1; echo "unittest exit status: $?"; /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^FAILED" "$SCRATCH/tec-red.out" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-170; git worktree remove --force "$SCRATCH/tec-red"
 unittest exit status: 1
 ERROR: test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check [darwin CalledProcessError(70, ['/usr/bin/dscl', '.', '-read', '~', 
 ERROR: test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check [linux OSError('no getent')]
@@ -126,7 +126,7 @@ FAILED (failures=5, errors=3)
 Fixture directories (`trusted-exec-*`) under `$TMPDIR` are counted before and after, the temporary HOME is listed after, and this repository's Git configuration is hashed before and after.
 
 ````console
-$ git rev-parse HEAD; export TEC_HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" TEC_UVC="$(/usr/bin/mktemp -d "$TMPDIR/tec-uvcache.XXXXXX")"; echo "HOME=$TEC_HOME UV_CACHE_DIR=$TEC_UVC"; fixtures() { find "$TMPDIR" -maxdepth 1 -name "trusted-exec-*" | wc -l | tr -d " "; }; gitcfg() { git config --list --show-origin | shasum -a 256 | cut -c1-16; }; echo "fixture dirs before: $(fixtures); git config before: $(gitcfg)"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py -v; rc=$?; echo "unittest exit status: ${rc}"; echo "fixture dirs after: $(fixtures); git config after: $(gitcfg)"; echo "temporary HOME after the run:"; find "$TEC_HOME" -mindepth 1 | head; echo "(end of listing)"
+$ git rev-parse HEAD; export TEC_HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" TEC_UVC="$(/usr/bin/mktemp -d "$TMPDIR/tec-uvcache.XXXXXX")"; echo "HOME=$TEC_HOME UV_CACHE_DIR=$TEC_UVC"; fixtures() { find "$TMPDIR" -maxdepth 1 -name "trusted-exec-*" | wc -l | tr -d " "; }; gitcfg() { git config --list --show-origin | shasum -a 256 | cut -c1-16; }; echo "fixture dirs before: $(fixtures); git config before: $(gitcfg)"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py -v; rc=$?; echo "unittest exit status: ${rc}"; echo "fixture dirs after: $(fixtures); git config after: $(gitcfg)"; echo "temporary HOME after the run:"; find "$TEC_HOME" -mindepth 1 | head; echo "(end of listing)"
 7d3ecd4f417ece5038d3218e006e5bfe24070c61
 HOME=$TMPDIR/tec-home.ld0qAK UV_CACHE_DIR=$TMPDIR/tec-uvcache.dIYg54
 fixture dirs before: 0; git config before: 3e9c9ddbc66eac10
@@ -153,7 +153,7 @@ temporary HOME after the run:
 ````
 
 ````console
-$ export TEC_HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" TEC_UVC="$(/usr/bin/mktemp -d "$TMPDIR/tec-uvcache.XXXXXX")"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" $UT "$PY310" python -B -c "import sys; print(sys.version.split()[0])"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" $UT "$PY310" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py 2>&1 | tail -3
+$ export TEC_HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" TEC_UVC="$(/usr/bin/mktemp -d "$TMPDIR/tec-uvcache.XXXXXX")"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" uv run --no-project --offline --python ~/.local/share/uv/python/cpython-3.10-macos-aarch64-none/bin/python3.10 python -B -c "import sys; print(sys.version.split()[0])"; HOME="$TEC_HOME" UV_CACHE_DIR="$TEC_UVC" uv run --no-project --offline --python ~/.local/share/uv/python/cpython-3.10-macos-aarch64-none/bin/python3.10 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py 2>&1 | tail -3
 3.10.22
 Ran 10 tests in 4.665s
 
@@ -166,7 +166,7 @@ OK
 The printer below runs the test module's `case_*` functions: the noncompliant stub must fail the probe assertion for the intended reason, then the compliant stub must pass. It elides the runner's inherited variable names and PATH value from the environment reasons.
 
 ````console
-$ cat "$SCRATCH/tec-cases.py"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" "$PY" -B "$SCRATCH/tec-cases.py"
+$ cat "$SCRATCH/tec-cases.py"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -B "$SCRATCH/tec-cases.py"
 """Print each probe's red reason (noncompliant stub) and green result (compliant stub) from the test module's cases."""
 
 import re
@@ -215,8 +215,8 @@ trusted_parent (TrustedExecContractTest::test_trusted_parent_probe): red: "envir
 ````
 
 ````console
-$ HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" "$PY" -B -c "import sys; sys.path.insert(0, \"tests/unit\"); import trusted_exec_contract as t
-with t.swapped_file() as p: print(\"alias:\", None if p.alias is None else p.alias.name, \"reason:\", repr(p.alias_reason))"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py -k test_swapped_file_probe -v 2>&1 | tail -4
+$ HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -B -c "import sys; sys.path.insert(0, \"tests/unit\"); import trusted_exec_contract as t
+with t.swapped_file() as p: print(\"alias:\", None if p.alias is None else p.alias.name, \"reason:\", repr(p.alias_reason))"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py -k test_swapped_file_probe -v 2>&1 | tail -4
 alias: cHECKED.TSV reason: ''
 ----------------------------------------------------------------------
 Ran 1 test in 0.003s
@@ -228,7 +228,7 @@ OK
 Live, with no stub: `dscl` fails inside this sandbox, and `passwd_home()` still returns the passwd entry's home rather than `HOME` (a temporary one here).
 
 ````console
-$ cat "$SCRATCH/tec-live-passwd.py"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" "$PY" -I -B "$SCRATCH/tec-live-passwd.py"
+$ cat "$SCRATCH/tec-live-passwd.py"; HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -B "$SCRATCH/tec-live-passwd.py"
 """Live: dscl on this seat, and what passwd_home() returns without any stub."""
 import os, pwd, subprocess, sys
 
@@ -257,7 +257,7 @@ passwd_home(): $HOME_OF_THE_SEAT
 Each block truncates its output file, checks `7d3ecd4f` out into a scratch worktree, applies one replacement to `tests/unit/trusted_exec_contract.py` (asserted to match exactly once; the block shows `mutated:` only when it applied) and only then runs the module. The first eight are the worker review's survivors (M16 now anchored on the runner's `check=False` call, which the audit found matching twice); then a no-op per probe assertion and the revise's changes. Each must turn a test red.
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if content != LEGIT:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M33 the content check a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if content != LEGIT:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M33 the content check a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if content != LEGIT: -> if False:
 M33 the content check a no-op: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [hostile_git]
@@ -268,7 +268,7 @@ M33 the content check a no-op: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects")' 'values = (git_dir, self.attacker, "/dev/null", "/dev/null", self.legit, git_dir / "objects")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M04 the hostile config inert: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects")' 'values = (git_dir, self.attacker, "/dev/null", "/dev/null", self.legit, git_dir / "objects")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M04 the hostile config inert: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects") -> values = (git_dir, self.attacker, "/dev/null", "/dev/null", self.legit, git_dir / "objects")
 M04 the hostile config inert: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [hostile_git]
@@ -279,7 +279,7 @@ M04 the hostile config inert: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects")' 'values = (git_dir, self.attacker, self.config, self.config, "/nonexistent", "/nonexistent")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M05 the ceiling and alternates inert: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects")' 'values = (git_dir, self.attacker, self.config, self.config, "/nonexistent", "/nonexistent")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M05 the ceiling and alternates inert: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: values = (git_dir, self.attacker, self.config, self.config, self.legit, git_dir / "objects") -> values = (git_dir, self.attacker, self.config, self.config, "/nonexistent", "/nonexistent")
 M05 the ceiling and alternates inert: unittest exit status: 1
    1 FAIL: test_hostile_git_probe
@@ -289,7 +289,7 @@ M05 the ceiling and alternates inert: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'argv = ["/usr/bin/env", "-i", f"PATH={SAFE_PATH}"' 'argv = ["/usr/bin/env", f"PATH={SAFE_PATH}"' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M14 no env -i: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'argv = ["/usr/bin/env", "-i", f"PATH={SAFE_PATH}"' 'argv = ["/usr/bin/env", f"PATH={SAFE_PATH}"' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M14 no env -i: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: argv = ["/usr/bin/env", "-i", f"PATH={SAFE_PATH}" -> argv = ["/usr/bin/env", f"PATH={SAFE_PATH}"
 M14 no env -i: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [trusted_parent]
@@ -300,7 +300,7 @@ M14 no env -i: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'argv += ["/bin/bash", "--noprofile", "--norc", "-p", str(real)' 'argv += ["/bin/bash", str(real)' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M15 bash with startup files and without -p: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'argv += ["/bin/bash", "--noprofile", "--norc", "-p", str(real)' 'argv += ["/bin/bash", str(real)' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M15 bash with startup files and without -p: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: argv += ["/bin/bash", "--noprofile", "--norc", "-p", str(real) -> argv += ["/bin/bash", str(real)
 M15 bash with startup files and without -p: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [trusted_parent]
@@ -311,7 +311,7 @@ M15 bash with startup files and without -p: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'return subprocess.run(argv, env={}, capture_output=True, text=True, check=False' 'return subprocess.run(argv, env=dict(os.environ), capture_output=True, text=True, check=False' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M16 the inherited environment: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'return subprocess.run(argv, env={}, capture_output=True, text=True, check=False' 'return subprocess.run(argv, env=dict(os.environ), capture_output=True, text=True, check=False' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M16 the inherited environment: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: return subprocess.run(argv, env={}, capture_output=True, text=True, check=False -> return subprocess.run(argv, env=dict(os.environ), capture_output=True, text=True, check=False
 M16 the inherited environment: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [trusted_parent]
@@ -322,7 +322,7 @@ M16 the inherited environment: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if not Path(script).is_absolute():' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M18 no relative-path refusal: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if not Path(script).is_absolute():' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M18 no relative-path refusal: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if not Path(script).is_absolute(): -> if False:
 M18 no relative-path refusal: unittest exit status: 1
    1 FAIL: test_trusted_parent_probe [relative]
@@ -332,7 +332,7 @@ M18 no relative-path refusal: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'return Path(__file__).resolve().parents[2]' 'return Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip())' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M25 the root from git and GIT_*: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'return Path(__file__).resolve().parents[2]' 'return Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip())' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "M25 the root from git and GIT_*: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: return Path(__file__).resolve().parents[2] -> return Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip())
 M25 the root from git and GIT_*: unittest exit status: 1
    1 FAIL: test_trusted_parent_probe
@@ -342,7 +342,7 @@ M25 the root from git and GIT_*: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'found += [f"read {path}"] if path == self.input and st.st_atime_ns else []' 'found += []' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root read detection a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'found += [f"read {path}"] if path == self.input and st.st_atime_ns else []' 'found += []' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root read detection a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: found += [f"read {path}"] if path == self.input and st.st_atime_ns else [] -> found += []
 worker-root read detection a no-op: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [worker_root]
@@ -353,7 +353,7 @@ worker-root read detection a no-op: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root write detection a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root write detection a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()): -> if False:
 worker-root write detection a no-op: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [worker_root]
@@ -366,7 +366,7 @@ worker-root write detection a no-op: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" '(identity, BASELINE_NS, LEGIT.encode())' '(identity, BASELINE_NS, content)' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root content not compared: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" '(identity, BASELINE_NS, LEGIT.encode())' '(identity, BASELINE_NS, content)' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root content not compared: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: (identity, BASELINE_NS, LEGIT.encode()) -> (identity, BASELINE_NS, content)
 worker-root content not compared: unittest exit status: 1
    1 FAIL: test_worker_root_probe_detects_a_same_length_overwrite [input]
@@ -377,7 +377,7 @@ worker-root content not compared: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)' 'pass' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root access time not put back: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)' 'pass' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "worker-root access time not put back: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False) -> pass
 worker-root access time not put back: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [worker_root]
@@ -388,7 +388,7 @@ worker-root access time not put back: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if runs := self.records():' 'if runs := []:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "shim assertion a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if runs := self.records():' 'if runs := []:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "shim assertion a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if runs := self.records(): -> if runs := []:
 shim assertion a no-op: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [shim_on_path]
@@ -399,7 +399,7 @@ shim assertion a no-op: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'os.replace(self.base / ".swap", target)' 'os.unlink(self.base / ".swap")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "swap barrier a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'os.replace(self.base / ".swap", target)' 'os.unlink(self.base / ".swap")' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "swap barrier a no-op: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: os.replace(self.base / ".swap", target) -> os.unlink(self.base / ".swap")
 swap barrier a no-op: unittest exit status: 1
    1 FAIL: test_each_probe_detects_condition [swapped_file]
@@ -410,7 +410,7 @@ swap barrier a no-op: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if other != entry.pw_dir:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd cross-check off: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if other != entry.pw_dir:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd cross-check off: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if other != entry.pw_dir: -> if False:
 passwd cross-check off: unittest exit status: 1
    1 FAIL: test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check [darwin 'NFSHomeDirectory: ~\n' disagree]
@@ -422,7 +422,7 @@ passwd cross-check off: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'except (OSError, subprocess.CalledProcessError):' 'except ():' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd fails when dscl or getent cannot run: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'except (OSError, subprocess.CalledProcessError):' 'except ():' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd fails when dscl or getent cannot run: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: except (OSError, subprocess.CalledProcessError): -> except ():
 passwd fails when dscl or getent cannot run: unittest exit status: 1
    1 ERROR: test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check [darwin CalledProcessError(70, ['/usr/bin/dscl', '.', '-rea
@@ -433,7 +433,7 @@ passwd fails when dscl or getent cannot run: unittest exit status: 1
 ````
 
 ````console
-$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" "$H" && "$PY" -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if not entry.pw_dir.startswith("/") or "\n" in entry.pw_dir:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" $UT "$PY" python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd accepts a non-absolute home: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
+$ : > "$SCRATCH/tec-mut.out"; git worktree add --detach -q "$SCRATCH/tec-mut" 7d3ecd4f && ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys; p, o, n = sys.argv[1:4]; s = open(p).read(); assert s.count(o) == 1, (s.count(o), o); open(p, "w").write(s.replace(o, n)); print("mutated:", o.strip(), "->", n.strip())' "$SCRATCH/tec-mut/tests/unit/trusted_exec_contract.py" 'if not entry.pw_dir.startswith("/") or "\n" in entry.pw_dir:' 'if False:' && { (cd "$SCRATCH/tec-mut" && HOME="$(/usr/bin/mktemp -d "$TMPDIR/tec-home.XXXXXX")" uv run --no-project --offline --python ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 python -B -m unittest discover -s tests/unit -p test_trusted_exec_contract.py) > "$SCRATCH/tec-mut.out" 2>&1; echo "passwd accepts a non-absolute home: unittest exit status: $?"; < "$SCRATCH/tec-mut.out" /usr/bin/grep -E "^(FAIL|ERROR):|^Ran|^OK|^FAILED" | sed "s/ (test_trusted_exec_contract[^)]*)//" | cut -c1-150 | sort | uniq -c; }; git worktree remove --force "$SCRATCH/tec-mut"
 mutated: if not entry.pw_dir.startswith("/") or "\n" in entry.pw_dir: -> if False:
 passwd accepts a non-absolute home: unittest exit status: 1
    1 FAIL: test_passwd_home_uses_getpwuid_and_treats_dscl_or_getent_as_an_optional_cross_check [win32 None no absolute]
@@ -471,7 +471,7 @@ unchanged from 118daafa: tests/install/macos/common/brew.bats
 ````
 
 ````console
-$ git diff --numstat origin/main...HEAD -- tests; git diff --numstat origin/main...HEAD -- tests/unit/trusted_exec_contract.py tests/unit/test_trusted_exec_contract.py | awk '{ printf "%s: %d added + %d deleted = %d changed lines (cap %d)\n", $3, $1, $2, $1 + $2, ($3 ~ /test_trusted/ ? 350 : 250) }'; wc -l tests/unit/trusted_exec_contract.py tests/unit/test_trusted_exec_contract.py .orchestration/$T/task.md
+$ git diff --numstat origin/main...HEAD -- tests; git diff --numstat origin/main...HEAD -- tests/unit/trusted_exec_contract.py tests/unit/test_trusted_exec_contract.py | awk '{ printf "%s: %d added + %d deleted = %d changed lines (cap %d)\n", $3, $1, $2, $1 + $2, ($3 ~ /test_trusted/ ? 350 : 250) }'; wc -l tests/unit/trusted_exec_contract.py tests/unit/test_trusted_exec_contract.py .orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/task.md
 350	0	tests/unit/test_trusted_exec_contract.py
 247	0	tests/unit/trusted_exec_contract.py
 tests/unit/test_trusted_exec_contract.py: 350 added + 0 deleted = 350 changed lines (cap 350)
@@ -529,7 +529,7 @@ test (macos-14, client): success
 Run with the records in place and uncommitted, before the evidence commit.
 
 ````console
-$ make require-crit-review AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/$T/$T-worker-review-receipt.md
+$ make require-crit-review AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/dotfiles-T133-trusted-exec-contract-tests-a01-worker-review-receipt.md
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 [exit 0]
 ````

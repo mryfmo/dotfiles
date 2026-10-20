@@ -5,7 +5,7 @@ branch: tools/trusted-exec-contract-tests-a01
 base: ba318e53 (origin/main at the branch point)
 previous_head: 9545e59f4a91aae36cd850c4645d29c366845844 (the audited head; the orchestrator's update-branch merge)
 code_head: 7d3ecd4f (e603ac51 task copy; 755d9002 tests, red; 4729b83c helper; f4eed1cc the worker review's fix round; bb539aa7 revise 1 tests, red; 65c81c98 revise 1 fix; eda9b5ee the non-absolute home case; 7d3ecd4f the revise review's P3 fixes)
-task_sha256: dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c
+task_sha256: f9f09083a9b314fb0417e0529541ea539f3c2f500cfc5f25a40c564d11a48258 (amendment 1, line 136 restated to the measured passwd_home behaviour; previous dd7549118bd470af98f52096ee668165a53727981eba4cb8466550641e2dc12c)
 ---
 
 # Report: dotfiles-T133-trusted-exec-contract-tests-a01

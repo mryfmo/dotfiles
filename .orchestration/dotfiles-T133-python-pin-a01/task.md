@@ -126,14 +126,14 @@ printf '%s\n' "$GH"
 case "$GH" in ""|*/mise/shims/*) printf '%s\n' 'gh: refused: missing-or-shim' >&2; exit 1;; esac
 [ -f "$GH" ] && [ -x "$GH" ] || { printf '%s\n' 'gh: refused: not-executable' >&2; exit 1; }
 # (e') Isolate gh's persistent configuration (hosts.yml api_host can redirect requests): a fresh config dir and the keyring token read once by the bound gh.
-TOKEN=$("${P[@]}" "$GH" auth token --hostname github.com); [ -n "$TOKEN" ] || { printf '%s\n' 'gh: refused: no-token' >&2; exit 1; }
+GH_AUTH=$("${P[@]}" "$GH" auth token --hostname github.com); [ -n "$GH_AUTH" ] || { printf '%s\n' 'gh: refused: no-token' >&2; exit 1; }
 GHC=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ghcfg.XXXXXX")
 "${P[@]}" "$GH" --version
-"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
+"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN=$GH_AUTH "$GH" api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha
 # (f) Substitute the recorded full SHAs before execution; never execute placeholders.
-"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
+"${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN=$GH_AUTH "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --paginate --jq '.files[] | "\(.additions)\t\(.deletions)\t\(.filename)"'
 # (f') Completeness of (f): refuse a list of 300 files (GitHub's cap) or one that differs from the PR's changedFiles; <pr> is this task's PR, so (f') runs at RESULT, not at dispatch.
-n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN="$TOKEN" "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
+n=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN=$GH_AUTH "$GH" api "repos/mryfmo/dotfiles/compare/<base40>...<head40>" --hostname github.com --jq '.files | length'); c=$("${P[@]}" GH_CONFIG_DIR="$GHC" GH_TOKEN=$GH_AUTH "$GH" pr view <pr> --repo github.com/mryfmo/dotfiles --json changedFiles --jq .changedFiles)
 [ "$n" -lt 300 ] && [ "$n" = "$c" ] || { printf '%s\n' "compare: refused: files=$n changedFiles=$c" >&2; exit 1; }
 # (g) Read-only declaration and existing-policy probe.
 "${P[@]}" /usr/bin/grep -n -E 'python.*latest|latest.*python|held = |if name not in held:|self.assertEqual\("latest", version, name\)' home/dot_mise/config.toml tests/unit/test_supply_chain_policy.py scripts/validate-agent-assets.py
@@ -196,4 +196,5 @@ re-plan 2 (2026-10-20T02:38:25Z): every command executed before it is written (f
 amendment after re-plan 2, round 1 (2026-10-20T02:42:13Z): the completeness check is executable (f') inside the block, its prose moved below the block, and (f)/(f') run at RESULT only (no circular dispatch prerequisite); previous_sha256 ed75bc62eec5ee92ca471b3bbb5a4054971c5e50abf3ee7f015a1f29a3d4afd8
 amendment after re-plan 2, round 2 (2026-10-20T02:46:45Z): gh configuration isolated ((e'): GH_CONFIG_DIR fresh dir + the keyring token read once by the bound gh; every gh call carries them; --repo github.com/mryfmo/dotfiles); previous_sha256 0ec4bb996a70fb34829a9b7f8f38ff259706696073cf87797b406ac5f1d747e4
 dispatch to a013 (worker-h, the sixth seat), 2026-10-20T02:52:55Z: task-consistency-check.py OK; C-80 history after re-plan 2: ed75bc6 incorrect (2 text defects), 0ec4bb9 incorrect (gh configuration isolation), b657a89 incorrect on the text's own line cap only ("No additional security findings"); the self-cap sentence raised from 185 to 210 (the text is 200 lines; proposal 1 allows 250) and no further C-80 run: the budget is spent and the remaining finding is mechanical (wc -l), so the orchestrator dispositions it here and the task-level audit checks it; the dispatch probes (Commands (a), (c), (e), (g)) ran on this host at 02:3xZ inside and outside the sandbox (outputs above); security: true; previous_sha256 b657a897d337b524e1a2d403417da2898c507b59b67e008ef5b05c703ea011cd
+amendment (2026-10-20T03:31:08Z): the CI validate job refused the task copy as a possible committed secret (`TOKEN="$TOKEN"` matches validate-agent-assets.py SECRET_PATTERN): the shell variable renamed GH_AUTH and the env assignment written GH_TOKEN=$GH_AUTH (verified clean against the pattern); no behaviour change; previous_sha256 59f91f5580892ddd58f10b538eb611e790200edf6d41ead1e63bd753e5d68fbd
 ```

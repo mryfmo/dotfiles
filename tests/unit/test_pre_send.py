@@ -22,7 +22,7 @@ TID = "dotfiles-T999-fixture-a01"
 LINKS = ("scripts/orchestrator/pre-send.sh", "scripts/orchestrator/task-consistency-check.py")
 LINKS += ("scripts/validate-agent-assets.py",)
 SECRET = "pass" + "word = 'hunt" + "er2x'"  # matches the validator's pattern only once assembled
-HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob")
+HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
 
 
 def validator_pattern():  # this test's own reading of the validator's one assignment, parsed and never run
@@ -86,8 +86,11 @@ class PreSendTest(unittest.TestCase):
         self.assertNotIn("hunter2x", result.stdout + result.stderr)
 
     def test_literal_home_refusal(self):
-        path = self.task(f"\n{HOMES[0]}\n$HOME/ok and <home>/ok and /Users/<home>\n{HOMES[1]}\n")
-        self.refused(self.run_send(path), "literal-home", "line(s) 14,16")
+        # the validator's own pattern: user and root homes on both platforms, a bare home name too (PR #442 4322154981)
+        path = self.task(
+            f"\n{HOMES[0]}\n$HOME/ok and <home>/ok and /Users/<home>\n{HOMES[1]}\n{HOMES[2]}\n{HOMES[3]}\n"
+        )
+        self.refused(self.run_send(path), "literal-home", "line(s) 14,16,17,18")
         self.passed(self.task("\n$HOME/ok and <home>/ok\n"))
 
     def test_self_cap(self):
@@ -106,9 +109,10 @@ class PreSendTest(unittest.TestCase):
 
     def test_fenced_bash_syntax(self):
         sentinel = self.tmp / "sentinel"
-        blocks = (f"touch {sentinel}", "if then", "fi )")
-        path = self.task("".join(f"\n```bash\n{b}\n```\n" for b in blocks))
-        self.refused(self.run_send(path), "bash-syntax", "block(s) 2,3")
+        blocks = (f"touch {sentinel}", "if then", "fi )", "done done")
+        fences = ("```", "```", "````", "  ```")  # longer and indented openers too (PR #442 4322154977)
+        path = self.task("".join(f"\n{f}bash\n{b}\n{f}\n" for f, b in zip(fences, blocks)))
+        self.refused(self.run_send(path), "bash-syntax", "block(s) 2,3,4")
         self.assertFalse(sentinel.exists())  # parsed, never run
         self.passed(self.task(f"\n```bash\n{blocks[0]}\n```\n\n```sh\necho two\n```\n"))
         self.assertFalse(sentinel.exists())

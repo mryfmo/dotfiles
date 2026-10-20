@@ -16,6 +16,7 @@ SHIMS = ("uv", "python3", "gh", "git", "bash")
 ALLOWED = ("PATH", "HOME", "LANG")
 SAFE_PATH = "/usr/bin:/bin"
 LEGIT, ATTACKER = "legitimate\n", "attacker\n"
+BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
 QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
 HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
@@ -108,25 +109,25 @@ class WorkerRoot:
         check = base / "atime-check"
         for path in (check, self.input, self.output):
             path.write_text(LEGIT)
-            os.utime(path, ns=(0, os.stat(path).st_mtime_ns))
+            os.utime(path, ns=(0, BASELINE_NS))
         if check.read_text() and os.stat(check).st_atime_ns == 0:
             raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
-        self._before = {path: self._identity(os.lstat(path)) for path in (self.input, self.output)}
-
-    @staticmethod
-    def _identity(st):
-        return st.st_ino, st.st_size, st.st_mtime_ns
+        self._inodes = {path: os.lstat(path).st_ino for path in (self.input, self.output)}
 
     def assert_untouched(self):
-        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory."""
+        """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory. The
+        content is compared too, since a write in place can keep the inode, the size and a coarse clock's mtime."""
         found = []
-        for path, before in self._before.items():
+        for path, inode in self._inodes.items():
             if not os.path.lexists(path):
                 found.append(f"removed {path}")
                 continue
             st = os.lstat(path)
             found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
-            found += [f"wrote {path}"] if self._identity(st) != before else []
+            content = path.read_bytes() if st.st_ino == inode else b""  # the same file only, never through a new link
+            os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)  # puts this read's access back
+            if (st.st_ino, st.st_mtime_ns, content) != (inode, BASELINE_NS, LEGIT.encode()):
+                found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
@@ -198,19 +199,23 @@ def _directory_service(argv):
 
 
 def passwd_home():
-    """The real UID's home from the directory service (dscl on macOS, getent on Linux), never from HOME or PATH."""
-    if sys.platform == "darwin":
-        record = "/Users/" + pwd.getpwuid(os.getuid()).pw_name
-        out = _directory_service(["/usr/bin/dscl", ".", "-read", record, "NFSHomeDirectory"])
-        home = out.partition("NFSHomeDirectory:")[2].strip() if out.startswith("NFSHomeDirectory:") else ""
-    elif sys.platform.startswith("linux"):
-        fields = _directory_service(["/usr/bin/getent", "passwd", str(os.getuid())]).rstrip("\n").split(":")
-        home = fields[5] if len(fields) == 7 else ""
-    else:
-        raise RuntimeError(f"no directory service known for {sys.platform}")
-    if not home.startswith("/") or "\n" in home:
-        raise RuntimeError(f"the directory service gave no absolute home: {home!r}")
-    return home
+    """The real UID's home from its passwd entry (pwd.getpwuid), never HOME or PATH. dscl (macOS) or getent (Linux)
+    cross-checks it when it can run (both seat sandboxes refuse dscl); a disagreeing or malformed answer is refused."""
+    entry, darwin = pwd.getpwuid(os.getuid()), sys.platform == "darwin"
+    argv = ["/usr/bin/getent", "passwd", str(os.getuid())] if sys.platform.startswith("linux") else None
+    argv = ["/usr/bin/dscl", ".", "-read", "/Users/" + entry.pw_name, "NFSHomeDirectory"] if darwin else argv
+    try:
+        out = _directory_service(argv) if argv else None
+    except (OSError, subprocess.CalledProcessError):
+        out = None  # the cross-check cannot run here; the passwd entry stands alone
+    if out is not None:
+        f, dscl = out.rstrip("\n").split(":"), (out.partition(NFS)[2] if out.startswith(NFS) else "").strip()
+        other = dscl if darwin else (f[5] if len(f) == 7 else "")
+        if other != entry.pw_dir:
+            raise RuntimeError(f"the directory service and the passwd entry disagree: {other!r}, {entry.pw_dir!r}")
+    if not entry.pw_dir.startswith("/") or "\n" in entry.pw_dir:
+        raise RuntimeError(f"no absolute passwd home: {entry.pw_dir!r}")
+    return entry.pw_dir
 
 
 def run_under_trusted_parent(script, *args):

@@ -30,7 +30,7 @@ records Crit status exit=0
 records rescan: 41 files; 0 sensitive-data hits
 ```
 
-The fresh status reports absent review data, no daemon and no sessions; independent static review is used under AGENTS.md. The scan reads the full record set with stdlib AST extraction of the existing regex, without importing or executing the validator. Only actual account-home prefixes are normalized; `$HOME` and public CI runner paths remain explanatory evidence.
+The fresh status reports absent review data, no daemon and no sessions; independent static review is used under AGENTS.md. That initial scan used stdlib AST extraction and only the actual account-home prefix. Message2790 later exposed the missed portable CI-home forms. They are now normalized by the validator's actual mask mode; see home-mask-validation.md. Earlier zero-hit counts describe the narrower historical scan, not the portable-home rule.
 
 Initial staging and scope verification, exit0 (Git emitted its nonfatal Darwin temp-dir fallback warning):
 

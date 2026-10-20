@@ -16,5 +16,20 @@
     "scope": "review",
     "body": "Independent read-only reviewer t133_independent_review approved the records-only transport scope without findings. It scanned42 existing records using the AST-extracted SECRET_PATTERN and actual-home prefix, including decoded JSON strings, with zero hits. It spot-checked red/green output, commit/push logs, fixed-SHA comparisons, CI failures and Bot logs against the reports. CI/API claims identify8c727728 and the later CI observation is attributed to agmsg2769; interrupted Bot completion and records-descendant CI are explicitly unverified. All31 a01 files match their preservation manifest; implementation and both task copies are unchanged. The initial41 staged files are new a02 records, excluding task copies/worklog. Live GitHub/tests/validator execution were not checked; this process approval does not authorize integration.",
     "resolved": true
+  },
+  {
+    "id": "t133-a02-portable-home-finding",
+    "scope": "file",
+    "path": ".orchestration/dotfiles-T133-python-pin-a02/ci-regime-failed-8c727728.txt",
+    "line": 6,
+    "priority": "P2",
+    "body": "The earlier actual-home-only scan and records approval missed the validator's portable CI-runner home rule. Message2790 reports validate failure on remote841e9f1c. Line6 of this log and ci-regime-failed-7f7665b9.txt had a CI-runner home prefix. Both are now normalized to~ by the existing validator's actual --mask-secrets mode, offline under the prescribed Python3.15.0 binding. Only the home prefixes changed; initial mode exit0 reports one match each and zero in41 other records. Historical earlier approvals remain above; they do not establish the broader portable-home compliance. Current-phase independent closure and zero-match verification are recorded separately.",
+    "resolved": true
+  },
+  {
+    "id": "t133-a02-portable-home-independent-closure",
+    "scope": "review",
+    "body": "Independent read-only reviewer t133_independent_review approved the portable-home correction with no new findings and explicitly acknowledged that its previous records approval missed this compliance gap. Both CI logs change only their line6 home prefix, preserving timestamps, commands, head IDs and diagnostics. Initial actual masker output confirms one replacement per log and zero in41 other original records. Independent in-memory application of the extracted mask functions to46 records found zero matches and zero changed buffers. Implementation, both task copies and all31 a01 artifacts are unchanged. Documentation corrects the prior scan scope and retains CI-head attribution. Live CI/full validator/tests were not run; transport and subsequent CI remain orchestrator-owned.",
+    "resolved": true
   }
 ]

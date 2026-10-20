@@ -3,6 +3,8 @@
 status: ready_for_review
 
 Records transport: message2774 authorizes committing these audit records after the implementation head below, excluding worklog and without source/task-copy changes. CI/API evidence remains attributed to8c727728, not to the new records-only descendant. The orchestrator transports it and owns subsequent head/CI/audit/gate updates. Details: records-validation.md.
+
+Portable-home correction: message2790 reports validate red on remote841e9f1c and other checks green, attributing it to CI-runner home prefixes in the saved logs. The previous actual-home-only scan was too narrow. The actual validator mask mode now normalizes every affected a02 record offline; details/output are in home-mask-validation.md and home-mask-output.txt. Local parent remainsf816d9e8; the orchestrator transports the records-only fix and performs subsequent remote CI. No source/task-copy or user-visible runtime behavior changes.
 PR: https://github.com/mryfmo/dotfiles/pull/437
 branch: task/dotfiles-T133-python-pin-a01
 dispatch_base: 60a6fb2b324d0381c4a6e539b37c650105154a7e

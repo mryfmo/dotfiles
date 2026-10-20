@@ -2,7 +2,7 @@ regime	Check the pull request with the base's verifier	﻿2026-10-20T05:05:51.90
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9021669Z ^[[36;1muv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"^[[0m
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082142Z shell: /usr/bin/bash -e {0}
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082362Z env:
-regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082593Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082593Z   UV_PYTHON_INSTALL_DIR: ~/work/_temp/uv-python-dir
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9082912Z   HEAD_SHA: 8c72772807c9d7a722a74d0f1add083a7d67dcc4
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:51.9083149Z ##[endgroup]
 regime	Check the pull request with the base's verifier	2026-10-20T05:05:52.1909665Z Installed 1 package in 1ms

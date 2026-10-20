@@ -1,0 +1,8 @@
+- [P2] High confidence .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md:51 — Deferring ledger and reservation path validation leaves this consumer’s no-double-rerun guarantee at line 131 unprotected: a reservation parent and ledger redirected into worker-writable storage can be cleared between calls without replacing the trusted interpreter; require resolved-destination checks, including symlinks and case aliases, or explicitly hold that guarantee pending its owner’s implementation.
+- [P2] High confidence .orchestration/tasks/dotfiles-T133-ci-efficiency-followup-a04.md:59 — The verification residual omits section 5.14’s hostile Git environment/configuration regression for this consumer: neither the retained tests nor the additions exercise inherited `GIT_*` or repository-local `core.worktree`, although line 123 changes root-discovery controls whose result selects the registry, ledger and reservations.
+
+All six allowed-file entries have threat rows. The two closed rows now name relevant tests. The trusted-parent requirement, deployed sandbox prerequisite and explicit same-UID residual address the previously reported loader, HOME, PATH and Linux `gh` concerns at the design level.
+
+📝 まとめ: Reviewed the task and cited acceptance/review records; two findings are submitted for orchestrator disposition.
+Not checked: implementation, runtime tests, CI or deployed protection; filesystem destinations and Git-root binding remain insufficiently verified.
+Verdict: incorrect

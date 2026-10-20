@@ -112,21 +112,21 @@ class WorkerRoot:
             os.utime(path, ns=(0, BASELINE_NS))
         if check.read_text() and os.stat(check).st_atime_ns == 0:
             raise RuntimeError(f"a read leaves the access time at 0 under {base}, so reads are not observable here")
-        self._inodes = {path: os.lstat(path).st_ino for path in (self.input, self.output)}
+        self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
 
     def assert_untouched(self):
         """Nothing read the input, wrote, replaced or removed either file, or created the new output's directory. The
         content is compared too, since a write in place can keep the inode, the size and a coarse clock's mtime."""
         found = []
-        for path, inode in self._inodes.items():
+        for path, identity in self._identity.items():
             if not os.path.lexists(path):
                 found.append(f"removed {path}")
                 continue
             st = os.lstat(path)
             found += [f"read {path}"] if path == self.input and st.st_atime_ns else []
-            content = path.read_bytes() if st.st_ino == inode else b""  # the same file only, never through a new link
+            content = path.read_bytes() if (st.st_ino, st.st_mode) == identity else b""  # the same regular file only
             os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)  # puts this read's access back
-            if (st.st_ino, st.st_mtime_ns, content) != (inode, BASELINE_NS, LEGIT.encode()):
+            if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
         if found:

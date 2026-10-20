@@ -141,7 +141,8 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         clean = self.worker_root_probe()
         with self.assertRaises(PermissionError):
             guarded_io(clean)
-        clean.assert_untouched()
+        for _ in range(2):  # twice: the probe's own content read must not count as a read
+            clean.assert_untouched()
         return str(red.exception)
 
     def case_swapped_file(self):
@@ -327,7 +328,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             ("win32", None, None, "no absolute"),
         ):
             side = {"side_effect": answer} if isinstance(answer, BaseException) else {"return_value": answer}
-            with self.subTest(f"{platform} {answer!r}"), mock.patch.object(sys, "platform", platform):
+            with self.subTest(f"{platform} {answer!r} {outcome}"), mock.patch.object(sys, "platform", platform):
                 with (
                     mock.patch.object(tec.pwd, "getpwuid", return_value=relative if "absolute" in outcome else entry),
                     mock.patch.object(tec, ds, **side) as service,

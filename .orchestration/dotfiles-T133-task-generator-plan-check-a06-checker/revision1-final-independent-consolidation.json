@@ -1,0 +1,8 @@
+{
+  "current_sha256": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+  "reconstructed_before_sha256": "02dba268f2013e859fb39a08e9b97c19d2f2643b319441301d4f89a78d48f228",
+  "reconstruction": "Reverse only the documented fixture consolidation in current final test bytes, retaining subsequent raw-API and observer additions; this is not the historical before snapshot.",
+  "assert_call_count": 104,
+  "assertion_AST_multiplicities_equal": true,
+  "lines_saved": 29
+}

@@ -1,23 +1,34 @@
-# Complete selected-change measurement
+# Complete final worker-round2 measurement
 
 Fixed base: 60a6fb2b324d0381c4a6e539b37c650105154a7e
-Continuation head: 06ffefbc633fe37bcef107385ea96810b2a9a0c5
+Continuation/transport head: b8bf806655496b7a897aea25e1b43319095fac23
 PR: https://github.com/mryfmo/dotfiles/pull/440
 Branch: tools/task-generator-plan-check-a05-checker
 
-Production: checker416 additions +27 deletions =443/450 changed lines.
-Tests: new module655 additions +legacy35 additions +22 deletions =712/720 changed lines.
-Artifacts are counted in the complete inventory below, separately from the production/test caps. No executable/helper is placed under artifacts. All new artifact modes are0644. Timestamped worklogs, foreign untracked directories and caches are excluded.
+Production: checker419 additions +27 deletions =446/450 changed lines.
+ALL tests: new module652 additions +legacy35 additions +22 deletions +owner-authorized upstream test_regime_ci.py6 additions +5 deletions =720/720 changed lines. Worker-allowed test subtotal709 plus upstream11; all11 are counted, no exclusion or cap amendment.
 
-Measured the selected staged tree with git diff --cached --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e and git diff --cached --name-only 60a6fb2b324d0381c4a6e539b37c650105154a7e. The base is an ancestor of HEAD. After commit, verify the exact same results with git diff --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e...<full-head40> and git diff --name-only 60a6fb2b324d0381c4a6e539b37c650105154a7e...<full-head40>; the validated full head is sent in PONG, avoiding a self-referential commit hash in its own artifact. full-diff-inventory.json contains the parsed complete inventory.
+The complete fixed-base diff below includes all 474 paths: retained a05 files, a06 artifacts, the three checker/test paths and25 owner-authorized upstream paths. D5 has161 committed files unchanged from06ffefbc633fe37bcef107385ea96810b2a9a0c5;25 imported paths remain byte-identical to762a2541f422b691199cb42fbbd1588604042ad2. No a01-a04 import/deletion, unrelated untracked path, cache or timestamp worklog is selected. No executable/helper is placed under artifacts; all a06 artifact modes0644.
 
-Retained .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/ (161 committed files) unchanged from 06ffefbc633fe37bcef107385ea96810b2a9a0c5; no a01-a04 import/deletion. Source attribution:396 at06ff +24 held pipeline +18 identity/collision +4 directory/C10 +2 R4 -1 PurePosixPath ancestry =443. The task text's attribution is retained verbatim; this measured worker breakdown distinguishes the separately observed identity/collision contribution. No further cap increase or defense removal.
+Measured with git diff --cached --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e and git diff --cached --name-only 60a6fb2b324d0381c4a6e539b37c650105154a7e. After commit verify exact equality using git diff --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e...<full-head40> and git diff --name-only 60a6fb2b324d0381c4a6e539b37c650105154a7e...<full-head40>. Full head is sent in PONG, avoiding a self-referential commit hash. full-diff-inventory.json is the parsed complete inventory, including itself and this measure.
 
-Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 240 author lines plus6 appended Checks lines, four allowed entries. Full numstat entries:356. Source/test hashes: frozen-final-binding.json.
+Task copy SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af; byte-identical amended dispatch,240 author lines plus6 appended Checks, four allowed entries. Source/test hashes are revision1-final-bindings.json. Fixture consolidation preserves104 assertion-call AST multiplicities in the independent final review; no defense/assertion deleted.
 
 ## Complete numstat
 
 ```
+30	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-crit.json
+21	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md
+10	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/learning.md
+67	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/report.md
+31	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/sandbox.md
+66	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md
+258	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/validation.md
+6	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/learning.md
+31	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/report.md
+23	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/sandbox.md
+76	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/task.md
+70	0	.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/validation.md
 2	0	.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format-final.log
 4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format.log
 1	0	.orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-python-format-final.log
@@ -190,7 +201,7 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/collision-red-commands.json
 10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/crit-status.json
 0	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/crit-status.stderr
-39	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/current-measure.json
+17	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/current-measure.json
 4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/dispatched-copy-offline-command.json
 5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/dispatched-copy-offline-copy-rows-command.json
 28	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/dispatched-copy-offline-copy-rows.log
@@ -261,7 +272,7 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/frozen-source-binding.json
 3	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-base-prepare.log
 5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-candidate-prepare.log
-2150	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-diff-inventory.json
+2897	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-diff-inventory.json
 444	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-format-base.log
 444	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-format-candidate.log
 14	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-format-commands.json
@@ -296,14 +307,14 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 52	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/independent-test-strengthening-commands.json
 32	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/independent-test-strengthening-review.json
 52	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/independent-test-strengthening-review.md
-9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/learning.md
+11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/learning.md
 40	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/legacy-c12-diagnostic.log
 72	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/legacy-initial-diagnostic.log
 9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/lint-adjustment-blocked-pong.md
 6	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/lint-adjustment-blocker.md
 88	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/mask-before-new-P2-hold.log
 52	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/mask-current-evidence.log
-738	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/measure.md
+973	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/measure.md
 18	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/module-commands.json
 26	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/modules-legacy312.log
 50	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/modules-legacy315.log
@@ -332,11 +343,14 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 37	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new312.log
 37	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new315.log
 10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-r4-lint.log
-25	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md
+25	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report-before-final-revision.md
+23	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md
 18	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/required-selectors.json
 13	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/reset-provenance.json
+1	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/result-before-final-revision.txt
 3	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-command.json
 6	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-reproduction.log
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise.yaml
 4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-blocked-report.md
 58	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red312.log
 61	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red315.log
@@ -345,6 +359,93 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 7	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-overcap-pong.md
 10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-red-commands.json
 22	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-replan.md
+51	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-command.json
+2	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-prepare.log
+9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-result.json
+125	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets.log
+270	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-closed-mask.log
+0	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-code-diff-check.log
+5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-current-bindings.json
+999	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-commands.json
+19	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-privacy.json
+5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-bindings.json
+21	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-format-command.json
+444	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-format.log
+5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-prepare.log
+55	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-suite-snapshot.json
+6183	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-candidate.log
+5043	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-comparison.json
+9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-exit.json
+102	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red312.json
+102	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red315.json
+29	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-command.json
+4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-exit.json
+581	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312.log
+29	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-command.json
+4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-exit.json
+619	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315.log
+25	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.12.15.log
+25	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.15.0.log
+52	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-commands.json
+8	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-consolidation.json
+32	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.json
+79	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.md
+562	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask.log
+282	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask2.log
+22	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-module-commands.json
+16	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy312.log
+16	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy315.log
+38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new312.log
+38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new315.log
+290	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutation-preflight.json
+28	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-command.json
+4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-exit.json
+386	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.json
+995	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.log
+28	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-command.json
+4	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-exit.json
+386	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.json
+1056	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.log
+271	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-observations.json
+6	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-production-r4.log
+1	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-python-format.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green-commands.json
+11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green312.log
+11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green315.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red-commands.json
+34	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red312.log
+36	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red315.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime-commands.json
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime312.log
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime315.log
+80	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-fixture-consolidation.json
+5	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-prepare.log
+55	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-suite-snapshot.json
+6184	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-candidate.log
+11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-exit.json
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green-commands.json
+14	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green312.log
+14	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green315.log
+18	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.12.15.log
+18	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.15.0.log
+52	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-commands.json
+24	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.json
+57	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.md
+266	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-mutation-preflight.json
+9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-pre-red-bindings.json
+6	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-production-r4.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red-commands.json
+26	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red312.log
+27	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red315.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red-commands.json
+36	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red312.log
+38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red315.log
+10	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime-commands.json
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime312.log
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime315.log
+38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-gate-commands.json
+2	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-reviewed-gate.log
+16	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-unreviewed-gate.log
 11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/sandbox.md
 51	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-command.json
 9	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-result.json
@@ -365,20 +466,48 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/strict-frozen-final-modules-new315.log
 246	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task-initial-90ca0ae9.md
 246	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task.md
-42	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md
+11	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-hold.md
+1976	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-verification.json
+42	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation-before-final-revision.md
+64	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md
 38	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-gate-commands.json
-68	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-evidence.json
-16	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md
+98	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-evidence.json
+12	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md
 2	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-reviewed-gate.log
 16	0	.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-unreviewed-gate.log
-416	27	scripts/orchestrator/task-consistency-check.py
+6	6	.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md
+225	0	.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a04.md
+1	3	.orchestration/tasks/dotfiles-T133-loop-limits-a01.md
+99	0	.orchestration/tasks/dotfiles-T133-pre-send-check-a01.md
+200	0	.orchestration/tasks/dotfiles-T133-python-pin-a01.md
+183	0	.orchestration/tasks/dotfiles-T133-python-pin-a02.md
+66	0	.orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md
+76	0	.orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a02.md
+255	0	.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a05-checker.md
+246	0	.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md
+1	0	.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md
+655	0	.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md
+419	27	scripts/orchestrator/task-consistency-check.py
+6	5	tests/unit/test_regime_ci.py
 35	22	tests/unit/test_task_checkers.py
-655	0	tests/unit/test_task_consistency_c11_c15.py
+652	0	tests/unit/test_task_consistency_c11_c15.py
 ```
 
 ## Complete changed-file list
 
 ```
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-crit.json
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/learning.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/report.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/sandbox.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/validation.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/learning.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/report.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/sandbox.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/task.md
+.orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/validation.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format-final.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-python-format-final.log
@@ -693,11 +822,14 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new312.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new315.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-r4-lint.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report-before-final-revision.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/required-selectors.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/reset-provenance.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/result-before-final-revision.txt
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-command.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-reproduction.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise.yaml
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-blocked-report.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red312.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red315.log
@@ -706,6 +838,93 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-overcap-pong.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-red-commands.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-replan.md
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-prepare.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-result.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-closed-mask.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-code-diff-check.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-current-bindings.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-privacy.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-bindings.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-format-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-format.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-prepare.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-suite-snapshot.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-candidate.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-comparison.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red312.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red315.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.12.15.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.15.0.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-consolidation.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.md
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask2.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-module-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutation-preflight.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-command.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-observations.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-production-r4.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-python-format.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-fixture-consolidation.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-prepare.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-suite-snapshot.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-candidate.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-exit.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.12.15.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.15.0.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.md
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-mutation-preflight.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-pre-red-bindings.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-production-r4.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime312.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime315.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-gate-commands.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-reviewed-gate.log
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-unreviewed-gate.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/sandbox.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-command.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-result.json
@@ -726,13 +945,29 @@ Task SHA256:b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af, 24
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/strict-frozen-final-modules-new315.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task-initial-90ca0ae9.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task.md
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-hold.md
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-verification.json
+.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation-before-final-revision.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-gate-commands.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-evidence.json
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-reviewed-gate.log
 .orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-unreviewed-gate.log
+.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md
+.orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a04.md
+.orchestration/tasks/dotfiles-T133-loop-limits-a01.md
+.orchestration/tasks/dotfiles-T133-pre-send-check-a01.md
+.orchestration/tasks/dotfiles-T133-python-pin-a01.md
+.orchestration/tasks/dotfiles-T133-python-pin-a02.md
+.orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md
+.orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a02.md
+.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a05-checker.md
+.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md
+.orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md
+.orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md
 scripts/orchestrator/task-consistency-check.py
+tests/unit/test_regime_ci.py
 tests/unit/test_task_checkers.py
 tests/unit/test_task_consistency_c11_c15.py
 ```

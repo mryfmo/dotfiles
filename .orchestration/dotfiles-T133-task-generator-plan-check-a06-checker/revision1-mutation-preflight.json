@@ -1,0 +1,266 @@
+[
+  {
+    "id": "resolver-priority",
+    "selector": "test_interpreter_resolution_order",
+    "compiled": true,
+    "mutant_sha256": "7ebf63f4b0d14669242323cbe90dc61039c2701dd376a1e664958f8ef1d86ba8"
+  },
+  {
+    "id": "dispatch-optional-bindings",
+    "selector": "test_dispatch_env_i_invocation",
+    "compiled": true,
+    "mutant_sha256": "5d7aecf8e0ec86bd00cc1473d41bfc98a78a613d5ad541aa2e56cedb406825f7"
+  },
+  {
+    "id": "probe-status",
+    "selector": "test_c14_rejects_failed_probe_with_matching_stdout",
+    "compiled": true,
+    "mutant_sha256": "5ca308b4306e81d5d692c753fb985aaa47d4a82eb3983b26619401d583cf5025"
+  },
+  {
+    "id": "gh-token-preservation",
+    "selector": "test_gh_child_preserves_parent_tokens",
+    "compiled": true,
+    "mutant_sha256": "32b11218afd648b8ea8c1492e6de534ee6f02e907c41aaecd1da67c9a7fc6fcc"
+  },
+  {
+    "id": "canonical-design-only",
+    "selector": "test_c15_uses_canonical_main_only",
+    "compiled": true,
+    "mutant_sha256": "9911c1464d5716f496c12ff8e385c40589480af052d0f8f71ca10edb1f898b89"
+  },
+  {
+    "id": "canonical-design-hash",
+    "selector": "test_c6_receipt_uses_canonical_design_bytes",
+    "compiled": true,
+    "mutant_sha256": "5bc3867dc6f699cbd7170f8b971b6b880bf448cf4bc4bbc6b547e43363aae353"
+  },
+  {
+    "id": "reject-git-pathspec",
+    "selector": "test_path_grammar_distinguishes_globs_from_git_pathspecs",
+    "compiled": true,
+    "mutant_sha256": "6b00f79a5edbc26242921fc9f69f5d1cfadf1df6b731dd892a01c83b54984639"
+  },
+  {
+    "id": "root-applied-files",
+    "selector": "test_path_grammar_covers_root_files",
+    "compiled": true,
+    "mutant_sha256": "e3d8248d87ebea3c65190676d3891e843b465eea43573b5a076e22c6c69b7b1e"
+  },
+  {
+    "id": "directory-child-rows",
+    "selector": "test_path_grammar_separates_directory_and_child_rows",
+    "compiled": true,
+    "mutant_sha256": "3a0d404eb902b9733404410d0c603b055649bb8f902cfd0beb2ef0aeb46f58c2"
+  },
+  {
+    "id": "dot-normalisation",
+    "selector": "test_path_grammar_normalises_dot_spellings",
+    "compiled": true,
+    "mutant_sha256": "74cbebbfa1ebb47585ba1b6171cb8233765f2db4afc559f18c4349e6a9a449e3"
+  },
+  {
+    "id": "escaping-scope",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "compiled": true,
+    "mutant_sha256": "a46871bb60f61d239065f23bf12539d5c6073c9ccfe441fb4efdb42c8bf3ad02"
+  },
+  {
+    "id": "resolved-exemption",
+    "selector": "test_exempt_symlink_to_applied_file_is_finding",
+    "compiled": true,
+    "mutant_sha256": "ca0f97fa70bdf13469e475b1843f1586548072dc974c8722186493c8ecaccb7f"
+  },
+  {
+    "id": "case-identity",
+    "selector": "test_exempt_case_alias_to_applied_file_is_finding",
+    "compiled": true,
+    "mutant_sha256": "626f5e9db3d82080aedcfb2b88bd7f90c98b8d6f5a4d1b45a1f4b5ad384f1ba9"
+  },
+  {
+    "id": "applied-skill",
+    "selector": "test_c12_covers_applied_skill_instructions",
+    "compiled": true,
+    "mutant_sha256": "2f921c94a8e963f43734dfe04589fcdb95fc534e5dfbf5c1e255e3ad047337ff"
+  },
+  {
+    "id": "c16-coverage",
+    "selector": "test_c16_requires_reference_and_all_item_rows",
+    "compiled": true,
+    "mutant_sha256": "63e1d9aec86f9be2bf5f8eb09672dcc4a89a941a634ddeb841ca8fe4d5d42a14"
+  },
+  {
+    "id": "reset-hidden-predecessor",
+    "selector": "test_reset_scope_rejects_hidden_predecessor_artifacts",
+    "compiled": true,
+    "mutant_sha256": "80174462fea4908a2c1ac60716e926f95c06ea4a53dcd2f57eccc9a1aa7d69f4"
+  },
+  {
+    "id": "c11-payload",
+    "selector": "test_retained_c11_c13_and_fixed_probe_controls",
+    "compiled": true,
+    "mutant_sha256": "bda3e6eaf54ae3debd6d8ac25d1ed1cff6d739635024b3b0ad03ce42fd7cd2d0"
+  },
+  {
+    "id": "c13-disposition",
+    "selector": "test_retained_c11_c13_and_fixed_probe_controls",
+    "compiled": true,
+    "mutant_sha256": "72a1e0fb32d748774736fb79235189665163f703f4274711052e69897e135132"
+  },
+  {
+    "id": "untrusted-binding",
+    "selector": "test_checker_rejects_untrusted_bindings_and_git_configuration",
+    "compiled": true,
+    "mutant_sha256": "79dc0b8b9a5b262962fc340e5453f293374f1a51cac4137a285d2a564ba6952c"
+  },
+  {
+    "id": "same-consumed-bytes",
+    "selector": "test_isolated_child_and_same_bytes_survive_hostile_startup_inputs",
+    "compiled": true,
+    "mutant_sha256": "a2bc62e845e9a4189d97c28e5cf0dd44502eaf04efe212d7cc38658e8851d8dd"
+  },
+  {
+    "id": "directory-symlink-prefix",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "compiled": true,
+    "mutant_sha256": "2e2342411cadca1d2f79b3c40db99dc2bcdd30d8052f72c22026832f924668f1"
+  },
+  {
+    "id": "equal-root-globs",
+    "selector": "test_path_grammar_separates_directory_and_child_rows",
+    "compiled": true,
+    "mutant_sha256": "6c8c34cd1acd95ba11d6467239224e8c54c671b7c3ad35c6650f6994866136e4"
+  },
+  {
+    "id": "one-item-per-row",
+    "selector": "test_security_c16_rejects_multi_item_rows",
+    "compiled": true,
+    "mutant_sha256": "f4ff70bfe82c48dd72f6fbab5e1fb1661ab5f343fc230565cfc4682eb606d3a4"
+  },
+  {
+    "id": "tokens-stay-out-of-argv",
+    "selector": "test_gh_child_preserves_parent_tokens",
+    "compiled": true,
+    "mutant_sha256": "659d86c50addfe2df985af8126c9bfd522520e3dc3dc808307bd973e865fa03d"
+  },
+  {
+    "id": "original-enumerated-path",
+    "selector": "test_security_c12_resolves_original_unicode_path",
+    "compiled": true,
+    "mutant_sha256": "0cc3d11eff9e9d958639ddb187d7609ac4bcd7aee71276a48d50abae2298d9e8"
+  },
+  {
+    "id": "directory-alias-glob",
+    "selector": "test_security_c12_rejects_internal_directory_alias",
+    "compiled": true,
+    "mutant_sha256": "233240c24417651a569cb452f3c103784a8676e16297759724de0e85ca09f1bc"
+  },
+  {
+    "id": "directory-alias-literal",
+    "selector": "test_security_c12_rejects_internal_directory_alias",
+    "compiled": true,
+    "mutant_sha256": "27140bce99190b53fcd6e0cec98aa8c79acd00e2390ac52176f289f7dc64aec2"
+  },
+  {
+    "id": "duplicate-item-occurrences",
+    "selector": "test_security_c16_rejects_multi_item_rows",
+    "compiled": true,
+    "mutant_sha256": "327ea13802c79bec43c8c6fd3198c25b5ad8519fdc28d2cff2f2d02eff018e9a"
+  },
+  {
+    "id": "normalised-directory-pruning",
+    "selector": "test_security_c12_prunes_with_normalised_directory_names",
+    "compiled": true,
+    "mutant_sha256": "0df1525e756c509041365c568d23cf057b1ae2a05935ca2e6f4d7d177eb72750"
+  },
+  {
+    "id": "resolved-c16-applicability",
+    "selector": "test_security_c16_uses_resolved_literal_alias",
+    "compiled": true,
+    "mutant_sha256": "3611c55eba2da46d57884b1f188a54fbc7d0155b0d4da59489311bcc0a1605ff"
+  },
+  {
+    "id": "collision-refusal",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "compiled": true,
+    "mutant_sha256": "9159b3cbf018f9300e8a0a40969cdf7fcdbd77e57f5274ebe7823e255cff7c5b"
+  },
+  {
+    "id": "pipeline-c14-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "compiled": true,
+    "mutant_sha256": "2d7ea7f22a20c525fd96771b0f36bbe055efe38a356d73f81c9fb8475f41dae3"
+  },
+  {
+    "id": "directory-intent",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "compiled": true,
+    "mutant_sha256": "bd5dbe26e44c5627ddd438798e683245981624d674f7405ad6c79e45de053e5d"
+  },
+  {
+    "id": "c10-unicode-original",
+    "selector": "test_c10_confines_original_unicode_script_paths",
+    "compiled": true,
+    "mutant_sha256": "e43b72cb712b880901441cae5e514b319c47651895bc03927279969055fd9db0"
+  },
+  {
+    "id": "applied-filesystem-ancestry",
+    "selector": "test_c12_classifies_backslash_filenames_from_resolved_ancestry",
+    "compiled": true,
+    "mutant_sha256": "b67f9acd6efbd974d57b09f13d22235ecc6d944cea7c9af638f2b31b444dc5d4"
+  },
+  {
+    "id": "row-token-identity",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "compiled": true,
+    "mutant_sha256": "23097cce5333fce7bf93cf88fde5102db011c3643602d413c6bf9bea8df28ced"
+  },
+  {
+    "id": "row-token-original-spelling",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "compiled": true,
+    "mutant_sha256": "1fcb93eb67b05121edb56223f53829d22491030e8a41a20106c72f941513c34b"
+  },
+  {
+    "id": "literal-scope-target-identity",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "compiled": true,
+    "mutant_sha256": "19f6fdbcf8b030fa2e50690344ffd8156bafe2eba556cb6a7139d5a517919f42"
+  },
+  {
+    "id": "pipeline-c6-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "compiled": true,
+    "mutant_sha256": "5d2161da904906c038a186a9aa30d3f022cf4fa34b0bb7289ad491ae9932d709"
+  },
+  {
+    "id": "pipeline-c11-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "compiled": true,
+    "mutant_sha256": "fe695e53410caa4a141faecaa660ad2796e8202adcf7c8a7a347eee1acc06fab"
+  },
+  {
+    "id": "unset-cache-verdict",
+    "selector": "test_private_cache_when_unset",
+    "compiled": true,
+    "mutant_sha256": "ffda314b5633c2668e154b1ba8dcc9080351a9b4a6cb9bab85a36fc0f12d5dd4"
+  },
+  {
+    "id": "private-fallback-cache",
+    "selector": "test_private_cache_when_unset",
+    "compiled": true,
+    "mutant_sha256": "ab281fcff7b7deb7a631fd57114190d926fb31b8520d574a877fdeb14508c048"
+  },
+  {
+    "id": "relative-cache-refusal",
+    "selector": "test_private_cache_when_unset",
+    "compiled": true,
+    "mutant_sha256": "ce96245f7ee42e96f4df0325f44021ccf37608db4675f86ea7109e422ff7ecec"
+  },
+  {
+    "id": "applied-resolved-file-type",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "compiled": true,
+    "mutant_sha256": "b9e9ab8ffe348ba545776836d8f2286ed6838bd8a3d6be6daef2ccc35c58d09f"
+  }
+]

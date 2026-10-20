@@ -40,9 +40,7 @@ def fixture_cache():
         command = [*uv(bool(seed)), "-c", "import yaml"]
         env = {**os.environ, "UV_CACHE_DIR": _CACHE.name, "PATH": os.defpath}
         result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
-        print(
-            f"fixture-seed python={PYTHON} uv={UV} exit={result.returncode}\n{result.stdout}{result.stderr}", flush=True
-        )
+        print("fixture-seed", PYTHON, UV, result.returncode, result.stdout, result.stderr, flush=True)
         if result.returncode:
             raise RuntimeError("PyYAML fixture provisioning failed; this is not a behavioral test result")
     return _CACHE.name
@@ -66,13 +64,13 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.canonical = {DESIGN: "---\ndesign_review:\n  receipt: r1\ninvariants:\n  INV-1: exact sentence\n---\n"}
         gh = self.temp / "gh"
         gh.write_text(
-            f"#!{PYTHON} -I\nimport sys,json,base64,os,hashlib\n"
+            f"#!{PYTHON} -I\nimport sys,json,base64,os,hashlib\nfrom urllib.parse import unquote\n"
             f"data=json.load(open({str(self.data)!r}));a=sys.argv[1:]\n"
-            f"with open({str(self.calls)!r},'a') as f: f.write(json.dumps(dict(argv=a,tokens={{k:hashlib.sha256(os.environ[k].encode()).hexdigest() for k in ('GH_TOKEN','GITHUB_TOKEN') if k in os.environ}},host=os.environ.get('GH_HOST')))+'\\n')\n"
+            f"with open({str(self.calls)!r},'a') as f: f.write(json.dumps(dict(argv=a,cache=os.environ.get('UV_CACHE_DIR'),tokens={{k:hashlib.sha256(os.environ[k].encode()).hexdigest() for k in ('GH_TOKEN','GITHUB_TOKEN') if k in os.environ}},host=os.environ.get('GH_HOST')))+'\\n')\n"
             "assert a[0]=='api';p=a[1];prefix='repos/mryfmo/dotfiles/'\n"
             f"if p==prefix+'git/ref/heads/main': print({MAIN!r})\n"
             "elif p.startswith(prefix+'contents/'):\n"
-            " name=p[len(prefix+'contents/'):].split('?ref=')[0]\n"
+            " name=unquote(p[len(prefix+'contents/'):].split('?ref=')[0])\n"
             " if name in data: print(json.dumps(dict(encoding='base64',content=base64.b64encode(data[name].encode()).decode())))\n"
             " else:\n"
             "  children={key[len(name)+1:].split('/')[0] for key in data if key.startswith(name+'/')}\n"
@@ -128,14 +126,8 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         if prefix:
             prefix += "\nimport sys,runpy;sys.argv.pop(0);runpy.run_path(sys.argv[0],run_name='__main__')"
             args[:0] = ["-c", prefix]
-        result = subprocess.run(
-            [*uv(), *args],
-            env=self.env if env is None else env,
-            cwd=self.repo,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        env = self.env if env is None else env
+        result = subprocess.run([*uv(), *args], env=env, cwd=self.repo, capture_output=True, text=True)
         return result.returncode, result.stdout + result.stderr
 
     def finding(self, name, **kwargs):
@@ -143,6 +135,14 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.assertEqual(rc, 1, out)
         self.assertIn(name + " ", out)
         return out
+
+    def test_private_cache_when_unset(self):
+        rc, out = self.check(prefix="import os;os.environ.pop('UV_CACHE_DIR',None)")
+        self.assertEqual(rc, 0, out)
+        for call in map(json.loads, self.calls.read_text().splitlines()):
+            cache = Path(call["cache"])
+            self.assertTrue(cache.is_absolute() and not cache.exists())
+        self.assertNotEqual(self.check(prefix="import os;os.environ['UV_CACHE_DIR']='relative'")[0], 0)
 
     def test_interpreter_resolution_order(self):
         resolver = self.script.with_name("trusted-interpreter.sh")
@@ -192,6 +192,8 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.assertIn("t-a01.md: OK", result.stdout)
         self.assertNotIn("TRUSTED_PYTHON", env)
         self.assertNotIn("TRUSTED_BIN_DIR", env)
+        for call in map(json.loads, self.calls.read_text().splitlines()):
+            self.assertEqual(call["cache"], env["UV_CACHE_DIR"])
 
     def test_c14_rejects_failed_probe_with_matching_stdout(self):
         for command, output in (("test -e missing", ""), ("test -f scripts", ""), ("git rev-parse no-such-ref", "")):
@@ -241,6 +243,9 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             self.assertIsNone(call["host"])
             if "/contents/" in argv[1]:
                 self.assertTrue(argv[1].endswith("?ref=" + MAIN))
+        self.canonical[".orchestration/learning/mistakes/cafe\u0301.md"] = "classes: fixture\n"
+        self.task(kind="docs", body='"classes: must be present."')
+        self.assertEqual(self.check()[0], 0)
 
     def test_path_grammar_distinguishes_globs_from_git_pathspecs(self):
         for name in ("scripts/a.py", "scripts/nested/b.py", "scripts/x.txt"):
@@ -285,6 +290,19 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("warning", out)
         self.assertIn("design_sha256", out)
+        raw = ".orchestration/plans/cafe\u0301.md"
+        other = local.replace("r1", "nfd").replace("invariants:", "implementing_tasks:\n  t-a01: [INV-1]\ninvariants:")
+        self.canonical[".orchestration/plans/caf\u00e9.md"] = local
+        self.canonical[raw] = other
+        dr.update(design=raw, design_sha256=hashlib.sha256(local.encode()).hexdigest())
+        self.task(design_review=dr)
+        self.assertIn("\n  C15 ", self.finding("C6"))
+        self.canonical.pop(raw)
+        self.assertIn("\n  C15 ", self.finding("C6"))
+        self.canonical[raw] = other
+        dr.update(receipt="nfd", design_sha256=hashlib.sha256(other.encode()).hexdigest())
+        self.task(design_review=dr, invariants={"INV-1": "exact sentence"})
+        self.assertEqual(self.check()[0], 0)
 
     def test_path_grammar_covers_root_files(self):
         self.put("AGENTS.md", "instructions\n")
@@ -299,16 +317,12 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
     def test_path_grammar_separates_directory_and_child_rows(self):
         self.task(allowed=["scripts/", "scripts/tool.py"])
         self.assertEqual(self.check()[0], 0)
-        self.task(
-            allowed=["scripts/", "scripts/tool.py"],
-            extra=[dict(control="scripts/ and scripts/tool.py", disposition=RESIDUAL)],
-        )
+        row = dict(control="scripts/ and scripts/tool.py", disposition=RESIDUAL)
+        self.task(allowed=["scripts/", "scripts/tool.py"], extra=[row])
         self.finding("C7b")
         self.put("scripts/tool.sh", "fixture\n")
-        self.task(
-            allowed=["scripts/*.py", "scripts/*.sh"],
-            extra=[dict(control="scripts/tool.py and scripts/tool.sh", disposition=RESIDUAL)],
-        )
+        row = dict(control="scripts/tool.py and scripts/tool.sh", disposition=RESIDUAL)
+        self.task(allowed=["scripts/*.py", "scripts/*.sh"], extra=[row])
         self.finding("C7b")
 
     def test_path_grammar_normalises_dot_spellings(self):
@@ -322,15 +336,12 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
     def test_path_grammar_rejects_escaping_scopes(self):
         self.task(allowed=["../../outside/*.py"])
         self.assertIn("confin", self.finding("C12"))
-        outside = self.temp / "outside.py"
-        outside.write_text("outside\n")
+        outside = self.put(self.temp / "outside.py", "outside\n")
         (self.repo / "scripts/escape.py").symlink_to(outside)
         for scope in ("scripts/*.py", "scripts/", "scripts/**"):
             self.task(allowed=[scope])
             self.assertIn("confin", self.finding("C12"))
-        directory = self.temp / "external"
-        directory.mkdir()
-        (directory / "tool.py").write_text("outside\n")
+        directory = self.put(self.temp / "external/tool.py", "outside\n").parent
         (self.repo / "scripts/link").symlink_to(directory, target_is_directory=True)
         self.task(allowed=["scripts/link/*.py"])
         self.assertIn("confin", self.finding("C12"))
@@ -353,8 +364,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         )
         self.assertIn("tool.py", self.finding("C12", prefix=prefix))
         row = dict(control=raw, disposition=RESIDUAL)
-        outside = self.temp / "outside.py"
-        outside.write_text("outside\n")
+        outside = self.put(self.temp / "outside.py", "outside\n")
         alias = self.repo / "scripts/cafe\u0301/escape.py"
         alias.symlink_to(outside)
         self.task(allowed=["scripts/cafe\u0301/*.py"], extra=[row])
@@ -384,11 +394,11 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         targets = [self.put(f"tests/fixtures/target-{i}.py", "fixture\n") for i in range(2)]
         for destinations in (targets, [targets[0]] * 2):
             prefix = (
-                "import os,pathlib,unicodedata;_walk=os.walk;_resolve=pathlib.Path.resolve\n"
+                "import os,pathlib,unicodedata;_walk=os.walk;_resolve=pathlib.Path.resolve;_exists=pathlib.Path.exists;_is_file=pathlib.Path.is_file\n"
                 f"mapping={dict(zip([str(self.repo / n) for n in (nfc, nfd)], map(str, destinations)))!r}\n"
                 "def resolve(p,*a,**k):\n return pathlib.Path(mapping[str(p)]) if str(p) in mapping else _resolve(p,*a,**k)\n"
                 f"def walk(*a,**k):\n for folder,dirs,names in _walk(*a,**k):\n  if folder=={str(self.repo / 'scripts')!r}:names=[n for n in names if unicodedata.normalize('NFC',n)!={Path(nfc).name!r}]+{[Path(nfc).name, Path(nfd).name]!r}\n  yield folder,dirs,names\n"
-                "os.walk=walk;pathlib.Path.resolve=resolve"
+                f"os.walk=walk;pathlib.Path.resolve=resolve;pathlib.Path.exists=lambda p:False if str(p)=={str(self.repo / nfc)!r} else _exists(p);pathlib.Path.is_file=lambda p:False if str(p)=={str(self.repo / nfc)!r} else _is_file(p)"
             )
             self.assertIn("path collision:", self.finding("C12", prefix=prefix))
             if destinations is targets:
@@ -406,8 +416,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
                 self.assertIn(name, out)
 
     def test_c10_confines_original_unicode_script_paths(self):
-        outside = self.temp / "outside.py"
-        outside.write_text("outside\n")
+        outside = self.put(self.temp / "outside.py", "outside\n")
         for name in ("scripts/cafe\u0301.py", "scripts/caf\u00e9.py"):
             path = self.repo / name
             path.unlink(missing_ok=True)
@@ -421,13 +430,12 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
     def test_canonical_path_pipeline_preserves_identity(self):
         raw = [".orchestration/plans/cafe\u0301.md", "tests/cafe\u0301.py", "scripts/cafe\u0301.py"]
         benign = self.put("tests/fixtures/benign.txt", "marker\n")
-        outside = self.temp / "outside"
-        outside.write_text("outside secret\n")
+        outside = self.put(self.temp / "outside", "outside secret\n")
         for name in raw:
             path = self.repo / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.symlink_to(outside)
-        self.canonical[".orchestration/plans/caf%C3%A9.md"] = self.canonical[DESIGN]
+        self.canonical[raw[0]] = self.canonical[DESIGN]
         prefix = (
             "import pathlib,unicodedata;_resolve=pathlib.Path.resolve\n"
             f"nfc={{unicodedata.normalize('NFC',str(p)) for p in {[str(self.repo / n) for n in raw]!r}}}\n"
@@ -450,8 +458,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
 
     def test_security_c12_resolves_original_unicode_path(self):
         benign = self.put("tests/fixtures/ordinary.py", "fixture\n")
-        outside = self.temp / "outside.py"
-        outside.write_text("outside\n")
+        outside = self.put(self.temp / "outside.py", "outside\n")
         (self.repo / "tests/fixtures/cafe\u0301.py").symlink_to(outside)
         nfc = self.repo / "tests/fixtures/caf\u00e9.py"
         self.task(allowed=["tests/fixtures/**"])
@@ -471,10 +478,8 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         for scope in ("tests/fixtures/**", "tests/fixtures/alias"):
             self.task(allowed=[scope])
             self.assertIn("alias", self.finding("C12"))
-        self.task(
-            allowed=["tests/fixtures/**"],
-            extra=[dict(control="tests/fixtures/alias", disposition=RESIDUAL)],
-        )
+        row = dict(control="tests/fixtures/alias", disposition=RESIDUAL)
+        self.task(allowed=["tests/fixtures/**"], extra=[row])
         self.finding("C12")
         alias.unlink()
         self.task(allowed=["tests/fixtures/**"])
@@ -484,14 +489,10 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         self.put("scripts/orchestrator/tool.py", "fixture\n")
         items = [dict(control=f"5.14 item {i}: reference", disposition=RESIDUAL) for i in range(11)]
         concrete = dict(control="scripts/orchestrator/tool.py", disposition=RESIDUAL)
+        allowed = ["scripts/orchestrator/*.py"]
         for pair, trim in (((0, 1), 0), ((0, 0), 0), ((11, 12), 0), ((0, 1), 2)):
             combined = dict(control=" and ".join(f"5.14 item {i}" for i in pair), disposition=items[0]["disposition"])
-            self.task(
-                allowed=["scripts/orchestrator/*.py"],
-                extra=[concrete, *items[trim:], combined],
-                security=True,
-                body=REFERENCE,
-            )
+            self.task(allowed=allowed, extra=[concrete, *items[trim:], combined], security=True, body=REFERENCE)
             out = self.finding("C16")
             if pair == (0, 0):
                 self.assertIn("item 0: count 3", out)
@@ -548,10 +549,8 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
             self.assertEqual(self.check()[0], 0)
 
     def test_reset_scope_rejects_hidden_predecessor_artifacts(self):
-        row = dict(
-            control="task metadata reset copies: .orchestration/t-a00/task.md and .orchestration/t-a01/task.md",
-            disposition=RESIDUAL,
-        )
+        copies = ".orchestration/t-a00/task.md and .orchestration/t-a01/task.md"
+        row = dict(control=f"task metadata reset copies: {copies}", disposition=RESIDUAL)
         self.task(extra=[row], reset_of=["t-a00"], retained_predecessor_directories=[])
         self.assertEqual(self.check()[0], 0)
         self.task(
@@ -601,9 +600,7 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         shim = self.temp / "shims/python"
         shim.parent.mkdir()
         shim.symlink_to(PYTHON)
-        worker = self.temp / ".claude/worktrees/seat/python"
-        worker.parent.mkdir(parents=True)
-        worker.write_text("invalid")
+        worker = self.put(self.temp / ".claude/worktrees/seat/python", "invalid")
         for path, named in ((shim, "shim"), (worker, "worker-root")):
             rc, out = self.check(env={**self.env, "TRUSTED_PYTHON": str(path)})
             self.assertNotEqual(rc, 0, out)

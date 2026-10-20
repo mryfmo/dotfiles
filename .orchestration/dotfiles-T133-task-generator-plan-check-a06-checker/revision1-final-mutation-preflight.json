@@ -1,0 +1,290 @@
+[
+  {
+    "id": "resolver-priority",
+    "selector": "test_interpreter_resolution_order",
+    "sha256": "a59c448156f1c05fd1a2a60ebedf06051189498f809921f67a5d04591e511504",
+    "compile": true
+  },
+  {
+    "id": "dispatch-optional-bindings",
+    "selector": "test_dispatch_env_i_invocation",
+    "sha256": "4154e1bae73f7eba61c8f604e4bfa22b17c0002a29ae9fc6fc63054eb8e9d7d3",
+    "compile": true
+  },
+  {
+    "id": "probe-status",
+    "selector": "test_c14_rejects_failed_probe_with_matching_stdout",
+    "sha256": "d339e7c29d5995303ed8e3b9ee063cf1a9b2c1517ba341bca0c51a74ed7197c5",
+    "compile": true
+  },
+  {
+    "id": "gh-token-preservation",
+    "selector": "test_gh_child_preserves_parent_tokens",
+    "sha256": "e6007f3b711b8609614471d4c4a816551cdd9ac7f3af0644eff9205a96d25b86",
+    "compile": true
+  },
+  {
+    "id": "canonical-design-only",
+    "selector": "test_c15_uses_canonical_main_only",
+    "sha256": "0d13cf7576e9bf0d8f094ae1dfef011155de95aa29807d4155bb0e8f5b952deb",
+    "compile": true
+  },
+  {
+    "id": "canonical-design-hash",
+    "selector": "test_c6_receipt_uses_canonical_design_bytes",
+    "sha256": "d65c69388889ad991a5ba362b181ea1f6a221c81e37f78b7fc4417ae9ff693fa",
+    "compile": true
+  },
+  {
+    "id": "reject-git-pathspec",
+    "selector": "test_path_grammar_distinguishes_globs_from_git_pathspecs",
+    "sha256": "09cabdb31779d6b69ed6341863284c7865f0fec8056d55c66b8c2a3a8d79b383",
+    "compile": true
+  },
+  {
+    "id": "root-applied-files",
+    "selector": "test_path_grammar_covers_root_files",
+    "sha256": "db5b3b3a2000f7ca9b87e33e940c4e9393490d23468087510e7deb6f36f3619f",
+    "compile": true
+  },
+  {
+    "id": "directory-child-rows",
+    "selector": "test_path_grammar_separates_directory_and_child_rows",
+    "sha256": "4132982184c9e29b94cffa49fdbc68a4340672f5aafbe256f0f70331bb54c4b2",
+    "compile": true
+  },
+  {
+    "id": "dot-normalisation",
+    "selector": "test_path_grammar_normalises_dot_spellings",
+    "sha256": "66f13455faab930aa233f2fee03722b5496af248abda6904a14840ef9bd287ad",
+    "compile": true
+  },
+  {
+    "id": "escaping-scope",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "sha256": "3e249bf9d338aa7c4371317d22de348f6b1a36e0a82ae47cb212651ae08e7266",
+    "compile": true
+  },
+  {
+    "id": "resolved-exemption",
+    "selector": "test_exempt_symlink_to_applied_file_is_finding",
+    "sha256": "e8c09a1c824b6f30dc87b97ead559c8f3b4510a17c02ba8c825593315810c5ff",
+    "compile": true
+  },
+  {
+    "id": "case-identity",
+    "selector": "test_exempt_case_alias_to_applied_file_is_finding",
+    "sha256": "8c3371e051333f1b01f953eb0d8ec3465db2f64bed0c0e8ad40d09b981e177fc",
+    "compile": true
+  },
+  {
+    "id": "applied-skill",
+    "selector": "test_c12_covers_applied_skill_instructions",
+    "sha256": "3d1dc7fc6a25eaa1a80defb8f2d8c5a797c3bb8905bc1f8df7c35388175805d4",
+    "compile": true
+  },
+  {
+    "id": "c16-coverage",
+    "selector": "test_c16_requires_reference_and_all_item_rows",
+    "sha256": "8f506780ed29f0bc05a3038c6f813b430be3cd3bcd8554b0365943cde1f39bd0",
+    "compile": true
+  },
+  {
+    "id": "reset-hidden-predecessor",
+    "selector": "test_reset_scope_rejects_hidden_predecessor_artifacts",
+    "sha256": "3d3458f8a10513a46fef7ee57b98eed94a8613a71ec0d35cf497e514cd124a32",
+    "compile": true
+  },
+  {
+    "id": "c11-payload",
+    "selector": "test_retained_c11_c13_and_fixed_probe_controls",
+    "sha256": "3dc2a6a894a1430068e3dd3ab3d462b42803916b8b44f7d0498f618c10cc885d",
+    "compile": true
+  },
+  {
+    "id": "c13-disposition",
+    "selector": "test_retained_c11_c13_and_fixed_probe_controls",
+    "sha256": "541c8181599e794162cc093a9c4748da40ed5bbc57b66548fe9344882fe3055b",
+    "compile": true
+  },
+  {
+    "id": "untrusted-binding",
+    "selector": "test_checker_rejects_untrusted_bindings_and_git_configuration",
+    "sha256": "c9c31d475c9dd816449b8ffbdbc59c21936fe8cec5f91ddfba5a3d4286b84b43",
+    "compile": true
+  },
+  {
+    "id": "same-consumed-bytes",
+    "selector": "test_isolated_child_and_same_bytes_survive_hostile_startup_inputs",
+    "sha256": "7f47ef6d6f0cc744642ceb27862e683ba09bbffcdfe7609a183ed9a981229f67",
+    "compile": true
+  },
+  {
+    "id": "directory-symlink-prefix",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "sha256": "cf31eda971daf4354699d04cb2a6a2e665751b55da57a3cae4c7e0141507f2ea",
+    "compile": true
+  },
+  {
+    "id": "equal-root-globs",
+    "selector": "test_path_grammar_separates_directory_and_child_rows",
+    "sha256": "3c99ad3b8a93c5c738cfb23f19b1d96cfef41dca099f55c7945edc1a3cac478f",
+    "compile": true
+  },
+  {
+    "id": "one-item-per-row",
+    "selector": "test_security_c16_rejects_multi_item_rows",
+    "sha256": "4e23fbe7ae1ad1c5eb6a8c3358f6a9a6e714dfc9afd8468fdc3062bc76059104",
+    "compile": true
+  },
+  {
+    "id": "tokens-stay-out-of-argv",
+    "selector": "test_gh_child_preserves_parent_tokens",
+    "sha256": "5d940c96713b63c323aab44481b80633d6f765cb3252a99f973f3c0d3b480c56",
+    "compile": true
+  },
+  {
+    "id": "original-enumerated-path",
+    "selector": "test_security_c12_resolves_original_unicode_path",
+    "sha256": "125609fc51723de73471e7cd0f25e11024c198bf1f7b7bc84a3b24aba2874fcf",
+    "compile": true
+  },
+  {
+    "id": "directory-alias-glob",
+    "selector": "test_security_c12_rejects_internal_directory_alias",
+    "sha256": "26fde797a0f34b1a4028909e8b1b2d43ba5f83116c2baab3714b618772848f25",
+    "compile": true
+  },
+  {
+    "id": "directory-alias-literal",
+    "selector": "test_security_c12_rejects_internal_directory_alias",
+    "sha256": "54a414896d811a3a91ab11c2e78f4a1d111bff19fd2df3b22a112c5ce9966537",
+    "compile": true
+  },
+  {
+    "id": "duplicate-item-occurrences",
+    "selector": "test_security_c16_rejects_multi_item_rows",
+    "sha256": "bc80f3f80d8dbc6189b859c33e35a55dee6801ac523c046719ce9569566ba420",
+    "compile": true
+  },
+  {
+    "id": "normalised-directory-pruning",
+    "selector": "test_security_c12_prunes_with_normalised_directory_names",
+    "sha256": "24416e7c36f8660347d7b6663bfd146045896d57e00c6154a204830951be6fdf",
+    "compile": true
+  },
+  {
+    "id": "resolved-c16-applicability",
+    "selector": "test_security_c16_uses_resolved_literal_alias",
+    "sha256": "0c6d5e8e435b13dcd85bc99401b7b7c937854eef3dfa7da4d4235bc8159b74cc",
+    "compile": true
+  },
+  {
+    "id": "collision-refusal",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "sha256": "be8b1f1c3bac253ea847b2624b4766e7cd7ab2c6e3c2139a6baa82074132227a",
+    "compile": true
+  },
+  {
+    "id": "pipeline-c14-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "sha256": "6ce02ee9cda2135a91c4203b9bd6cddb94ef46330250d96e5c5dd6219cf5abd5",
+    "compile": true
+  },
+  {
+    "id": "directory-intent",
+    "selector": "test_path_grammar_rejects_escaping_scopes",
+    "sha256": "426d9f8b7a7d45c872c57a6056b5eaacbcc37558f6b6e5aae1e5c79f680bc133",
+    "compile": true
+  },
+  {
+    "id": "c10-unicode-original",
+    "selector": "test_c10_confines_original_unicode_script_paths",
+    "sha256": "26ac48881f5b8de15c3891a1566ca52f6847db9f8ad2112b10679eb07edcb50c",
+    "compile": true
+  },
+  {
+    "id": "applied-filesystem-ancestry",
+    "selector": "test_c12_classifies_backslash_filenames_from_resolved_ancestry",
+    "sha256": "84ef65c242e8d338e32289ae0b5b34861d5cf3e88f9baffbb4a727c38e684250",
+    "compile": true
+  },
+  {
+    "id": "row-token-identity",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "sha256": "250845535e3d1e98a08be73a93521690638edd8b989b93d1345ef757a7d0eaad",
+    "compile": true
+  },
+  {
+    "id": "row-token-original-spelling",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "sha256": "bd4cc5736e572294b981e92d5284ecd9892258c20cf52b6728c0031b28dcb41c",
+    "compile": true
+  },
+  {
+    "id": "literal-scope-target-identity",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "sha256": "fe8170cb466c8eebaf59eb00cf6f34c68fe334f0b64f2cbd45d4db96447d91f0",
+    "compile": true
+  },
+  {
+    "id": "pipeline-c6-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "sha256": "cdf9cbbf34c463a906c421e84ab06aef0beef17919a86389651b44c7c270674f",
+    "compile": true
+  },
+  {
+    "id": "pipeline-c11-original",
+    "selector": "test_canonical_path_pipeline_preserves_identity",
+    "sha256": "9da0fbec251685a9a1dfcd52cc279fe5c9b5b990c5a9f80296a513c262b65adb",
+    "compile": true
+  },
+  {
+    "id": "unset-cache-verdict",
+    "selector": "test_private_cache_when_unset",
+    "sha256": "c5fa44993df6338a510de6349e78ffaefab0269bf4e2bf8d8e1c3d09870e46e2",
+    "compile": true
+  },
+  {
+    "id": "private-fallback-cache",
+    "selector": "test_private_cache_when_unset",
+    "sha256": "91929954efcb7361d11eb242f73f2e97c8e50483b1469e9fa31ab16005832d97",
+    "compile": true
+  },
+  {
+    "id": "relative-cache-refusal",
+    "selector": "test_private_cache_when_unset",
+    "sha256": "f7cc234f1a60cc5672797074708f165941b83ffe7b362b9effd90cb0e889264c",
+    "compile": true
+  },
+  {
+    "id": "applied-resolved-file-type",
+    "selector": "test_canonical_path_pipeline_rejects_normalised_collisions",
+    "sha256": "93598b4d9e63ac829ddd0066661b9260d5442e3becbe005bfc01a0f8fdc6ab90",
+    "compile": true
+  },
+  {
+    "id": "supplied-absolute-cache-honored",
+    "selector": "test_dispatch_env_i_invocation",
+    "sha256": "e3388283e9ed8f531b66fbbcbd6036464d3801eb26f3eb26e1c12bb8ac3ffaee",
+    "compile": true
+  },
+  {
+    "id": "canonical-design-original-spelling",
+    "selector": "test_c6_receipt_uses_canonical_design_bytes",
+    "sha256": "ed6dba3a5e7c3753622596584c99228e0436000ecb58352fa41b8bf605d0e97d",
+    "compile": true
+  },
+  {
+    "id": "canonical-request-original-spelling",
+    "selector": "test_c6_receipt_uses_canonical_design_bytes",
+    "sha256": "b2fd004da4d6b1bdfbb1b5ceaa6682f8e88ca76c09d92064e77dc399406ab7d9",
+    "compile": true
+  },
+  {
+    "id": "canonical-child-original-spelling",
+    "selector": "test_c15_uses_canonical_main_only",
+    "sha256": "cd75ceb1f2ee526419e3566b6bcb6fdee1e94aa790c3699db539e9a180561700",
+    "compile": true
+  }
+]

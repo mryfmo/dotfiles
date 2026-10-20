@@ -1,0 +1,38 @@
+[
+  {
+    "argv": [
+      "make",
+      "require-crit-review"
+    ],
+    "env": {
+      "HOME": "~",
+      "PATH": "~/.local/share/mise/installs/python/3.15.0/bin:/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+      "LANG": "C.UTF-8",
+      "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+      "UV_CACHE_DIR": "~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache",
+      "UV_OFFLINE": "1"
+    },
+    "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+    "actual_exit": 2,
+    "output": "revision1-worker-unreviewed-gate.log"
+  },
+  {
+    "argv": [
+      "make",
+      "require-crit-review"
+    ],
+    "env": {
+      "HOME": "~",
+      "PATH": "~/.local/share/mise/installs/python/3.15.0/bin:/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+      "LANG": "C.UTF-8",
+      "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+      "UV_CACHE_DIR": "~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache",
+      "UV_OFFLINE": "1",
+      "AGENT_REVIEWED": "1",
+      "REVIEW_EVIDENCE": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md"
+    },
+    "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+    "actual_exit": 0,
+    "output": "revision1-worker-reviewed-gate.log"
+  }
+]

@@ -1,13 +1,64 @@
 {
   "fixed_base": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
-  "comparison": "staged selected tree against ancestor fixed base; verified after local commit with full-head triple-dot diff",
-  "production_changed": 443,
+  "comparison": "Complete selected staged tree against fixed ancestor base; exact postcommit full-head triple-dot verification required before PONG.",
+  "production_changed": 446,
   "production_cap": 450,
-  "test_changed": 712,
+  "test_changed": 720,
   "test_cap": 720,
+  "worker_allowed_test_changed": 709,
+  "owner_authorized_upstream_test_changed": 11,
+  "all_test_lines_counted": true,
   "retained_predecessor_directory": ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/",
   "retained_unchanged_from": "06ffefbc633fe37bcef107385ea96810b2a9a0c5",
+  "retained_files": 161,
+  "owner_authorized_upstream_ref": "762a2541f422b691199cb42fbbd1588604042ad2",
+  "owner_authorized_upstream_paths": [
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-crit.json",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/learning.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/report.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/sandbox.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/validation.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/learning.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/report.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/sandbox.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/task.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/validation.md",
+    ".orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md",
+    ".orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a04.md",
+    ".orchestration/tasks/dotfiles-T133-loop-limits-a01.md",
+    ".orchestration/tasks/dotfiles-T133-pre-send-check-a01.md",
+    ".orchestration/tasks/dotfiles-T133-python-pin-a01.md",
+    ".orchestration/tasks/dotfiles-T133-python-pin-a02.md",
+    ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md",
+    ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a02.md",
+    ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a05-checker.md",
+    ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md",
+    ".orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md",
+    ".orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md",
+    "tests/unit/test_regime_ci.py"
+  ],
+  "task_copy_sha256": "b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af",
+  "code_bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "file_count": 474,
   "paths": [
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-crit.json",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/learning.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/report.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/sandbox.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/validation.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/learning.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/report.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/sandbox.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/task.md",
+    ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/validation.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format-final.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-python-format-final.log",
@@ -322,11 +373,14 @@
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new312.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-modules-new315.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/repaired-r4-lint.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report-before-final-revision.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/required-selectors.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/reset-provenance.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/result-before-final-revision.txt",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-command.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-reproduction.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise.yaml",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-blocked-report.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red312.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-initial-red315.log",
@@ -335,6 +389,93 @@
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-overcap-pong.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-red-commands.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-replan.md",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-prepare.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-result.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-closed-mask.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-code-diff-check.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-current-bindings.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-privacy.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-bindings.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-format-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-format.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-prepare.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-suite-snapshot.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-candidate.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-comparison.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red312.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red315.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.12.15.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.15.0.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-consolidation.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.md",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask2.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-module-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutation-preflight.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-command.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-observations.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-production-r4.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-python-format.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-fixture-consolidation.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-prepare.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-suite-snapshot.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-candidate.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-exit.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.12.15.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.15.0.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.md",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-mutation-preflight.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-pre-red-bindings.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-production-r4.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime312.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime315.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-gate-commands.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-reviewed-gate.log",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-unreviewed-gate.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/sandbox.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-command.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/selected-tree-assets-result.json",
@@ -355,17 +496,93 @@
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/strict-frozen-final-modules-new315.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task-initial-90ca0ae9.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task.md",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-hold.md",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-verification.json",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation-before-final-revision.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-gate-commands.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-evidence.json",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-reviewed-gate.log",
     ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-unreviewed-gate.log",
+    ".orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md",
+    ".orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a04.md",
+    ".orchestration/tasks/dotfiles-T133-loop-limits-a01.md",
+    ".orchestration/tasks/dotfiles-T133-pre-send-check-a01.md",
+    ".orchestration/tasks/dotfiles-T133-python-pin-a01.md",
+    ".orchestration/tasks/dotfiles-T133-python-pin-a02.md",
+    ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md",
+    ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a02.md",
+    ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a05-checker.md",
+    ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md",
+    ".orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md",
+    ".orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md",
     "scripts/orchestrator/task-consistency-check.py",
+    "tests/unit/test_regime_ci.py",
     "tests/unit/test_task_checkers.py",
     "tests/unit/test_task_consistency_c11_c15.py"
   ],
   "numstat": [
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-crit.json",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/dotfiles-T133-regime-ci-fixture-grammar-a01-worker-review-receipt.md",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/learning.md",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/report.md",
+      "added": 67,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/sandbox.md",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/task.md",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a01/validation.md",
+      "added": 258,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/learning.md",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/report.md",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/sandbox.md",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/task.md",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-regime-ci-fixture-grammar-a02/validation.md",
+      "added": 70,
+      "deleted": 0
+    },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/all-markdown-format-final.log",
       "added": 2,
@@ -1228,7 +1445,7 @@
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/current-measure.json",
-      "added": 39,
+      "added": 17,
       "deleted": 0
     },
     {
@@ -1583,7 +1800,7 @@
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-diff-inventory.json",
-      "added": 2150,
+      "added": 2897,
       "deleted": 0
     },
     {
@@ -1758,7 +1975,7 @@
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/learning.md",
-      "added": 9,
+      "added": 11,
       "deleted": 0
     },
     {
@@ -1793,7 +2010,7 @@
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/measure.md",
-      "added": 738,
+      "added": 973,
       "deleted": 0
     },
     {
@@ -1937,8 +2154,13 @@
       "deleted": 0
     },
     {
-      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md",
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report-before-final-revision.md",
       "added": 25,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/report.md",
+      "added": 23,
       "deleted": 0
     },
     {
@@ -1952,6 +2174,11 @@
       "deleted": 0
     },
     {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/result-before-final-revision.txt",
+      "added": 1,
+      "deleted": 0
+    },
+    {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-command.json",
       "added": 3,
       "deleted": 0
@@ -1959,6 +2186,11 @@
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/review-directory-scope-reproduction.log",
       "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise.yaml",
+      "added": 12,
       "deleted": 0
     },
     {
@@ -1999,6 +2231,441 @@
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revise2-replan.md",
       "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-command.json",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-prepare.log",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets-result.json",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-assets.log",
+      "added": 125,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-closed-mask.log",
+      "added": 270,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-code-diff-check.log",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-current-bindings.json",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-commands.json",
+      "added": 999,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-artifact-privacy.json",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-bindings.json",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-format-command.json",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-format.log",
+      "added": 444,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-prepare.log",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-suite-snapshot.json",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-candidate.log",
+      "added": 6183,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-comparison.json",
+      "added": 5043,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-full-unit-exit.json",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red312.json",
+      "added": 102,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical-red315.json",
+      "added": 102,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-command.json",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312-exit.json",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical312.log",
+      "added": 581,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-command.json",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315-exit.json",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-historical315.log",
+      "added": 619,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.12.15.log",
+      "added": 25,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-3.15.0.log",
+      "added": 25,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-commands.json",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-consolidation.json",
+      "added": 8,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.json",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-independent-review.md",
+      "added": 79,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask.log",
+      "added": 562,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mask2.log",
+      "added": 282,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-module-commands.json",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy312.log",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy315.log",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new312.log",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new315.log",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutation-preflight.json",
+      "added": 290,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-command.json",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312-exit.json",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.json",
+      "added": 386,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations312.log",
+      "added": 995,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-command.json",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315-exit.json",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.json",
+      "added": 386,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-mutations315.log",
+      "added": 1056,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-observations.json",
+      "added": 271,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-production-r4.log",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-python-format.log",
+      "added": 1,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green312.log",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-green315.log",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red312.log",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-r4-red315.log",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime312.log",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-regime315.log",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-fixture-consolidation.json",
+      "added": 80,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-prepare.log",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-suite-snapshot.json",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-candidate.log",
+      "added": 6184,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-full-unit-exit.json",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green312.log",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-green315.log",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.12.15.log",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-3.15.0.log",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-commands.json",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.json",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-independent-review.md",
+      "added": 57,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-mutation-preflight.json",
+      "added": 266,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-pre-red-bindings.json",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-production-r4.log",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red312.log",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-r4-red315.log",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red312.log",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-red315.log",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime-commands.json",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime312.log",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-regime315.log",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-gate-commands.json",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-reviewed-gate.log",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-worker-unreviewed-gate.log",
+      "added": 16,
       "deleted": 0
     },
     {
@@ -2102,8 +2769,23 @@
       "deleted": 0
     },
     {
-      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md",
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-hold.md",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/transport-merge-verification.json",
+      "added": 1976,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation-before-final-revision.md",
       "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/validation.md",
+      "added": 64,
       "deleted": 0
     },
     {
@@ -2113,12 +2795,12 @@
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-evidence.json",
-      "added": 68,
+      "added": 98,
       "deleted": 0
     },
     {
       "path": ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/worker-review-receipt.md",
-      "added": 16,
+      "added": 12,
       "deleted": 0
     },
     {
@@ -2132,9 +2814,74 @@
       "deleted": 0
     },
     {
+      "path": ".orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a07.md",
+      "added": 6,
+      "deleted": 6
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T129-normalised-comparison-lint-followup-a04.md",
+      "added": 225,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-loop-limits-a01.md",
+      "added": 1,
+      "deleted": 3
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-pre-send-check-a01.md",
+      "added": 99,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-python-pin-a01.md",
+      "added": 200,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-python-pin-a02.md",
+      "added": 183,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a01.md",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-regime-ci-fixture-grammar-a02.md",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a05-checker.md",
+      "added": 255,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md",
+      "added": 246,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-trusted-exec-contract-tests-a01.md",
+      "added": 1,
+      "deleted": 0
+    },
+    {
+      "path": ".orchestration/tasks/dotfiles-T133-worker-write-boundary-a03.md",
+      "added": 655,
+      "deleted": 0
+    },
+    {
       "path": "scripts/orchestrator/task-consistency-check.py",
-      "added": 416,
+      "added": 419,
       "deleted": 27
+    },
+    {
+      "path": "tests/unit/test_regime_ci.py",
+      "added": 6,
+      "deleted": 5
     },
     {
       "path": "tests/unit/test_task_checkers.py",
@@ -2143,7 +2890,7 @@
     },
     {
       "path": "tests/unit/test_task_consistency_c11_c15.py",
-      "added": 655,
+      "added": 652,
       "deleted": 0
     }
   ]

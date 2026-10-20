@@ -1,0 +1,18 @@
+3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+native-NFC-NFD-distinct=False
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... ok
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... 
+  test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) [native two-file collision] ... skipped 'observed NFC/NFD samefile alias; modeled collision and one-file control ran'
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... ok
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... ok
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... ok
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... ok
+test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths) ... ok
+test_c12_classifies_backslash_filenames_from_resolved_ancestry (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 10.508s
+
+OK (skipped=1)

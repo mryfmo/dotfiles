@@ -1,0 +1,1056 @@
+runtime /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-mutations-315/builds-v0/.tmp8sO6Gc/bin/python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+source-sha256 f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800 test-sha256 be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1
+fixture-seed ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv 0  
+MUTATION resolver-priority killed=True errors=0 skips=0
+test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order) ... FAIL
+
+======================================================================
+FAIL: test_interpreter_resolution_order (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_interpreter_resolution_order)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 153, in test_interpreter_resolution_order
+    self.assertEqual(self.check(env=env)[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 2.333s
+
+FAILED (failures=1)
+
+MUTATION dispatch-optional-bindings killed=True errors=0 skips=0
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... FAIL
+
+======================================================================
+FAIL: test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 191, in test_dispatch_env_i_invocation
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : refused: mandatory TRUSTED_PYTHON
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.315s
+
+FAILED (failures=1)
+
+MUTATION probe-status killed=True errors=0 skips=0
+test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) ... 
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts') ... FAIL
+  test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref') ... FAIL
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -e missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 202, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='test -f scripts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 202, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+======================================================================
+FAIL: test_c14_rejects_failed_probe_with_matching_stdout (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_rejects_failed_probe_with_matching_stdout) (command='git rev-parse no-such-ref')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 202, in test_c14_rejects_failed_probe_with_matching_stdout
+    self.finding("C14", digest=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 3.319s
+
+FAILED (failures=3)
+
+MUTATION gh-token-preservation killed=True errors=0 skips=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 224, in test_gh_child_preserves_parent_tokens
+    self.assertEqual(call["tokens"], expected)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {} != {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+- {}
++ {'GH_TOKEN': '987fad568a422d8548fa4ec05c9631ab4381d9555356b0ecfbd945146ec46611'}
+
+----------------------------------------------------------------------
+Ran 1 test in 1.365s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-only killed=True errors=0 skips=0
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... FAIL
+
+======================================================================
+FAIL: test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 228, in test_c15_uses_canonical_main_only
+    self.finding("C15")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.521s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-hash killed=True errors=0 skips=0
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 273, in test_c6_receipt_uses_canonical_design_bytes
+    self.finding("C6")
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 1056876532805f40e170f9d2e2fdcc516f6c2b40bbbf5099ecc6a08a25fa82f9
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.087s
+
+FAILED (failures=1)
+
+MUTATION reject-git-pathspec killed=True errors=0 skips=0
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 264, in test_path_grammar_distinguishes_globs_from_git_pathspecs
+    self.finding("C12")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 136, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 't-a01.md: FAIL\n  C4 allowed path has no threat_table row naming it: :(glob)scripts/**\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 2.046s
+
+FAILED (failures=1)
+
+MUTATION root-applied-files killed=True errors=0 skips=0
+test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_covers_root_files (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_covers_root_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 311, in test_path_grammar_covers_root_files
+    out = self.finding("C12")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.781s
+
+FAILED (failures=1)
+
+MUTATION directory-child-rows killed=True errors=0 skips=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 319, in test_path_grammar_separates_directory_and_child_rows
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.922s
+
+FAILED (failures=1)
+
+MUTATION dot-normalisation killed=True errors=0 skips=0
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 332, in test_path_grammar_normalises_dot_spellings
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 1.673s
+
+FAILED (failures=1)
+
+MUTATION escaping-scope killed=True errors=0 skips=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 338, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.829s
+
+FAILED (failures=1)
+
+MUTATION resolved-exemption killed=True errors=0 skips=0
+test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_symlink_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_symlink_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 354, in test_exempt_symlink_to_applied_file_is_finding
+    self.assertIn("hidden.py", self.finding("C12"))
+                               ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.143s
+
+FAILED (failures=1)
+
+MUTATION case-identity killed=True errors=0 skips=0
+test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding) ... FAIL
+
+======================================================================
+FAIL: test_exempt_case_alias_to_applied_file_is_finding (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_exempt_case_alias_to_applied_file_is_finding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 504, in test_exempt_case_alias_to_applied_file_is_finding
+    self.assertIn("agent.py", self.finding("C12", prefix=prefix))
+                              ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.764s
+
+FAILED (failures=1)
+
+MUTATION applied-skill killed=True errors=0 skips=0
+test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions) ... FAIL
+
+======================================================================
+FAIL: test_c12_covers_applied_skill_instructions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_covers_applied_skill_instructions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 523, in test_c12_covers_applied_skill_instructions
+    self.assertIn("SKILL.md", self.finding("C12"))
+                              ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.821s
+
+FAILED (failures=1)
+
+MUTATION c16-coverage killed=True errors=0 skips=0
+test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_c16_requires_reference_and_all_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c16_requires_reference_and_all_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 531, in test_c16_requires_reference_and_all_item_rows
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.834s
+
+FAILED (failures=1)
+
+MUTATION reset-hidden-predecessor killed=True errors=0 skips=0
+test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts) ... FAIL
+
+======================================================================
+FAIL: test_reset_scope_rejects_hidden_predecessor_artifacts (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_reset_scope_rejects_hidden_predecessor_artifacts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 559, in test_reset_scope_rejects_hidden_predecessor_artifacts
+    self.finding("C2")
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.236s
+
+FAILED (failures=1)
+
+MUTATION c11-payload killed=True errors=0 skips=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 570, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.156s
+
+FAILED (failures=1)
+
+MUTATION c13-disposition killed=True errors=0 skips=0
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... FAIL
+
+======================================================================
+FAIL: test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 570, in test_retained_c11_c13_and_fixed_probe_controls
+    self.finding(name)
+    ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 136, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C13 ' not found in 't-a01.md: FAIL\n  C11 residual: payload is shorter than 20 characters: fixture approval\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 2.180s
+
+FAILED (failures=1)
+
+MUTATION untrusted-binding killed=True errors=0 skips=0
+test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration) ... FAIL
+
+======================================================================
+FAIL: test_checker_rejects_untrusted_bindings_and_git_configuration (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_checker_rejects_untrusted_bindings_and_git_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 596, in test_checker_rejects_untrusted_bindings_and_git_configuration
+    self.assertIn("checkout executable", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'checkout executable' not found in 'refused: Git configuration: /private/tmp/a06-mutants-6z4kx_i9/checker-case-bx0zzun9/repo/git: line 2: touch: command not found\n\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.651s
+
+FAILED (failures=1)
+
+MUTATION same-consumed-bytes killed=True errors=0 skips=0
+test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs) ... FAIL
+
+======================================================================
+FAIL: test_isolated_child_and_same_bytes_survive_hostile_startup_inputs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_isolated_child_and_same_bytes_survive_hostile_startup_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 647, in test_isolated_child_and_same_bytes_survive_hostile_startup_inputs
+    self.assertNotIn("C14: not run (no trusted sha)", out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'C14: not run (no trusted sha)' unexpectedly found in 't-a01.md: OK\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\nt-a01.md: warning: C14: not run (no trusted sha)\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.303s
+
+FAILED (failures=1)
+
+MUTATION directory-symlink-prefix killed=True errors=0 skips=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 347, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 2.171s
+
+FAILED (failures=1)
+
+MUTATION equal-root-globs killed=True errors=0 skips=0
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 326, in test_path_grammar_separates_directory_and_child_rows
+    self.finding("C7b")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.459s
+
+FAILED (failures=1)
+
+MUTATION one-item-per-row killed=True errors=0 skips=0
+test_security_c16_rejects_multi_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_rejects_multi_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_security_c16_rejects_multi_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_rejects_multi_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 496, in test_security_c16_rejects_multi_item_rows
+    out = self.finding("C16")
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.630s
+
+FAILED (failures=1)
+
+MUTATION tokens-stay-out-of-argv killed=True errors=0 skips=0
+test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens) ... FAIL
+
+======================================================================
+FAIL: test_gh_child_preserves_parent_tokens (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_gh_child_preserves_parent_tokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 222, in test_gh_child_preserves_parent_tokens
+    self.assertFalse(any(observed), "token values entered subprocess argv")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : token values entered subprocess argv
+
+----------------------------------------------------------------------
+Ran 1 test in 1.382s
+
+FAILED (failures=1)
+
+MUTATION original-enumerated-path killed=True errors=0 skips=0
+test_security_c12_resolves_original_unicode_path (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path) ... FAIL
+
+======================================================================
+FAIL: test_security_c12_resolves_original_unicode_path (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 472, in test_security_c12_resolves_original_unicode_path
+    self.assertIn("confin", self.finding("C12", prefix=prefix))
+                            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.834s
+
+FAILED (failures=1)
+
+MUTATION directory-alias-glob killed=True errors=0 skips=0
+test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias) ... FAIL
+
+======================================================================
+FAIL: test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 480, in test_security_c12_rejects_internal_directory_alias
+    self.assertIn("alias", self.finding("C12"))
+                           ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.975s
+
+FAILED (failures=1)
+
+MUTATION directory-alias-literal killed=True errors=0 skips=0
+test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias) ... FAIL
+
+======================================================================
+FAIL: test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 480, in test_security_c12_rejects_internal_directory_alias
+    self.assertIn("alias", self.finding("C12"))
+                           ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.112s
+
+FAILED (failures=1)
+
+MUTATION duplicate-item-occurrences killed=True errors=0 skips=0
+test_security_c16_rejects_multi_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_rejects_multi_item_rows) ... FAIL
+
+======================================================================
+FAIL: test_security_c16_rejects_multi_item_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_rejects_multi_item_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 498, in test_security_c16_rejects_multi_item_rows
+    self.assertIn("item 0: count 3", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'item 0: count 3' not found in 't-a01.md: FAIL\n  C16 item 0: count 2; exactly one occurrence and one item per row required\n  C16 item 1: count 1; exactly one occurrence and one item per row required\n  C16 item 2: count 1; exactly one occurrence and one item per row required\n  C16 item 3: count 1; exactly one occurrence and one item per row required\n  C16 item 4: count 1; exactly one occurrence and one item per row required\n  C16 item 5: count 1; exactly one occurrence and one item per row required\n  C16 item 6: count 1; exactly one occurrence and one item per row required\n  C16 item 7: count 1; exactly one occurrence and one item per row required\n  C16 item 8: count 1; exactly one occurrence and one item per row required\n  C16 item 9: count 1; exactly one occurrence and one item per row required\n  C16 item 10: count 1; exactly one occurrence and one item per row required\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.141s
+
+FAILED (failures=1)
+
+MUTATION normalised-directory-pruning killed=True errors=0 skips=0
+test_security_c12_prunes_with_normalised_directory_names (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names) ... FAIL
+
+======================================================================
+FAIL: test_security_c12_prunes_with_normalised_directory_names (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 365, in test_security_c12_prunes_with_normalised_directory_names
+    self.assertIn("tool.py", self.finding("C12", prefix=prefix))
+                             ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 136, in finding
+    self.assertIn(name + " ", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 'C12 ' not found in 't-a01.md: FAIL\n  C4 allowed path has no threat_table row naming it: scripts/café/*.py\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.755s
+
+FAILED (failures=1)
+
+MUTATION resolved-c16-applicability killed=True errors=0 skips=0
+test_security_c16_uses_resolved_literal_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias) ... FAIL
+
+======================================================================
+FAIL: test_security_c16_uses_resolved_literal_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 381, in test_security_c16_uses_resolved_literal_alias
+    self.finding("C16")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.819s
+
+FAILED (failures=1)
+
+MUTATION collision-refusal killed=True errors=0 skips=0
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 403, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertIn("path collision:", self.finding("C12", prefix=prefix))
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'path collision:' not found in 't-a01.md: FAIL\n  C12 the scope scripts/café.py matches unsafe or unnamed scripts/café.py\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.552s
+
+FAILED (failures=1)
+
+MUTATION pipeline-c14-original killed=True errors=0 skips=0
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 453, in test_canonical_path_pipeline_preserves_identity
+    self.assertIn("\n  " + finding, out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '\n  C14 ' not found in 't-a01.md: FAIL\n  C6 design path is outside the checkout\n  C6 design_review.receipt has no matching canonical design receipt\n  C11 closed: payload is not tests/<path>::<identifier>: tests/café.py::test_ok\n  C15 design .orchestration/plans/café.md is not on canonical main\nwarning: C6 design_sha256 absent; legacy receipt comparison\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.488s
+
+FAILED (failures=1)
+
+MUTATION directory-intent killed=True errors=0 skips=0
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... FAIL
+
+======================================================================
+FAIL: test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 343, in test_path_grammar_rejects_escaping_scopes
+    self.assertIn("confin", self.finding("C12"))
+                            ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.527s
+
+FAILED (failures=1)
+
+MUTATION c10-unicode-original killed=True errors=0 skips=0
+test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths) ... FAIL
+
+======================================================================
+FAIL: test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 425, in test_c10_confines_original_unicode_script_paths
+    self.finding("C10")
+    ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.783s
+
+FAILED (failures=1)
+
+MUTATION applied-filesystem-ancestry killed=True errors=0 skips=0
+test_c12_classifies_backslash_filenames_from_resolved_ancestry (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry) ... FAIL
+
+======================================================================
+FAIL: test_c12_classifies_backslash_filenames_from_resolved_ancestry (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 516, in test_c12_classifies_backslash_filenames_from_resolved_ancestry
+    self.assertIn("scripts/evil\\name", self.finding("C12"))
+                                        ~~~~~~~~~~~~^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.122s
+
+FAILED (failures=1)
+
+MUTATION row-token-identity killed=True errors=0 skips=0
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.772s
+
+FAILED (failures=1)
+
+MUTATION row-token-original-spelling killed=True errors=0 skips=0
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.576s
+
+FAILED (failures=1)
+
+MUTATION literal-scope-target-identity killed=True errors=0 skips=0
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.635s
+
+FAILED (failures=1)
+
+MUTATION pipeline-c6-original killed=True errors=0 skips=0
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 453, in test_canonical_path_pipeline_preserves_identity
+    self.assertIn("\n  " + finding, out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '\n  C6 ' not found in 't-a01.md: FAIL\n  C11 closed: payload is not tests/<path>::<identifier>: tests/café.py::test_ok\n  C14 unsupported or unconfined probe: grep -c marker scripts/café.py\napi-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672\ncanonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\napi-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db\nwarning: C6 design_sha256 absent; legacy receipt comparison\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.782s
+
+FAILED (failures=1)
+
+MUTATION pipeline-c11-original killed=True errors=0 skips=0
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 453, in test_canonical_path_pipeline_preserves_identity
+    self.assertIn("\n  " + finding, out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '\n  C11 ' not found in 't-a01.md: FAIL\n  C6 design path is outside the checkout\n  C6 design_review.receipt has no matching canonical design receipt\n  C14 unsupported or unconfined probe: grep -c marker scripts/café.py\n  C15 design .orchestration/plans/café.md is not on canonical main\nwarning: C6 design_sha256 absent; legacy receipt comparison\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.330s
+
+FAILED (failures=1)
+
+MUTATION unset-cache-verdict killed=True errors=0 skips=0
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... FAIL
+
+======================================================================
+FAIL: test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 141, in test_private_cache_when_unset
+    self.assertEqual(rc, 0, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 1 != 0 : refused: cache missing
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.223s
+
+FAILED (failures=1)
+
+MUTATION private-fallback-cache killed=True errors=0 skips=0
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... FAIL
+
+======================================================================
+FAIL: test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 144, in test_private_cache_when_unset
+    self.assertTrue(cache.is_absolute() and not cache.exists())
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.694s
+
+FAILED (failures=1)
+
+MUTATION relative-cache-refusal killed=True errors=0 skips=0
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... FAIL
+
+======================================================================
+FAIL: test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 145, in test_private_cache_when_unset
+    self.assertNotEqual(self.check(prefix="import os;os.environ['UV_CACHE_DIR']='relative'")[0], 0)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.946s
+
+FAILED (failures=1)
+
+MUTATION applied-resolved-file-type killed=True errors=0 skips=0
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 406, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.353s
+
+FAILED (failures=1)
+
+MUTATION supplied-absolute-cache-honored killed=True errors=0 skips=0
+test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation) ... FAIL
+
+======================================================================
+FAIL: test_dispatch_env_i_invocation (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_dispatch_env_i_invocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 196, in test_dispatch_env_i_invocation
+    self.assertEqual(call["cache"], env["UV_CACHE_DIR"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '/tmp/a06-mutants-6z4kx_i9/checker-deps-h58nbzou/checker-m3v5xhz4' != '/tmp/a06-mutants-6z4kx_i9/checker-deps-h58nbzou'
+- /tmp/a06-mutants-6z4kx_i9/checker-deps-h58nbzou/checker-m3v5xhz4
+?                                                -----------------
++ /tmp/a06-mutants-6z4kx_i9/checker-deps-h58nbzou
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.578s
+
+FAILED (failures=1)
+
+MUTATION canonical-design-original-spelling killed=True errors=0 skips=0
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 299, in test_c6_receipt_uses_canonical_design_bytes
+    self.assertIn("\n  C15 ", self.finding("C6"))
+                              ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 4.171s
+
+FAILED (failures=1)
+
+MUTATION canonical-request-original-spelling killed=True errors=0 skips=0
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... FAIL
+
+======================================================================
+FAIL: test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 299, in test_c6_receipt_uses_canonical_design_bytes
+    self.assertIn("\n  C15 ", self.finding("C6"))
+                              ~~~~~~~~~~~~^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 135, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 1 test in 4.843s
+
+FAILED (failures=1)
+
+MUTATION canonical-child-original-spelling killed=True errors=0 skips=0
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... FAIL
+
+======================================================================
+FAIL: test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 248, in test_c15_uses_canonical_main_only
+    self.assertEqual(self.check()[0], 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 2.264s
+
+FAILED (failures=1)
+
+mutations=48 killed=48 survived=0

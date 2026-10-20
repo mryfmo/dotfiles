@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+    "run",
+    "--no-config",
+    "--no-project",
+    "--offline",
+    "--python",
+    "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "--with",
+    "pyyaml",
+    "python",
+    "-I",
+    "-u",
+    "-c",
+    "from pathlib import Path\nimport sys,hashlib,unittest,json,io\nroot=Path.cwd()\nsys.path.insert(0,str(root/\"tests/unit\"))\nimport test_task_consistency_c11_c15 as t\nd=root/\".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker\"\nbase=Path(\"/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e\")\ngroups=[\n (\"historical16\",base/\"historical-7a201eab-checker.py\",[s.rsplit(\"::\",1)[1] for s in json.loads((d/\"required-selectors.json\").read_text())]),\n (\"security-cedc7f5\",base/\"security-cedc7f5-checker.py\",[\"test_security_c12_resolves_original_unicode_path\",\"test_security_c12_rejects_internal_directory_alias\",\"test_security_c16_rejects_multi_item_rows\"]),\n (\"security-06ffefb\",base/\"security-06ffefb-checker.py\",[\"test_security_c12_prunes_with_normalised_directory_names\",\"test_security_c16_uses_resolved_literal_alias\",\"test_canonical_path_pipeline_preserves_identity\",\"test_canonical_path_pipeline_rejects_normalised_collisions\"]),\n (\"review-5c09a95a\",base/\"a06-reviewed-5c09a95a.py\",[\"test_path_grammar_rejects_escaping_scopes\",\"test_c10_confines_original_unicode_script_paths\"]),\n (\"review-1779440f\",base/\"a06-reviewed-1779440f.py\",[\"test_c12_classifies_backslash_filenames_from_resolved_ancestry\"]),\n (\"revision1-R1-R2\",base/\"a06-revision1-baseline.py\",[\"test_private_cache_when_unset\",\"test_canonical_path_pipeline_rejects_normalised_collisions\"]),\n (\"revision1-R4\",base/\"a06-revision1-before-r4.py\",[\"test_c6_receipt_uses_canonical_design_bytes\",\"test_c15_uses_canonical_main_only\"]),\n]\nprint(\"runtime\",sys.executable,sys.version,flush=True)\nprint(\"final-test-sha256\",hashlib.sha256(Path(t.__file__).read_bytes()).hexdigest(),flush=True)\nrecords=[]\nfor name,source,methods in groups:\n t.CHECKER=source\n print(\"GROUP\",name,\"source-sha256\",hashlib.sha256(source.read_bytes()).hexdigest(),flush=True)\n r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(t.TaskConsistencyC11C15Test(m) for m in methods))\n record=dict(group=name,tests=r.testsRun,failures=len(r.failures),errors=len(r.errors),skips=len(r.skipped),source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),selectors=methods)\n records.append(record)\n print(\"GROUP-RESULT\",json.dumps(record),flush=True)\ntag=\"315\" if sys.version_info[:2]==(3,15) else \"312\"\n(d/(\"frozen-final-historical-red\"+tag+\".json\")).write_text(json.dumps(records,indent=2)+\"\\n\")\nsys.exit(any(r[\"failures\"]<r[\"tests\"] or r[\"errors\"] or r[\"skips\"] for r in records))\n"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-historical-315",
+    "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1"
+  },
+  "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+  "output": "revision1-final-historical315.log",
+  "result_capture": "Driver reused older frozen JSON basename. After actual exit0, captured exact seven-group JSON torevision1-final-historical-red315.json and restored old basename byte-identical fromb8bf8066. Original executed argv remains unchanged."
+}

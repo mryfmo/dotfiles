@@ -1,0 +1,9 @@
+{
+  "baseline": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-baseline.py",
+  "checker_sha256": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+  "test_sha256": "57b3887a9d9d0854c838ea0e384a6228ea8855c0533bb3eedf524775598c0de3",
+  "selectors": [
+    "test_private_cache_when_unset",
+    "test_canonical_path_pipeline_rejects_normalised_collisions"
+  ]
+}

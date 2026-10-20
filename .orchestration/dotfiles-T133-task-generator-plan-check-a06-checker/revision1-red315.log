@@ -1,0 +1,38 @@
+runtime /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-red-cache-315/builds-v0/.tmpdAg9Rl/bin/python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+checker 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e test 57b3887a9d9d0854c838ea0e384a6228ea8855c0533bb3eedf524775598c0de3
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+FAIL
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... FAIL
+
+======================================================================
+FAIL: test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 149, in test_private_cache_when_unset
+    self.assertEqual(rc, 0, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 1 != 0 : refused: UV_CACHE_DIR must be set to an absolute path
+
+
+======================================================================
+FAIL: test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 404, in test_canonical_path_pipeline_rejects_normalised_collisions
+    self.assertNotIn("path collision:", self.finding("C12", prefix=one))
+                                        ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 143, in finding
+    self.assertEqual(rc, 1, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 0 != 1 : t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.759s
+
+FAILED (failures=2)
+BEHAVIORAL-RED {"tests": 2, "failures": 2, "errors": 0, "skips": 0}

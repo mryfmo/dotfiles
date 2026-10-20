@@ -1,0 +1,32 @@
+[
+  {
+    "id": "a06-revision1:R1",
+    "body": "Verified resolved on final source f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800: unset UV_CACHE_DIR no longer causes import-time refusal; launch supplies and cleans a private absolute fallback, refuses a supplied relative value and preserves a supplied absolute cache. Independent real-CLI fallback/cleanup/refusal and exact dispatch-cache-forwarding controls passed on Python 3.15.0 and 3.12.15.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 138,
+    "resolved": true
+  },
+  {
+    "id": "a06-revision1:R2",
+    "body": "Verified resolved on final source f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800: applied-file coverage classifies the confined resolved target while collision registration retains original enumerated names. The modeled absent-NFC alternate and one-file wrong-target case fails correctly without requiring collision detection; distinct-target/same-target collision, one-file valid and overlap controls passed independently on both runtimes.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 481,
+    "resolved": true
+  },
+  {
+    "id": "security:b8bf806:1",
+    "body": "Verified resolved on final source f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800: C6/C15 retain the original design spelling for canonical bytes; main_entry validates without NFC replacement and main_texts preserves raw child names. Independent real-CLI fake-API tests on both runtimes reject separate-NFC receipt/hash with omitted NFD invariants and reject missing NFD despite existing NFC, then accept correct NFD approval/hash/invariants. Raw-NFD canonical directory traversal also passes.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 352,
+    "resolved": true
+  },
+  {
+    "id": "a06-revision1:final-independent-approval",
+    "body": "Approved the reviewed implementation batch bound to source f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800 and tests be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1 after coherent connected-code review and 16 selected independent real-CLI methods per runtime, Python 3.15.0 and 3.12.15, both exit 0 with bindings unchanged. No remaining substantive finding. Only the disclosed native Unicode collision subtest skipped; modeled identity controls ran. Independent complete fixed-base count is 446 production and 720 tests including upstream lines. Reversing the 29 fixture-consolidation lines in final bytes preserved all 104 assertion-call AST multiplicities. This is local process evidence, not reviewer authentication, final-head CI/task audit, owner acceptance or merge approval.",
+    "scope": "review",
+    "resolved": true
+  }
+]

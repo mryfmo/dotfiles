@@ -1,0 +1,14 @@
+runtime /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-red-cache-315/builds-v0/.tmpEwMkCz/bin/python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+checker dd44ae3415ee7e6d6b0c3ca39782bdecac4fb0f9f44a69b69b601f4022e62187 test 57b3887a9d9d0854c838ea0e384a6228ea8855c0533bb3eedf524775598c0de3
+test_private_cache_when_unset (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_private_cache_when_unset) ... fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+ok
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... native-NFC-NFD-distinct=False
+
+  test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) [native two-file collision] ... skipped 'observed NFC/NFD samefile alias; modeled collision and one-file control ran'
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.359s
+
+OK (skipped=1)
+FOCUSED-GREEN {"tests": 2, "failures": 0, "errors": 0, "skips": 1}

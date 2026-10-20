@@ -1,42 +1,64 @@
-# Validation of frozen final bytes
+# Exact final worker-round2 validation
 
-Source/test SHA256 bindings: frozen-final-binding.json. Full expanded commands: strict-final-commands.json; actual exits and per-mutant/group results: strict-final-results.json. Native tools are validated absolute non-shim bindings, isolated Python and offline private caches; no live API authority is inferred from fixtures.
+Source/test bindings: revision1-final-bindings.json. Final sourcef43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800, new testbe102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1; legacy20eff6f4 remains unchanged. All results below are actual process exits, with full expanded commands and verbatim output in the named artifacts. Root security addendum was received; RESULT still requires explicit final-head ci=green.
 
-| Proof | Python 3.15.0 | Python 3.12.15 |
-| --- | --- | --- |
-| Complete new checker module | 28 tests, OK, one native collision subtest skip, exit 0 | 28 tests, OK, one native collision subtest skip, exit 0 |
-| Complete legacy checker module | 10 tests, OK, exit 0 | 10 tests, OK, exit 0 |
-| Historical 7a201eab16 selectors | 16 tests, 18 assertion failures, 0 errors/skips | same |
-| cedc7f5 three security selectors | 3 tests, 3 assertion failures, 0 errors/skips | same |
-| 06ffefbc security/pipeline/collision selectors | 4 tests, 4 assertion failures, 0 errors/skips | same |
-| Reviewed 5c09a95a directory/C10 selectors | 2 tests, 2 assertion failures, 0 errors/skips | same |
-| Reviewed 1779440f backslash classifier selector | 1 test, 1 assertion failure, 0 errors/skips | same |
-| Strict mutation controls | mutations=40 killed=40 survived=0 | mutations=40 killed=40 survived=0 |
+## Complete checker and unchanged caller proofs
 
-All historical drivers actually exited 0 after requiring behavioral assertion failures for every named selector, with zero errors/skips. FAILED footers in red/mutation logs are expected child results, not passing suites or hidden infrastructure failures. Mutants were created only in TMP, are compiled individually, and each kill has an assertion failure with no error/skip. No runtime helper or mutation framework is committed.
+revision1-final-module-commands.json and revision1-final-modules-{new,legacy}{315,312}.log: each native3.15.0/3.12.15 passes29 new+10legacy tests, all four actual exits0. Only the native Unicode two-file subcase skips because this host observed NFC/NFD aliasing. Modeled absent-alternate, distinct/same-target collision, wrong-row, one-file and overlap cases execute; no native Linux claim.
 
-Complete final outputs: strict-frozen-final-modules-{new,legacy}{315,312}.log, strict-frozen-final-historical-red{315,312}.log and strict-final-mutations{315,312}.log. JSON results include every mutant id, selector and mutant hash. required-selectors.json preserves all 16 required contract fixtures; historical group JSON maps additional security/review fixtures to exact checker hashes.
+revision1-final-regime-commands.json and revision1-final-regime315/312.log: unchanged5RegimeCi methods covering6 prior CI failure subcases pass on both runtimes, actual0,0failures/errors/skips. test_regime_ci.py is byte-identical to the imported upstream file.
 
-Initial failed attempts remain visible: seed-cache concurrency was isolated with private caches; final-mutations315/312 show the 39/40 trial in which a C6 warning satisfied an overly broad assertion. The final test requires the actual finding-line prefix and kills all 40. No product assertion was removed. The independent reviewer reconstructed the previous test hash by reversing that sole strengthening, and reran its selector on both runtimes.
+## Red before repair and historical controls
 
-The host's NFC/NFD spellings refer to the same native file. Only the genuine native two-file case skips with this observed reason; modeled distinct-entry and same-target collisions, single-file coverage, overlapping-scope deduplication and wrong-row identity controls run.
+Initial R1/R2 reds use frozen42183ecc: revision1-red-commands.json and logs show2tests/2assertfail/0error/0skip on each runtime, driver exits0. R4 reds use dd44ae34 with cache/type fixes only: revision1-final-r4-red-commands.json and logs show2tests/2assertfail/0error/0skip on each runtime, driver exits0. Final R4 greens use exactf43/be10: both2methods pass with0error/skip and exits0, including correct NFD receipt/hash/invariant and raw directory-child controls.
 
-The exact dispatched task bytes passed the offline real CLI (exit 0), with the required C14 no-trusted-sha warning. A ./ hidden predecessor edit scope failed C2 (exit 1); removing copy mentions failed C3 (exit 1). See dispatched-copy-offline-copy-rows-command.json and .log. Fake canonical responses come from pinned local base files and are labeled fixtures only. The prior own-only-removal experiment remains in dispatched-copy-offline.log: it exits 0 through existing C3 -checker/task.md suffix compatibility, so that driver exits 1 and is not claimed as a passing negative. Owner disposition was requested; actual task metadata contains both explicit copy rows.
+The final tests were also rerun against all historical source snapshots; every named method fails behaviorally with no import/error/skip. Complete executed argv/env/code is in revision1-final-historical315/312-command.json; full output in revision1-final-historical315/312.log; captured JSON in revision1-final-historical-red315/312.json. Drivers actually exit0. Their reused old JSON basename was copied to these revision files after completion, and the old historical basename was restored byte-identical fromb8; the command records disclose that capture step.
 
-Production-only CI-style R4 lint: owner2809-ci-r4-lint.log exit 0; inherited warnings outside allowed scope remain. A supplemental explicit-tests scan in final-r4-lint.log exits 1 on intentional API protocol assertions; CI's default-files excludes tests. No baseline or assertion was weakened. Required full make formatting stopped at inherited shfmt differences on both snapshots (exit 2); byte-for-byte comparison of full-format-base.log and full-format-candidate.log exited 0. Changed Python formatting is checked separately.
+| Source group, each runtime | Tests | Assertion failures | Errors | Skips |
+| --- | --- | --- | --- | --- |
+| historical16 | 16 | 18 | 0 | 0 |
+| security-cedc7f5 | 3 | 3 | 0 | 0 |
+| security-06ffefb | 4 | 4 | 0 | 0 |
+| review-5c09a95a | 2 | 2 | 0 | 0 |
+| review-1779440f | 1 | 1 | 0 | 0 |
+| revision1-R1-R2 | 2 | 2 | 0 | 0 |
+| revision1-R4 | 2 | 2 | 0 | 0 |
 
-Full make unit-test uses clean base/candidate snapshots in full-suite-snapshot-bindings.json and full-unit-commands.json. Candidate production is exact final 42183ecc; its new test is 55c31abd, preceding the single stronger finding-line assertion now 09db2fd0. This comparison therefore is not claimed as a full make run of the exact final test file. Complete final 09db modules, historical controls and mutations above were rerun after the strengthening; root CI must check the committed final head. Full unit statistics and exact failure multiplicity comparison are recorded separately after process completion.
+## Mutation sensitivity
 
-Independent evidence: independent-final-verification.{md,json}, independent-test-strengthening-review.{md,json}, independent-finding-assertion-review.{md,json}; exact independent commands and complete outputs accompany each. worker-review-evidence.json and worker-review-receipt.md consolidate their resolved findings and final approval.
+revision1-final-mutations315/312-command.json contains the exact48 cases and execution code; logs and JSON retain each id/selector/mutant SHA/outcome. Each runtime: mutations=48 killed=48 survived=0, actual driverexit0. Every kill is an assertion failure, one selected test, no error/skip. Controls retain the prior40 and add cache absence/private cleanup/relative refusal/supplied absolute honor, resolved classification, original design/request/child spelling. Mutants and runners exist only inTMP; command records are data.
 
-Pending external verification: root transport/CI/Bot, live canonical API check, final-head security/task audit, PR feedback dispositions, acceptance and integration gate. Worker gate and clean selected-tree asset validation are separate local checks and are recorded before local handoff. Local Bats are prohibited and were not run.
+Expected FAILED footers in red/mutation logs are negative child observations, never claimed as passing suites. revision1-final-observations.json consolidates actual exits/results.
 
-## Full-suite baseline comparison
+## Corrected R3 historical delta
 
-Both full make processes actually exited 2. Base: 1267 tests in842.479s,150 failures,128 errors,3 skips. Candidate:1295 tests in871.916s,156 failures,128 errors,4 skips. Every inherited failure/error tuple retains its exact multiplicity; removed0. The six added FAIL subcases are exactly RegimeCiTest fixtures owned by dotfiles-T133-regime-ci-fixture-grammar-a01/#441. full-unit-comparison.json lists every inherited tuple and each delta; no unexpected failure or error delta exists. Candidate snapshot test55c31abd and final test09db distinction above remains explicit. Full format logs are byte-identical exit2 inherited shfmt differences. Changed Python format and production-only R4 both exit0, recorded in final-static-commands.json. Worker unreviewed gate exit2 requests review; with saved/read resolved JSON and receipt, reviewed gate exit0. These gates confer no PR integration approval.
+Owner2827 reported actual GitHub Unit-test run39402138504:7failures of1296 on all3Linux jobs. Macos14 skips unit tests for the Python-only diff, so its success is no unit-test evidence. Six are R1; the seventh is R2. No worker GitHub read is claimed.
 
-## Final local gates
+Prior local base1267/150fail/128error/3skip and candidate1295/156fail/128error/4skip both exited2. The278 base failure/error tuples retain exact multiplicity, but the6 added tuples below are our checker R1. Prior attribution to #441 was wrong and is withdrawn:
+- test_regime_ci_accepts_a_base_that_moved_past_the_merge_base (test_regime_ci.RegimeCiTest.test_regime_ci_accepts_a_base_that_moved_past_the_merge_base); multiplicity=1; cause=R1 import-time cache refusal.
+- test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=False); multiplicity=1; cause=R1 import-time cache refusal.
+- test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage (test_regime_ci.RegimeCiTest.test_regime_ci_checks_only_the_latest_copy_of_a_reset_of_lineage) (reset_of=True, predecessor_copy_kept=True); multiplicity=1; cause=R1 import-time cache refusal.
+- test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier (test_regime_ci.RegimeCiTest.test_regime_ci_reads_the_head_as_data_and_runs_the_base_verifier) (expected=0, phrase=None); multiplicity=1; cause=R1 import-time cache refusal.
+- test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr (test_regime_ci.RegimeCiTest.test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr); multiplicity=1; cause=R1 import-time cache refusal.
+- test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config (test_regime_ci.RegimeCiTest.test_regime_ci_runs_the_checker_without_the_checkout_s_uv_config); multiplicity=1; cause=R1 import-time cache refusal.
 
-Clean selected-tree make validate-agent-assets: actual exit0; selected-tree-assets-result.json binds the selected tree and all three final code hashes. This snapshot precedes result/inventory documentation only. Canonical final privacy validation covers every newly committed evidence file after masking. Initial cache-copy preparation exited1 before any validator ran; new private cache copying preserved dangling symlinks. Worker reviewed gate exit0 is in worker-reviewed-gate.log and worker-gate-commands.json. Supplemental whole-evidence git diff --check exits2 on retained/raw log whitespace; code-only diff check exits0. No forensic output or retained predecessor data is changed to satisfy that diagnostic.
+The old report/validation remain explicitly historical. The dd44/test57b full candidate started before R4 was interrupted as obsolete; revision1-full-unit-exit.json marks it incomplete. It is not a final suite or comparison proof.
 
-C3 exploratory limitation is preexisting: its complete three-line for-rid/regex/finding block is byte-identical at fixed base60a6fb2b and current source. The actual task contains both rows. Existing short-suffix compatibility was retained under the retain-C3 contract; owner disposition remains external and no patch is silently added. This does not convert the failed own-only-removal fixture to a passing negative.
+## Final candidate-minus-base comparison
+
+COMPLETE with actual observed make exit2. revision1-final-full-suite-snapshot.json binds clean snapshot689cd97a61f002bb72f09f8e040039c5b7bd06b6 to finalf43/be10 bytes and exact argv/environment. revision1-final-full-unit-candidate.log/exits:1296 tests in1090.406s,150failures,128errors,4skips. Unchanged fixed60 baseline full-unit-base.log/full-unit-commands.json:1267 tests in842.479s,150failures,128errors,3skips, actual exit2. Same validated native315/offline environment, private cache paths differ. Additional skip is the disclosed native Unicode alias subcase.
+
+Exact candidate-minus-base test-name/multiplicity tuples: `[]` (zero added occurrences).
+Exact base-minus-candidate test-name/multiplicity tuples: `[]` (zero removed occurrences).
+
+revision1-final-full-unit-comparison.json preserves all278 baseline and278 candidate failure/error tuple occurrences, unique tuple counts and both Counter differences. Parser uses only unittest70-equals/FAIL-or-ERROR/70-hyphens headers, retains repeated subcases, and asserts header counts match footer failure/error totals. It does not count bare fixture ERROR diagnostics. revision1-final-artifact-commands.json records the exact executed parser code/argv and actual exit0. This is an exact local baseline comparison, not a green full suite, native Linux run or final-head GitHub CI. The previous6 added failures were our R1 and are gone after the repair; the prior inherited attribution remains withdrawn.
+
+## Format, lint, review and gate
+
+Changed Python Ruff format check exits0. Production-only CI-style R4 lint exits0 in revision1-final-production-r4.log;5 inherited warnings in unchanged regime-ci.py remain outside scope. Full make format on the exact final snapshot exits2 at inherited shfmt differences; entire output is byte-identical to unchanged baseline, recorded in revision1-final-format-command.json/log. No lint baseline or assertion is weakened.
+
+Read independent final MD/JSON, exact commands, both16-test runtime logs and consolidation proof. Each runtime exit0 with one disclosed native alias subtest skip; source/test/task hashes unchanged. All104 assertion-call AST multiplicities survive reversal of29 fixture-consolidation lines. Original intermediate consolidation record is not misrepresented as final-byte equivalence; later raw-API/cache controls are separately reviewed.
+
+worker-review-evidence.json and worker-review-receipt.md bind the final resolved R1/R2/security:b8bf806:1 records. revision1-worker-gate-commands.json: unreviewed gate exits2 requesting review, saved/read Crit-data reviewed gate exits0. Independent process review is not final-head CI/task audit/acceptance.
+
+Selected-tree make validate-agent-assets completed with actual exit0, log revision1-assets.log ending agent asset validation ok, metadata revision1-assets-command.json/result.json. It uses a clean selected tree with exact final source/test bytes; final data-only additions receive a canonical privacy scan. Final canonical privacy verification exits0:285 selected a06 artifacts,0secret matches,0home-path matches, all JSON parses and all artifact modes0644. revision1-final-artifact-privacy.json binds the final source/test/task and canonical validator hash. Initial newly written command metadata needed a further canonical mask; the attempt is disclosed in revision1-final-artifact-commands.json. Original task copies were scanned without rewriting. No local Bats, browser Crit, network, push or escalation. Task copy staysb9e; root owns canonical publication/recordsPR444 and applicable final-head CI/Bot/audits/feedback/acceptance/integration. RESULT requires explicit rootci=green.

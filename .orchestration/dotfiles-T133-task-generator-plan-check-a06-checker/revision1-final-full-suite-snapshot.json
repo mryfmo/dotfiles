@@ -1,0 +1,55 @@
+{
+  "cwd": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-full-77n_9uha",
+  "argv": [
+    "make",
+    "unit-test"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-unit-cache",
+    "UV_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1",
+    "UV_NO_CONFIG": "1",
+    "UV_NO_PROJECT": "1",
+    "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15"
+  },
+  "snapshot_commit": "689cd97a61f002bb72f09f8e040039c5b7bd06b6",
+  "code_bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "prepare": [
+    [
+      "/usr/bin/git",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-full-77n_9uha"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-full-77n_9uha",
+      "checkout",
+      "--detach",
+      "--force",
+      "b8bf806655496b7a897aea25e1b43319095fac23"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-full-77n_9uha",
+      "update-ref",
+      "refs/remotes/origin/main",
+      "60a6fb2b324d0381c4a6e539b37c650105154a7e"
+    ]
+  ],
+  "baseline_reuse": "full-unit-base.log and full-unit-commands.json: unchanged fixed60a6 same native315/env/configuration; no new baseline source change",
+  "limit": "Final complete R1/R2/R3/R4 batch f43/be10; no further addendum per owner. Require unchanged final bindings."
+}

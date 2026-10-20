@@ -1,39 +1,17 @@
 {
-  "timestamp": "2026-10-20T09:12:41.950008+00:00",
-  "status": "frozen-local-code",
+  "status": "final_revision_frozen",
   "fixed_base": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
-  "rows": [
-    {
-      "path": "scripts/orchestrator/task-consistency-check.py",
-      "added": 416,
-      "deleted": 27
-    },
-    {
-      "path": "tests/unit/test_task_checkers.py",
-      "added": 35,
-      "deleted": 22
-    },
-    {
-      "path": "tests/unit/test_task_consistency_c11_c15.py",
-      "added": 655,
-      "deleted": 0
-    }
-  ],
-  "production_changed": 443,
-  "test_changed": 712,
+  "numstat": "419\t27\tscripts/orchestrator/task-consistency-check.py\n6\t5\ttests/unit/test_regime_ci.py\n35\t22\ttests/unit/test_task_checkers.py\n652\t0\ttests/unit/test_task_consistency_c11_c15.py\n",
+  "production_changed": 446,
   "production_cap": 450,
+  "all_test_changed": 720,
   "test_cap": 720,
-  "source_attribution": {
-    "a05_at_06ff": 396,
-    "held_pipeline_draft_increase": 24,
-    "identity_collision_increase": 18,
-    "directory_C10_repair": 4,
-    "R4_comparison_adjustment": 2,
-    "PurePosixPath_ancestry_correction": -1
-  },
+  "worker_test_changed": 709,
+  "inherited_test_changed": 11,
+  "literal_complete_caps_pass": true,
   "bindings": {
-    "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
-    "tests/unit/test_task_consistency_c11_c15.py": "09db2fd0ed46a0ed77da3c13eead96a9c864ff5f4ab5ba3c3068d42cee7e17cc",
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
     "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
   }
 }

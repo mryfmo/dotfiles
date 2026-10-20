@@ -1,0 +1,6 @@
+warning: scripts/orchestrator/regime-ci.py:65: R6 an identifier is interpolated into a regex (grep -E on $name; re.* on an f-string)
+warning: scripts/orchestrator/regime-ci.py:71: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:72: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:90: R4 Python compares a path or URL by its string form
+warning: scripts/orchestrator/regime-ci.py:246: R4 Python compares a path or URL by its string form
+warning: 5 unbaselined hit(s) and 0 stale row(s) in unchanged files

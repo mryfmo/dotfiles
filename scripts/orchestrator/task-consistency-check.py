@@ -34,9 +34,7 @@ import unicodedata
 from functools import cache
 from urllib.parse import quote
 
-CACHE = os.environ.get("UV_CACHE_DIR", "")
-if not os.path.isabs(CACHE):
-    sys.exit("refused: UV_CACHE_DIR must be set to an absolute path")
+CACHE = os.environ.get("UV_CACHE_DIR")
 
 try:
     import yaml
@@ -137,9 +135,12 @@ def launch(root, binary, *args):
     binary = trusted(binary)
     if confined(pathlib.Path(root).resolve(), binary) is not None:
         sys.exit("refused: checkout executable binding")
-    os.makedirs(CACHE, exist_ok=True)
+    if CACHE is not None:
+        if not os.path.isabs(CACHE):
+            sys.exit("refused: UV_CACHE_DIR must be an absolute path")
+        os.makedirs(CACHE, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=CACHE, prefix="checker-") as directory:
-        env = {"HOME": str(HOST_HOME), "PATH": directory, "LANG": "C.UTF-8", "UV_CACHE_DIR": CACHE}
+        env = {"HOME": str(HOST_HOME), "PATH": directory, "LANG": "C.UTF-8", "UV_CACHE_DIR": CACHE or directory}
         env.update(
             v.split("=", 1)
             for v in "GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_LAZY_FETCH=1 GIT_NO_REPLACE_OBJECTS=1".split()
@@ -173,8 +174,9 @@ def main_entry(root, name=None):
     if name is None:
         endpoint, args = "git/ref/heads/main", ("--jq", ".object.sha")
     else:
-        if not (name := normalise_name(name)):
+        if not normalise_name(name):
             sys.exit("refused: canonical path")
+        name = pathlib.PurePosixPath(name).as_posix()
         endpoint, args = f"contents/{quote(name.rstrip('/'), safe='/')}?ref={main_entry(root)}", ()
     endpoint = "repos/mryfmo/dotfiles/" + endpoint
     result = launch(root, executable("gh"), "api", endpoint, "--hostname", "github.com", *args)
@@ -215,8 +217,8 @@ def main_texts(root, name):
     entry = main_entry(root, name)
     if isinstance(entry, list):
         for child in entry:
-            path = normalise_name(child["path"])
-            if not path or not path.startswith(normalise_name(name).rstrip("/") + "/"):
+            path = child["path"]
+            if not normalise_name(path) or not normalise_name(path).startswith(normalise_name(name).rstrip("/") + "/"):
                 sys.exit("refused: canonical directory child")
             yield from main_texts(root, path)
     elif entry is not None:
@@ -347,7 +349,8 @@ def check(p, root, premises_sha=None):
         if rows and not named.search(" ".join(key for _, _, key in row_paths)):
             fails.append(f"C4 allowed path has no threat_table row naming it: {a}")
     dr = fm.get("design_review") or {}
-    _, design_target, design = path_entry(root, dr.get("design"))
+    design = dr.get("design")
+    _, design_target, _ = path_entry(root, design)
     if dr.get("design") and design_target is None:
         fails.append("C6 design path is outside the checkout")
         shown = None
@@ -475,7 +478,7 @@ def check(p, root, premises_sha=None):
             pathlib.PurePosixPath(d) in pathlib.PurePosixPath(resolved).parents for d in APPLIED_DIRS
         )
         applied = applied or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)
-        if file.is_symlink() and file.is_dir() or file.is_file() and applied and not exempt and not named:
+        if file.is_symlink() and file.is_dir() or target.is_file() and applied and not exempt and not named:
             fails.append(f"C12 the scope {a} matches unsafe or unnamed {file.relative_to(root)}")
     premises = fm.get("premises") or []
     # Only the caller's dispatched-byte digest authorizes C14; branch bytes supply no authority.

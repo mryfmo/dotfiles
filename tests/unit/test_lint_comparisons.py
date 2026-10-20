@@ -171,10 +171,9 @@ class LintComparisonsTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name).resolve()
 
-    def lint(self, *args, cwd=None):
-        return subprocess.run(
-            [sys.executable, "-I", str(LINT), *args], check=False, cwd=cwd or self.temp, capture_output=True, text=True
-        )
+    def lint(self, *args, cwd=None, env=None):
+        cmd, cwd = [sys.executable, "-I", str(LINT), *args], cwd or self.temp
+        return subprocess.run(cmd, check=False, cwd=cwd, env=env, capture_output=True, text=True)
 
     def run_fixture(self, name, text, baseline=None, changed=None, mode=()):
         (self.temp / name).write_text(text)
@@ -463,6 +462,7 @@ class LintComparisonsTest(unittest.TestCase):
         for name, text, line in (  # the hit is reported at its operator's own physical line
             ("jc.sh", 'jq -r "select(.url == \\\n  \\"/x\\")"\n', 1),
             ("jc2.sh", 'out="$(jq -r "select(.path \\\n  == \\$p)" f)"\n', 2),
+            ("jc3.sh", 'out="$(jq -r "select(.pa\\\nth == \\$v)" f)"\n', 2),  # .path split, in a substitution
         ):
             with self.subTest(fixture=name):
                 result = self.run_fixture(name, text)
@@ -474,6 +474,7 @@ class LintComparisonsTest(unittest.TestCase):
         for name, text, rule in (
             ("wj.sh", '[[ "$x" == *\\\n/foo ]]\n', "R1"),
             ("wc.sh", 'case "$x" in */fo\\\no) ;; esac\n', None),
+            ("wp.sh", 'pgrep -f "$\\\n1"\n', "R5"),  # $1 split between $ and 1
         ):
             with self.subTest(fixture=name):
                 result = self.run_fixture(name, text)
@@ -491,6 +492,7 @@ class LintComparisonsTest(unittest.TestCase):
             ("ms2.sh", "msg='a\n  # lint-comparisons: allow\nb'\n"),
             ("hd.sh", "cat <<EOF\n# lint-comparisons: allow\nEOF\n"),
             ("hd2.sh", "cat <<-'X' > f\n\t# lint-comparisons: allow\n\tX\n"),
+            ("hd3.sh", "cat <<'END-DATA'\n# lint-comparisons: allow\nEND-DATA\n"),  # a delimiter with a hyphen
         ):
             with self.subTest(fixture=name):
                 result = self.run_fixture(name, text)
@@ -498,6 +500,97 @@ class LintComparisonsTest(unittest.TestCase):
         # a real comment after both is still one: its reasonless marker is R0
         result = self.run_fixture("rc.sh", 'msg="\na"\ncat <<EOF\nb\nEOF\n# lint-comparisons: allow\n')
         self.assertEqual((1, ["rc.sh:6: R0"]), (result.returncode, [x[:11] for x in result.stdout.splitlines()]))
+
+    def assert_hits(self, fixtures):  # each fixture: (name, text, [(rule, line)]); [] means no output and exit 0
+        for name, text, wants in fixtures:
+            with self.subTest(fixture=name):
+                result = self.run_fixture(name, text)
+                self.assertEqual(int(bool(wants)), result.returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    [[f"{name}:{n}:", rule] for rule, n in wants],
+                    [x.split(" ", 2)[:2] for x in result.stdout.splitlines()],
+                )
+
+    def test_process_patterns_include_positional_and_special_parameters(self):
+        # audit:b24d313:1: positional and special parameters are expansions; a quoted or escaped $ is a literal
+        spellings = ('"$1"', '"${10}"', '"$@"', '"x$?"', '"$$"', "$!")
+        self.assert_hits([(f"p{i}.sh", f"pgrep -f {s}\n", [("R5", 1)]) for i, s in enumerate(spellings)])
+        self.assert_hits([("pl.sh", "pgrep -f 'x$1'\npgrep -f \"x\\$1\"\n", [])])
+
+    def test_double_quoted_jq_joins_split_operator_and_path(self):
+        # audit:b24d313:2: bash deletes a backslash-newline inside "…", so the operator and the field arrive whole
+        self.assert_hits(
+            [
+                ("so.sh", 'jq -r "select(.url =\\\n= \\$v)"\n', [("R3", 1)]),
+                ("sp.sh", 'jq -r "select(.pa\\\nth == \\$v)"\n', [("R3", 2)]),
+            ]
+        )
+
+    def test_jq_program_concatenates_all_word_parts(self):
+        # audit:b24d313:3: one shell word, its quoted fragments concatenated in order, is the program
+        self.assert_hits(
+            [
+                ("cw.sh", "jq -r 'select(''.url == $p)'\n", [("R3", 1)]),
+                ("cw2.sh", "jq -r 'select('\"(.path == \\$p)\"')'\n", [("R3", 1)]),
+            ]
+        )
+
+    def test_arithmetic_shift_keeps_following_marker_comments(self):
+        # audit:b24d313:4: an arithmetic shift is no heredoc; the comments after it stay comments
+        self.assert_hits(
+            [
+                ("as.sh", "bits=$((1 << shift))\n[[ $path == /x ]] # lint-comparisons: allow the fixture\n", []),
+                ("as2.sh", "bits=$((1 << shift))\n# lint-comparisons: allow\n", [("R0", 2)]),
+            ]
+        )
+
+    def test_heredoc_data_is_excluded_from_shell_rules(self):
+        # audit:b24d313:5: a heredoc body is data: no shell rule reads it
+        body = "[[ $path == /x ]] # lint-comparisons: allow reason\n"
+        self.assert_hits([("hq.sh", f"cat <<'EOF'\n{body}EOF\n", []), ("hu.sh", f"cat <<EOF\n{body}EOF\n", [])])
+
+    def test_ansi_c_quotes_preserve_following_marker_comments(self):
+        # audit:b24d313:6: $'…' closes at its unescaped quote; the comment after the next statement is one
+        self.assert_hits(
+            [("ac.sh", "msg=$'it\\'s fine'\n[[ $path == /x ]] # lint-comparisons: allow the fixture\n", [])]
+        )
+
+    def test_all_valid_heredoc_delimiters_exclude_body_markers(self):
+        # audit:b24d313:7: every delimiter bash accepts ends its body where bash ends it; a body marker is no R0
+        marker = "# lint-comparisons: allow\n"
+        self.assert_hits(
+            [
+                (f"d{i}.sh", f"cat <<{open_}\n{marker}{close}\n", [])
+                for i, (open_, close) in enumerate(
+                    (("'123'", "123"), ("'END-DATA'", "END-DATA"), ('E"N"D', "END"), ("\\EOF", "EOF"), ("-'T'", "\tT"))
+                )
+            ]
+        )
+
+    def test_shfmt_missing_refuses_without_fallback(self):
+        (self.temp / "m.sh").write_text("[[ $path == /x ]]\n")
+        result = self.lint(
+            "--baseline", str(self.temp / "none.tsv"), "m.sh", "--changed", "m.sh", env={"PATH": "/usr/bin:/bin"}
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("shfmt missing", result.stderr)
+        self.assertEqual("", result.stdout)  # no regex scan stands in for the parser
+
+    def test_shfmt_parse_failure_refuses_with_original_message(self):
+        result = self.run_fixture("bad.sh", "f() {\n  echo x\n")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("bad.sh: 1:5: reached EOF without matching `{` with `}`", result.stderr)
+        result = self.lint("--baseline", str(self.temp / "none.tsv"), "bad.sh", "--all")
+        self.assertNotEqual(0, result.returncode)  # --all is no way around a parse failure
+        fake = self.temp / "bin/shfmt"  # a shfmt that answers with no JSON
+        fake.parent.mkdir()
+        fake.write_text("#!/bin/sh\necho not-json\n")
+        fake.chmod(0o755)
+        (self.temp / "ok.sh").write_text("echo ok\n")
+        env = {"PATH": f"{fake.parent}:/usr/bin:/bin"}
+        result = self.lint("--baseline", str(self.temp / "none.tsv"), "ok.sh", "--changed", "ok.sh", env=env)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("ok.sh: shfmt gave no JSON", result.stderr)
 
 
 if __name__ == "__main__":

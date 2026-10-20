@@ -370,6 +370,57 @@ class TaskConsistencyC11C15Test(unittest.TestCase):
         (self.repo / "tests/fixtures/hidden.py").symlink_to(self.repo / "scripts/tool.py")
         self.assertIn("hidden.py", self.finding("C12"))
 
+    def test_security_c12_resolves_original_unicode_path(self):
+        benign = self.put("tests/fixtures/ordinary.py", "fixture\n")
+        outside = self.temp / "outside.py"
+        outside.write_text("outside\n")
+        (self.repo / "tests/fixtures/cafe\u0301.py").symlink_to(outside)
+        nfc = self.repo / "tests/fixtures/caf\u00e9.py"
+        self.task(allowed=["tests/fixtures/**"])
+        # Model distinct Unicode spellings even on normalization-insensitive hosts.
+        prefix = (
+            "import pathlib,os,unicodedata;_resolve=pathlib.Path.resolve;_walk=os.walk\n"
+            f"def resolve(p,*a,**k):\n return pathlib.Path({str(benign)!r}) if str(p)=={str(nfc)!r} else _resolve(p,*a,**k)\n"
+            "def walk(*a,**k):\n for folder,dirs,names in _walk(*a,**k):\n  yield folder,dirs,[unicodedata.normalize('NFD',n) for n in names]\n"
+            "pathlib.Path.resolve=resolve;os.walk=walk"
+        )
+        self.assertIn("confin", self.finding("C12", prefix=prefix))
+
+    def test_security_c12_rejects_internal_directory_alias(self):
+        self.put("tests/fixtures/data.txt", "fixture\n")
+        alias = self.repo / "tests/fixtures/alias"
+        alias.symlink_to(self.repo / "scripts", target_is_directory=True)
+        for scope in ("tests/fixtures/**", "tests/fixtures/alias"):
+            self.task(allowed=[scope])
+            self.assertIn("alias", self.finding("C12"))
+        self.task(
+            allowed=["tests/fixtures/**"],
+            extra=[dict(control="tests/fixtures/alias", disposition="residual: alias has an explicit row")],
+        )
+        self.finding("C12")
+        alias.unlink()
+        self.task(allowed=["tests/fixtures/**"])
+        self.assertEqual(self.check()[0], 0)
+
+    def test_security_c16_rejects_multi_item_rows(self):
+        self.put("scripts/orchestrator/tool.py", "fixture\n")
+        items = [
+            dict(control=f"5.14 item {i}: reference", disposition="residual: design applies by reference here")
+            for i in range(11)
+        ]
+        concrete = dict(control="scripts/orchestrator/tool.py", disposition="residual: concrete path covered")
+        for pair, trim in (((0, 1), 0), ((0, 0), 0), ((11, 12), 0), ((0, 1), 2)):
+            combined = dict(control=" and ".join(f"5.14 item {i}" for i in pair), disposition=items[0]["disposition"])
+            self.task(
+                allowed=["scripts/orchestrator/*.py"],
+                extra=[concrete, *items[trim:], combined],
+                security=True,
+                body="Design 5.14 applies by reference.",
+            )
+            out = self.finding("C16")
+            if pair == (0, 0):
+                self.assertIn("item 0: count 3", out)
+
     def test_exempt_case_alias_to_applied_file_is_finding(self):
         self.put("Tests/Fixtures/agent.py", "applied\n")
         self.task(allowed=["tests/fixtures/**"])

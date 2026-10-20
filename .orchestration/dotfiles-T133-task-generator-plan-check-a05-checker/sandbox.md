@@ -49,3 +49,15 @@ Owner2757 provided native host tool-manager Python3.12.15, no worker download. A
 3.12.15 (main, Oct 14 2026, 00:55:37) [Clang 23.1.3 ]
 
 The host installation was performed by the orchestrator under its machine-hygiene exemption; this worker did not install outside the sandbox or download through another route. Both module suites and mutation proofs now use the validated native absolute interpreter or existing native315. Rebuilt parent-bin remains only fixture orchestration, no production launch change or parent-boundary closure.
+
+## Post-publication transport disposition2761 (working-tree observation)
+
+At2026-10-20T06:34:55Z the orchestrator reported that the rendered Codex sandbox has network_access=false (agent-config.yaml:115), while design5.14 item10 specifies true; a separate manifest task follows#431. This worker's native git push actually exited128 with github.com DNS resolution failure. No retry, alternate tool/route, broader permission or worker-side out-of-sandbox command occurred.
+
+Under the orchestrator's interim integration exemption, the orchestrator transported the already committed branch head cedc7f5f4c6e211645aad344d9149de1c44e9b95 to tools/task-generator-plan-check-a05-checker / PR440 without changing any worker commit. This remote publication is reported by the orchestrator, not independently queried by the network-restricted worker. CI runs on that head and the orchestrator reads the results. Disposition2761 explicitly requests RESULT now at this exact head, naming the six separate RegimeCiTest reds owned by#441 and GitGuardian's synthetic-digest refutation. This overrides the worker's earlier wait-for-CI/transport hold; no new-head CI success or completed Bot review is asserted.
+
+This section is a post-head observation, left as a working-tree-only update so the requested cedc7f5f head stays unchanged. All required original artifacts were committed in that head; the orchestrator can carry this observation in integration records. No merge, update-branch, feedback-thread resolution, final task audit, security acceptance or integration approval is performed by this worker.
+
+Revise1 owner2768: all three security fixes and test writes remain in allowed files; original native315/312 and private fixture seeds reused, no network attempt. Unicode-sensitive identity is modeled, not native Linux. New source396/test613add22del; local commit/PONG only, root transport/CI under D-024-36. No caller/startup/cache/host-isolation claim.
+
+Final revise1 local observations: clean selected-tree assets actually exit0 at6af61298778a0d3d52042e1568acefa3cc084218 with source/test hashes verified; refreshed worker gate actually exit0 with saved/read current JSON+receipt. Subsequent edits only record these results and measurements. Local commit/PONG follows owner2768; no new-head CI pass or integration approval is asserted.

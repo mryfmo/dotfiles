@@ -1,3 +1,25 @@
+# Revise round1: security:cedc7f5:1-3
+
+Owner2768 authorizes worker revise round1of2 with unchanged caps, local commit and PONG head; the orchestrator transports/reads CI under D-024-36. Canonical security review of cedc7f5 was incorrect with three P2 findings; read in full. Its closed-control/parent-residual conclusions remain historical. This revision addresses all three findings; no final task/security audit or integration approval is claimed.
+
+| Finding | Named regression in TaskConsistencyC11C15Test | Change |
+| --- | --- | --- |
+| security:cedc7f5:1 | tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_resolves_original_unicode_path | Resolve original enumerated Path for confinement; NFC normalization supplies comparison values. |
+| security:cedc7f5:2 | tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias | Reject directory aliases in glob/literal scopes even with a row; ordinary fixture data still passes. |
+| security:cedc7f5:3 | tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows | Count every occurrence; reject all multi-item rows, including repeated/out-of-range pairs and combined replacements. |
+
+User-visible effects: directory symlinks matching a scope are now refused, including internal and fixture/evidence aliases; C16 refuses an extra combined row even alongside all11valid rows. No symlink traversal, lint baseline, parent launch, workflow, resolver or canonical-record edit is introduced.
+
+Source SHA256f350d3c622ccd9b0e909b3d50b1ef63471394def291861dec7446245f3014bcb; tests2106dba4db078b1a0683732af2d6a8e0c46f282d586a1f06bbbfbee51c2aac9f; legacy20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f. Production372+24=396<=400. Tests578+35=613 additions<=700,22 deletions. Taskcopyd0ad49f43aae4be0360cb88339b5d9f23e92e5588d38e3a93a3fbc58a6fe5faa unchanged,245lines/four allowed entries; retained_predecessor_directories:[].
+
+Before production repair, three new methods produced3assertion failures0errors0skips on3153.263s/3123.801s,actual exits1. The C16 method was then strengthened with repeated-item count and replacement-row cases; final enhanced test-source binding against the frozen reviewed cedc7f5 checker also gives3assertion failures0errors0skips on both runtimes. These are real CLI findings, not import/refusal proofs. Unicode spelling distinction is deterministically modeled on this Mac; no native Linux coverage is claimed.
+
+Current full two-module suite:32tests OK,31538.933s/31250.157s,actual exits0. Required16historical selectors against exact7a201eab and final test source:18assertion failures0errors0skips,31516.974s/31219.380s,actual exits1. Current mutants:28killed28survived0 on each runtime,actual exits0,zero errors/skips. Four added mutations separately exercise original-path confinement, glob and literal directory aliases, and duplicate occurrence counts; the one-item-row mutation uses the new replacement-row control.
+
+Fresh independent security-profile verification found no P0-P3 issue within these fixes;5methods passed on3157.885s/31210.562s. Saved full commands/stdout/stderr and source binding; saved/read resolved worker JSON and receipt. Source/test formatter, exact CI-named lint regression and source diff-check pass. Full Make/CI results below remain historical; no new-head external check success is inferred from local proofs.
+
+Network remains unavailable to this worker. Per2768 commit locally and PONG full head for root transport; do not retry network, merge or update-branch. Root reports CI on cedc7f5 has only the6RegimeCiTest reds owned by#441 and R4 lint green; it already refuted the synthetic-digest GitGuardian alert. Root owns refreshed CI/feedback sweep/task-security audits/gate/integration for the next head. All earlier publication/head/proof notes below are historical.
+
 ## Latest CI correction, owner2750/2754/2757
 
 Current source SHA256 b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 (373 additions+24 deletions=397<=400). New and legacy tests are byte-identical to published8fd3ae7e:1efd2ebf40167668b580842caaf817835a009483a8d8a76621adec309649c5d8 and20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f;562 additions22 deletions. Task copy remainsd0ad49f43aae4be0360cb88339b5d9f23e92e5588d38e3a93a3fbc58a6fe5faa,245 lines before exact Checks heading,four allowed entries.
@@ -45,3 +67,5 @@ cost: n/a
 Latest attempt after owner2750/2754: uncommitted production sourceb91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 is397changedlines(373+24), tests unchanged. Six R4 hits were observed before repair; the actual CI-named changed-file lint test passes after repair. Full checker proofs could not launch after old TMP loss; authorized native-uv Python3.12.15 rebuild then exited1 on github.com DNS resolution. Current parent-bin rebuild succeeded; no alternate download/retry/escalation. No final green/ready_for_review RESULT and no further push is claimed. Latest blocker details and exact rebuild commands/new paths are in sandbox.md and ci-r4-runtime-rebuild.log. Published PR440 head remains8fd3ae7ead7c6c5973dc1deef5f0330fb46810cb with its observed red CI; earlier local proofs above bind the published pre-R4 implementation only.
 
 Final pre-push local observation: the R4 clean selected-tree asset process actually exited0 at tree b9680ba922744b61d58b6b1054e59f03dfebd35e, sourceb91 verified. Worker gate actually exited0 using saved/read JSON and refreshed receipt. Subsequent changes add this observation and other evidence only. All required paths are staged/committed before RESULT; full actual final-head CI/Bot observations follow after push. Earlier blocked runtime notes and first-head reds remain historical, not current pass claims.
+
+Final revise1 local observations: clean selected-tree assets actually exit0 at6af61298778a0d3d52042e1568acefa3cc084218 with source/test hashes verified; refreshed worker gate actually exit0 with saved/read current JSON+receipt. Subsequent edits only record these results and measurements. Local commit/PONG follows owner2768; no new-head CI pass or integration approval is asserted.

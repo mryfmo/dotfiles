@@ -83,5 +83,23 @@
     "body": "Independent fresh-context security-profile verification of six R4 edits at source b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0 found no P0-P3 regression. Actual AST-extracted equivalence self-check passed16146 normalization cases,2394 accepted idempotent/non-None folded values,95760 match comparisons and6resolved paths. Exact command/output in independent-r4-review-transcript.md. Scope excludes final task audit/integration authority. Owner2750 calls this CI correction, not another repair round.",
     "scope": "review",
     "resolved": true
+  },
+  {
+    "id": "security:cedc7f5:1",
+    "body": "Original enumerated filesystem Path now reaches confinement before comparison-name normalization; distinct NFC/NFD spellings are modeled explicitly. Regression: tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_resolves_original_unicode_path. Initial and final reviewed-source3method reds each have3 assertion failures/0errors/skips on315/312; current32modules and28mutants green each runtime. Fresh independent5-method verification each runtime passed; exact commands/output in independent-revise1-review-transcript.md. Current sourcef350d3c/tests2106dba. Owner2768 revise round1of2.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "security:cedc7f5:2",
+    "body": "Matched directory aliases are rejected for literal and glob scopes, including explicit-row aliases; no silent directory-link traversal exemption. Regression: tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias. Initial and final reviewed-source3method reds each have3 assertion failures/0errors/skips on315/312; current32modules and28mutants green each runtime. Fresh independent5-method verification each runtime passed; exact commands/output in independent-revise1-review-transcript.md. Current sourcef350d3c/tests2106dba. Owner2768 revise round1of2.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "security:cedc7f5:3",
+    "body": "C16 counts every recognized occurrence and rejects any multi-item row, including replacement rows, repeated same item and extra out-of-range multi-item rows. Regression: tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows. Initial and final reviewed-source3method reds each have3 assertion failures/0errors/skips on315/312; current32modules and28mutants green each runtime. Fresh independent5-method verification each runtime passed; exact commands/output in independent-revise1-review-transcript.md. Current sourcef350d3c/tests2106dba. Owner2768 revise round1of2.",
+    "scope": "review",
+    "resolved": true
   }
 ]

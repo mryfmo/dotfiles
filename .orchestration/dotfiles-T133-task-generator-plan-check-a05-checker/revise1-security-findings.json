@@ -1,0 +1,62 @@
+[
+  {
+    "id": "security:cedc7f5:1",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_resolves_original_unicode_path",
+    "reviewed_commit": "cedc7f5f4c6e211645aad344d9149de1c44e9b95",
+    "reviewed_source_sha256": "b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0",
+    "fixed_source_sha256": "f350d3c622ccd9b0e909b3d50b1ef63471394def291861dec7446245f3014bcb",
+    "final_test_source_sha256": "2106dba4db078b1a0683732af2d6a8e0c46f282d586a1f06bbbfbee51c2aac9f",
+    "status": "addressed",
+    "red_logs": [
+      "revise1-security-red315.log",
+      "revise1-security-red312.log",
+      "revise1-final-security-red315.log",
+      "revise1-final-security-red312.log"
+    ],
+    "green_logs": [
+      "revise1-modules315.log",
+      "revise1-modules312.log"
+    ],
+    "independent": "independent-revise1-review-transcript.md"
+  },
+  {
+    "id": "security:cedc7f5:2",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias",
+    "reviewed_commit": "cedc7f5f4c6e211645aad344d9149de1c44e9b95",
+    "reviewed_source_sha256": "b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0",
+    "fixed_source_sha256": "f350d3c622ccd9b0e909b3d50b1ef63471394def291861dec7446245f3014bcb",
+    "final_test_source_sha256": "2106dba4db078b1a0683732af2d6a8e0c46f282d586a1f06bbbfbee51c2aac9f",
+    "status": "addressed",
+    "red_logs": [
+      "revise1-security-red315.log",
+      "revise1-security-red312.log",
+      "revise1-final-security-red315.log",
+      "revise1-final-security-red312.log"
+    ],
+    "green_logs": [
+      "revise1-modules315.log",
+      "revise1-modules312.log"
+    ],
+    "independent": "independent-revise1-review-transcript.md"
+  },
+  {
+    "id": "security:cedc7f5:3",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows",
+    "reviewed_commit": "cedc7f5f4c6e211645aad344d9149de1c44e9b95",
+    "reviewed_source_sha256": "b91d8d3ae978d394a91ff669db34e2cfafd728c7a2ce4f559dabc48686e2add0",
+    "fixed_source_sha256": "f350d3c622ccd9b0e909b3d50b1ef63471394def291861dec7446245f3014bcb",
+    "final_test_source_sha256": "2106dba4db078b1a0683732af2d6a8e0c46f282d586a1f06bbbfbee51c2aac9f",
+    "status": "addressed",
+    "red_logs": [
+      "revise1-security-red315.log",
+      "revise1-security-red312.log",
+      "revise1-final-security-red315.log",
+      "revise1-final-security-red312.log"
+    ],
+    "green_logs": [
+      "revise1-modules315.log",
+      "revise1-modules312.log"
+    ],
+    "independent": "independent-revise1-review-transcript.md"
+  }
+]

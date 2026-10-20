@@ -1,0 +1,17 @@
+[
+  {
+    "log": "revise1-format.log",
+    "command": "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff format --config ruff.toml --check scripts/orchestrator/task-consistency-check.py tests/unit/test_task_consistency_c11_c15.py tests/unit/test_task_checkers.py",
+    "exit": 0
+  },
+  {
+    "log": "revise1-lint.log",
+    "command": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I -c 'import sys,unittest;sys.path.insert(0,\"tests/unit\");unittest.main(module=None,argv=[\"tests\",\"test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline\",\"-v\"])'",
+    "exit": 0
+  },
+  {
+    "log": "revise1-source-diff-check.log",
+    "command": "git diff --check -- scripts/orchestrator/task-consistency-check.py tests/unit/test_task_consistency_c11_c15.py tests/unit/test_task_checkers.py",
+    "exit": 0
+  }
+]

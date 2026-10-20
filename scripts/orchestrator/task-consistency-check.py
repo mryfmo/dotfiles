@@ -413,14 +413,14 @@ def check(p, root, premises_sha=None):
             fails.append(f"C11 residual: payload is shorter than 20 characters: {load}")
     for a in allowed:
         if not re.search(r"[*?\[]", a):
-            if not confined(root, a):
+            if not confined(root, a) or (root / a).is_symlink() and (root / a).is_dir():
                 fails.append(f"C12 confinement: {a}")
             continue
         for file in files(root, a, fold):
             name = normalise_name(file.relative_to(root).as_posix())
             if not (match(name, a, fold=fold) or file.is_symlink() and match(name, a, partial=True, fold=fold)):
                 continue
-            target = confined(root, name)
+            target = confined(root, file)
             if target is None:
                 fails.append(f"C12 confinement: {name}")
                 continue
@@ -437,8 +437,8 @@ def check(p, root, premises_sha=None):
                 or normalise_name(kind).startswith(APPLIED_DIRS)
                 or match(resolved, ".claude/skills/*/SKILL.md", fold=fold)
             )
-            if file.is_file() and applied and not exempt and not named:
-                fails.append(f"C12 the glob {a} matches {name}, which no threat_table row names")
+            if file.is_symlink() and file.is_dir() or file.is_file() and applied and not exempt and not named:
+                fails.append(f"C12 the glob {a} matches unsafe or unnamed {name}")
     premises = fm.get("premises") or []
     # Only the caller's dispatched-byte digest authorizes C14; branch bytes supply no authority.
     if premises and hashlib.sha256(data).hexdigest() != premises_sha:
@@ -465,12 +465,11 @@ def check(p, root, premises_sha=None):
     if fm.get("security") is True and any(match("scripts/orchestrator", a, partial=True, fold=fold) for a in allowed):
         if not re.search(r"5\.14[^\n]*(?:reference|参照)", body, re.IGNORECASE):
             fails.append("C16 design 5.14 must apply by reference")
+        item_rows = [re.findall(r"5\.14\s+item\s+(\d+)", r.get("control") or "", re.IGNORECASE) for r in rows]
         for i in range(11):
-            count = sum(
-                re.findall(r"5\.14\s+item\s+(\d+)", r.get("control") or "", re.IGNORECASE) == [str(i)] for r in rows
-            )
-            if count != 1:
-                fails.append(f"C16 item {i} requires exactly one threat row, got {count}")
+            count = sum(items.count(str(i)) for items in item_rows)
+            if count != 1 or any(len(items) > 1 for items in item_rows):
+                fails.append(f"C16 item {i}: count {count}; exactly one occurrence and one item per row required")
     return fails
 
 

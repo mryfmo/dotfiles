@@ -2,7 +2,8 @@
 # Tools track "latest" behind minimum_release_age; make update upgrades them. A held tool keeps an exact version and says why.
 node = "latest"
 rust = "latest"
-python = "latest"
+# Held: the trusted interpreter resolver binds to this exact Python version.
+python = "3.15.0"
 
 age = "latest"
 bun = "latest"

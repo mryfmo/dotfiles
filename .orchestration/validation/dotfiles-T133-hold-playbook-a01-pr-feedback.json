@@ -1,0 +1,158 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 426,
+  "head_sha": "c206774cd6f0858890426379cab9aff98e3fd91c",
+  "base_ref": "main",
+  "base_sha": "69dccca98aa772b790f366d63194228372a3c3b0",
+  "generated_at": "2026-10-19T09:17:11+00:00",
+  "checks": [
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435855/job/117962263211"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435855/job/117962262712"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435855/job/117962261864"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435855/job/117962260457"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/runs/117957471928"
+    },
+    {
+      "name": "regime",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435858/job/117957411971"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435669/job/117957410466"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435669/job/117957410425"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435669/job/117957410210"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435663/job/117957409652"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `fadea524-68ae-470f-8502-ccd13b9195a9`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=426)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#issuecomment-6259218931",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/426#issuecomment-6259218931\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"561814e6672c735fb3115b01282d8f9321e75a11\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"561814e6672c735fb3115b01282d8f9321e75a11\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"561814e6672c735fb3115b01282d8f9321e75a11\",\"mergeGateEnabled\":false,\"pullRequestNumber\":426,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-19T04:13:12.889090Z\">2026-10-19T04:13:12.889090Z</relative-time> | `561814e` | Draft marked ready |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-19T04:18:40.362328Z\">2026-10-19T04:18:40.362328Z</relative-time> | `561814e` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#issuecomment-6259444070",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/426#issuecomment-6259444070\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `561814e667`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#pullrequestreview-5566812855",
+      "commit": "561814e6672c735fb3115b01282d8f9321e75a11",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/426#pullrequestreview-5566812855\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#pullrequestreview-5569326888",
+      "commit": "c206774cd6f0858890426379cab9aff98e3fd91c",
+      "disposition": "not-applicable:review object without a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/426#pullrequestreview-5569326888\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/hold-playbook.sh",
+      "line": 117,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Treat equivalent wildcard forms as covered**\n\nWhen an allowed entry and a blast-radius glob express the same language with wildcards in a different order, this token-by-token absorption reports the scope as outside. For example, `dir/*?` and `dir/?*` both match every nonempty single path segment under `regime-ci.py` semantics, but `covers(\"dir/*?\", \"dir/?*\")` returns false; the script therefore writes an unnecessary pending decision and exits 3 even though the entire prospective scope is allowed. The containment check needs to account for equivalent wildcard languages rather than conservatively rejecting them.\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#discussion_r4310263840",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "not-applicable:advisory P2 owned by dotfiles-T133-hold-playbook-followup-a01 (the token-by-token containment is conservative, so an equivalent wildcard order such as dir/*? against dir/?* yields a pending decision and exit 3, never a false inside; the owner makes covers() canonicalise equivalent wildcard runs with a red-then-green test); evidence=git show c206774c:scripts/orchestrator/hold-playbook.sh | sed -n 100,125p"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "scripts/orchestrator/hold-playbook.sh",
+      "line": 117,
+      "body": "Disposition (orchestrator): not-applicable — advisory P2 owned by dotfiles-T133-hold-playbook-followup-a01. The containment check is conservative: an equivalent wildcard order (dir/*? vs dir/?*) yields a pending decision and exit 3, never a false inside, so it has no security effect in this PR. The owner task canonicalises equivalent wildcard runs in covers() with a red-then-green test using this example.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/426#discussion_r4312138338",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator disposition reply on a Bot thread, not a finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/426#discussion_r4312138338\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39221435669/job/117957410210",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39221435669/job/117957410210\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CI status, no finding; evidence=jq --argjson s '\"status\"' --argjson c '\"CodeRabbit\"' '.items[] | select(.source == $s and .check == $c)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-hold-playbook-a01-pr-feedback.json"
+    }
+  ]
+}

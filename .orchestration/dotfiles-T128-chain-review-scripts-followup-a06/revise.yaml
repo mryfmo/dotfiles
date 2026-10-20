@@ -1,0 +1,11 @@
+# The revise round of 2026-10-19T21:42:35Z (AGMSG-ACCEPTANCE status=revise round=1), as the message contract asks.
+task_id: dotfiles-T128-chain-review-scripts-followup-a06
+round: 1
+previous_head: b9f562ec56ff37290683b520497bd8cac7f30a2a
+reason: "the task-level audit of b9f562e: P3 evidence (the superseded a05 sandbox.md range named 12 to 18 while the planned gh command rows are lines 19 to 21) and P2 orchestration (report.md rested the no-test realisation on the dispatch note, the orchestrator's C-96 mistake; the text stays)"
+checks:
+  - "(1) a05-gh-calls.md:4 and report.md:34 name lines 19 to 21 from a pasted grep -n of the a05 sandbox.md (validation §7)"
+  - "(2) report.md states the realisation without the dispatch note: the owned row names no test and no code, so its red-then-green is the record it names; the text's item 1 sentence applies to rows that name a test"
+records:
+  - .orchestration/dotfiles-T128-chain-review-scripts-followup-a06/a05-gh-calls.md
+  - .orchestration/dotfiles-T128-chain-review-scripts-followup-a06/report.md

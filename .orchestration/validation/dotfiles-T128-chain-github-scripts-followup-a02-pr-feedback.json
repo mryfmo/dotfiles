@@ -1,70 +1,60 @@
 {
   "repo": "mryfmo/dotfiles",
   "pr": 375,
-  "head_sha": "157d8f3fd12109579fd5183da5a7111f30744313",
+  "head_sha": "c87546e9b8f5093206d9f504d66998e21516f302",
   "base_ref": "main",
-  "base_sha": "35ab0e95a7fe27c501db3478d4f37e69a514d532",
-  "generated_at": "2026-10-17T11:30:49+00:00",
+  "base_sha": "1eac64a832ade83f9e149be6a329f7e8fa20180f",
+  "generated_at": "2026-10-19T20:48:07+00:00",
   "checks": [
     {
-      "name": "test (ubuntu-24.04, server)",
+      "name": "public-bootstrap (ubuntu-24.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202987"
-    },
-    {
-      "name": "test (ubuntu-24.04, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202974"
-    },
-    {
-      "name": "test (ubuntu-26.04, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202966"
-    },
-    {
-      "name": "test (macos-14, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202754"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208488/job/118281669968"
     },
     {
       "name": "public-bootstrap (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375202099"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208488/job/118281669685"
     },
     {
       "name": "public-bootstrap (ubuntu-24.04, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375202016"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208488/job/118281669297"
     },
     {
-      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "name": "test (ubuntu-24.04, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201983"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668612"
     },
     {
-      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "name": "test (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201977"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668435"
     },
     {
-      "name": "private-bootstrap (macos-14, client)",
+      "name": "test (ubuntu-24.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201934"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668403"
     },
     {
-      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "name": "regime",
+      "conclusion": "failure",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317206083/job/118281668090"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201766"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668046"
     },
     {
       "name": "validate",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370796/job/117375201751"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208509/job/118281667933"
     },
     {
       "name": "GitGuardian Security Checks",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/runs/117375197569"
+      "url": "https://github.com/mryfmo/dotfiles/runs/118281646215"
     }
   ],
   "items": [
@@ -75,7 +65,7 @@
       "level": "comment",
       "path": null,
       "line": null,
-      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `8e1781f2-b01d-4879-884e-0d0494bb1422`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=375)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `0275ad17-79a8-4a89-9673-2258d707519c`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=375)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
       "url": "https://github.com/mryfmo/dotfiles/pull/375#issuecomment-6225340594",
       "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/375#issuecomment-6225340594\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
     },
@@ -178,21 +168,9 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202754",
-      "check": "test (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39025370939/job/117375202754\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
-    },
-    {
-      "source": "annotation",
-      "author": "github-actions",
-      "bot": true,
-      "level": "notice",
-      "path": ".github",
-      "line": 1,
-      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375202099",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208488/job/118281669685",
       "check": "public-bootstrap (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375202099\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39317208488/job/118281669685\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
     },
     {
       "source": "annotation",
@@ -202,9 +180,33 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201934",
-      "check": "private-bootstrap (macos-14, client)",
-      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39025370781/job/117375201934\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668435",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39317208482/job/118281668435\"' '.items[] | select(.url == $u)' .orchestration/validation/dotfiles-T128-chain-github-scripts-followup-a02-pr-feedback.json"
+    },
+    {
+      "source": "check_run",
+      "author": "github-actions",
+      "bot": true,
+      "level": "failure",
+      "path": null,
+      "line": null,
+      "body": "regime:",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317206083/job/118281668090",
+      "check": "regime",
+      "disposition": "not-applicable:advisory P2 owned by dotfiles-T128-chain-github-scripts-followup-a03 (item 3 of its text) for the allowed-files cause (scripts/lint-comparisons-baseline.tsv, one R3 row for resolve-threads.sh, outside allowed_files: the owner removes or declares the row), and an orchestrator records fix for the task-copy cause (the branch copy c8307a64… differs from the dispatched text 5d3b78db… on main because the rebase-repair round refreshed the premises' outputs in the copy: the records boundary PR restores it byte-identical); the job is not a required check; evidence=gh run view 39317206083 --repo mryfmo/dotfiles --log-failed | /usr/bin/grep -F 'regime-ci: dotfiles-T128-chain-github-scripts-followup-a02:'"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "failure",
+      "path": ".github",
+      "line": 14,
+      "body": "Process completed with exit code 1.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39317206083/job/118281668090",
+      "check": "regime",
+      "disposition": "not-applicable:the exit-code annotation of the same regime run; the two causes, the owner and the records fix are in item#11; evidence=gh run view 39317206083 --repo mryfmo/dotfiles --log-failed | /usr/bin/grep -F 'regime-ci: dotfiles-T128-chain-github-scripts-followup-a02:'"
     },
     {
       "source": "status",

@@ -1,0 +1,64 @@
+---
+format: 2
+task_id: dotfiles-T133-ci-efficiency-followup-a02
+kind: code
+security: true
+allowed_files:
+  - scripts/orchestrator/ci-rerun.sh
+  - tests/unit/test_ci_rerun.py
+  - scripts/lint-comparisons-baseline.tsv
+  - .orchestration/dotfiles-T133-ci-efficiency-followup-a02/**
+after: []
+threat_table:
+  - control: the PR edits scripts/lint-comparisons-baseline.tsv only for the rows of its own changed lines (D-024-24 rebase repair)
+    disposition: "residual: a row matches a hit of a changed line of this PR and nothing else; tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline in CI"
+  - control: the PR edits scripts/orchestrator/ci-rerun.sh only within the owned rows (item 1)
+    disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
+  - control: the PR edits tests/unit/test_ci_rerun.py only within the owned rows (item 1)
+    disposition: "residual: one fixture per owned row, red before the fix and green after"
+  - control: the task-file copy on the branch (.orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md)
+    disposition: "residual: byte-identical to the dispatched file (its sha256 is in the TASK line); the orchestrator compares at acceptance"
+  - control: the branch evidence records under .orchestration/dotfiles-T133-ci-efficiency-followup-a02/ (report.md, validation.md, sandbox.md, learning.md)
+    disposition: "residual: prose and pasted command output; the sandbox record lists every command the sandbox refused; the audit reads them"
+  - control: "task metadata (the front matter of the task copy: kind, security, allowed_files, threat_table, premises)"
+    disposition: "residual: read with PyYAML by the task-consistency check C1 to C10 and C7b before dispatch and at acceptance; a changed field fails the byte comparison above"
+  - control: metadata separators (the --- lines that bound the front matter of the task copy and of every evidence record)
+    disposition: "residual: PyYAML splits on the first document only and the byte comparison covers the whole file"
+  - control: in-process effects
+    disposition: "residual: the tests run ci-rerun.sh with a fake gh on PATH; nothing live changes"
+  - control: workflow and interpreter or environment inputs
+    disposition: "residual: no workflow or interpreter file is in allowed_files; ci-rerun.sh runs under bash with gh as today"
+  - control: new or renamed scripts
+    disposition: "residual: none; any new or renamed script is an undeclared change the audit fails"
+  - control: orchestrator effect merge
+    disposition: "residual: merge only through gh pr merge --squash --match-head-commit <audited head> after the gate (Orchestrator Playbook step 10.5); never a local merge or a push to main"
+  - control: orchestrator effect update-branch
+    disposition: "residual: gh pr update-branch moves the head, so CI, the sweep and the audit run again on the new head before any gate (Orchestrator Playbook step 10)"
+  - control: orchestrator effect forced worker removal
+    disposition: "residual: none planned; herdr-agents --remove-worker refuses a dirty worktree without --force, and a forced removal is recorded in the acceptance record with the uncommitted state it discarded"
+premises: []
+---
+
+# AGMSG-TASK dotfiles-T133-ci-efficiency-followup-a02 — the F5 (P1-3) lineage's owner task (advisory P2 of PR #409)
+
+Written 2026-10-18 by the orchestrator seat before the F5 acceptance disposition (C-51: the owner task exists before the first advisory row). It owns the advisory rows recorded under `## Owned by dotfiles-T133-ci-efficiency-followup-a02` in `.orchestration/acceptance/dotfiles-T133-ci-efficiency-a02.md` (plan 020 step 1.2); it is dispatched after PR #409 merges, to a seat the orchestrator names then.
+
+## Item 1
+
+The owned row lives in the a02 record (`.orchestration/acceptance/dotfiles-T133-ci-efficiency-a02.md`) under `## Owned by dotfiles-T133-ci-efficiency-followup-a02`: `security:4fe2438:1`, the P1 of the retroactive security review of the merged head 4fe2438: `scripts/orchestrator/ci-rerun.sh` resolves `uv` and the interpreter in a trusted directory with the pinned-interpreter and environment controls of `scripts/orchestrator/dispatch.sh` and `orch-gate.sh` (a private PATH of links resolved before any checkout is read; `UV_PROJECT_ENVIRONMENT` and the interpreter pinned), so a checkout's `.python-version`, `.venv` or executables never select the interpreter; the regression test plants a `.python-version` naming a marker-writing fake python in a fixture checkout and asserts the marker is never written while the helper still runs. The second row of that section, `security:4fe2438:2` (Git-quoted filenames escape the relevance filter), is resolved by PR #421's `git diff -z` change and is dispositioned there, not here. Files: `scripts/orchestrator/ci-rerun.sh` and `tests/unit/test_ci_rerun.py` only. Written 2026-10-18T23:1xZ, narrowed 23:4xZ.
+
+Each owned row (the advisory P2 of the local review of 27613c0c and any Bot P2 the orchestrator records under this owner: local:27613c0:1 a superseded PR head is rerun instead of refused, local:27613c0:2 the production flake registry has no test, local:27613c0:3 a timed-out job is rerun as a failure, and the rows the record lists) gets its fix and one red-then-green test in `tests/unit/test_ci_rerun.py` or `tests/unit/test_workflow_orchestration_skip.py`, named in report.md against the row id. Nothing outside the owned rows. The workflow files join `allowed_files` only by an amendment naming the row that needs them.
+
+## Check and Completion
+
+The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-ci-efficiency-a01.md` apply as written, with `dotfiles-T133-ci-efficiency-followup-a02` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T133-ci-efficiency-followup-a02/task.md>` in the RESULT.
+
+## Amendment 1 (rebase repair under D-024-24, 2026-10-19T06:0xZ)
+
+The comparison lint of PR #415 (main 205fe85c) guards the files a pull request changes, and this PR changes scripts/orchestrator/ci-rerun.sh: the required test job fails on `test_the_changed_files_are_clean_against_the_baseline` (run 39206803893). The repair touches only the lint hits of this PR's own changed lines in ci-rerun.sh: a comparison this task wrote is rewritten through the normaliser the rule names; a pre-existing comparison the task moved gets its baseline row (path, rule, sha256 of the normalized line) in scripts/lint-comparisons-baseline.tsv, which joins allowed_files for exactly that. Nothing else changes. This is a rebase repair, labelled `round=rebase-repair-1`, and does not count against the C-61 cap (D-024-24). The audit and the security review run on the new head.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+2026-10-19T06:0xZ amendment 1 (rebase repair): task=dotfiles-T133-ci-efficiency-followup-a02 tasks=1 amendments=0 questions=0 results=2 revises=1 source=live; D-024-24 applies
+```

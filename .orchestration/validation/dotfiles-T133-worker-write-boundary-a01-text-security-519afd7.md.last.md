@@ -1,0 +1,8 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:293](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:293) The prescribed `env -i` removes `CLAUDE_PROJECT_DIR`, which the guard requires at line 289; a read-only probe confirmed it becomes unset, so even orchestrator hooks—including the Stop gate—silently exit successfully without executing; the positive-path test must exercise the complete rendered invocation with an explicitly preserved launch identity. [Hook launch-root semantics](https://code.claude.com/docs/en/hooks#reference-scripts-by-path).
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:235](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:235) Applying `PATH=/usr/bin:/bin` to retained orchestrator hooks removes their required `ruff`, `prettier` and `terminal-browser` executables on this host; the unchanged formatter and project-map scripts still resolve those names through PATH and lie outside `allowed_files`, so entrypoint/shim fixtures cannot establish the promised preservation of existing functions.
+
+📝 まとめ: Reviewed every threat row and cited acceptance/review context; two findings remain for orchestrator disposition. No files changed.
+
+Not checked: implementation or live enforcement; the stated same-UID, shared-capability and agmsg sourcing residuals remain.
+Verdict: incorrect

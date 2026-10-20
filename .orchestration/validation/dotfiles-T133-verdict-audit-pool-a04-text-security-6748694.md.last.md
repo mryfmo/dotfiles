@@ -1,0 +1,13 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:206](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:206) — Caller-set `VERDICT_SANITIZED=1` skips `env -i`; `bash -p` preserves `GIT_*`, so fixed binaries still consume attacker-selected Git configuration and object stores; read-only probes confirmed both survive the proposed sentinel check. [Bash semantics](https://www.gnu.org/s/bash/manual/html_node/The-Set-Builtin.html)
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:130](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:130) — The retained counter sources agmsg storage code, whose `drivers.partition` selects a sourced file through worker-writable team configuration; pinning the counter and its interpreter does not bind that descendant execution, and this known route lacks a threat row or compensating control.
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:144](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:144) — Equality to local `origin/main` and the merge-base calculation still trust shared refs/objects that sandboxed Codex workers can write; snapshot hashes preserve the selected bytes without authenticating them against GitHub, allowing the evaluated changeset to differ from the actual PR.
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:134](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:134) — Condition 8 checks only the security report’s final verdict while retaining its sha7 filename; a different head sharing that prefix can reuse an earlier approval because no full-head content check is required, and full-head output names do not mitigate this input collision.
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:206](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-verdict-audit-pool-a04.md:206) — The prescribed `/bin/bash -p --noprofile --norc` re-exec exits 2 on this host before evaluation; Bash requires long options before `-p`, so the hostile-startup regression cannot produce the required clean-equivalent verdict through this branch. [Invocation rules](https://www.gnu.org/software/bash/manual/html_node/Invoking-Bash.html)
+
+📝 まとめ: Reviewed every declared threat row and the cited context; five findings remain for orchestrator disposition.
+Not run: implementation tests, live CI or deployment checks; no files changed. The execution and evidence-binding risks above remain unresolved.
+Verdict: incorrect

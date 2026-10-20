@@ -1,0 +1,46 @@
+---
+{
+  "audit_findings": [],
+  "dispatch": [],
+  "format": 1,
+  "head": null,
+  "ledger": [],
+  "pr": null,
+  "replans": {},
+  "searches": [],
+  "task": "dotfiles-T133-loop-limits-a01"
+}
+---
+
+# Acceptance record: dotfiles-T133-loop-limits-a01
+
+Mechanism task (proposal 2 of 2026-10-19 20:2x JST; M-20261019-05): the loop limits that ran as manual procedure become tools: regime-counters.sh counts text reviews and S1 per family (C-87, C-93), acceptance-front-matter.py refuses a class outside the vocabulary (C-93), dispatch.sh refuses a revise line without selectors (C-91) and a fourth text review without a newer re-plan line (C-92), task-consumers.py enumerates the consumers of a rendered form (C-89). Sibling of plan 024 P1-6 (which keeps --from-result and --next). Text designed by the review-profile context with probed premises (`.agents/worklog/orchestrator-glue/redesign/loop-limits-a01.md`, prompt `p16-a01-design-prompt.md`); security: true; after: []; a Codex seat (D-024-25) when one frees (a012 after P1-12, or a010 after P1-15).
+
+- 2026-10-19T11:42Z: design installed (237 lines, 8 allowed_files; the vocabulary file removed from allowed_files per C2: the orchestrator owns its content); checker OK; C-80 first review started.
+- 2026-10-19T11:46:31Z: C-80 first review (newest `…-text-security-*.md`): `Verdict: incorrect`: P1 the uv launch omits `--isolated`; P1 an agmsg hardening "prerequisite" claimed as authentication of the installed dispatch chain; P2 the text required edits to the vocabulary file, which C2 keeps out of allowed_files (the family keys are the orchestrator's record). Round 2 by the review-profile context with all findings (prompt `loop-limits-a01r2-redesign-prompt.md`).
+text-security:9a2a0a4:1	interpreter-isolation
+text-security:9a2a0a4:2	installation-binding
+text-security:9a2a0a4:3	record-in-allowed-files
+- 2026-10-19T11:53Z: round-2 text (`loop-limits-a01r2.md`, 235 lines, 8 allowed_files) installed: `--isolated` on every uv launch, no agmsg prerequisite claim (the installed agmsg route stays the owner's residual), the vocabulary read only (family keys are the orchestrator's record; a class without one is its own family); checker OK; C-80 round 2 started.
+- 2026-10-19T11:56:50Z: C-80 second review (newest `…-text-security-*.md`): `Verdict: incorrect` on three P2: the review launcher (orchestrator glue, outside the repository) bypasses the dispatch guard; the message task_id is not bound to the file front matter and hash; the re-plan freshness renews no budget. Decision: round 3 (the last under C-92) by the review-profile context (prompt `loop-limits-a01r3-redesign-prompt.md`): the launcher moves into the repository under the same budget rule, task_id/sha binding at dispatch, the budget counted from the newest re-plan line.
+text-security:4a941fb:1	guard-bypass-launcher
+text-security:4a941fb:2	message-file-binding
+text-security:4a941fb:3	budget-renewal
+- 2026-10-19T12:06Z: round-3 text (`loop-limits-a01r3.md`, 249 lines, 10 allowed_files) installed: the review launcher moves into the repository under the same budget rule, dispatch.sh binds the message task_id and sha to the file, the budget counts verdicts newer than the newest re-plan line and renews with each re-plan; checker OK; C-80 round 3 (the last under C-92) started.
+- 2026-10-19T12:09:14Z: C-80 third review (newest `…-text-security-*.md`): `Verdict: incorrect` on one P2: the review launcher moved into the repository needs an absolute Codex binding, which no provider supplies (the resolver resolves Python only) and a PATH-selected fake codex in the test contradicts the binding rule. Third incorrect verdict: C-92 applies, no fourth delta round.
+text-security:2011d34:1	executable-binding
+re-plan: review-launcher-binding (rows text-security:9a2a0a4:1, text-security:2011d34:1) — specification: the text pulled the review launcher (a Codex-executing program) into a task about counters and refusals, so it inherited the executable-binding family; design: the budget rule lives in one repository helper (`scripts/orchestrator/review_budget.py`: verdict files newer than the newest re-plan line, three per budget) that dispatch.sh calls and that the orchestrator glue launcher calls before starting Codex, while the launcher itself and its Codex binding stay with the executable-binding family (trusted-entrypoint-binding-a01 names it as a later consumer); implementation: the round-4 text drops scripts/orchestrator/text-security-review.sh and its test from allowed_files, adds the helper and its test, and keeps the other items; verification: the helper's four budget tests plus a dispatch.sh refusal test; the glue launcher is edited by the orchestrator (glue exemption) to call the helper once it merges.
+- 2026-10-19T12:16Z: re-planned text (`loop-limits-a01r4.md`, 247 lines, 10 allowed_files: review_budget.py + its test in, the launcher out) installed; checker OK; C-80 round 4 (first after the re-plan) started.
+- 2026-10-19T12:33:01Z: the glue C-92 guard refused the fourth review although the re-plan line (12:10Z) is newer than the third verdict: masking the review files for the boundary PR refreshed their mtimes, so an mtime comparison is not a sound freshness test. Correction: the guard counts the `text-security:` rows the record holds after its newest `re-plan:` line (content, not mtimes); the loop-limits text already specifies the repository helper the same way in substance (verdicts newer than the newest re-plan) and should state it by record content too (noted for its next round). The glue is edited once the running review (binding r2) finishes; the loop-limits review re-runs after that.
+- 2026-10-19T12:38:44Z: C-80 fourth review (the first after the re-plan; `…-text-security-9ef8e5b.md`): `Verdict: incorrect` on two P2: verdict mtimes do not preserve review order (the record's own rows are the persistent review events); the deferred owner of the launcher binding is unnamed (trusted-entrypoint-binding-a01). Round 5 (budget 2 of 3 after the re-plan) by the review-profile context (prompt `loop-limits-a01r5-redesign-prompt.md`).
+text-security:9ef8e5b:1	budget-ordering
+text-security:9ef8e5b:2	owner-unnamed
+- 2026-10-19T12:50Z: round-5 text (`loop-limits-a01r5.md`) installed: the record's text-security rows are the persistent review events (distinct sha7 after the newest re-plan line; verdict files only confirm existence; unrecorded verdicts count), the launcher binding owner named as trusted-entrypoint-binding-a01 with the glue residual stated; checker OK; C-80 round 5 (budget 2 of 3) started.
+- 2026-10-19T12:50:10Z: the glue guard refused the fifth review: the round-3 row had been appended after the re-plan line (ordering mistake), so three rows counted; the row is moved above the re-plan line and the guard now counts distinct review ids (sha7) after the newest re-plan line, as the text specifies for the repository helper.
+- 2026-10-19T12:53:47Z: C-80 (second after the re-plan; `…-text-security-fb3c323.md`): `Verdict: incorrect` on two P2: distinct hashes do not cap executions (count invocation events); the legacy label rows are unbound to verdict hashes (migrated now to sha7 ids; the helper treats non-sha7 ids as legacy events). Round 6, the last of this budget, by the review-profile context (prompt `loop-limits-a01r6-redesign-prompt.md`).
+text-security:fb3c323:1	budget-ordering
+text-security:fb3c323:2	budget-ordering
+- 2026-10-19T20:01:04Z: C-80 (third after the re-plan; `…-text-security-74f72c2.md`): `Verdict: incorrect` on one P2: my legacy migration had bound the rounds by mtime order and permuted them (the review logs establish r1=9a2a0a4, r2=4a941fb, r3=2011d34); the record rows are corrected from the logs. Budget exhausted (three verdicts after the re-plan): C-92.
+re-plan: legacy-evidence-binding (row text-security:74f72c2:1) — specification: legacy label rows were bound to verdict hashes by file mtime order, which the boundary masking had scrambled; design: legacy rows bind from the review launcher logs (each `c80-*.log` names the verdict file it wrote) or from the record's own chronology, never from mtimes, and the loop-limits helper treats a non-sha7 id as a legacy event without rebinding it; implementation: the three rows corrected in this record (r1 9a2a0a4 interpreter-isolation/installation-binding/record-in-allowed-files, r2 4a941fb guard-bypass-launcher/message-file-binding/budget-renewal, r3 2011d34 executable-binding), no text change; verification: the next review of the unchanged text 74f72c2 confirms the binding claim holds.
+text-security:74f72c2:1	legacy-evidence-binding
+- 2026-10-19T20:05:36Z: C-80 (first after the legacy-binding re-plan; the unchanged text 74f72c2): `Verdict: correct`. The text is ready for the first free Codex seat (D-024-25; a010 and a012 hold their reset texts; both Claude seats a009/a011 are free but D-024-20 keeps this orchestrator-side task off them until P1-15 deploys).

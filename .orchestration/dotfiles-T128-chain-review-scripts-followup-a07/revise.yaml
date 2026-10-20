@@ -1,0 +1,7 @@
+task_id: dotfiles-T128-chain-review-scripts-followup-a07
+round: 1
+revise: 1
+previous_head: dbc8b67d26257d76f26dd6871716b7943474fdec
+check:
+  - tests/unit/test_chain_review_scripts.py::ChainReviewScriptsTest::test_local_review_passes_no_replace_and_no_graft_to_the_commands_codex_spawns
+reason: the orchestrator's local review of dbc8b67d (one P1): Codex's checked-in shell_environment_policy.inherit=core drops the two exported variables from the commands the reviewer spawns, so a planted replacement still yields a false clean review; worker fix round 1 of 2

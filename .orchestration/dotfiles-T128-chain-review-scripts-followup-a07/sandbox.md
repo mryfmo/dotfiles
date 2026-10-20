@@ -14,6 +14,7 @@ Every command ran inside the Claude Code sandbox from `.claude/worktrees/worker-
 - **Not run.** `local-review.sh` itself was never run against the real repository or the real `codex`: its header requires running outside the Bash sandbox, which this task does not authorize.
 - **Refused commands.** None in this seat's own commands. The worker review's subagent reported one `rm` refused, so its two scratch files remain under `$TMPDIR`; neither touches the repository.
 - **The worker review.** One read-only subagent round, which ran its tests in its own scratch worktrees under `$TMPDIR`.
+- **Revise 1.** The branch was fast-forwarded to the orchestrator's update-branch head `dbc8b67d` after a single `git fetch`. The validation generator in the scratchpad did not survive a session restart, so it was rewritten from this seat's own record of it before revise 1's run. Each export mutant ran five times in a scratch worktree. No command was refused.
 - **After this record.** The push and the draft PR are stated in the RESULT. The push runs over an HTTPS pushurl, because the global pushInsteadOf rewrites HTTPS to SSH, which fails here.
 
 No `@codex review` comment is posted.

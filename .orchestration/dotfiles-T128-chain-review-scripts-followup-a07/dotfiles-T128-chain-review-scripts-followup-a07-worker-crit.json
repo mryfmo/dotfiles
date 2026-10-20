@@ -30,6 +30,18 @@
     "resolved": true
   },
   {
+    "id": "a07-rev1-p1-codex-drops-exports",
+    "scope": "scripts/orchestrator/local-review.sh",
+    "body": "Orchestrator local review of dbc8b67d, P1, fixed in 5a983079 (red) and f2778f36. Codex's shell_environment_policy.inherit=core dropped the two exported variables from the commands the reviewer spawns. Both are now passed as -c shell_environment_policy.set overrides, quoted as TOML strings. test_local_review_passes_no_replace_and_no_graft_to_the_commands_codex_spawns shows both values in a spawned command's environment; three override mutants are red (validation section 7).",
+    "resolved": true
+  },
+  {
+    "id": "a07-rev1-flaky-attack-fixture",
+    "scope": "tests/unit/test_chain_review_scripts.py",
+    "body": "Found by the worker while revalidating, fixed in f5aaaf7e. The replace and graft fixtures formed a parent cycle whose merge base depended on tied commit dates, so the grafts mutant passed one generator run. A parentless fake makes both attacks acyclic; each export mutant was red 5 of 5 times.",
+    "resolved": true
+  },
+  {
     "id": "a07-worker-review-scope-and-approval",
     "scope": "review",
     "body": "One round by a fresh read-only subagent on 60a6fb2b..fb264487, given the range, the task file and Item 2, not the worker's conclusions. It reran red at 6a4190f1 and green at fb264487, ran six mutants (all red), checked the gh answer handling in bash 3.2, the resolve() reuse, the callers (test_chain_glue.py 16 OK) and the caps, and returned Verdict: correct with one P2 and three P3, dispositioned above. c82e10a8 came after its range and is covered by validation sections 5 to 8 at c82e10a8. Local process evidence, not the task-level audit.",

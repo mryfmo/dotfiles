@@ -673,6 +673,8 @@ class LintComparisonsTest(unittest.TestCase):
     def test_audit_2_heredoc_data_never_supplies_a_normaliser(self):
         # audit:6434c27:2: a heredoc body is data for acceptance too; a normaliser written in it accepts nothing
         self.assert_hits([("ha.sh", "[[ $path == /x ]] && cat <<EOF\nrealpath\nEOF\n", [("R1", 1)])])
+        # blanking a body keeps its newlines, so a later statement's own normaliser still sits on its own line
+        self.assert_hits([("hb.sh", 'cat <<EOF\na\nb\nEOF\n[[ "$(realpath "$p")" == /x ]]\n', [])])
 
     def test_audit_3_a_test_behind_command_or_builtin_is_read(self):
         # audit:6434c27:3: the command word comes after the command, builtin and exec wrappers

@@ -43,8 +43,15 @@ SHEBANG = re.compile(r"^#!.*\b(sh|bash|zsh|python\d*)\b")
 SH_NORM = re.compile(
     r"\brealpath\b|\bpwd -P\b|\bcd -P\b|\breadlink -f\b|\bcanonical_path\b|\bnormali[sz]e_\w+|python3 -I -c .*(os\.path\.(realpath|normpath)|urllib\.parse)"
 )
-JQ_DEF = re.compile(r"\bdef (canonical_path|normali[sz]e_\w+)\b")
-JQ_OP = re.compile(r"==|!=|\b(?:startswith|endswith|ltrimstr|rtrimstr|test)\(")
+JQ_NORM = re.compile(r"canonical_path|normali[sz]e_\w+")
+JQ_FN = ("startswith", "endswith", "ltrimstr", "rtrimstr", "test")
+JQ_LEX = re.compile(
+    r"\s+|#[^\n]*|\.[A-Za-z_]\w*|\$[A-Za-z_]\w*|[A-Za-z_]\w*|==|!=|[<>]=|//=?|\|=|\?//|[-+*/%]=|.", re.DOTALL
+)
+ANSI = {"a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v"}
+ANSI_ESC = re.compile(
+    r"\\(?:([0-7]{1,3})|x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|U([0-9A-Fa-f]{1,8})|c(.)|(.))", re.DOTALL
+)
 JQ_SKIP = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 PY_NORM = re.compile(
@@ -135,9 +142,18 @@ def chars(part, quoted, raw=None):  # (character, source line) of a literal part
         c, n = raw[i], raw[i + 1 : i + 2]
         if c == "\\" and not n and kind == "Lit":  # a backslash-newline split between two parts (the next has its line)
             break
-        if c == "\\" and n and (dollar or kind == "Lit" and (not quoted or n in '\\"$`\n')):
-            if not (kind == "Lit" and n == "\n"):  # bash deletes a backslash-newline
-                yield ({"n": "\n", "t": "\t", "r": "\r"}.get(n, n) if dollar else n), line
+        if dollar and c == "\\" and (m := ANSI_ESC.match(raw, i)):  # bash's $'…' table; an unknown escape stays as is
+            o, h, u, big, ctl, one = m.groups()
+            num = int(o, 8) if o else int(h, 16) if h else int(u or big, 16) if u or big else None
+            got = chr(num) if num is not None and num <= 0x10FFFF else chr(ord(ctl) & 31) if ctl else None
+            if got is None:
+                got = (ANSI.get(one) or (one if one in "\\'\"?" else m[0])) if one else m[0]
+            yield from ((x, line) for x in got)
+            line, i = line + m[0].count("\n"), m.end()
+            continue
+        if c == "\\" and n and kind == "Lit" and (not quoted or n in '\\"$`\n'):
+            if n != "\n":  # bash deletes a backslash-newline
+                yield n, line
             line, i = line + (n == "\n"), i + 2
             continue
         yield c, line
@@ -146,6 +162,41 @@ def chars(part, quoted, raw=None):  # (character, source line) of a literal part
 
 def static(word):  # the literal text of a word, its runtime expansions left out
     return "".join(c for part, quoted in flat(word) for c, _ in chars(part, quoted))
+
+
+def option(word):  # a literal option: the word's first part is literal text starting with -, never an expansion's
+    first = next(flat(word), None)
+    return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"
+
+
+def command(call):  # a CallExpr's words and argument nodes from its command word on, past command, builtin and exec
+    args, i = call.get("Args") or [], 0
+    while i < len(args) and static(args[i]) in ("command", "builtin", "exec"):
+        i += 1
+        while i < len(args) and option(args[i]):
+            i += 1
+    return [static(a) for a in args[i:]], args[i:]
+
+
+def stage(stmt, last):  # the CallExpr one pipeline stage runs: through a subshell or a block, to an inner pipe's end
+    cmd = (stmt or {}).get("Cmd") or {}
+    if cmd.get("Type") in ("Subshell", "Block") and cmd.get("Stmts"):
+        return stage(cmd["Stmts"][-1 if last else 0], last)
+    if cmd.get("Type") == "BinaryCmd" and cmd["Op"] == "|":
+        return stage(cmd["Y" if last else "X"], last)
+    return cmd if cmd.get("Type") == "CallExpr" else {}
+
+
+def is_jq(word):  # the command word runs jq: written out (j"q", $bin/jq.exe), a jq parameter, or $(command -v jq)
+    if re.fullmatch(r"jq(\.exe)?", os.path.basename(static(word))):
+        return True
+    for n in nodes(word):
+        index = [x.get("Value") for x in nodes(n.get("Index") or {})]
+        if n.get("Type") == "ParamExp" and "jq" in [(n.get("Param") or {}).get("Value"), *index]:
+            return True
+        if n.get("Type") == "CmdSubst" and command(stage((n.get("Stmts") or [None])[-1], True))[0][-1:] == ["jq"]:
+            return True
+    return False
 
 
 def expands(node):  # a parameter expansion below: a name, or a positional or special parameter ($1, ${10}, $@, $?)
@@ -165,49 +216,40 @@ def program(word, src):  # the jq program one shell word hands over, its fragmen
     return "".join(c for c, _ in pairs), [n for _, n in pairs]
 
 
-def jq_mask(prog):  # (code, literals): prog with its strings and comments blanked, and with all but string characters
-    code, lits, ctx, i = list(prog), [" "] * len(prog), [0], 0  # ctx: None in a string, else a parenthesis depth
+def jq_tokens(prog, i=0, inner=False):  # ([(kind, text, offset)], end): str (its literal text), comment, field, var,
+    # ident, punct, op; a string's \( … ) is code between ( and ) tokens. A tokeniser, not a parser of jq's grammar
+    out, depth = [], 0
     while i < len(prog):
-        c, two = prog[i], prog[i : i + 2]
-        if ctx[-1] is None:  # in a string: "\(" opens an interpolation, which is code until its ")"
-            code[i] = " "
-            if two == "\\(":
-                code[i + 1], i = " ", i + 2
-                ctx.append(0)
-                continue
-            step = len(two) if c == "\\" else 1  # an escape is two characters
-            code[i : i + step], lits[i : i + step] = [" "] * step, prog[i : i + step]
-            ctx.pop() if c == '"' else None
-            i += step
+        if prog[i] == '"':
+            j, start = i + 1, i
+            while j < len(prog) and prog[j] != '"':
+                if prog.startswith("\\(", j):
+                    sub, end = jq_tokens(prog, j + 2, True)
+                    out += [("str", prog[start + 1 : j], start), ("punct", "(", j), *sub, ("punct", ")", end - 1)]
+                    start, j = end - 1, end
+                    continue
+                j += 2 if prog[j] == "\\" else 1
+            out.append(("str", prog[start + 1 : j], start))
+            i = j + 1
             continue
-        if c == "#":  # a comment, to the end of its line
-            end = prog.find("\n", i) % (len(prog) + 1) or len(prog)
-            code[i:end], i = [" "] * (end - i), end
-            continue
-        if c == '"':
-            code[i] = " "
-            ctx.append(None)
-        elif c in "([{":
-            ctx[-1] += 1
-        elif c in ")]}" and ctx[-1] == 0 and len(ctx) > 1:  # an interpolation closes: back in its string
-            code[i] = " "
-            ctx.pop()
-        elif c in ")]}" and ctx[-1]:
-            ctx[-1] -= 1
-        i += 1
-    return "".join(code), "".join(lits)
-
-
-def span(prog, p, fn):
-    stop, lo, hi, d = (",;" if fn else ",;|"), p, p, 0
-    while lo > 0 and not (d == 0 and prog[lo - 1] in stop + "([{"):
-        lo -= 1
-        d += (prog[lo] in ")]}") - (prog[lo] in "([{")
-    d = 0
-    while hi < len(prog) and not (d == 0 and prog[hi] in stop + ")]}"):
-        d += (prog[hi] in "([{") - (prog[hi] in ")]}")
-        hi += 1
-    return lo, hi
+        if inner and prog[i] == ")" and depth == 0:
+            return out, i + 1
+        tok = JQ_LEX.match(prog, i)[0]
+        depth += (tok in "([{") - (tok in ")]}") if len(tok) == 1 else 0
+        kind = (
+            "comment"
+            if tok[0] == "#"
+            else "field"
+            if tok[0] == "." and len(tok) > 1
+            else "var"
+            if tok[0] == "$"
+            else "op"
+        )
+        kind = "ident" if tok[0].isalpha() or tok[0] == "_" else "punct" if tok in "()[]{},;:|" else kind
+        if not tok.isspace():
+            out.append((kind, tok, i))
+        i += len(tok)
+    return out, i
 
 
 def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; a marker counts only in a comment node
@@ -216,8 +258,10 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
     comments = [c for c in nodes(tree) if "Hash" in c and "Text" in c]
     note = {c["Hash"]["Line"]: "#" + c["Text"] for c in comments}
     code = bytearray(data)  # the source with its comments blanked: a normaliser counts in code only
-    for c in comments:
-        code[c["Pos"]["Offset"] : c["End"]["Offset"]] = b" " * (c["End"]["Offset"] - c["Pos"]["Offset"])
+    for c in comments + [r["Hdoc"] for r in nodes(tree) if r.get("Hdoc")]:  # a heredoc body is data, not code
+        code[c["Pos"]["Offset"] : c["End"]["Offset"]] = re.sub(
+            rb"[^\n]", b" ", code[c["Pos"]["Offset"] : c["End"]["Offset"]]
+        )
     code = code.decode(errors="replace").split("\n")
 
     def src(n):
@@ -232,8 +276,7 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
         cmd, lo, hi = stmt["Cmd"], top["Pos"]["Line"], top["End"]["Line"]
         if not isinstance(cmd, dict):
             continue
-        t, args = cmd.get("Type"), cmd.get("Args") or []
-        words, at = [static(a) for a in args], cmd["Pos"]["Line"]
+        t, (words, args), at = cmd.get("Type"), command(cmd), cmd["Pos"]["Line"]
         tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
         if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
             hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
@@ -244,14 +287,14 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
         if t == "CaseClause" and operand(cmd["Word"]):  # for this, the statement ends at its `in`
             hits.append((at, "R2", accepted(lo, cmd.get("In", cmd["Word"]["End"])["Line"], SH_NORM)))
         if t == "BinaryCmd" and cmd["Op"] == "|":  # ps piped to a text reader, unless ps -o <fields>= -p
-            ps, reader = ([static(a) for a in (x.get("Cmd") or {}).get("Args") or []] for x in (cmd["X"], cmd["Y"]))
+            ps, reader = command(stage(cmd["X"], True))[0], command(stage(cmd["Y"], False))[0]
             fields = ps[1:2] == ["-o"] and ps[2:3] and ps[2].endswith("=") and ps[3:4] == ["-p"]
             if ps[:1] == ["ps"] and not fields and reader[:1] in (["grep"], ["awk"], ["cut"], ["sed"]):
                 hits.append((at, "R5", accepted(lo, hi)))
         tool = next((i for i, w in enumerate(words) if os.path.basename(w) in ("pgrep", "grep", "egrep")), None)
         if t == "CallExpr" and tool is not None:  # also git grep, command grep, xargs grep
             name, k = os.path.basename(words[tool]), tool + 1
-            while k < len(args) and words[k].startswith("-"):
+            while k < len(args) and option(args[k]):
                 k += 1
             flags, pattern = words[tool + 1 : k], args[k] if k < len(args) else {}
             if name == "pgrep" and any(re.fullmatch(r"-\w*f\w*", f) for f in flags) and expands(pattern):
@@ -259,34 +302,73 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
             ere = name == "egrep" or any(re.match(r"-\w*E|--extended-regexp", f) for f in flags)
             if name != "pgrep" and ere and "-F" not in flags and expands(pattern):
                 hits.append((at, "R6", accepted(lo, hi, "escape_regex")))
-        jq = next((i for i, a in enumerate(args) if re.search(r"\bjq\b", src(a))), None)
-        if t == "CallExpr" and jq is not None:  # also "$jq" and "$(command -v jq)"
-            i = jq + 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
+        if t == "CallExpr" and args and is_jq(args[0]):
+            i = 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
             while i < len(args) and words[i] not in ("-f", "--from-file"):
-                if words[i].startswith("-") or not words[i] and expands(args[i]):
+                if option(args[i]) or not words[i] and expands(args[i]):
                     i += 1 + JQ_SKIP.get(words[i], 0)
                     continue
                 prog, lines = program(args[i], src)
-                hits.extend((lines[p], "R3", ok or accepted(lo, hi)) for p, ok in jq_hits(prog))
+                found, marks = jq_hits(prog)
+                for (
+                    p,
+                    text,
+                ) in marks:  # a jq comment is a comment: it marks a hit on its line, or is R0 without a reason
+                    note.setdefault(lines[p], text)
+                hits.extend((lines[p], "R3", ok or accepted(lo, hi)) for p, ok in found)
                 break
     return hits, note
 
 
-def jq_hits(prog):  # (offset, accepted) per string-form comparison in one whole jq program
-    bare, lits = jq_mask(prog)  # strings and comments hold no operator and apply no normaliser
-    view = bare  # the program's code alone, before its keywords become bounds
-    bare = re.sub(r"(?<![\w.$])(?:and|or|then|elif|else)(?!\w)", lambda m: ";" * len(m[0]), bare)  # bounds
-    bare = re.sub(r"(?<![\w.$])if(?!\w)", "( ", re.sub(r"(?<![\w.$])end(?!\w)", "  )", bare))  # one operand
-    for op in JQ_OP.finditer(bare):
-        lo, hi = span(bare, op.start(), op.group(0).endswith("("))
-        expr, sides = bare[lo:hi], (bare[lo : op.start()], bare[op.start() : hi])
-        hit = re.search(r"\.(url|path)\b", expr) or any(map(TOKEN.search, re.findall(r"\$(\w+)", expr)))
-        if hit or LITERAL.search(lits[lo:hi]):
-            ok = any(all(d in re.findall(r"(?<![\w.$])\w+", s) for s in sides) for d in JQ_DEF.findall(bare))
-            row, end = prog.rfind("\n", 0, op.start()) + 1, (prog.find("\n", op.start()) + 1 or len(prog) + 1) - 1
-            sharp = [i for i in range(row, end) if prog[i] == "#" and view[i] == lits[i] == " "]  # a jq comment
-            mark = MARKER.search(prog[sharp[0] : end]) if sharp else None
-            yield op.start(), ok or bool(mark and mark.group(1))
+def jq_hits(prog):  # ([(offset, accepted)] per string-form comparison, [(offset, text)] per jq comment)
+    toks = jq_tokens(prog)[0]
+    marks = [(p, t) for k, t, p in toks if k == "comment"]
+    toks = [x for x in toks if x[0] != "comment"]
+    g = [t if k in ("ident", "punct") else "" for k, t, _ in toks]  # grammar words; a string's text is never one
+
+    def opens(i):
+        return g[i] in ("(", "[", "{", "if")  # if … end is one operand, like parentheses
+
+    def closes(i):
+        return g[i] in (")", "]", "}", "end")
+
+    def bound(i, fn):  # a function's subject arrives through |, so | bounds only an operator's operands
+        return g[i] in (",", ";", "and", "or", "then", "elif", "else") or g[i] == "|" and not fn
+
+    stack, inner = [], []
+    for i in range(len(toks)):
+        inner.append(stack[-1] if stack else "")
+        if opens(i):
+            stack.append(g[i])
+        elif closes(i) and stack:
+            stack.pop()
+    defs = {g[i + 1] for i in range(len(g) - 1) if g[i] == "def" and JQ_NORM.fullmatch(g[i + 1])}
+
+    def invoked(i, name):  # the normaliser is applied here: not its definition, nor an object key
+        prev, nxt = g[i - 1] if i else "", g[i + 1] if i + 1 < len(g) else ""
+        return g[i] == name and prev != "def" and nxt != ":" and not (inner[i] == "{" and prev in ("{", ","))
+
+    found = []
+    for k, (kind, t, p) in enumerate(toks):
+        fn = g[k] in JQ_FN and g[k + 1 : k + 2] == ["("]
+        if not fn and not (kind == "op" and t in ("==", "!=")):
+            continue
+        lo, depth = k, 0
+        while lo > 0 and not (depth == 0 and (opens(lo - 1) or bound(lo - 1, fn))):
+            lo -= 1
+            depth += closes(lo) - opens(lo)
+        hi, depth = k, 0
+        while hi < len(toks) and not (depth == 0 and (closes(hi) or bound(hi, fn))):
+            depth += opens(hi) - closes(hi)
+            hi += 1
+        named = (
+            x[0] == "field" and x[1] in (".url", ".path") or x[0] == "var" and TOKEN.search(x[1][1:])
+            for x in toks[lo:hi]
+        )
+        if any(named) or any(x[0] == "str" and LITERAL.search(x[1]) for x in toks[lo:hi]):
+            sides = (range(lo, k), range(k, hi))
+            found.append((p, any(all(any(invoked(i, d) for i in r) for r in sides) for d in defs)))
+    return found, marks
 
 
 def python_hits(text):

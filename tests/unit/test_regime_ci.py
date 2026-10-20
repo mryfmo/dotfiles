@@ -23,8 +23,9 @@ UV = [
     "-I",
 ]  # as regime.yml
 T = "t1-a01"
+RESIDUAL = '"residual: the fixture row is test data for this control"'
 ROWS = "".join(
-    f"  - control: {name}\n    disposition: residual\n"
+    f"  - control: {name}\n    disposition: {RESIDUAL}\n"
     for name in (
         "the PR edits src/tool.sh",
         "the PR edits tests/unit/test_tool.py",
@@ -124,7 +125,7 @@ class RegimeCiTest(unittest.TestCase):
         # verifier and checker still decide, the checkout stays at the base, and no head program runs.
         fake = 'import pathlib\npathlib.Path("head-program-ran").write_text("x")\nprint("{line}")\n'
         scripts = {VERIFIER: fake.format(line="regime-ci: ok 1 task(s)"), CHECKER: fake.format(line="task.md: OK")}
-        rows = "".join(f"  - control: the PR edits {path}\n    disposition: residual\n" for path in scripts)
+        rows = "".join(f"  - control: the PR edits {path}\n    disposition: {RESIDUAL}\n" for path in scripts)
         policy = TASK.replace("threat_table:\n", "threat_table:\n" + rows).replace("at most 3 ", "at most 999 ")
         policy = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n" + "".join(f"  - {path}\n" for path in scripts))
         forged = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n  - stray.sh\n")
@@ -273,7 +274,7 @@ class RegimeCiTest(unittest.TestCase):
     def test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr(self):
         result = self.build()
         self.assertEqual((0, "regime-ci: ok 1 task(s)\n"), (result.returncode, result.stdout), result.stderr)
-        no_row = TASK.replace("  - control: the PR edits src/tool.sh\n    disposition: residual\n", "")
+        no_row = TASK.replace(f"  - control: the PR edits src/tool.sh\n    disposition: {RESIDUAL}\n", "")
         crash = TASK.replace("threat_table:\n", "threat_table:\n  - a row that is no mapping\n")
         worded = TASK.replace("changed lines outside", "changed lines (added plus deleted) outside")
         four = CODE | {"src/tool.sh": "a\nb\nc\nd\n"}
@@ -369,8 +370,8 @@ class RegimeCiTest(unittest.TestCase):
         # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target; the earlier copy
         # warns, and its own .orchestration/ paths are no stray of the later one. Without reset_of, both are targets.
         later = "t1-a02"
-        rows = f"  - control: the predecessor copy .orchestration/{T}/task.md\n    disposition: residual\n"
-        rows += f"  - control: the task copy .orchestration/{later}/task.md\n    disposition: residual\n"
+        rows = f"  - control: the predecessor copy .orchestration/{T}/task.md\n    disposition: {RESIDUAL}\n"
+        rows += f"  - control: the task copy .orchestration/{later}/task.md\n    disposition: {RESIDUAL}\n"
         reset = TASK.replace(T, later).replace("allowed_files:", f"reset_of: [{T}]\nallowed_files:")
         reset = reset.replace("threat_table:\n", "threat_table:\n" + rows)
         for text, expected, kept in ((reset, 0, True), (reset, 0, False), (TASK.replace(T, later), 1, True)):

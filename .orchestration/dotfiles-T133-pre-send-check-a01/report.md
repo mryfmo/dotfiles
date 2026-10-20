@@ -7,7 +7,7 @@ test_commit: ff212a70
 code_commit: 5e0ea536
 bot_fix_commit: 0bfa4eda
 fixture_fix_commit: c7581cc5
-task_sha256: 907cb3d4735fa9803827aa5b358e3db98a5ee57aa622b97fe138431b4fe43f5b
+task_sha256: ebe84d21dc7d36f3896b3873651aa293720b00f3c05dfc9384a899d2195d6be8 (amendment 1; previous 907cb3d4…)
 ---
 
 # Report: dotfiles-T133-pre-send-check-a01, the final-byte task preflight

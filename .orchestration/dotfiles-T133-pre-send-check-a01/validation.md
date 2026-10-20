@@ -319,11 +319,11 @@ FAILED (failures=2)
 exit 1
 ```
 
-## 3. Green: the module at the fix head 0bfa4eda
+## 3. Green: the module at c7581cc5 (after the Bot fix 0bfa4eda and the fixture fix c7581cc5)
 
 ```text
 $ <the task's env -i module command> -v
-0bfa4eda24d35e9b474cd202e49cd985a98c9710
+c7581cc58dfdacb003c51237afda7833e3684d38
 test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
 test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
 test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
@@ -335,7 +335,7 @@ test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_
 test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 4.708s
+Ran 9 tests in 4.558s
 
 OK
 exit 0
@@ -379,4 +379,32 @@ outside tests/ and .orchestration/: 89 of 90; under tests/: 169 of 220
 $ make require-crit-review
 Review not required: no meaningful review trigger found.
 exit 0
+```
+
+## 6. CI's validate job on 1364630f, and the fixture fix c7581cc5
+
+- **The failure:** `validate` on `1364630f` failed with `ERROR: possible committed secret in tests/unit/test_pre_send.py`. The validator scans a file's whole text, and two parts of the fixture's source matched: its `= '` fragment and its own variable name `SECRET = "`.
+- **The fix, c7581cc5:** the fixture joins its `=` at runtime and the variable is named `LEAK`.
+- **Checked:** the validator now passes on the whole tree, and the caps are unchanged.
+
+```text
+$ ruff check --config ruff.toml tests/unit/test_pre_send.py
+All checks passed!
+exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_pre_send.py
+1 file already formatted
+exit 0
+$ uv run --offline --no-project --python <pinned 3.15> --with pyyaml python -I scripts/validate-agent-assets.py | tail -1; echo exit
+agent asset validation ok
+exit 0
+$ git diff --numstat 60a6fb2b324d0381c4a6e539b37c650105154a7e...HEAD
+4	0	.orchestration/dotfiles-T133-pre-send-check-a01/autoskill.md
+7	0	.orchestration/dotfiles-T133-pre-send-check-a01/learning.md
+90	0	.orchestration/dotfiles-T133-pre-send-check-a01/report.md
+11	0	.orchestration/dotfiles-T133-pre-send-check-a01/sandbox.md
+99	0	.orchestration/dotfiles-T133-pre-send-check-a01/task.md
+382	0	.orchestration/dotfiles-T133-pre-send-check-a01/validation.md
+89	0	scripts/orchestrator/pre-send.sh
+169	0	tests/unit/test_pre_send.py
+outside tests/ and .orchestration/: 89 of 90; under tests/: 169 of 220
 ```

@@ -6,6 +6,7 @@ base: 60a6fb2b324d0381c4a6e539b37c650105154a7e
 test_commit: ff212a70
 code_commit: 5e0ea536
 bot_fix_commit: 0bfa4eda
+fixture_fix_commit: c7581cc5
 task_sha256: 907cb3d4735fa9803827aa5b358e3db98a5ee57aa622b97fe138431b4fe43f5b
 ---
 
@@ -79,6 +80,15 @@ Every test failed before the script existed (validation §1, 20 failures over 9 
 - **`make require-crit-review`:** "Review not required".
 - **Caps, over `60a6fb2b…HEAD`:** 89 of 90 changed lines outside `tests/` and `.orchestration/`, and 169 of 220 under `tests/`.
 - **CI and the Bot:** both are in the RESULT, because the records commit precedes them.
+
+## CI on 1364630f
+
+- **`validate` failed on the secret fixture's own source** (validation §6). Fixed in `c7581cc5`; the validator now passes locally on the whole tree.
+- **`regime` fails, outside this task's files.** regime-ci reads the cap sentence "at most 90 changed lines outside tests/ and .orchestration/, and at most 220 under tests/, measured by … `git diff --numstat <base40>...<head40>`".
+  - It takes its excluded paths from the backticked spans of that sentence, which are the command, not `tests/` and `.orchestration/`.
+  - So it counts all 851 changed lines against 90.
+  - The dispatched text is also not on the base ("task copy unverifiable").
+  - Both need the orchestrator: the task text's wording or regime-ci's parser, and the records boundary.
 
 ## Residuals
 

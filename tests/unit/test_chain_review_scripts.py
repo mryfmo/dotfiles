@@ -268,19 +268,21 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.assertEqual(f"{ARGV}{canonical}\n", self.log("codex").splitlines(keepends=True)[0])
         out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
         self.assertIn(f"\nbase: {canonical}\n", out.read_text())
-        # Design 5.14 item 8: refs/replace/ and info/grafts in the shared .git can make canonical main look like a
-        # descendant of the head, so a review from the merge base, as codex takes it, would see no change at all.
+        # Design 5.14 item 8: refs/replace/ and info/grafts in the shared .git can hide the head's change from a review
+        # from the merge base, as codex takes it: a replacement gives canonical main the head's tree, and a graft cuts
+        # the head off canonical main. A parentless fake keeps both attacks acyclic, so merge-base answers the same way
+        # on every run.
         merge = self.temp / "bin/merge-review"
         merge.write_text(
             '#!/bin/bash\nb=$(git merge-base "${@: -1}" HEAD)\nprintf "codex\\n"\n'
             'git diff --name-only "$b" HEAD | sed "s/.*/- [P2] &:1 changed/"\n'
         )
         merge.chmod(0o755)
-        fake = self.git("commit-tree", "-p", head, "-m", "fake", canonical + "^{tree}")
+        fake = self.git("commit-tree", "-m", "fake", head + "^{tree}")
         grafts = self.repo / ".git/info/grafts"
         for name, plant, unplant in (
             ("replace", lambda: self.git("replace", canonical, fake), lambda: self.git("replace", "-d", canonical)),
-            ("graft", lambda: grafts.write_text(f"{canonical} {head}\n"), grafts.unlink),
+            ("graft", lambda: grafts.write_text(f"{head} {fake}\n"), grafts.unlink),
         ):
             with self.subTest(name):
                 plant()

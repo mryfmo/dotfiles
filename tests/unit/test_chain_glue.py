@@ -746,6 +746,21 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.assertIn(f"no jq for pr-cost.sh outside a shims directory: {shims}/jq", result.stderr)
         self.assertEqual(1, len(self.calls_of("resolve-threads")))
 
+    def test_shim_exclusion_compares_the_resolved_path(self):
+        # a02 (lint R1 at :67 and :111): the exclusion compares the resolved directory, so a directory that resolves
+        # to shims/ is one too; a shim symlinked outside stays refused, and real binaries outside are accepted
+        self.finish_ready()
+        self.finish()
+        target = self.temp / "tool/jq"
+        self.executable(target, "#!/bin/sh\nexit 0\n")
+        (self.temp / "shims").mkdir()
+        (self.temp / "shims/jq").symlink_to(target)
+        (self.temp / "linked").symlink_to(self.temp / "shims")
+        for found in (self.temp / "shims/jq", self.temp / "linked/jq"):
+            with self.subTest(found=found):
+                result = self.finish(code=10, env={"PATH": f"{found.parent}{os.pathsep}{self.env['PATH']}"})
+                self.assertIn(f"no jq for pr-cost.sh outside a shims directory: {found}", result.stderr)
+
     def test_finish_reads_the_last_nonblank_line_as_the_verdict(self):
         # The local review of f4d86ee5 (P2): trailing blank lines and spaces do not hide the verdict, as the gate reads it.
         self.finish_ready("[P2] one\n  Verdict: correct  \n\n \n", self.finding(1))

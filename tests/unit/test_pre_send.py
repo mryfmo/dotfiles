@@ -24,7 +24,9 @@ LINKS += ("scripts/validate-agent-assets.py",)
 LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
 TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
-GRAMMAR = re.compile(r"[a-z-]+: refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}")
+GRAMMAR = re.compile(
+    r"[a-z-]+: refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)"
+)
 
 
 def validator_pattern():  # this test's own reading of the validator's one assignment, parsed and never run
@@ -59,9 +61,9 @@ class PreSendTest(unittest.TestCase):
         path.write_text(text + body)
         return path
 
-    def run_send(self, *args):  # every run: labels and numbers only, on both streams
-        cmd = ["/bin/bash", str(self.root / LINKS[0]), *map(str, args)]
-        result = subprocess.run(cmd, env=self.env, capture_output=True, text=True, timeout=120, check=False)
+    def run_send(self, *args, cwd=None, env=None):  # the entrypoint itself; every run: labels and numbers only
+        cmd, env = [str(self.root / LINKS[0]), *map(str, args)], {**self.env, **(env or {})}
+        result = subprocess.run(cmd, env=env, cwd=cwd, capture_output=True, text=True, timeout=120, check=False)
         self.assertEqual("", result.stderr)
         self.assertTrue(all(GRAMMAR.fullmatch(x) for x in result.stdout.splitlines()), result.stdout)
         return result
@@ -175,6 +177,48 @@ class PreSendTest(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         for line in result.stdout.splitlines():  # run_send holds both streams to the grammar; no input text at all
             self.assertTrue(GRAMMAR.fullmatch(line) and not any(w in line for w in ("hunt", "alice", TOKEN[:8], "if")))
+
+    def test_checker_option_terminator(self):  # audit:7888241:1: a file named --help is a task, not checker help
+        (self.tmp / "--help").write_text("no front matter\n")
+        self.refused(self.run_send("--help", cwd=self.tmp), "consistency")
+
+    def test_checker_structured_locations_only(self):  # audit:7888241:2: quoted digits are no location
+        result = self.run_send(self.task(front='bad: [ "line 1234567890, column 7"\n'))
+        self.refused(result, "consistency", "6,7")
+        self.assertFalse(re.search(r"\d{8}", result.stdout.replace(result.stdout.splitlines()[-1], "")))
+
+    def test_owner_commonmark_boundaries(self):  # audit:7888241:3: every CommonMark level-two heading ends a section
+        record = self.root / ".orchestration/acceptance/r.md"
+        record.parent.mkdir(parents=True)
+        body = f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/r.md.\n"
+        for heading in ("##\tNext", "   ## Next", "##", "## Next ##"):
+            with self.subTest(heading=heading):
+                record.write_text(f"## Owned by {TID}\n\n{heading}\n- another section's row\nlocal:abc1234:3\tfix\n")
+                self.refused(self.run_send(self.task(body)), "owner-section", "14")
+
+    def test_helper_exit_one_empty_stdout(self):  # audit:7888241:4: a crashed helper is named, never a bare digest
+        (self.root / LINKS[2]).unlink()
+        (self.root / LINKS[2]).write_text("def broken(:\n")
+        result = self.run_send(self.task())
+        self.assertEqual(1, result.returncode)
+        self.assertEqual("preflight: helper failed (exit 1)", result.stdout.splitlines()[0])
+        self.assertTrue(result.stdout.splitlines()[-1].startswith("sha256: "))
+
+    def test_digest_uses_validated_buffer(self):  # audit:7888241:5: the checker rewrites the task mid-run
+        path = self.task()
+        original = path.read_bytes()
+        (self.root / LINKS[1]).unlink()
+        (self.root / LINKS[1]).write_text(f"import pathlib\npathlib.Path({str(path)!r}).write_text('replaced')\n")
+        result = self.run_send(path)
+        self.assertEqual(b"replaced", path.read_bytes())
+        self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+
+    def test_entrypoint_clears_bash_env(self):  # audit:7888241:6: an inherited BASH_ENV prints nothing
+        hook = self.tmp / "hook.sh"
+        hook.write_text("echo BASHENV-MARKER; echo BASHENV-MARKER >&2\n")
+        result = self.run_send(self.task(), env={"BASH_ENV": str(hook)})
+        self.assertNotIn("BASHENV-MARKER", result.stdout + result.stderr)
+        self.assertEqual(0, result.returncode)
 
     def test_all_refusals_are_reported(self):
         sentinel = self.tmp / "sentinel"

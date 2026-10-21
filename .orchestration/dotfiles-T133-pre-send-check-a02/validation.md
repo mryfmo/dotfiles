@@ -543,3 +543,215 @@ $ git diff --numstat origin/main...HEAD | grep -v .orchestration/   # the PR's o
 89	0	scripts/orchestrator/pre-send.sh
 215	0	tests/unit/test_pre_send.py
 ```
+
+## R1. Revise 2, red at 78882410's script: the six amendment fixtures (worker, Claude seat)
+
+```text
+$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" "$HOME/.local/bin/mise" which uv
+~/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv
+$ git rev-parse HEAD
+78882410718dff320194339e02d37fb54c2e856a
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py -v
+test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
+test_checker_diagnostics_never_echo_secret_fragments (__main__.PreSendTest.test_checker_diagnostics_never_echo_secret_fragments) ... ok
+test_checker_exit_and_line_numbers_only (__main__.PreSendTest.test_checker_exit_and_line_numbers_only) ... ok
+test_checker_option_terminator (__main__.PreSendTest.test_checker_option_terminator) ... FAIL
+test_checker_structured_locations_only (__main__.PreSendTest.test_checker_structured_locations_only) ... FAIL
+test_complete_fences_before_shell_selection (__main__.PreSendTest.test_complete_fences_before_shell_selection) ... ok
+test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
+test_digest_uses_validated_buffer (__main__.PreSendTest.test_digest_uses_validated_buffer) ... FAIL
+test_entrypoint_clears_bash_env (__main__.PreSendTest.test_entrypoint_clears_bash_env) ... FAIL
+test_fence_backtick (__main__.PreSendTest.test_fence_backtick) ... ok
+test_fence_indented_closer (__main__.PreSendTest.test_fence_indented_closer) ... ok
+test_fence_indented_opener (__main__.PreSendTest.test_fence_indented_opener) ... ok
+test_fence_longer_closer (__main__.PreSendTest.test_fence_longer_closer) ... ok
+test_fence_longer_opener (__main__.PreSendTest.test_fence_longer_opener) ... ok
+test_fence_open_at_the_end (__main__.PreSendTest.test_fence_open_at_the_end) ... ok
+test_fence_tilde (__main__.PreSendTest.test_fence_tilde) ... ok
+test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
+test_helper_exit_one_empty_stdout (__main__.PreSendTest.test_helper_exit_one_empty_stdout) ... FAIL
+test_input_refusal (__main__.PreSendTest.test_input_refusal) ... ok
+test_literal_home_refusal (__main__.PreSendTest.test_literal_home_refusal) ... ok
+test_output_is_labels_and_numbers_only (__main__.PreSendTest.test_output_is_labels_and_numbers_only) ... ok
+test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) ... 
+  test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='##\tNext') ... FAIL
+  test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='   ## Next') ... FAIL
+  test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='##') ... FAIL
+test_owner_section_and_rows (__main__.PreSendTest.test_owner_section_and_rows) ... ok
+test_passes_and_prints_final_sha256 (__main__.PreSendTest.test_passes_and_prints_final_sha256) ... ok
+test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_matches_validator) ... ok
+test_secret_spanning_two_lines (__main__.PreSendTest.test_secret_spanning_two_lines) ... ok
+test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
+test_task_id_yaml_comment (__main__.PreSendTest.test_task_id_yaml_comment) ... ok
+
+======================================================================
+FAIL: test_checker_option_terminator (__main__.PreSendTest.test_checker_option_terminator)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 183, in test_checker_option_terminator
+    self.refused(self.run_send("--help", cwd=self.tmp), "consistency")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 72, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: d4683e2c542bbd01102185d7fac68438b095629ac02ff399b3a1d6192b4dc313
+
+
+======================================================================
+FAIL: test_checker_structured_locations_only (__main__.PreSendTest.test_checker_structured_locations_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 187, in test_checker_structured_locations_only
+    self.refused(result, "consistency", "6,7")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 74, in refused
+    self.assertIn(f"{reason}: refused" + (f" line(s) {lines}" if lines else ""), got)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'consistency: refused line(s) 6,7' not found in ['consistency: refused line(s) 6,7,1234567891', 'sha256: c94d2e9a6cea3261c63230ce2b107444aad76b58e9aeb6cc4d37169de03d4928']
+
+======================================================================
+FAIL: test_digest_uses_validated_buffer (__main__.PreSendTest.test_digest_uses_validated_buffer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 214, in test_digest_uses_validated_buffer
+    self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c' != 'sha256: 6c1aa50442a93e42c0eb2907cf4e017cd19547891fa190f3ea473582b0479290'
+- sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c
++ sha256: 6c1aa50442a93e42c0eb2907cf4e017cd19547891fa190f3ea473582b0479290
+
+
+======================================================================
+FAIL: test_entrypoint_clears_bash_env (__main__.PreSendTest.test_entrypoint_clears_bash_env)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 219, in test_entrypoint_clears_bash_env
+    result = self.run_send(self.task(), env={"BASH_ENV": str(hook)})
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 67, in run_send
+    self.assertEqual("", result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: '' != 'BASHENV-MARKER\n'
++ BASHENV-MARKER
+
+
+======================================================================
+FAIL: test_helper_exit_one_empty_stdout (__main__.PreSendTest.test_helper_exit_one_empty_stdout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 204, in test_helper_exit_one_empty_stdout
+    self.assertEqual("preflight: helper failed (exit 1)", result.stdout.splitlines()[0])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'preflight: helper failed (exit 1)' != 'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c'
+- preflight: helper failed (exit 1)
++ sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c
+
+
+======================================================================
+FAIL: test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='##\tNext')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 197, in test_owner_commonmark_boundaries
+    self.refused(self.run_send(self.task(body)), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 72, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+======================================================================
+FAIL: test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='   ## Next')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 197, in test_owner_commonmark_boundaries
+    self.refused(self.run_send(self.task(body)), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 72, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+======================================================================
+FAIL: test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) (heading='##')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 197, in test_owner_commonmark_boundaries
+    self.refused(self.run_send(self.task(body)), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-f/tests/unit/test_pre_send.py", line 72, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+----------------------------------------------------------------------
+Ran 28 tests in 9.075s
+
+FAILED (failures=8)
+exit 1
+```
+
+## R2. Revise 2, green at e39e51c4: uv_path, head and merge-base, the module, the shell checks, ruff, the preflight on the amended text, both cap totals (worker, Claude seat)
+
+```text
+$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" "$HOME/.local/bin/mise" which uv   # worker (Claude seat)
+~/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv
+$ git rev-parse HEAD; git merge-base origin/main HEAD
+e39e51c44ebe427f5ab6fc60ab2e5b7ee1f61593
+e042663b2d6efd9205f7d388bf881c01d3880642
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py -v
+test_all_refusals_are_reported (__main__.PreSendTest.test_all_refusals_are_reported) ... ok
+test_checker_diagnostics_never_echo_secret_fragments (__main__.PreSendTest.test_checker_diagnostics_never_echo_secret_fragments) ... ok
+test_checker_exit_and_line_numbers_only (__main__.PreSendTest.test_checker_exit_and_line_numbers_only) ... ok
+test_checker_option_terminator (__main__.PreSendTest.test_checker_option_terminator) ... ok
+test_checker_structured_locations_only (__main__.PreSendTest.test_checker_structured_locations_only) ... ok
+test_complete_fences_before_shell_selection (__main__.PreSendTest.test_complete_fences_before_shell_selection) ... ok
+test_consistency_refusal (__main__.PreSendTest.test_consistency_refusal) ... ok
+test_digest_uses_validated_buffer (__main__.PreSendTest.test_digest_uses_validated_buffer) ... ok
+test_entrypoint_clears_bash_env (__main__.PreSendTest.test_entrypoint_clears_bash_env) ... ok
+test_fence_backtick (__main__.PreSendTest.test_fence_backtick) ... ok
+test_fence_indented_closer (__main__.PreSendTest.test_fence_indented_closer) ... ok
+test_fence_indented_opener (__main__.PreSendTest.test_fence_indented_opener) ... ok
+test_fence_longer_closer (__main__.PreSendTest.test_fence_longer_closer) ... ok
+test_fence_longer_opener (__main__.PreSendTest.test_fence_longer_opener) ... ok
+test_fence_open_at_the_end (__main__.PreSendTest.test_fence_open_at_the_end) ... ok
+test_fence_tilde (__main__.PreSendTest.test_fence_tilde) ... ok
+test_fenced_bash_syntax (__main__.PreSendTest.test_fenced_bash_syntax) ... ok
+test_helper_exit_one_empty_stdout (__main__.PreSendTest.test_helper_exit_one_empty_stdout) ... ok
+test_input_refusal (__main__.PreSendTest.test_input_refusal) ... ok
+test_literal_home_refusal (__main__.PreSendTest.test_literal_home_refusal) ... ok
+test_output_is_labels_and_numbers_only (__main__.PreSendTest.test_output_is_labels_and_numbers_only) ... ok
+test_owner_commonmark_boundaries (__main__.PreSendTest.test_owner_commonmark_boundaries) ... ok
+test_owner_section_and_rows (__main__.PreSendTest.test_owner_section_and_rows) ... ok
+test_passes_and_prints_final_sha256 (__main__.PreSendTest.test_passes_and_prints_final_sha256) ... ok
+test_secret_pattern_matches_validator (__main__.PreSendTest.test_secret_pattern_matches_validator) ... ok
+test_secret_spanning_two_lines (__main__.PreSendTest.test_secret_spanning_two_lines) ... ok
+test_self_cap (__main__.PreSendTest.test_self_cap) ... ok
+test_task_id_yaml_comment (__main__.PreSendTest.test_task_id_yaml_comment) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 8.690s
+
+OK
+exit 0
+$ bash -n scripts/orchestrator/pre-send.sh
+exit 0
+$ shellcheck -x scripts/orchestrator/pre-send.sh
+exit 0
+$ shfmt -i 4 -sr -d scripts/orchestrator/pre-send.sh
+exit 0
+$ ruff check --config ruff.toml tests/unit/test_pre_send.py
+All checks passed!
+exit 0
+$ ruff format --config ruff.toml --check tests/unit/test_pre_send.py
+1 file already formatted
+exit 0
+$ scripts/orchestrator/pre-send.sh ~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a02.md
+sha256: fd2a5e96957e0eb628e009673762b1d15c44b06013a16c55bf9e76dae5e8750d
+exit 0
+$ git diff --numstat e042663b2d6efd9205f7d388bf881c01d3880642 e39e51c44ebe427f5ab6fc60ab2e5b7ee1f61593
+104	0	scripts/orchestrator/pre-send.sh
+260	0	tests/unit/test_pre_send.py
+changed_non_tests: 104 of 130; changed_tests: 260 of 300
+```

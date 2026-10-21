@@ -78,3 +78,25 @@ The retained rules are `test_consistency_refusal`, `test_secret_pattern_matches_
 - **The owner record:** the first acceptance path the text names.
 
 cost: n/a
+
+## Revise 2 (AGMSG-ACCEPTANCE status=revise round=2 amendment=1, 2026-10-21T04:52:24Z; previous head 78882410)
+
+- **Producer:** worker (Claude seat, worktree worker-f).
+- **The amendment:** amendment 1 of the text (`fd2a5e96…`, now the task copy) adds six fixtures for the six implementation P2s of the audit and security review of `78882410`, and caps of 130/300 from the merge-base.
+- **Commits:** the red tests are `d7d00313` and the fix is `e39e51c4`.
+  - Each new test is red at `78882410`'s script (validation §R1), failing on its behavioural assertion.
+  - All 28 tests are green at `e39e51c4` (§R2).
+
+| Finding | Fix in `scripts/orchestrator/pre-send.sh` | Fixture, red at 78882410: the assertion that failed |
+| --- | --- | --- |
+| audit:7888241:1 | the checker gets `--root <root> -- <snapshot>` | `test_checker_option_terminator`: a file named `--help` exited 0 with only a digest |
+| audit:7888241:2 | locations only from PyYAML's structured mark lines (`  in "<unicode string>", line N, column M`), never other digits | `test_checker_structured_locations_only`: `line(s) 6,7,1234567891` |
+| audit:7888241:3 | a CommonMark level-two heading (` {0,3}##` then space, tab or end) ends an owner section | `test_owner_commonmark_boundaries`: `##\\tNext`, an indented heading and a bare `##` exited 0; `## Next ##` is a control |
+| audit:7888241:4 | when the helper prints no digest, the script prints `preflight: helper failed (exit 1)` (exit 1) or `consistency: refused` (other codes), then the file's digest | `test_helper_exit_one_empty_stdout`: only the digest |
+| audit:7888241:5 | the helper reads the bytes once; the checker reads a byte-identical snapshot with the same file name; the helper prints that buffer's digest | `test_digest_uses_validated_buffer`: the replaced file's digest |
+| audit:7888241:6 | `#!/bin/bash -p` ignores BASH_ENV, then one re-run under `env -i` with PATH (uv's directory, as `mise which uv` answers, else `command -v uv`) plus HOME, TMPDIR and LANG=C.UTF-8 | `test_entrypoint_clears_bash_env`: the marker printed |
+
+- **The re-run's environment check:** the script re-runs unless its environment holds only PATH, HOME, TMPDIR and LANG, plus PWD, SHLVL, OLDPWD and `_` (which bash sets itself) and macOS's `__CF_USER_TEXT_ENCODING`.
+- **The test harness:** it now executes the script itself, not `/bin/bash <script>`. Because the entrypoint clears UV_CACHE_DIR, the test HOME's `.cache/uv` links to the real uv cache.
+- **Caps, from merge-base `e042663b2d6efd9205f7d388bf881c01d3880642` to `e39e51c44ebe427f5ab6fc60ab2e5b7ee1f61593`:** `changed_non_tests` 104 of 130 and `changed_tests` 260 of 300 (§R2). The records commit adds only `.orchestration/` lines.
+- **Not in this round:** the orchestration findings of the audit (fixed-base caps, the advisory owner, GitGuardian incident 38434651) are the orchestrator's.

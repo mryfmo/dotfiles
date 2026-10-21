@@ -1,0 +1,129 @@
+{
+  "producer": "worker (Codex seat)",
+  "runtime_dir": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-pins-runtime-n4ojgs07",
+  "bin_dir": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-pins-runtime-n4ojgs07/bin",
+  "cache": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-mask-cache",
+  "cache_scope": "Existing private offline pyyaml cache only, no install or network.",
+  "paths": {
+    "uv": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+    "chezmoi": "~/.local/share/mise/installs/chezmoi/2.73.1/chezmoi",
+    "ruff": "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+    "python": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "node": "~/.local/share/mise/installs/node/26.12.0/bin/node"
+  },
+  "records": [
+    {
+      "tool": "uv",
+      "mise_argv": [
+        "/usr/bin/env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "HOME=~",
+        "~/.local/bin/mise",
+        "which",
+        "uv"
+      ],
+      "mise_actual_exit": 0,
+      "mise_stdout": "~/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv\n",
+      "resolved_path": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+      "sha256": "c7634fea71703a48913e793c65997d63351f492ee0c38f6c20f0878fb2795d18",
+      "argv": [
+        "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+        "--version"
+      ],
+      "actual_exit": 0,
+      "stdout": "uv 0.13.1 (62faed335 2026-10-13 aarch64-apple-darwin)\n"
+    },
+    {
+      "tool": "chezmoi",
+      "mise_argv": [
+        "/usr/bin/env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "HOME=~",
+        "~/.local/bin/mise",
+        "which",
+        "chezmoi"
+      ],
+      "mise_actual_exit": 0,
+      "mise_stdout": "~/.local/share/mise/installs/chezmoi/latest/chezmoi\n",
+      "resolved_path": "~/.local/share/mise/installs/chezmoi/2.73.1/chezmoi",
+      "sha256": "48bb0988507562f6ee1dca129182d681cf5648ef55b80a2201049a23ed615980",
+      "argv": [
+        "~/.local/share/mise/installs/chezmoi/2.73.1/chezmoi",
+        "--version"
+      ],
+      "actual_exit": 0,
+      "stdout": "chezmoi version v2.73.1, commit 41a618c046fc5f7bb47cfebcd485d022c9ed5eb8, built at 2026-10-11T16:46:13Z, built by goreleaser\n"
+    },
+    {
+      "tool": "ruff",
+      "mise_argv": [
+        "/usr/bin/env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "HOME=~",
+        "~/.local/bin/mise",
+        "which",
+        "ruff"
+      ],
+      "mise_actual_exit": 0,
+      "mise_stdout": "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff\n",
+      "resolved_path": "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+      "sha256": "1cd36902264ba39d8eada510c026a44236ddb55f67937694d8a22b2708fdc0e0",
+      "argv": [
+        "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+        "--version"
+      ],
+      "actual_exit": 0,
+      "stdout": "ruff 0.17.1\n"
+    },
+    {
+      "tool": "python",
+      "resolved_path": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+      "sha256": "cb7eda29a44cc53c3093a315b80b784eef7f97906f64e0b1cc22cf66e422d133",
+      "argv": [
+        "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+        "-I",
+        "-B",
+        "--version"
+      ],
+      "actual_exit": 0,
+      "stdout": "Python 3.15.0\n"
+    },
+    {
+      "argv": [
+        "rg",
+        "-n",
+        "^(uv|python|node) = ",
+        "home/dot_mise/config.toml"
+      ],
+      "actual_exit": 0,
+      "stdout": "3:node = \"latest\"\n6:python = \"3.15.0\"\n18:uv = \"latest\"\n"
+    },
+    {
+      "argv": [
+        "wc",
+        "-l",
+        "home/dot_mise/config.toml",
+        "tests/unit/test_generate_agent_configs.py"
+      ],
+      "actual_exit": 0,
+      "stdout": "      80 home/dot_mise/config.toml\n    2350 tests/unit/test_generate_agent_configs.py\n    2430 total\n"
+    },
+    {
+      "tool": "node",
+      "argv": [
+        "~/.local/share/mise/installs/node/26.12.0/bin/node",
+        "--version"
+      ],
+      "resolved_path": "~/.local/share/mise/installs/node/26.12.0/bin/node",
+      "sha256": "12ccc7c7d8b9b33ac0740fc7c2590d2aba14ccfa0a40f3d3f7a6c4c60c87f07c",
+      "actual_exit": 0,
+      "stdout": "v26.12.0\n",
+      "use": "Existing binary added only to private test PATH; no installation or production boundary change."
+    }
+  ],
+  "base": "ac816ebdbcd076ccc060c5932c46393ff46af9f7",
+  "limits": "Read-only version/resolution observations; no installed-binary trust boundary or deployment established."
+}

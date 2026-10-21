@@ -1,0 +1,12 @@
+{
+  "producer": "worker (Codex seat)",
+  "time": "2026-10-21T04:42:02+00:00",
+  "scope": "all53 selected record files, raw plus decoded JSON keys/values",
+  "canonical_mask_exit": 0,
+  "findings": [],
+  "mode_findings": [],
+  "open_excluded": [],
+  "final_closed_assets_scan_required": false,
+  "task_copy_sha256": "70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc",
+  "predecessor_copy_sha256": "0908b8f4dbd60000f2d6045bdd74c7d570eacf1c31c83753ddce99f33437b273"
+}

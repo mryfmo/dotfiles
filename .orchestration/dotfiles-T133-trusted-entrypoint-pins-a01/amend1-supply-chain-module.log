@@ -1,0 +1,26 @@
+test_a_failed_download_keeps_a_working_tool_and_a_failed_check_never_does (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_a_failed_download_keeps_a_working_tool_and_a_failed_check_never_does) ... ok
+test_binary_installers_replace_from_same_directory_stages (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_binary_installers_replace_from_same_directory_stages) ... ok
+test_every_apply_installers_skip_when_current_and_keep_the_tool_offline (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_every_apply_installers_skip_when_current_and_keep_the_tool_offline) ... ok
+test_executable_downloads_are_verified_and_not_piped_to_shell (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_executable_downloads_are_verified_and_not_piped_to_shell) ... ok
+test_external_checksum_failure_preserves_destination (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination) ... ok
+test_externals_render_without_network_discovery (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery) ... ok
+test_externals_use_fixed_urls_and_checksums (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_externals_use_fixed_urls_and_checksums) ... ok
+test_installer_cleanup_preserves_failure_status (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_preserves_failure_status) ... No gpg and no authenticated gh 2.93.0 or newer: installing the reviewed mise v2026.10.3 (assets.mise.fallback).
+ok
+test_installer_cleanup_survives_mock_function_returns (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_survives_mock_function_returns) ... ok
+test_lifecycle_runs_the_upgrade_through_make_update_without_locked_installs (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_lifecycle_runs_the_upgrade_through_make_update_without_locked_installs) ... ok
+test_mise_apply_replaces_live_symlinks_with_independent_copies (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_apply_replaces_live_symlinks_with_independent_copies) ... ok
+test_mise_config_backends_and_http_tools (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_config_backends_and_http_tools) ... ok
+test_mise_main_preserves_install_failure (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_main_preserves_install_failure) ... ok
+test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts) ... ok
+test_mise_tools_track_latest_behind_the_cooldown (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_tools_track_latest_behind_the_cooldown) ... ok
+test_renovate_owns_dependency_update_notifications (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_renovate_owns_dependency_update_notifications) ... ok
+test_rolling_installers_resolve_through_the_release_helper (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_rolling_installers_resolve_through_the_release_helper) ... ok
+test_setup_ci_rejects_and_preserves_local_drift (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_setup_ci_rejects_and_preserves_local_drift) ... ok
+test_sheldon_git_sources_have_revisions (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_git_sources_have_revisions) ... ok
+test_sheldon_uses_locked_crates_io_source (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_uses_locked_crates_io_source) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 3.952s
+
+OK

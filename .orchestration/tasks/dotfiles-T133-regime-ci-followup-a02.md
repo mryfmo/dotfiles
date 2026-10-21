@@ -9,7 +9,7 @@ allowed_files:
   - tests/unit/test_regime_ci.py
   - tests/unit/test_workflow_security.py
   - .orchestration/dotfiles-T133-regime-ci-followup-a02/**
-after: [dotfiles-T133-regime-ci-followup-a01, dotfiles-T133-worker-write-boundary-a02]
+after: [dotfiles-T133-regime-ci-followup-a01, dotfiles-T133-worker-write-boundary-slice2-a01]
 threat_table:
   - control: the PR edits scripts/orchestrator/regime-ci.py only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
@@ -55,3 +55,8 @@ Each owned row (any advisory P2 of the local review or the task-level audit of P
 The bootstrap evidence rule of this lineage is the reworded one of `audit:7fad835:2` in the a02 acceptance record: the bootstrap runs on the code head, and the evidence commit that follows touches only `.orchestration/dotfiles-T133-regime-ci-followup-a02/`. This text does not inherit the a01 text's 'final head' wording; the a01 audit row `audit:380e7f4:1`, owned here, is closed by this sentence and by `report.md` naming the code head it bootstrapped.
 
 The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-regime-ci-a02.md` apply as written, with `dotfiles-T133-regime-ci-followup-a03` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T133-regime-ci-followup-a02/task.md>` in the RESULT; this task states its own comparison range (origin/main...HEAD) and caps (at most 200 changed lines outside tests/ and .orchestration/ and at most 300 under tests/, additions plus deletions) instead of inheriting them (checker C19).
+
+## Owned from the task-generator-plan-check a06/a07 lineage (recorded 2026-10-21T08:44Z)
+
+- The UV_CACHE_DIR refusal of design 5.14 item 9 in `scripts/orchestrator/task-consistency-check.py:138`: the a06 R1 revise introduced an unset-cache fallback that contradicts the frozen design (a06 audit row audit:c439b63:8); callers do not set UV_CACHE_DIR today (regime-ci.py and regime.yml on main carry no UV_CACHE_DIR), so the fallback stays as a recorded design exception until this task sets UV_CACHE_DIR in every real caller (regime-ci.py, the regime workflow env, any other checker invocation on main) and, in the same change, restores the refusal with the fixed label `refused: UV_CACHE_DIR absent` and the `test_refuses_missing_uv_cache_dir` regression; the a07 text leaves :138 untouched and names this owner.
+

@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
@@ -74,6 +77,25 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         )
 
         self.assertEqual(json.loads(output)["runtimeOnly"], {"kept": True})
+
+    def test_modify_private_settings_keeps_the_existing_env_entries_and_lets_the_managed_values_win(self) -> None:
+        managed = {
+            "env": {
+                "GH_TELEMETRY": "false",
+                "DO_NOT_TRACK": "1",
+                "CHECKPOINT_DISABLE": "1",
+                "AWS_EC2_METADATA_DISABLED": "true",
+            }
+        }
+        existing = {
+            "CUSTOM_RUNTIME_MARKER": "keep-me",
+            "ANTHROPIC_BASE_URL": "https://provider.invalid",
+            "HTTPS_PROXY": "https://proxy.invalid",
+            "GH_TELEMETRY": "true",
+        }
+        once = self.merge(managed, json.dumps({"env": existing}))
+        self.assertEqual(existing | managed["env"], json.loads(once)["env"])
+        self.assertEqual(once, self.merge(managed, once))
 
     def test_empty_stdin_outputs_managed(self) -> None:
         managed = {"model": "managed", "enabledPlugins": {}}
@@ -500,7 +522,9 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertTrue(output.endswith("\n"))
 
     def test_real_template_preserves_herdr_matcher_and_converges(self) -> None:
-        managed = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
         canonical_matcher = "^(startup|resume|clear|compact|fork)$"
         current = json.dumps(
             {
@@ -530,6 +554,46 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(len(state_entries), 1)
         self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
         self.assertEqual(self.merge(managed, once), once)
+
+    def test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging(self) -> None:
+        self.baseline_path.write_text((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        command = "import platform,runpy,sys; platform.system=lambda:sys.argv[1]; runpy.run_path(sys.argv[2],run_name='__main__')"
+        env = os.environ | {"CHEZMOI_SOURCE_DIR": str(self.source_dir), "CHEZMOI_HOME_DIR": str(self.home_dir)}
+        for os_name in ("Darwin", "Linux"):
+            with self.subTest(os=os_name):
+                current = json.dumps(
+                    {
+                        "runtimeOnly": {"kept": True},
+                        "enabledPlugins": {"custom@local": True},
+                        "env": {"ANTHROPIC_BASE_URL": "https://provider.invalid", "GH_TELEMETRY": "true"},
+                    }
+                )
+                for _ in range(2):
+                    result = subprocess.run(
+                        [sys.executable, "-c", command, os_name, str(MERGE_SCRIPT)],
+                        input=current,
+                        text=True,
+                        capture_output=True,
+                        env=env,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    settings = json.loads(result.stdout)
+                    self.assertEqual({"kept": True}, settings["runtimeOnly"])
+                    self.assertEqual({"custom@local": True}, settings["enabledPlugins"])
+                    self.assertEqual("https://provider.invalid", settings["env"]["ANTHROPIC_BASE_URL"])
+                    self.assertEqual("false", settings["env"]["GH_TELEMETRY"])
+                    self.assertEqual(
+                        ["com.apple.trustd.agent"] if os_name == "Darwin" else [],
+                        settings["sandbox"]["network"].get("allowMachLookup", []),
+                    )
+                    self.assertEqual(
+                        [],
+                        settings["sandbox"]["excludedCommands"],
+                    )
+                    if "sandbox" in json.loads(current):
+                        self.assertEqual(result.stdout, current)
+                    current = result.stdout
 
     def test_trailing_newline(self) -> None:
         output = self.merge({"model": "managed", "enabledPlugins": {}}, "")

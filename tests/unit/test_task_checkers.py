@@ -168,6 +168,30 @@ class TaskCheckersTest(unittest.TestCase):
         gaps = ["ledger rows 0; findings 3; gaps 3", "GAP 5510000001", "GAP 4250000001", "GAP audit:abcdef0:1"]
         self.assertEqual(gaps, self.ledger(record, sweep, audit, code=1))
 
+    def test_ledger_check_reads_inherited_audit_ids_from_the_marker(self):
+        # Re-plan R2 (owned row local:741e242:2): an update-branch-only head inherits the audit of the head it merged
+        # main into under its own file name; the first line names that head, whose ids the findings keep.
+        (sweep := self.temp / "sweep.json").write_text(json.dumps({"items": []}))
+        audit = self.temp / "t-a01-audit-1234567.md.last.md"
+        audit.write_text("inherited-from: abcdef0\n[P1] high evidence x.py:1 one\nVerdict: incorrect\n")
+        (record := self.temp / "record.md").write_text("audit:1234567:1\tother\n")
+        gap = ["ledger rows 1; findings 1; gaps 1", "GAP audit:abcdef0:1"]
+        self.assertEqual(gap, self.ledger(record, sweep, audit, code=1))
+        record.write_text("audit:abcdef0:1\tother\n")
+        self.assertEqual(["ledger rows 1; findings 1; gaps 0"], self.ledger(record, sweep, audit, code=0))
+
+    def test_ledger_check_counts_an_audit_and_its_inherited_copy_once(self):
+        # Owned row audit:274a536:5: an original audit and its inherited copy name the same ids; each id counts once.
+        (sweep := self.temp / "sweep.json").write_text(json.dumps({"items": []}))
+        text = "[P1] high evidence x.py:1 one\nVerdict: incorrect\n"
+        (original := self.temp / "t-a01-audit-abcdef0.md.last.md").write_text(text)
+        (copy := self.temp / "t-a01-audit-1234567.md.last.md").write_text(f"inherited-from: abcdef0\n{text}")
+        (record := self.temp / "record.md").write_text("---\n{}\n---\n")
+        gap = ["ledger rows 0; findings 1; gaps 1", "GAP audit:abcdef0:1"]
+        self.assertEqual(gap, self.ledger(record, sweep, original, copy, code=1))
+        record.write_text("audit:abcdef0:1\tother\n")
+        self.assertEqual(["ledger rows 1; findings 1; gaps 0"], self.ledger(record, sweep, original, copy, code=0))
+
     def test_task_consistency_check_c4_names_an_entry_only_at_a_path_boundary(self):
         # Amendment 2: the prefix counts when the control text goes on with its end, a space, a slash, a parenthesis,
         # a quote, a comma or a glob character, and not when it goes on with more of a path.

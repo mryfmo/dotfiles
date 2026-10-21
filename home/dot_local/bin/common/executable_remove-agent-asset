@@ -74,12 +74,13 @@ PY
 }
 
 #
-# @description Return success when a path equals or descends from a prefix.
-# @arg $1 path Normalized candidate path.
-# @arg $2 path Normalized prefix path.
+# @description Return success when a path equals or descends from a prefix, both folded by os.path.normpath first.
+# @arg $1 path Candidate path.
+# @arg $2 path Prefix path.
+# @arg $3 string Optional `strict`, which refuses the prefix itself.
 #
 function path_has_prefix() {
-    [ "$1" = "$2" ] || [[ "$1" == "$2/"* ]]
+    python3 -I -c 'import os, sys; p, q = map(os.path.normpath, sys.argv[1:3]); sys.exit(not (p.startswith(q + os.sep) or p == q and sys.argv[3:] != ["strict"]))' "$@"
 }
 
 #
@@ -95,9 +96,10 @@ function path_is_in_safe_root() {
         "${HOME}/.claude/plugins/cache" \
         "${CODEX_ASSET_ROOT}/plugins/cache" \
         "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins" \
-        "${HOME}/.local/share/mise/installs"; do
+        "${HOME}/.local/share/mise/installs" \
+        "${HOME}/.local/share/agent-assets"; do
         root="$(normalize_root_path "${root}")" || return 1
-        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+        if path_has_prefix "${candidate}" "${root}" strict; then
             return 0
         fi
     done
@@ -113,7 +115,8 @@ function path_is_in_safe_root() {
 
     for root in \
         "${HOME}/.claude/hooks/herdr-agent-state.sh" \
-        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh"; do
+        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh" \
+        "${HOME}/.local/bin/hcom"; do
         [ "${candidate}" = "$(normalize_action_path "${root}")" ] && return 0
     done
     return 1
@@ -206,7 +209,7 @@ function is_plugin_data_path() {
         "${CODEX_ASSET_ROOT}/plugins/cache" \
         "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins"; do
         root="$(normalize_root_path "${root}")" || return 1
-        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+        if path_has_prefix "${candidate}" "${root}" strict; then
             return 0
         fi
     done
@@ -433,6 +436,27 @@ function load_entry() {
 }
 
 #
+# @description Remove hcom: uv uninstalls its tool environment and receipt, then the recorded binary and wheel go.
+#
+function remove_hcom() {
+    local tools=""
+    if has_command uv; then
+        tools="$(uv tool dir --color never)" || return 1 # herdr panes export FORCE_COLOR and CLICOLOR_FORCE
+    elif [ "${MODE}" = "yes" ]; then
+        fail "uv command not found, so hcom's uv tool environment and receipt cannot be uninstalled; nothing was removed"
+        return 1
+    fi
+    preflight_deletion_paths "${RECORDED_PATHS[@]}"
+    # An hcom uv no longer has (uninstalled by hand or by an earlier run) must not stop the rest of the removal.
+    if [ -z "${tools}" ] || [ -d "${tools}/hcom" ]; then
+        run_operation uv tool uninstall hcom
+    else
+        printf 'SKIP: uv has no hcom tool environment under %s\n' "${tools}"
+    fi
+    remove_recorded_paths "${RECORDED_PATHS[@]}"
+}
+
+#
 # @description Parse arguments and perform the selected inverse operation.
 # @arg $@ string Command-line arguments.
 #
@@ -463,7 +487,11 @@ function main() {
             fail "manifest step has no removal paths: ${STEP}"
             return 1
         }
-        remove_recorded_paths "${RECORDED_PATHS[@]}"
+        if [ "${STEP}" = "update_hcom" ]; then
+            remove_hcom
+        else
+            remove_recorded_paths "${RECORDED_PATHS[@]}"
+        fi
         ;;
     brew)
         remove_brew

@@ -16,6 +16,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REMOVER = ROOT / "home/dot_local/bin/common/executable_remove-agent-asset"
+# uv colours its output under FORCE_COLOR or CLICOLOR_FORCE, which herdr panes export (the worker review's round 2).
+UV_STUB = """
+case "$*" in
+"tool dir --color never") printf '%s\\n' "$HOME/.local/share/uv/tools" ;;
+"tool dir") printf '\\033[36m%s\\033[39m\\n' "$HOME/.local/share/uv/tools" ;;
+"tool uninstall hcom")
+    [ -d "$HOME/.local/share/uv/tools/hcom" ] || { echo 'error: `hcom` is not installed' >&2; exit 2; }
+    rm -rf "$HOME/.local/share/uv/tools/hcom" ;;
+*) exit 2 ;;
+esac
+"""
 
 
 class RemoveAgentAssetTest(unittest.TestCase):
@@ -342,6 +353,97 @@ class RemoveAgentAssetTest(unittest.TestCase):
             log.read_text(),
         )
         self.assertEqual({}, self.manifest()["steps"])
+
+    def remove_hcom(
+        self, *, uv: bool = True, installed: bool = True, mode: str = "--yes"
+    ) -> tuple[subprocess.CompletedProcess[str], dict[str, Path]]:
+        # The Bot's P2 4303212235 and the audit of #398 (finding 2): the hcom step leaves its binary, its retained
+        # wheel, uv's tool environment and its receipt behind.
+        tools = self.home / ".local/share/uv/tools/hcom"
+        paths = {
+            "binary": self.home / ".local/bin/hcom",
+            "wheel": self.home / ".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-any.whl",
+            "environment": tools / "bin/hcom",
+            "receipt": tools / "uv-receipt.toml",
+        }
+        for name, path in paths.items():
+            if installed or name in ("binary", "wheel"):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("x")
+        if uv:  # the stub answers as uv does and uninstalls uv's own state only; the remover deletes the recorded paths
+            self.executable("uv", UV_STUB)
+        recorded = [paths["binary"], paths["wheel"]]
+        self.write_manifest({"update_hcom": self.step("installer", recorded, ["uv tool install --force <wheel>"])})
+        return self.run_remover("update_hcom", mode), paths
+
+    def assert_hcom_removal_deletes(self, name: str) -> None:
+        removed, paths = self.remove_hcom()
+        self.assertEqual(0, removed.returncode, removed.stdout + removed.stderr)
+        self.assertFalse(paths[name].exists(), removed.stdout)
+        self.assertEqual({}, self.manifest()["steps"])
+
+    def test_hcom_removal_deletes_the_recorded_binary(self) -> None:
+        self.assert_hcom_removal_deletes("binary")
+
+    def test_hcom_removal_deletes_the_retained_wheel(self) -> None:
+        self.assert_hcom_removal_deletes("wheel")
+
+    def test_hcom_removal_uninstalls_the_uv_tool_environment(self) -> None:
+        self.assert_hcom_removal_deletes("environment")
+
+    def test_hcom_removal_uninstalls_the_uv_receipt(self) -> None:
+        self.assert_hcom_removal_deletes("receipt")
+
+    def test_hcom_removal_without_uv_reports_and_removes_nothing(self) -> None:
+        removed, paths = self.remove_hcom(uv=False)
+        self.assertNotEqual(0, removed.returncode)
+        self.assertIn("uv command not found", removed.stderr)
+        self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
+        self.assertIn("update_hcom", self.manifest()["steps"])
+
+    def test_hcom_removal_skips_the_uninstall_when_uv_has_no_hcom_and_removes_the_rest(self) -> None:
+        # The worker review: an hcom uv already uninstalled (`hcom` is not installed, exit 2) must not stop the removal.
+        removed, paths = self.remove_hcom(installed=False)
+        self.assertEqual(0, removed.returncode, removed.stdout + removed.stderr)
+        self.assertIn("SKIP: uv has no hcom tool environment", removed.stdout)
+        self.assertEqual([], [name for name, path in paths.items() if path.exists()])
+        self.assertEqual({}, self.manifest()["steps"])
+
+    def test_hcom_dry_run_without_uv_prints_the_plan(self) -> None:
+        removed, paths = self.remove_hcom(uv=False, mode="--dry-run")
+        self.assertEqual(0, removed.returncode, removed.stderr)
+        self.assertIn("DRY-RUN: uv tool uninstall hcom\n", removed.stdout)
+        self.assertEqual([], [name for name, path in paths.items() if not path.exists()])
+
+    def call(self, *argv: str) -> int:
+        # One remover function, sourced without the script's closing `main "$@"` line.
+        source = REMOVER.read_text()
+        self.assertTrue(source.endswith('\nmain "$@"\n'))
+        library = self.temp_dir / "remove-agent-asset.bash"
+        library.write_text(source.removesuffix('main "$@"\n'))
+        env = {**os.environ, "HOME": str(self.home), "PATH": f"{self.bin_dir}:/usr/bin:/bin"}
+        argv = ("bash", "-c", 'source "$1"; shift; "$@"', "bash", str(library), *argv)
+        return subprocess.run(argv, env=env, capture_output=True, check=False).returncode
+
+    def test_path_has_prefix_folds_both_paths_before_comparing(self) -> None:
+        # baseline:executable_remove-agent-asset:R1:ff2e0ca: a `..` that leaves the prefix is not a descendant, and a
+        # `.` or a trailing slash does not hide one.
+        self.assertEqual(1, self.call("path_has_prefix", "/r/a/../b", "/r/a"))
+        self.assertEqual(0, self.call("path_has_prefix", "/r/a/./b", "/r/a/"))
+
+    def test_a_safe_root_is_not_inside_itself_in_any_spelling(self) -> None:
+        # baseline:executable_remove-agent-asset:R1:5903a3c, both rows: the strict check folds the candidate, so a root
+        # spelled with `/` or `/.` is not inside itself; row 1 through path_is_in_safe_root, row 2 at the call
+        # is_plugin_data_path now makes (it folds its argument first, so the spelling cannot reach it from outside).
+        agents, cache = self.home.resolve() / ".agents", self.home.resolve() / ".claude/plugins/cache"
+        for argv in (
+            ("path_is_in_safe_root", f"{agents}/"),
+            ("path_is_in_safe_root", f"{agents}/."),
+            ("path_has_prefix", f"{cache}/", str(cache), "strict"),
+        ):
+            with self.subTest(argv=argv):
+                self.assertEqual(1, self.call(*argv))
+        self.assertEqual(0, self.call("path_is_in_safe_root", f"{agents}/skills/x"))
 
     def executable(self, name: str, body: str) -> None:
         path = self.bin_dir / name

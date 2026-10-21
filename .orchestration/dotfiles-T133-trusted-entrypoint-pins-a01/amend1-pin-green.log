@@ -1,0 +1,6 @@
+test_trusted_entrypoint_mise_versions_are_exact (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_trusted_entrypoint_mise_versions_are_exact) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.016s
+
+OK

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import platform
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -44,6 +46,12 @@ def home_dir() -> Path:
 
 
 def render_managed_template(text: str) -> str:
+    text = re.sub(
+        r'\{\{ if eq \.chezmoi\.os "darwin" \}\}(.*?)\{\{ else \}\}(.*?)\{\{ end \}\}',
+        lambda match: match[1] if platform.system() == "Darwin" else match[2],
+        text,
+        flags=re.DOTALL,
+    )
     return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace("{{ .chezmoi.homeDir }}", str(home_dir()))
 
 
@@ -168,6 +176,8 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
                 and isinstance(managed_value, dict)
             ):
                 merged[key] = merge_hooks(managed_value, value)
+            elif key == "env" and isinstance(value, dict) and isinstance(managed_value, dict):
+                merged[key] = value | managed_value
             else:
                 merged[key] = managed_value
         else:

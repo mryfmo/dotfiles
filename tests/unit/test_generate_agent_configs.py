@@ -22,6 +22,9 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts/generate-agent-configs.py"
+CHEZMOI = shutil.which("chezmoi") or str(Path.home() / ".local/share/mise/installs/chezmoi/latest/chezmoi")
+NODE = shutil.which("node") or str(Path.home() / ".local/share/mise/installs/node/latest/bin/node")
+JQ = shutil.which("jq") or str(Path.home() / ".local/share/mise/installs/jq/latest/jq")
 # The same fixture as test_codex_config_merge: a profile table whose multiline strings hold header-like lines, with and without a trailing comment.
 MULTILINE_PROFILE = (
     "[agents.reviewer]\n"
@@ -162,6 +165,36 @@ statusMessage = "Closing session"
 """
 
 
+def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+    result = subprocess.run(
+        [
+            CHEZMOI,
+            "--config",
+            str(temp_dir / "chezmoi.toml"),
+            "--source",
+            str(temp_dir),
+            "--cache",
+            str(temp_dir / "cache"),
+            "--persistent-state",
+            str(temp_dir / "state"),
+            "execute-template",
+            "--init",
+            "--override-data",
+            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+        ],
+        input=text,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def load_manifest_fixture(temp_dir: Path) -> dict:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
+
+
 class GenerateAgentConfigsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_generator()
@@ -172,6 +205,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def render_claude_template(self, text: str, os_name: str = "darwin") -> dict:
+        return render_claude_template(text, self.temp_dir, os_name)
 
     def write_asset_fixture(self) -> dict:
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
@@ -576,7 +612,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertTrue(standard_profile.stat().st_mode & 0o111)
 
         result = subprocess.run(
-            [str(standard_profile)],
+            [sys.executable, str(standard_profile)],
             input='model = "runtime"\nmodel_reasoning_effort = "high"\n\n[hooks.state]\ntrusted = true\n',
             text=True,
             stdout=subprocess.PIPE,
@@ -613,7 +649,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         home = self.temp_dir / "target-home"
         result = subprocess.run(
-            [str(security_profile)],
+            [sys.executable, str(security_profile)],
             input="",
             text=True,
             stdout=subprocess.PIPE,
@@ -658,6 +694,144 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         extended = self.module.render_claude_sandbox(manifest)
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
 
+    def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        expected_ask = [
+            f"Bash(gh {command}:*)"
+            for command in (
+                "pr merge",
+                "pr create",
+                "pr comment",
+                "pr review",
+                "pr close",
+                "pr edit",
+                "pr update-branch",
+                "issue",
+                "api -X POST",
+                "api --method POST",
+                "api -XPOST",
+                "api --method=POST",
+                "api -X PATCH",
+                "api --method PATCH",
+                "api -XPATCH",
+                "api --method=PATCH",
+                "api -X PUT",
+                "api --method PUT",
+                "api -XPUT",
+                "api --method=PUT",
+                "api -X DELETE",
+                "api --method DELETE",
+                "api -XDELETE",
+                "api --method=DELETE",
+                "api -f",
+                "api -F",
+                "api --raw-field",
+                "api --field",
+            )
+        ] + ["Bash(gh api -f*)", "Bash(gh api -F*)", "Bash(gh api --raw-field=*)", "Bash(gh api --field=*)"]
+        template = self.module.render_claude_settings(manifest)
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                settings = self.render_claude_template(template, os_name)
+                sandbox = settings["sandbox"]
+                self.assertEqual(
+                    ["com.apple.trustd.agent"] if os_name == "darwin" else [],
+                    sandbox["network"].get("allowMachLookup", []),
+                )
+                roots = [
+                    path.replace("{{ .chezmoi.homeDir }}", "/render-home")
+                    for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+                ]
+                extras = ["~/.cache/uv", "~/.local/state/mise", "~/.local/share/uv"]
+                self.assertEqual(
+                    roots + extras + (["~/Library/Caches/mise"] if os_name == "darwin" else []),
+                    sandbox["filesystem"]["allowWrite"],
+                )
+                self.assertEqual(
+                    [
+                        "github.com",
+                        "api.github.com",
+                        "uploads.github.com",
+                        "objects.githubusercontent.com",
+                        "codeload.github.com",
+                        "pypi.org",
+                        "files.pythonhosted.org",
+                    ],
+                    sandbox["network"]["allowedDomains"],
+                )
+                self.assertEqual(
+                    [],
+                    sandbox["excludedCommands"],
+                )
+                self.assertEqual(expected_ask, settings["permissions"]["ask"])
+                self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
+                self.assertEqual(
+                    {
+                        "GH_TELEMETRY": "false",
+                        "DO_NOT_TRACK": "1",
+                        "CHECKPOINT_DISABLE": "1",
+                        "AWS_EC2_METADATA_DISABLED": "true",
+                    },
+                    settings["env"],
+                )
+                self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+
+    def test_linux_sandbox_confines_the_top_level_herdr_agents_invocation(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        settings = self.render_claude_template(self.module.render_claude_settings(manifest), "linux")
+        self.assertEqual(
+            [],
+            settings["sandbox"]["excludedCommands"],
+        )
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
+
+    def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
+        manifest = load_manifest_fixture(self.temp_dir)
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                self.assertEqual([], self.module.render_claude_sandbox(manifest, os_name)["excludedCommands"])
+
+    def test_managed_sandbox_exclusions_are_empty_for_all_os(self) -> None:
+        template = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                self.assertEqual([], self.render_claude_template(template, os_name)["sandbox"]["excludedCommands"])
+
+    def test_sandbox_validator_requires_empty_exclusions(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "validate_agent_assets", ROOT / "scripts/validate-agent-assets.py"
+        )
+        validator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(validator)
+        manifest = load_manifest_fixture(self.temp_dir)
+        cases = [({}, True), ({"excludedCommands": []}, True)]
+        patterns = ["agmsg-dispatch *", "gh *", "git push *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        legacy = [
+            "agmsg-dispatch *",
+            "gh *",
+            "herdr-agents *",
+            "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
+        ]
+        cases += [
+            ({"excludedCommands": value}, False)
+            for value in (None, False, 0, "", {}, (), [None], [""], legacy, *([p] for p in patterns))
+        ]
+        for os_name in ("darwin", "linux"):
+            for patch, expected in cases:
+                with self.subTest(os=os_name, patch=patch), contextlib.redirect_stderr(io.StringIO()):
+                    sandbox = self.module.render_claude_sandbox(manifest, os_name)
+                    sandbox.pop("excludedCommands")
+                    sandbox.update(patch)
+                    try:
+                        validator.validate_claude_sandbox(
+                            sandbox, manifest["codex"]["sandbox_workspace_write"]["writable_roots"], "sandbox", os_name
+                        )
+                    except SystemExit:
+                        accepted = False
+                    else:
+                        accepted = True
+                    self.assertEqual(expected, accepted)
+
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
         manifest["model_profiles"]["audit"] = {
@@ -674,7 +848,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         def render(name: str) -> dict:
             path = self.temp_dir / f"home/dot_codex/modify_private_{name}.config.toml"
             result = subprocess.run(
-                [str(path)],
+                [sys.executable, str(path)],
                 input="",
                 text=True,
                 stdout=subprocess.PIPE,
@@ -722,7 +896,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "trusted = true\n"
         )
         result = subprocess.run(
-            [str(standard_profile)],
+            [sys.executable, str(standard_profile)],
             input=current,
             text=True,
             stdout=subprocess.PIPE,
@@ -757,7 +931,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'name = "second"\n'
         )
         result = subprocess.run(
-            [str(standard_profile)],
+            [sys.executable, str(standard_profile)],
             input=current,
             text=True,
             stdout=subprocess.PIPE,
@@ -848,7 +1022,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def run_profile(self, manifest: dict, home: Path, current: str) -> subprocess.CompletedProcess:
         self.module.write_outputs(self.module.expected_outputs(manifest))
         return subprocess.run(
-            [str(self.temp_dir / "home/dot_codex/modify_private_standard.config.toml")],
+            [sys.executable, str(self.temp_dir / "home/dot_codex/modify_private_standard.config.toml")],
             input=current,
             text=True,
             capture_output=True,
@@ -1117,7 +1291,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n\n[projects."/work"]\ntrust_level = "trusted"\n'
 
         result = subprocess.run(
-            [str(profile)],
+            [sys.executable, str(profile)],
             input=current,
             text=True,
             capture_output=True,
@@ -1141,7 +1315,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
 
         result = subprocess.run(
-            [str(standard_profile)],
+            [sys.executable, str(standard_profile)],
             input=(
                 "[hooks.state]\n\n"
                 '[hooks.state."/home/.codex/config.toml:permission_request:0:0"]\n'
@@ -1170,7 +1344,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:profile"\n'
 
         result = subprocess.run(
-            [str(profile)],
+            [sys.executable, str(profile)],
             input=current,
             text=True,
             stdout=subprocess.PIPE,
@@ -1197,7 +1371,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n'
 
         result = subprocess.run(
-            [str(profile)],
+            [sys.executable, str(profile)],
             input=current,
             text=True,
             stdout=subprocess.PIPE,
@@ -1280,12 +1454,28 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('[projects."{{ .chezmoi.workingTree }}"]', config)
         self.assertNotIn("/Users/mryfmo/", config)
 
+    def test_trusted_entrypoint_mise_versions_are_exact(self) -> None:
+        tools = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]
+
+        self.assertEqual(
+            {name: tools[name] for name in ("uv", "python", "node")},
+            {"uv": "0.13.1", "python": "3.15.0", "node": "26.12.0"},
+        )
+
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
         codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
-        claude = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
+        command = manifest["claude"]["hooks"]["permission_request"]["command"]
+        expected = self.render_claude_template(json.dumps({"command": command}))["command"]
+        (group,) = claude["hooks"]["PermissionRequest"]
+        (hook,) = group["hooks"]
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
-        self.assertIn("~/.local/bin/common/permgate claude", claude)
+        self.assertEqual(hook["command"], expected)
+        executable, argument = hook["command"].rsplit(" ", 1)
+        self.assertEqual(Path(executable).name, "permgate")
+        self.assertEqual(argument, "claude")
 
     def test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb(self) -> None:
         hooks = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())["hooks"]
@@ -1298,13 +1488,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(handler["command"], "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify")
                 self.assertEqual(handler["timeout"], timeout)
 
-    def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
-        claude = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+    def test_managed_claude_sandbox_confines_agmsg_dispatch(self) -> None:
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
-        self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertEqual([], claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        self.assertEqual([], claude["permissions"]["ask"])
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(
             [
                 "Bash(gh release:*)",
@@ -1547,7 +1738,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 'echo "agent output"\n'
             )
             agent.chmod(0o755)
-            jq = shutil.which("jq")
+            jq = JQ
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
             (root / "python3").symlink_to(sys.executable)
@@ -1703,7 +1894,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
             )
             agent.chmod(0o755)
-            jq = shutil.which("jq")
+            jq = JQ
             self.assertIsNotNone(jq)
             (root / "jq").symlink_to(jq)
             (root / "python3").symlink_to(sys.executable)
@@ -1815,7 +2006,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
             )
             agent.chmod(0o755)
-            (root / "jq").symlink_to(shutil.which("jq"))
+            (root / "jq").symlink_to(JQ)
             (root / "python3").symlink_to(sys.executable)
             result = subprocess.run(
                 ["/bin/bash", str(ROOT / "home/dot_claude/hooks/executable_project-map-reload.sh")],
@@ -1995,7 +2186,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.assertEqual(agent[0][-2:], ["tab", "A" * 32])
                     result = subprocess.run(
                         [
-                            "node",
+                            NODE,
                             "-e",
                             (
                                 "const assert = require('node:assert/strict'); let reloads = 0; "
@@ -2073,7 +2264,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "    Path(os.environ['WRONG_TAB_RELOADED']).touch()\n"
             )
             agent.chmod(0o755)
-            (root / "jq").symlink_to(shutil.which("jq"))
+            (root / "jq").symlink_to(JQ)
             (root / "python3").symlink_to(sys.executable)
             map_path = map_path or str(root / ".project-map/index.html")
             result = subprocess.run(
@@ -2120,7 +2311,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             with self.subTest(url=url):
                 result = subprocess.run(
                     [
-                        "node",
+                        NODE,
                         "-e",
                         (
                             "const assert = require('node:assert/strict'); let reloads = 0; "

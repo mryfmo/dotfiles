@@ -83,6 +83,9 @@ worker_profile: standard
 # HERDR_AGENTS_WORKER_WORKTREE; herdr-agents creates it from origin/main when
 # missing, registers the worker identity there, and sets delivery on it.
 worker_worktree: .claude/worktrees/worker-c
+# Number of seated worker worktrees herdr-agents --add-worker allows.
+# Read from the deployed ~/.agents/agent-config.yaml.
+worker_cap: 4
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
@@ -203,9 +206,7 @@ claude:
     # It does not authorise chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
     # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
-    # independently." (code.claude.com/docs/en/permissions) excludedCommands
-    # matches the first word only; the allow rule still requires every
-    # subcommand to match, so a chained command prompts.
+    # independently." (code.claude.com/docs/en/permissions)
     allow:
       - Bash(agmsg-dispatch:*)
     deny:
@@ -224,7 +225,45 @@ claude:
       - Bash(uv publish:*)
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
-    ask: []
+    # shortcut: flags after the API path escape prefix rules; the integration gate remains authoritative.
+    ask:
+      - Bash(gh pr merge:*)
+      - Bash(gh pr create:*)
+      - Bash(gh pr comment:*)
+      - Bash(gh pr review:*)
+      - Bash(gh pr close:*)
+      - Bash(gh pr edit:*)
+      - Bash(gh pr update-branch:*)
+      - Bash(gh issue:*)
+      - Bash(gh api -X POST:*)
+      - Bash(gh api --method POST:*)
+      - Bash(gh api -XPOST:*)
+      - Bash(gh api --method=POST:*)
+      - Bash(gh api -X PATCH:*)
+      - Bash(gh api --method PATCH:*)
+      - Bash(gh api -XPATCH:*)
+      - Bash(gh api --method=PATCH:*)
+      - Bash(gh api -X PUT:*)
+      - Bash(gh api --method PUT:*)
+      - Bash(gh api -XPUT:*)
+      - Bash(gh api --method=PUT:*)
+      - Bash(gh api -X DELETE:*)
+      - Bash(gh api --method DELETE:*)
+      - Bash(gh api -XDELETE:*)
+      - Bash(gh api --method=DELETE:*)
+      - Bash(gh api -f:*)
+      - Bash(gh api -F:*)
+      - Bash(gh api --raw-field:*)
+      - Bash(gh api --field:*)
+      - Bash(gh api -f*)
+      - Bash(gh api -F*)
+      - Bash(gh api --raw-field=*)
+      - Bash(gh api --field=*)
+  env:
+    GH_TELEMETRY: "false"
+    DO_NOT_TRACK: "1"
+    CHECKPOINT_DISABLE: "1"
+    AWS_EC2_METADATA_DISABLED: "true"
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from
@@ -241,17 +280,9 @@ claude:
     failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
-    # Add entries only with E2E evidence, one comment per entry. Claude Code
-    # matches an entry against the command's first word (a command name, no
-    # patterns; for compound commands and pipes only the first word is
-    # checked), and an excluded command still needs a permission allow rule or
-    # a normal permission prompt.
-    excludedCommands:
-      # agmsg-dispatch: inserts one agmsg row and sends a herdr wake. From
-      # sandboxed Bash the herdr socket is PermissionDenied (T39 leg 1);
-      # outside the sandbox it delivered msgs 545-577 with read_at within
-      # seconds (T49 E2E, 2026-10-01).
-      - agmsg-dispatch
+    # T39 recorded Herdr PermissionDenied on 2026-10-01; T130 added $HOME/.config/herdr/herdr.sock to allowUnixSockets; the orchestrator sent sandboxed Bash messages 2827 and 2830 on 2026-10-20.
+    excludedCommands: []
+    linux_excluded_commands: []
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
       # roots. ~/.cache/uv: every `uv run` target (make unit-test,
@@ -259,6 +290,10 @@ claude:
       # filesystem relaxation limited to that directory (T39 live E2E leg 1).
       extra_allow_write:
         - ~/.cache/uv
+        - ~/.local/state/mise
+        - ~/.local/share/uv
+      darwin_extra_allow_write:
+        - ~/Library/Caches/mise
     network:
       allowedDomains:
         - github.com
@@ -266,6 +301,11 @@ claude:
         - uploads.github.com
         - objects.githubusercontent.com
         - codeload.github.com
+        - pypi.org
+        - files.pythonhosted.org
+      # macOS certificate validation; the generator omits Mach services on Linux.
+      allowMachLookup:
+        - com.apple.trustd.agent
       # macOS only: Claude Code ignores this list on Linux and WSL2, where the
       # seccomp filter can't inspect socket paths. The Claude messaging socket
       # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot
@@ -473,6 +513,41 @@ assets:
     render:
       file: scripts/lib/installer-pins.sh
       constants: {TERMINAL_BROWSER_PIN_VERSION: pin, TERMINAL_BROWSER_INSTALLER_SHA256: sha256}
+  omp:
+    source: https-download
+    upstream: https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-18.11.3.tgz
+    pin: 18.11.3
+    verify: sha256
+    sha256: b4a4eaf8057a7591f4ca83be293780489fd72b174e6a629d4704320165177f09
+    note: npm published 2026-10-16T21:52:39.004Z; bin omp is dist/cli.js; integrity sha512-7MdQBaj/zGHG7uV0mJSrYGHsjX3xthYgXUxTxLeJeFFL15UAnyE99kAfDE66c8LdXU0dN34eTyw6lfM7K5ouCg==; shasum a187bd1b0ef31c17e18b456846309f64fe92cf87; tarball fetched 2026-10-17T10:44:00Z (14684952 bytes), its sha512 equals the registry integrity.
+    reason: the npm registry serves an integrity hash from the same registry and no signature or attestation; the reviewed sha256 of the exact tarball is the check.
+    install_path: ~/.local/bin/omp
+    installer: scripts/update-agent-assets.sh#update_omp
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {OMP_PIN_VERSION: pin, OMP_TARBALL_SHA256: sha256}
+  hcom:
+    source: https-download
+    upstream: https://pypi.org/project/hcom/0.7.30/#files
+    pin: 0.7.30
+    verify: sha256
+    sha256:
+      darwin-arm64: 764b6469ce4fe470094d2fb821285ea5e7e002726c68c634752663abe2410ea4
+      darwin-amd64: bb32f2e0357e067c03827fc3c8e1319d67874b7bc49977c5e69b95a11a2a9bfb
+      linux-amd64: 38b4424fb335cd6faa70010823682e53a4a2e29e31a36a977874a13f11ad0992
+      linux-arm64: 278202e8eedce8a838785be8153b26b36fee0662640fc838fc7048da01aaba81
+    files:
+      darwin-arm64: https://files.pythonhosted.org/packages/f5/ed/5e951b0e6fcadef1a2598e82b969b3eaa387a3e202f8987102d0e84cddfc/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl
+      darwin-amd64: https://files.pythonhosted.org/packages/ba/c3/04dd3c68d87620fa347372b5e9450c3bb3518aa096abdf08169e6d2ce37f/hcom-0.7.30-py3-none-macosx_10_12_x86_64.whl
+      linux-amd64: https://files.pythonhosted.org/packages/21/fb/0a48f19a1c39b4ff59412f1fe34130c14acbc55da69097018d729191c6d2/hcom-0.7.30-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      linux-arm64: https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl
+    note: PyPI read 2026-10-17T10:33Z; eight platform wheels, no sdist or universal wheel; these four cover Mac and glibc Linux on amd64/arm64.
+    reason: PyPI serves a sha256 per file from the same index and no signature or attestation; the reviewed sha256 of the exact wheel is the check.
+    install_path: ~/.local/bin/hcom
+    installer: scripts/update-agent-assets.sh#update_hcom
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {HCOM_PIN_VERSION: pin, HCOM_DARWIN_ARM64_SHA256: sha256.darwin-arm64, HCOM_DARWIN_AMD64_SHA256: sha256.darwin-amd64, HCOM_LINUX_AMD64_SHA256: sha256.linux-amd64, HCOM_LINUX_ARM64_SHA256: sha256.linux-arm64}
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

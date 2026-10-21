@@ -1,0 +1,31 @@
+{
+  "producer": "worker (Codex seat)",
+  "phase": "amendment1 validation on e042663b task70feed41",
+  "base": "e042663b2d6efd9205f7d388bf881c01d3880642",
+  "argv": [
+    "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+    "check",
+    "--config",
+    "ruff.toml",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_supply_chain_policy.py"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-pins-runtime-n4ojgs07/bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-mask-cache",
+    "UV_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1",
+    "UV_NO_CONFIG": "1",
+    "UV_NO_PROJECT": "1"
+  },
+  "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+  "bindings": {
+    "home/dot_mise/config.toml": "2ff0559242b4153b8d41580ae618a48309ed9f86c3e1b2dcc4ee84cf796c005e",
+    "tests/unit/test_generate_agent_configs.py": "255b834c53bc061217aab7352504d5406e7ea1811589bd5f141a48a798a2b268",
+    "tests/unit/test_supply_chain_policy.py": "bfb39374c2b32ee36d0cb8a92dc266180cfec9885e9b01b58792da1228665ccf"
+  },
+  "output": "amend1-ruff-check.log",
+  "actual_exit": 1
+}

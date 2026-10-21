@@ -167,6 +167,36 @@ function check_crit_cli() {
 }
 
 #
+# @description Report omp's installed version beside its manifest pin.
+#
+function check_omp() {
+    local target="${HOME%/}/.local/bin/omp"
+    if [ ! -x "${target}" ]; then
+        warn_optional "omp not installed; run make update"
+        return 0
+    fi
+    local pin
+    pin="$(awk -F'"' '/^OMP_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
+    printf 'found:   omp -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
+    "${target}" --version || warn_optional "omp --version failed; run make update"
+}
+
+#
+# @description Report hcom's installed version beside its manifest pin.
+#
+function check_hcom() {
+    local target="${HOME%/}/.local/bin/hcom"
+    if [ ! -x "${target}" ]; then
+        warn_optional "hcom not installed; run make update"
+        return 0
+    fi
+    local pin
+    pin="$(awk -F'"' '/^HCOM_PIN_VERSION=/ { print $2; exit }' "${BASH_SOURCE[0]%/*}/lib/installer-pins.sh" 2> /dev/null || true)"
+    printf 'found:   hcom -> %s (pin %s)\n' "${target}" "${pin:-unknown}"
+    "${target}" --version || warn_optional "hcom --version failed; run make update"
+}
+
+#
 # @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
 #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
 #
@@ -303,6 +333,10 @@ function main() {
 
     section "Crit CLI"
     check_crit_cli
+
+    section "Agent tools"
+    check_omp
+    check_hcom
 
     section "Zed"
     check_zed

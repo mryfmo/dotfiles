@@ -1,0 +1,68 @@
+[
+  {
+    "id": "rcfu1-r1-worker-review-p2-trust-boundary-overstated",
+    "scope": ".orchestration/dotfiles-T133-regime-ci-followup-a01/pr-body.md",
+    "body": "P2 (high), fixed in the records. The draft said the policy always comes from the base. With no dispatched text at the base, policy() falls back to the PR's own copy, and regime.yml never sets REGIME_REQUIRE_DISPATCHED, so the PR's allowed_files, caps and reset_of decide while the run only warns. The body now states that the PR's own copy is the provisional policy until the flag makes it a violation.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r1-worker-review-p3-pr-body-omissions",
+    "scope": ".orchestration/dotfiles-T133-regime-ci-followup-a01/pr-body.md",
+    "body": "Eight P3 (findings 2-9), fixed in the records: the a01-era 'two warnings' wording (six warning lines are asserted); the missing result.txt task_copy= rule and its test, the checker-skipped and predecessor-copy warnings and the unlistable-diff exit; caps read from the policy text rather than the copy; the reset_of predecessor's exemption; every exit-code cause (unresolvable --base/--head, missing PyYAML, a checkout not at the base); head content read through git show, git diff and merge-base; the a01 directory has no task copy at 0e496ce7 (the a02 reset removed it); the title: line convention, stated in the report for the orchestrator; and unauthenticated reset_of copies checked as separate tasks.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r1-worker-review-p2-selector-incomplete",
+    "scope": "audit:7fad835:1",
+    "body": "P2 (high, reproduced), fixed in the records. Three single-line mutants of regime-ci.py survived the three named tests: the PR's text fed to the base checker, the checker run on an unverifiable copy, and the checkout-at-base refusal turned off. The selector now names five tests (adding test_regime_ci_never_feeds_a_pull_request_s_text_to_the_base_checker and test_regime_ci_refuses_a_checkout_not_at_the_base_and_a_diff_git_cannot_list), and validation section 5 runs the baseline plus nine mutations, each red.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r1-worker-review-p2-head-not-bound",
+    "scope": "audit:7fad835:2",
+    "body": "P2 (high), fixed in the records. The bootstrap printed only 'commit' for the head. Validation section 4 now prints the base checkout's full sha and the head's full sha (git rev-parse) before regime-ci runs.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r1-worker-review-p2-final-head-overclaim",
+    "scope": "audit:7fad835:2",
+    "body": "P2 (medium), fixed in the records. The claim that the bootstrap's verdict applies to the final head held only if the evidence commit adds none of task.md, precheck.json and result.txt, which regime-ci reads under .orchestration/<t>/. The records now say so, and the RESULT carries git diff --name-only <code head> <final head> and the regime job's own conclusion on the final head from gh run view.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r1-worker-review-p3-validation-wording",
+    "scope": ".orchestration/dotfiles-T133-regime-ci-followup-a01/validation.md",
+    "body": "Three P3 (findings 13-15), fixed in the generator: BASE is defined as the base sha (current origin/main), not the merge base; TESTS is defined and printed in section 5; 'the candidate verifier' now reads as the verifier as it landed in 0e496ce7.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r2-worker-review-p3-head-guard-weakened",
+    "scope": "tests/unit/test_regime_ci.py",
+    "body": "P3 (high), fixed in b65dd4c2. The guard narrowed in 6c96e10a no longer caught head.ref, head.repo.full_name or ['head']['sha'] in a step's with:. It now strips only refs/heads/ and rejects head, merge_commit_sha, event.after and pull/, so it is at least as strict as the original bare-'head' guard.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r2-worker-review-p3-comment-mechanism",
+    "scope": ".github/workflows/regime.yml",
+    "body": "P3 (medium), fixed in b65dd4c2. The comment in regime.yml and in test_workflow_security.py said the recorded base sha changes only when the PR synchronizes. The run shows it was the head's fork point 740772ef during an almost certainly synchronize event, with main at 0e496ce7. Both comments now state the observed lag. The acceptance record's row text is the orchestrator's and was not edited.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r2-worker-review-p3-characterization-test",
+    "scope": "tests/unit/test_regime_ci.py",
+    "body": "P3 (high), fixed in b65dd4c2. The moved-base test kept the dispatched text at the merge base too, so a verifier reading the policy there stayed green. It now builds without dispatched text and adds it only on the moved tip (the PR #420 shape), asserting exactly 'regime-ci: ok 1 task(s)'. Validation section 3 shows a mutation that reads the dispatched text at the merge base turns it red; the reviewer showed base..head instead of base...head does too.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-r2-worker-review-p2-test-name-not-applicable",
+    "scope": ".orchestration/dotfiles-T133-regime-ci-followup-a01/report.md",
+    "body": "P2 outside the changeset, not applicable. The reviewer said test_regime_ci_passes_a_records_only_pr_with_no_target does not exist at e6ea7c8d. It does: `git grep -n 'def test_regime_ci_passes_a_records_only_pr_with_no_target' e6ea7c8d -- tests/unit/test_regime_ci.py` gives line 396, and validation section 5 runs it in every mutation block. The reviewer's other notes on report.md described an earlier draft; the report is regenerated for b65dd4c2.",
+    "resolved": true
+  },
+  {
+    "id": "rcfu1-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "Two rounds by fresh read-only subagents, each given the commit range or files and the task file, not the worker's conclusions. Round 1 on pr-body.md at e0565b47 and the draft validation: Verdict incorrect (four P2, eleven P3), all fixed in the records. Round 2 on e0565b47..e6ea7c8d: Verdict correct; it reproduced red on 6c96e10a and green on e6ea7c8d, found no security regression (the run-time tip removes a PR author's lever to pick an older verifier by basing on an old commit), and its three P3 are fixed in b65dd4c2. Both worker-side fix rounds that C-61 counts toward INV-6 are used. Local process evidence, not the task-level audit.",
+    "resolved": true
+  }
+]

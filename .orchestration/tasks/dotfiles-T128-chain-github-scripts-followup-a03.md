@@ -9,6 +9,7 @@ design_review:
 allowed_files:
   - scripts/orchestrator/resolve-threads.sh
   - tests/unit/test_chain_github_scripts.py
+  - scripts/lint-comparisons-baseline.tsv
   - .orchestration/dotfiles-T128-chain-github-scripts-followup-a03/**
 after: [dotfiles-T128-chain-github-scripts-followup-a02]
 threat_table:
@@ -18,6 +19,8 @@ threat_table:
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the orchestrator's diff review and the task-level audit from main compare the diff against those rows; an edit outside them is an undeclared change the audit fails"
   - control: "the GitHub thread replies resolve-threads.sh posts (the disposition text and its evidence command, quoted into a review-comment reply)"
     disposition: "residual: the lineage's control (PR #375, the owned row audit:e9404a6:1): a disposition the reply cannot carry back losslessly is refused before any reply, covered by tests/unit/test_chain_github_scripts.py on main; the owned rows change other lines of the script and each carries its own test"
+  - control: scripts/lint-comparisons-baseline.tsv
+    disposition: "residual: PR #375 added the row `scripts/orchestrator/resolve-threads.sh\tR3\t<sha256>` outside its allowed_files (audit c87546e finding 1, regime-ci allowed-files); item 3 removes it by fixing the comparison it exempts, or keeps it with the exemption's reason in report.md; the lint runs in CI on this PR"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T128-chain-github-scripts-followup-a03/task.md)
     disposition: "residual: byte-identical to the dispatched file (its sha256 is in the TASK line); the orchestrator compares at acceptance"
   - control: the branch evidence records under .orchestration/dotfiles-T128-chain-github-scripts-followup-a03/ (report.md, validation.md, sandbox.md, learning.md)
@@ -56,6 +59,8 @@ Written 2026-10-16 by the orchestrator seat before the lineage's integration cha
 ## What to do
 
 1. The owned rows: the `<id>\t<class>` rows under the heading `## Owned by dotfiles-T128-chain-github-scripts-followup-a03` in `.orchestration/acceptance/dotfiles-T128-chain-github-scripts-followup-a02.md` as read from `origin/main`; each row's finding text is in the record (the Bot thread, the local review file or the audit receipt the id names). Implement each, with one test per row named in report.md. A missing or empty section at dispatch makes this task a no-op: report `no owned rows` and stop; the orchestrator dispatches only after both premises replay `present`.
+3. The two regime findings of the a02 PR #375 at c87546e9 (added 2026-10-20 05:5x JST, after its task-level audit): (a) `scripts/lint-comparisons-baseline.tsv` carries a row for `scripts/orchestrator/resolve-threads.sh` (R3) that #375 added outside its allowed_files; remove the row by fixing the comparison it exempts in resolve-threads.sh (run the comparison lint locally and paste its output), or, if the exemption is right, keep the row and state the reason in report.md; (b) the a02 copy mismatch is not this task's: the checker (C2) forbids another task's directory in allowed_files, so the orchestrator restores `.orchestration/dotfiles-T128-chain-github-scripts-followup-a02/task.md` byte-identical to the dispatched text in the records boundary PR; the regime job of this PR shows the baseline check pass.
+
 2. Nothing else changes: no file outside the owned rows' files, no behaviour the rows do not name (resolve-threads.sh still replies to and resolves threads from the dispositions it is given and refuses what a reply cannot carry).
 
 ## Validation

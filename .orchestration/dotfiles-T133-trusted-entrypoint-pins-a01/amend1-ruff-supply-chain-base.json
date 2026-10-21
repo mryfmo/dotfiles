@@ -1,0 +1,129 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 25,
+      "row": 10
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_supply_chain_policy.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import json\nimport os\nimport re\nimport shutil\nimport subprocess\nimport tempfile\nimport tomllib\nimport unittest\nimport zipfile\nfrom pathlib import Path\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 13
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 90,
+      "row": 125
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_supply_chain_policy.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 17,
+            "row": 124
+          },
+          "location": {
+            "column": 17,
+            "row": 124
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 90,
+            "row": 125
+          },
+          "location": {
+            "column": 90,
+            "row": 125
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 17,
+      "row": 124
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 124,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  },
+  {
+    "cell": null,
+    "code": "ISC004",
+    "end_location": {
+      "column": 62,
+      "row": 318
+    },
+    "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_supply_chain_policy.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "(",
+          "end_location": {
+            "column": 21,
+            "row": 316
+          },
+          "location": {
+            "column": 21,
+            "row": 316
+          }
+        },
+        {
+          "content": ")",
+          "end_location": {
+            "column": 62,
+            "row": 318
+          },
+          "location": {
+            "column": 62,
+            "row": 318
+          }
+        }
+      ],
+      "message": "Did you forget a comma?"
+    },
+    "location": {
+      "column": 21,
+      "row": 316
+    },
+    "message": "Unparenthesized implicit string concatenation in collection",
+    "name": "implicit-string-concatenation-in-collection-literal",
+    "noqa_row": 316,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/implicit-string-concatenation-in-collection-literal"
+  }
+]

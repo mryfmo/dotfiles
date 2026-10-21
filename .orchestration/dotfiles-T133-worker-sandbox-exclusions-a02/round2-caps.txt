@@ -1,0 +1,63 @@
+Round2 range accounting before records commit
+
+$ git diff --numstat f7f3806749815ba9dfd90e7ff9ee390ca6079014...2d1d095d286e5378986aad457069d0b8a1c62d8b
+Non-orchestration rows (orchestration excluded from task production/test caps):
+2	9	home/.chezmoitemplates/claude-settings-managed.json
+3	14	home/dot_agents/agent-config.yaml
+2	13	scripts/validate-agent-assets.py
+1	6	tests/unit/test_claude_settings_merge.py
+72	32	tests/unit/test_generate_agent_configs.py
+350	0	tests/unit/test_trusted_exec_contract.py
+247	0	tests/unit/trusted_exec_contract.py
+exit=0
+production=43/60 tests=708/120
+
+This fixed dispatch-base aggregate already exceeds the test cap at the authorized previous PR head, before this records revision. The additional350+247 lines belong to upstream tests/unit/test_trusted_exec_contract.py and tests/unit/trusted_exec_contract.py; original implementation at9e7e02ac had43 production/111 tests. No pass or waiver of the updated fixed-base aggregate is claimed. Orchestrator owns range/disposition at final integration.
+
+$ git diff --cached --name-only
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/autoskill.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/committed-caps.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-crit-status-round2.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-crit-status.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-crit.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-independent-review.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-review-receipt.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/generate-private.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/generate.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/green-generator.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/green-merge.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/learning.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-after-tooling.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-before-validation.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-post-hygiene-idempotence.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-post-hygiene.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/mask-ready.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/premises.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/private-cache.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/red-generator.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/red-merge.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/red-validator-legacy.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/red-validator-selector.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/render-check.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/report.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/review-gate-initial.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-mask-idempotence.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-mask.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/round2-record-checks.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/ruff-baseline-comparison.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/ruff-check.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/ruff-format-check.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/ruff-settings.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/sandbox.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validate-agent-assets-after-hygiene-summary.json
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validate-agent-assets-after-hygiene.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validate-agent-assets-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validate-agent-assets.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validation.md
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validator-compatibility-final.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validator-compatibility.txt
+.orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/worker-reviewed-source-hashes.json
+exit=0
+Every staged path is under .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02; revision production=0 tests=0.

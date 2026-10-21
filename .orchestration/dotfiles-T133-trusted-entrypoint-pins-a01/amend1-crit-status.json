@@ -1,0 +1,10 @@
+{
+  "branch": "tools/trusted-entrypoint-pins-a01",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/aedfffef2be2/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

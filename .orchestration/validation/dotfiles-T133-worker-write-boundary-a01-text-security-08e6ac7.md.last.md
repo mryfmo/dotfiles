@@ -1,0 +1,10 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:285](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:285) `GH_CONFIG_DIR` separates configuration, not Keychain access: gh keys credentials by hostname/user, and the worker can select the readable orchestrator configuration inside its sandbox; separate login and removal of inherited tokens therefore do not establish the claimed GitHub identity boundary. [gh credential implementation](https://github.com/cli/cli/blob/trunk/internal/config/config.go).
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:175](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:175) Writable agmsg stores also control executable selection: a worker can set a team’s `drivers.partition` to `../../../db/payload` and place `payload.sh` in the allowed db directory; installed [storage.sh](~/.agents/skills/agmsg/scripts/lib/storage.sh:196) resolves this as a trusted built-in and sources it during unsandboxed delivery, bypassing fixed PATH without any race; this non-path control lacks a threat row or adversarial test.
+
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:215](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:215) The sandbox restrictions live only in user settings, while project/local settings still load and line 263 preserves unrelated local settings; higher-precedence settings can disable sandboxing or add exclusions/socket allowances, and an empty user list cannot remove them—the design omits the managed/`--settings` enforcement scope and conflicting-scope tests. [Sandbox enforcement scopes](https://code.claude.com/docs/en/sandboxing#repository-settings-under-an-admin-required-sandbox).
+
+📝 まとめ: Reviewed every threat row and cited acceptance/review context; three findings remain for orchestrator disposition. No files changed.
+
+Not checked: implementation or live enforcement; credential separation and execution binding remain unestablished.
+Verdict: incorrect

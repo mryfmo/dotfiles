@@ -6,7 +6,7 @@
     "AGMSG-TASK v1 task_id=dotfiles-T133-task-generator-plan-check-a04 round=1 reset_of=dotfiles-T133-task-generator-plan-check-a03 repo=~/Workspace/dotfiles/.claude/worktrees/worker-g task_file=.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a04.md task_sha256=b325fe161c1e2cab2183cc0f8110ad185153b6cde15dbeaf9b894d5efe9e3e0c deadline=none done_signal=AGMSG-RESULT note=a012:amendment-1(previous_sha256=da9b49793b959c8928ab8e611aca9f219aa95ac3b91d3587e48567c9391c0f76;answers-your-20:17-questions):(1)yes:use-the-absolute-private-tmp-Python-3.12-you-installed-for-the-3.12-runs;the-denied-~/.local/bin-alias-is-not-needed(record-the-refusal-in-sandbox.md);(2)the-caps-are-measured-against-the-merge-base-with-origin/main(git-diff---numstat-origin/main...HEAD,three-dots)not-the-historical-b22a5580,so-main's-own-changes-never-count;caps-850/1100-stand-for-that-measure;nothing-else-changes;the-task-copy-is-this-text-byte-identical;continue"
   ],
   "format": 1,
-  "head": null,
+  "head": "7a201eab2e77596c9a7bc421162b2f3fde25f6f7",
   "ledger": [
     {
       "class": "trust-boundary-pr-input",
@@ -127,11 +127,93 @@
     {
       "class": "records-form",
       "id": "audit:8a09b93:12"
+    },
+    {
+      "class": "uv-caller-state-interpreter",
+      "id": "audit:7a201ea:1"
+    },
+    {
+      "class": "unlanded-mechanism-stated-as-present",
+      "id": "audit:7a201ea:2"
+    },
+    {
+      "class": "checker-exit-unchecked",
+      "id": "audit:7a201ea:3"
+    },
+    {
+      "class": "tool-environment",
+      "id": "audit:7a201ea:4"
+    },
+    {
+      "class": "happy-path-closing-test",
+      "id": "audit:7a201ea:5"
+    },
+    {
+      "class": "glob-classification",
+      "id": "audit:7a201ea:6"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:7a201ea:7"
+    },
+    {
+      "class": "spec-without-input-grammar",
+      "id": "audit:7a201ea:8"
+    },
+    {
+      "class": "glob-filter",
+      "id": "audit:7a201ea:9"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:7a201ea:10"
+    },
+    {
+      "class": "input-validation",
+      "id": "audit:7a201ea:11"
+    },
+    {
+      "class": "happy-path-closing-test",
+      "id": "audit:7a201ea:12"
+    },
+    {
+      "class": "acceptance-dispositions",
+      "id": "audit:7a201ea:13"
+    },
+    {
+      "class": "replan-skipped",
+      "id": "audit:7a201ea:14"
+    },
+    {
+      "class": "evidence-dropped",
+      "id": "audit:7a201ea:15"
     }
   ],
   "pr": 417,
-  "replans": {},
-  "searches": [],
+  "replans": {
+    "glob-filter": {
+      "design": "one path normaliser shared by every check, with a fixture per grammar case",
+      "implementation": "the a05-checker reset slice (P1-12 narrowed to the checker) on a fresh branch",
+      "specification": "the path semantics of the task checks (git pathspec vs glob, root files, directory + child rows, ./ spellings, escaping scopes) are one stated grammar",
+      "verification": "fixtures red at 7a201eab and green on the slice head; the task-level audit of that head"
+    }
+  },
+  "searches": [
+    {
+      "class": "glob-classification",
+      "records": []
+    },
+    {
+      "class": "glob-filter",
+      "records": []
+    },
+    {
+      "class": "parser-gap",
+      "records": [
+        "M-20261019-04-parser-gap.md"
+      ]
+    }
+  ],
   "task": "dotfiles-T133-task-generator-plan-check-a04"
 }
 ---
@@ -187,3 +269,35 @@ audit:8a09b93:9	test-coverage
 audit:8a09b93:10	selector-grammar
 audit:8a09b93:11	evidence-integrity
 audit:8a09b93:12	records-form
+- 2026-10-19T23:29:36Z: adversarial read of the RESULT: 7 required checks pass on 6f5e1074 (verified), the non-required canary job `test (ubuntu-26.04, client)` fails (run 39331472326, 22:05:17Z): `test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c14_interprets_the_probe_vocabulary_without_a_shell` asserts the literal realpath `/usr/bin/env` while Ubuntu 26.04 resolves it to `/usr/lib/cargo/bin/coreutils/env` (Rust coreutils); the `regime` failure is the a04 text not yet on main. This is the advisory P2 a012 proposed to own forward; the canary exists to catch exactly this, so revise round 1 (the last by the inherited Completion clause: the pre-push batch counted as round 1) fixes the assertion at root cause; sent 2026-10-19T23:29:36Z.
+- 2026-10-19T23:35:23Z: a012 PONG `working` on revise round 2 (canary test only): red with a symlinked env fixture, then one assertion change, no production change; revise.yaml will record required CI and the canary green before the RESULT; no second private review.
+- 2026-10-19T23:46:53Z: a012 PONG `working` on round 2: valid red confirmed with a symlinked env fixture at the existing selector (:369); the change is the literal `/usr/bin/env` to `os.path.realpath` only; fixture green and the bare parent module running; revise.yaml plus full evidence; no production change; invalid fixture-setup attempts retained and not counted as red.
+- 2026-10-20T00:13:43Z: a012 PONG `working`: round 2 head e68fb33f, CI run 39344687872: all four test jobs (the ubuntu-26.04 canary included) and validate SUCCESS; the required watcher re-run exit 0 after a transient no-route-to-host; Bot window cutoff 00:11:49Z passed; final evidence and the revised RESULT next.
+- 2026-10-20T00:23:08Z: a012 RESULT `round=2-of-2`: head e68fb33f56e2f972a75d4a8240d25a6d79a2a497 (previous 6f5e1074), one test assertion changed to os.path.realpath of the same /usr/bin/env, no production byte change; red at 6f5e1074 with a symlinked env fixture, green after; CI run 39344687872: required CI green, canary ubuntu-26.04 SUCCESS, unit 1305 each on all four jobs (CI Pythons: Linux /usr/bin/python3.12, macOS Homebrew 3.14.7, canary /usr/bin/python3.14; uv 0.13.2); caps 920/1100 and 1429/1600; review_rounds 1, correction_rounds 2; Bot threads 4306960622 fixed:fa711343…, 4306960626/630 fixed:d3f9c23d…; bot none, final confirmation 00:14:32Z (163 s late after a bounded-loop endpoint failure, recorded). Measured by the orchestrator 2026-10-20T00:24:38Z: 7 required checks pass, only the non-required regime job fails (the a04 text reaches main with boundary #435). ACCEPTANCE pending-integration sent; chain running with the three fixed-thread rows; security review and audit next.
+- 2026-10-20T00:25:05Z: a012 PONG `working` (holding the seat for the pending integration; acceptance read 00:24:32Z; artifact hashes unchanged).
+
+
+## Owned by dotfiles-T133-task-generator-plan-check-followup-a01 (advisory P2 of the final head; plan 020 step 1.2; rows id<TAB>class)
+
+local:7a201ea:1	advisory-p2
+local-finding: 7a201ea:1 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Preserve trusted token authentication for GitHub CLI children — scripts/orchestrator/task-consistency-check.py:16); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+local:7a201ea:2	advisory-p2
+local-finding: 7a201ea:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Reject failed C14 probes even when stdout matches — scripts/orchestrator/task-consistency-check.py:418-422); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+- 2026-10-20T00:43:25Z: the chain on #417: the base had moved (1eac64a8 -> ba318e53), update-branched to 7a201eab; local review 2 P2 (task-consistency-check.py:165-174 sanitised GitHub CLI children lose token-based authentication; :418-422 C14 accepts a failed existence probe when stdout matches) recorded as advisory under the owner followup-a01; the sweep stopped on the regime check_run and its annotation (items 9 and 10): the continued PR carries the a01/a02 evidence directories the a04 text does not name (regime log run 39347485659); dispositioned not-applicable with the two owners (regime-ci: reset lineages; P1-12: the reset text lists retained predecessor directories) at 2026-10-20T00:45:04Z; chain re-run.
+- 2026-10-20T00:5xZ: the chain on 7a201eab: sweep 12/12 (the regime items dispositioned), lineage ledger 30/30; task-level audit `…-audit-7a201ea.md` `Verdict: incorrect` (the chain's masker step failed on the network afterwards and refused the audit as "not usable"; the audit file is complete and is read here): P1 implementation: the checker's new mandatory `TRUSTED_PYTHON` input breaks dispatch.sh (line 113 strips it, line 238 invokes the checker), so every non-review dispatch would fail after a merge; P1 orchestration: the text relies on design 5.14 amendments not yet on main (they land with boundary #435); eleven P2 implementation defects across task-consistency-check.py (C14 ignores the probe exit status; the clean child env drops GH_TOKEN/GITHUB_TOKEN; C15 accepts a local-only design; C12 misses SKILL.md; escaping scopes skip C12), task-from-plan.py (root files dropped by the slash rule; directory + child rows reject under C7b; `./` spellings; shutil.which discards unknown commands) and plan-check.py (F1 accepts a missing completion cell); P2 orchestration: the regime disposition (the verifier supports explicit reset predecessors; a04 names only a03) and the ledger's repeated classes (glob-classification x3, glob-filter x4, parser-gap x6) without re-plans; P2 evidence: the a04 report/validation/sandbox/measure evidence is untracked in worker-g and absent from the head. Decision: C-61 spent (pre-push batch + canary round) and the lineage's fourth text; the P1 regression blocks any merge; no third round. The lineage is re-planned, not patched (S1 of the operator's standing order at the third repeat): P1-12 narrows to the checker (task-consistency-check.py C11-C16 with the dispatch.sh-compatible optional interpreter input, the committed-evidence rule, the by-reference C16 of D-024-30) as a05-checker on a fresh branch from main; the generator (task-from-plan.py) and plan-check.py move to P-W3's tail as separate later slices. #417's a04 withdrawn; a012 takes loop-limits-a01 next (Codex queue item 1).
+re-plan: glob-filter (rows across audit:fa71134, audit:7a201ea; classes glob-classification x3, glob-filter x4, parser-gap x6 in this lineage) — specification: the checker's path semantics (git pathspec vs glob, root files, directory + child, `./` spellings, escaping scopes) are stated as one grammar in the text; design: one path normaliser shared by every check, tested on the grammar's cases; implementation: the a05-checker slice; verification: one fixture per grammar case, red at 7a201eab, plus the audit of the slice's head.
+audit:7a201ea:1	uv-caller-state-interpreter
+audit:7a201ea:2	unlanded-mechanism-stated-as-present
+audit:7a201ea:3	checker-exit-unchecked
+audit:7a201ea:4	tool-environment
+audit:7a201ea:5	happy-path-closing-test
+audit:7a201ea:6	glob-classification
+audit:7a201ea:7	glob-filter
+audit:7a201ea:8	spec-without-input-grammar
+audit:7a201ea:9	glob-filter
+audit:7a201ea:10	input-validation
+audit:7a201ea:11	input-validation
+audit:7a201ea:12	happy-path-closing-test
+audit:7a201ea:13	acceptance-dispositions
+audit:7a201ea:14	replan-skipped
+audit:7a201ea:15	evidence-dropped

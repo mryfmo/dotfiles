@@ -1,0 +1,6 @@
+No findings in the reviewed text (`SHA256: 2c8c05a5d60867ccb9351b3359d64544f66785866e779a0199721158bdc0b4f2`).
+
+The threat table covers every allowed-file entry and required non-path control. The named tests now claim only token forwarding, output/argv secrecy, and workflow configuration. Executable selection and Git execution-tree binding are explicitly deferred, and the referenced follow-up now specifies both fixes. Same-UID interference, symlink replacement, shared caches, and sandbox exceptions remain disclosed limitations; this text does not establish host isolation. That distinction is consistent with the documented [uv environment discovery](https://docs.astral.sh/uv/reference/cli/#uv-run--no-project) and [sandbox exclusions](https://code.claude.com/docs/en/sandboxing).
+
+📝 まとめ: Reviewed every threat row and related acceptance/review records without edits; implementation tests and live Linux sandbox behavior were not exercised, and the declared execution-binding risks remain.
+Verdict: correct

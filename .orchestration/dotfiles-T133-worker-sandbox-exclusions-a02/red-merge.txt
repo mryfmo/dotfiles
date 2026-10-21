@@ -1,0 +1,53 @@
+FF
+======================================================================
+FAIL: test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (__main__.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Darwin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py", line 590, in test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        [],
+        ^^^
+        settings["sandbox"]["excludedCommands"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: [] != ['agmsg-dispatch *']
+
+Second list contains 1 additional elements.
+First extra element 0:
+'agmsg-dispatch *'
+
+- []
++ ['agmsg-dispatch *']
+
+======================================================================
+FAIL: test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging (__main__.ClaudeSettingsMergeTest.test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging) (os='Linux')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py", line 590, in test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        [],
+        ^^^
+        settings["sandbox"]["excludedCommands"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Lists differ: [] != ['agmsg-dispatch *', 'gh *', 'herdr-agents[145 chars]h *']
+
+Second list contains 4 additional elements.
+First extra element 0:
+'agmsg-dispatch *'
+
+- []
++ ['agmsg-dispatch *',
++  'gh *',
++  'herdr-agents *',
++  '/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/claude-settings-merge-test-sfglrrky/target-home/.agents/skills/agmsg/scripts/actas-claim.sh '
++  '*']
+
+----------------------------------------------------------------------
+Ran 1 test in 0.081s
+
+FAILED (failures=2)

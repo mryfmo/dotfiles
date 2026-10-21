@@ -63,14 +63,14 @@ def sha256(data):
 
 
 def token(text, name):
-    m = re.search(rf"(?:^|\s){name}=(\S+)", text)
+    m = re.search(rf"(?:^|\s){name}=(\S+)", text)  # lint-comparisons: allow name is the literal precheck or task_copy
     return m.group(1) if m else None
 
 
 def allowed(path, entry):
     """Match an allowed_files entry: `<dir>/**` takes its prefix, `*` and `?` stay within one path segment."""
-    if entry.endswith("/**"):
-        return path.startswith(entry[:-2])
+    if entry.endswith("/**"):  # lint-comparisons: allow glob-syntax test on an allowed_files entry, not a path
+        return path.startswith(entry[:-2])  # lint-comparisons: allow git-listed relative path vs the entry dir prefix
     rx = "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in entry)
     return re.fullmatch(rx, path) is not None
 
@@ -88,7 +88,7 @@ def caps(text, numstat):
         excluded = re.findall(r"`([^`]+)`", re.split(r",\s*(?:and\s+)?\d", outside.group(2))[0]) or excluded
 
     def counted(path, prefixes):
-        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)
+        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)  # lint-comparisons: allow git numstat repository-relative paths against the task text's literal cap prefixes  # fmt: skip
 
     out_lines = sum(a + d for a, d, p in numstat if not counted(p, excluded))
     test_lines = sum(a + d for a, d, p in numstat if counted(p, ["tests/"]))
@@ -251,7 +251,7 @@ def main(argv=None):
     dirs = sorted({m.group(1) for p in changed if (m := re.match(r"\.orchestration/([^/]+)/", p))})
     targets = [t for t in dirs if show(root, head, f".orchestration/{t}/task.md") is not None]
     if not targets:
-        stray = [p for p in changed if not p.startswith(".orchestration/")]
+        stray = [p for p in changed if not p.startswith(".orchestration/")]  # lint-comparisons: allow git-listed repository-relative paths against the literal .orchestration/ prefix  # fmt: skip
         if not stray:  # content alone decides: a branch name is the pull request's own claim
             print("regime-ci: no target (records-only)")
             return 0

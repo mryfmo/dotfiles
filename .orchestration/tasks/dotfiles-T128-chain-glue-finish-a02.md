@@ -46,7 +46,7 @@ Add `ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path` to `tes
 ## Check
 
 Run `bash -n scripts/orchestrator/chain-finish.sh`, `shellcheck scripts/orchestrator/chain-finish.sh`, `python -m unittest tests.unit.test_chain_glue tests.unit.test_lint_comparisons -v` and `ruff check tests/unit/test_chain_glue.py`; English shdoc comments; never run Bats locally.
-Caps: at most 40 changed lines outside `tests/` and `.orchestration/` and at most 120 under `tests/` for this reset's own commits, measured as additions plus deletions with `git diff --numstat <head-at-dispatch> <final-head>`; the whole PR's inherited counts from the merge-base are in Checks for attribution and are not this reset's budget.
+Caps: at most 200 changed lines outside `tests/` and `.orchestration/` and at most 320 under `tests/`, measured as additions plus deletions with `git diff --numstat <merge-base> <head>` over the whole PR (C-123; the regime verifier measures the same way; the inherited a01 lines were 178/275 at dispatch); this reset's own commits add at most 40 outside `tests/` and 120 under `tests/` of those.
 Worker Playbook step 4: every command sandboxed; push without `-u`: `GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push https://github.com/mryfmo/dotfiles.git tools/chain-glue-finish`; on any denial send `AGMSG-PONG v1 task_id=dotfiles-T128-chain-glue-finish-a02 status=blocked` with the exact command and boundary.
 Each evidence item names its producer (worker, Claude seat, or orchestrator, Claude seat, sandboxed Bash). Keep this text at or under 110 lines including the Checks block below; the orchestrator pastes Checks before the anchor review and dispatches the anchored bytes unchanged.
 
@@ -57,6 +57,10 @@ Write `.orchestration/dotfiles-T128-chain-glue-finish-a02/`: task.md byte-identi
 ## Amendment 1 (2026-10-21T21:17Z)
 
 The test module's class is `ChainIntegrateTest`, not `ChainGlueTest`; the three selector references above now name `ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path` (the worker's RESULT 2999 note). Nothing else changes; the records-only round updates `task.md` and `result.txt`'s `task_copy=` to these bytes.
+
+## Amendment 2 (2026-10-21T21:40Z)
+
+The cap sentence now states the PR-wide caps the regime verifier measures from the merge-base (200/320; the a01 lineage's cap was 200 outside), with this reset's own 40/120 as a sub-limit; amendment 1's 40/120 "for this reset's own commits" was refused by the verifier at 111cbe61 as 178/290 exceeding 40/120. Records-only round: task.md and result.txt's task_copy= to these bytes.
 
 ## Checks
 

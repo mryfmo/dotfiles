@@ -1,0 +1,7 @@
+# M-20261021-08 — a task text's cap sentence used a base the regime verifier cannot measure
+
+- When: 2026-10-21 21:39Z (PR #378 at 111cbe61, after records boundary 29 put the chain-glue-finish a02 text on main).
+- What: the orchestrator-authored a02 text said "at most 40 changed lines outside tests/ … for this reset's own commits, measured with `git diff --numstat <head-at-dispatch> <final-head>`". regime-ci.py measures every "at most N changed lines" sentence PR-wide from the merge-base and refused 178/290 against 40/120. The same class appeared the same day in the result-precheck a04 text (D-024-61: the retained-directories and precheck-after-update-branch rules the verifier does not read).
+- Root cause: the text author (the orchestrator) wrote the cap rule it meant, not the one the verifier implements; nothing before dispatch ran the verifier's own parser against the Check sentence (C-123 says merge-base, the text said otherwise).
+- Mechanism: pre-send.sh refuses a cap sentence that names `<head-at-dispatch>` or scopes the measurement to "this reset's own commits" (probed on the amendment-1 bytes: refused; the amended text passes); defect-sweep.sh S7 lists such texts. Amendment 2 restates the caps PR-wide (200/320) with the reset's 40/120 as a sub-limit; a008 runs the records-only round; boundary 30 carries the text.
+- Cost: one records-only worker round, one extra boundary, about 30 minutes on #378.

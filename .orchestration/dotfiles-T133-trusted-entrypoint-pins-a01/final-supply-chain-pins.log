@@ -1,0 +1,18 @@
+test_mise_tools_track_latest_behind_the_cooldown (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_tools_track_latest_behind_the_cooldown) ... FAIL
+
+======================================================================
+FAIL: test_mise_tools_track_latest_behind_the_cooldown (tests.unit.test_supply_chain_policy.SupplyChainPolicyTest.test_mise_tools_track_latest_behind_the_cooldown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_supply_chain_policy.py", line 383, in test_mise_tools_track_latest_behind_the_cooldown
+    self.assertEqual("latest", version, name)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'latest' != '26.12.0'
+- latest
++ 26.12.0
+ : node
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)

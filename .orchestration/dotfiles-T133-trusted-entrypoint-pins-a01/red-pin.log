@@ -1,0 +1,27 @@
+test_trusted_entrypoint_mise_versions_are_exact (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_trusted_entrypoint_mise_versions_are_exact) ... FAIL
+
+======================================================================
+FAIL: test_trusted_entrypoint_mise_versions_are_exact (tests.unit.test_generate_agent_configs.GenerateAgentConfigsTest.test_trusted_entrypoint_mise_versions_are_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_generate_agent_configs.py", line 1420, in test_trusted_entrypoint_mise_versions_are_exact
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        {name: tools[name] for name in ("uv", "python", "node")},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        {"uv": "0.13.1", "python": "3.15.0", "node": "26.12.0"},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: {'uv': 'latest', 'python': '3.15.0', 'node': 'latest'} != {'uv': '0.13.1', 'python': '3.15.0', 'node': '26.12.0'}
+- {'node': 'latest', 'python': '3.15.0', 'uv': 'latest'}
+?           ^^^^^^                              ^^^^^^
+
++ {'node': '26.12.0', 'python': '3.15.0', 'uv': '0.13.1'}
+?           ^^^^^^^                              ^^^^^^
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.014s
+
+FAILED (failures=1)

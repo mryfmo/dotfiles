@@ -1,0 +1,33 @@
+{
+  "producer": "worker (Codex seat)",
+  "time": "2026-10-21T04:29:28+00:00",
+  "base": "e042663b2d6efd9205f7d388bf881c01d3880642",
+  "snapshot": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-pins-selected-60t70c5v",
+  "amendment": 1,
+  "source_hashes": {
+    "home/dot_mise/config.toml": "2ff0559242b4153b8d41580ae618a48309ed9f86c3e1b2dcc4ee84cf796c005e",
+    "tests/unit/test_generate_agent_configs.py": "255b834c53bc061217aab7352504d5406e7ea1811589bd5f141a48a798a2b268",
+    "tests/unit/test_supply_chain_policy.py": "bfb39374c2b32ee36d0cb8a92dc266180cfec9885e9b01b58792da1228665ccf",
+    ".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task.md": "70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc",
+    ".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/task-before-amendment-1.md": "0908b8f4dbd60000f2d6045bdd74c7d570eacf1c31c83753ddce99f33437b273"
+  },
+  "foreign_untracked_included": false,
+  "argv": [
+    "make",
+    "validate-agent-assets"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-pins-runtime-n4ojgs07/bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-mask-cache",
+    "UV_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1",
+    "UV_NO_CONFIG": "1",
+    "UV_NO_PROJECT": "1"
+  },
+  "output": "amend1-validate-agent-assets.log",
+  "state": "complete",
+  "actual_exit": 0,
+  "elapsed_seconds": 633.809029
+}

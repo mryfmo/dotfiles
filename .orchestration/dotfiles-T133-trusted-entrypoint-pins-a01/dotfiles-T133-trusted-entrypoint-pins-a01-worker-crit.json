@@ -1,0 +1,19 @@
+[
+  {
+    "id": "pins-supply-chain-latest-conflict",
+    "scope": "file",
+    "path": "home/dot_mise/config.toml",
+    "resolved": true,
+    "body": "Initial P1 reproduced by parent (final-supply-chain-pins.log). Fixed in authorized amendment1 by exactly two held assignments and adjacent uv reason comment; original assertions retained. Same independent review context verified correction and hashes; policy selector and full20-test module pass. No out-of-scope change.",
+    "reviewer": "/root/pins_a01_pre_push_review",
+    "profile": "review (gpt-6.1-sol/xhigh)"
+  },
+  {
+    "id": "pins-amend1-source-approval",
+    "scope": "review",
+    "resolved": true,
+    "body": "Reviewed three named source files and current/predecessor task copies vs e042663b2d6efd9205f7d388bf881c01d3880642; source6/16 and tests22/48. Generator92 and supply-chain20 pass; Ruff14 inherited diagnostics explicitly nongreen. No remaining source correctness/security/scope finding. Runtime deployment and CI are not established; parent validates selected records/check outcomes separately.",
+    "reviewer": "/root/pins_a01_pre_push_review",
+    "profile": "review (gpt-6.1-sol/xhigh)"
+  }
+]

@@ -1,0 +1,1354 @@
+[
+  {
+    "revision": "base",
+    "path": "scripts/validate-agent-assets.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "I001",
+        "end_location": {
+          "column": 15,
+          "row": 19
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "safe",
+          "edits": [
+            {
+              "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+              "end_location": {
+                "column": 1,
+                "row": 21
+              },
+              "location": {
+                "column": 1,
+                "row": 4
+              }
+            }
+          ],
+          "message": "Organize imports"
+        },
+        "location": {
+          "column": 1,
+          "row": 4
+        },
+        "message": "Import block is un-sorted or un-formatted",
+        "name": "unsorted-imports",
+        "noqa_row": 4,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+      },
+      {
+        "cell": null,
+        "code": "SIM102",
+        "end_location": {
+          "column": 62,
+          "row": 140
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": null,
+        "location": {
+          "column": 9,
+          "row": 139
+        },
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "name": "collapsible-if",
+        "noqa_row": 139,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+      },
+      {
+        "cell": null,
+        "code": "C401",
+        "end_location": {
+          "column": 70,
+          "row": 901
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "{",
+              "end_location": {
+                "column": 16,
+                "row": 901
+              },
+              "location": {
+                "column": 12,
+                "row": 901
+              }
+            },
+            {
+              "content": "}",
+              "end_location": {
+                "column": 70,
+                "row": 901
+              },
+              "location": {
+                "column": 69,
+                "row": 901
+              }
+            }
+          ],
+          "message": "Rewrite as a set comprehension"
+        },
+        "location": {
+          "column": 12,
+          "row": 901
+        },
+        "message": "Unnecessary generator (rewrite as a set comprehension)",
+        "name": "unnecessary-generator-set",
+        "noqa_row": 901,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 965
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 962
+              },
+              "location": {
+                "column": 13,
+                "row": 962
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 964
+              },
+              "location": {
+                "column": 13,
+                "row": 963
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 958
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 958,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  },
+  {
+    "revision": "worktree",
+    "path": "scripts/validate-agent-assets.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "I001",
+        "end_location": {
+          "column": 15,
+          "row": 19
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "safe",
+          "edits": [
+            {
+              "content": "from __future__ import annotations\n\nimport configparser\nimport fnmatch\nimport json\nimport os\nimport posixpath\nimport re\nimport subprocess\nimport sys\nimport tomllib\nfrom collections.abc import Iterable\nfrom functools import cache\nfrom pathlib import Path\nfrom typing import Any\n\n",
+              "end_location": {
+                "column": 1,
+                "row": 21
+              },
+              "location": {
+                "column": 1,
+                "row": 4
+              }
+            }
+          ],
+          "message": "Organize imports"
+        },
+        "location": {
+          "column": 1,
+          "row": 4
+        },
+        "message": "Import block is un-sorted or un-formatted",
+        "name": "unsorted-imports",
+        "noqa_row": 4,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+      },
+      {
+        "cell": null,
+        "code": "SIM102",
+        "end_location": {
+          "column": 62,
+          "row": 140
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": null,
+        "location": {
+          "column": 9,
+          "row": 139
+        },
+        "message": "Use a single `if` statement instead of nested `if` statements",
+        "name": "collapsible-if",
+        "noqa_row": 139,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/collapsible-if"
+      },
+      {
+        "cell": null,
+        "code": "C401",
+        "end_location": {
+          "column": 70,
+          "row": 890
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "{",
+              "end_location": {
+                "column": 16,
+                "row": 890
+              },
+              "location": {
+                "column": 12,
+                "row": 890
+              }
+            },
+            {
+              "content": "}",
+              "end_location": {
+                "column": 70,
+                "row": 890
+              },
+              "location": {
+                "column": 69,
+                "row": 890
+              }
+            }
+          ],
+          "message": "Rewrite as a set comprehension"
+        },
+        "location": {
+          "column": 12,
+          "row": 890
+        },
+        "message": "Unnecessary generator (rewrite as a set comprehension)",
+        "name": "unnecessary-generator-set",
+        "noqa_row": 890,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/unnecessary-generator-set"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 954
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/scripts/validate-agent-assets.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 951
+              },
+              "location": {
+                "column": 13,
+                "row": 951
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 953
+              },
+              "location": {
+                "column": 13,
+                "row": 952
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 947
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 947,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  },
+  {
+    "revision": "base",
+    "path": "tests/unit/test_generate_agent_configs.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "SIM117",
+        "end_location": {
+          "column": 95,
+          "row": 434
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 13,
+          "row": 433
+        },
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "name": "multiple-with-statements",
+        "noqa_row": 433,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 624
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 615
+              },
+              "location": {
+                "column": 13,
+                "row": 615
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 617
+              },
+              "location": {
+                "column": 13,
+                "row": 616
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 611
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 611,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 656
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 652
+              },
+              "location": {
+                "column": 13,
+                "row": 652
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 654
+              },
+              "location": {
+                "column": 13,
+                "row": 653
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 648
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 648,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 14,
+          "row": 817
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 39,
+                "row": 814
+              },
+              "location": {
+                "column": 17,
+                "row": 814
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 17,
+                "row": 816
+              },
+              "location": {
+                "column": 17,
+                "row": 815
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 22,
+          "row": 810
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 810,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 866
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 862
+              },
+              "location": {
+                "column": 13,
+                "row": 862
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 864
+              },
+              "location": {
+                "column": 13,
+                "row": 863
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 858
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 858,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 901
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 897
+              },
+              "location": {
+                "column": 13,
+                "row": 897
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 899
+              },
+              "location": {
+                "column": 13,
+                "row": 898
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 893
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 893,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "S102",
+        "end_location": {
+          "column": 13,
+          "row": 927
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 9,
+          "row": 927
+        },
+        "message": "Use of `exec` detected",
+        "name": "exec-builtin",
+        "noqa_row": 927,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1289
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1285
+              },
+              "location": {
+                "column": 13,
+                "row": 1285
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1287
+              },
+              "location": {
+                "column": 13,
+                "row": 1286
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1277
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1277,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1314
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1310
+              },
+              "location": {
+                "column": 13,
+                "row": 1310
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1312
+              },
+              "location": {
+                "column": 13,
+                "row": 1311
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1306
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1306,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1341
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1337
+              },
+              "location": {
+                "column": 13,
+                "row": 1337
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1339
+              },
+              "location": {
+                "column": 13,
+                "row": 1338
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1333
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1333,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  },
+  {
+    "revision": "worktree",
+    "path": "tests/unit/test_generate_agent_configs.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "SIM117",
+        "end_location": {
+          "column": 95,
+          "row": 437
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 13,
+          "row": 436
+        },
+        "message": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
+        "name": "multiple-with-statements",
+        "noqa_row": 436,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/multiple-with-statements"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 627
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 618
+              },
+              "location": {
+                "column": 13,
+                "row": 618
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 620
+              },
+              "location": {
+                "column": 13,
+                "row": 619
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 614
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 614,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 659
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 655
+              },
+              "location": {
+                "column": 13,
+                "row": 655
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 657
+              },
+              "location": {
+                "column": 13,
+                "row": 656
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 651
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 651,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 14,
+          "row": 857
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 39,
+                "row": 854
+              },
+              "location": {
+                "column": 17,
+                "row": 854
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 17,
+                "row": 856
+              },
+              "location": {
+                "column": 17,
+                "row": 855
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 22,
+          "row": 850
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 850,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 906
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 902
+              },
+              "location": {
+                "column": 13,
+                "row": 902
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 904
+              },
+              "location": {
+                "column": 13,
+                "row": 903
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 898
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 898,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 941
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 937
+              },
+              "location": {
+                "column": 13,
+                "row": 937
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 939
+              },
+              "location": {
+                "column": 13,
+                "row": 938
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 933
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 933,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "S102",
+        "end_location": {
+          "column": 13,
+          "row": 967
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": null,
+        "location": {
+          "column": 9,
+          "row": 967
+        },
+        "message": "Use of `exec` detected",
+        "name": "exec-builtin",
+        "noqa_row": 967,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/exec-builtin"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1329
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1325
+              },
+              "location": {
+                "column": 13,
+                "row": 1325
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1327
+              },
+              "location": {
+                "column": 13,
+                "row": 1326
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1317
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1317,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1354
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1350
+              },
+              "location": {
+                "column": 13,
+                "row": 1350
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1352
+              },
+              "location": {
+                "column": 13,
+                "row": 1351
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1346
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1346,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 1381
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 1377
+              },
+              "location": {
+                "column": 13,
+                "row": 1377
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 1379
+              },
+              "location": {
+                "column": 13,
+                "row": 1378
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 1373
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 1373,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  },
+  {
+    "revision": "base",
+    "path": "tests/unit/test_claude_settings_merge.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 45
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 41
+              },
+              "location": {
+                "column": 13,
+                "row": 41
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 43
+              },
+              "location": {
+                "column": 13,
+                "row": 42
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 37
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 37,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  },
+  {
+    "revision": "worktree",
+    "path": "tests/unit/test_claude_settings_merge.py",
+    "exit": 1,
+    "findings": [
+      {
+        "cell": null,
+        "code": "EXE001",
+        "end_location": {
+          "column": 23,
+          "row": 1
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py",
+        "fix": null,
+        "location": {
+          "column": 1,
+          "row": 1
+        },
+        "message": "Shebang is present but file is not executable",
+        "name": "shebang-not-executable",
+        "noqa_row": 2,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/shebang-not-executable"
+      },
+      {
+        "cell": null,
+        "code": "UP022",
+        "end_location": {
+          "column": 10,
+          "row": 45
+        },
+        "filename": "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_claude_settings_merge.py",
+        "fix": {
+          "applicability": "unsafe",
+          "edits": [
+            {
+              "content": "capture_output=True",
+              "end_location": {
+                "column": 35,
+                "row": 41
+              },
+              "location": {
+                "column": 13,
+                "row": 41
+              }
+            },
+            {
+              "content": "",
+              "end_location": {
+                "column": 13,
+                "row": 43
+              },
+              "location": {
+                "column": 13,
+                "row": 42
+              }
+            }
+          ],
+          "message": "Replace with `capture_output` keyword argument"
+        },
+        "location": {
+          "column": 18,
+          "row": 37
+        },
+        "message": "Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`",
+        "name": "replace-stdout-stderr",
+        "noqa_row": 37,
+        "severity": "error",
+        "url": "https://docs.astral.sh/ruff/rules/replace-stdout-stderr"
+      }
+    ]
+  }
+]

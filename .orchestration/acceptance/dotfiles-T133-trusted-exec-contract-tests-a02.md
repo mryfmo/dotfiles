@@ -1,0 +1,8 @@
+# Acceptance record: dotfiles-T133-trusted-exec-contract-tests-a02
+
+Lineage: reset of dotfiles-T133-trusted-exec-contract-tests-a01 (INV-6 S2, revises 2) on PR #436; records-only: the code at 612f75f5 is complete and twice audited; the a02 task copy is the only change.
+
+- 2026-10-20T14:26Z: text written whole by the review profile (`trusted-exec-contract-tests-a02-prompt.md`), two checker fixes by the orchestrator (retained_predecessor_directories; the two copy rows), 224 lines, pre-send OK, sha256 0b1923a6299109c1f8db3a56dfbba3cc6ac0c5217d08a577322f99f5617e4380; reset-anchor review accepted by a009 (14:19:49Z); reset record written; dispatched to a011 at the anchored bytes.
+- 2026-10-20T14:27:34Z: a011 RESULT `status=blocked round=1`: local head 9cb70cc5 adds only the a02 copy (code unchanged against 612f75f5: `git diff --quiet` exit 0 on tests and the a01 evidence directory; sha256 of the three code files equal to the text's), but `git diff --stat 612f75f5..HEAD` shows two files because the update-branch merge 9cc6c96b brought main's amended a01 text. Orchestrator disposition (2026-10-20T14:28Z, PING, no amendment): the diff-stat check measures from the branch head at dispatch, 9cc6c96b; the code-unchanged proof against 612f75f5 stands; both measurements go into report.md; push and RESULT.
+- 2026-10-20T14:47:22Z: a011 RESULT `status=ready_for_review round=1` head 9cb70cc5 (records-only: the a02 copy; code unchanged at 612f75f5; both diff measurements in report.md). ACCEPTANCE `status=pending-integration` (2026-10-20T14:49Z). Integration order: boundary records PR (the a02 text to main) -> update-branch #436 -> chain once -> gate -> merge.
+

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # @file pre-send.sh
 # @brief Check a task text's final bytes before each send, with every machine check CI or the regime applies to it.
 # @description
@@ -13,6 +13,13 @@
 # @exitcode 0 Every check passes.
 # @exitcode 1 A check refuses, or the argument is missing or unreadable.
 set -u
+# Design 5.14 item 2: -p already ignored BASH_ENV; re-run once under env -i with only PATH (uv's directory, as mise
+# answers it), HOME, TMPDIR and LANG. bash adds PWD, SHLVL and _, and macOS __CF_USER_TEXT_ENCODING.
+if env | /usr/bin/grep -qvE '^(PATH|HOME|TMPDIR|LANG|PWD|SHLVL|OLDPWD|_|__CF_USER_TEXT_ENCODING)='; then
+    uv_path="$(/usr/bin/env -i PATH=/usr/bin:/bin HOME="${HOME}" "${HOME}/.local/bin/mise" which uv 2> /dev/null || command -v uv)"
+    exec /usr/bin/env -i PATH="$(dirname -- "${uv_path:-/usr/bin/uv}"):/usr/bin:/bin" HOME="${HOME}" TMPDIR="${TMPDIR:-/tmp}" \
+        LANG=C.UTF-8 /bin/bash -p "$0" "$@"
+fi
 root="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 py="${HOME}/.local/share/mise/installs/python/3.15.0/bin/python3"
 if [[ $# -ne 1 || ! -f ${1-} || ! -r ${1-} ]]; then
@@ -21,16 +28,21 @@ if [[ $# -ne 1 || ! -f ${1-} || ! -r ${1-} ]]; then
 fi
 task="$1"
 read -r -d '' helper << 'PY' || true
-import ast, pathlib, re, subprocess, sys, yaml
+import ast, hashlib, pathlib, re, subprocess, sys, tempfile, yaml
 root, task = sys.argv[1:3]
-text, out = open(task, encoding="utf-8", errors="replace").read(), []
+data = open(task, "rb").read()  # read once: every check and the digest use these bytes, never a reopened path
+text, out = data.decode("utf-8", errors="replace"), []
 lines, nr = text.split("\n"), lambda offset: text.count("\n", 0, offset) + 1
 def refuse(name, nums=()):  # a fixed label and numbers only: nothing of the text or a tool is ever printed
     nums = sorted({int(n) for n in nums})
     out.append(f"{name}: refused" + (f" line(s) {','.join(map(str, nums))}" if nums else ""))
-run = subprocess.run([sys.executable, "-I", f"{root}/scripts/orchestrator/task-consistency-check.py", "--root", root, task], capture_output=True, text=True)
-if run.returncode:  # a YAML mark counts lines of the front matter, which starts after the first ---: one more in the task
-    refuse("consistency", [int(n) + 1 for n in re.findall(r"line (\d+), column \d+", run.stdout + run.stderr)])
+with tempfile.TemporaryDirectory() as snap:  # the checker reads a byte-identical snapshot with the same file name
+    copy = pathlib.Path(snap, pathlib.Path(task).name)
+    copy.write_bytes(data)
+    run = subprocess.run([sys.executable, "-I", f"{root}/scripts/orchestrator/task-consistency-check.py", "--root", root, "--", str(copy)], capture_output=True, text=True)
+if run.returncode:  # only PyYAML's structured mark lines (front matter starts after the first ---: one line more)
+    marks = re.findall(r'^  in "<unicode string>", line (\d+), column \d+:?$', run.stdout + run.stderr, re.MULTILINE)
+    refuse("consistency", [int(n) + 1 for n in marks])
 tree = ast.parse(open(f"{root}/scripts/validate-agent-assets.py", encoding="utf-8").read())
 try:  # the validator's assignment from its syntax tree, its module never run; matched over the complete text
     call = next(n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "SECRET_PATTERN")
@@ -49,7 +61,7 @@ except Exception:
     homes = [0]
 if homes: refuse("literal-home", [n for n in homes if n])
 cap = re.search(r"at or under \*{0,2}(\d+) lines", text)
-if cap and open(task, "rb").read().count(b"\n") > int(cap[1]): refuse("self-cap", [nr(cap.start())])
+if cap and data.count(b"\n") > int(cap[1]): refuse("self-cap", [nr(cap.start())])
 bad, fence, body = [], None, []  # one CommonMark-style pass over every fence; bash or sh by the info string's first word
 for i, line in enumerate(lines + [None], 1):
     if fence and (line is None or re.fullmatch(rf" {{0,3}}{re.escape(fence[0][0])}{{{len(fence[0])},}}[ \t]*", line)):
@@ -74,16 +86,19 @@ if me and (ref := text.find(f"## Owned by {me}")) >= 0:  # the named record reso
         if line == head or line.startswith(head + " "):
             found = inside = True
             continue
-        inside = inside and not line.startswith("## ")
+        inside = inside and not re.match(r" {0,3}##(?:[ \t]|$)", line)  # a CommonMark level-two heading
         rows += inside and bool(re.match(r"[^\t ]+\t[^\t ]|- [^ ]", line))
     if not found or not rows and len(re.findall(r"^## Item", text, re.MULTILINE)) <= 1:
         refuse("owner-section", [nr(ref)])
-print("\n".join(out))
+print("\n".join(out + [f"sha256: {hashlib.sha256(data).hexdigest()}"]))
 sys.exit(1 if out else 0)
 PY
 out="$(uv run --no-config --no-project --offline --python "${py}" --with pyyaml python -I -c "${helper}" "${root}" "${task}" 2> /dev/null)"
 rc=$?
-[[ ${rc} -le 1 ]] || { out="consistency: refused" && rc=1; }
-[[ -z ${out} ]] || printf '%s\n' "${out}"
-echo "sha256: $("${py}" -I -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "${task}" 2> /dev/null)"
+if [[ ${out} != *sha256:* ]]; then # the helper failed before its digest: a fixed message, then the file's digest
+    [[ ${rc} -eq 1 ]] && out="preflight: helper failed (exit 1)" || out="consistency: refused"
+    rc=1
+    out+=$'\n'"sha256: $("${py}" -I -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "${task}" 2> /dev/null)"
+fi
+printf '%s\n' "${out}"
 exit "${rc}"

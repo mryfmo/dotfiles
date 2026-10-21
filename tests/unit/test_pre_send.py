@@ -2,7 +2,7 @@
 
 The real script, consistency checker and validator are linked into a temporary repository root, so owner records
 resolve there and no live record changes. The script's pinned interpreter path, under a temporary HOME, links to
-this interpreter; UV_CACHE_DIR keeps the real uv cache, so uv runs offline. Every run's output must be fixed labels
+this interpreter, and its .cache/uv links to the real uv cache, so uv runs offline. Every run's output must be fixed labels
 and line numbers only, on both streams. Refused secret and home fixtures are built from fragments.
 """
 
@@ -51,8 +51,9 @@ class PreSendTest(unittest.TestCase):
         pinned = home / ".local/share/mise/installs/python/3.15.0/bin/python3"
         pinned.parent.mkdir(parents=True)
         pinned.symlink_to(os.path.realpath(sys.executable))
+        (home / ".cache").mkdir()  # the entrypoint clears UV_CACHE_DIR; uv's default cache under HOME is the real one
+        (home / ".cache/uv").symlink_to(self.cache.stdout.strip())
         self.env = {"PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(self.tmp), "LANG": "C.UTF-8"}
-        self.env["UV_CACHE_DIR"] = self.cache.stdout.strip()
 
     def task(self, body="", items=1, name=TID, front=""):  # the fixture's line 12 is its last Item heading
         text = f"---\nformat: 2\ntask_id: {TID}\nkind: code\nsecurity: false\n{front}allowed_files:\n"

@@ -50,7 +50,7 @@ function ppa_step() {
     output="$("$@" 2>&1)" || status=$?
     printf '%s\n' "${output}"
     [ "${status}" -eq 0 ] && return 0
-    grep -qE "Failed to fetch https?://${GHOSTTY_PPA_HOST//./\\.}/" <<< "${output}" && return 75
+    grep -qF -e "Failed to fetch https://${GHOSTTY_PPA_HOST}/" -e "Failed to fetch http://${GHOSTTY_PPA_HOST}/" <<< "${output}" && return 75
     return 1
 }
 

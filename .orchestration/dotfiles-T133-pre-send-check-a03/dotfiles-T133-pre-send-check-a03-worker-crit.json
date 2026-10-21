@@ -1,0 +1,37 @@
+[
+ {
+  "id": "r1-p2-dirname-path-search",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre-send.sh",
+  "body": "Round 1 (1d72f169..9dc5c565), P2 high: dirname ran through the inherited PATH before the env -i re-exec (lines 21 and 24), so a decoy dirname could redirect root and with it pre_send.py and the checker; the reviewer reproduced a decoy dirname running. Fixed in b8a5c394 (the one correction round): /usr/bin/dirname for both; nothing else runs from PATH before the re-exec (cd, pwd, [[ and echo are builtins).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-decoy-list",
+  "scope": "file",
+  "path": "tests/unit/test_pre_send.py",
+  "body": "Round 1, P2 high: test_entrypoint_fixed_environment's decoys (uv, python3, bash, env, mise) omitted dirname, so the test was vacuous for the one PATH lookup left. Fixed in b8a5c394: dirname joins the decoys; the subtest is red at 9dc5c565 ((0, '') != (1, '')) and green at b8a5c394.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-temp-label",
+  "scope": "file",
+  "path": "tests/unit/test_pre_send.py",
+  "body": "Round 1, P3 medium: test_temp_failure_is_redacted accepted any ': refused' line. Fixed in b8a5c394: it asserts 'tempfile: refused'.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-label-set",
+  "scope": "file",
+  "path": "tests/unit/test_pre_send.py",
+  "body": "Round 1, P3 medium: GRAMMAR and the output test's label strip accepted any [a-z-]+ label. Fixed in b8a5c394: LABELS names the set (consistency, secret-pattern, literal-home, self-cap, bash-syntax, owner-section, input, tempfile, interpreter, startup), used by both.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-yaml-label-and-fields",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre_send.py",
+  "body": "Round 1, P3 low: a YAML error is reported on the consistency label with its marks rather than its own label, and only task_id is read from the mapping. Kept: the preserved a02 test test_checker_exit_and_line_numbers_only requires 'consistency: refused line(s) 6,7' for a YAML error, and the 28 tests stay unchanged; kind, security and allowed_files are validated by the checker, whose exit status the consistency label carries, and no pre_send check consumes them. Reported as advisory for the owner dotfiles-T133-pre-send-check-followup-a01.",
+  "resolved": true
+ }
+]

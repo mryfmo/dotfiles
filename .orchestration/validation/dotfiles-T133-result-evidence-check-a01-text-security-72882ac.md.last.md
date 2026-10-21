@@ -1,0 +1,15 @@
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:25) `test_git_environment_cannot_redirect_root` covers only `GIT_DIR`; the prescribed command still honors `GIT_COMMON_DIR`, `GIT_OBJECT_DIRECTORY` and injected Git configuration, so it cannot close the broader in-process-effects row. [Git documentation](https://git-scm.com/docs/git)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:27) Sanitizing the test launcher does not bind production executables: runtime `git`, `python3` and `gh` still resolve through inherited PATH, including project-sensitive mise shims; isolated Python acts only after that selection. The stated residual control therefore does not mitigate production executable substitution. [Mise documentation](https://mise.jdx.dev/dev-tools/shims.html)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:61) Reading the shared repository with replacement refs enabled lets a worker substitute passing evidence for the supplied head; working-tree-divergence tests cannot detect this, and the prescribed source contradicts the cited design item 8’s authenticated-source requirement. [Git replacement documentation](https://git-scm.com/docs/git-replace)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:64) Clearing `GH_REPO` and specifying `mryfmo/dotfiles` leaves the host selectable through `GH_HOST`; another host can supply unrelated green runs, while the fake-gh argument test passes. Bind `github.com/mryfmo/dotfiles` and test hostile host selection. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
+
+- [P2] High confidence [.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-result-evidence-check-a01.md:77) The sandbox-only instruction has no effective-policy prerequisite: the repository’s Linux configuration excludes `gh *`, so required direct gh commands can execute outside the sandbox without encountering the refusal this paragraph relies on.
+
+Reviewed all 13 threat rows and the cited acceptance/review history. All allowed-file entries have coverage; no symlink or case-insensitive identity defense is specified or demonstrated.
+
+📝 まとめ: Completed the read-only design review with five findings for orchestrator disposition; no files changed.
+Not checked: future implementation, runtime tests or native Linux/filesystem behavior; execution and evidence binding remain unproven.
+Verdict: incorrect

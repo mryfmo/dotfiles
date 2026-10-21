@@ -42,7 +42,7 @@ Written 2026-10-19 by the orchestrator seat before the first advisory dispositio
 
 ## Item 1
 
-Each owned row (any advisory P2 of the local review or the task-level audit of PR #402's final head, and any Bot P2 the orchestrator records under this owner; rows are read from the record at dispatch) gets its fix and one red-then-green test in `tests/unit/test_chain_review_scripts.py`, named in report.md against the row id. Nothing outside the owned rows; any other file joins `allowed_files` only by an amendment that names the row needing it.
+Each owned row (any advisory P2 of the local review or the task-level audit of PR #402's final head, and any Bot P2 the orchestrator records under this owner; rows are read from the record at dispatch; a records-only row is realised by the record it names, with no test) gets its fix and, where the row names a test or code, one red-then-green test in `tests/unit/test_chain_review_scripts.py`, named in report.md against the row id. Nothing outside the owned rows; any other file joins `allowed_files` only by an amendment that names the row needing it.
 
 ## Check and Completion
 
@@ -53,5 +53,5 @@ The Check and Completion clauses of `.orchestration/tasks/dotfiles-T128-chain-re
 ```
 dispatch to claude-standard-dot-a011, 2026-10-19T20:1xZ; task-consistency-check.py: OK; security: false (no C-80); D-024-25 order: owner rows of a merged lineage, files disjoint from every in-flight task
 task=dotfiles-T128-chain-review-scripts-followup-a06 tasks=0 amendments=0 questions=0 results=0 withdrawn=0 revises=0 first_result_head=none bot_p1_heads_after_result=skipped audits=unknown wall=none..none (-) source=live
-detail: pr=none authors=- tasks=- results=- questions=- withdrawn=- bot_heads=- source=live
+detail: pr=none authors=- tasks=- results=- questions=- withdrawn=- bot_heads=- source=liveamendment 1 to a011, 2026-10-19T23:51:26Z: item 1 reconciled with the records-only realisation (audit 34cc889 finding 1; previous_sha256 e21ef5bef826e9d5c195d8145c26810c2fa438cf1c4a86b16ba7477d23d14749); regime-counters.sh: task=dotfiles-T128-chain-review-scripts-followup-a06 tasks=1 amendments=0 questions=0 results=2 withdrawn=0 revises=1 first_result_head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-19T20:15:40Z..2026-10-19T22:46:13Z (2:30) source=live; C-61: this copy update is the worker's second and last round
 ```

@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-21T04:28:53+00:00",
+  "message_id": 2955,
+  "amendment": 1,
+  "task_sha256": "70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc",
+  "previous_sha256": "0908b8f4dbd60000f2d6045bdd74c7d570eacf1c31c83753ddce99f33437b273",
+  "allowed_files": [
+    "home/dot_mise/config.toml",
+    "tests/unit/test_generate_agent_configs.py",
+    "tests/unit/test_supply_chain_policy.py",
+    ".orchestration/dotfiles-T133-trusted-entrypoint-pins-a01/**"
+  ],
+  "caps": {
+    "source": 16,
+    "tests": 48
+  },
+  "review_contexts_used": 1,
+  "review_fix_round": 1,
+  "worker_network": false,
+  "transport_ci_owner": "orchestrator D-024-36"
+}

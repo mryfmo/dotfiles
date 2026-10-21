@@ -63,3 +63,12 @@ The owned rows are read from `## Owned by dotfiles-T133-task-generator-plan-chec
 ## Check and Completion
 
 The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a01.md` apply as written, with `dotfiles-T133-task-generator-plan-check-followup-a02` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T133-task-generator-plan-check-followup-a01/task.md>` in the RESULT.
+
+## Owned from the a06 final head c439b63c (recorded 2026-10-21T07:50Z)
+
+- `task-consistency-check.py:225` strict decode of canonical blobs: C8's traversal of `home/` reaches `home/.key.txt.age` and aborts with UnicodeDecodeError; decode with a fixed fallback or skip undecodable blobs, with a regression that plants a binary canonical file (local:c439b63:1, graded P2 by the orchestrator because the abort fails closed).
+- `task-consistency-check.py:310-312` preserve grep's failure status when no lines match (local:c439b63:2).
+- `task-consistency-check.py:83` relativise case-aliased symlink targets by filesystem identity, not by case-sensitive `relative_to` (local:c439b63:3).
+- `task-consistency-check.py:476` C12 classifies the resolved target only: an unnamed applied symlink to a non-applied target passes a wildcard scope without a concrete threat row (security:2cb5848:1).
+- `task-consistency-check.py:251` the missing-literal shortcut returns before directory symlinks are examined, so a missing file beneath an internal directory alias bypasses the internal-alias rejection (security:2cb5848:2).
+

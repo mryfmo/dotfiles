@@ -1454,12 +1454,28 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('[projects."{{ .chezmoi.workingTree }}"]', config)
         self.assertNotIn("/Users/mryfmo/", config)
 
+    def test_trusted_entrypoint_mise_versions_are_exact(self) -> None:
+        tools = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]
+
+        self.assertEqual(
+            {name: tools[name] for name in ("uv", "python", "node")},
+            {"uv": "0.13.1", "python": "3.15.0", "node": "26.12.0"},
+        )
+
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
         codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
-        claude = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        manifest = load_manifest_fixture(self.temp_dir)
+        command = manifest["claude"]["hooks"]["permission_request"]["command"]
+        expected = self.render_claude_template(json.dumps({"command": command}))["command"]
+        (group,) = claude["hooks"]["PermissionRequest"]
+        (hook,) = group["hooks"]
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
-        self.assertIn("~/.local/bin/common/permgate claude", claude)
+        self.assertEqual(hook["command"], expected)
+        executable, argument = hook["command"].rsplit(" ", 1)
+        self.assertEqual(Path(executable).name, "permgate")
+        self.assertEqual(argument, "claude")
 
     def test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb(self) -> None:
         hooks = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())["hooks"]

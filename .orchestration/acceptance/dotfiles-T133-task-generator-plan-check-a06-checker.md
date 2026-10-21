@@ -5,7 +5,7 @@
     "AGMSG-TASK v1 task_id=dotfiles-T133-task-generator-plan-check-a06-checker round=1 reset_of=dotfiles-T133-task-generator-plan-check-a05-checker repo=~/Workspace/dotfiles/.claude/worktrees/worker-g task_file=.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a06-checker.md task_sha256=90ca0ae9563df4b352dfb26c6b6aa60132386e15ce9ff50bcf998a43097a12e6 deadline=none done_signal=AGMSG-RESULT note=a012:reset-a06(D-024-39:measured-cap-440/700-for-the-canonical-path-pipeline-re-plan;your-uncommitted-draft-is-this-round's-content,plus-amendment-1's-identity-aware-matching-and-path-collision-refusal-with-the-two-file-regression;C-80-73ac933-correct;PR-440-continues-from-06ffefbc;add-the-a06-task-copy-and-records,keep-the-a05-copy;commit-locally-and-PONG-the-head-for-transport;pre-send:checker-OK,SECRET_PATTERN-0,home-paths-0)"
   ],
   "format": 1,
-  "head": null,
+  "head": "c439b63c65285ec8180dc3e21394c87ef21115b4",
   "ledger": [
     {
       "class": "excluded-command-trusts-sandbox-context",
@@ -268,7 +268,7 @@
       "id": "audit:21f52c7:501"
     }
   ],
-  "pr": null,
+  "pr": 440,
   "replans": {
     "evidence-integrity": {
       "design": "the worker's validation.md carries a `Base:`/`Candidate:` line pair and a named extra set, and the orchestrator runs `result-evidence-check.sh <task> <head40> <pr>` on every RESULT before reading its report (C-113)",
@@ -307,7 +307,34 @@
       "verification": "a fixture with a long Checks section passes."
     }
   },
-  "searches": [],
+  "searches": [
+    {
+      "class": "evidence-integrity",
+      "records": [
+        "M-20261020-04-result-claims-against-own-counts.md"
+      ]
+    },
+    {
+      "class": "glob-classification",
+      "records": []
+    },
+    {
+      "class": "glob-filter",
+      "records": []
+    },
+    {
+      "class": "input-validation",
+      "records": [
+        "M-20261012-32.md"
+      ]
+    },
+    {
+      "class": "parser-gap",
+      "records": [
+        "M-20261019-04-parser-gap.md"
+      ]
+    }
+  ],
   "task": "dotfiles-T133-task-generator-plan-check-a06-checker"
 }
 ---
@@ -434,4 +461,56 @@ local:21f52c7:4	advisory-p2
 local-finding: 21f52c7:4 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (R08-F1 of dotfiles-T133-inv6-reset-anchors-review-a01: the a06 text omits the a05 predecessor obligation 'text-defect checker / long-Checks prevention' or an explicit owner disposition; the a05->a06 reset anchor is re-reviewed as one item after this row)
 
 - 2026-10-20T15:00Z: reset-anchor review R08-F1 (a012, `dotfiles-T133-inv6-reset-anchors-review-a01`): the a06 text omits the a05 predecessor obligation 'text-defect checker / long-Checks prevention' or an explicit owner disposition. Disposition: owned by dotfiles-T133-task-generator-plan-check-followup-a01 (row `local:21f52c7:4 advisory-p2`); the a05->a06 reset anchor is re-reviewed as one item after this row.
+
+local:c439b63:2	advisory-p2
+local-finding: c439b63:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Preserve grep's failure status when no lines match — scripts/orchestrator/task-consistency-check.py:310-312); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+local:c439b63:3	advisory-p2
+local-finding: c439b63:3 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P2] Relativize case-aliased targets using filesystem identity — scripts/orchestrator/task-consistency-check.py:83-83); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-task-generator-plan-check-followup-a01.md (a792f57b99ca5c605c4188cd23464191dbba26cda750cf2d50ae193375c33b8a)
+
+- 2026-10-21T07:50Z: chain on c439b63c (update-branch of fefa1dcc after boundary 27; PR patch-id 3deeac540b9be86c unchanged since 2cb58482): CI 7 required green; local review `…-local-review-c439b63.md` 1 P1 + 2 P2 (the P2 rows above); the chain stopped at local-advisory (exit 11, plan 020 step 4.2: the PR's one round is over, the P1 goes to the operator). Manual continuation under the interim exemption: sweep 8/8 with `440-extra.tsv` (gaps 0), receipt and record block regenerated for c439b63. The P1 and the two P2 of the round-2 security review `…-security-2cb5848.md.last.md` (never dispositioned until now) are dispositioned below as advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01; D-024-57 records the judgement and its default; the audit and the security review of c439b63c follow through the operator's codex route.
+
+local:c439b63:1	advisory-p2
+local-finding: c439b63:1 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (- [P1] Handle non-UTF-8 files in canonical baseline searches — scripts/orchestrator/task-consistency-check.py:225: `main_texts` decodes every canonical blob strictly, so a C8 traversal that reaches home/.key.txt.age aborts with UnicodeDecodeError; the abort is fail-closed (non-zero exit, no false acceptance), so the orchestrator grades it P2 robustness, not P1); evidence=sed -n 225p scripts/orchestrator/task-consistency-check.py at c439b63c prints `yield main_bytes(root, name).decode()` and the reviewer's read-only reproduction is in the local review file
+security:2cb5848:1	input-validation
+security-finding: 2cb5848:1 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (task-consistency-check.py:476 C12 classifies only the resolved target, so an unnamed applied symlink to a non-applied target passes a wildcard scope without a concrete threat row; the checker is a pre-dispatch consistency check, the runtime boundary is the worker sandbox, and the orchestrator reads every threat table by hand until the owner task lands); evidence=.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-security-2cb5848.md.last.md finding 1
+security:2cb5848:2	input-validation
+security-finding: 2cb5848:2 not-applicable:advisory P2 owned by dotfiles-T133-task-generator-plan-check-followup-a01 (task-consistency-check.py:251 the missing-literal shortcut returns before examining directory symlinks, so a missing file beneath an internal directory alias bypasses the internal-alias rejection; same compensating controls as row 1); evidence=.orchestration/validation/dotfiles-T133-task-generator-plan-check-a06-checker-security-2cb5848.md.last.md finding 2
+
+## Round 2 final head c439b63c: task-level audit 2026-10-21T08:07Z (operator-run `orch-audit.sh`, `…-audit-c439b63.md.last.md`)
+
+**Verdict: incorrect**: one implementation P1, three implementation P2, five orchestration P2. Per D-024-57 an audit P1 resets the lineage: D-024-58, reset to `dotfiles-T133-task-generator-plan-check-a07-checker` by another context, no third round; a012 holds (ACCEPTANCE 2983). The security review of c439b63c is not run (no merge of this head).
+
+audit:c439b63:1	invariants-validation
+audit:c439b63:2	probe-status
+audit:c439b63:3	scope-rows
+audit:c439b63:4	instruction-shim-classification
+audit:c439b63:5	sweep-disposition-wording
+audit:c439b63:6	counters-evidence
+audit:c439b63:7	cap-measurement
+audit:c439b63:8	design-conflict
+audit:c439b63:9	checks-omission
+
+Row 1 (P1): task-consistency-check.py:496, C15 accepts arbitrary `invariants` when `design_review.design` is omitted, bypassing canonical assignment and byte-equality validation (a07 item). Row 2: :312 the `grep -c` probe always returns status 0 (same defect as local:c439b63:2; a07). Row 3: :348 C4 accepts one `scripts/orchestrator/` row for both `scripts/` and `scripts/orchestrator/` scopes (same class as local:21f52c7:3; a07). Row 4: :476 C12 does not classify `CLAUDE.md` as applied instructions (same class as local:21f52c7:2; a07). Row 5 (orchestration): the GitGuardian issue comment of #440 was dispositioned by the generic issue-comment template; the next sweep carries a specific row (the fixture digest and a commit id are refutable), as 442-extra.tsv already does for #442. Row 6 (orchestration): the revise at line 416 lacked a counters snapshot; snapshot taken 2026-10-21T08:07Z (C-126): a05-checker TASKs=3 revises=2 questions=2 blocked-PONGs=10 (S2, silenced by the a05 design-reset record); a06-checker TASKs=2 (the cap amendment resend) revises=1 RESULTs=2 questions=0 blocked-PONGs=6. Row 7 (orchestration): the auditor's 517/1505 was measured from a base other than the merge-base; the C-123 measurement is `git diff --numstat e00de4e0 c439b63c` = 446 outside tests/ (task-consistency-check.py 419+27) and 709 under tests/ (35+22, 652+0), within 450/720; not-applicable, evidence pasted here. Row 8 (orchestration, real): the R1 revise directed an unset-cache fallback (checker line 138) while frozen design 5.14 item 9 requires refusal when UV_CACHE_DIR is absent; a07 restores the refusal and the record names this conflict as the orchestrator's error. Row 9 (orchestration, real): the dispatched Checks block omitted the prerequisite API observations the text's line 107 requires; a07's Checks are complete before its anchor review.
+
+audit-finding: c439b63:7 not-applicable:measured from the merge-base per C-123, 446/709 within 450/720; evidence=git diff --numstat e00de4e0e4158de19e2c8921e572461e7e9e4ca0 c439b63c65285ec8180dc3e21394c87ef21115b4
+
+## a07 authoring (author-loop, 2026-10-21T08:43Z)
+
+- Round 1 (`…-text-security-922292d.md`) and round 2 (`…-text-security-0edbd8c.md`): both `Verdict: incorrect`; the loop stopped at its two-round limit (exit 7, S-R5). Recurring P1: the checker's canonical-main reads trust a PATH-selected `gh`; withholding authenticity claims does not mitigate executable substitution; authoritative use needs the trusted-executable prerequisite (design 5.14 items 2-4, the binding task) or must stay non-authoritative until it lands. Round 2 P2: restoring the mandatory UV_CACHE_DIR refusal (fix 7) breaks callers that omit the variable, regime-ci among them, and the text named no caller prerequisite. Both rounds: the empty Checks block (pasted after the authoring, before the anchor review, as every text of this regime).
+
+text-security:922292d:1	executable-provenance
+text-security:0edbd8c:1	executable-provenance
+text-security:0edbd8c:2	cap-measurement-base
+text-security:922292d:2	design-conflict
+
+re-plan: executable-provenance (rows local:21f52c7:1 (the gh api token sequencing of the round-2 head), text-security:922292d:1, text-security:0edbd8c:1; three rounds in which the checker's canonical reads through a PATH-selected gh were taken as authoritative) — specification: the checker's canonical-main reads are pre-dispatch hygiene, not acceptance-time truth, until a trusted-executable binding resolves gh by absolute pinned path; the orchestrator's own sandboxed gh reads remain the acceptance evidence; design: the binding of gh (and uv, python) is owned by dotfiles-T133-trusted-entrypoint-binding-a01 (design 5.14 items 2-4, 9); the a07 threat row names that owner and the non-authoritative status instead of a withheld claim; implementation: the a07 text edit of 2026-10-21T08:43Z (orchestrator), no checker code change for this class in a07; verification: C-80 round 3 of the a07 bytes under this line (C-92: at most three reviews per re-plan line), then the anchor review.
+
+Decision 2026-10-21T08:43Z (recommended default under the 15:1x JST standing instruction): fix 7 (UV_CACHE_DIR refusal) leaves a07; the a06 fallback stays as a recorded design exception owned by dotfiles-T133-regime-ci-followup-a02, which restores the refusal together with the caller change (regime-ci passes UV_CACHE_DIR), so audit:c439b63:8 is owned there rather than fixed in a07; the a07 scope is the P1 and the implementation P2 rows only.
+- 2026-10-21T08:45Z: a07 text edited by the orchestrator after the two authoring rounds (gh-provenance rows re-owned by dotfiles-T133-trusted-entrypoint-binding-a01 with non-authoritative status; fix 7 removed, the UV_CACHE_DIR fallback owned by dotfiles-T133-regime-ci-followup-a02 as a recorded design exception; the measurement base bound to the canonical main SHA read by the orchestrator's own gh; Checks pasted with the observed #435 state, canonical main e00de4e0, decoded design digest a027b021…, stage exits). pre-send OK; final bytes fd8c00346567ba92d15cbb746e381753033cc2e13f99945016f0f0a0caf1cac0 (140 lines); C-80 round 3 under `re-plan: executable-provenance` is the next operator line, then the anchor review.
+- 2026-10-21T09:26Z: C-80 round 3 of the a07 bytes fd8c0034 (`…-text-security-fd8c003.md`): Verdict incorrect. P1 (row 36): moving authority to the orchestrator's bare gh does not authenticate the executable (PATH/mise substitution), and the named binding owner binds uv/Python/Node/permgate, not gh. P2 (line 117): the canonical-main command omits `--hostname github.com`, so an inherited GH_HOST can redirect it. P2 (line 117): authenticating the main SHA does not authenticate the shared local objects `git merge-base`/`git diff --numstat` consume; acceptance needs authenticated changeset bytes or a worker-inaccessible clone.
+
+text-security:fd8c003:1	executable-provenance
+text-security:fd8c003:2	canonical-host-binding
+text-security:fd8c003:3	measurement-object-trust
+- 2026-10-21T09:28Z: D-024-60: gh-binding owner stub created; a07 rows re-owned (gh provenance -> dotfiles-T133-gh-binding-a01), `--hostname github.com` added, measurement in a private HTTPS bare clone (owner a09); pre-send OK, 140 lines, bytes 45b58f323a0eaf62878c2009d6af78351f5c71476386e924082d396574ec4c0d; C-80 round 4 (second under the re-plan line) is the next operator line.
 

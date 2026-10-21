@@ -1,0 +1,19 @@
+{
+  "producer": "worker (Codex seat)",
+  "base": "e042663b2d6efd9205f7d388bf881c01d3880642",
+  "generator_other_AST_unchanged": true,
+  "synthetic_legacy_migration_fixtures_unchanged": true,
+  "supply_chain_AST_change_only_two_held_assignments": [
+    "node",
+    "uv"
+  ],
+  "task_copy_sha256": "70feed416161304c90552bc8f7c169868a5b00e35857947a4855c9710ba92dbc",
+  "predecessor_copy_sha256": "0908b8f4dbd60000f2d6045bdd74c7d570eacf1c31c83753ddce99f33437b273",
+  "config_data_changes_only": [
+    "node",
+    "uv"
+  ],
+  "python_retained": true,
+  "other_config_data_unchanged": true,
+  "all_three_adjacent_reason_comments": true
+}

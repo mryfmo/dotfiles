@@ -3,12 +3,11 @@ format: 2
 task_id: dotfiles-T133-trusted-entrypoint-binding-a01
 kind: code
 security: true
-allowed_files: ["home/dot_agents/agent-config.yaml","home/.chezmoitemplates/claude-settings-managed.json","home/dot_claude*/modify_private_settings.json","scripts/generate-agent-configs.py","scripts/validate-agent-assets.py","Makefile","tests/unit/test_claude_managed_settings.py","tests/unit/test_validate_agent_assets.py","scripts/orchestrator/trusted-launch.sh",".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**"]
-after: [dotfiles-T133-worker-write-boundary-a02, dotfiles-T133-ci-efficiency-followup-a04]
+allowed_files: ["home/dot_agents/agent-config.yaml","home/.chezmoitemplates/claude-settings-managed.json","home/dot_claude*/modify_private_settings.json","scripts/generate-agent-configs.py","scripts/validate-agent-assets.py","Makefile","tests/unit/test_claude_managed_settings.py","tests/unit/test_validate_agent_assets.py","tests/unit/test_generate_agent_configs.py","scripts/orchestrator/trusted-launch.sh",".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**"]
+after: [dotfiles-T133-worker-write-boundary-slice2-a01, dotfiles-T133-ci-efficiency-followup-a04]
 rendered_forms: [claude-settings-managed.json, permgate claude]
 out_of_scope:
   - {"path":"home/dot_mise/config.toml","reason":"dotfiles-T133-trusted-entrypoint-pins-a01 pins the real declaration before this task is sent; it is read-only here."}
-  - {"path":"tests/unit/test_generate_agent_configs.py","reason":"dotfiles-T133-trusted-entrypoint-pins-a01 removes the installed-template legacy literal pin without relaxing synthetic legacy migration cases."}
   - {"path":"tests/unit/test_claude_settings_merge.py","reason":"Existing legacy/custom/idempotence cases remain valid through the modify script's native expansion; run this real module unchanged."}
   - {"path":"tests/unit/test_statusline_tools.py","reason":"Its native renderer must continue to parse the template without deployment installations; run unchanged."}
   - {"path":"tests/unit/test_herdr_agents.py","reason":"The synthetic SessionStart-only template is unaffected; retain its tests."}
@@ -28,6 +27,7 @@ threat_table:
   - {"control":"scripts/orchestrator/trusted-launch.sh","disposition":"residual: Before any declared binary executes, validate the absolute parent-selected manifest and optional fixture root, parse declarations as data, require canonical regular executable paths and compare exact versions; fixture and production inputs use these same checks, while concurrent same-UID replacement remains possible."}
   - {"control":"tests/unit/test_claude_managed_settings.py","disposition":"residual: Exercise exact exec-form rendering, migration, a real fixture-manifest uv/Python/permgate execution and the separate pinned-installation case; fixture execution proves the shared launcher path, not production installation or administrative protection."}
   - {"control":"tests/unit/test_validate_agent_assets.py","disposition":"residual: Exercise manifest containment, shim, symlink, worker-root and version refusals, quote-preserving comparisons and the clean online seed; recording fake uv cases prove argv and refusal behavior only."}
+  - {"control":"tests/unit/test_generate_agent_configs.py","disposition":"closed: tests/unit/test_generate_agent_configs.py::GenerateAgentConfigsTest::test_managed_hooks_use_installed_permgate_paths asserts the executable leaf and the permission-request operand from args; the pins refactor rsplit form raises ValueError on the env+args command (pins audit:28dde0f:1)"}
   - {"control":".orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/**","disposition":"residual: Only task copies, reports, manifest test data and review or validation evidence are authorized; no executable helper or alternative hook may hide under this wildcard."}
   - {"control":"task copy .orchestration/dotfiles-T133-trusted-entrypoint-binding-a01/task.md","disposition":"residual: Compare the complete dispatched file byte-for-byte and verify its SHA-256; preserve predecessor copies and the three-review history."}
   - {"control":"task metadata","disposition":"residual: Verify identity, both after dependencies, the pin prerequisite and exactly ten allowed_files entries before dispatch and acceptance; the modify-script glob has only its two named consumers."}
@@ -416,3 +416,7 @@ Completion: create tools/trusted-entrypoint-pins-a01 and one PR; write task.md, 
 Not checked: implementation, runtime tests, CI or deployment.
 Risk: the primary binding work and same-UID/shared-credential residuals remain.
 ```
+
+## Orchestrator note (2026-10-21T08:31Z): the pins test moves with the command form
+
+The pins PR (#449, head 28dde0f5) refactored `test_managed_hooks_use_installed_permgate_paths` to split the rendered PermissionRequest command with `rsplit(" ", 1)` and assert the permgate executable leaf and the `claude` argument; that assertion encodes the pre-binding shell form and raises ValueError on this task's `command: "/usr/bin/env"` plus `args` form (audit:28dde0f:1 of the pins lineage). `tests/unit/test_generate_agent_configs.py` is therefore in this task's allowed_files: the worker updates that test together with the command form, asserting the executable leaf and the `permission-request` operand from `args` instead of a split string, and keeps the exact-pins test green. Its former out_of_scope row read: "dotfiles-T133-trusted-entrypoint-pins-a01 removes the installed-template legacy literal pin without relaxing synthetic legacy migration cases"; that constraint still holds (the synthetic legacy migration cases stay unrelaxed), only the ownership of the file moved here.

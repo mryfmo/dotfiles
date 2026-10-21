@@ -1,0 +1,44 @@
+{
+  "producer": "worker (Codex seat)",
+  "old_base": "ac816ebdbcd076ccc060c5932c46393ff46af9f7",
+  "new_base": "e042663b2d6efd9205f7d388bf881c01d3880642",
+  "branch": "tools/trusted-entrypoint-pins-a01",
+  "authorization": 2952,
+  "operations": [
+    {
+      "argv": [
+        "git",
+        "stash",
+        "push",
+        "--message",
+        "a012-pins-resume-2952-pre448-preparation",
+        "--",
+        "home/dot_mise/config.toml",
+        "tests/unit/test_generate_agent_configs.py"
+      ],
+      "actual_exit": 0
+    },
+    {
+      "argv": [
+        "git",
+        "rebase",
+        "e042663b2d6efd9205f7d388bf881c01d3880642"
+      ],
+      "actual_exit": 0,
+      "stdout": "Successfully rebased and updated refs/heads/tools/trusted-entrypoint-pins-a01."
+    },
+    {
+      "argv": [
+        "git",
+        "stash",
+        "apply",
+        "a4027f548d97ee14c06bd318cfb0eeb28b011612"
+      ],
+      "actual_exit": 0,
+      "conflicts": false
+    }
+  ],
+  "stash_preserved": "a4027f548d97ee14c06bd318cfb0eeb28b011612",
+  "scope": "only two tracked files stashed/applied; foreign untracked files untouched",
+  "pins_red_history": "red-pin.log is pre-hold ac816 assertion failure; base configuration unchanged at e042; exact new pin method unchanged after rebase"
+}

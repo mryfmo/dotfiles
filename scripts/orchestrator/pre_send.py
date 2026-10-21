@@ -19,7 +19,8 @@ import yaml
 
 FAILED = "preflight: helper failed (exit 1)"
 OPENER = re.compile(r"( {0,3})(`{3,}(?!.*`)|~{3,})(.*)")
-ROW = re.compile(r"[^\t ]+\t[^\t ]|- [^ ]")  # an id-tab-class row or a bullet
+ITEM = re.compile(r" {0,3}## Item \d+(?:[ \t]|$)")  # `## Item <n>` only, never `## Itemized`
+ROW = re.compile(r"[^\t ]+\t[^\t ]|-[ \t]+\S")  # an id-tab-class row or a bullet
 
 
 def normalize(raw):
@@ -81,6 +82,10 @@ class Task:
             self._tree = ast.parse(source)
         return self._tree
 
+    def front_check(self):  # no opening `---`, a BOM or a non-mapping is refused, never read as an empty mapping
+        if not isinstance(self.front, dict) and not self.marks:
+            self.refuse("front-matter")
+
     def consistency(self):  # the checker reads a byte-identical snapshot with the same file name; exit status only
         with tempfile.TemporaryDirectory(dir=os.environ["TMPDIR"]) as snap:
             copy = pathlib.Path(snap, self.name)
@@ -140,25 +145,28 @@ class Task:
         me = str(self.front.get("task_id") or "") if isinstance(self.front, dict) else ""
         head = f"## Owned by {me}"
         ref = self.text.find(head)
-        if not me or ref < 0:
+        if ref < 0:
             return
+        if not me:  # without a task_id the section cannot be named: refused, never skipped
+            return self.refuse("owner-section", [self.line_of(ref)])
         named = re.search(r"\.orchestration/acceptance/[A-Za-z0-9._-]+\.md", self.text)
         try:
             record = normalize(pathlib.Path(self.root, named[0]).read_bytes()).split("\n") if named else []
         except OSError:
             record = []
-        fenced, found, rows, inside = scan(record)[0], False, 0, False
+        fenced, found, rows, inside, prev, last = scan(record)[0], False, 0, False, "", False
         for n, line in enumerate(record, 1):
-            if n in fenced:
+            if n in fenced or line == head or line.startswith(head + " "):
+                found, inside = (found, inside) if n in fenced else (True, True)
+                prev, last = "", False
                 continue
-            if line == head or line.startswith(head + " "):
-                found = inside = True
-                continue
-            inside = inside and not re.match(r" {0,3}##(?:[ \t]|$)", line)
-            rows += inside and bool(ROW.match(line))
-        items = sum(
-            1 for n, line in enumerate(self.lines, 1) if n not in self.fenced and re.match(r" {0,3}## Item", line)
-        )
+            setext = bool(prev.strip()) and bool(re.fullmatch(r" {0,3}-+[ \t]*", line))  # `Title` over `---`
+            rows -= setext and last and not prev.lstrip().startswith("-")  # the title was no row
+            inside = inside and not setext and not re.match(r" {0,3}##(?:[ \t]|$)", line)
+            last = inside and bool(ROW.match(line))
+            rows += last
+            prev = line
+        items = sum(1 for n, line in enumerate(self.lines, 1) if n not in self.fenced and ITEM.match(line))
         if not found or not rows and items <= 1:
             self.refuse("owner-section", [self.line_of(ref)])
 
@@ -175,7 +183,15 @@ def main(args):
         return 1
     try:
         task = Task(root, pathlib.Path(name).name, raw)
-        for check in (task.consistency, task.secrets, task.homes, task.self_cap, task.shell_syntax, task.owner):
+        for check in (
+            task.front_check,
+            task.consistency,
+            task.secrets,
+            task.homes,
+            task.self_cap,
+            task.shell_syntax,
+            task.owner,
+        ):
             try:
                 check()
             except OSError:

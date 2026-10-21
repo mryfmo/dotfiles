@@ -355,12 +355,16 @@ class PreSendTest(unittest.TestCase):
                 self.refused(result, "owner-section")
 
     def test_setext_heading_ends_the_owner_section(self):  # audit:a30a43b:2
-        path = self.owner_task(record=f"## Owned by {TID}\n\nNext\n---\n- another section's row\n")
-        self.refused(self.run_send(path), "owner-section", "14")
+        for title in ("Next", "T1\tcode\nT2\tdoc"):  # a multi-line title holds no rows either
+            with self.subTest(title=title):
+                path = self.owner_task(record=f"## Owned by {TID}\n\n{title}\n---\n- another section's row\n")
+                self.refused(self.run_send(path), "owner-section", "14")
+        self.passed(self.owner_task(record=f"## Owned by {TID}\n- \n---\n- real\n"))  # a thematic break, no title
 
     def test_itemized_heading_is_not_an_item(self):  # audit:a30a43b:3
         path = self.owner_task(record=f"## Owned by {TID}\n\n## Next\n", extra="\n## Itemized background\n")
         self.refused(self.run_send(path), "owner-section", "14")
+        self.passed(self.owner_task(record=f"## Owned by {TID}\n", extra="\n## Item 1: titled\n"))  # two Items
 
     def test_whitespace_bullet_is_not_work(self):  # audit:a30a43b:4
         self.refused(self.run_send(self.owner_task(record=f"## Owned by {TID}\n- \t\n")), "owner-section", "14")

@@ -12,8 +12,22 @@
   ],
   "format": 1,
   "head": null,
-  "ledger": [],
+  "ledger": [
+    {
+      "class": "range-scan-incomplete",
+      "id": "4305945403"
+    },
+    {
+      "class": "fail-open-on-error",
+      "id": "4305945407"
+    },
+    {
+      "class": "index-worktree-divergence",
+      "id": "4305945406"
+    }
+  ],
   "pr": null,
+  "replans": {},
   "searches": [],
   "task": "dotfiles-T133-result-precheck-a01"
 }

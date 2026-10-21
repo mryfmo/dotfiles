@@ -21,7 +21,7 @@
 | P1-m | precheck の強制 | `PRECHECK_REQUIRED=1` に切り替え済み（4 席すべてが P1-5 を含む main 由来のブランチであることを `git merge-base --is-ancestor` で確認した記録付き）、progress.tsv に時刻 |
 | P1-n | `make update` 後の再着席 | `herdr agent list` で 4 席の起動引数が新 launcher（P1-7 の `herdr-agents`）、`.githooks` が各 worktree の `core.hooksPath` |
 | P1-o | 記録 | boundary 23 の記録 PR がマージ済み、decisions.tsv に D-024-01〜D-024-12 の 12 行（既定値採用は result=default）、CompactionDB に同じ決定が `memory add --kind decision --scope project` で統合済み |
-| P1-p | 境界規則 | `make check-regime-boundary` rc 0 |
+| P1-p | 境界規則 | `make check-regime-boundary` rc 0。計測は第 1 段階の退出境界で席を外して行い、対象は plan 024 で開いた系統（最初の TASK が 2026-10-18 以降）。それ以前の系統の INV-6 行は V3a の waiver 機構で扱う（D-024-48、2026-10-20） |
 
 ## 1. 完了の定義（機械的に確かめる。順に）
 

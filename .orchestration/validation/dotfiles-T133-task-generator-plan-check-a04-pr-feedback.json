@@ -1,0 +1,206 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 417,
+  "head_sha": "7a201eab2e77596c9a7bc421162b2f3fde25f6f7",
+  "base_ref": "main",
+  "base_sha": "ba318e5369b14a79d6f515e87b685c9bcb30c12e",
+  "generated_at": "2026-10-20T00:45:35+00:00",
+  "checks": [
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488235/job/118383500547"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500520"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500435"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488235/job/118383500413"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500383"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500351"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488235/job/118383500226"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488094/job/118383499087"
+    },
+    {
+      "name": "regime",
+      "conclusion": "failure",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347485659/job/118383493737"
+    },
+    {
+      "name": "GitGuardian Security Checks",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/runs/118383487248"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "To use Codex here, [create a Codex account and connect to github](https://chatgpt.com/codex/cloud/settings/connectors).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249489509",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249489509\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary><strong>⚙️ Run configuration</strong></summary>\n> <dl>\n> <dd>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `683fa306-005f-45fa-8d65-438613efda07`\n> \n> </dd>\n> </dl>\n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autofix</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=417)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary><strong>❤️ Share</strong></summary>\n<dl>\n<dd>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</dd>\n</dl>\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249489670",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249489670\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"35c660222ffd7af143842d310ae8cf3b15db61c5\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"35c660222ffd7af143842d310ae8cf3b15db61c5\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"35c660222ffd7af143842d310ae8cf3b15db61c5\",\"mergeGateEnabled\":false,\"pullRequestNumber\":417,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-18T12:11:07.372036Z\">2026-10-18T12:11:07.372036Z</relative-time> | `35c6602` | Draft marked ready |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-18T12:12:39.986998Z\">2026-10-18T12:12:39.986998Z</relative-time> | `35c6602` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249725018",
+      "disposition": "not-applicable:bot summary or onboarding comment, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/417#issuecomment-6249725018\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `35c660222f`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#pullrequestreview-5562936729",
+      "commit": "35c660222ffd7af143842d310ae8cf3b15db61c5",
+      "disposition": "not-applicable:review object; its findings are the inline threads, each dispositioned on its own; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/pull/417#pullrequestreview-5562936729\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/task-consistency-check.py",
+      "line": 70,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Sandbox premise commands before executing them**\n\nWhen the consistency checker runs at acceptance on a PR-controlled task file, any premise reaches `bash -c` here with the review user's permissions. Restricting `PATH` does not prevent shell builtins, absolute executables, redirects, or destructive repository writes, so the checker described as read-only can execute arbitrary code before deciding whether the task is valid; the threat table's claim that the checker stays read-only therefore does not mitigate this boundary. Run premises in a genuinely read-only sandbox or require them to come from a trusted revision.\n\nAGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/35c660222ffd7af143842d310ae8cf3b15db61c5/AGENTS.md#L75-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#discussion_r4306960622",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:fa711343e2c9e7f2176f1e9167244946332dfde4"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/task-from-plan.py",
+      "line": 127,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bundle the required task template**\n\nIn the reviewed commit tree, a repo-wide tree search finds no `.orchestration/tasks/dotfiles-T133-result-precheck-a01.md`, but every generator invocation unconditionally reads that path here. Consequently a clean checkout raises `FileNotFoundError` before writing a task; the closed test masks this because its fixture creates the missing template itself. Include a stable template in the repository or generate these rows without depending on an untracked task file.\n\nAGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/35c660222ffd7af143842d310ae8cf3b15db61c5/AGENTS.md#L75-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#discussion_r4306960626",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:d3f9c23d0e109e554cdaa328024bfcf7f48e1c6c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/orchestrator/plan-check.py",
+      "line": 88,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Resolve globs before checking wave overlaps**\n\nWhen one same-wave task allows `scripts/*.py` and another allows `scripts/foo.py`, this normalization leaves the first value as the literal string `scripts/*.py`; the later equality/prefix comparison therefore reports no F2 violation even though both tasks can edit `scripts/foo.py`. Expand tracked matches or perform real glob-overlap checks before comparing scopes; the current closed test covers only two identical concrete paths.\n\nAGENTS.md reference: [AGENTS.md:L75-L78](https://github.com/mryfmo/dotfiles/blob/35c660222ffd7af143842d310ae8cf3b15db61c5/AGENTS.md#L75-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/417#discussion_r4306960630",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:d3f9c23d0e109e554cdaa328024bfcf7f48e1c6c"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500435",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39347488162/job/118383500435\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347488235/job/118383500226",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:runner capacity notice, no finding; evidence=jq --argjson u '\"https://github.com/mryfmo/dotfiles/actions/runs/39347488235/job/118383500226\"' '.items[] | select(.url == $u)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    },
+    {
+      "source": "check_run",
+      "author": "github-actions",
+      "bot": true,
+      "level": "failure",
+      "path": null,
+      "line": null,
+      "body": "regime:",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347485659/job/118383493737",
+      "check": "regime",
+      "disposition": "not-applicable:the non-required regime job fails on allowed-files only: the continued PR #417 (resets a01 -> a02 -> a03 -> a04 on one branch) still carries the predecessors' evidence directories (.orchestration/dotfiles-T133-task-generator-plan-check-a01/**, a02/**: learning.md, report.md, revise.yaml, sandbox.md, validation.md) which the a04 text's allowed_files do not name and the regime rule has no notion of a reset lineage; the a04 copy itself matches the dispatched text; owned forward: the regime-ci owner (followup-a02: a reset PR's predecessor directories are allowed when the text names reset_of) and the P1-12 owner (followup-a01: a reset text lists the retained predecessor directories); evidence=gh run view 39347485659 --repo mryfmo/dotfiles --log-failed | /usr/bin/grep -F 'regime-ci: dotfiles-T133-task-generator-plan-check-a04:'"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "failure",
+      "path": ".github",
+      "line": 25,
+      "body": "Process completed with exit code 1.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/39347485659/job/118383493737",
+      "check": "regime",
+      "disposition": "not-applicable:the exit-code annotation of the same regime run; the cause and the owners are in item#9; evidence=gh run view 39347485659 --repo mryfmo/dotfiles --log-failed | /usr/bin/grep -F 'regime-ci: dotfiles-T133-task-generator-plan-check-a04:'"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CI status, no finding; evidence=jq --argjson s '\"status\"' --argjson c '\"CodeRabbit\"' '.items[] | select(.source == $s and .check == $c)' ~/Workspace/dotfiles/.orchestration/validation/dotfiles-T133-task-generator-plan-check-a04-pr-feedback.json"
+    }
+  ]
+}

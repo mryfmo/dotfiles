@@ -138,3 +138,81 @@ under tests/: 45 of 60
 [exit 0]
 ```
 
+
+## R2. Revise round 2 (ACCEPTANCE status=revise of 2026-10-21T01:30:11Z, previous_head a8c03fae, the security review of a8c03fae)
+
+The test values are shown masked as `<SECRET>` (the fixture GH_TOKEN value) and `<LITERAL>` (a `ghp_`-shaped fixture literal); both are synthetic.
+
+### R2.1 Red at a8c03fae: the new test
+```console
+$ /usr/bin/env -i PATH="$UV_DIR:/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" HTTPS_PROXY="${HTTPS_PROXY-}" HTTP_PROXY="${HTTP_PROXY-}" NO_PROXY="${NO_PROXY-}" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_regime_ci.py RegimeCiTest.test_regime_ci_redacts_tokens_in_checker_diagnostics
+FAIL: test_regime_ci_redacts_tokens_in_checker_diagnostics (__main__.RegimeCiTest.test_regime_ci_redacts_tokens_in_checker_diagnostics) (rc=3)
+AssertionError: 'C9 leak [redacted] [redacted]' not found in 'regime-ci: t1-a01: checker: no verdict (exit 3): C9 leak <SECRET> <LITERAL>\n<SECRET>\n'
+FAIL: test_regime_ci_redacts_tokens_in_checker_diagnostics (__main__.RegimeCiTest.test_regime_ci_redacts_tokens_in_checker_diagnostics) (rc=1)
+AssertionError: 'C9 leak [redacted] [redacted]' not found in 'regime-ci: t1-a01: checker: C9 leak <SECRET> <LITERAL>\n'
+Ran 1 test in 3.518s
+FAILED (failures=2)
+[exit 1]
+```
+
+### R2.2 The fix
+```console
+$ git diff a8c03fae -- scripts/orchestrator/regime-ci.py
+diff --git a/scripts/orchestrator/regime-ci.py b/scripts/orchestrator/regime-ci.py
+index 098d557a..e530e79f 100644
+--- a/scripts/orchestrator/regime-ci.py
++++ b/scripts/orchestrator/regime-ci.py
+@@ -33,6 +33,7 @@ CHECKER = "scripts/orchestrator/task-consistency-check.py"
+ # --no-config: a uv.toml or pyproject.toml the pull request adds cannot steer this run
+ CHECKER_RUN = ["uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
+ RUNS = (CHECKER, "scripts/orchestrator/regime-ci.py", ".github/workflows/regime.yml")
++TOKEN_LIKE = re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}")
+ 
+ 
+ class GitError(Exception):
+@@ -148,6 +149,13 @@ def policy(root, base, head, t):
+     return data, front(data), dispatched is not None
+ 
+ 
++def redact(text):
++    """Mask the GH_TOKEN/GITHUB_TOKEN values and token-like literals in checker output (security review of a8c03fae)."""
++    for value in filter(None, map(os.environ.get, ("GH_TOKEN", "GITHUB_TOKEN"))):
++        text = text.replace(value, "[redacted]")
++    return TOKEN_LIKE.sub("[redacted]", text)
++
++
+ def checker(root, data):
+     """Return the base checker's violations on the base's dispatched bytes: it hands the text's literals to git (C8 to
+     C10) and opens its design path (C6), so a pull request's own text never reaches it (worker review P0 of bcbd6949)."""
+@@ -158,8 +166,8 @@ def checker(root, data):
+     out = run.stdout.splitlines()  # the file is task.md, so C1 compares task_id with `task`; task-id checks <t>
+     # only the checker's own verdict line with its exit code counts; a crash also exits 1, with no verdict line
+     if (out[:1], run.returncode) not in ((["task.md: OK"], 0), (["task.md: FAIL"], 1)):
+-        return [("checker", f"no verdict (exit {run.returncode}): {(run.stdout + run.stderr).strip()[-300:]}")]
+-    lines = [ln.strip() for ln in out[1:] if ln.strip()]
++        return [("checker", f"no verdict (exit {run.returncode}): {redact(run.stdout + run.stderr).strip()[-300:]}")]
++    lines = [redact(ln).strip() for ln in out[1:] if ln.strip()]
+     return [("checker", ln) for ln in lines if not re.fullmatch(r"C1 task_id .* != file task", ln)]
+ 
+ 
+```
+
+### R2.3 Green: the whole module, ruff, caps
+```console
+$ /usr/bin/env -i PATH="$UV_DIR:/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" HTTPS_PROXY="${HTTPS_PROXY-}" HTTP_PROXY="${HTTP_PROXY-}" NO_PROXY="${NO_PROXY-}" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_regime_ci.py
+Ran 20 tests in 57.036s
+
+OK
+[exit 0]
+$ ruff check --config ruff.toml scripts/orchestrator/regime-ci.py tests/unit/test_regime_ci.py; ruff format --config ruff.toml --check scripts/orchestrator/regime-ci.py tests/unit/test_regime_ci.py
+All checks passed!
+2 files already formatted
+[exit 0]
+$ git diff --numstat f7f38067… -- .github scripts tests (summed)
+3	0	.github/workflows/regime.yml
+10	2	scripts/orchestrator/regime-ci.py
+57	1	tests/unit/test_regime_ci.py
+outside tests/ and .orchestration/: 15 of 25
+under tests/: 58 of 60
+[exit 0]
+```

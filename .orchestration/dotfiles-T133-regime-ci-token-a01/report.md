@@ -73,3 +73,15 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 - **The final head** adds only this directory's records on top of `085142f0`. The RESULT carries its CI.
 - **The push:** the task's `push -u` landed; only its upstream write was refused (sandbox record).
 - **Open items:** none. Any advisory P2 goes to the owner the orchestrator names.
+
+## Revise round 2 (ACCEPTANCE status=revise of 2026-10-21T01:30:11Z, previous_head a8c03fae)
+
+- **The finding:** the security-profile review of `a8c03fae` (`.orchestration/validation/dotfiles-T133-regime-ci-token-a01-security-a8c03fa.md`) raised a P2. The output-secrecy row claimed closed, but `regime-ci.py:161` forwarded the checker's diagnostics unredacted: the no-verdict tail `(run.stdout + run.stderr)[-300:]` and the checker lines. A checker that echoed a token would leak it.
+- **The fix, code only:** `redact(text)` masks the values of `GH_TOKEN` and `GITHUB_TOKEN` from regime-ci's environment, and any token-like literal (`gh[pousr]_[A-Za-z0-9]{20,}`, `github_pat_[A-Za-z0-9_]{20,}`), as `[redacted]`. It applies to both paths: the no-verdict diagnostic, redacted before the 300-character truncation so a split token cannot survive as a fragment, and every forwarded checker line. The verdict detection still reads the raw stdout.
+- **The test:** `test_regime_ci_redacts_tokens_in_checker_diagnostics` uses a fake checker that prints the env token and a token-like literal to stdout and the env token to stderr. In its no-verdict case (exit 3), the diagnostic still reports `no verdict (exit 3)`. In its FAIL case (exit 1), the forwarded line reads `C9 leak [redacted] [redacted]`. Neither value appears in stdout or stderr.
+  - It is red at `a8c03fae`, both subtests, with the values in the output (validation R2.1), and green after.
+  - `test_regime_ci_keeps_tokens_out_of_argv_and_output` stays green.
+- **The run:** the module gives `Ran 20 tests`, `OK`, and ruff is clean (R2.3).
+- **Caps from `f7f38067`:** 15 of 25 outside `tests/` and `.orchestration/`, and 58 of 60 under `tests/`.
+- **Unchanged:** the task copy stays at `d4798ebf…` (no amendment). The P3 on the "public repository contents" wording in task.md is advisory and owned by `dotfiles-T133-regime-ci-token-followup-a01`.
+

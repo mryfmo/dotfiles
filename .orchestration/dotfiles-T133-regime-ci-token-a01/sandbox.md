@@ -17,6 +17,9 @@ permission_gated_commands: none
 3. **The push's upstream setting:** the task's `push -u` landed (`git ls-remote` shows `085142f0`). Its upstream write was refused (`hint: … git branch --set-upstream-to=…`, the sandbox's read-only shared configuration). It was not retried; later pushes name the branch.
 4. **`timeout`:** `timeout 560 gh pr checks … --watch` failed with `zsh: command not found: timeout`, because macOS has no `timeout`. The watch then ran directly under the tool's time limit and exited 0.
 
+5. **Revise round 2, mise's deferred prune:** the shell's mise activation tried `mise uninstall github:ogulcancelik/herdr@0.9.3` and was refused (`failed to remove …/installs/github-ogulcancelik-herdr/0.9.3: Operation not permitted`). That was mise's own hook, not a command of this task. It changed nothing, and its lines are left out of the pasted test output.
+6. **Revise round 2, the untracked reviews:** three untracked `review.md` files from the earlier review tasks blocked the fast-forward to `a8c03fae`. They were byte-identical to the tracked copies the branch now carries (`cmp` of each against `git show FETCH_HEAD:<path>`). They were backed up under `$TMPDIR` and removed with `git clean -f -- <the three paths>`, and the fast-forward went through.
+
 | # | Command | Where |
 |--:|---|---|
 | 1 | `git switch`, `git add`, `git -c commit.gpgsign=false commit` | inside |

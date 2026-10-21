@@ -1,0 +1,7 @@
+[P2] High confidence .orchestration/tasks/dotfiles-T133-python-pin-a01.md:129 — The clean environment still loads gh’s persistent configuration: `hosts.github.com.api_host` can redirect requests and credentials despite `--hostname github.com`, while line 133’s unqualified `--repo` can select another configured host; row 62’s authenticated-evidence mitigation therefore needs configuration isolation or validation, not just executable and argument binding. [GitHub CLI implementation](https://github.com/cli/cli/blob/v2.102.0/pkg/cmd/api/api.go), [credential handling](https://github.com/cli/cli/blob/v2.102.0/api/http_client.go).
+
+All required threat-row units are present. The closed tests cover declaration syntax and policy consistency. Codex-only execution excludes the Linux unsandboxed-gh exception; executable provenance, symlink/case-alias protection and unrestricted same-user replacement remain explicitly residual. Independent review confirmed the finding.
+
+📝 まとめ: Completed the read-only task-text and cited-record review; one finding awaits orchestrator disposition. No files changed.
+Not checked: implementation, CI, deployment or fresh host prerequisites; persistent gh configuration can invalidate evidence authenticity.
+Verdict: incorrect

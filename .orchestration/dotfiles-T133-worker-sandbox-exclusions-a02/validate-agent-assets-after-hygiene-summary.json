@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "raw_sha256": "612520223dc3b6555f612d9b6e473d679aa8d406363bbe946809b8789c65177c",
+  "raw_bytes": 6883240,
+  "lines": 27955,
+  "warning_lines": 27953,
+  "final_line": "agent asset validation ok",
+  "redacted_sha256": "e30fbbc8ccb82d9cabb5263a7d2e14046bd4f48f051882f0c02c43eeb9a1ec2b"
+}

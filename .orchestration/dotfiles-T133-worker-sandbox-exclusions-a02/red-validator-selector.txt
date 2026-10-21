@@ -1,0 +1,68 @@
+FFFFFFF
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='darwin', patch={'excludedCommands': ['agmsg-dispatch *']})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='darwin', patch={'excludedCommands': ['git push *']})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='darwin', patch={'excludedCommands': ['herdr-agents *']})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='darwin', patch={'excludedCommands': ['actas-claim.sh *']})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='darwin', patch={'excludedCommands': ['arbitrary *']})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='linux', patch={})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: True != False
+
+======================================================================
+FAIL: test_sandbox_validator_requires_empty_exclusions (__main__.GenerateAgentConfigsTest.test_sandbox_validator_requires_empty_exclusions) (os='linux', patch={'excludedCommands': []})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_generate_agent_configs.py", line 826, in test_sandbox_validator_requires_empty_exclusions
+    self.assertEqual(expected, accepted)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: True != False
+
+----------------------------------------------------------------------
+Ran 1 test in 0.047s
+
+FAILED (failures=7)

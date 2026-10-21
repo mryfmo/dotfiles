@@ -25,8 +25,9 @@ LINKS += tuple(r for r in ("scripts/orchestrator/pre_send.py",) if (ROOT / r).ex
 LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
 TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
+LABELS = "consistency|secret-pattern|literal-home|self-cap|bash-syntax|owner-section|input|tempfile|interpreter|startup"
 GRAMMAR = re.compile(
-    r"[a-z-]+: refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)"
+    "(?:" + LABELS + r"): refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)"
 )
 
 
@@ -200,7 +201,9 @@ class PreSendTest(unittest.TestCase):
             checker.stderr,
         ]  # task lines, secret, checker text
         streams = "\n".join(result.stdout.splitlines()[:-1]) + result.stderr  # the digest line is no task text
-        streams = re.sub(r"[a-z-]+: refused|preflight: helper failed \(exit 1\)", "", streams)  # fixed labels only
+        streams = re.sub(
+            rf"(?:{LABELS}): refused|preflight: helper failed \(exit 1\)", "", streams
+        )  # fixed labels only
         self.assertFalse({s[i : i + 8] for s in sources for i in range(len(s) - 7) if s[i : i + 8] in streams})
 
     def test_checker_option_terminator(self):  # audit:7888241:1: a file named --help is a task, not checker help
@@ -312,7 +315,7 @@ class PreSendTest(unittest.TestCase):
     def test_entrypoint_fixed_environment(self):  # audit:1d72f16:5: a minimal and a decoy PATH both find pinned uv
         decoy, marker = self.tmp / "decoy", self.tmp / "decoy-ran"
         decoy.mkdir()
-        for name in ("uv", "python3", "bash", "env", "mise"):
+        for name in ("uv", "python3", "bash", "env", "mise", "dirname"):
             (decoy / name).write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
             (decoy / name).chmod(0o755)
         for path_value in ("/usr/bin:/bin", f"{decoy}:/usr/bin:/bin"):
@@ -335,7 +338,7 @@ class PreSendTest(unittest.TestCase):
         self.addCleanup(locked.chmod, 0o700)
         result = self.run_send(self.task(f"\n{TOKEN}\n"), env={"TMPDIR": str(locked)})
         self.assertEqual(1, result.returncode, result.stdout)
-        self.assertTrue([x for x in result.stdout.splitlines() if x.endswith(": refused") or "helper failed" in x])
+        self.assertIn("tempfile: refused", result.stdout.splitlines())
         self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
 
 

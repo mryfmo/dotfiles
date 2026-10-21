@@ -180,10 +180,28 @@ class PreSendTest(unittest.TestCase):
 
     def test_output_is_labels_and_numbers_only(self):
         body = f"\n{LEAK}\n{HOMES[0]}\nat or under 3 lines\n\n```bash\nif then\n```\n"
-        result = self.run_send(self.task(body, name="dotfiles-T999-other-a01", front=f"bad: [ {TOKEN}\n"))
+        path = self.task(body, name="dotfiles-T999-other-a01", front=f"bad: [ {TOKEN}\n")
+        result = self.run_send(path)
         self.assertEqual(1, result.returncode)
         for line in result.stdout.splitlines():  # run_send holds both streams to the grammar; no input text at all
             self.assertTrue(GRAMMAR.fullmatch(line) and not any(w in line for w in ("hunt", "alice", TOKEN[:8], "if")))
+        uv = [shutil.which("uv"), "run", "--no-config", "--no-project", "--offline", "--with", "pyyaml", "python", "-I"]
+        checker = subprocess.run(
+            [*uv, str(ROOT / LINKS[1]), "--root", str(self.root), "--", str(path)],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+        )
+        sources = [
+            *path.read_text().split("\n"),
+            LEAK,
+            checker.stdout,
+            checker.stderr,
+        ]  # task lines, secret, checker text
+        streams = "\n".join(result.stdout.splitlines()[:-1]) + result.stderr  # the digest line is no task text
+        streams = re.sub(r"[a-z-]+: refused|preflight: helper failed \(exit 1\)", "", streams)  # fixed labels only
+        self.assertFalse({s[i : i + 8] for s in sources for i in range(len(s) - 7) if s[i : i + 8] in streams})
 
     def test_checker_option_terminator(self):  # audit:7888241:1: a file named --help is a task, not checker help
         (self.tmp / "--help").write_text("no front matter\n")

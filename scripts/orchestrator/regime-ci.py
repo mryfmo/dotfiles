@@ -33,6 +33,7 @@ CHECKER = "scripts/orchestrator/task-consistency-check.py"
 # --no-config: a uv.toml or pyproject.toml the pull request adds cannot steer this run
 CHECKER_RUN = ["uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
 RUNS = (CHECKER, "scripts/orchestrator/regime-ci.py", ".github/workflows/regime.yml")
+TOKEN_LIKE = re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}")
 
 
 class GitError(Exception):
@@ -148,6 +149,13 @@ def policy(root, base, head, t):
     return data, front(data), dispatched is not None
 
 
+def redact(text):
+    """Mask the GH_TOKEN/GITHUB_TOKEN values and token-like literals in checker output (security review of a8c03fae)."""
+    for value in filter(None, map(os.environ.get, ("GH_TOKEN", "GITHUB_TOKEN"))):
+        text = text.replace(value, "[redacted]")
+    return TOKEN_LIKE.sub("[redacted]", text)
+
+
 def checker(root, data):
     """Return the base checker's violations on the base's dispatched bytes: it hands the text's literals to git (C8 to
     C10) and opens its design path (C6), so a pull request's own text never reaches it (worker review P0 of bcbd6949)."""
@@ -158,8 +166,8 @@ def checker(root, data):
     out = run.stdout.splitlines()  # the file is task.md, so C1 compares task_id with `task`; task-id checks <t>
     # only the checker's own verdict line with its exit code counts; a crash also exits 1, with no verdict line
     if (out[:1], run.returncode) not in ((["task.md: OK"], 0), (["task.md: FAIL"], 1)):
-        return [("checker", f"no verdict (exit {run.returncode}): {(run.stdout + run.stderr).strip()[-300:]}")]
-    lines = [ln.strip() for ln in out[1:] if ln.strip()]
+        return [("checker", f"no verdict (exit {run.returncode}): {redact(run.stdout + run.stderr).strip()[-300:]}")]
+    lines = [redact(ln).strip() for ln in out[1:] if ln.strip()]
     return [("checker", ln) for ln in lines if not re.fullmatch(r"C1 task_id .* != file task", ln)]
 
 

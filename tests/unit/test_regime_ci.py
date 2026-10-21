@@ -458,6 +458,19 @@ class RegimeCiTest(unittest.TestCase):
                 for value in tokens.values():
                     self.assertNotIn(value, json.dumps(record["argv"]) + result.stdout + result.stderr)
 
+    def test_regime_ci_redacts_tokens_in_checker_diagnostics(self):
+        # security review of a8c03fae: a checker that echoes a token must not leak it through regime-ci's diagnostic
+        secret, literal = "gho_fixture_secret_token_value", "ghp_" + "Z" * 36  # an env value and a token-like literal
+        for rc, verdict in ((3, ""), (1, "task.md: FAIL\\n")):
+            echo = f"import sys\nsys.stdout.write('{verdict}C9 leak {secret} {literal}\\n')\nsys.stderr.write('{secret}')\n"
+            with self.subTest(rc=rc):
+                self.build(checker=echo + f"sys.exit({rc})\n")
+                result = self.regime(GH_TOKEN=secret)
+                self.assertEqual(rc == 3, "no verdict (exit 3)" in result.stdout, result.stdout)
+                self.assertIn("C9 leak [redacted] [redacted]", result.stdout)
+                self.assertNotIn(secret, result.stdout + result.stderr)
+                self.assertNotIn(literal, result.stdout + result.stderr)
+
     def test_regime_yml_sets_the_token(self):
         read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
         cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]

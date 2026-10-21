@@ -64,7 +64,7 @@ cd -- "${main}"
 pick() { env -i PATH="${PATH}" HOME="${HOME}" mise which "$1" 2> /dev/null || command -v "$1" || true; }
 gh=$(pick gh) git=$(pick git) uv=$(pick uv) date=$(pick date)
 for found in "${gh}" "${git}" "${uv}" "${date}"; do
-    [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no binary outside a shims directory: ${found:-none}"
+    [[ ${found} == /* && "$(realpath -- "${found%/*}" 2> /dev/null)/" != */shims/* ]] || refuse 10 "no binary outside a shims directory: ${found:-none}"
 done
 [ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || refuse 10 "main checkout is not on main"
 pre "${git}" -C "${main}" fetch -q origin main
@@ -108,7 +108,7 @@ trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}" && rm -rf -
 mkdir -p -- "${tools}"
 for name in gh git jq awk date mkdir tr wc tail; do
     found=$(pick "${name}")
-    [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no ${name} for pr-cost.sh outside a shims directory: ${found:-none}"
+    [[ ${found} == /* && "$(realpath -- "${found%/*}" 2> /dev/null)/" != */shims/* ]] || refuse 10 "no ${name} for pr-cost.sh outside a shims directory: ${found:-none}"
     ln -sf -- "${found}" "${tools}/${name}"
 done
 cost_run() { env -i PATH="${tools}" HOME="${HOME}" "${BASH}" "${cost}" "$1"; } # HOME stays out of the log line

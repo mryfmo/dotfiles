@@ -19,7 +19,7 @@ import yaml
 
 FAILED = "preflight: helper failed (exit 1)"
 OPENER = re.compile(r"( {0,3})(`{3,}(?!.*`)|~{3,})(.*)")
-ITEM = re.compile(r" {0,3}## Item \d+(?:[ \t]|$)")  # `## Item <n>` only, never `## Itemized`
+ITEM = re.compile(r" {0,3}## Items? \d+\b")  # `## Item <n>` with any title, never `## Itemized`
 ROW = re.compile(r"[^\t ]+\t[^\t ]|-[ \t]+\S")  # an id-tab-class row or a bullet
 
 
@@ -154,18 +154,19 @@ class Task:
             record = normalize(pathlib.Path(self.root, named[0]).read_bytes()).split("\n") if named else []
         except OSError:
             record = []
-        fenced, found, rows, inside, prev, last = scan(record)[0], False, 0, False, "", False
+        fenced, found, rows, inside, para = scan(record)[0], False, 0, False, None  # para: rows in the open paragraph
         for n, line in enumerate(record, 1):
             if n in fenced or line == head or line.startswith(head + " "):
                 found, inside = (found, inside) if n in fenced else (True, True)
-                prev, last = "", False
+                para = None
                 continue
-            setext = bool(prev.strip()) and bool(re.fullmatch(r" {0,3}-+[ \t]*", line))  # `Title` over `---`
-            rows -= setext and last and not prev.lstrip().startswith("-")  # the title was no row
-            inside = inside and not setext and not re.match(r" {0,3}##(?:[ \t]|$)", line)
-            last = inside and bool(ROW.match(line))
-            rows += last
-            prev = line
+            if para is not None and re.fullmatch(r" {0,3}-+[ \t]*", line):  # setext: the paragraph is a title
+                rows, inside, para = rows - para, False, None
+                continue
+            inside = inside and not re.match(r" {0,3}##(?:[ \t]|$)", line)
+            row = inside and bool(ROW.match(line))
+            rows += row
+            para = None if not line.strip() or re.match(r" {0,3}[-#]", line) else (para or 0) + row
         items = sum(1 for n, line in enumerate(self.lines, 1) if n not in self.fenced and ITEM.match(line))
         if not found or not rows and items <= 1:
             self.refuse("owner-section", [self.line_of(ref)])

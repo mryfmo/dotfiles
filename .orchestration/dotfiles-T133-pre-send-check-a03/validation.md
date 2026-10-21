@@ -1,138 +1,517 @@
 ---
 task_id: dotfiles-T133-pre-send-check-a03
 seat: claude-standard-dot-a009
-reset_of: dotfiles-T133-pre-send-check-a02
-production_head: 1d72f16978018c3d016bbc239d79d3d7d0675105
-red_fixture_commit: 96d0afefe904c5ec8b3bf13ff82a7151bb8518f1
-fix_commit: 9dc5c565d6d21d4f52d5f317ca7f40d577425010
-correction_commit: b8a5c394be64a666a6531435b562c5a3a9e0b878
-merge_base: e00de4e0e4158de19e2c8921e572461e7e9e4ca0
+round: 2
+task_sha256: 24b20a3467eaa1f567082f91cdb5621c93576d4cffe405c7fa097644e04deba6
+round1_production_head: 1d72f16978018c3d016bbc239d79d3d7d0675105
+round1_red: 96d0afefe904c5ec8b3bf13ff82a7151bb8518f1
+round1_green: 9dc5c565d6d21d4f52d5f317ca7f40d577425010
+round1_correction: b8a5c394be64a666a6531435b562c5a3a9e0b878
+round2_production_head: a30a43bad4b61e7d9087fab3cd235e7729b25375
+round2_red: 4e0b1ed2916cf9d41aa65635a9c82a4def1348ec
+round2_green: 3c663e0583f85ed6de3f20ecb38093090f02b7fd
+review_red: 5297bec03c47bed17c7ee85b5cd2916197ce0556
+review_green: 7e4f8dddf1bc06c21392c39a1d1e54d63b53807b
+merge_base: f47e9fc0363c79feddbc6470649960f35941ba4b
 ---
 
-# Validation: dotfiles-T133-pre-send-check-a03
+# Validation: dotfiles-T133-pre-send-check-a03 (round 2, verbatim)
 
-- **Producer:** every block was run by the worker, on the Claude seat `claude-standard-dot-a009`, inside its sandbox, unless it says otherwise.
-- **Placeholders:** `$HOME`, `$TMPDIR` and `$uv_path` stand for their values.
-- **Branch:** the local branch is `a03/pre-send-check`. `tools/pre-send-check-a01` is checked out in a008's worktree worker-f, and git refuses a second checkout. It is pushed as `HEAD:tools/pre-send-check-a01` (sandbox record).
+- **Producer:** every block below was run by the worker (Claude seat `claude-standard-dot-a009`) inside its sandbox, unless a block says otherwise. Each block is the command, its exit status and its output, verbatim except for redaction.
+- **Redaction:** `$HOME` and `$TMPDIR` replace their values; nothing else is changed.
+- **Branch:** the local branch `a03/pre-send-check` is pushed as `HEAD:tools/pre-send-check-a01`; that branch is checked out in another seat's worktree (sandbox.md).
+- **Round-1 evidence:** the round-1 red and green runs are re-executed below, verbatim, from scratch worktrees (`git worktree add --detach $TMPDIR/wt-<sha> <sha>`, removed afterwards), replacing the round-1 summaries (audit:a30a43b:6).
 
-## 1. The task copy and uv
+## 1. The task copy and uv_path
+
 ```console
-$ shasum -a 256 "$MAIN/.orchestration/tasks/$T.md" ".orchestration/$T/task.md"
-53f78f967929b80987eb515affaabde637d12c1f52edb8bce5262c95f8282f77  $HOME/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a03.md
-53f78f967929b80987eb515affaabde637d12c1f52edb8bce5262c95f8282f77  .orchestration/dotfiles-T133-pre-send-check-a03/task.md
-$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" "$HOME/.local/bin/mise" which uv
-$HOME/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv
-uv_path above
-[exit 0]
+$ shasum -a 256 .orchestration/dotfiles-T133-pre-send-check-a03/task.md "$HOME/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a03.md"
+24b20a3467eaa1f567082f91cdb5621c93576d4cffe405c7fa097644e04deba6  .orchestration/dotfiles-T133-pre-send-check-a03/task.md
+24b20a3467eaa1f567082f91cdb5621c93576d4cffe405c7fa097644e04deba6  $HOME/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a03.md
+$ cmp .orchestration/dotfiles-T133-pre-send-check-a03/task.md "$HOME/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-pre-send-check-a03.md"
+exit=0
 ```
 
-## 2. Red: the six regressions at the production head (tree 96d0afef = 1d72f169 + the red fixtures), each by exact id, with its failing assertion
+## 2. The private uv cache (network: pypi.org, files.pythonhosted.org)
+
+The task's test command names `UV_CACHE_DIR="$TMPDIR/uv-cache"`, and the entrypoint runs uv `--offline`, so that cache is filled once first.
+
 ```console
-$ for each id: /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py PreSendTest.<id>
-== test_multiline_task_id_has_parser_locations
-FAIL: test_multiline_task_id_has_parser_locations (__main__.PreSendTest.test_multiline_task_id_has_parser_locations)
-AssertionError: 'consistency: refused' not found in ['consistency: refused line(s) 1234567891', 'sha256: 00cd25e99b2930b65306286268a7bee151ca4144fb04e54f2880524039b47f43']
-Ran 1 test in 0.453s
-FAILED (failures=1)
-== test_crlf_tilde_closer
+$ UV_CACHE_DIR="$TMPDIR/uv-cache" "$uv_path" run --no-config --no-project --python "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" --with pyyaml python -I -c 'import yaml; print(yaml.__version__)'
+   Building pyyaml==6.0.3
+      Built pyyaml==6.0.3
+Installed 1 package in 1ms
+6.0.3
+exit=0
+```
+
+## 3. Round 1, re-run: red at 96d0afef (production 1d72f169)
+
+```console
+## run 96d0afef (96d0afefe904c5ec8b3bf13ff82a7151bb8518f1, production e39e51c4)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=1
+.......FFFF..FF........F...F........F
+======================================================================
 FAIL: test_crlf_tilde_closer (__main__.PreSendTest.test_crlf_tilde_closer) (eol="'\\r\\n'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 274, in test_crlf_tilde_closer
+    self.refused(self.run_send(path), "bash-syntax", "18")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 79, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : sha256: 725d6f1f7f2da73ff2013a45e91cda72e3f685afe7baa03f238b28b00985ab20
+
+
+======================================================================
 FAIL: test_crlf_tilde_closer (__main__.PreSendTest.test_crlf_tilde_closer) (eol="'\\r'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 274, in test_crlf_tilde_closer
+    self.refused(self.run_send(path), "bash-syntax", "18")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 79, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : sha256: 02a614f390093760e0fc1efb4d8163a9c485090af8042a287560e38049047d0f
+
+
+======================================================================
 FAIL: test_crlf_tilde_closer (__main__.PreSendTest.test_crlf_tilde_closer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 277, in test_crlf_tilde_closer
+    self.refused(self.run_send(path), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 79, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : sha256: 0b70812dcaf498aec373d9e84447ce623a6de56d67e0a2e238bf6a6c0fc90bcd
-Ran 1 test in 0.494s
-FAILED (failures=3)
-== test_fenced_item_does_not_supply_owner_work
-FAIL: test_fenced_item_does_not_supply_owner_work (__main__.PreSendTest.test_fenced_item_does_not_supply_owner_work)
-AssertionError: 1 != 0 : sha256: ded23a701dd548793d4eade9515b8bcb79e99ce0603a2e7d579636293fb64084
-Ran 1 test in 0.180s
-FAILED (failures=1)
-== test_digest_survives_replacement_and_helper_failure
+
+
+======================================================================
 FAIL: test_digest_survives_replacement_and_helper_failure (__main__.PreSendTest.test_digest_survives_replacement_and_helper_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 292, in test_digest_survives_replacement_and_helper_failure
+    self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c' != 'sha256: 6c1aa50442a93e42c0eb2907cf4e017cd19547891fa190f3ea473582b0479290'
-Ran 1 test in 0.180s
-FAILED (failures=1)
-== test_entrypoint_fixed_environment
+- sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c
++ sha256: 6c1aa50442a93e42c0eb2907cf4e017cd19547891fa190f3ea473582b0479290
+
+
+======================================================================
 FAIL: test_entrypoint_fixed_environment (__main__.PreSendTest.test_entrypoint_fixed_environment) (path='/usr/bin:/bin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 311, in test_entrypoint_fixed_environment
+    self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (0, '') != (1, '')
-FAIL: test_entrypoint_fixed_environment (__main__.PreSendTest.test_entrypoint_fixed_environment) (path='$TMPDIR/tmpso3cmvom/decoy:/usr/bin:/bin')
+
+First differing element 0:
+0
+1
+
+- (0, '')
+?  ^
+
++ (1, '')
+?  ^
+ : consistency: refused
+sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c
+
+
+======================================================================
+FAIL: test_entrypoint_fixed_environment (__main__.PreSendTest.test_entrypoint_fixed_environment) (path='$TMPDIR/tmphfnqeeg_/decoy:/usr/bin:/bin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 311, in test_entrypoint_fixed_environment
+    self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: Tuples differ: (0, '') != (1, '')
-Ran 1 test in 0.406s
-FAILED (failures=2)
-== test_temp_failure_is_redacted
+
+First differing element 0:
+0
+1
+
+- (0, '')
+?  ^
+
++ (1, '')
+?  ^
+ : preflight: helper failed (exit 1)
+sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c
+
+
+======================================================================
+FAIL: test_fenced_item_does_not_supply_owner_work (__main__.PreSendTest.test_fenced_item_does_not_supply_owner_work)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 281, in test_fenced_item_does_not_supply_owner_work
+    self.refused(self.run_send(path), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 79, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: ded23a701dd548793d4eade9515b8bcb79e99ce0603a2e7d579636293fb64084
+
+
+======================================================================
+FAIL: test_multiline_task_id_has_parser_locations (__main__.PreSendTest.test_multiline_task_id_has_parser_locations)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 265, in test_multiline_task_id_has_parser_locations
+    self.assertIn("consistency: refused", result.stdout.splitlines())  # YAML is valid: no mark, so no lines
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'consistency: refused' not found in ['consistency: refused line(s) 1234567891', 'sha256: 00cd25e99b2930b65306286268a7bee151ca4144fb04e54f2880524039b47f43']
+
+======================================================================
 FAIL: test_temp_failure_is_redacted (__main__.PreSendTest.test_temp_failure_is_redacted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-96d0afef/tests/unit/test_pre_send.py", line 319, in test_temp_failure_is_redacted
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: 1 != 0 : sha256: be694e4d91f3a7bfc086c56ace0f4c583b7f7a6f3b131a8f43d9735d12198675
-Ran 1 test in 0.199s
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 9.492s
+
+FAILED (failures=9)
+```
+
+## 4. Round 1, re-run: the dirname decoy red (9dc5c565 production with the b8a5c394 test file)
+
+```console
+## run 9dc5c565 (9dc5c565d6d21d4f52d5f317ca7f40d577425010, production 9dc5c565)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=1
+...........F......................
+======================================================================
+FAIL: test_entrypoint_fixed_environment (__main__.PreSendTest.test_entrypoint_fixed_environment) (path='$TMPDIR/tmpc67zegf9/decoy:/usr/bin:/bin')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-9dc5c565/tests/unit/test_pre_send.py", line 332, in test_entrypoint_fixed_environment
+    self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, '') != (1, '')
+
+First differing element 0:
+0
+1
+
+- (0, '')
+?  ^
+
++ (1, '')
+?  ^
+ : interpreter: refused
+
+
+----------------------------------------------------------------------
+Ran 34 tests in 11.864s
+
 FAILED (failures=1)
 ```
-This run was made on the working tree just before the red-fixture commit, whose content is byte-identical to 96d0afef. §3 repeats it at 96d0afef by commit.
 
-## 3. Red at 96d0afef and green at 9dc5c565 (scratch worktree of 96d0afef, removed), by exact id and in full
-```console
-=== tree 96d0afefe904c5ec8b3bf13ff82a7151bb8518f1
-test_multiline_task_id_has_parser_locations: FAILED (failures=1)
-test_crlf_tilde_closer: FAILED (failures=3)
-test_fenced_item_does_not_supply_owner_work: FAILED (failures=1)
-test_digest_survives_replacement_and_helper_failure: FAILED (failures=1)
-test_entrypoint_fixed_environment: FAILED (failures=2)
-test_temp_failure_is_redacted: FAILED (failures=1)
-full module: Ran 34 tests in 9.572s FAILED (failures=9) 
-=== tree 9dc5c565d6d21d4f52d5f317ca7f40d577425010
-test_multiline_task_id_has_parser_locations: OK
-test_crlf_tilde_closer: OK
-test_fenced_item_does_not_supply_owner_work: OK
-test_digest_survives_replacement_and_helper_failure: OK
-test_entrypoint_fixed_environment: OK
-test_temp_failure_is_redacted: OK
-full module: Ran 34 tests in 11.515s OK 
-```
-At 96d0afef the full module's 9 failures are exactly the six regressions' subtests (1+3+1+1+2+1). The 28 preserved tests pass both before and after the change.
+## 5. Round 1, re-run: green at b8a5c394
 
-## 4. The review round: the dirname decoy, red at 9dc5c565 with the tightened tests, green at b8a5c394
 ```console
-$ for each: /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py PreSendTest.<id>   (tests of b8a5c394, entrypoint of 9dc5c565)
-test_entrypoint_fixed_environment: AssertionError: Tuples differ: (0, '') != (1, '') FAILED (failures=1) 
-test_temp_failure_is_redacted: OK 
-$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py   (at b8a5c394)
-Ran 34 tests in 14.867s
+## run b8a5c394 (b8a5c394be64a666a6531435b562c5a3a9e0b878, production b8a5c394)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=0
+..................................
+----------------------------------------------------------------------
+Ran 34 tests in 11.391s
 
 OK
-[exit 0]
 ```
 
-## 5. Static checks, caps and attribution at b8a5c394
+## 6. Round 2: red at 4e0b1ed2 (production a30a43ba; its implementation files are unchanged since b8a5c394)
+
+```console
+## run 4e0b (4e0b1ed2916cf9d41aa65635a9c82a4def1348ec, production b8a5c394)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=1
+.......................F.FF.....FF...FF..F
+======================================================================
+FAIL: test_itemized_heading_is_not_an_item (__main__.PreSendTest.test_itemized_heading_is_not_an_item)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 363, in test_itemized_heading_is_not_an_item
+    self.refused(self.run_send(path), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 83, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 4ad5919fc94e55534299ce38ed5df7375f10ff246b4487605ff814c46e3af2e1
+
+
+======================================================================
+FAIL: test_missing_front_matter_or_bom_is_refused (__main__.PreSendTest.test_missing_front_matter_or_bom_is_refused) (raw=b'\n# ')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 354, in test_missing_front_matter_or_bom_is_refused
+    self.refused(result, "front-matter")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 85, in refused
+    self.assertIn(f"{reason}: refused" + (f" line(s) {lines}" if lines else ""), got)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'front-matter: refused' not found in ['consistency: refused', 'sha256: 1f701207e9945aa3f44856f0091460bee38ce8d2433982b372c172c07e1dffe6']
+
+======================================================================
+FAIL: test_missing_front_matter_or_bom_is_refused (__main__.PreSendTest.test_missing_front_matter_or_bom_is_refused) (raw=b'\xef\xbb\xbf')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 354, in test_missing_front_matter_or_bom_is_refused
+    self.refused(result, "front-matter")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 83, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 21cd230a7ad4ccbf21b8d6129ed4a6cc50576aeb15b54e7b013c3d0435850e5a
+
+
+======================================================================
+FAIL: test_private_cache_required (__main__.PreSendTest.test_private_cache_required) (cache={})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 385, in test_private_cache_required
+    self.assertEqual(expected, (result.returncode, result.stdout, result.stderr))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, 'refused: UV_CACHE_DIR absent\n', '') != (0, 'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50[38 chars], '')
+
+First differing element 0:
+1
+0
+
+- (1, 'refused: UV_CACHE_DIR absent\n', '')
++ (0,
++  'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c\n',
++  '')
+
+======================================================================
+FAIL: test_private_cache_required (__main__.PreSendTest.test_private_cache_required) (cache={'UV_CACHE_DIR': '$TMPDIR/tmp4m_z_dkv/not-a-dir'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 385, in test_private_cache_required
+    self.assertEqual(expected, (result.returncode, result.stdout, result.stderr))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, 'refused: UV_CACHE_DIR absent\n', '') != (0, 'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50[38 chars], '')
+
+First differing element 0:
+1
+0
+
+- (1, 'refused: UV_CACHE_DIR absent\n', '')
++ (0,
++  'sha256: 7b4c3f32cc3b736ebb4e47dd0cc50601c0d554cfef51c76cc3a948fd71708f3c\n',
++  '')
+
+======================================================================
+FAIL: test_setext_heading_ends_the_owner_section (__main__.PreSendTest.test_setext_heading_ends_the_owner_section)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 359, in test_setext_heading_ends_the_owner_section
+    self.refused(self.run_send(path), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 83, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+======================================================================
+FAIL: test_startup_exit_one_is_named (__main__.PreSendTest.test_startup_exit_one_is_named)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 374, in test_startup_exit_one_is_named
+    self.assertEqual((1, "preflight: helper failed (exit 1)\n"), (result.returncode, result.stdout))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, 'preflight: helper failed (exit 1)\n') != (1, '')
+
+First differing element 1:
+'preflight: helper failed (exit 1)\n'
+''
+
+- (1, 'preflight: helper failed (exit 1)\n')
++ (1, '')
+
+======================================================================
+FAIL: test_whitespace_bullet_is_not_work (__main__.PreSendTest.test_whitespace_bullet_is_not_work)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 366, in test_whitespace_bullet_is_not_work
+    self.refused(self.run_send(self.owner_task(record=f"## Owned by {TID}\n- \t\n")), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-4e0b/tests/unit/test_pre_send.py", line 83, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+----------------------------------------------------------------------
+Ran 40 tests in 12.990s
+
+FAILED (failures=8)
+```
+
+## 7. Round 2: green at 3c663e05
+
+```console
+## green 3c663e05 (3c663e0583f85ed6de3f20ecb38093090f02b7fd, production 3c663e05)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=0
+........................................
+----------------------------------------------------------------------
+Ran 40 tests in 14.257s
+
+OK
+```
+
+## 8. The regression table
+
+| Class | Selector | Red (failing assertion, §3/§6) | Green |
+|---|---|---|---|
+| argument-injection-bypass | `test_multiline_task_id_has_parser_locations` | `96d0afef` | `9dc5c565` |
+| fence-forms | `test_crlf_tilde_closer` | `96d0afef` | `9dc5c565` |
+| heading-form-gap | `test_fenced_item_does_not_supply_owner_work` | `96d0afef` | `9dc5c565` |
+| digest-toctou | `test_digest_survives_replacement_and_helper_failure` | `96d0afef` | `9dc5c565` |
+| inherited-environment | `test_entrypoint_fixed_environment` | `96d0afef`; dirname decoy §4 | `9dc5c565`; `b8a5c394` |
+| diagnostic-redaction | `test_temp_failure_is_redacted` | `96d0afef` | `9dc5c565` |
+| audit:a30a43b:1 | `test_missing_front_matter_or_bom_is_refused` | `4e0b1ed2` | `3c663e05` |
+| audit:a30a43b:2 | `test_setext_heading_ends_the_owner_section` | `4e0b1ed2` | `3c663e05` |
+| audit:a30a43b:3 | `test_itemized_heading_is_not_an_item` | `4e0b1ed2` | `3c663e05` |
+| audit:a30a43b:4 | `test_whitespace_bullet_is_not_work` | `4e0b1ed2` | `3c663e05` |
+| audit:a30a43b:5 | `test_startup_exit_one_is_named` | `4e0b1ed2` | `3c663e05` |
+| design 5.14 item 9 | `test_private_cache_required` | `4e0b1ed2` | `3c663e05` |
+
+- **Preserved tests:** the 28 a01/a02 tests pass in §3 (9 failures, all subtests of the six round-1 regressions). The 34 round-1 tests pass in §6 (8 failures, all subtests of the six round-2 regressions). All 40 pass in §7.
+
+## 9. The review round (one correction)
+
+A fresh read-only subagent (worker, Claude seat) reviewed `a30a43ba..3c663e05` and returned `Verdict: incorrect`. Its findings:
+
+- **P2, fixed:** `pre_send.py:22`: `## Item 1: <title>` and `## Items 2–3: …` no longer counted as Items. That falsely refused an empty owner section in a task with several titled Items.
+- **P3, fixed:** `pre_send.py:163`: a `---` after a bullet is a thematic break, not a setext underline, but it ended the section.
+- **P3, fixed:** `pre_send.py:164`: a multi-line setext title subtracted only its last line, so its earlier id-tab lines still counted as rows.
+- **P3, kept as a residual:** `pre-send.sh:17`: the check is `-d` only, so an explicit `UV_CACHE_DIR` naming the shared default cache passes. The task refuses only an unset or non-directory value; this is a report residual.
+
+The new subcases are red over the `3c663e05` implementation at `5297bec0` and green at `7e4f8ddd`:
+
+```console
+## review red: 5297bec03c47bed17c7ee85b5cd2916197ce0556 tests over 3c663e05 pre_send.py (5297bec03c47bed17c7ee85b5cd2916197ce0556, production 3c663e05)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=1
+.......................F...........FF....
+======================================================================
+FAIL: test_itemized_heading_is_not_an_item (__main__.PreSendTest.test_itemized_heading_is_not_an_item)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 367, in test_itemized_heading_is_not_an_item
+    self.passed(self.owner_task(record=f"## Owned by {TID}\n", extra="\n## Item 1: titled\n"))  # two Items
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 89, in passed
+    self.assertEqual(0, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : owner-section: refused line(s) 14
+sha256: 9aad7c12d23fbb6c799f28a53a3ee01e075cc35af47bb76b2d19cf58f03a4ec6
+
+
+======================================================================
+FAIL: test_setext_heading_ends_the_owner_section (__main__.PreSendTest.test_setext_heading_ends_the_owner_section) (title='T1\tcode\nT2\tdoc')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 361, in test_setext_heading_ends_the_owner_section
+    self.refused(self.run_send(path), "owner-section", "14")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 83, in refused
+    self.assertEqual(1, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+======================================================================
+FAIL: test_setext_heading_ends_the_owner_section (__main__.PreSendTest.test_setext_heading_ends_the_owner_section)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 362, in test_setext_heading_ends_the_owner_section
+    self.passed(self.owner_task(record=f"## Owned by {TID}\n- \n---\n- real\n"))  # a thematic break, no title
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$TMPDIR/wt-5297bec03c47bed17c7ee85b5cd2916197ce0556/tests/unit/test_pre_send.py", line 89, in passed
+    self.assertEqual(0, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : owner-section: refused line(s) 14
+sha256: 6ee6fcf8f1e434189d2cd77db151f67dce9887659d6ce070540efaac5c5f0724
+
+
+----------------------------------------------------------------------
+Ran 40 tests in 17.954s
+
+FAILED (failures=3)
+```
+
+```console
+## review green (7e4f8dddf1bc06c21392c39a1d1e54d63b53807b, production 7e4f8ddd)
+$ /usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py
+exit=0
+........................................
+----------------------------------------------------------------------
+Ran 40 tests in 16.302s
+
+OK
+```
+
+## 10. Static checks, uv_path, merge-base and caps at 7e4f8ddd
+
 ```console
 $ bash -n scripts/orchestrator/pre-send.sh
-[exit 0]
+exit=0
+
 $ shellcheck -x scripts/orchestrator/pre-send.sh
-[exit 0]
+exit=0
+
 $ shfmt -i 4 -sr -d scripts/orchestrator/pre-send.sh
-[exit 0]
+exit=0
+
 $ ruff check --config ruff.toml scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py
+exit=0
 All checks passed!
-[exit 0]
 $ ruff format --config ruff.toml --check scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py
+exit=0
 2 files already formatted
-[exit 0]
-$ uv run --no-project --python 3.15 python -I scripts/lint-comparisons.py --changed scripts/orchestrator/pre-send.sh scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py -- scripts/orchestrator/pre-send.sh scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py
-[exit 0]
-$ git merge-base origin/main b8a5c394be64a666a6531435b562c5a3a9e0b878; git diff --numstat e00de4e0e4158de19e2c8921e572461e7e9e4ca0 b8a5c394be64a666a6531435b562c5a3a9e0b878 -- . ':(exclude).orchestration'
-e00de4e0e4158de19e2c8921e572461e7e9e4ca0
-32	0	scripts/orchestrator/pre-send.sh
-194	0	scripts/orchestrator/pre_send.py
-359	0	tests/unit/test_pre_send.py
-changed_non_tests: 226 of 360
-changed_tests: 359 of 480
-$ final-line attribution at b8a5c394be64a666a6531435b562c5a3a9e0b878 (git blame --line-porcelain; a03 commits 96d0afef, 9dc5c565, b8a5c394)
-scripts/orchestrator/pre-send.sh: inherited a01/a02 12, a03 20
-scripts/orchestrator/pre_send.py: inherited a01/a02 0, a03 194
-tests/unit/test_pre_send.py: inherited a01/a02 258, a03 101
+$ uv run --no-project --python 3.15 python -I scripts/lint-comparisons.py scripts/orchestrator/pre-send.sh scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py
+exit=0
+
+$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" "$HOME/.local/bin/mise" which uv
+exit=0
+$HOME/.local/share/mise/installs/uv/latest/uv-aarch64-apple-darwin/uv
+$ git merge-base origin/main HEAD
+f47e9fc0363c79feddbc6470649960f35941ba4b
+$ git diff --numstat f47e9fc0363c79feddbc6470649960f35941ba4b HEAD -- ':!.orchestration'
+41	0	scripts/orchestrator/pre-send.sh
+211	0	scripts/orchestrator/pre_send.py
+407	0	tests/unit/test_pre_send.py
 ```
 
-## 6. The crit-review gate
+- **Caps:** outside tests 41 + 211 = 252 of 360; under tests 407 of 480.
+- **Final-line attribution** (`git blame --line-porcelain HEAD`; a line counts as inherited when its commit is an ancestor of `1d72f169`):
+
+```console
+scripts/orchestrator/pre-send.sh inherited=12 a03=29
+scripts/orchestrator/pre_send.py inherited=0 a03=211
+tests/unit/test_pre_send.py inherited=257 a03=150
+```
+
+## 11. The crit-review gate
+
 ```console
 $ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T133-pre-send-check-a03/dotfiles-T133-pre-send-check-a03-worker-review-receipt.md make require-crit-review
+exit=0
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
-[exit 0]
 ```

@@ -9,7 +9,7 @@ red_fixture_commit: 96d0afefe904c5ec8b3bf13ff82a7151bb8518f1
 fix_commit: 9dc5c565d6d21d4f52d5f317ca7f40d577425010
 correction_commit: b8a5c394be64a666a6531435b562c5a3a9e0b878
 merge_base: e00de4e0e4158de19e2c8921e572461e7e9e4ca0
-task_sha256: 53f78f967929b80987eb515affaabde637d12c1f52edb8bce5262c95f8282f77
+task_sha256: 24b20a3467eaa1f567082f91cdb5621c93576d4cffe405c7fa097644e04deba6 (amendment 1; round 1 was 53f78f967929b80987eb515affaabde637d12c1f52edb8bce5262c95f8282f77)
 cost: n/a (the seat's token and time usage is not visible to the worker)
 ---
 
@@ -75,3 +75,28 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 - **Not shown in the sandbox:** a same-UID process can still replace an executable or the cache. The live hosted-runner behaviour is CI's.
 - **The fallback path:** the absolute fallback uv path is the author's probe for this host's architecture.
 - **Not run:** Bats was not run locally.
+
+## Round 2 (amendment 1, task sha `24b20a34…`; D-024-66)
+
+- **The audit:** the task-level audit of `a30a43ba` found five implementation P2s. Each now has a regression test that is red at `4e0b1ed2` (production `a30a43ba`) and green at `3c663e05` (validation §6, §7):
+  - **front matter:** `front_check` refuses a missing opening `---`, a UTF-8 BOM or a non-mapping as `front-matter: refused`. Without a `task_id`, a `## Owned by` reference is refused, not skipped (`test_missing_front_matter_or_bom_is_refused`).
+  - **setext:** a setext level-two underline under a paragraph ends the owner section, and the title's rows are uncounted (`test_setext_heading_ends_the_owner_section`).
+  - **Item headings:** only `## Item <n>` and `## Items <n>` headings, titled or not, count as Items. `## Itemized …` does not (`test_itemized_heading_is_not_an_item`).
+  - **bullets:** a bullet needs a non-blank character after its marker (`test_whitespace_bullet_is_not_work`).
+  - **startup exit 1:** the entrypoint buffers the Python's stdout. An exit with no output becomes the fixed `preflight: helper failed (exit 1)`, and an exit above 1 stays `interpreter: refused` (`test_startup_exit_one_is_named`).
+- **The private cache (design 5.14 item 9):**
+  - `UV_CACHE_DIR` must name a directory, or the entrypoint prints `refused: UV_CACHE_DIR absent` and exits 1. It passes through the `env -i` re-exec and never falls back to the shared default (`test_private_cache_required`).
+  - The fixture harness gives `UV_CACHE_DIR` to every run. Legacy heads still read the `.cache/uv` link.
+- **Validation:** `validation.md` is now verbatim: every command, exit status and output, redacted only for `$HOME` and `$TMPDIR`. Round 1's red and green runs were re-executed from scratch worktrees (§3–§5).
+- **The pre-push review:** one round of `a30a43ba..3c663e05` returned `Verdict: incorrect` (one P2, three P3).
+  - Fixed in `7e4f8ddd` (subcases red at `5297bec0`): titled Items, a thematic break after a bullet, and a multi-line setext title.
+  - Kept: the P3 below (§9).
+- **Caps from merge-base `f47e9fc0`:**
+  - `changed_non_tests` 252 of 360 (41 + 211);
+  - `changed_tests` 407 of 480.
+- **Final-line attribution:**
+  - implementation: inherited 12, a03 240;
+  - tests: inherited 257, a03 150.
+- **Round-2 residuals:**
+  - `UV_CACHE_DIR` is checked with `-d` only, so an explicit value that names the shared default cache passes. The task forbids only an unset or non-directory value and a fallback.
+  - The sandbox-exception and record-placement audit rows are the orchestrator's (amendment 1).

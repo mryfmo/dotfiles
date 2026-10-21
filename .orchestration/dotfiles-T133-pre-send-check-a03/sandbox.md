@@ -24,3 +24,9 @@ permission_gated_commands: none
 | 3 | the push above | inside |
 | 4 | `gh pr edit 442 --repo mryfmo/dotfiles …`, `gh pr checks 442 --repo mryfmo/dotfiles --watch`, and the `gh api` reads | inside |
 | 5 | `agmsg-dispatch …` (the PONG and the RESULT) | excluded (`agmsg-dispatch *`) |
+
+## Round 2 (amendment 1)
+
+- **Network:** filling the private cache `$TMPDIR/uv-cache` with PyYAML (validation §2) reached pypi.org and files.pythonhosted.org through the sandbox's network allowlist for that one command. It stayed inside the sandbox, with no refusal.
+- **Scratch worktrees:** the scratch worktrees under `$TMPDIR` for the verbatim re-runs (`git worktree add --detach`, then `git worktree remove --force`) ran inside the sandbox.
+- **Refusals:** there were none by the sandbox, a permission prompt or the classifier.

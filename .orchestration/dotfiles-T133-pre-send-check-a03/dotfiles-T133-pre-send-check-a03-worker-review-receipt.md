@@ -14,3 +14,12 @@ The reviewer was a fresh general-purpose subagent of this seat. It worked read-o
 - **Kept, with the reason in the JSON:** one P3, the YAML label and the unread fields. It is advisory for the owner follow-up task.
 
 This is worker process evidence, not reviewer authentication and not the task-level audit.
+
+## Round 2 (amendment 1)
+
+- **The one pre-push round** covered `a30a43ba..3c663e05` and returned `Verdict: incorrect`: one P2 and three P3. The reviewer was a fresh read-only subagent again.
+- **Fixed in `7e4f8ddd`, the one correction round**, red at `5297bec0`:
+  - **P2:** titled `## Item <n>: …` headings did not count as Items.
+  - **P3:** a thematic break after a bullet ended the owner section.
+  - **P3:** a multi-line setext title kept rows.
+- **Kept as a residual:** one P3, the `-d`-only `UV_CACHE_DIR` check.

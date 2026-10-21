@@ -33,5 +33,33 @@
   "path": "scripts/orchestrator/pre_send.py",
   "body": "Round 1, P3 low: a YAML error is reported on the consistency label with its marks rather than its own label, and only task_id is read from the mapping. Kept: the preserved a02 test test_checker_exit_and_line_numbers_only requires 'consistency: refused line(s) 6,7' for a YAML error, and the 28 tests stay unchanged; kind, security and allowed_files are validated by the checker, whose exit status the consistency label carries, and no pre_send check consumes them. Reported as advisory for the owner dotfiles-T133-pre-send-check-followup-a01.",
   "resolved": true
+ },
+ {
+  "id": "r2-p2-titled-items",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre_send.py",
+  "body": "Round 2 (a30a43ba..3c663e05), P2 high: ITEM matched only a bare `## Item <n>`, so titled `## Item 1: ...` / `## Items 2-3: ...` headings stopped counting and an empty owner section with several Items was falsely refused. Fixed in 7e4f8ddd (`## Items? \\d+\\b`, still excluding `## Itemized`); subcase red at 5297bec0, green at 7e4f8ddd.",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-setext-after-bullet",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre_send.py",
+  "body": "Round 2, P3 high: `---` after a bullet is a thematic break, yet it ended the owner section. Fixed in 7e4f8ddd: only a paragraph (non-blank, not a bullet or ATX line) takes a setext underline; subcase red at 5297bec0, green at 7e4f8ddd.",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-multiline-setext-title",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre_send.py",
+  "body": "Round 2, P3 medium: a multi-line setext title subtracted only its last row. Fixed in 7e4f8ddd: every row of the open paragraph is subtracted; subcase red at 5297bec0, green at 7e4f8ddd.",
+  "resolved": true
+ },
+ {
+  "id": "r2-p3-cache-is-directory-only",
+  "scope": "file",
+  "path": "scripts/orchestrator/pre-send.sh",
+  "body": "Round 2, P3 medium, kept: UV_CACHE_DIR is checked with -d only, so an explicit value naming the shared default cache passes. The task refuses only unset or non-directory values and forbids a fallback, which the entrypoint never makes; recorded as a report residual.",
+  "resolved": true
  }
 ]

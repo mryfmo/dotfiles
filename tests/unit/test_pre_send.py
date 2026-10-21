@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TID = "dotfiles-T999-fixture-a01"
 LINKS = ("scripts/orchestrator/pre-send.sh", "scripts/orchestrator/task-consistency-check.py")
 LINKS += ("scripts/validate-agent-assets.py",)
+LINKS += tuple(r for r in ("scripts/orchestrator/pre_send.py",) if (ROOT / r).exists())  # absent on legacy heads
 LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
 TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
@@ -53,6 +54,11 @@ class PreSendTest(unittest.TestCase):
         pinned.symlink_to(os.path.realpath(sys.executable))
         (home / ".cache").mkdir()  # the entrypoint clears UV_CACHE_DIR; uv's default cache under HOME is the real one
         (home / ".cache/uv").symlink_to(self.cache.stdout.strip())
+        mise = home / ".local/bin/mise"  # the pinned mise answers `which uv` with the real uv, as on the host
+        mise.parent.mkdir(parents=True)
+        mise.write_text(f"#!/bin/sh\necho {os.path.realpath(shutil.which('uv'))}\n")
+        mise.chmod(0o755)
+        self.home = home
         self.env = {"PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(self.tmp), "LANG": "C.UTF-8"}
 
     def task(self, body="", items=1, name=TID, front=""):  # the fixture's line 12 is its last Item heading
@@ -241,6 +247,78 @@ class PreSendTest(unittest.TestCase):
             with self.subTest(args=args):
                 result = self.run_send(*args)
                 self.assertEqual((1, "input: refused\n"), (result.returncode, result.stdout))
+
+    def owner_task(self, items=1, record=None, extra=""):  # a task naming r.md's owner section; returns the task path
+        rec = self.root / ".orchestration/acceptance/r.md"
+        rec.parent.mkdir(parents=True, exist_ok=True)
+        rec.unlink(missing_ok=True)
+        if record is not None:
+            rec.write_bytes(record.encode())
+        return self.task(f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/r.md.\n{extra}", items)
+
+    def test_multiline_task_id_has_parser_locations(self):  # audit:1d72f16:1: no location from task-supplied digits
+        path = self.task(name="dotfiles-T999-other-a01")
+        fake = '\\n  in \\"<unicode string>\\", line ' + "12345" + "67890, column 7:\\n"
+        path.write_text(path.read_text().replace(f"task_id: {TID}\n", f'task_id: "{TID}{fake}"\n'))
+        result = self.run_send(path)
+        self.refused(result, "consistency")
+        self.assertIn("consistency: refused", result.stdout.splitlines())  # YAML is valid: no mark, so no lines
+        self.assertFalse(re.search(r"\d{8}", "\n".join(result.stdout.splitlines()[:-1])))
+
+    def test_crlf_tilde_closer(self):  # audit:1d72f16:2: CRLF and lone CR close fences and delimit front matter
+        body = "\n~~~text\nplain\n~~~\n\n```bash\nif then\n```\n"
+        for eol in ("\r\n", "\r"):
+            with self.subTest(eol=repr(eol)):
+                path = self.task(body)
+                path.write_bytes(path.read_bytes().replace(b"\n", eol.encode()))
+                self.refused(self.run_send(path), "bash-syntax", "18")
+        path = self.owner_task()  # CRLF front matter still names the owner, whose record is missing
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_fenced_item_does_not_supply_owner_work(self):  # audit:1d72f16:3: a fenced `## Item` is no Item
+        path = self.owner_task(record=f"## Owned by {TID}\n\n## Next\n", extra="\n```markdown\n## Item 9\n```\n")
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_digest_survives_replacement_and_helper_failure(self):  # audit:1d72f16:4: one buffer, never reopened
+        path = self.task()
+        original = path.read_bytes()
+        (self.root / LINKS[1]).unlink()
+        (self.root / LINKS[1]).write_text(f"import pathlib\npathlib.Path({str(path)!r}).write_text('replaced')\n")
+        (self.root / LINKS[2]).unlink()
+        (self.root / LINKS[2]).write_text("def broken(:\n")  # the later helper failure
+        result = self.run_send(path)
+        self.assertEqual((1, b"replaced"), (result.returncode, path.read_bytes()))
+        self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+
+    def test_entrypoint_fixed_environment(self):  # audit:1d72f16:5: a minimal and a decoy PATH both find pinned uv
+        decoy, marker = self.tmp / "decoy", self.tmp / "decoy-ran"
+        decoy.mkdir()
+        for name in ("uv", "python3", "bash", "env", "mise"):
+            (decoy / name).write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+            (decoy / name).chmod(0o755)
+        for path_value in ("/usr/bin:/bin", f"{decoy}:/usr/bin:/bin"):
+            with self.subTest(path=path_value):
+                fixed = {"PATH": path_value, "HOME": self.env["HOME"], "TMPDIR": self.env["TMPDIR"]}
+                result = subprocess.run(
+                    [str(self.root / LINKS[0]), str(self.task())],
+                    env=fixed,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+                self.assertFalse(marker.exists())
+
+    def test_temp_failure_is_redacted(self):  # audit:1d72f16:6: an unwritable TMPDIR gives a fixed refusal only
+        locked = self.tmp / "locked"
+        locked.mkdir(mode=0o500)
+        self.addCleanup(locked.chmod, 0o700)
+        result = self.run_send(self.task(f"\n{TOKEN}\n"), env={"TMPDIR": str(locked)})
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertTrue([x for x in result.stdout.splitlines() if x.endswith(": refused") or "helper failed" in x])
+        self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
 
 
 FENCES = {  # one test per fence form, bash and sh both

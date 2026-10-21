@@ -3,7 +3,7 @@
   "audit_findings": [],
   "dispatch": [],
   "format": 1,
-  "head": "78882410718dff320194339e02d37fb54c2e856a",
+  "head": "1d72f16978018c3d016bbc239d79d3d7d0675105",
   "ledger": [
     {
       "class": "text-defect",
@@ -32,6 +32,42 @@
     {
       "class": "root-home-literals",
       "id": "4322154981"
+    },
+    {
+      "class": "argument-injection-bypass",
+      "id": "audit:7888241:1"
+    },
+    {
+      "class": "secret-fragment-leak",
+      "id": "audit:7888241:2"
+    },
+    {
+      "class": "heading-form-gap",
+      "id": "audit:7888241:3"
+    },
+    {
+      "class": "helper-failure-silent",
+      "id": "audit:7888241:4"
+    },
+    {
+      "class": "digest-toctou",
+      "id": "audit:7888241:5"
+    },
+    {
+      "class": "inherited-environment",
+      "id": "audit:7888241:6"
+    },
+    {
+      "class": "unhashed-base-change",
+      "id": "audit:7888241:7"
+    },
+    {
+      "class": "owner-reads-wrong-record",
+      "id": "audit:7888241:8"
+    },
+    {
+      "class": "sweep-attribution",
+      "id": "audit:7888241:9"
     }
   ],
   "pr": 442,
@@ -87,4 +123,32 @@ audit:7888241:8	owner-reads-wrong-record
 audit:7888241:9	sweep-attribution
 - 2026-10-21T04:39Z: the operator chose option A (D-024-51): amendment 1 + round 2; B (reset now) and C (park) declined. The amended text is sent as `status=revise round=2 amendment=1` once author-loop finishes and pre-send accepts it.
 - 2026-10-21T04:45Z: amendment 1 authored by author-loop.sh (`brief-pre-send-a02-amend1.md`; 151 lines; caps 130/300 from the merge-base; six fixes with fixtures; security: false so pre-send only) first bytes 5b67c410 were refused by pre-send (the fixture literal with a ten-digit run matched the secret pattern); the literal was replaced by a description, final amendment sha fd2a5e96957e0eb628e009673762b1d15c44b06013a16c55bf9e76dae5e8750d; sent to a008 at 2026-10-21T04:46Z as `status=revise round=2 amendment=1` (previous text 438089b8 verified by send-task.sh).
+
+local:1d72f16:1	advisory-p2
+local-finding: 1d72f16:1 not-applicable:advisory P2 owned by dotfiles-T133-pre-send-check-followup-a01 (- [P2] Exclude fenced examples when counting task Items — scripts/orchestrator/pre-send.sh:91-92); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-pre-send-check-followup-a01.md (c78bddcca22bb880c6ffe9a46769a58773d224c1cfc02c61f0a678d485391192)
+local:1d72f16:2	advisory-p2
+local-finding: 1d72f16:2 not-applicable:advisory P2 owned by dotfiles-T133-pre-send-check-followup-a01 (- [P2] Extract checker locations from parser data, not echoed text — scripts/orchestrator/pre-send.sh:43-45); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-pre-send-check-followup-a01.md (c78bddcca22bb880c6ffe9a46769a58773d224c1cfc02c61f0a678d485391192)
+local:1d72f16:3	advisory-p2
+local-finding: 1d72f16:3 not-applicable:advisory P2 owned by dotfiles-T133-pre-send-check-followup-a01 (- [P2] Normalize line endings before parsing task structure — scripts/orchestrator/pre-send.sh:34-35); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T133-pre-send-check-followup-a01.md (c78bddcca22bb880c6ffe9a46769a58773d224c1cfc02c61f0a678d485391192)
+
+## Round 2 final head 1d72f169 (update-branch of 1a258aaa after boundary 27): chain 2026-10-21T07:07Z
+
+Local review `…-local-review-1d72f16.md`: 3 P2 (advisory, owned by followup-a01, rows above). Sweep: 14 items, 13 filled plus the GitGuardian check-run row of `442-extra.tsv` (incidents 38434651 from #436's result.txt via update-branch and 38744143, the fixture TOKEN literal of 70fc2f84 that a3565c36 replaced by a run-time digest; 0 literal occurrences at head). Task-level audit `…-audit-1d72f16.md.last.md`: **Verdict: incorrect**, six P2 and two P3, every P2 in a class of the round-1 audit of 78882410 (its six P2 were the amendment-1 targets), so the findings remain after round 2 in the sense of D-024-51.
+
+audit:1d72f16:1	argument-injection-bypass
+audit:1d72f16:2	fence-forms
+audit:1d72f16:3	heading-form-gap
+audit:1d72f16:4	digest-toctou
+audit:1d72f16:5	inherited-environment
+audit:1d72f16:6	diagnostic-redaction
+audit:1d72f16:7	sweep-disposition-wording
+audit:1d72f16:8	pr-description-stale
+
+Row 1: pre-send.sh:44, a multiline YAML `task_id` injects a fake PyYAML location into the C1 diagnostic (third row of the class after 7888241:301 and 7888241:1, S1). Row 2: pre-send.sh:34, CRLF survives parsing, owner front matter fails silently, non-shell fence closers missed. Row 3: pre-send.sh:91, fenced `## Item` examples count as Items. Row 4: pre-send.sh:101, the failure fallback reopens the pathname, digest of replacement bytes. Row 5: pre-send.sh:18, sanitization by variable names only, a minimal PATH skips normalization. Row 6: pre-send.sh:30, a failed heredoc temp file leaks raw Bash diagnostics before suppression. Row 7 (P3): the GitGuardian issue comment was dispositioned as onboarding; the check-run row carries the incident disposition, the comment row must reference it (orchestrator, fixed in the next sweep). Row 8 (P3): the PR description still shows 22 tests and 89/90–215/220 (worker, a03).
+
+re-plan: argument-injection-bypass (rows audit:7888241:301, audit:7888241:1, audit:1d72f16:1; three rounds in which task-supplied text reaches the preflight's diagnostics through the checker's echoed output) — specification: the preflight prints labels and line numbers only, and a line number is one the parser computed, never a digit run copied from task text; design: parse the task text once in Python (PyYAML structured marks, a CommonMark fence state machine, CRLF normalised before parsing) and let Bash be only the `env -i` re-exec and the exit code, so no diagnostic is assembled from echoed text; implementation: the a03 reset text (D-024-56), authored by another context from `brief-pre-send-a03.md`, replaces the a02 branch work; verification: one red-then-green fixture per round-1 class (argument-injection-bypass, fence-forms, heading-form-gap, digest-toctou, inherited-environment, diagnostic-redaction) with the attack input of the audit row, run from the merge-base.
+
+Decision 2026-10-21T07:07Z: D-024-56 (the consequence D-024-51 fixed in advance): no third worker round; the lineage resets to `dotfiles-T133-pre-send-check-a03` by another context; a008 holds the branch; #442 stays open as the reset's PR until the a03 text says otherwise; the security review of 1d72f169 is not run (no merge of this head).
+- 2026-10-21T07:24Z: a03 reset text authored by author-loop round 1 (review profile, pre-send ok, no C-80: security false) from `brief-pre-send-a03.md`; orchestrator pasted Checks (merge-base e00de4e0 = origin/main, inherited 104/260 measured by `git diff --numstat e00de4e0 1d72f169`, uv/python host facts) and reworded one source reference; final sha 53f78f967929b80987eb515affaabde637d12c1f52edb8bce5262c95f8282f77, 117 lines. Independent review task `dotfiles-T133-pre-send-check-a03-redesign-review-a01` sent to claude-standard-dot-a011 (bus 2977); liveness PING to the intended implementer claude-standard-dot-a009 (bus 2978).
+- 2026-10-21T07:26Z: anchor review RESULT 2980 (a011) verdict=accept on 53f78f96…, one P3 advisory (stale pinned-uv fallback path, owned by followup-a01); design-reset record `dotfiles-T133-pre-send-check-a02-design-reset.md` written; a03 dispatched to claude-standard-dot-a009 (worker-c, bus 2982, read 07:25:48Z) continuing PR #442's branch from 1d72f169 with overlap_ok=442. Counters before the send (C-126): a02 TASKs=1 amendments=1 RESULTs=3 (round 1, round 2 blocked, round 2) questions=0; a03 all 0.
 

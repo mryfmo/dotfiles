@@ -25,4 +25,6 @@ re-plan: prerequisite-baseline-conflict (rows text-security:3844d93:1; a baselin
 
 text-security:0f87501:0	correct
 text-security:e39dc8f:0	correct
+- 2026-10-21T09:19Z: prerequisites met (PR #448 e042663b and PR #449 4eafd890 merged; canonical main 4eafd890); Checks pasted (6 lines), bytes now 527f7f9460b694bedb177c81a0713932322cebe28c6ef1b71290fd36468224e9 (194 lines, pre-send OK); re-anchor review `dotfiles-T133-worker-write-boundary-slice1-a01-redesign-review-a03` sent to a011 (D-024-59); liveness PING to a010 (2984). Dispatch line: preconditions=met:this record, overlap_ok=431,420,406.
+- 2026-10-21T09:28Z: re-anchor accepted (a011 RESULT 2987, sha 527f7f9460b694bedb177c81a0713932322cebe28c6ef1b71290fd36468224e9); dispatched to codex-standard-dot-a010 (worker-e, wJ:p5) as bus 2989 (read 09:28:18Z), round 1, fresh branch tools/worker-write-boundary-slice1-a01 from main 4eafd890, preconditions=met (this record), overlap_ok=431,420,406 (own lineage branch; parked permission-guard a03 branch; phase-2 draft). Counters before the send (C-126): a03 TASKs=2 RESULTs=0 questions=0 (S2 silenced by the a03 design-reset record); slice1 all 0. a010 had read PING 2984 without a PONG; the TASK asks for the PONG first.
 

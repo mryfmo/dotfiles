@@ -7,7 +7,7 @@ allowed_files:
   - scripts/orchestrator/result-precheck.sh
   - tests/unit/test_result_precheck.py
   - .orchestration/dotfiles-T133-result-precheck-followup-a01/**
-after: [dotfiles-T133-result-precheck-a03]
+after: [dotfiles-T133-result-precheck-a04]
 threat_table:
   - control: the PR edits scripts/orchestrator/result-precheck.sh only within the owned rows (item 1)
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"

@@ -139,3 +139,23 @@ audit:ddf262d:3	precheck-head-binding
 
 - `.orchestration/validation/dotfiles-T133-result-precheck-a03-security-ddf262d.md`: `Verdict: incorrect`. P1 `result-precheck.sh:251`: a masking failure prints the raw captured text (credentials included) to stderr; P1 `result-precheck.sh:278`: evidence writes follow repository-controlled symlinks under the task directory to paths outside it; P2 `dispatch.sh:171`: the acceptance check discards the message sender and recipient identities; P2 `test_result_precheck.py:70`: the tests inherit the operator's HOME; P2 `precheck.json`: the committed precheck does not cover the final head (the update-branch design question, again).
 - decision: a P1 does not merge; the a03 has no round left (INV-6 amendments 1, revises 1) and the operator forbids a third round, so the task stops and goes back to design by another context as `dotfiles-T133-result-precheck-a04` (reset_of a03): the a03 text plus hardening items for the two security P1, the three security P2, the two audit P2 of ddf262d (blob path traversal; unmasked logs on early exit) and the `--premises-sha` wiring of dispatch.sh (the P1-12 a02 names it), the previous-head proof design kept; the owner rows of this lineage (`audit:bccb2de:1`, `audit:ddf262d:1..3`) are absorbed by a04. `status=withdrawn` sent to a009 at 00:2xZ, with the order: a04 before dotfiles-T133-audit-pool-a01. The redesign (review profile, prompt `.agents/worklog/orchestrator-glue/p15-a04-redesign-prompt.md`) follows.
+
+## Rows of the a03 security review ddf262d (defect sweep S2, 2026-10-21T08:18Z; the prose decision above already reset the lineage to a04)
+
+security:ddf262d:1	diagnostic-redaction
+security:ddf262d:2	path-containment
+security:ddf262d:3	authority-binding
+security:ddf262d:4	test-isolation
+security:ddf262d:5	evidence-ancestry
+
+security-finding: ddf262d:1 not-applicable:superseded by the a04 reset (the a03 head ddf262de never merges; the a04 text carries this finding as a requirement and its final head gets its own security review); evidence=grep -c -i -E of the a04 text for the finding's subject, recorded in the sweep run of 2026-10-21T08:18Z; the a03 prose decision line above
+security-finding: ddf262d:2 not-applicable:superseded by the a04 reset (the a03 head ddf262de never merges; the a04 text carries this finding as a requirement and its final head gets its own security review); evidence=grep -c -i -E of the a04 text for the finding's subject, recorded in the sweep run of 2026-10-21T08:18Z; the a03 prose decision line above
+security-finding: ddf262d:3 not-applicable:advisory P2 owned by dotfiles-T133-result-precheck-followup-a01 (dispatch.sh:171 acceptance authority; the a04 text does not name this subject (grep count 0 on 2026-10-21 08:18Z), so the owner task carries it and the a04 final head's own security review re-examines it); evidence=grep -ci -E of .orchestration/tasks/dotfiles-T133-result-precheck-a04.md for the subject = 0
+security-finding: ddf262d:4 not-applicable:superseded by the a04 reset (the a03 head ddf262de never merges; the a04 text carries this finding as a requirement and its final head gets its own security review); evidence=grep -c -i -E of the a04 text for the finding's subject, recorded in the sweep run of 2026-10-21T08:18Z; the a03 prose decision line above
+security-finding: ddf262d:5 not-applicable:advisory P2 owned by dotfiles-T133-result-precheck-followup-a01 (precheck.json ancestry of the final head; the a04 text does not name this subject (grep count 0 on 2026-10-21 08:18Z), so the owner task carries it and the a04 final head's own security review re-examines it); evidence=grep -ci -E of .orchestration/tasks/dotfiles-T133-result-precheck-a04.md for the subject = 0
+
+Row 1: result-precheck.sh:251 a masking failure prints the raw captured text, credentials included, to stderr.
+Row 2: result-precheck.sh:278 evidence writes follow a repository-controlled symlink outside the task directory; the deletion at :189 follows a symlinked task directory.
+Row 3: dispatch.sh:171 the acceptance check ignores sender and recipient, so another member can supersede the orchestrator revise.
+Row 4: tests/unit/test_result_precheck.py:70 the fixtures inherit the operator HOME and Git configuration.
+Row 5: the committed precheck.json records 024ba0eb while the final head ddf262de adds other records and code.

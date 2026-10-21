@@ -1,0 +1,30 @@
+[
+ {
+  "id": "r1-approval",
+  "scope": "review",
+  "path": "",
+  "body": "Round 1 (the uncommitted diff on ci/regime-ci-token-a01 from f7f38067), Verdict: correct; no P0, P1 or P2; no refusal. GH_TOKEN is set in the verifier step's env only and never interpolated into run:, so no injection path; permissions stay contents: read with no job override and persist-credentials false, all pinned by tests; no step checks out or executes head code, the head is fetched as data and pinned to its sha, and the base's checker reads base-dispatched bytes, so the token never reaches head-controlled code. The tests are non-vacuous: fresh repositories per test, the presence test covers four token combinations with an exact-dict assertion and an inheritance probe, the secrecy test asserts presence before absence and its rc=3 case exercises the no-verdict path. Module 19 OK; ruff clean; caps 3/25 and 44/60; regime-ci.py unchanged.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-comment-wording",
+  "scope": "file",
+  "path": ".github/workflows/regime.yml",
+  "body": "Round 1, P3 high: the comment said the token 'can read public repository contents only'; it can read this repository's contents, public or private. Fixed in the correction round: 'can only read this repository's contents'.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-no-verdict-assertion",
+  "scope": "file",
+  "path": "tests/unit/test_regime_ci.py",
+  "body": "Round 1, P3 medium: the rc=3 case never asserted that regime-ci reported a no-verdict diagnostic. Fixed in the correction round: the test asserts 'no verdict (exit 3)' appears in stdout exactly for rc 3 (module 19 OK after the fix; tests 45/60).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-echoing-checker",
+  "scope": "file",
+  "path": "scripts/orchestrator/regime-ci.py",
+  "body": "Round 1, P3 low: a real checker that echoed a token would leak through the last 300 characters of output regime-ci forwards in its no-verdict diagnostic (regime-ci.py:161). Not changed: existing behaviour of the unchanged script, outside this task's change; the threat table keeps the checker's own output as the checker's responsibility and the fake checker here prints no token.",
+  "resolved": true
+ }
+]

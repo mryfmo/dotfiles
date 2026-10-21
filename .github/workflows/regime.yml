@@ -40,4 +40,7 @@ jobs:
       - name: Check the pull request with the base's verifier
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # the checker's gh api reads (canonical-main SHA, design bytes, C8/C9) need authentication on a fresh
+          # runner; the job's contents: read token can only read this repository's contents (P1-17)
+          GH_TOKEN: ${{ github.token }}
         run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"

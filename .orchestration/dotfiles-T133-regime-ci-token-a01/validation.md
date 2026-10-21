@@ -216,3 +216,66 @@ outside tests/ and .orchestration/: 15 of 25
 under tests/: 58 of 60
 [exit 0]
 ```
+
+### R2.4 The CI failure on 26b4a28c and the orchestrator's decision (b-prime): the five pre-existing lines marked
+
+CI on `26b4a28c` failed in the test jobs on `tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline` (job 118987359311): R6 regime-ci.py:66 and R4 :72, :73, :91, :254. These are hits at f7f38067's lines 65, 71, 72, 90 and 253, which round 2's edit made "changed". They were reported as blocked PONG 2922, and the orchestrator decided (b-prime).
+```console
+$ git diff 26b4a28c 8a1b16f3 -- scripts/orchestrator/regime-ci.py
+diff --git a/scripts/orchestrator/regime-ci.py b/scripts/orchestrator/regime-ci.py
+index e530e79f..9a0c0fd1 100644
+--- a/scripts/orchestrator/regime-ci.py
++++ b/scripts/orchestrator/regime-ci.py
+@@ -63,14 +63,14 @@ def sha256(data):
+ 
+ 
+ def token(text, name):
+-    m = re.search(rf"(?:^|\s){name}=(\S+)", text)
++    m = re.search(rf"(?:^|\s){name}=(\S+)", text)  # lint-comparisons: allow name is the literal precheck or task_copy
+     return m.group(1) if m else None
+ 
+ 
+ def allowed(path, entry):
+     """Match an allowed_files entry: `<dir>/**` takes its prefix, `*` and `?` stay within one path segment."""
+-    if entry.endswith("/**"):
+-        return path.startswith(entry[:-2])
++    if entry.endswith("/**"):  # lint-comparisons: allow glob-syntax test on an allowed_files entry, not a path
++        return path.startswith(entry[:-2])  # lint-comparisons: allow git-listed relative path vs the entry dir prefix
+     rx = "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in entry)
+     return re.fullmatch(rx, path) is not None
+ 
+@@ -88,7 +88,7 @@ def caps(text, numstat):
+         excluded = re.findall(r"`([^`]+)`", re.split(r",\s*(?:and\s+)?\d", outside.group(2))[0]) or excluded
+ 
+     def counted(path, prefixes):
+-        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)
++        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)  # lint-comparisons: allow git numstat repository-relative paths against the task text's literal cap prefixes  # fmt: skip
+ 
+     out_lines = sum(a + d for a, d, p in numstat if not counted(p, excluded))
+     test_lines = sum(a + d for a, d, p in numstat if counted(p, ["tests/"]))
+@@ -251,7 +251,7 @@ def main(argv=None):
+     dirs = sorted({m.group(1) for p in changed if (m := re.match(r"\.orchestration/([^/]+)/", p))})
+     targets = [t for t in dirs if show(root, head, f".orchestration/{t}/task.md") is not None]
+     if not targets:
+-        stray = [p for p in changed if not p.startswith(".orchestration/")]
++        stray = [p for p in changed if not p.startswith(".orchestration/")]  # lint-comparisons: allow git-listed repository-relative paths against the literal .orchestration/ prefix  # fmt: skip
+         if not stray:  # content alone decides: a branch name is the pull request's own claim
+             print("regime-ci: no target (records-only)")
+             return 0
+$ uv run --no-project --python 3.15 python -I scripts/lint-comparisons.py --changed scripts/orchestrator/regime-ci.py -- scripts/orchestrator/regime-ci.py; echo "lint exit=$?"
+lint exit=0
+$ ruff format --config ruff.toml --check scripts/orchestrator/regime-ci.py; ruff check --config ruff.toml scripts/orchestrator/regime-ci.py
+1 file already formatted
+All checks passed!
+$ uv run --no-project --python 3.15 python -m unittest tests.unit.test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline
+Ran 1 test
+OK
+$ <the module command of R2.3>
+Ran 20 tests in 57.731s
+
+OK
+$ git diff --numstat f7f38067… -- .github scripts tests (summed)
+outside tests/ and .orchestration/: 25 of 25
+under tests/: 58 of 60
+[exit 0]
+```

@@ -85,3 +85,15 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 - **Caps from `f7f38067`:** 15 of 25 outside `tests/` and `.orchestration/`, and 58 of 60 under `tests/`.
 - **Unchanged:** the task copy stays at `d4798ebf…` (no amendment). The P3 on the "public repository contents" wording in task.md is advisory and owned by `dotfiles-T133-regime-ci-token-followup-a01`.
 
+### The lint dispositions after CI on 26b4a28c (the orchestrator's decision b-prime)
+
+- **Why:** round 2 made `regime-ci.py` a changed file, so the changed-file comparison lint failed in CI on five hits that pre-date this task. Main has no baseline rows for the file. They were reported as blocked PONG 2922, and the decision was to mark each line with the documented inline marker and its reason, with no baseline edit and no behaviour change. Commit `8a1b16f3`:
+  - `regime-ci.py:66` (R6): `# lint-comparisons: allow name is the literal precheck or task_copy`. `token()`'s only callers pass those two literals (lines 138–198).
+  - `:72` (R4): `# lint-comparisons: allow glob-syntax test on an allowed_files entry, not a path`.
+  - `:73` (R4): `# lint-comparisons: allow git-listed relative path vs the entry dir prefix`. The paths come from `git diff --name-only`.
+  - `:91` (R4): `# lint-comparisons: allow git numstat repository-relative paths against the task text's literal cap prefixes  # fmt: skip`.
+  - `:254` (R4): `# lint-comparisons: allow git-listed repository-relative paths against the literal .orchestration/ prefix  # fmt: skip`.
+- **The two `# fmt: skip`:** lines 91 and 254 are 92 and 75 columns before the marker, so no concrete reason fits within ruff's 120 columns. Without the skip, ruff would split the statement and move the marker off the flagged line, where the lint does not read it. The skip keeps the layout; the code is unchanged.
+- **The checks:** the lint on the file exits 0, the changed-file lint test is OK, the module passes, and ruff is clean (validation R2.4).
+- **Caps:** 25 of 25 outside `tests/` and `.orchestration/`, exactly at the cap, and 58 of 60 under `tests/`.
+

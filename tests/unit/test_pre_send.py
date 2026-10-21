@@ -25,9 +25,11 @@ LINKS += tuple(r for r in ("scripts/orchestrator/pre_send.py",) if (ROOT / r).ex
 LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
 TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
 HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
-LABELS = "consistency|secret-pattern|literal-home|self-cap|bash-syntax|owner-section|input|tempfile|interpreter|startup"
+LABELS = "front-matter|consistency|secret-pattern|literal-home|self-cap|bash-syntax|owner-section|input|tempfile|interpreter|startup"
 GRAMMAR = re.compile(
-    "(?:" + LABELS + r"): refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)"
+    "(?:"
+    + LABELS
+    + r"): refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)|refused: UV_CACHE_DIR absent"
 )
 
 
@@ -53,7 +55,7 @@ class PreSendTest(unittest.TestCase):
         pinned = home / ".local/share/mise/installs/python/3.15.0/bin/python3"
         pinned.parent.mkdir(parents=True)
         pinned.symlink_to(os.path.realpath(sys.executable))
-        (home / ".cache").mkdir()  # the entrypoint clears UV_CACHE_DIR; uv's default cache under HOME is the real one
+        (home / ".cache").mkdir()  # legacy heads clear UV_CACHE_DIR and read uv's default cache under HOME
         (home / ".cache/uv").symlink_to(self.cache.stdout.strip())
         mise = home / ".local/bin/mise"  # the pinned mise answers `which uv` with the real uv, as on the host
         mise.parent.mkdir(parents=True)
@@ -61,6 +63,7 @@ class PreSendTest(unittest.TestCase):
         mise.chmod(0o755)
         self.home = home
         self.env = {"PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(self.tmp), "LANG": "C.UTF-8"}
+        self.env["UV_CACHE_DIR"] = self.cache.stdout.strip()  # the explicit private cache (design 5.14 item 9)
 
     def task(self, body="", items=1, name=TID, front=""):  # the fixture's line 12 is its last Item heading
         text = f"---\nformat: 2\ntask_id: {TID}\nkind: code\nsecurity: false\n{front}allowed_files:\n"
@@ -320,7 +323,7 @@ class PreSendTest(unittest.TestCase):
             (decoy / name).chmod(0o755)
         for path_value in ("/usr/bin:/bin", f"{decoy}:/usr/bin:/bin"):
             with self.subTest(path=path_value):
-                fixed = {"PATH": path_value, "HOME": self.env["HOME"], "TMPDIR": self.env["TMPDIR"]}
+                fixed = {"PATH": path_value, **{k: self.env[k] for k in ("HOME", "TMPDIR", "UV_CACHE_DIR")}}
                 result = subprocess.run(
                     [str(self.root / LINKS[0]), str(self.task())],
                     env=fixed,
@@ -340,6 +343,47 @@ class PreSendTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("tempfile: refused", result.stdout.splitlines())
         self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
+
+    def test_missing_front_matter_or_bom_is_refused(self):  # audit:a30a43b:1: never a silent empty mapping
+        path = self.owner_task()  # whose owner record is missing
+        text = path.read_text()
+        for raw in (text.split("---\n", 2)[2].encode(), b"\xef\xbb\xbf" + text.encode()):
+            with self.subTest(raw=raw[:3]):
+                path.write_bytes(raw)
+                result = self.run_send(path)
+                self.refused(result, "front-matter")
+                self.refused(result, "owner-section")
+
+    def test_setext_heading_ends_the_owner_section(self):  # audit:a30a43b:2
+        path = self.owner_task(record=f"## Owned by {TID}\n\nNext\n---\n- another section's row\n")
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_itemized_heading_is_not_an_item(self):  # audit:a30a43b:3
+        path = self.owner_task(record=f"## Owned by {TID}\n\n## Next\n", extra="\n## Itemized background\n")
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_whitespace_bullet_is_not_work(self):  # audit:a30a43b:4
+        self.refused(self.run_send(self.owner_task(record=f"## Owned by {TID}\n- \t\n")), "owner-section", "14")
+
+    def test_startup_exit_one_is_named(self):  # audit:a30a43b:5: a startup exit 1 is never two empty streams
+        fake = self.tmp / "uv"
+        fake.write_text("#!/bin/sh\nexit 1\n")
+        fake.chmod(0o755)
+        (self.home / ".local/bin/mise").write_text(f"#!/bin/sh\necho {fake}\n")
+        result = self.run_send(self.task())
+        self.assertEqual((1, "preflight: helper failed (exit 1)\n"), (result.returncode, result.stdout))
+
+    def test_private_cache_required(self):  # design 5.14 item 9: no fallback to the shared default cache
+        path, file = self.task(), self.tmp / "not-a-dir"
+        file.write_text("")
+        for cache in ({}, {"UV_CACHE_DIR": str(file)}):
+            with self.subTest(cache=cache):
+                env = {k: v for k, v in self.env.items() if k != "UV_CACHE_DIR"} | cache
+                cmd = [str(self.root / LINKS[0]), str(path)]
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=120, check=False)
+                expected = (1, "refused: UV_CACHE_DIR absent\n", "")
+                self.assertEqual(expected, (result.returncode, result.stdout, result.stderr))
+        self.passed(path)
 
 
 FENCES = {  # one test per fence form, bash and sh both

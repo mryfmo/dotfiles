@@ -1,0 +1,231 @@
+---
+format: 2
+task_id: dotfiles-T133-record-ledger-carry-a01
+kind: code
+security: true
+allowed_files:
+  - scripts/orchestrator/carry-lineage.py
+  - scripts/orchestrator/ledger-check.py
+  - tests/unit/test_ledger_check.py
+  - tests/unit/test_carry_lineage.py
+  - .orchestration/dotfiles-T133-record-ledger-carry-a01/**
+after: []
+rendered_forms: []
+out_of_scope:
+  - {path: scripts/orchestrator/chain-integrate.sh, reason: "dotfiles-T128-chain-glue-integrate-a01 owns this entrypoint; this slice neither edits nor executes it and depends on none of its callees."}
+  - {path: scripts/orchestrator/orch-audit.sh, reason: "Execution binding belongs to dotfiles-T133-audit-pool-a02, not verdict-audit-pool-a04."}
+  - {path: scripts/orchestrator/local-review.sh, reason: "Base-ref binding belongs to dotfiles-T128-chain-review-scripts-followup-a07 item 4."}
+  - {path: scripts/orchestrator/sandbox-scan.sh, reason: "Execution binding remains with the dotfiles-T128-chain-review-scripts-followup-a07 lineage."}
+  - {path: scripts/orchestrator/local-advisory.sh, reason: "Execution binding remains with the dotfiles-T128-chain-review-scripts-followup-a07 lineage."}
+  - {path: scripts/orchestrator/dispatch.sh, reason: "dotfiles-T133-loop-limits-a01 owns this file; send-time recording belongs to P1-6 slice 2 afterward."}
+  - {path: scripts/orchestrator/acceptance-front-matter.py, reason: "dotfiles-T133-loop-limits-a01 owns this writer, then P1-6 slice 2; carry invokes no writer subprocess."}
+  - {path: scripts/orchestrator/fill_sweep.py, reason: "The existing dotfiles-T128-orchestrator-tools-a06 helper and dotfiles-T133-verdict-audit-pool-a04 consumer binding remain out of scope; no dependency or invocation here."}
+  - {path: scripts/pr-feedback.py, reason: "The existing dotfiles-T128-orchestrator-tools-a06 helper and dotfiles-T133-verdict-audit-pool-a04 consumer binding remain out of scope; no dependency or invocation here."}
+  - {path: scripts/require-crit-review.py, reason: "dotfiles-T129-audit-inherit-replan-json-followup-a03 owns the gate lineage; this slice only imports read_acceptance_record and neither edits nor runs the gate."}
+threat_table:
+  - control: scripts/orchestrator/carry-lineage.py standalone carry
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_two_predecessors"
+  - control: scripts/orchestrator/ledger-check.py shared reader and row union
+    disposition: "closed: tests/unit/test_ledger_check.py::LedgerCheckTest::test_prose_and_json_use_gate_reader"
+  - control: tests/unit/test_ledger_check.py
+    disposition: "residual: synthetic records exercise the real imported reader; final-head review checks compatibility with existing finding identifiers."
+  - control: tests/unit/test_carry_lineage.py
+    disposition: "residual: temporary roots and a fixture SQLite store model deployment; live delivery and host sandbox enforcement are not proved by fixtures."
+  - control: .orchestration/dotfiles-T133-record-ledger-carry-a01/**
+    disposition: "residual: evidence is procedural, not authenticated approval; the orchestrator compares the task-copy hash and final-head outputs."
+  - control: messages.db read-only read with sender and content binding
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_dispatch_content_binding"
+  - control: lineage filesystem walk under the fixed acceptance root
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_fixed_root_lineage"
+  - control: audit-file first-line full-head read and collision detection
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_audit_provenance_and_collision"
+  - control: carry sidecar per-source provenance
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_sidecar_provenance"
+  - control: environment refusal
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_environment_refusal"
+  - control: program realpath refusal
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_program_realpath_refusal"
+  - control: HOME refusal against passwd home
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_home_refusal"
+  - control: input containment and record/sidecar destination binding
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_path_boundaries"
+  - control: workflow and interpreter or environment inputs (trusted parent, isolated interpreter and private cache)
+    disposition: "residual: test_trusted_launch exercises the supplied contract; installing the protected parent/resolver and excluding unrestricted same-UID writers remain host prerequisites."
+  - control: task metadata
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_malformed_metadata_refuses"
+  - control: metadata separators
+    disposition: "closed: tests/unit/test_ledger_check.py::LedgerCheckTest::test_malformed_or_classless_row_refuses"
+  - control: in-process effects
+    disposition: "residual: isolated tests import root-bound helpers; unrestricted same-UID replacement outside seat sandboxes remains a host limitation."
+  - control: new or renamed scripts
+    disposition: "residual: carry-lineage.py is the only new production script; the final diff and allowlist check reject additional entrypoints."
+  - control: orchestrator effect record and sidecar publication
+    disposition: "residual: test_publication_failure checks staged writes and retry; two-file publication is not a transaction and an orphan sidecar may survive a failed record replacement."
+  - control: orchestrator effect running carry before each chain
+    disposition: "residual: test_standalone_effects proves the program is standalone; the orchestrator must record each successful pre-chain invocation and rerun for a changed record head."
+  - control: orchestrator effect merge
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_standalone_effects"
+  - control: orchestrator effect update-branch
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_standalone_effects"
+  - control: orchestrator effect forced worker removal
+    disposition: "closed: tests/unit/test_carry_lineage.py::CarryLineageTest::test_standalone_effects"
+premises:
+  - claim: "Historical measurements, not a claim that repaired records still reproduce the refusals."
+    command: rg -n '^\*\*What happened' .orchestration/learning/mistakes/M-20261019-06-record-automation-gaps-recur.md
+    output: |-
+      10:**What happened.** On 2026-10-19/20 the integration chain refused five PRs at its audit precheck for missing lineage ledger rows (#402, #411, #430, #375 twice, #433), each time because the orchestrator had carried the predecessor audits' `audit:<sha7>:<n>` rows into the JSON block but not as the prose rows `ledger-check.py` reads, or not at all; and three task-level audits of the assets lineage (725b25b:4, 4e743a1:1, 9bff92b:1) found the record's `dispatch` array empty although the TASK and ACCEPTANCE lines had `read_at` timestamps on the bus. Each time the orchestrator repaired the record by hand from the lineage records or messages.db and re-ran the chain (about 10 minutes per refusal).
+  - claim: "The current reader recognizes only prose rows."
+    command: rg -n '^    rows = dict' scripts/orchestrator/ledger-check.py
+    output: |-
+      19:    rows = dict(re.findall(r"^((?:\d{6,}|audit:[0-9a-f]{7}:\d+))\t(\S+)$", Path(record).read_text(), re.MULTILINE))
+  - claim: "The current precheck supplies lineage audit summaries; it is measured, not invoked by this slice."
+    command: rg -n '^lineage=|"\$\{check\}" "\.orchestration/acceptance' scripts/orchestrator/orch-audit.sh
+    output: |-
+      56:lineage=("${v}/${family}"-a0*-audit-*.md.last.md)
+      57:uv run --no-project python -I "${check}" ".orchestration/acceptance/${task}.md" "${v}/${task}-pr-feedback.json" ${lineage[@]+"${lineage[@]}"} || refuse "the ledger is incomplete" 3
+  - claim: "The six historical delivery markers exist; the historical sender is not a production constant."
+    command: sqlite3 -readonly "$HOME/.agents/skills/agmsg/db/messages.db" 'SELECT id,from_agent,read_at FROM messages WHERE id IN (2442,2482,2509,2529,2551,2560) ORDER BY id;'
+    output: |-
+      2442|claude-deep-dot|2026-10-19T05:52:31Z
+      2482|claude-deep-dot|2026-10-19T08:24:50Z
+      2509|claude-deep-dot|2026-10-19T11:37:22Z
+      2529|claude-deep-dot|2026-10-19T12:35:57Z
+      2551|claude-deep-dot|2026-10-19T20:15:36Z
+      2560|claude-deep-dot|2026-10-19T20:51:09Z
+  - claim: "The interim workaround fills dispatch from SQLite; it is not a parser or security pattern to copy."
+    command: sed -n '1,4p' .agents/worklog/orchestrator-glue/fill-dispatch.py
+    output: |-
+      """fill-dispatch.py <task>: append to the acceptance record's JSON `dispatch` list every AGMSG-TASK and
+      AGMSG-ACCEPTANCE line the orchestrator sent for the task (read from the agmsg messages.db, in id order), skipping
+      lines already present; prints each added message id with its read_at. Interim mechanism for the
+      dispatch-record-markers class until P1-6 lands it in dispatch.sh (M-20261019-06)."""
+  - claim: "The gate supplies the JSON reader and fixed keys; three rows trigger S6 search and S1 replan checks."
+    command: rg -n '^def read_acceptance_record|^RECORD_KEYS|^S6_CLASS_LIMIT|without a matching records search|without a re-plan' scripts/require-crit-review.py
+    output: |-
+      42:RECORD_KEYS = {"format", "task", "head", "pr", "ledger", "searches", "audit_findings", "dispatch", "replans"}
+      48:S6_CLASS_LIMIT = 3
+      749:def read_acceptance_record(path: Path) -> tuple[dict | None, str | None]:
+      951:            errors.append(f"S6: class {cls} at {count} without a matching records search")
+      953:            errors.append(f"S1: {cls} at {count} rows without a re-plan (C-59)")
+  - claim: "Predecessor links live in task front matter, not new acceptance-block keys."
+    command: rg -n --sort path '^reset_of:|^after:' .orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a0[345].md
+    output: |-
+      .orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a03.md:13:after: [dotfiles-T129-assets-omp-hcom-followup-a02]
+      .orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a04.md:12:after: [dotfiles-T129-assets-omp-hcom-followup-a03]
+      .orchestration/tasks/dotfiles-T129-assets-omp-hcom-followup-a05.md:10:after: [dotfiles-T129-assets-omp-hcom-followup-a04]
+  - claim: "This checkout has a 43-line reader; carry and both requested test modules are new."
+    command: wc -l scripts/orchestrator/ledger-check.py | xargs
+    output: |-
+      43 scripts/orchestrator/ledger-check.py
+  - claim: "The standalone program, common resolver and new test modules are absent; only this program's launch contract is a prerequisite."
+    command: for p in scripts/orchestrator/carry-lineage.py scripts/orchestrator/trusted-interpreter.sh tests/unit/test_ledger_check.py tests/unit/test_carry_lineage.py; do if test -f "$p"; then printf '%s present\n' "$p"; else printf '%s absent\n' "$p"; fi; done
+    output: |-
+      scripts/orchestrator/carry-lineage.py absent
+      scripts/orchestrator/trusted-interpreter.sh absent
+      tests/unit/test_ledger_check.py absent
+      tests/unit/test_carry_lineage.py absent
+---
+
+# AGMSG-TASK dotfiles-T133-record-ledger-carry-a01
+
+🤖 I read the AGENTS.md for mryfmo/dotfiles.
+
+## Re-plan and boundary
+
+This is the whole S2 re-plan of plan 024 P1-6 slice 1 recorded in the acceptance record, after reviews a26cc07 and 6cbe954. It replaces the chain-based design. The repeated excluded-command-trusts-sandbox-context family is addressed by removing chain execution from this slice, not by asserting compliant callees.
+
+Deliver standalone `carry-lineage.py`, the existing `ledger-check.py` reader change and their tests. The orchestrator runs carry before each chain; the program never starts the chain. No chain callee is a dispatch prerequisite. Retain the out-of-scope owners above; do not migrate callees, invoke the acceptance writer, alter the gate or add production files beyond the allowlist. The sibling loop-limits task remains disjoint.
+
+Apply agmsg-orchestration Worker Playbook step 4: all worker commands, tests, pushes and gh calls stay inside the sandbox and allowlist. A denial yields `AGMSG-PONG v1 task_id=dotfiles-T133-record-ledger-carry-a01 status=blocked` naming the exact command, failure and boundary; wait for re-tasking. Never seek an unsandboxed retry, another-tool escape or approval to cross that boundary.
+
+## Frozen execution contract
+
+Design 5.14 at `$HOME/Workspace/dotfiles/.orchestration/plans/024-design-quality.md` is frozen (D-024-29). The following relied-on sentences are verbatim (C-88), from current source lines 104 (item 2), 105 (item 3), 110 (item 8) and 111 (item 9).
+
+Item 2:
+
+> A shell script that runs under a PR-controlled or worker-controlled environment (verdict.sh, the chain glue, CI steps) is executed as a program with `#!/bin/bash -p`, never as `bash <file>`, and only by a trusted parent that supplies the clean environment before the exec: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<passwd home> LANG=C.UTF-8 /bin/bash --noprofile --norc -p <absolute script path> …` (long options before `-p`).
+
+> A caller-set sentinel variable is not a sanitization proof, because the caller controls it (ci-efficiency a04 and verdict a04 C-80 reviews, 2026-10-19). No script accepts a caller-supplied executable directory; interpreters are the fixed absolute paths item 9 names.
+
+Item 3:
+
+> 仕組みが信頼するパス（スクリプト、台帳、証跡、worktree、lock、出力先）は realpath で解決し、`.claude/worktrees/` または manifest の worker ルート配下なら拒否（ask/hold）。symlink 構成要素は解決後に比較し、大小文字を区別しないファイルシステムでは同一性比較を大小文字非依存で行う。
+
+> A validator or scanner enumerates its inputs by walking the filesystem under fixed roots (every regular file, ignored or untracked included), never by asking git which files exist: `git ls-files` trusts the index and the working-tree `.gitignore` rules, which a same-UID writer edits without a commit (a07 C-80 rounds 1 to 3, 2026-10-19); git is consulted only to confirm the root (`--show-toplevel` equality with a real `.git` directory) and never as an exclusion authority.
+
+Item 8:
+
+> The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix.
+
+Item 9:
+
+> One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19).
+
+> Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record.
+
+> Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19).
+
+> A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root.
+
+Before dispatch, supply the accepted trusted parent and common resolver for these two Python entrypoints alone. The absolute shell script in item 2 is the accepted parent, not a Python file. Use that parent and `<abs uv> run --no-config --no-project --isolated --offline --python <abs python> python -I <abs program> …`; consume the verified interpreter realpaths without rediscovery. The parent supplies an absolute `UV_CACHE_DIR`, protected main-checkout cache for orchestrator runs and `<worktree>/.uv-cache` for worker tests. Supply already provisioned repository-standard safe-YAML support when reading task metadata; do not add a new dependency or replacement resolver here.
+
+The new program checks its exact allowed environment-name set, fixed PATH/LANG, own regular-file realpath under the confirmed repository root, and HOME against `pwd.getpwuid(os.getuid()).pw_dir` before reading records or writing. Enumerate the allowed names in the accepted launch contract and its fixture; reject unknown names, missing required names and relative/missing cache paths. Any refusal exits 2 with `carry-lineage: environment refused`, `carry-lineage: program realpath refused` or `carry-lineage: HOME differs from passwd home` as applicable. Never repair the environment or re-exec itself; a sentinel proves nothing. No production HOME, database, executable-directory or root override is accepted.
+
+## Implementation
+
+1. **One acceptance reader.** Import the root-bound gate module's `read_acceptance_record` by explicit realpath; use it in the ledger reader and carry. No second acceptance JSON parser. Preserve `ledger-check.py <record> <sweep> <audits>…` and its Bot/audit finding conventions. Union prose `<id><TAB><class>` and JSON `ledger: [{id, class}]` rows, including JSON-only records. Equal duplicate ids/classes count once; different classes refuse as `ledger-check: conflicting classes: <id>`. A missing/blank class refuses by name; malformed blocks and duplicate JSON keys retain the shared reader's refusals. Keep prose-only support; a present malformed block must not fall back to prose.
+2. **Standalone interface.** `carry-lineage.py <task> --orchestrator <identity>` takes the identity from the trusted orchestrator invocation, not record content or a historical sender constant. Validate the task as a single safe identifier, refusing `..` components and path separators; require the current block's task to match and its head to be full lowercase 40-hex. Carry may import the allowed ledger helper; it runs no chain script, writer, audit, gate, send, merge, update-branch or worker-removal command.
+3. **Filesystem lineage.** Walk every regular file under the fixed `.orchestration/acceptance/` root, including ignored/untracked files; Git only confirms the anchored root with explicit git-dir/work-tree and sanitized read-only root probing. It grants no inclusion/exclusion or head authority. Derive the lineage prefix by removing terminal `-a<digits>`; match an escaped anchored prefix. Read `reset_of`/`after` as safe task-front-matter data under `.orchestration/tasks/`, never new acceptance keys. Select only same-prefix records reachable transitively as predecessors of the current task. Exclude unlinked same-prefix records even when their PR matches; refuse cycles, malformed identities, unreadable required links and missing predecessor records.
+4. **Path boundary.** Realpath-bind all inputs, imported helpers and fixed roots; refuse escapes, worker-root paths and case aliases on case-insensitive filesystems. Nothing under `.claude/worktrees/` or a manifest worker root is read or written. Record destination is `.orchestration/acceptance/<task>.md`; sidecar is `.orchestration/validation/<task>-carry.json`. Bind existing destinations, new-file parents and staging paths beneath those fixed roots; refuse lexical `..` before normalization. Use directory-relative no-follow opens, including O_NOFOLLOW semantics for destination/staging leaves; recheck parent identity before replacement.
+5. **Carry rows and provenance.** For every predecessor audit row, keep its recorded class in both current-record prose and JSON ledger. Missing/blank class refuses as `carry-lineage: lineage row has no class: <record>:<id>`; conflicting classes refuse by name. Locate the corresponding audit file beneath the fixed validation root, snapshot its bytes and read a unique full lowercase 40-hex head from its first line. Require its prefix to match the row id; a filename sha7, inherited-only marker or current record's head cannot substitute. Missing/ambiguous origin or full head refuses before mutation. Do not silently drop a row.
+6. **Collision handling.** Before deduplication, bind each `audit:<sha7>:<n>` to its origin audit path, byte SHA-256 and full head. Distinct audits sharing sha7 and finding number refuse as `carry-lineage: audit id collision: <id>` even with equal classes. Repeated references to the same bound origin remain idempotent; retain every predecessor/source association in sidecar `carried: [{id, class, record_path, audit_path, audit_sha256, head}]`. Never infer provenance from the shared Git object store.
+7. **Dispatch content binding.** Open passwd-home `~/.agents/skills/agmsg/db/messages.db` with SQLite URI `mode=ro` and query-only mode; use a fixed parameterized query in message-id order. Parse TASK/ACCEPTANCE lines as data, with exact task-id matching and unique fields regardless of order. Count only `from_agent == <identity>`. A TASK line also needs `task_sha256` equal to SHA-256 of the bound dispatched `.orchestration/tasks/<task>.md` bytes. An ACCEPTANCE line also needs its full `head` to equal the current record's head or a predecessor record head in sidecar `predecessors: [{task, record_path, head}]`; validate these full heads from the selected predecessor records independently of audit-origin heads. Report every other candidate line with message id and reason, without echoing untrusted bodies; store none of those lines. The store is writable by every seat, so sender names and `read_at` alone are not authentication or permission authority.
+8. **Publish.** Preserve all other JSON keys, prose, searches, replans and dispositions. Fill `dispatch` with validated exact lines, deduplicated in database order; validate existing dispatch entries too and report/remove unbound entries. Sidecar records task, current full head, trusted orchestrator identity, task-text SHA-256, the selected predecessor records and their full heads, every carried-row provenance and `dispatch_meta: [{message_id, read_at, line}]` for accepted messages, retaining duplicate-message provenance and SQL NULL as JSON null. No new acceptance-block keys. Missing/unreadable database or no content-bound TASK refuses by name. Validate all inputs before writing, recheck consumed hashes, stage 0600 outputs, publish sidecar before atomically replacing the record; reruns repair an orphan sidecar without duplicating rows. Leave predecessors, task/audit inputs and database bytes unchanged.
+9. **Preserve counters.** Carry every row without synthesizing a class, records search, replan or approval. The unchanged gate must still reject three matching-class rows without the required S6 search/S1 replan; preserve an existing valid replan. Local records/sidecar are procedural bookkeeping, not permission decisions or authenticated PR content. Final PR review uses full-head GitHub content or a protected private clone as item 8 requires; carry does not fetch or evaluate a PR changeset.
+
+Runtime record/sidecar destinations are orchestrator outputs, not worker edit permissions. The orchestrator records carry's exit and output before each chain and stops on refusal; this task does not modify that chain or claim its downstream execution is safe.
+
+## Check
+
+Authoring count: 231 lines including front matter and five allowed entries; limits are 250 lines and these five entries. Measured existing production baseline is the 43-line reader; carry and both test modules are absent. There is no inherited a01 line-budget arithmetic for this new slice.
+
+Fresh estimates, to be measured: at most **400 additions plus deletions outside tests/ and .orchestration/** and **700 additions plus deletions under tests/**. These estimates cover both production programs, the reader import/union and all cases below; they are not measured implementation totals. RESULT records final per-file numstat and both totals without raising either cap; exceeding one requires re-tasking. Use `git diff --no-ext-diff --no-textconv --numstat <base40>...<head40>` on the final head; the orchestrator independently measures authenticated contents in a protected review clone.
+
+Write the tests first and paste red/green commands, outputs and exit codes. Use the supplied isolated launch contract inside the sandbox, a temporary HOME, fixture passwd-home lookup, temporary cache and fixture messages.db. Mock passwd/root inputs only in tests, never through production switches; a real temporary HOME differing from passwd home must refuse. Fixture protected roots model production boundaries without granting the worker access to the live anchored checkout. No live store reads, record mutations or bus sends in tests.
+
+- `tests/unit/test_ledger_check.py::LedgerCheckTest::test_prose_and_json_use_gate_reader`: prose-only, JSON-only and mixed rows; assert use of the actual shared reader; equal duplicates once, conflicting classes refused.
+- `tests/unit/test_ledger_check.py::LedgerCheckTest::test_malformed_or_classless_row_refuses`: malformed delimiters/JSON, duplicate keys, invalid ledger shape and class-less prose/JSON rows refuse by name.
+- `tests/unit/test_ledger_check.py::LedgerCheckTest::test_audit_regex_and_inherited_ids`: retain Bot ids, direct/inherited audit ids, misleading filenames and repeated inherited references.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_two_predecessors`: two predecessor records and audit files, one JSON-only row; both output representations retain every class, and rerun is idempotent.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_missing_class_refuses`: class-less predecessor rows in either representation refuse before publication and leave inputs/outputs unchanged.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_fixed_root_lineage`: ignored/untracked records count, transitive reset_of/after links work, unlinked same-prefix records are excluded; git listing cannot hide an input.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_audit_provenance_and_collision`: different full heads sharing sha7 and finding number refuse before deduplication; missing/ambiguous first-line heads and prefix mismatches refuse.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_sidecar_provenance`: every carried row/source has record path, audit path, matching byte SHA-256 and full first-line head; repeated references to one origin retain their provenance.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_dispatch_content_binding`: fixture TASK with matching sha stored, mismatching sha reported; foreign-head ACCEPTANCE reported; current/predecessor record heads accepted, including a predecessor with no audit rows; wrong sender/task, duplicate fields, reordered fields, duplicate lines and NULL read_at; DB unchanged.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_path_boundaries`: input symlink escape, case-alias path, worker-worktree path and lexical `..` destination each refused; exercise both record and sidecar existing leaves, new parents, staging and symlink swaps. Test case-insensitive semantics deterministically without skipping on a case-sensitive host.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_environment_refusal`: extra/missing names, hostile PATH/LANG, loader/startup variables, absent/relative cache; exit 2 with the named message and no effects.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_program_realpath_refusal`: outside-root, symlink-escaped, nonregular and worker-root program paths refuse before input reads.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_home_refusal`: forged HOME refuses; fixture passwd home succeeds without a production override.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_trusted_launch`: real supplied parent/interpreter argv, hostile BASH_ENV, fake user-site .pth/usercustomize.py, uv.toml and .venv; planted code never runs; no self re-exec or interpreter rediscovery.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_malformed_metadata_refuses`: malformed acceptance block, duplicate keys, unsafe YAML, cycles and invalid/missing predecessor links; names the failure before writes.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_publication_failure`: changed snapshots, unavailable database and failed replacement preserve the old record; orphan-sidecar retry succeeds.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_standalone_effects`: successful carry with chain/callees absent; subprocess log has no chain, writer, audit, send, merge, update-branch or worker-removal execution.
+- `tests/unit/test_carry_lineage.py::CarryLineageTest::test_gate_thresholds_preserved`: unchanged gate still requires matching S6 searches and S1 replan at three rows; existing complete replan survives.
+
+Run both new unittest modules, relevant existing reader/gate checks and repository-required checks. Do not run Bats locally; push and inspect GitHub Actions for those results. Do not count an unrun or sandbox-denied check as passing.
+
+## Completion
+
+Use agmsg-orchestration Codex seat worklogs (plan/todo/learn), uncommitted, with at most one active todo per owner. Create a fresh task branch and one PR with English title/description. Commit the byte-identical dispatched text under the allowed task directory as `task.md`.
+
+In that directory write `report.md`, `validation.md`, `sandbox.md`, `learning.md`, `autoskill.md` and worker review evidence. RESULT names all paths, final full head/base, PR, task-copy SHA-256, changed files, final numstat/caps, threat-row checks, red/green evidence, CLI impact, residuals and `cost:` (`n/a` if unavailable). Worker artifacts stay at those relative paths in its own worktree when the main checkout is not writable.
+
+Verify CI after the final push and follow bounded fix/review rounds. Send `AGMSG-RESULT v1 task_id=dotfiles-T133-record-ledger-carry-a01 status=ready_for_review` with evidence, or `status=blocked` with exact command/failure/boundary evidence. The orchestrator performs independent final-head/security review and Orchestrator Playbook step 10's feedback sweep, audit, acceptance and integration gate with the required evidence. Use repo-local crit-data; no browser review or worker merge.
+
+Not checked by this authoring task: implementation, runtime tests, CI or live mutation. Risk: local records and the all-seat store remain untrusted procedural inputs; legacy audits lacking first-line full heads refuse, and protected launch deployment remains a prerequisite.
+
+## Checks (pasted by the orchestrator before each send)
+
+```
+```

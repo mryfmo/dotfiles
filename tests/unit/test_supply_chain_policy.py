@@ -372,6 +372,9 @@ main
 
         lines = text.splitlines()
         held = {"fd": "fd = ", "npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
+        held["node"] = "node = "
+        held["python"] = "python = "
+        held["uv"] = "uv = "
         held["http:gcloud"] = '[tools."http:gcloud"]'
         # The exact blocc pin avoids the sandbox's blocked version-registry query.
         held["github:shuntaka9576/blocc"] = '"github:shuntaka9576/blocc" = '

@@ -1,0 +1,6 @@
+- [P1] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:328](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a01.md:328) Moving delivery hooks to worker user settings leaves existing worktree-local hooks active: Claude still reads legacy starting-directory settings alongside main-local settings, so previously generated commands retain unsanitized environments and PATH-resolved interpreters; the design needs migration of those entries and a legacy-settings fixture, since checking that no new local file is written cannot establish effective hook binding. [Settings loading](https://code.claude.com/docs/en/settings#where-claude-code-keeps-the-local-file-in-a-git-repository).
+
+📝 まとめ: Reviewed all 44 threat rows, 20 allowed-file entries and cited review context; one finding remains for orchestrator disposition. No files changed.
+
+Not checked: implementation or live deployment; the stated same-user and shared-capability residuals remain.
+Verdict: incorrect

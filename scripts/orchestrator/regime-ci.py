@@ -33,6 +33,7 @@ CHECKER = "scripts/orchestrator/task-consistency-check.py"
 # --no-config: a uv.toml or pyproject.toml the pull request adds cannot steer this run
 CHECKER_RUN = ["uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
 RUNS = (CHECKER, "scripts/orchestrator/regime-ci.py", ".github/workflows/regime.yml")
+TOKEN_LIKE = re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}")
 
 
 class GitError(Exception):
@@ -62,14 +63,14 @@ def sha256(data):
 
 
 def token(text, name):
-    m = re.search(rf"(?:^|\s){name}=(\S+)", text)
+    m = re.search(rf"(?:^|\s){name}=(\S+)", text)  # lint-comparisons: allow name is the literal precheck or task_copy
     return m.group(1) if m else None
 
 
 def allowed(path, entry):
     """Match an allowed_files entry: `<dir>/**` takes its prefix, `*` and `?` stay within one path segment."""
-    if entry.endswith("/**"):
-        return path.startswith(entry[:-2])
+    if entry.endswith("/**"):  # lint-comparisons: allow glob-syntax test on an allowed_files entry, not a path
+        return path.startswith(entry[:-2])  # lint-comparisons: allow git-listed relative path vs the entry dir prefix
     rx = "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in entry)
     return re.fullmatch(rx, path) is not None
 
@@ -87,7 +88,7 @@ def caps(text, numstat):
         excluded = re.findall(r"`([^`]+)`", re.split(r",\s*(?:and\s+)?\d", outside.group(2))[0]) or excluded
 
     def counted(path, prefixes):
-        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)
+        return any(path == p or (p.endswith("/") and path.startswith(p)) for p in prefixes)  # lint-comparisons: allow git numstat repository-relative paths against the task text's literal cap prefixes  # fmt: skip
 
     out_lines = sum(a + d for a, d, p in numstat if not counted(p, excluded))
     test_lines = sum(a + d for a, d, p in numstat if counted(p, ["tests/"]))
@@ -148,6 +149,13 @@ def policy(root, base, head, t):
     return data, front(data), dispatched is not None
 
 
+def redact(text):
+    """Mask the GH_TOKEN/GITHUB_TOKEN values and token-like literals in checker output (security review of a8c03fae)."""
+    for value in filter(None, map(os.environ.get, ("GH_TOKEN", "GITHUB_TOKEN"))):
+        text = text.replace(value, "[redacted]")
+    return TOKEN_LIKE.sub("[redacted]", text)
+
+
 def checker(root, data):
     """Return the base checker's violations on the base's dispatched bytes: it hands the text's literals to git (C8 to
     C10) and opens its design path (C6), so a pull request's own text never reaches it (worker review P0 of bcbd6949)."""
@@ -158,8 +166,8 @@ def checker(root, data):
     out = run.stdout.splitlines()  # the file is task.md, so C1 compares task_id with `task`; task-id checks <t>
     # only the checker's own verdict line with its exit code counts; a crash also exits 1, with no verdict line
     if (out[:1], run.returncode) not in ((["task.md: OK"], 0), (["task.md: FAIL"], 1)):
-        return [("checker", f"no verdict (exit {run.returncode}): {(run.stdout + run.stderr).strip()[-300:]}")]
-    lines = [ln.strip() for ln in out[1:] if ln.strip()]
+        return [("checker", f"no verdict (exit {run.returncode}): {redact(run.stdout + run.stderr).strip()[-300:]}")]
+    lines = [redact(ln).strip() for ln in out[1:] if ln.strip()]
     return [("checker", ln) for ln in lines if not re.fullmatch(r"C1 task_id .* != file task", ln)]
 
 
@@ -243,7 +251,7 @@ def main(argv=None):
     dirs = sorted({m.group(1) for p in changed if (m := re.match(r"\.orchestration/([^/]+)/", p))})
     targets = [t for t in dirs if show(root, head, f".orchestration/{t}/task.md") is not None]
     if not targets:
-        stray = [p for p in changed if not p.startswith(".orchestration/")]
+        stray = [p for p in changed if not p.startswith(".orchestration/")]  # lint-comparisons: allow git-listed repository-relative paths against the literal .orchestration/ prefix  # fmt: skip
         if not stray:  # content alone decides: a branch name is the pull request's own claim
             print("regime-ci: no target (records-only)")
             return 0

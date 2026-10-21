@@ -1,0 +1,54 @@
+---
+{
+  "audit_findings": [],
+  "dispatch": [
+    "AGMSG-TASK v1 task_id=dotfiles-T133-result-precheck-a01 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-c task_file=.orchestration/tasks/dotfiles-T133-result-precheck-a01.md task_sha256=2f9ccd4a410b54d753e2970a5dc984a81dfdc4ce18be4930aaeea788cdbc4ed6 deadline=none done_signal=AGMSG-RESULT note=a009:plan-024-P1-5(result-precheck.sh,dispatch.sh-acceptance-refusal,.githooks);item-0-first:commit-the-two-untracked-evidence-files-on-tools/omp-config-render,push,draft-PR,PONG-for-dotfiles-T129-omp-config-render-a01-with-the-PR-number,then-fresh-branch-tools/result-precheck-a01-from-origin/main;security:true(task-level-audit-plus-security-review-on-the-final-head);RESULT-carries-the-precheck-sha,task_copy-and-parked_pr-fields;read-the-task-file-first read_at=read",
+    "AGMSG-PING v1 task_id=dotfiles-T133-result-precheck-a01 reason=item-0-is-complete(PR-406,commit-2e978db7,recorded-by-the-orchestrator-from-your-blocked-PONG;send-no-parked-PONG);origin/main-is-current-at-99a4a80f-so-skip-the-fetch:run-git-switch--c-tools/result-precheck-a01--no-track-origin/main-alone-inside-the-sandbox(a-local-operation,no-prompt)and-start-item-1;a-classifier-denial-of-a-sandboxed-local-git-command-is-a-blocked-PONG-again,never-a-retry-outside-the-sandbox;the-two-denials-are-recorded-as-a-mechanism-defect read_at=read",
+    "AGMSG-TASK v1 task_id=dotfiles-T133-result-precheck-a01 round=1 amendment=1 previous_task_sha256=2f9ccd4a410b54d753e2970a5dc984a81dfdc4ce18be4930aaeea788cdbc4ed6 repo=~/Workspace/dotfiles/.claude/worktrees/worker-c task_file=.orchestration/tasks/dotfiles-T133-result-precheck-a01.md task_sha256=247e7a44f764f3d939f18278c10e380a92909cce38583e28b1cd07d2d7a5a7a8 deadline=none done_signal=AGMSG-RESULT note=amendment-1:your-question-of-04:33Z:option-(b)-is-decided:the-format-check-and-the-pre-commit-hook-run-CI-s-three-formatting-commands-in-CI-s-scopes(test.yaml-steps-Run-shfmt-and-Check-Python-and-Markdown-formatting),the-twelve-files-outside-that-scope-are-out-of-scope;re-read-the-task-file,copy-it-as-task.md;no-other-change-to-your-work read_at=unread",
+    "AGMSG-PING v1 task_id=dotfiles-T133-result-precheck-a01 reason=no-prompt-rule(the-user-s-directive-of-13:5x-JST,all-seats):never-run-a-command-that-matches-a-live-ask-rule(gh-pr-comment/edit/review/close,gh-issue,gh-api-write-forms),so-post-no-@codex-review-comment(the-Bot-s-automatic-review-at-open-or-ready-is-the-only-one;after-15-minutes-record-bot:none);run-git-fetch,git-push,gh-pr-ready,gh-pr-create--draft-each-as-a-single-command,never-chained;a-classifier-denial-is-a-blocked-PONG-and-you-continue-the-rest;nothing-else-changes;no-reply-needed-unless-blocked read_at=unread",
+    "AGMSG-TASK v1 task_id=dotfiles-T133-result-precheck-a01 round=1 amendment=2 previous_task_sha256=247e7a44f764f3d939f18278c10e380a92909cce38583e28b1cd07d2d7a5a7a8 repo=~/Workspace/dotfiles/.claude/worktrees/worker-c task_file=.orchestration/tasks/dotfiles-T133-result-precheck-a01.md task_sha256=05caa77f064b809185138817d869ae0b4fc52ef76863715d1e6d998134ac011f deadline=none done_signal=AGMSG-RESULT note=amendment-2:your-question-of-05:20Z:option-(a)-is-decided:the-Check-s-proof-run-uses---tests-with-the-task-s-two-modules,paste-the-default-run-s-exit-and-the-baseline-comparison,add-the-shortcut-header-line;copy-this-text-as-task.md;no-other-change;no-@codex-review-comment read_at=unread",
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-result-precheck-a01 status=revise previous_head=3f5177a944244f9eda6205c357df4b5b9f1d6eee reason=small-own-change-P2-4305945406-of-the-Bot-s-first-review(C-50):the-pre-commit-hook-and-the-staged-checks-read-working-tree-files,not-the-staged-blobs next_action=run-the-staged-checks-on-the-index-contents(git-checkout-index-into-a-mktemp-dir,or-git-show-:path),one-red-then-green-fixture-with-an-index/worktree-divergence,push-once-as-single-commands,wait-CI-and-the-automatic-review(no-@codex-review),then-RESULT-with-a-fresh-precheck-sha check=tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree read_at=read",
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-result-precheck-a01 status=withdrawn reason=INV-6-S2-reset(amendments-2;plan-006-S2:the-task-stops-and-goes-back-to-design-by-another-context;M-20261018-10) next_action=a-reset-task-dotfiles-T133-result-precheck-a02(reset_of-a01;the-local-review-s-P1-binary-marked-text-in-pre-push-and-two-P2-as-items)follows-as-a-TASK-line;PR-411-and-your-branch-continue-under-it;no-push-until-then read_at=read"
+  ],
+  "format": 1,
+  "head": null,
+  "ledger": [
+    {
+      "class": "range-scan-incomplete",
+      "id": "4305945403"
+    },
+    {
+      "class": "fail-open-on-error",
+      "id": "4305945407"
+    },
+    {
+      "class": "index-worktree-divergence",
+      "id": "4305945406"
+    }
+  ],
+  "pr": null,
+  "replans": {},
+  "searches": [],
+  "task": "dotfiles-T133-result-precheck-a01"
+}
+---
+
+# Acceptance record: dotfiles-T133-result-precheck-a01
+
+Plan 024 P1-5: result-precheck.sh, the dispatch.sh acceptance-side refusal under PRECHECK_REQUIRED, the .githooks pre-commit and pre-push; item 0 parks PR B stage 1 (tools/omp-config-render 41da91ce) as a draft. Dispatched to a009 (worker-c, Claude). Wave P-W0 of plan 024 (`.orchestration/plans/024-omp-cutover-and-corrective-order.md` section 6); the four P-W0 tasks have pairwise-disjoint `allowed_files` (checked by the orchestrator at dispatch: no path appears in two of the four task files).
+
+- 2026-10-18T04:20Z record created before the first dispatch (Orchestrator Playbook step 6).
+
+## RESULT round 1 (2026-10-18T06:24:29Z): PR #411 head 3f5177a9 (code head a7b0da2f) on 99a4a80f
+
+- review (06:3xZ): files = result-precheck.sh, dispatch.sh, the two hooks, the test module and the evidence directory, within allowed_files; task copy = the dispatched text (task_copy 05caa77f…); precheck=24beae71… equals sha256 of precheck.json at 3f5177a9 (checked by the orchestrator: `git show 3f5177a9:…/precheck.json | shasum`), its head a7b0da2f is the last code commit and `git diff --name-only a7b0da2f 3f5177a9` lists only evidence paths (the rule of item 3 holds on this PR itself); the proof run used --tests (Amendment 2), the default run exit and the 296-test baseline pasted; 7 tests; caps 347/350 and 299/450; CI green on 3f5177a9; Bot first review: two P1 fixed:a7b0da2f (4305945403, 4305945407), one P2 4305945406 (the staged checks read working-tree files, not the staged blobs; a partially staged file bypasses the hook), small and on this PR's own change; no Bot review of the final head within 15 min (no @codex review under the no-prompt rule).
+- acceptance action (06:3xZ): status=revise previous_head=3f5177a9, one check= (the staged-blobs fixture); INV-6 amendments 2, revises 1 after the next RESULT; the chain and the audit run on the revised head; a further amendment or revise is a hold and a re-plan.
+4305945403	range-scan-incomplete
+4305945407	fail-open-on-error
+4305945406	index-worktree-divergence
+- finding classes (06:3xZ): 4305945403 range-scan-incomplete (pre-push scanned the endpoint diff, not each pushed commit; fixed a7b0da2f), 4305945407 fail-open-on-error (dispatch.sh accepted a precheck record with ok:false under PRECHECK_REQUIRED=1; fixed a7b0da2f), 4305945406 index-worktree-divergence (the revise round). No class at three.
+
+## RESULT revise-1 (2026-10-18T06:50:08Z): PR #411 head a5cb73b4 (code head bdd8ab81) on 99a4a80f (previous 3f5177a9)
+
+- review (07:0xZ): the P2 4305945406 fixed in bdd8ab81 (the staged checks run in an index export with an absolute GIT_INDEX_FILE); the check= test red against 3f5177a9 s script and green on bdd8ab81 (the selector proof shows exit 5 on the previous head because the test is new there; validation.md adds the real red run); precheck=c7aaf1cf… with precheck.json head bdd8ab81 and a5cb73b4 evidence-only (the item 3 rule); CI green; caps 350/350 and 318/450; Bot: no review of the final head within 15 min (no @codex review). INV-6: amendments 2 (S2), revises 1. Under M-20261018-10 this task is at the S2 threshold: its chain and audit run on a5cb73b4 now, and the task is then reset as dotfiles-T133-result-precheck-a02 by a review-profile context with the audit folded in; PR #411 continues under a02.
+- 2026-10-18T07:1xZ chain on a5cb73b4: sweep 3 threads dispositioned (fixed), local review 1 P1 (`.githooks/pre-push` skips text content when git marks a diff binary) and 2 P2 (diff errors recorded as ok; dispatch.sh accepts missing or non-boolean check results); the chain stopped at the owner-task step (owner task written) and the P1 would stop it next. INV-6 S2 (amendments 2): the a01 is withdrawn on the bus and reset as dotfiles-T133-result-precheck-a02 by a review-profile context with the three findings as items; PR #411 continues under a02; its chain and audit run on a02 s head.

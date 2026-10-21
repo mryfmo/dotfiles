@@ -23,8 +23,9 @@ UV = [
     "-I",
 ]  # as regime.yml
 T = "t1-a01"
+RESIDUAL = '"residual: the fixture row is test data for this control"'
 ROWS = "".join(
-    f"  - control: {name}\n    disposition: residual\n"
+    f"  - control: {name}\n    disposition: {RESIDUAL}\n"
     for name in (
         "the PR edits src/tool.sh",
         "the PR edits tests/unit/test_tool.py",
@@ -124,7 +125,7 @@ class RegimeCiTest(unittest.TestCase):
         # verifier and checker still decide, the checkout stays at the base, and no head program runs.
         fake = 'import pathlib\npathlib.Path("head-program-ran").write_text("x")\nprint("{line}")\n'
         scripts = {VERIFIER: fake.format(line="regime-ci: ok 1 task(s)"), CHECKER: fake.format(line="task.md: OK")}
-        rows = "".join(f"  - control: the PR edits {path}\n    disposition: residual\n" for path in scripts)
+        rows = "".join(f"  - control: the PR edits {path}\n    disposition: {RESIDUAL}\n" for path in scripts)
         policy = TASK.replace("threat_table:\n", "threat_table:\n" + rows).replace("at most 3 ", "at most 999 ")
         policy = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n" + "".join(f"  - {path}\n" for path in scripts))
         forged = policy.replace("  - src/tool.sh\n", "  - src/tool.sh\n  - stray.sh\n")
@@ -252,7 +253,8 @@ class RegimeCiTest(unittest.TestCase):
         line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
         self.assertEqual(line, verify["run"])
         head = "${{ github.event.pull_request.head.sha }}"
-        self.assertEqual(({"HEAD_SHA": head}, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        token = {"GH_TOKEN": "${{ github.token }}"}
+        self.assertEqual(({"HEAD_SHA": head} | token, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
@@ -273,7 +275,7 @@ class RegimeCiTest(unittest.TestCase):
     def test_regime_ci_reports_each_violation_once_and_passes_a_consistent_pr(self):
         result = self.build()
         self.assertEqual((0, "regime-ci: ok 1 task(s)\n"), (result.returncode, result.stdout), result.stderr)
-        no_row = TASK.replace("  - control: the PR edits src/tool.sh\n    disposition: residual\n", "")
+        no_row = TASK.replace(f"  - control: the PR edits src/tool.sh\n    disposition: {RESIDUAL}\n", "")
         crash = TASK.replace("threat_table:\n", "threat_table:\n  - a row that is no mapping\n")
         worded = TASK.replace("changed lines outside", "changed lines (added plus deleted) outside")
         four = CODE | {"src/tool.sh": "a\nb\nc\nd\n"}
@@ -369,8 +371,8 @@ class RegimeCiTest(unittest.TestCase):
         # Amendment 1: a later copy whose reset_of names an earlier one is the lineage's only target; the earlier copy
         # warns, and its own .orchestration/ paths are no stray of the later one. Without reset_of, both are targets.
         later = "t1-a02"
-        rows = f"  - control: the predecessor copy .orchestration/{T}/task.md\n    disposition: residual\n"
-        rows += f"  - control: the task copy .orchestration/{later}/task.md\n    disposition: residual\n"
+        rows = f"  - control: the predecessor copy .orchestration/{T}/task.md\n    disposition: {RESIDUAL}\n"
+        rows += f"  - control: the task copy .orchestration/{later}/task.md\n    disposition: {RESIDUAL}\n"
         reset = TASK.replace(T, later).replace("allowed_files:", f"reset_of: [{T}]\nallowed_files:")
         reset = reset.replace("threat_table:\n", "threat_table:\n" + rows)
         for text, expected, kept in ((reset, 0, True), (reset, 0, False), (TASK.replace(T, later), 1, True)):
@@ -421,6 +423,61 @@ class RegimeCiTest(unittest.TestCase):
         self.assertIn(
             f"regime-ci: warning: the diff changes {CHECKER}; this run executed the base's version", result.stdout
         )
+
+    def record_checker(self, rc=0):
+        # a fake base checker that records its argv and environment in the fixture repository's .git, then answers `rc`
+        return (
+            "import json, os, sys\nfrom pathlib import Path\n"
+            "root = Path(sys.argv[sys.argv.index('--root') + 1])\n"
+            "(root / '.git' / 'checker.json').write_text(json.dumps({'argv': sys.argv, 'env': dict(os.environ)}))\n"
+            f"print('task.md: OK' if {rc} == 0 else 'crash')\nsys.exit({rc})\n"
+        )
+
+    def test_regime_ci_child_sees_parent_tokens(self):
+        # P1-17: the checker inherits regime-ci's environment, so GH_TOKEN reaches it exactly when regime-ci holds it
+        self.env = {k: v for k, v in self.env.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN")} | {"PROBE_KEPT": "1"}
+        self.build(checker=self.record_checker())
+        names = ("GH_TOKEN", "GITHUB_TOKEN")
+        for given in ({}, {"GH_TOKEN": "gho_fixture_a"}, {"GITHUB_TOKEN": "ghs_fixture_b"}, dict(zip(names, "ab"))):
+            with self.subTest(given=sorted(given)):
+                result = self.regime(**given)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                env = json.loads((self.repo / ".git" / "checker.json").read_text())["env"]
+                self.assertEqual(given, {k: env[k] for k in names if k in env})
+                self.assertEqual("1", env.get("PROBE_KEPT"))  # inheritance, not an allowlist
+
+    def test_regime_ci_keeps_tokens_out_of_argv_and_output(self):
+        tokens = {"GH_TOKEN": "gho_fixture_secret_a", "GITHUB_TOKEN": "ghs_fixture_secret_b"}
+        for rc in (0, 3):  # the verdict and the no-verdict diagnostic
+            with self.subTest(rc=rc):
+                self.build(checker=self.record_checker(rc))
+                result = self.regime(**tokens)
+                record = json.loads((self.repo / ".git" / "checker.json").read_text())
+                self.assertEqual(rc == 3, "no verdict (exit 3)" in result.stdout, result.stdout)
+                self.assertEqual(tokens, {k: record["env"].get(k) for k in tokens})  # present in the child
+                for value in tokens.values():
+                    self.assertNotIn(value, json.dumps(record["argv"]) + result.stdout + result.stderr)
+
+    def test_regime_ci_redacts_tokens_in_checker_diagnostics(self):
+        # security review of a8c03fae: a checker that echoes a token must not leak it through regime-ci's diagnostic
+        secret, literal = "gho_fixture_secret_token_value", "ghp_" + "Z" * 36  # an env value and a token-like literal
+        for rc, verdict in ((3, ""), (1, "task.md: FAIL\\n")):
+            echo = f"import sys\nsys.stdout.write('{verdict}C9 leak {secret} {literal}\\n')\nsys.stderr.write('{secret}')\n"
+            with self.subTest(rc=rc):
+                self.build(checker=echo + f"sys.exit({rc})\n")
+                result = self.regime(GH_TOKEN=secret)
+                self.assertEqual(rc == 3, "no verdict (exit 3)" in result.stdout, result.stdout)
+                self.assertIn("C9 leak [redacted] [redacted]", result.stdout)
+                self.assertNotIn(secret, result.stdout + result.stderr)
+                self.assertNotIn(literal, result.stdout + result.stderr)
+
+    def test_regime_yml_sets_the_token(self):
+        read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
+        cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
+        doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
+        verify = [s for s in doc["jobs"]["regime"]["steps"] if "regime-ci.py" in s.get("run", "")]
+        self.assertEqual(["${{ github.token }}"], [s.get("env", {}).get("GH_TOKEN") for s in verify])
+        self.assertEqual({"contents": "read"}, doc["permissions"])
 
 
 if __name__ == "__main__":

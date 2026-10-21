@@ -1,0 +1,10 @@
+{
+  "branch": "task/dotfiles-T133-python-pin-a01",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "$HOME/.crit/reviews/506ddf924184/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

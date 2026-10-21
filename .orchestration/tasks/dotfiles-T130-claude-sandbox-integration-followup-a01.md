@@ -60,5 +60,6 @@ One PR from a fresh branch off `origin/main` after PR #392 merges. The Completio
 ## Checks (pasted by the orchestrator before each send)
 
 ```
-(pending: pasted at dispatch)
+dotfiles-T130-claude-sandbox-integration-followup-a01.md: OK
+masked 0 match(es) in .orchestration/tasks/dotfiles-T130-claude-sandbox-integration-followup-a01.md
 ```

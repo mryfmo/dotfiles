@@ -1,0 +1,340 @@
+EXE001 Shebang is present but file is not executable
+ --> tests/unit/test_generate_agent_configs.py:1:1
+  |
+1 | #!/usr/bin/env python3
+  | ^^^^^^^^^^^^^^^^^^^^^^
+2 | """Exercise focused checks in generate-agent-configs.py."""
+  |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/unit/test_generate_agent_configs.py:436:13
+    |
+434 |           )
+435 |           for name, path, value in cases:
+436 | /             with self.subTest(target=f"{name}.{path}", value=value):
+437 | |                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+    | |______________________________________________________________________________________________^
+438 |                       self.module.set_asset_field(self.MANIFEST_TEXT, name, path, value)
+    |
+help: Combine `with` statements
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   --> tests/unit/test_generate_agent_configs.py:614:18
+    |
+612 |           self.assertTrue(standard_profile.stat().st_mode & 0o111)
+613 |
+614 |           result = subprocess.run(
+    |  __________________^
+615 | |             [sys.executable, str(standard_profile)],
+616 | |             input='model = "runtime"\nmodel_reasoning_effort = "high"\n\n[hooks.state]\ntrusted = true\n',
+617 | |             text=True,
+618 | |             stdout=subprocess.PIPE,
+619 | |             stderr=subprocess.PIPE,
+620 | |             env={
+621 | |                 **os.environ,
+622 | |                 "HOME": str(self.temp_dir / "target-home"),
+623 | |                 "CHEZMOI_SOURCE_DIR": str(self.temp_dir / "home"),
+624 | |                 "CHEZMOI_HOME_DIR": str(self.temp_dir / "target-home"),
+625 | |             },
+626 | |             check=False,
+627 | |         )
+    | |_________^
+628 |
+629 |           self.assertEqual(result.returncode, 0, result.stderr)
+    |
+help: Replace with `capture_output` keyword argument
+    |
+617 |             text=True,
+    -             stdout=subprocess.PIPE,
+    -             stderr=subprocess.PIPE,
+618 +             capture_output=True,
+619 |             env={
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   --> tests/unit/test_generate_agent_configs.py:651:18
+    |
+650 |           home = self.temp_dir / "target-home"
+651 |           result = subprocess.run(
+    |  __________________^
+652 | |             [sys.executable, str(security_profile)],
+653 | |             input="",
+654 | |             text=True,
+655 | |             stdout=subprocess.PIPE,
+656 | |             stderr=subprocess.PIPE,
+657 | |             env={**os.environ, "HOME": str(home)},
+658 | |             check=False,
+659 | |         )
+    | |_________^
+660 |
+661 |           self.assertEqual(result.returncode, 0, result.stderr)
+    |
+help: Replace with `capture_output` keyword argument
+    |
+654 |             text=True,
+    -             stdout=subprocess.PIPE,
+    -             stderr=subprocess.PIPE,
+655 +             capture_output=True,
+656 |             env={**os.environ, "HOME": str(home)},
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   --> tests/unit/test_generate_agent_configs.py:850:22
+    |
+848 |           def render(name: str) -> dict:
+849 |               path = self.temp_dir / f"home/dot_codex/modify_private_{name}.config.toml"
+850 |               result = subprocess.run(
+    |  ______________________^
+851 | |                 [sys.executable, str(path)],
+852 | |                 input="",
+853 | |                 text=True,
+854 | |                 stdout=subprocess.PIPE,
+855 | |                 stderr=subprocess.PIPE,
+856 | |                 check=False,
+857 | |             )
+    | |_____________^
+858 |               self.assertEqual(result.returncode, 0, result.stderr)
+859 |               return tomllib.loads(result.stdout)
+    |
+help: Replace with `capture_output` keyword argument
+    |
+853 |                 text=True,
+    -                 stdout=subprocess.PIPE,
+    -                 stderr=subprocess.PIPE,
+854 +                 capture_output=True,
+855 |                 check=False,
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   --> tests/unit/test_generate_agent_configs.py:898:18
+    |
+896 |               "trusted = true\n"
+897 |           )
+898 |           result = subprocess.run(
+    |  __________________^
+899 | |             [sys.executable, str(standard_profile)],
+900 | |             input=current,
+901 | |             text=True,
+902 | |             stdout=subprocess.PIPE,
+903 | |             stderr=subprocess.PIPE,
+904 | |             env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
+905 | |             check=False,
+906 | |         )
+    | |_________^
+907 |
+908 |           self.assertEqual(result.returncode, 0, result.stderr)
+    |
+help: Replace with `capture_output` keyword argument
+    |
+901 |             text=True,
+    -             stdout=subprocess.PIPE,
+    -             stderr=subprocess.PIPE,
+902 +             capture_output=True,
+903 |             env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+   --> tests/unit/test_generate_agent_configs.py:933:18
+    |
+931 |               'name = "second"\n'
+932 |           )
+933 |           result = subprocess.run(
+    |  __________________^
+934 | |             [sys.executable, str(standard_profile)],
+935 | |             input=current,
+936 | |             text=True,
+937 | |             stdout=subprocess.PIPE,
+938 | |             stderr=subprocess.PIPE,
+939 | |             env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
+940 | |             check=False,
+941 | |         )
+    | |_________^
+942 |
+943 |           self.assertEqual(result.returncode, 0, result.stderr)
+    |
+help: Replace with `capture_output` keyword argument
+    |
+936 |             text=True,
+    -             stdout=subprocess.PIPE,
+    -             stderr=subprocess.PIPE,
+937 +             capture_output=True,
+938 |             env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+S102 Use of `exec` detected
+   --> tests/unit/test_generate_agent_configs.py:967:9
+    |
+965 |     def hook_trust_namespace(self, manifest: dict) -> dict:
+966 |         namespace = {"sys": sys, "Path": Path, "HOOK_TRUST": self.module.codex_hook_trust(manifest)}
+967 |         exec(self.module.HOOK_TRUST_CODE, namespace)
+    |         ^^^^
+968 |         return namespace
+    |
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+    --> tests/unit/test_generate_agent_configs.py:1317:18
+     |
+1315 |           )
+1316 |
+1317 |           result = subprocess.run(
+     |  __________________^
+1318 | |             [sys.executable, str(standard_profile)],
+1319 | |             input=(
+1320 | |                 "[hooks.state]\n\n"
+1321 | |                 '[hooks.state."/home/.codex/config.toml:permission_request:0:0"]\n'
+1322 | |                 'trusted_hash = "sha256:profile"\n'
+1323 | |             ),
+1324 | |             text=True,
+1325 | |             stdout=subprocess.PIPE,
+1326 | |             stderr=subprocess.PIPE,
+1327 | |             env={**os.environ, "HOME": str(home)},
+1328 | |             check=False,
+1329 | |         )
+     | |_________^
+1330 |
+1331 |           self.assertEqual(result.returncode, 0, result.stderr)
+     |
+help: Replace with `capture_output` keyword argument
+     |
+1324 |             text=True,
+     -             stdout=subprocess.PIPE,
+     -             stderr=subprocess.PIPE,
+1325 +             capture_output=True,
+1326 |             env={**os.environ, "HOME": str(home)},
+     |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+    --> tests/unit/test_generate_agent_configs.py:1346:18
+     |
+1344 |           current = '[hooks.state."hook"]\ntrusted_hash = "sha256:profile"\n'
+1345 |
+1346 |           result = subprocess.run(
+     |  __________________^
+1347 | |             [sys.executable, str(profile)],
+1348 | |             input=current,
+1349 | |             text=True,
+1350 | |             stdout=subprocess.PIPE,
+1351 | |             stderr=subprocess.PIPE,
+1352 | |             env={**os.environ, "HOME": str(home)},
+1353 | |             check=False,
+1354 | |         )
+     | |_________^
+1355 |
+1356 |           self.assertEqual(result.returncode, 0, result.stderr)
+     |
+help: Replace with `capture_output` keyword argument
+     |
+1349 |             text=True,
+     -             stdout=subprocess.PIPE,
+     -             stderr=subprocess.PIPE,
+1350 +             capture_output=True,
+1351 |             env={**os.environ, "HOME": str(home)},
+     |
+note: This is an unsafe fix and may change runtime behavior
+
+UP022 Prefer `capture_output` over sending `stdout` and `stderr` to `PIPE`
+    --> tests/unit/test_generate_agent_configs.py:1373:18
+     |
+1371 |           current = '[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n'
+1372 |
+1373 |           result = subprocess.run(
+     |  __________________^
+1374 | |             [sys.executable, str(profile)],
+1375 | |             input=current,
+1376 | |             text=True,
+1377 | |             stdout=subprocess.PIPE,
+1378 | |             stderr=subprocess.PIPE,
+1379 | |             env={**os.environ, "HOME": str(home)},
+1380 | |             check=False,
+1381 | |         )
+     | |_________^
+1382 |
+1383 |           self.assertEqual(result.returncode, 0, result.stderr)
+     |
+help: Replace with `capture_output` keyword argument
+     |
+1376 |             text=True,
+     -             stdout=subprocess.PIPE,
+     -             stderr=subprocess.PIPE,
+1377 +             capture_output=True,
+1378 |             env={**os.environ, "HOME": str(home)},
+     |
+note: This is an unsafe fix and may change runtime behavior
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/unit/test_supply_chain_policy.py:1:1
+   |
+ 1 | / import json
+ 2 | | import os
+ 3 | | import re
+ 4 | | import shutil
+ 5 | | import subprocess
+ 6 | | import tempfile
+ 7 | | import tomllib
+ 8 | | import unittest
+ 9 | | import zipfile
+10 | | from pathlib import Path
+   | |________________________^
+help: Organize imports
+   |
+11 |
+   -
+12 | ROOT = Path(__file__).resolve().parents[2]
+   |
+
+ISC004 Unparenthesized implicit string concatenation in collection
+   --> tests/unit/test_supply_chain_policy.py:124:17
+    |
+122 |               ),
+123 |               "install/common/sheldon.sh": (
+124 | /                 'mkdir -p "$(dirname "${MISE_BIN}")"; '
+125 | |                 'printf "#!/bin/sh\\nexit 42\\n" > "${MISE_BIN}"; chmod +x "${MISE_BIN}"',
+    | |_________________________________________________________________________________________^
+126 |                   "install_sheldon",
+127 |               ),
+    |
+help: Did you forget a comma?
+help: Wrap implicitly concatenated strings in parentheses
+    |
+123 |             "install/common/sheldon.sh": (
+    -                 'mkdir -p "$(dirname "${MISE_BIN}")"; '
+    -                 'printf "#!/bin/sh\\nexit 42\\n" > "${MISE_BIN}"; chmod +x "${MISE_BIN}"',
+124 +                 ('mkdir -p "$(dirname "${MISE_BIN}")"; '
+125 +                 'printf "#!/bin/sh\\nexit 42\\n" > "${MISE_BIN}"; chmod +x "${MISE_BIN}"'),
+126 |                 "install_sheldon",
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+ISC004 Unparenthesized implicit string concatenation in collection
+   --> tests/unit/test_supply_chain_policy.py:316:21
+    |
+314 |                       "bash",
+315 |                       "-c",
+316 | /                     'source "$1"\nset +e\ninstall_mise() { return 42; }\n'
+317 | |                     'run_mise_install() { touch "$2"; }\nmain\nstatus=$?\n'
+318 | |                     '[ "$status" -eq 42 ] && [ ! -e "$2" ]\n',
+    | |_____________________________________________________________^
+319 |                       "_",
+320 |                       str(ROOT / "install/common/mise.sh"),
+    |
+help: Did you forget a comma?
+help: Wrap implicitly concatenated strings in parentheses
+    |
+315 |                     "-c",
+    -                     'source "$1"\nset +e\ninstall_mise() { return 42; }\n'
+316 +                     ('source "$1"\nset +e\ninstall_mise() { return 42; }\n'
+317 |                     'run_mise_install() { touch "$2"; }\nmain\nstatus=$?\n'
+    -                     '[ "$status" -eq 42 ] && [ ! -e "$2" ]\n',
+318 +                     '[ "$status" -eq 42 ] && [ ! -e "$2" ]\n'),
+319 |                     "_",
+    |
+note: This is an unsafe fix and may change runtime behavior
+
+Found 14 errors.
+[*] 1 fixable with `--fix` (10 unsafe fixes available with `--fix --unsafe-fixes`).

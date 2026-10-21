@@ -12,7 +12,7 @@ readonly APT_FAKES='
     apt-get() {
         printf "apt-get %s\n" "$*" >> "${HOME}/calls.log"
         local ppa=https://ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/ubuntu
-        case "${FAIL:-}:$1 $3" in
+        case "${FAIL:-}:$1 ${3-}" in
             update:"update "*) [ ! -e "${HOME}/ppa-added" ] || { printf "E: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable [IP: 185.125.190.80 443]\n" "${ppa}"; return 100; } ;;
             pool:"install ghostty") printf "E: Failed to fetch %s/pool/main/g/ghostty/ghostty_1.2.0_amd64.deb  503  Service Unavailable [IP: 185.125.190.80 443]\n" "${ppa}"; return 100 ;;
             archive:"install software-properties-common") printf "E: Failed to fetch http://archive.ubuntu.com/ubuntu/pool/main/s/x.deb  503  Service Unavailable\n"; return 100 ;;

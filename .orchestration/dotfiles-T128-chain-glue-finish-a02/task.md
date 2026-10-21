@@ -11,12 +11,12 @@ allowed_files:
   - .orchestration/dotfiles-T128-chain-glue-finish-a02/**
 after: []
 threat_table:
-  - {control: "scripts/orchestrator/chain-finish.sh", disposition: "closed: tests/unit/test_chain_glue.py::ChainGlueTest::test_shim_exclusion_compares_the_resolved_path"}
+  - {control: "scripts/orchestrator/chain-finish.sh", disposition: "closed: tests/unit/test_chain_glue.py::ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path"}
   - {control: "tests/unit/test_chain_glue.py", disposition: "residual: the fixture plants a symlinked shim and a real binary in temporary directories; final-head CI and the task-level audit verify the assertion; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
   - {control: "the task-file copy (.orchestration/dotfiles-T128-chain-glue-finish-a02/task.md); predecessor .orchestration/dotfiles-T128-chain-glue-finish-a01/task.md is inherited read-only", disposition: "residual: byte-identical to the dispatched text; the orchestrator compares its SHA256 with the TASK line at acceptance; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
   - {control: "task metadata (kind, security, allowed_files, after, reset_of, threat_table, premises)", disposition: "residual: the consistency checker parses the mapping before dispatch and at acceptance; byte comparison of the task copy covers changes; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
   - {control: "metadata separators (the --- boundaries in the task copy and evidence records)", disposition: "residual: front matter stays YAML; the checker parses the task and byte comparison covers the whole dispatched file; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
-  - {control: "in-process effects (the two rewritten tests run no new command beyond the normaliser)", disposition: "closed: tests/unit/test_chain_glue.py::ChainGlueTest::test_shim_exclusion_compares_the_resolved_path"}
+  - {control: "in-process effects (the two rewritten tests run no new command beyond the normaliser)", disposition: "closed: tests/unit/test_chain_glue.py::ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path"}
   - {control: "workflow and interpreter or environment inputs", disposition: "residual: no workflow, interpreter, launcher or dependency change; the normaliser is the system realpath on the fixed PATH the script already uses; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
   - {control: "new or renamed scripts", disposition: "residual: none; only chain-finish.sh changes in place; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
   - {control: "orchestrator effect merge", disposition: "residual: only the orchestrator merges the audited head with --match-head-commit after sweep, audit and gate; owner: dotfiles-T128-chain-glue-finish-followup-a01"}
@@ -41,7 +41,7 @@ Rewrite the two tests at `chain-finish.sh:67` and `:111` so the statement normal
 
 ## Item 2
 
-Add `ChainGlueTest::test_shim_exclusion_compares_the_resolved_path` to `tests/unit/test_chain_glue.py`: with temporary directories, a symlink under a `shims/` directory that resolves outside it is refused with exit 10, and a real binary outside any `shims/` directory is accepted; red at `b09c88c6deaed78ca7c06bfb314cd52bff1123e8` on the behavioural assertion, green at the fix commit. The lint test is the second red-then-green: `python -I scripts/lint-comparisons.py --changed scripts/orchestrator/chain-finish.sh` exits 1 at `b09c88c6deaed78ca7c06bfb314cd52bff1123e8` and 0 after the fix; paste both outputs.
+Add `ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path` to `tests/unit/test_chain_glue.py`: with temporary directories, a symlink under a `shims/` directory that resolves outside it is refused with exit 10, and a real binary outside any `shims/` directory is accepted; red at `b09c88c6deaed78ca7c06bfb314cd52bff1123e8` on the behavioural assertion, green at the fix commit. The lint test is the second red-then-green: `python -I scripts/lint-comparisons.py --changed scripts/orchestrator/chain-finish.sh` exits 1 at `b09c88c6deaed78ca7c06bfb314cd52bff1123e8` and 0 after the fix; paste both outputs.
 
 ## Check
 
@@ -53,6 +53,10 @@ Each evidence item names its producer (worker, Claude seat, or orchestrator, Cla
 ## Completion
 
 Write `.orchestration/dotfiles-T128-chain-glue-finish-a02/`: task.md byte-identical to the dispatched text, report.md, validation.md (every command, status and verbatim redacted output, both red-then-green pairs with commit shas), sandbox.md, learning.md, autoskill.md, result.txt (`task_copy=<sha256 of task.md>`, `head=<40-hex>` literal). Rewrite PR #378's English description to the final design and counts. After the push wait for required CI; at most one worker Bot fix-round. Then send `AGMSG-RESULT v1 task_id=dotfiles-T128-chain-glue-finish-a02 status=ready_for_review` with pr, head, merge_base, changed_non_tests, changed_tests, the two red/green sha pairs, task_copy and the artifact paths. No merge, no thread resolution, no acceptance.
+
+## Amendment 1 (2026-10-21T21:17Z)
+
+The test module's class is `ChainIntegrateTest`, not `ChainGlueTest`; the three selector references above now name `ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_path` (the worker's RESULT 2999 note). Nothing else changes; the records-only round updates `task.md` and `result.txt`'s `task_copy=` to these bytes.
 
 ## Checks
 

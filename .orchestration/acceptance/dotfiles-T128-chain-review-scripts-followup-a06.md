@@ -1,12 +1,19 @@
 ---
 {
-  "audit_findings": [],
+  "audit_findings": [
+    {
+      "evidence": "bash scripts/regime-counters.sh dotfiles-T128-chain-review-scripts-followup-a06 | head -1",
+      "n": "1",
+      "reason": "fixed in this record before the gate: the counters re-measured with scripts/regime-counters.sh (task=dotfiles-T128-chain-review-scripts-followup-a06 tasks=2 amendments=1 questions=0 results=3 withdrawn=0 revises=2 first_result_head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-19T20:15:40Z..2026-10-20T01:01:45Z (4:46) source=live), the unknown Bot and audit counts resolved (0 Bot P1 heads: the Bot is at its usage limit; 3 audits), and the S2 decision recorded: two record-correction revises of a records-only PR, no design to redesign, integrate at af862335 with the owner a07 carrying the lineage"
+    }
+  ],
   "dispatch": [
     "AGMSG-TASK v1 task_id=dotfiles-T128-chain-review-scripts-followup-a06 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a06.md task_sha256=e21ef5bef826e9d5c195d8145c26810c2fa438cf1c4a86b16ba7477d23d14749 deadline=none done_signal=AGMSG-RESULT note=a011:owner-task-of-a-merged-lineage;the-owned-row-is-in-the-predecessor-acceptance-record-Owned-by-section(an-evidence-record-correction;one-red-then-green-test-where-a-row-names-one);fresh-branch-from-origin/main-1eac64a8;security:false;files-disjoint-from-every-in-flight-task;the-task-copy-is-this-text-byte-identical",
-    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-chain-review-scripts-followup-a06 status=pending-integration round=1 pr=434 head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e reason=records-only-PR-read(a05-gh-calls.md-one-row-per-call-from-GitHub-timeline-and-regime-records;no-code);12-checks-pass-on-2db7830b;the-orchestrator-marks-the-PR-ready-and-runs-the-chain-after-#433;your-connector-notice-is-noted-as-an-operator-check;hold-the-seat"
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T128-chain-review-scripts-followup-a06 status=pending-integration round=1 pr=434 head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e reason=records-only-PR-read(a05-gh-calls.md-one-row-per-call-from-GitHub-timeline-and-regime-records;no-code);12-checks-pass-on-2db7830b;the-orchestrator-marks-the-PR-ready-and-runs-the-chain-after-#433;your-connector-notice-is-noted-as-an-operator-check;hold-the-seat",
+    "AGMSG-TASK v1 task_id=dotfiles-T128-chain-review-scripts-followup-a06 round=1 repo=~/Workspace/dotfiles/.claude/worktrees/worker-d task_file=.orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a06.md task_sha256=7a8b997187a987c66bd8595146c478a170b419d38a775177d834b4100ace0c00 deadline=none done_signal=AGMSG-RESULT note=a011:amendment-1(previous_sha256=e21ef5bef826e9d5c195d8145c26810c2fa438cf1c4a86b16ba7477d23d14749;item-1-now-says-a-records-only-row-is-realised-by-the-record-it-names,no-test;audit-34cc889-finding-1);switch-to-tools/chain-review-scripts-followup-a06,update-the-task-copy-to-this-text-byte-identical,push-on-PR-434,RESULT-with-the-new-head;then-return-to-the-helper-task;C-61:second-and-last-round"
   ],
   "format": 1,
-  "head": "34cc8894d029630910fe1c75e2f5a32d57f18b8b",
+  "head": "af86233544ea2bf807c198c85d6f07580e0bed9c",
   "ledger": [
     {
       "class": "review-binary-shim",
@@ -103,6 +110,18 @@
     {
       "class": "evidence",
       "id": "audit:b9f562e:2"
+    },
+    {
+      "class": "text-defect",
+      "id": "audit:34cc889:1"
+    },
+    {
+      "class": "counter-misread",
+      "id": "audit:34cc889:2"
+    },
+    {
+      "class": "counter-misread",
+      "id": "audit:af86233:1"
     }
   ],
   "pr": 434,
@@ -153,3 +172,15 @@ audit:c646472:2	sweep-disposition-key
 - 2026-10-19T23:18:43Z: the chain on 34cc8894 refused at the audit precheck (GAP audit:b9f562e:2): the two rows of this PR's own earlier audit were missing as prose rows; added (text-defect: the hashed text's item 1 against the dispatch note; evidence: the superseded line range). Re-run.
 audit:b9f562e:1	text-defect
 audit:b9f562e:2	evidence
+- 2026-10-19T23:51:26Z: the chain on 34cc8894 audited (`…-audit-34cc889.md`, written although its run reported the masker failure) `Verdict: incorrect`: P2 the hashed text's item 1 still asks a test per row (report and revise.yaml reinterpret it; the fix is a hashed amendment); P2 the revise was sent without a fresh regime-counters.sh output (typed counts). Measured now: `task=dotfiles-T128-chain-review-scripts-followup-a06 tasks=1 amendments=0 questions=0 results=2 withdrawn=0 revises=1 first_result_head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-19T20:15:40Z..2026-10-19T22:46:13Z (2:30) source=live`. Amendment 1 of the a06 text (item 1: a records-only row is realised by the record it names) sha256 e21ef5bef826 -> 7a8b997187a9; TASK amendment to a011 (the copy update is the worker's second and last round); the next chain re-runs on the new head. The chain re-run of 23:4xZ failed at its prepare step (network); the review worktree is clean.
+audit:34cc889:1	text-defect
+audit:34cc889:2	counter-misread
+- 2026-10-20T01:01:45Z: a011 RESULT `round=amendment-1`: head af86233544ea2bf807c198c85d6f07580e0bed9c (fast-forward from 34cc8894, one commit: the task copy only, byte-identical to the amended text 7a8b9971…); the second and last worker round. ACCEPTANCE pending-integration at 2026-10-20T01:06:24Z; chain after #431's (the review worktree is serial).
+- 2026-10-20T01:29Z: the chain on af862335 (sweep 0 gaps, ledger 26/19): task-level audit `…-audit-af86233.md` `Verdict: incorrect`, one P2 orchestration: the final-head decision lacked refreshed counters (line 165 said revises=1 while RESULTs 2572, 2592, 2635 make revises=2: the S2 threshold). Measured now (2026-10-20T01:32:44Z) with scripts/regime-counters.sh: `task=dotfiles-T128-chain-review-scripts-followup-a06 tasks=2 amendments=1 questions=0 results=3 withdrawn=0 revises=2 first_result_head=2db7830bd7fa78e55aa9bdcc46c76201f0a21c3e bot_p1_heads_after_result=unknown audits=unknown wall=2026-10-19T20:15:40Z..2026-10-20T01:01:45Z (4:46) source=live`; the unknowns resolved: Bot P1 heads after the RESULT 0 (the Codex Bot is at its usage limit and posted nothing on any head of this PR), audits 3 (b9f562e, 34cc889, af86233). S2 decision: both revises were record corrections of a records-only PR (the superseded line range; the task copy after the hashed text amendment), the lineage has no design to redesign, so the decision is to integrate at af862335 and let the owner a07 carry the lineage (its text already holds the local-review base-ref item); recorded here before the gate.
+audit:af86233:1	counter-misread
+- 2026-10-20T01:34:26Z: gate passed and PR #434 merged with --match-head-commit at af862335 (the merge glue's fast-forward followed); ACCEPTANCE `status=accepted` to a011 next; the owner a07 text (with the local-review base-ref item) carries the lineage.
+
+## Owned by dotfiles-T128-chain-review-scripts-followup-a07
+
+No advisory rows: the three task-level audits of PR #434 (b9f562e, af86233, 34cc889) found orchestration P2s fixed in this record, and the a05 lineage's advisory row (`## Owned by …-a06` in the a05 record, audit:c646472:1) was realised by a06 itself (#434). The a07 text's Item 1 is therefore vacuous and its Item 2 (local-review.sh takes its base from canonical main as design 5.14 item 8 reads it) carries the task. Written 2026-10-20T04:22Z after a009's identical question on the T129 a06 owner text (C-102).
+

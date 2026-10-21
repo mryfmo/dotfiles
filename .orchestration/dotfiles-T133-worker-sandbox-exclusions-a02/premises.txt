@@ -1,0 +1,8 @@
+$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I -c 'from pathlib import Path; m=Path("home/dot_agents/agent-config.yaml").read_text(); t=Path("home/.chezmoitemplates/claude-settings-managed.json").read_text(); a=m.split("    excludedCommands:",1)[1].split("    linux_excluded_commands:",1)[0]; b=m.split("    linux_excluded_commands:",1)[1].split("    filesystem:",1)[0]; print("shared="+str(a.count("\n      - "))+" linux_additions="+str(b.count("\n      - "))+" rendered_sites="+str(t.count("\"excludedCommands\""))+" herdr_socket="+str(".config/herdr/herdr.sock" in m))'
+exit=0
+shared=1 linux_additions=3 rendered_sites=2 herdr_socket=True
+
+$ /usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I -c 'import ast; from pathlib import Path; p=Path("tests/unit/test_generate_agent_configs.py"); t=p.read_text(); c=next(n for n in ast.parse(t).body if isinstance(n, ast.ClassDef)); v=Path("scripts/validate-agent-assets.py").read_text(); print(str(p)+" class="+c.name+" unittest.main="+str(t.rstrip().endswith("unittest.main()"))+" validator_linux_exact="+str("Linux excludedCommands must match the exact seat-tool list" in v))'
+exit=0
+tests/unit/test_generate_agent_configs.py class=GenerateAgentConfigsTest unittest.main=True validator_linux_exact=True
+

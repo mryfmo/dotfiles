@@ -6,6 +6,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import pwd
 import re
 import shlex
 import shutil
@@ -21,6 +22,14 @@ import unittest
 from pathlib import Path
 
 import tomllib
+
+from tests.unit.test_generate_agent_configs import (
+    all_hooks,
+    load_generator,
+    load_manifest_fixture,
+    render_claude_template,
+)
+from tests.unit.test_claude_worker_settings import run_hook
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
@@ -90,6 +99,13 @@ class HerdrAgentsTest(unittest.TestCase):
         (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
         self.workdir.mkdir()
+        for relative in (
+            ".chezmoitemplates/claude-worker-settings.json",
+            "dot_claude-worker/modify_private_settings.json",
+        ):
+            target = self.home_dir / "Workspace/dotfiles/home" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "home" / relative, target)
         self.workspace_list_path.write_text(
             '{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n'
         )
@@ -298,6 +314,20 @@ fi
         if jq is None:
             self.fail("jq is required for Herdr helper tests")
         (self.bin_dir / "jq").symlink_to(jq)
+        self.script = self.temp_dir / "herdr-agents"
+        probe = "HOOK_USER_HOME=\"$(/usr/bin/python3 -I -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')\""
+        self.script.write_text(SCRIPT.read_text().replace(probe, "HOOK_USER_HOME=" + shlex.quote(str(self.home_dir))))
+        self.write_executable("node", '#!/bin/bash\nexec "$@"\n')
+        for name, relative in {
+            "herdr": "github-ogulcancelik-herdr/latest/herdr",
+            "jq": "jq/latest/jq",
+            "claude": "npm-anthropic-ai-claude-code/latest/bin/claude",
+            "codex": "npm-openai-codex/latest/bin/codex",
+            "node": "node/latest/bin/node",
+        }.items():
+            target = self.home_dir / ".local/share/mise/installs" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(self.bin_dir / name)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -518,7 +548,7 @@ fi
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), *mode, str(self.workdir)],
+            ["bash", str(self.script), *mode, str(self.workdir)],
             cwd=cwd,
             env=env,
             check=False,
@@ -570,7 +600,7 @@ fi
             else {"stdin": stdin_fd if stdin_fd is not None else subprocess.DEVNULL}
         )
         return subprocess.run(
-            ["bash", str(SCRIPT), "--attach"],
+            ["bash", str(self.script), "--attach"],
             cwd=cwd or self.workdir,
             env=env,
             check=False,
@@ -590,7 +620,7 @@ fi
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), "--bootstrap-agmsg", str(self.workdir)],
+            ["bash", str(self.script), "--bootstrap-agmsg", str(self.workdir)],
             cwd=ROOT,
             env=env,
             check=False,
@@ -658,7 +688,7 @@ fi
             env.pop(key, None)
         env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = kind
         return subprocess.run(
-            ["bash", str(SCRIPT), "--directive"],
+            ["bash", str(self.script), "--directive"],
             cwd=cwd or self.workdir,
             env=env,
             check=False,
@@ -893,7 +923,7 @@ fi
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn(f"delivery set both claude-code {self.workdir.resolve()}", calls)
+        self.assertIn("orchestrator-only.sh", (self.workdir / ".claude/settings.local.json").read_text())
         self.assertNotIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
         self.assertFalse(any(call.startswith(("pane split", "agent start")) for call in calls), calls)
         self.assertIn("Herdr agents workspace: w-attach", result.stdout)
@@ -967,7 +997,7 @@ fi
             [f"identities {self.workdir.resolve()} claude-code"],
         )
 
-    def test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing(
+    def test_bootstrap_only_regenerates_claude_delivery_when_hook_is_missing(
         self,
     ) -> None:
         scripts = self.install_agmsg_fakes()
@@ -979,9 +1009,13 @@ fi
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
+            [],
         )
-        self.assertIn("next Claude Code session", result.stderr)
+        settings = self.workdir / ".claude/settings.local.json"
+        self.assertIn("agmsg-session-start.sh", settings.read_text())
+        before = settings.read_text()
+        self.assertEqual(self.run_agmsg_bootstrap_helper().returncode, 0)
+        self.assertEqual(settings.read_text(), before)
 
     def test_bootstrap_only_never_sets_codex_delivery_in_the_main_checkout(self) -> None:
         self.install_agmsg_fakes()
@@ -993,7 +1027,7 @@ fi
         # Workers are seated in linked worktrees, each with its own hooks.
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
+            [],
         )
         self.assertNotIn("/hooks", result.stderr)
 
@@ -1201,7 +1235,8 @@ fi
         command = session_hooks[-1]["hooks"][0]["command"]
         # stdout (the plain-start summary line) reaches the SessionStart context; stderr is logged.
         self.assertTrue(
-            command.endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
+            command.startswith('/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME"')
+            and command.endswith('"$HOME/.claude/hooks/orchestrator-only.sh" herdr-agents'),
             command,
         )
 
@@ -1724,6 +1759,7 @@ printf 'status=ok team=dotfiles\\n'
         self.addCleanup(sibling.kill)
         live_owner = f"sid-stdin.{sibling.pid}"
         self.install_orchestrator_seat_fakes(held=(("dotfiles", live_owner),))
+        self.write_executable("ps", "#!/bin/sh\nprintf '%s\\n' " + shlex.quote(str(fake_claude)) + "\n")
 
         result = self.run_attach_helper(
             in_herdr=True,
@@ -1814,6 +1850,10 @@ if [[ $1 == where ]]; then
 fi
 """,
         )
+        (self.home_dir / ".local/share/mise/installs/node/latest/bin/npm").symlink_to(self.bin_dir / "npm")
+        mise = self.home_dir / ".local/bin/mise"
+        mise.parent.mkdir(parents=True, exist_ok=True)
+        mise.symlink_to(self.bin_dir / "mise")
 
     def test_start_removes_node_global_agent_clis_shadowing_mise(self) -> None:
         self.install_npm_fake(installed=True)
@@ -1873,6 +1913,25 @@ fi
         ),
     ) -> Path:
         """A git repo with origin/main, a manifest worker_worktree, and path-aware agmsg fakes."""
+        anchor = self.home_dir / "Workspace/dotfiles/home"
+        for relative in (
+            ".chezmoitemplates/claude-worker-settings.json",
+            "dot_claude-worker/modify_private_settings.json",
+        ):
+            target = anchor / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "home" / relative, target)
+        hooks = self.home_dir / ".claude/hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        manifest = json.loads(
+            json.dumps(load_manifest_fixture(self.home_dir)).replace("/render-home", "{{ .chezmoi.homeDir }}")
+        )
+        source = (ROOT / "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl").read_text()
+        source = load_generator().render_orchestrator_guard(manifest, source)
+        (hooks / "orchestrator-only.sh").write_text(
+            render_claude_template(source, self.home_dir, home=str(self.home_dir), raw=True)
+        )
+        (hooks / "orchestrator-only.sh").chmod(0o755)
         for args in (
             ("init", "-q"),
             ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "init"),
@@ -1922,8 +1981,8 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         )
         result = self.run_helper("--bootstrap-agmsg")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
-        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(settings["permissions"]["deny"]))
 
     def test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path(self) -> None:
         worktree = self.write_worktree_seat()
@@ -2130,6 +2189,38 @@ exit {despawn_exit}
                 self.assertFalse([line for line in tab_creates if "--env GH_" in line])
                 self.assertNotIn("shell_environment_policy.set.", options.read_text())
 
+    def test_add_worker_accepts_the_manifest_generated_advisor_option_and_rejects_configuration_source_overrides(self):
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+        module, manifest = load_generator(), load_manifest_fixture(self.home_dir)
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        generated = module.render_model_profiles_env(manifest)
+        for profile in ("standard", "deep"):
+            profiles.write_text(generated)
+            self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+            self.pane_list_path.write_text('{"result":{"panes":[]}}')
+            result = self.run_helper(
+                "--add-worker", ".claude/worktrees/" + profile, "--kind", "claude", "--profile", profile
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                "  --advisor: " + manifest["model_profiles"][profile]["claude"]["advisor"], options.read_text()
+            )
+        for flag in ("--settings", "--setting-sources", "--plugin-dir", "--mcp-config", "--add-dir"):
+            profiles.write_text(
+                generated
+                + '\nMODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model opus --effort high --advisor fable '
+                + flag
+                + ' payload"\n'
+            )
+            self.calls_path.write_text("")
+            result = self.run_helper(
+                "--add-worker", ".claude/worktrees/rejected", "--kind", "claude", "--profile", "standard"
+            )
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn(flag + " is an unenumerated launch input", result.stderr)
+            self.assertNotIn("spawn ", self.calls_path.read_text())
+
     def test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         options = self.write_seat_lifecycle_fakes()
@@ -2138,8 +2229,8 @@ exit {despawn_exit}
         result = self.run_helper("--add-worker", ".claude/worktrees/b1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
-        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(settings["permissions"]["deny"]))
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
             f"workspace create --cwd {worktree} --label project worker b1 --env HERDR_AGENTS_LAYOUT=managed "
@@ -2152,10 +2243,7 @@ exit {despawn_exit}
             calls,
         )
         self.assertFalse(any(call.startswith("join ") for call in calls), calls)
-        self.assertLess(
-            calls.index(f"delivery set both claude-code {worktree}"),
-            next(i for i, c in enumerate(calls) if c.startswith("spawn ")),
-        )
+        self.assertFalse(any(c.startswith("delivery set both claude-code") for c in calls))
         self.assertEqual(options.read_text(), "claude-code:\n  --model: opus\n  --effort: high\n")
         self.assertIn(
             f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
@@ -4021,7 +4109,10 @@ esac
         self.assertRegex(
             inner,
             r"^cd -- \S+ && set -o pipefail && rm -f -- .+ && "
-            r"codex --profile audit exec --sandbox read-only -C \S+ -o .+ 2>&1 \| tee -- ",
+            + re.escape(str(self.home_dir / ".local/share/mise/installs/node/latest/bin/node"))
+            + " "
+            + re.escape(str(self.home_dir / ".local/share/mise/installs/npm-openai-codex/latest/bin/codex"))
+            + r" --profile audit exec --sandbox read-only -C \S+ -o .+ 2>&1 \| tee -- ",
         )
         self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
         marker = re.search(r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner)
@@ -4112,7 +4203,7 @@ esac
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            " && codex --profile audit-e2e exec --sandbox read-only -C ",
+            f" && {self.home_dir}/.local/share/mise/installs/node/latest/bin/node {self.home_dir}/.local/share/mise/installs/npm-openai-codex/latest/bin/codex --profile audit-e2e exec --sandbox read-only -C ",
             self.audit_inner_command(),
         )
         calls = self.calls_path.read_text().splitlines()
@@ -4221,7 +4312,8 @@ esac
         self.assertEqual(
             self.audit_codex_words(inner),
             [
-                "codex",
+                str(self.home_dir / ".local/share/mise/installs/node/latest/bin/node"),
+                str(self.home_dir / ".local/share/mise/installs/npm-openai-codex/latest/bin/codex"),
                 "--profile",
                 "audit",
                 "exec",
@@ -4235,7 +4327,7 @@ esac
             ],
         )
         # A stale last-message file from an earlier run is removed first.
-        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last))
+        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && "), str(last))
         self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
         self.assertRegex(inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$")
         self.assertIn(f"Audit last message: {last}\n", result.stdout)
@@ -5262,6 +5354,805 @@ esac
         self.assertIn('"${HOME}/.local/bin/common"', zprofile)
         self.assertIn('if [[ -d "${directory}" ]]', zprofile)
         self.assertNotIn("typeset -gU path fpath", zshrc)
+
+    def prepare_boundary_fixture(self):
+        worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.add_seat_worktree("worker-c")
+        modifier = self.home_dir / "Workspace/dotfiles/home/dot_claude-worker/modify_private_settings.json"
+        self.managed_root = self.temp_dir / "managed"
+        text = modifier.read_text().replace("/Library/Application Support/ClaudeCode", str(self.managed_root))
+        text = text.replace("/Library/Managed Preferences", str(self.temp_dir / "mdm"))
+        modifier.write_text(text.replace("/etc/claude-code", str(self.managed_root)))
+        return worktree
+
+    def run_boundary_hook(self, *args, **kwargs):
+        return run_hook(*args, HOME=str(self.home_dir), **kwargs)
+
+    def boundary_sources(self, worktree):
+        user, main, managed = self.home_dir / ".claude-worker", self.home_dir / "Workspace/dotfiles", self.managed_root
+        settings = {
+            "S01": user / "settings.json",
+            "S02": worktree / ".claude/settings.json",
+            "S03": worktree / ".claude/settings.local.json",
+            "S04": main / ".claude/settings.local.json",
+            "S05": managed / "managed-settings.json",
+            "S06": managed / "managed-settings.d/a.json",
+            "S07": user / "remote-settings.json",
+        }
+        plugin = user / "plugins/cache/example/one"
+        paths = settings | {
+            "S08": worktree / ".mcp.json",
+            "S09": main / ".mcp.json",
+            "S10": worktree.parent / ".mcp.json",
+            "S11": user / ".claude.json",
+            "S12": worktree / ".claude/skills/example/.claude-plugin/plugin.json",
+            "S13": user / "plugins/installed_plugins.json",
+            "S14": user / "plugins/known_marketplaces.json",
+            "S15": plugin / ".claude-plugin/plugin.json",
+            "S16": plugin / "hooks/hooks.json",
+            "S17": user / "plugins/marketplaces/example/.claude-plugin/marketplace.json",
+            "S18": plugin / ".mcp.json",
+            "S19": managed / "managed-mcp.json",
+            "S20": worktree / ".claude/skills/example/SKILL.md",
+            "S21": user / "commands/example.md",
+            "S22": managed / ".claude/agents/example.md",
+            "S23": plugin / ".lsp.json",
+        }
+        return paths
+
+    def assert_startup_refuses(self, path, content, key, *, mode=("--bootstrap-agmsg",), extra_env=None):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content if isinstance(content, str) else json.dumps(content))
+        roots = (
+            self.workdir,
+            self.home_dir / "Workspace/dotfiles",
+            self.home_dir / ".claude-worker",
+            self.managed_root,
+        )
+        before = {
+            p: p.read_bytes()
+            for root in roots
+            if root.exists()
+            for p in root.rglob("*")
+            if p.is_file() and ".git" not in p.parts
+        }
+        before[path] = path.read_bytes()
+        self.calls_path.write_text("")
+        result = self.run_helper(*mode, extra_env=extra_env)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(f"worker startup refused: {p}:" in result.stderr for p in (path, path.resolve())), result.stderr
+        )
+        self.assertIn(key, result.stderr)
+        self.assertNotIn("payload-value", result.stderr)
+        calls = self.calls_path.read_text()
+        self.assertNotIn("spawn ", calls)
+        self.assertNotIn("trust this folder", calls)
+        self.assertNotIn("send-keys", calls)
+        self.assertFalse((self.temp_dir / "payload-ran").exists())
+        for p, data in before.items():
+            self.assertEqual(p.read_bytes(), data, str(p))
+        after = {p for root in roots if root.exists() for p in root.rglob("*") if p.is_file() and ".git" not in p.parts}
+        self.assertEqual(after | {path}, set(before))
+        print(result.stderr.strip() + "; unchanged; no spawn/trust/payload/request")
+        path.unlink()
+
+    def command_handler(self):
+        return {
+            "type": "command",
+            "command": "/bin/sh -c " + shlex.quote("touch " + shlex.quote(str(self.temp_dir / "payload-ran"))),
+        }
+
+    def test_existing_worktree_with_unguarded_tracked_hook_is_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        path = worktree / ".claude/settings.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "/bin/sh ./payload.sh"}]}]}}
+            )
+        )
+        (worktree / "payload.sh").write_text("touch " + shlex.quote(str(self.temp_dir / "payload-ran")))
+        git = [
+            "/usr/bin/env",
+            "-i",
+            "GIT_CONFIG_GLOBAL=/dev/null",
+            "GIT_CONFIG_NOSYSTEM=1",
+            "GIT_NO_LAZY_FETCH=1",
+            str(Path(shutil.which("git")).resolve()),
+            "--git-dir=" + str(worktree / ".git"),
+            "--work-tree=" + str(worktree),
+            "-C",
+            str(worktree),
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "protocol.allow=never",
+            "-c",
+            "protocol.https.allow=always",
+            "-c",
+            "submodule.recurse=false",
+            "-c",
+            "commit.gpgsign=false",
+        ]
+        for args in (
+            ["add", ".claude/settings.json", "payload.sh"],
+            [
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "-qm",
+                "fixture old tracked hook",
+            ],
+        ):
+            subprocess.run([*git, *args], check=True, capture_output=True)
+        original = path.read_bytes()
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"worker startup refused: {path}: hooks.SessionStart[0].hooks[0]: noncanonical hook handler", result.stderr
+        )
+        self.assertEqual(path.read_bytes(), original)
+        self.assertFalse((self.home_dir / ".claude-worker/settings.json").exists())
+        self.assertFalse((self.temp_dir / "payload-ran").exists())
+
+        trusted = self.home_dir / "Workspace/dotfiles/.claude/settings.json"
+        trusted.parent.mkdir(parents=True, exist_ok=True)
+        trusted.write_bytes((ROOT / ".claude/settings.json").read_bytes())
+        path.write_bytes(trusted.read_bytes())
+        for _ in range(2):
+            result = self.run_helper("--bootstrap-agmsg")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(path.read_bytes(), trusted.read_bytes())
+        canonical = json.loads(trusted.read_text())
+        for field, value in (
+            ("args", []),
+            ("shell", "/bin/zsh"),
+            ("command", "foreign-guard"),
+            ("command", self.command_handler()["command"]),
+        ):
+            payload = json.loads(json.dumps(canonical))
+            payload["hooks"]["SessionStart"][0]["hooks"][0][field] = value
+            self.assert_startup_refuses(path, payload, "hooks.SessionStart[0].hooks[0]: noncanonical hook handler")
+
+    def test_executable_settings_entrypoints_are_checked_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        fields = (
+            "apiKeyHelper",
+            "statusLine",
+            "subagentStatusLine",
+            "fileSuggestion",
+            "awsAuthRefresh",
+            "awsCredentialExport",
+            "gcpAuthRefresh",
+            "otelHeadersHelper",
+            "proxyAuthHelper",
+            "processWrapper",
+            "policyHelper",
+            "policyHelpers",
+        )
+        for source, path in list(self.boundary_sources(worktree).items())[:7]:
+            for field in fields:
+                with self.subTest(source=source, field=field):
+                    self.assert_startup_refuses(
+                        path,
+                        {
+                            field: {"command": "payload-value"}
+                            if field.endswith("Line") or field == "fileSuggestion"
+                            else "payload-value"
+                        },
+                        field,
+                    )
+        for field in ("bwrapPath", "socatPath", "ripgrep"):
+            self.assert_startup_refuses(
+                worktree / ".claude/settings.local.json", {"sandbox": {field: "payload-value"}}, field
+            )
+        path = worktree / ".claude/settings.json"
+        self.assert_startup_refuses(path, '{"hooks":', "malformed")
+        for field in (
+            "CLAUDE_CODE_SHELL_PREFIX",
+            "CLAUDE_CODE_PROCESS_WRAPPER",
+            "CLAUDE_CODE_PLUGIN_DIRS",
+            "CLAUDE_CONFIG_DIR",
+            "AGMSG_STORAGE_PATH",
+            "UV_CACHE_DIR",
+            "UV_PYTHON_INSTALL_DIR",
+        ):
+            self.assert_startup_refuses(path, {"env": {field: "payload-value"}}, field)
+        for content in ("[]", '{"apiKeyHelper":1,"apiKeyHelper":2}'):
+            self.assert_startup_refuses(path, content, "malformed")
+        target = self.temp_dir / "alias-settings.json"
+        target.write_text('{"apiKeyHelper":"payload-value"}')
+        path.symlink_to(target)
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"worker startup refused: {path}: apiKeyHelper", result.stderr)
+        self.assertTrue(path.is_symlink())
+        self.assertEqual(target.read_text(), '{"apiKeyHelper":"payload-value"}')
+        path.unlink()
+        for variable in ("CLAUDE_CODE_PLUGIN_DIRS", "CLAUDE_CODE_SHELL_PREFIX"):
+            result = self.run_helper("--bootstrap-agmsg", extra_env={variable: "payload-value"})
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("worker startup refused: launch environment: " + variable, result.stderr)
+        os.mkfifo(path)
+        original = path.stat()
+        fixture_source = self.home_dir / "Workspace/dotfiles/home"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(fixture_source / "dot_claude-worker/modify_private_settings.json"),
+                "--prepare",
+                str(worktree),
+            ],
+            env=dict(
+                os.environ,
+                HOME=str(self.home_dir),
+                CHEZMOI_HOME_DIR=str(self.home_dir),
+                CHEZMOI_SOURCE_DIR=str(fixture_source),
+                CLAUDE_CONFIG_DIR=str(self.home_dir / ".claude-worker"),
+            ),
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"worker startup refused: {path}: malformed or unreadable", result.stderr)
+        self.assertEqual(path.stat().st_ino, original.st_ino)
+        path.unlink()
+        if os.geteuid() != 0:
+            path.write_text('{"apiKeyHelper":"payload-value"}')
+            path.chmod(0)
+            try:
+                result = self.run_helper("--bootstrap-agmsg")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"worker startup refused: {path}: malformed or unreadable", result.stderr)
+            finally:
+                path.chmod(0o600)
+            self.assertEqual(path.read_text(), '{"apiKeyHelper":"payload-value"}')
+            path.unlink()
+
+    def test_settings_environment_cannot_redirect_guard_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        user = self.boundary_sources(worktree)["S01"]
+        for variable in (
+            "HOME PATH SHELL BASH_ENV ENV ZDOTDIR CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE "
+            "NODE_OPTIONS NODE_PATH PYTHONHOME PYTHONPATH LD_PRELOAD LD_LIBRARY_PATH "
+            "DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH"
+        ).split():
+            with self.subTest(variable=variable):
+                self.assert_startup_refuses(user, {"env": {variable: "payload-value"}}, "env." + variable)
+        user.write_text('{"env":{"LANG":"C.UTF-8"}}')
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(user.read_text())["env"], {"LANG": "C.UTF-8"})
+
+    def test_fenced_skill_and_command_expansion_is_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        paths = self.boundary_sources(worktree)
+        for path in (
+            paths["S20"],
+            paths["S21"],
+            self.managed_root / ".claude/skills/example/SKILL.md",
+        ):
+            for payload in ("!`payload-value`", "```!\npayload-value\n```", "````!\npayload-value\n````"):
+                with self.subTest(path=path, payload=payload):
+                    self.assert_startup_refuses(path, "---\nname: example\n---\n" + payload, "dynamic command")
+
+    def test_noncommand_hook_handlers_are_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        paths = self.boundary_sources(worktree)
+        handlers = [{"type": "http", "url": "https://example.invalid/hook"}]
+        handlers += [{"type": value} for value in ("mcp_tool", "prompt", "agent", "unknown", None, 1)]
+        handlers += [
+            {},
+            self.command_handler(),
+            *[{"type": "command", "command": value} for value in (None, [], {}, 1)],
+        ]
+        for source, path in list(paths.items())[:7]:
+            for handler in handlers:
+                with self.subTest(source=source, handler=handler):
+                    print(
+                        f"CASE {source}: handler type={handler.get('type', 'missing')!r}; command field={'command' in handler}"
+                    )
+                    payload = {"hooks": {"PreToolUse": [{"hooks": [handler]}]}}
+                    self.assert_startup_refuses(
+                        path, payload, "hooks.PreToolUse[0].hooks[0]: noncanonical hook handler"
+                    )
+        paths["S01"].write_text('{"enabledPlugins":{"example@skills-dir":false}}')
+        for source in ("S11", "S15", "S16"):
+            self.assert_startup_refuses(
+                paths[source],
+                {"hooks": {"PreToolUse": [{"hooks": [handlers[0]]}]}},
+                "hooks.PreToolUse[0].hooks[0]: noncanonical hook handler",
+            )
+        for source in ("S20", "S21", "S22"):
+            self.assert_startup_refuses(
+                paths[source],
+                "---\nname: example\nhooks:\n  PreToolUse:\n    - hooks:\n        - type: http\n          url: https://example.invalid/hook\n---\n",
+                "hooks",
+            )
+
+        canonical = json.loads((ROOT / "home/.chezmoitemplates/claude-worker-settings.json").read_text())["hooks"][
+            "SessionStart"
+        ][0]["hooks"][0]
+        self.assert_startup_refuses(
+            paths["S01"],
+            {"hooks": {"SessionStart": [{"hooks": [canonical, handlers[0]]}]}},
+            "hooks.SessionStart[0].hooks[1]: noncanonical hook handler",
+        )
+
+    def test_existing_project_mcp_server_is_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        paths = self.boundary_sources(worktree)
+        for setting in list(paths)[:7]:
+            for approval in (
+                {"enableAllProjectMcpServers": True},
+                {"enabledMcpjsonServers": ["example"]},
+                {"disabledMcpjsonServers": ["example"]},
+            ):
+                paths[setting].parent.mkdir(parents=True, exist_ok=True)
+                paths[setting].write_text(json.dumps(approval))
+                for source in ("S08", "S09", "S10"):
+                    with self.subTest(setting=setting, source=source, approval=approval):
+                        self.assert_startup_refuses(
+                            paths[source],
+                            {"mcpServers": {"example": {"command": "payload-value", "args": [], "env": {}}}},
+                            "mcpServers",
+                        )
+                paths[setting].unlink()
+        paths["S08"].write_text('{"mcpServers":{}}')
+        self.assert_startup_refuses(
+            paths["S09"], {"mcpServers": {"example": {"url": "https://example.invalid/mcp"}}}, "mcpServers"
+        )
+        paths["S08"].unlink()
+
+    def test_configuration_global_state_payload_is_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        path = self.boundary_sources(worktree)["S11"]
+        for payload in (
+            {"mcpServers": {"example": {"command": "payload-value"}}},
+            {"apiKeyHelper": "payload-value"},
+            *[
+                {"projects": {str(project): {"mcpServers": {"example": {"command": "payload-value"}}}}}
+                for project in (worktree, self.workdir, self.home_dir / "Workspace/dotfiles")
+            ],
+        ):
+            self.assert_startup_refuses(
+                path,
+                {"auth_sentinel": "nonsecret", "trust_sentinel": True} | payload,
+                "apiKeyHelper" if "apiKeyHelper" in payload else "mcpServers",
+            )
+        path.write_text('{"auth_sentinel":"nonsecret","projects":{}}')
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(path.read_text())["auth_sentinel"], "nonsecret")
+
+    def test_skills_directory_plugin_payload_is_refused_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        roots = (
+            worktree / ".claude/skills",
+            self.home_dir / ".claude-worker/skills",
+            self.managed_root / ".claude/skills",
+            self.home_dir / "Workspace/dotfiles/.claude/skills",
+        )
+        user = self.home_dir / ".claude-worker/settings.json"
+        user.parent.mkdir(parents=True, exist_ok=True)
+        user.write_text('{"enabledPlugins":{"example@skills-dir":false}}')
+        for root in roots:
+            manifest = root / "example/.claude-plugin/plugin.json"
+            for declared in (None, "hooks/hooks.json", "custom.json"):
+                with self.subTest(root=root, declared=declared):
+                    manifest.parent.mkdir(parents=True, exist_ok=True)
+                    manifest.write_text(
+                        json.dumps({"name": "example"} | ({"hooks": declared} if declared == "custom.json" else {}))
+                    )
+                    path = manifest if declared is None else manifest.parent.parent / declared
+                    payload = {"hooks": {"PreToolUse": [{"hooks": [self.command_handler()]}]}}
+                    self.assert_startup_refuses(
+                        path,
+                        ({"name": "example"} | payload) if declared is None else payload,
+                        "hooks.PreToolUse[0].hooks[0]: noncanonical hook handler",
+                    )
+                    manifest.unlink(missing_ok=True)
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text('{"name":"example"}')
+        manifest = roots[0] / "example/.claude-plugin/plugin.json"
+        outside = roots[0] / "outside.json"
+        outside.write_text('{"hooks":{}}')
+        self.assert_startup_refuses(
+            manifest, {"name": "example", "hooks": "../outside.json"}, "hooks: unenumerable component"
+        )
+        loop = manifest.parent.parent / "loop.json"
+        loop.symlink_to("loop.json")
+        self.assert_startup_refuses(manifest, {"name": "example", "hooks": "loop.json"}, "hooks: unreadable component")
+        loop.unlink()
+        manifest.write_text('{"name":"example"}')
+        alias = manifest.parent.parent / ".CLAUDE-PLUGIN/PLUGIN.JSON"
+        alias.parent.mkdir(exist_ok=True)
+        alias.write_text(
+            json.dumps({"name": "example", "hooks": {"PreToolUse": [{"hooks": [self.command_handler()]}]}})
+        )
+        original = alias.read_bytes()
+        result = self.run_helper("--bootstrap-agmsg")
+        if alias.samefile(manifest):
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(str(manifest) + ": hooks.PreToolUse[0].hooks[0]", result.stderr)
+        else:
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(alias.read_bytes(), original)
+        alias.unlink()
+        manifest.write_text('{"name":"example"}')
+        for _ in range(2):
+            result = self.run_helper("--bootstrap-agmsg")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            settings = json.loads(user.read_text())
+            self.assertIs(settings["enabledPlugins"]["example@skills-dir"], False)
+            self.assertIs(settings["enableAllProjectMcpServers"], False)
+            self.assertEqual(settings["enabledMcpjsonServers"], [])
+
+    def test_each_documented_loading_source_refuses_payload_before_launch(self):
+        worktree = self.prepare_boundary_fixture()
+        paths = self.boundary_sources(worktree)
+        modifier = self.home_dir / "Workspace/dotfiles/home/dot_claude-worker/modify_private_settings.json"
+        inventory = subprocess.run(
+            [sys.executable, "-I", str(modifier), "--inventory"], input="", text=True, capture_output=True
+        )
+        self.assertEqual(set(json.loads(inventory.stdout)), set(paths))
+        for source, path in paths.items():
+            payload = {"apiKeyHelper": "payload-value"}
+            key = "apiKeyHelper"
+            if source in ("S08", "S09", "S10", "S18", "S19"):
+                payload, key = {"mcpServers": {"example": {"command": "payload-value"}}}, "mcpServers"
+            if source in ("S20", "S21", "S22"):
+                payload, key = "---\nname: example\n---\n!`payload-value`\n", "dynamic command"
+            if source in ("S12", "S15", "S16"):
+                payload, key = (
+                    {"hooks": {"PreToolUse": [{"hooks": [self.command_handler()]}]}},
+                    "hooks.PreToolUse[0].hooks[0]: noncanonical hook handler",
+                )
+            if source == "S13":
+                payload, key = (
+                    {"plugins": {"example@inline": [{"installPath": "/unowned-plugin-root", "scope": "user"}]}},
+                    "installPath",
+                )
+            if source == "S14":
+                payload, key = {"example": {"source": {"source": "command", "command": "payload-value"}}}, "command"
+            if source == "S17":
+                payload, key = (
+                    {
+                        "name": "example",
+                        "plugins": [{"name": "p", "source": {"source": "command", "command": "payload-value"}}],
+                    },
+                    "command",
+                )
+            if source == "S23":
+                payload, key = {"example": {"command": "payload-value", "args": []}}, "command"
+            with self.subTest(source=source):
+                self.assert_startup_refuses(path, payload, key)
+        user = paths["S01"]
+        for key, value in (
+            ("enabledPlugins", {"example@skills-dir": True}),
+            ("extraKnownMarketplaces", {"example": {"source": {"source": "command", "command": "payload-value"}}}),
+            ("syncClaudeAiPlugins", True),
+            ("syncClaudeAiSkills", True),
+        ):
+            self.assert_startup_refuses(user, {key: value}, key)
+        self.assert_startup_refuses(paths["S11"], {"oauthAccount": {"organizationUuid": "synthetic"}}, "server-managed")
+        for platform in ("Darwin", "Linux"):
+            print("CASE S05 platform=" + platform)
+            text = modifier.read_text()
+            modifier.write_text(text.replace("platform.system()", repr(platform)))
+            self.assert_startup_refuses(paths["S05"], {"apiKeyHelper": "payload-value"}, "apiKeyHelper")
+            modifier.write_text(text)
+        text = modifier.read_text()
+        modifier.write_text(text.replace("platform.system()", repr("Darwin")))
+        for root in (self.temp_dir / "mdm", self.temp_dir / "mdm" / pwd.getpwuid(os.getuid()).pw_name):
+            path = root / "com.anthropic.claudecode.plist"
+            self.assert_startup_refuses(path, "synthetic unsupported policy", "MDM com.anthropic.claudecode")
+        modifier.write_text(
+            text.replace("platform.system()", repr("Linux")).replace(
+                "platform.release()", repr("microsoft-standard-WSL2")
+            )
+        )
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("worker startup refused: Windows managed policy: unenumerable WSL delivery", result.stderr)
+        modifier.write_text(text)
+
+        self.write_seat_lifecycle_fakes()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        original = profiles.read_text()
+        for flag in ("--settings", "--mcp-config", "--plugin-dir", "--agents", "--add-dir"):
+            profiles.write_text(original.replace("--model opus --effort high", flag + " fixture"))
+            result = self.run_helper("--add-worker", ".claude/worktrees/worker-c", "--kind", "claude")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("worker startup refused: worker profile: " + flag, result.stderr)
+        profiles.write_text(original)
+
+    def test_linked_worktree_uses_worker_user_hooks_and_guarded_main_local_hooks(self):
+        worktree = self.prepare_boundary_fixture()
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((worktree / ".claude/settings.local.json").exists())
+        user = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(user["permissions"]["deny"]))
+        local = json.loads((self.workdir / ".claude/settings.local.json").read_text())
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh", "herdr-agents"):
+            path = (
+                self.home_dir
+                / (".local/bin/common/" if name == "herdr-agents" else ".agents/skills/agmsg/scripts/")
+                / name
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("printf 'anchored-payload\\n'\n")
+        for hook in all_hooks(local):
+            self.assertIn("orchestrator-only.sh", hook["command"])
+            result = self.run_boundary_hook(hook["command"], worktree)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = self.run_boundary_hook(hook["command"], self.home_dir / "Workspace/dotfiles")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("anchored-payload", result.stdout)
+
+    def test_repeated_worker_start_replaces_stale_managed_hooks(self):
+        worktree = self.prepare_boundary_fixture()
+        for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            project = worktree if path.parent.name == ".claude-worker" else self.workdir.resolve()
+            old = shlex.join(
+                [str(self.home_dir / ".agents/skills/agmsg/scripts/check-inbox.sh"), "claude-code", str(project)]
+            )
+            path.write_text(
+                json.dumps(
+                    {
+                        "unrelated": 42,
+                        "permissions": {"ask": ["fixture"]},
+                        "hooks": {"Stop": [{"hooks": [{"type": "command", "command": old}]}]},
+                    }
+                )
+            )
+        for _ in range(2):
+            result = self.run_helper("--bootstrap-agmsg")
+            self.assertEqual(result.returncode, 0, result.stderr)
+        for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+            text = path.read_text()
+            self.assertIn("orchestrator-only.sh", text)
+            self.assertEqual(json.loads(text)["unrelated"], 42)
+            self.assertEqual(text.count("check-inbox.sh"), 1)
+
+    def test_claude_preparation_keeps_boundary_when_delivery_tool_is_unavailable(self):
+        worktree = self.prepare_boundary_fixture()
+        delivery = self.home_dir / ".agents/skills/agmsg/scripts/delivery.sh"
+        settings = self.home_dir / ".claude-worker/settings.json"
+        legacy = worktree / ".claude/settings.local.json"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                delivery.unlink(missing_ok=True)
+                if not missing:
+                    delivery.write_text("exit 99\n")
+                settings.parent.mkdir(parents=True, exist_ok=True)
+                settings.write_text('{"permissions":{"allow":["Bash(*)"]}}')
+                result = self.run_helper("--bootstrap-agmsg")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                policy = json.loads(settings.read_text())
+                self.assertIn("Edit(~/.agents/permgate-policy.yaml)", policy["permissions"]["deny"])
+                self.assertTrue(policy["sandbox"]["failIfUnavailable"])
+                legacy.write_text('{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"unknown"}]}]}}')
+                result = self.run_helper("--bootstrap-agmsg")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Stop[0].hooks[0]", result.stderr)
+                legacy.unlink()
+
+    def test_add_worker_migrates_legacy_worktree_local_hooks(self):
+        worktree = self.prepare_boundary_fixture()
+        self.write_seat_lifecycle_fakes()
+        legacy = worktree / ".claude/settings.local.json"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        old = shlex.join(
+            [str(self.home_dir / ".agents/skills/agmsg/scripts/check-inbox.sh"), "claude-code", str(worktree)]
+        )
+        for unknown in (False, True):
+            with self.subTest(unknown=unknown):
+                hooks = [{"type": "command", "command": old}]
+                if unknown:
+                    hooks.append({"type": "command", "command": old + " ; touch never-run"})
+                legacy.write_text(json.dumps({"unrelated": 42, "hooks": {"Stop": [{"hooks": hooks}]}}))
+                self.calls_path.write_text("")
+                self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                result = self.run_helper("--add-worker", ".claude/worktrees/worker-c", "--kind", "claude")
+                if unknown:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Stop[0].hooks[1]", result.stderr)
+                    self.assertNotIn("spawn ", self.calls_path.read_text())
+                else:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(json.loads(legacy.read_text())["unrelated"], 42)
+                    paths = (
+                        legacy,
+                        self.home_dir / ".claude-worker/settings.json",
+                        self.home_dir / "Workspace/dotfiles/.claude/settings.local.json",
+                    )
+                    self.assertFalse(all_hooks(json.loads(legacy.read_text())))
+                    self.assertTrue(
+                        all(
+                            h["command"].startswith("/usr/bin/env -i ")
+                            for p in paths
+                            for h in all_hooks(json.loads(p.read_text()))
+                        )
+                    )
+
+    def test_every_settings_hook_has_system_path_prefix(self):
+        worktree = self.prepare_boundary_fixture()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        run = self.home_dir / "store/run"
+        run.mkdir(parents=True)
+        (run / "proj.123.project").write_text("/conflicting-marker-root")
+        resolver = """agmsg_resolve_project() {
+  local pwd_path="$1" type="$2" pid marker
+  if [ "${AGMSG_RESOLVE_PROJECT:-1}" = "0" ]; then
+    printf '%s' "$pwd_path"; return 0
+  fi
+  if pid="$(agmsg_agent_pid "$type")" && [ -n "$pid" ]; then
+    if marker="$(agmsg_read_project_marker "$pid" "$type")" && [ -n "$marker" ]; then
+      printf '%s' "$marker"; return 0
+    fi
+  fi
+  printf '%s' "$pwd_path"
+}
+agmsg_agent_pid() { printf 123; }
+agmsg_read_project_marker() { cat "$AGMSG_STORAGE_PATH/run/proj.$1.project"; }
+printf "%s:%s:%s\\n" "$1" "$(agmsg_resolve_project "$2" "$1")" "${AGMSG_RESOLVE_PROJECT:-}"
+"""
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
+            (scripts / name).write_text("#!/usr/bin/env bash\n" + resolver)
+        poison = self.home_dir / "poison"
+        poison.write_text(f"touch {shlex.quote(str(self.home_dir / 'poison-ran'))}\n")
+        for _ in range(2):
+            result = self.run_helper(
+                "--bootstrap-agmsg", extra_env={"AGMSG_STORAGE_PATH": str(self.home_dir / "store")}
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in (self.home_dir / ".claude-worker/settings.json", self.workdir / ".claude/settings.local.json"):
+                for hook in all_hooks(json.loads(path.read_text())):
+                    command = hook["command"]
+                    self.assertTrue(command.startswith("/usr/bin/env -i PATH=/usr/bin:/bin HOME="))
+                    self.assertEqual(hook["onFailure"], "block")
+                    if "agmsg" in command:
+                        self.assertIn("AGMSG_RESOLVE_PROJECT=0", command)
+                        self.assertIn("AGMSG_STORAGE_PATH=", command)
+                    output = self.run_boundary_hook(command, worktree, BASH_ENV=str(poison))
+                    self.assertEqual(output.returncode, 0, output.stderr)
+                    if path.parent.name == ".claude-worker":
+                        self.assertIn("claude-code:" + str(worktree) + ":0", output.stdout)
+                        control = self.run_boundary_hook(command.replace("AGMSG_RESOLVE_PROJECT=0 ", ""), worktree)
+                        self.assertIn("/conflicting-marker-root", control.stdout)
+                        self.run_boundary_hook(command.removeprefix("/usr/bin/env -i "), worktree, BASH_ENV=str(poison))
+                        self.assertTrue((self.home_dir / "poison-ran").exists())
+                        (self.home_dir / "poison-ran").unlink()
+            self.assertFalse((self.home_dir / "poison-ran").exists())
+
+    def test_every_worker_launch_receives_dedicated_policy_and_private_caches(self):
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        original = self.bin_dir / "herdr.original"
+        (self.bin_dir / "herdr").rename(original)
+        capture = self.home_dir / "actual-worker.json"
+        self.write_executable(
+            "herdr",
+            f"""#!{sys.executable}
+import json,os,subprocess,sys
+if sys.argv[1:3] == ['tab','create']:
+    env=os.environ.copy()
+    for i,arg in enumerate(sys.argv):
+        if arg=='--env':
+            key,value=sys.argv[i+1].split('=',1); env[key]=value
+    subprocess.run([sys.executable,'-I','-c', {repr("import json,os; from pathlib import Path; Path(" + repr(str(capture)) + ").write_text(json.dumps({k: os.environ.get(k) for k in ('UV_CACHE_DIR','UV_PYTHON_INSTALL_DIR','CLAUDE_CONFIG_DIR')}))")}],env=env,check=True)
+    print('{{"result":{{}}}}')
+else:
+    os.execv({str(original)!r},[str({str(original)!r}),*sys.argv[1:]])
+""",
+        )
+        for managed in (False, True):
+            for kind in ("codex", "claude"):
+                options = self.write_seat_lifecycle_fakes()
+                if managed:
+                    self.write_pair_workspace()
+                else:
+                    self.workspace_list_path.write_text('{"result":{"workspaces":[]}}')
+                    self.pane_list_path.write_text('{"result":{"panes":[]}}')
+                spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+                spawn.write_text(
+                    spawn.read_text().replace(
+                        "#!/usr/bin/env bash\n",
+                        '#!/usr/bin/env bash\n/bin/bash -c \'herdr tab create --cwd "$1"\' _ "$4"\n',
+                        1,
+                    )
+                )
+                name = f"route-{managed}-{kind}"
+                result = self.run_helper(
+                    "--add-worker",
+                    ".claude/worktrees/" + name,
+                    "--kind",
+                    kind,
+                    extra_env={
+                        "CLAUDE_CONFIG_DIR": "/poison",
+                        "UV_CACHE_DIR": "/poison",
+                        "UV_PYTHON_INSTALL_DIR": "/poison",
+                    },
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                actual = json.loads(capture.read_text())
+                cache = str(self.workdir.resolve() / ".claude/worktrees" / name / ".uv-cache")
+                self.assertEqual(actual["UV_CACHE_DIR"], cache)
+                self.assertEqual(actual["UV_PYTHON_INSTALL_DIR"], cache + "/python")
+                if kind == "claude":
+                    self.assertEqual(actual["CLAUDE_CONFIG_DIR"], str(self.home_dir / ".claude-worker"))
+                else:
+                    self.assertIn("--sandbox: workspace-write", options.read_text())
+                    self.assertIn("--ask-for-approval: never", options.read_text())
+
+    def test_worker_launch_adds_no_unsandboxed_route(self):
+        source = SCRIPT.read_text()
+        for forbidden in ("danger-full-access", "dangerously-skip-permissions", "GH_CONFIG_DIR"):
+            self.assertNotIn(forbidden, source)
+        worker = json.loads((ROOT / "home/.chezmoitemplates/claude-worker-settings.json").read_text())
+        self.assertEqual(worker["sandbox"]["excludedCommands"], [])
+        self.assertFalse(worker["sandbox"]["allowUnsandboxedCommands"])
+        self.assertNotIn("allowUnixSockets", worker["sandbox"]["network"])
+        self.assertTrue(set(CLAUDE_WORKER_MERGE_DENY).issubset(worker["permissions"]["deny"]))
+
+    def test_worker_playbook_requires_every_command_inside_sandbox(self):
+        skill = (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text()
+        sentence = "Complete every worker command, including gh, git push and authenticated git fetch, inside the sandbox and allowlist without forbidden actions or escalation; anything that cannot complete there is `AGMSG-PONG v1 status=blocked` naming the exact command and boundary."
+        self.assertIn(sentence, skill.split("## Worker Playbook")[1].split("5.")[0])
+        self.assertNotIn(
+            "a Claude seat runs three commands outside", skill.split("## Worker Playbook")[1].split("5.")[0]
+        )
+
+    def test_worker_uv_cache_directory_is_gitignored(self):
+        self.assertIn(".uv-cache/", (ROOT / ".gitignore").read_text().splitlines())
+        self.write_worktree_seat()
+        shutil.copyfile(ROOT / ".gitignore", self.workdir / ".gitignore")
+        command = (
+            [
+                "/usr/bin/env",
+                "-i",
+                "GIT_CONFIG_NOSYSTEM=1",
+                "GIT_CONFIG_GLOBAL=/dev/null",
+                "GIT_NO_LAZY_FETCH=1",
+                str(Path(shutil.which("git")).resolve()),
+                "--git-dir=" + str(self.workdir / ".git"),
+                "--work-tree=" + str(self.workdir),
+                "-C",
+                str(self.workdir),
+            ]
+            + "-c core.hooksPath=/dev/null -c core.fsmonitor=false -c protocol.allow=never -c protocol.https.allow=always -c submodule.recurse=false check-ignore -q .uv-cache/item".split()
+        )
+        self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
+
+    def test_hook_descendants_do_not_execute_path_interpreters(self):
+        worktree = self.prepare_boundary_fixture()
+        result = self.run_helper("--bootstrap-agmsg")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (scripts / "identities.sh").write_text(
+            '#!/usr/bin/env bash\nprintf "descendant:%s:%s\\n" "$BASH_VERSION" "$PATH"\n'
+        )
+        (scripts / "identities.sh").chmod(0o755)
+        for name in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
+            (scripts / name).write_text('#!/usr/bin/env bash\n"' + str(scripts / "identities.sh") + '"\n')
+        for name in ("bash", "python3"):
+            self.write_executable(name, "#!/bin/sh\nexit 99\n")
+        settings = json.loads((self.home_dir / ".claude-worker/settings.json").read_text())
+        for hook in all_hooks(settings):
+            output = self.run_boundary_hook(hook["command"], worktree, PATH=str(self.bin_dir) + ":/usr/bin:/bin")
+            self.assertEqual(output.returncode, 0, output.stderr)
+            self.assertIn("descendant:", output.stdout)
+            self.assertIn("/usr/bin:/bin", output.stdout)
 
 
 if __name__ == "__main__":

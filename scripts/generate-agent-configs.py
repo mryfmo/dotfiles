@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Any, NoReturn
@@ -373,6 +376,144 @@ def render_codex(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+WORKER_MERGE_DENY = [
+    "Bash(gh pr merge:*)",
+    "Bash(gh api -X PUT:*)",
+    "Bash(gh api --method PUT:*)",
+    "Bash(gh api graphql:*)",
+]
+HOOK_PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
+
+
+def hook_command(command: str) -> tuple[str, dict]:
+    words = shlex.split(command.replace("{{ .chezmoi.homeDir }}", "~"))
+    if words[0] == "bash":
+        words.pop(0)
+    words = [
+        word.replace("~", "{{ .chezmoi.homeDir }}", 1)
+        if word.startswith("~")  # lint-comparisons: allow template syntax
+        else word
+        for word in words
+    ]
+    name = Path(words[0]).name
+    mode = {"format-edited-files.py": "format", "project-map-reload.sh": "project-map"}.get(name, "project")
+    argv = (
+        ["/usr/bin/python3", "-I", *words]
+        if name.endswith(".py") or name == "agent-session-staleness"
+        else ["/bin/bash", *words]
+    )
+    return name, {"mode": mode, "argv": argv}
+
+
+def guard_policy(manifest: dict) -> dict:
+    claude, commands = manifest["claude"], {}
+    anchor = claude["orchestrator_checkout"]
+    normalized = os.path.normpath(anchor.replace("{{ .chezmoi.homeDir }}", "/home"))
+    if (
+        not Path(normalized).is_absolute()
+        or "/.claude/worktrees/" in (normalized + "/").casefold()  # lint-comparisons: allow already normalized
+    ):
+        fail("untrusted orchestrator checkout: " + anchor)
+    hooks = claude["hooks"]
+    sources = [hooks[key] for key in ("enforce_uv_hook", "format_edited_files_hook", "project_map_reload_hook")]
+    sources += [hook["command"] for group in hooks["session_start"] for hook in group["hooks"]]
+    sources += ["{checkout}/.claude/hooks/" + name for name in ("contextdb_hook.py", "contextdb_recover.py")]
+    sources += [
+        "{checkout}/scripts/agent-stop-gate.sh",
+        "{{ .chezmoi.homeDir }}/.local/bin/common/herdr-agents --attach",
+    ]
+    commands.update(hook_command(source) for source in sources)
+    for script in ("session-start.sh", "session-end.sh", "check-inbox.sh"):
+        commands["agmsg-" + script] = {
+            "mode": "project",
+            "argv": [
+                "/bin/bash",
+                "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/" + script,
+                "claude-code",
+                "{checkout}",
+            ],
+        }
+        commands["worker-agmsg-" + script] = {
+            "mode": "worker",
+            "argv": [
+                "/bin/bash",
+                "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/" + script,
+                "claude-code",
+                "{project}",
+            ],
+        }
+    return {"root": anchor, "commands": commands}
+
+
+def render_orchestrator_guard(manifest: dict, text: str) -> str:
+    policy = base64.b64encode(
+        json.dumps(guard_policy(manifest)).replace("{{ .chezmoi.homeDir }}", "{home}").encode()
+    ).decode()
+    block = "home='{{ .chezmoi.homeDir | b64enc }}'\npolicy='" + policy + "'"
+    return re.sub(r"(?<=# BEGIN TRUSTED POLICY\n).*?(?=\n# END TRUSTED POLICY)", lambda _: block, text, flags=re.S)
+
+
+def render_claude_worker_settings(manifest: dict[str, Any]) -> str:
+    claude = manifest["claude"]
+    sandbox = render_claude_sandbox(manifest)
+    sandbox.update(excludedCommands=[], allowUnsandboxedCommands=False, failIfUnavailable=True)
+    sandbox["network"].pop("allowUnixSockets", None)
+    sandbox["network"].pop("allowAllUnixSockets", None)
+    sandbox["network"].pop("allowMachLookup", None)
+    # Per-seat caches already live in the session worktree; user-relative allowances would name the config directory.
+    sandbox["filesystem"]["allowWrite"] = list(manifest["codex"]["sandbox_workspace_write"]["writable_roots"])
+    denies = [
+        "Edit(" + p.replace("{checkout}", "/" + claude["orchestrator_checkout"]) + ")" for p in claude["trusted_paths"]
+    ]
+    hooks = {}
+    for event, script in (("SessionStart", "session-start"), ("SessionEnd", "session-end"), ("Stop", "check-inbox")):
+        command = (
+            HOOK_PREFIX
+            + 'AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH="${AGMSG_STORAGE_PATH}" "$HOME/.claude/hooks/orchestrator-only.sh" worker-agmsg-'
+            + script
+            + ".sh"
+        )
+        hooks[event] = [{"hooks": [{"type": "command", "command": command, "onFailure": "block"}]}]
+    permissions = {"defaultMode": claude["permissions"]["defaultMode"], "deny": [*WORKER_MERGE_DENY, *denies]}
+    plugins = claude["worker_disabled_plugins"]
+    return json_dumps(
+        {
+            "permissions": permissions,
+            "sandbox": sandbox,
+            "hooks": hooks,
+            "enableAllProjectMcpServers": False,
+            "enabledMcpjsonServers": [],
+            "syncClaudeAiPlugins": False,
+            "syncClaudeAiSkills": False,
+            "enabledPlugins": {
+                key: False for plugin in plugins for key in (plugin, plugin.split("@", 1)[0] + "@skills-dir")
+            },
+        }
+    )
+
+
+def render_claude_managed_settings(manifest: dict[str, Any]) -> str:
+    return json_dumps(
+        {
+            "sandbox": {
+                "enabled": True,
+                "failIfUnavailable": True,
+                "allowUnsandboxedCommands": False,
+                "filesystem": {"disabled": False},
+                "enableWeakerNestedSandbox": False,
+                "enableWeakerNetworkIsolation": False,
+                "allowAppleEvents": False,
+                "excludedCommands": manifest["claude"]["sandbox"]["excludedCommands"],
+                "network": {
+                    "allowAllUnixSockets": False,
+                    "allowLocalBinding": False,
+                    "allowUnixSockets": ["{{ .chezmoi.homeDir }}/.config/herdr/herdr.sock"],
+                },
+            }
+        }
+    )
+
+
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots."""
     sandbox = manifest["claude"]["sandbox"]
@@ -399,7 +540,7 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
 
 def render_claude_settings(manifest: dict[str, Any]) -> str:
     claude = manifest["claude"]
-    hooks = claude.get("hooks", {})
+    hooks = json.loads(json.dumps(claude.get("hooks", {})))
     post_hooks: list[dict[str, str]] = []
     if hooks.get("format_edited_files_hook"):
         post_hooks.append(
@@ -477,6 +618,19 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "disableSkillShellExecution": claude["disableSkillShellExecution"],
         "includeGitInstructions": claude["includeGitInstructions"],
     }
+    if "orchestrator_checkout" in claude:
+        guard_policy(manifest)
+        for event, groups in settings["hooks"].items():
+            for group in groups:
+                for hook in group["hooks"]:
+                    hook["onFailure"] = "block"
+                    if event == "PermissionRequest":
+                        continue
+                    selector, _ = hook_command(hook["command"])
+                    command = HOOK_PREFIX + '"$HOME/.claude/hooks/orchestrator-only.sh" ' + shlex.quote(selector)
+                    if selector == "herdr-agent-state.sh":
+                        command += ' "${HERDR_PANE_ID}"'
+                    hook.update(command=command, onFailure="block")
     text = json_dumps(settings)
     if "sandbox" in claude:
         variants = [json_dumps(render_claude_sandbox(manifest, os_name)).strip() for os_name in ("darwin", "linux")]
@@ -1346,6 +1500,31 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
+    if "worker_settings_path" in manifest["claude"]:
+        outputs[ROOT / manifest["claude"]["worker_settings_path"]] = render_claude_worker_settings(manifest)
+        outputs[ROOT / manifest["claude"]["managed_settings_path"]] = render_claude_managed_settings(manifest)
+        launcher = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
+        if launcher.exists():
+            claude = manifest["claude"]
+            bindings = {
+                "ORCHESTRATOR_CHECKOUT": claude["orchestrator_checkout"],
+                "HOOK_BOOTSTRAP_PYTHON": "/usr/bin/python3",
+            }
+            block = "\n".join(
+                key
+                + "="
+                + json.dumps(value).replace("$", "\\$").replace("`", "\\`").replace("{{ .chezmoi.homeDir }}", "${HOME}")
+                for key, value in bindings.items()
+            )
+            outputs[launcher] = re.sub(
+                r"(?<=# BEGIN TRUSTED HOOK BINDINGS\n).*?(?=\n# END TRUSTED HOOK BINDINGS)",
+                block,
+                launcher.read_text(),
+                flags=re.S,
+            )
+        guard = ROOT / "home/dot_claude/hooks/executable_orchestrator-only.sh.tmpl"
+        if guard.exists():
+            outputs[guard] = render_orchestrator_guard(manifest, guard.read_text())
     for name, profile in sorted(model_profiles(manifest).items()):
         outputs[ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"] = render_codex_profile_modify(
             name, profile, manifest

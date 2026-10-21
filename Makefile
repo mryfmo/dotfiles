@@ -206,6 +206,12 @@ codex-hook-trust:
 render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
 
+.PHONY: install-managed-settings
+install-managed-settings:
+	@mkdir -p "$(HOME)/.claude"
+	@chezmoi --source home execute-template --init < home/.chezmoitemplates/claude-managed-settings.json > "$(HOME)/.claude/managed-settings.rendered.json"
+	@case "$$(uname -s)" in Darwin) target='/Library/Application Support/ClaudeCode/managed-settings.json' ;; Linux) target='/etc/claude-code/managed-settings.json' ;; *) exit 1 ;; esac; printf 'sudo install -m 0644 "%s/.claude/managed-settings.rendered.json" "%s"\n' "$(HOME)" "$$target"
+
 .PHONY: require-crit-review
 # BASE=<ref> adds the committed <ref>...HEAD changes and requires PR_FEEDBACK_EVIDENCE and
 # ACCEPTANCE_EVIDENCE, plus AUDIT_EVIDENCE (an incorrect verdict's findings go in the record's audit_findings) when the change needs

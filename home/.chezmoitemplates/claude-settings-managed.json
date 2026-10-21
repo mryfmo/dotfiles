@@ -67,11 +67,13 @@
   "sandbox": {{ if eq .chezmoi.os "darwin" }}
 {
   "enabled": true,
-  "failIfUnavailable": false,
+  "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
   "allowUnsandboxedCommands": true,
   "excludedCommands": [
-    "agmsg-dispatch *"
+    "agmsg-dispatch *",
+    "herdr-agents *",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
   ],
   "filesystem": {
     "allowWrite": [
@@ -106,12 +108,11 @@
 {{ else }}
 {
   "enabled": true,
-  "failIfUnavailable": false,
+  "failIfUnavailable": true,
   "autoAllowBashIfSandboxed": true,
   "allowUnsandboxedCommands": true,
   "excludedCommands": [
     "agmsg-dispatch *",
-    "gh *",
     "herdr-agents *",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
   ],
@@ -155,7 +156,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/enforce-uv.sh"
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" enforce-uv.sh",
+            "onFailure": "block"
           }
         ]
       }
@@ -166,8 +168,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
-            "timeout": 10
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" herdr-agent-state.sh \"${HERDR_PANE_ID}\"",
+            "timeout": 10,
+            "onFailure": "block"
           }
         ]
       },
@@ -176,9 +179,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" agent-session-staleness",
             "async": true,
-            "timeout": 5
+            "timeout": 5,
+            "onFailure": "block"
           }
         ]
       }
@@ -189,11 +193,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/format-edited-files.py"
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" format-edited-files.py",
+            "onFailure": "block"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/project-map-reload.sh"
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" project-map-reload.sh",
+            "onFailure": "block"
           }
         ]
       }
@@ -206,7 +212,8 @@
             "type": "command",
             "command": "~/.local/bin/common/permgate claude",
             "timeout": 10,
-            "statusMessage": "Evaluating permission request"
+            "statusMessage": "Evaluating permission request",
+            "onFailure": "block"
           }
         ]
       }

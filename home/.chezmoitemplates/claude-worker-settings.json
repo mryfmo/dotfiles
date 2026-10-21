@@ -1,0 +1,168 @@
+{
+  "permissions": {
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh api -X PUT:*)",
+      "Bash(gh api --method PUT:*)",
+      "Bash(gh api graphql:*)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.chezmoiroot)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/contextdb)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/contextdb/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/hooks)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/hooks/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/settings.json)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/settings.local.json)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.github)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.github/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.orchestration)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.orchestration/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.ua)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.ua/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/docs)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/docs/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/home)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/home/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/install)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/install/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/plans)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/plans/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/scripts)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/scripts/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/tests)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/tests/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/vendor)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/vendor/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.agents/worklog)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.agents/worklog/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.agents/worklog/uv-cache/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.coderabbit.yaml)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.editorconfig)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.gitignore)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.prettierignore)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.simplecov)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/AGENTS.md)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/CLAUDE.md)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/Dockerfile)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/LICENSE)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/Makefile)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/README.md)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/codecov.yml)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/mise.toml)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/mkdocs.yml)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/renovate.json)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/ruff.toml)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/setup.sh)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/worktrees/*/.claude)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/worktrees/*/.claude/**)",
+      "Edit(/{{ .chezmoi.homeDir }}/Workspace/dotfiles/.claude/worktrees/*/.mcp.json)",
+      "Edit(~/.agents/agent-config.yaml)",
+      "Edit(~/.agents/model-profiles.env)",
+      "Edit(~/.agents/skills/**/scripts)",
+      "Edit(~/.agents/skills/**/scripts/**)",
+      "Edit(~/.agents/skills/**/SKILL.md)",
+      "Edit(~/.agents/skills/agmsg/plugins)",
+      "Edit(~/.agents/skills/agmsg/plugins/**)",
+      "Edit(~/.agents/skills/agmsg/db/trusted-plugins)",
+      "Edit(~/.agents/permgate-policy.yaml)",
+      "Edit(~/.claude/hooks/orchestrator-only.sh)",
+      "Edit(~/.local/lib/python*/site-packages)",
+      "Edit(~/.local/lib/python*/site-packages/**)",
+      "Edit(~/Library/Python/*/lib/python/site-packages)",
+      "Edit(~/Library/Python/*/lib/python/site-packages/**)",
+      "Edit(~/.claude)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.claude-worker)",
+      "Edit(~/.claude-worker/**)",
+      "Edit(~/.local/bin)",
+      "Edit(~/.local/bin/**)",
+      "Edit(~/.local/share)",
+      "Edit(~/.local/share/**)",
+      "Edit(~/.local/state)",
+      "Edit(~/.local/state/**)",
+      "Edit(~/.local/share/mise)",
+      "Edit(~/.local/share/mise/**)",
+      "Edit(~/.config)",
+      "Edit(~/.config/**)",
+      "Edit(~/.cache/uv)",
+      "Edit(~/.cache/uv/**)",
+      "Edit(~/.local/share/uv)",
+      "Edit(~/.local/share/uv/**)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [],
+    "filesystem": {
+      "allowWrite": [
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "uploads.github.com",
+        "objects.githubusercontent.com",
+        "codeload.github.com",
+        "pypi.org",
+        "files.pythonhosted.org"
+      ]
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-session-start.sh",
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-session-end.sh",
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env -i PATH=/usr/bin:/bin HOME=\"$HOME\" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR=\"${CLAUDE_PROJECT_DIR}\" CLAUDE_ENV_FILE=\"${CLAUDE_ENV_FILE}\" AGMSG_RESOLVE_PROJECT=0 AGMSG_STORAGE_PATH=\"${AGMSG_STORAGE_PATH}\" \"$HOME/.claude/hooks/orchestrator-only.sh\" worker-agmsg-check-inbox.sh",
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
+  "syncClaudeAiPlugins": false,
+  "syncClaudeAiSkills": false,
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false,
+    "superpowers@skills-dir": false,
+    "crit@crit": false,
+    "crit@skills-dir": false,
+    "ponytail@ponytail": false,
+    "ponytail@skills-dir": false,
+    "understand-anything@understand-anything": false,
+    "understand-anything@skills-dir": false
+  }
+}

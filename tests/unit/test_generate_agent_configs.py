@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import fnmatch
 import importlib.util
 import io
 import json
@@ -16,6 +17,7 @@ import tomllib
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 
@@ -37,6 +39,10 @@ MULTILINE_PROFILE = (
     "'''\n"
     'one_line = """[a] # b"""\n'
 )
+
+
+def all_hooks(settings):
+    return [hook for groups in settings["hooks"].values() for group in groups for hook in group["hooks"]]
 
 
 def load_generator():
@@ -162,7 +168,7 @@ statusMessage = "Closing session"
 """
 
 
-def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin", *, home="/render-home", raw=False):
     result = subprocess.run(
         [
             "chezmoi",
@@ -177,14 +183,14 @@ def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -
             "execute-template",
             "--init",
             "--override-data",
-            json.dumps({"chezmoi": {"os": os_name, "homeDir": "/render-home"}}),
+            json.dumps({"chezmoi": {"os": os_name, "homeDir": home}}),
         ],
         input=text,
         text=True,
         capture_output=True,
         check=True,
     )
-    return json.loads(result.stdout)
+    return result.stdout if raw else json.loads(result.stdout)
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -757,12 +763,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     sandbox["network"]["allowedDomains"],
                 )
                 self.assertEqual(
-                    ["agmsg-dispatch *"]
-                    + (
-                        ["gh *", "herdr-agents *", "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *"]
-                        if os_name == "linux"
-                        else []
-                    ),
+                    [
+                        "agmsg-dispatch *",
+                        "herdr-agents *",
+                        "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
+                    ],
                     sandbox["excludedCommands"],
                 )
                 self.assertEqual(expected_ask, settings["permissions"]["ask"])
@@ -784,7 +789,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(
             [
                 "agmsg-dispatch *",
-                "gh *",
                 "herdr-agents *",
                 "/render-home/.agents/skills/agmsg/scripts/actas-claim.sh *",
             ],
@@ -1419,7 +1423,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         claude = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
-        self.assertIn("~/.local/bin/common/permgate claude", claude)
+        self.assertTrue(
+            any(
+                h["command"] == "~/.local/bin/common/permgate claude"
+                for h in all_hooks(self.render_claude_template(claude))
+            )
+        )
 
     def test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb(self) -> None:
         hooks = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())["hooks"]
@@ -2344,6 +2353,78 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for line in manifest.splitlines():
             if line.startswith(("  model:", "  effortLevel:", "  model_reasoning_effort:")):
                 self.fail(f"model settings must live in model_profiles only: {line.strip()}")
+
+    def test_worker_policy_is_separate_from_orchestrator_policy(self):
+        from tests.unit.test_claude_worker_settings import expand
+
+        manifest = load_manifest_fixture(self.temp_dir)
+        for platform in ("darwin", "linux"):
+            worker = expand(self.module.render_claude_worker_settings(manifest), "/render-home", platform)
+            orchestrator = self.render_claude_template(self.module.render_claude_settings(manifest), platform)
+            self.assertTrue(worker["sandbox"]["failIfUnavailable"])
+            self.assertTrue(orchestrator["sandbox"]["failIfUnavailable"])
+            self.assertEqual(worker["sandbox"]["excludedCommands"], [])
+            self.assertEqual(len(orchestrator["sandbox"]["excludedCommands"]), 3)
+            self.assertNotIn("gh *", orchestrator["sandbox"]["excludedCommands"])
+            self.assertNotIn("~/.cache/uv", worker["sandbox"]["filesystem"]["allowWrite"])
+            self.assertFalse(any(rule.startswith("Edit(//") for rule in orchestrator["permissions"]["deny"]))
+
+    def test_worker_deny_inventory_is_static_and_matches_manifest(self):
+        from tests.unit.test_claude_worker_settings import expand
+
+        manifest = load_manifest_fixture(self.temp_dir)
+        claude = manifest["claude"]
+        anchor = claude["orchestrator_checkout"].replace("{{ .chezmoi.homeDir }}", "/render-home")
+        expected = ["Edit(" + path.replace("{checkout}", "/" + anchor) + ")" for path in claude["trusted_paths"]]
+        poison = self.temp_dir / "poison-git/refs/replace" / ("1" * 40)
+        poison.parent.mkdir(parents=True)
+        poison.write_text("2" * 40 + "\n")
+        with (
+            mock.patch.dict(os.environ, {"GIT_DIR": str(poison.parents[2]), "GIT_REPLACE_REF_BASE": "refs/replace"}),
+            mock.patch.object(subprocess, "run", side_effect=AssertionError("renderer executed a process")),
+        ):
+            settings = expand(self.module.render_claude_worker_settings(manifest), "/render-home")
+        actual = [rule for rule in settings["permissions"]["deny"] if rule.startswith("Edit(")]
+        self.assertEqual(actual, expected)
+        self.assertIn("Edit(" + "/" + anchor + "/.agents/worklog/**)", actual)
+        self.assertIn("Edit(" + "/" + anchor + "/.agents/worklog/uv-cache/**)", actual)
+        for platform in ("darwin", "linux"):
+            rendered = expand(self.module.render_claude_worker_settings(manifest), "/render-home", platform)
+            self.assertEqual([r for r in rendered["permissions"]["deny"] if r.startswith("Edit(")], expected)
+        for path in ("~/.agents/permgate-policy.yaml", "~/.claude/hooks/orchestrator-only.sh"):
+            self.assertIn("Edit(" + path + ")", actual)
+        for site in ("~/.local/lib/python3.13/site-packages", "~/Library/Python/3.13/lib/python/site-packages"):
+            for suffix in ("", "/fixture.pth", "/usercustomize.py", "/sitecustomize.py"):
+                self.assertTrue(any(fnmatch.fnmatchcase(site + suffix, p[5:-1]) for p in actual), site + suffix)
+        for name in (".local/share", ".local/state"):
+            self.assertIn("Edit(~/" + name + "/**)", actual)
+        ignored = {".git", ".codex", ".agents", ".ruff_cache", ".uv-cache", ".venv", "__pycache__"}
+        for path in ROOT.iterdir():
+            if path.name not in ignored | {".claude"}:
+                self.assertIn("Edit(" + "/" + anchor + "/" + path.name + ")", actual, str(path))
+        for child in ("contextdb", "hooks", "settings.json", "settings.local.json"):
+            self.assertIn("Edit(" + "/" + anchor + "/.claude/" + child + ")", actual)
+        for suffix in ("/.claude", "/.claude/**", "/.mcp.json"):
+            self.assertIn("Edit(" + "/" + anchor + "/.claude/worktrees/*" + suffix + ")", actual)
+        for suffix in ("source.py", ".uv-cache/item"):
+            candidate = "/" + anchor + "/.claude/worktrees/fixture/" + suffix
+            self.assertFalse(any(fnmatch.fnmatchcase(candidate, rule[5:-1]) for rule in actual))
+        manifest["claude"]["orchestrator_checkout"] = "/anchor with spaces"
+        changed = expand(self.module.render_claude_worker_settings(manifest), "/render-home")
+        self.assertIn("Edit(//anchor with spaces/Makefile)", changed["permissions"]["deny"])
+
+    def test_every_tracked_project_hook_is_guarded_and_blocks_on_failure(self):
+        import shlex
+
+        settings = json.loads((ROOT / ".claude/settings.json").read_text())
+        for hook in all_hooks(settings):
+            self.assertEqual(hook["onFailure"], "block")
+            self.assertTrue(hook["command"].startswith(self.module.HOOK_PREFIX))
+            parts = shlex.split(hook["command"])
+            self.assertEqual(parts[-2], "$HOME/.claude/hooks/orchestrator-only.sh")
+            self.assertEqual(len(parts), 10)
+            self.assertFalse(hook.get("args"))
+            self.assertNotIn("${CLAUDE_PROJECT_DIR}/", hook["command"])
 
 
 if __name__ == "__main__":

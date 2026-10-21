@@ -1064,6 +1064,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "enabled": True,
             "failIfUnavailable": False,
             "autoAllowBashIfSandboxed": True,
+            "excludedCommands": [
+                "agmsg-dispatch *",
+                "herdr-agents *",
+                "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
+            ],
             "filesystem": {"allowWrite": list(self.required_agmsg_writable_roots)},
             "network": {
                 "allowedDomains": ["github.com", "api.github.com"],
@@ -1083,11 +1088,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         manifest = load_manifest_fixture(self.temp_dir)
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
-            ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
+            (
+                "macOS gh exclusion",
+                lambda sandbox: sandbox["excludedCommands"].append("gh *"),
+                "darwin.*excludedCommands",
+            ),
             (
                 "Linux extra exclusion",
-                lambda sandbox: sandbox["linux_excluded_commands"].append("bash *"),
-                "Linux.*excludedCommands",
+                lambda sandbox: sandbox.update(linux_excluded_commands=[*sandbox["excludedCommands"], "bash *"]),
+                "linux.*excludedCommands",
             ),
             (
                 "Mach allowlist",

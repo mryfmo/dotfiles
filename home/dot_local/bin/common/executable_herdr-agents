@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# BEGIN TRUSTED HOOK BINDINGS
+ORCHESTRATOR_CHECKOUT="${HOME}/Workspace/dotfiles"
+HOOK_BOOTSTRAP_PYTHON="/usr/bin/python3"
+# END TRUSTED HOOK BINDINGS
+
 # @file herdr-agents
 # @brief Start the Claude Code orchestrator in Herdr and seat workers on demand.
 # @description
@@ -81,6 +86,20 @@
 #   herdr-agents --audit 926d9f1 --out .orchestration/validation/T31-audit.md ~/Workspace/dotfiles
 
 set -euo pipefail
+
+HOOK_USER_HOME="$(/usr/bin/python3 -I -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
+readonly HOOK_USER_HOME
+readonly HOOK_TOOLS="${HOOK_USER_HOME}/.local/share/mise/installs"
+
+# @description Invoke installed Herdr without loading project mise configuration.
+function herdr() {
+    "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@"
+}
+
+# @description Invoke installed jq without loading project mise configuration.
+function jq() {
+    "${HOOK_TOOLS}/jq/latest/jq" "$@"
+}
 
 # @description Print usage information.
 function usage() {
@@ -334,25 +353,19 @@ function ensure_worker_identity() {
     printf '%s\t%s\n' "${team}" "${name}"
 }
 
-# @description Point agmsg delivery at the worker worktree when its hook is
-#   missing: `both` for claude-code (turn delivery; upstream session-start.sh
-#   skips sessions under .claude/worktrees, #367, so no Monitor watch starts
-#   there), `turn` for codex. delivery.sh bakes the path into the hook.
+# @description Regenerate Claude worker user hooks or install Codex turn delivery.
 # @arg $1 string Worker kind.
 # @arg $2 path Absolute worker worktree path.
 function ensure_worker_delivery() {
-    local kind="$1"
-    local worktree="$2"
+    local kind="$1" worktree="$2"
     local delivery="${HOME}/.agents/skills/agmsg/scripts/delivery.sh"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
 
-    [[ -x ${delivery} ]] || return 0
-    mkdir -p "${log_file%/*}"
     if [[ ${kind} == claude ]]; then
-        jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
-            "${worktree}/.claude/settings.local.json" > /dev/null 2>&1 && return 0
-        "${delivery}" set both claude-code "${worktree}" >> "${log_file}" 2>&1 || true
-    else
+        CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" CLAUDE_CONFIG_DIR="${HOME}/.claude-worker" \
+            "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --prepare "${worktree}"
+    elif [[ -x ${delivery} ]]; then
+        mkdir -p "${log_file%/*}"
         jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
             "${worktree}/.codex/hooks.json" > /dev/null 2>&1 && return 0
         if "${delivery}" set turn codex "${worktree}" >> "${log_file}" 2>&1; then
@@ -361,17 +374,22 @@ function ensure_worker_delivery() {
     fi
 }
 
-# @description Add merge-denial rules to a Claude worker worktree's local
-#   settings, preserving hooks and other permissions. Main checkouts and Codex
-#   workers are untouched.
+# @description Write trusted main-local delivery; worker preparation screens first.
+# @arg $1 path Settings destination.
+# @arg $2 string Main-local role.
+function write_claude_delivery() {
+    CHEZMOI_SOURCE_DIR="${ORCHESTRATOR_CHECKOUT}/home" CHEZMOI_HOME_DIR="${HOME}" \
+        "${HOOK_BOOTSTRAP_PYTHON}" -I "${ORCHESTRATOR_CHECKOUT}/home/dot_claude-worker/modify_private_settings.json" --delivery "$1" "$2"
+}
+
+# @description Retain native merge denials in the dedicated Claude worker user settings.
 # @arg $1 string Worker kind.
 # @arg $2 path Absolute worker worktree path.
 function ensure_worker_merge_denials() {
     local kind="$1" worktree="$2"
-    local settings="${worktree}/.claude/settings.local.json" input temporary
+    local settings="${HOME}/.claude-worker/settings.json" input temporary
 
-    [[ ${kind} == claude && -f ${worktree}/.git ]] || return 0
-    is_main_checkout "${worktree}" && return 0
+    [[ ${kind} == claude ]] || return 0
     mkdir -p "${settings%/*}"
     input="${settings}"
     [[ -f ${input} ]] || input=/dev/null
@@ -479,6 +497,10 @@ function write_spawn_options() {
     fi
     printf '%s:\n' "$(worker_agmsg_type "${kind}")"
     for ((index = 0; index < ${#words[@]}; index += 2)); do
+        if [[ ${kind} == claude && ${words[index]} != --model && ${words[index]} != --effort && ${words[index]} != --advisor ]]; then
+            printf 'worker startup refused: worker profile: %s is an unenumerated launch input\n' "${words[index]}" >&2
+            exit 2
+        fi
         if [[ ! ${words[index]} =~ ^--[a-z][a-z0-9-]*$ || ! ${words[index + 1]} =~ ^[A-Za-z0-9._:/=+-]+$ ]]; then
             printf 'herdr-agents: worker profile arg is not a plain --flag value pair: %s %s\n' "${words[index]}" "${words[index + 1]}" >&2
             exit 2
@@ -1106,7 +1128,7 @@ function check_worker_linkage() {
         else
             printf 'herdr-agents: read_at/PONG query: the agmsg db path for team %s could not be resolved.\n' "${team}" >&2
         fi
-        hint=attach-a-client
+        hint='attach-a-client'
         [[ -z ${placement} ]] || hint=poke
         printf 'linkage=unreached rc=%s hint=%s\n' "${rc}" "${hint}"
         return "${rc}"
@@ -1406,6 +1428,17 @@ function remove_retired_pre_push_stub() {
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
+    local worker_path
+    worker_path="$(resolve_worker_worktree)"
+    if [[ -n ${worker_path} && -d ${workdir}/${worker_path} && $(resolve_worker_kind) == claude ]]; then
+        ensure_worker_delivery claude "${workdir}/${worker_path}"
+    fi
+
+    if [[ -f ${workdir}/.git ]]; then
+        ensure_worker_delivery claude "${workdir}"
+        ensure_worker_merge_denials claude "${workdir}"
+        return
+    fi
 
     if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
         printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
@@ -1429,13 +1462,7 @@ function bootstrap_agmsg() {
         return 0
     fi
     mkdir -p "${log_file%/*}"
-    if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
-        'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
-        "${claude_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
-            printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
-        fi
-    fi
+    write_claude_delivery "${claude_hooks_file}" main
 
     if [[ ! -x ${doctor} ]]; then
         printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2
@@ -1493,12 +1520,11 @@ function remove_shadowing_node_global() {
     local mise_tool="$1"
     local npm_package="$2"
 
-    command -v npm > /dev/null 2>&1 || return 0
-    command -v mise > /dev/null 2>&1 || return 0
+    [[ -x ${HOOK_TOOLS}/node/latest/bin/npm && -x ${HOOK_TOOLS}/node/latest/bin/node && -x ${HOOK_USER_HOME}/.local/bin/mise ]] || return 0
     # Never delete the only copy: heal only when the dedicated mise tool install exists.
-    mise where "${mise_tool}" > /dev/null 2>&1 || return 0
-    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
-        npm uninstall -g "${npm_package}" > /dev/null || true
+    "${HOOK_USER_HOME}/.local/bin/mise" where "${mise_tool}" > /dev/null 2>&1 || return 0
+    if "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/node/latest/bin/npm" list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+        "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/node/latest/bin/npm" uninstall -g "${npm_package}" > /dev/null || true
     fi
 }
 
@@ -1569,6 +1595,14 @@ function close_worker_tab() {
 # @arg $1 string Command name.
 function require_command() {
     local command_name="$1"
+
+    case "${command_name}" in
+    herdr) command_name="${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" ;;
+    jq) command_name="${HOOK_TOOLS}/jq/latest/jq" ;;
+    claude) command_name="${HOOK_TOOLS}/npm-anthropic-ai-claude-code/latest/bin/claude" ;;
+    codex) command_name="${HOOK_TOOLS}/npm-openai-codex/latest/bin/codex" ;;
+    node) command_name="${HOOK_TOOLS}/node/latest/bin/node" ;;
+    esac
 
     if ! command -v "${command_name}" > /dev/null 2>&1; then
         printf '%s command not found\n' "${command_name}" >&2
@@ -1890,10 +1924,27 @@ if [[ ${add_worker_mode} == true ]]; then
     # exists, the orchestrator tab untouched), and --project opts the join
     # out of project resolution. It runs in the background so a claude worker's
     # trust dialog is accepted during the readiness wait, not after it.
-    HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
-        "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
-        --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
-        ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"} &
+    (
+        export UV_CACHE_DIR="${seat_dir}/.uv-cache" UV_PYTHON_INSTALL_DIR="${seat_dir}/.uv-cache/python"
+        [[ ${seat_kind} != claude ]] || export CLAUDE_CONFIG_DIR="${HOME}/.claude-worker"
+        # @description Bind the new pane environment even in an existing workspace.
+        # shellcheck disable=SC2329 # Invoked by the upstream spawn process.
+        function herdr() {
+            if [[ $1 == tab && $2 == create ]]; then
+                local -a bindings=(--env "UV_CACHE_DIR=${UV_CACHE_DIR}" --env "UV_PYTHON_INSTALL_DIR=${UV_PYTHON_INSTALL_DIR}")
+                [[ ${seat_kind} != claude ]] || bindings+=(--env "CLAUDE_CONFIG_DIR=${CLAUDE_CONFIG_DIR}")
+                "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@" "${bindings[@]}"
+            else
+                "${HOOK_TOOLS}/github-ogulcancelik-herdr/latest/herdr" "$@"
+            fi
+        }
+        export seat_kind HOOK_TOOLS
+        export -f herdr
+        HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
+            "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
+            --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
+            ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"}
+    ) &
     spawn_pid=$!
     [[ ${seat_kind} != claude ]] || accept_spawned_claude_trust_dialog "${seat_workspace_id}" "${seat_panes}" "${spawn_pid}"
     spawn_rc=0
@@ -2028,6 +2079,7 @@ if [[ ${audit_mode} == true ]]; then
     require_command herdr
     require_command jq
     require_command codex
+    require_command node
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
@@ -2103,8 +2155,8 @@ if [[ ${audit_mode} == true ]]; then
     fi
     audit_last="${audit_out}.last.md"
     # A stale last-message file from an earlier run must never be judged.
-    printf -v audit_inner "cd -- %q && set -o pipefail && rm -f -- %q && codex%s exec --sandbox read-only -C %q -o %q %q 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
-        "${workdir}" "${audit_last}" "$(printf ' %q' "${audit_args[@]}")" "${workdir}" "${audit_last}" "${audit_prompt}" "${audit_out}" "${audit_marker}"
+    printf -v audit_inner "cd -- %q && set -o pipefail && rm -f -- %q && %q %q%s exec --sandbox read-only -C %q -o %q %q 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
+        "${workdir}" "${audit_last}" "${HOOK_TOOLS}/node/latest/bin/node" "${HOOK_TOOLS}/npm-openai-codex/latest/bin/codex" "$(printf ' %q' "${audit_args[@]}")" "${workdir}" "${audit_last}" "${audit_prompt}" "${audit_out}" "${audit_marker}"
     herdr pane run "${audit_pane}" "bash -c $(printf '%q' "${audit_inner}")" > /dev/null
     # Unwrapped snapshots keep a pane narrower than the marker from hiding it.
     if ! wait_output="$(herdr pane wait-output "${audit_pane}" --regex "${audit_marker}:[0-9]+" --source recent-unwrapped --timeout "$((audit_timeout * 1000))")"; then

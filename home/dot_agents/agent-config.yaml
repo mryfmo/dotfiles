@@ -187,7 +187,56 @@ codex:
       trust_level: trusted
 
 claude:
+  worker_disabled_plugins:
+    - superpowers@claude-plugins-official
+    - crit@crit
+    - ponytail@ponytail
+    - understand-anything@understand-anything
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
+  worker_settings_path: home/.chezmoitemplates/claude-worker-settings.json
+  managed_settings_path: home/.chezmoitemplates/claude-managed-settings.json
+  worker_config_dir: "{{ .chezmoi.homeDir }}/.claude-worker"
+  orchestrator_checkout: "{{ .chezmoi.homeDir }}/Workspace/dotfiles"
+  trusted_paths: [
+    "{checkout}/.chezmoiroot",
+    "{checkout}/.claude/contextdb", "{checkout}/.claude/contextdb/**",
+    "{checkout}/.claude/hooks", "{checkout}/.claude/hooks/**",
+    "{checkout}/.claude/settings.json", "{checkout}/.claude/settings.local.json",
+    "{checkout}/.github", "{checkout}/.github/**",
+    "{checkout}/.orchestration", "{checkout}/.orchestration/**",
+    "{checkout}/.ua", "{checkout}/.ua/**",
+    "{checkout}/docs", "{checkout}/docs/**",
+    "{checkout}/home", "{checkout}/home/**",
+    "{checkout}/install", "{checkout}/install/**",
+    "{checkout}/plans", "{checkout}/plans/**",
+    "{checkout}/scripts", "{checkout}/scripts/**",
+    "{checkout}/tests", "{checkout}/tests/**",
+    "{checkout}/vendor", "{checkout}/vendor/**",
+    "{checkout}/.agents/worklog", "{checkout}/.agents/worklog/**", "{checkout}/.agents/worklog/uv-cache/**",
+    "{checkout}/.coderabbit.yaml", "{checkout}/.editorconfig", "{checkout}/.gitignore", "{checkout}/.prettierignore",
+    "{checkout}/.simplecov", "{checkout}/AGENTS.md", "{checkout}/CLAUDE.md", "{checkout}/Dockerfile",
+    "{checkout}/LICENSE", "{checkout}/Makefile", "{checkout}/README.md", "{checkout}/codecov.yml",
+    "{checkout}/mise.toml", "{checkout}/mkdocs.yml", "{checkout}/renovate.json", "{checkout}/ruff.toml",
+    "{checkout}/setup.sh",
+    "{checkout}/.claude/worktrees/*/.claude", "{checkout}/.claude/worktrees/*/.claude/**",
+    "{checkout}/.claude/worktrees/*/.mcp.json", "~/.agents/agent-config.yaml", "~/.agents/model-profiles.env",
+    "~/.agents/skills/**/scripts", "~/.agents/skills/**/scripts/**",
+    "~/.agents/skills/**/SKILL.md",
+    "~/.agents/skills/agmsg/plugins", "~/.agents/skills/agmsg/plugins/**",
+    "~/.agents/skills/agmsg/db/trusted-plugins",
+    "~/.agents/permgate-policy.yaml", "~/.claude/hooks/orchestrator-only.sh",
+    "~/.local/lib/python*/site-packages", "~/.local/lib/python*/site-packages/**",
+    "~/Library/Python/*/lib/python/site-packages", "~/Library/Python/*/lib/python/site-packages/**",
+    "~/.claude", "~/.claude/**",
+    "~/.claude-worker", "~/.claude-worker/**",
+    "~/.local/bin", "~/.local/bin/**",
+    "~/.local/share", "~/.local/share/**",
+    "~/.local/state", "~/.local/state/**",
+    "~/.local/share/mise", "~/.local/share/mise/**",
+    "~/.config", "~/.config/**",
+    "~/.cache/uv", "~/.cache/uv/**",
+    "~/.local/share/uv", "~/.local/share/uv/**",
+  ]
   mcp_config_path: home/dot_claude/private_mcp.json.tmpl
   schema: https://json.schemastore.org/claude-code-settings.json
   # No effect on Fable 5 (thinking cannot be disabled there); applies when the
@@ -275,9 +324,7 @@ claude:
   # create user namespaces.
   sandbox:
     enabled: true
-    # Two-stage rollout: warn and run unsandboxed while bwrap/socat are missing;
-    # flip to true only after live E2E.
-    failIfUnavailable: false
+    failIfUnavailable: true
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
     # Patterns need a trailing wildcard for arguments; every chained command must match.
@@ -288,10 +335,6 @@ claude:
       # outside the sandbox it delivered msgs 545-577 with read_at within
       # seconds (T49 E2E, 2026-10-01).
       - agmsg-dispatch *
-    # Linux blocks gh's keyring and herdr-agents -> actas-claim.sh socket calls;
-    # child-script patterns cannot match the parent, but the absolute pattern covers direct calls.
-    linux_excluded_commands:
-      - gh *
       - herdr-agents *
       - "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
     filesystem:
@@ -338,9 +381,6 @@ claude:
       - matcher: "^(startup|resume|clear|compact|fork)$"
         hooks:
           - type: command
-            # Must stay byte-identical to herdr's own SessionStart entry after
-            # template expansion; herdr integration install no-ops on exact match
-            # and would otherwise append a duplicate on every `make update`.
             command: "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session"
             timeout: 10
       - matcher: "*"

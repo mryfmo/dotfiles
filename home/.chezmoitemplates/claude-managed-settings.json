@@ -1,0 +1,25 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "disabled": false
+    },
+    "enableWeakerNestedSandbox": false,
+    "enableWeakerNetworkIsolation": false,
+    "allowAppleEvents": false,
+    "excludedCommands": [
+      "agmsg-dispatch *",
+      "herdr-agents *",
+      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *"
+    ],
+    "network": {
+      "allowAllUnixSockets": false,
+      "allowLocalBinding": false,
+      "allowUnixSockets": [
+        "{{ .chezmoi.homeDir }}/.config/herdr/herdr.sock"
+      ]
+    }
+  }
+}

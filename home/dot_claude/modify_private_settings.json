@@ -18,10 +18,6 @@ from typing import Any
 
 RUNTIME_KEYS = ("enabledPlugins",)
 MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
-# SessionStart entries are merged additively, so a managed command whose shape
-# changes would leave its previous variant behind and fire the hook twice. Any
-# entry invoking this script is managed, whatever home path it was rendered with.
-MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
 
 
@@ -52,7 +48,9 @@ def render_managed_template(text: str) -> str:
         text,
         flags=re.DOTALL,
     )
-    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace("{{ .chezmoi.homeDir }}", str(home_dir()))
+    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace(
+        "{{ .chezmoi.homeDir }}", str(home_dir())
+    )
 
 
 def load_json_object(text: str) -> dict[str, Any] | None:
@@ -72,28 +70,94 @@ def is_managed_permission_hook(hook: Any) -> bool:
         parts = shlex.split(hook["command"])
     except ValueError:
         return False
-    return (
-        len(parts) == 2
-        and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES
-        and parts[1] == "claude"
-    )
+    return len(parts) == 2 and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES and parts[1] == "claude"
+
+
+HOOK_PREFIX = '/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" LANG=C.UTF-8 TERM=dumb CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR}" CLAUDE_ENV_FILE="${CLAUDE_ENV_FILE}" '
+LEGACY_ATTACH_ENV = (
+    'HERDR_ENV="${HERDR_ENV}" HERDR_PANE_ID="${HERDR_PANE_ID}" HERDR_WORKSPACE_ID="${HERDR_WORKSPACE_ID}" '
+)
+ATTACH_ENV = (
+    LEGACY_ATTACH_ENV
+    + 'HERDR_AGENTS_LAYOUT="${HERDR_AGENTS_LAYOUT}" HERDR_SOCKET_PATH="${HERDR_SOCKET_PATH}" CLAUDE_CODE_SESSION_ID="${CLAUDE_CODE_SESSION_ID}" CLAUDE_PID="${CLAUDE_PID}" AGMSG_AGENT_PID="${AGMSG_AGENT_PID}" AGMSG_STORAGE_PATH="${AGMSG_STORAGE_PATH}" '
+)
+
+
+def owned_hook_parts(hook: Any) -> list[str]:
+    command = hook.get("command", "") if isinstance(hook, dict) else ""
+    try:
+        return shlex.split(command) if isinstance(command, str) else []
+    except ValueError:
+        return []
+
+
+def is_guarded_hook(hook: Any, selectors: dict[str, list[str]]) -> bool:
+    command = hook.get("command", "") if isinstance(hook, dict) else ""
+    if not isinstance(command, str) or not command.startswith(HOOK_PREFIX):
+        return False
+    tail = command[len(HOOK_PREFIX) :]
+    for attach in (ATTACH_ENV, LEGACY_ATTACH_ENV):
+        if tail.startswith(attach):
+            tail = tail[len(attach) :]
+            selectors = {"herdr-agents": []} if "herdr-agents" in selectors else {}
+            break
+    parts = owned_hook_parts({"command": tail})
+    if (
+        parts
+        and parts[0].startswith("$HOME/")  # lint-comparisons: allow shell syntax ownership
+        and not tail.startswith('"$HOME/.claude/hooks/orchestrator-only.sh" ')  # lint-comparisons: allow HOME quoting
+    ):
+        return False
+    guards = {"$HOME/.claude/hooks/orchestrator-only.sh", str(home_dir() / ".claude/hooks/orchestrator-only.sh")}
+    return len(parts) >= 2 and parts[0] in guards and parts[1] in selectors and parts[2:] == selectors[parts[1]]
 
 
 def is_managed_session_start_hook(hook: Any) -> bool:
-    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
-        return False
-    try:
-        parts = shlex.split(hook["command"])
-    except ValueError:
-        return False
-    return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
+    if is_guarded_hook(
+        hook, {"herdr-agent-state.sh": ["${HERDR_PANE_ID}"], "herdr-agents": [], "agent-session-staleness": []}
+    ):
+        return True
+    parts = owned_hook_parts(hook)
+    if parts == [str(home_dir() / ".local/bin/common/agent-session-staleness"), "hook"]:
+        return True
+    if len(parts) == 3 and parts[0] == "bash" and parts[2] == "session":
+        return (
+            parts[1].endswith("/.claude/hooks/herdr-agent-state.sh")  # lint-comparisons: allow legacy syntax
+            and parts[1].startswith("/")  # lint-comparisons: allow legacy syntax
+        )
+    executables = {"herdr-agents", str(home_dir() / ".local/bin/common/herdr-agents")}
+    return (
+        bool(parts)
+        and parts[0] in executables
+        and parts[1:]
+        in (
+            ["--attach", "2>>", "$HOME/.config/herdr/herdr-agents.log", "||", "true"],
+            ["--attach", ">>", "$HOME/.config/herdr/herdr-agents.log", "2>&1", "||", "true"],
+        )
+    )
 
 
 def is_managed_post_tool_use_hook(hook: Any) -> bool:
-    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
-        return False
-    # The whole command, not shlex's words: a quoted or escaped ~ is a literal directory, not the home path.
-    return hook["command"].strip() in managed_post_tool_use_paths()
+    if is_guarded_hook(hook, {name: [] for name in MANAGED_POST_TOOL_USE_SCRIPTS}):
+        return True
+    # The whole command preserves the distinction between expanding and literal tilde paths.
+    return (
+        isinstance(hook, dict)
+        and isinstance(hook.get("command"), str)
+        and hook["command"].strip() in managed_post_tool_use_paths()
+    )
+
+
+def is_managed_pre_tool_use_hook(hook: Any) -> bool:
+    return (
+        isinstance(hook, dict)
+        and hook.get("type") == "command"
+        and isinstance(hook.get("command"), str)
+        and (
+            is_guarded_hook(hook, {"enforce-uv.sh": []})
+            or hook["command"] in {"~/.claude/hooks/enforce-uv.sh", str(home_dir() / ".claude/hooks/enforce-uv.sh")}
+        )
+    )
 
 
 def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
@@ -129,23 +193,20 @@ def merge_managed_entries(current_hooks: Any, managed_entries: list[Any], is_man
 
 
 MANAGED_HOOK_PREDICATES = {
+    "PreToolUse": is_managed_pre_tool_use_hook,
     "PermissionRequest": is_managed_permission_hook,
     "SessionStart": is_managed_session_start_hook,
     "PostToolUse": is_managed_post_tool_use_hook,
 }
 
 
-def merge_hooks(
-    managed: dict[str, Any], current: dict[str, Any]
-) -> dict[str, Any]:
+def merge_hooks(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
     merged: dict[str, Any] = {}
     for key, value in current.items():
         managed_value = managed.get(key)
         if key in MANAGED_HOOK_PREDICATES and isinstance(managed_value, list):
             current_hooks = value if isinstance(value, list) else []
-            merged[key] = merge_managed_entries(
-                current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key]
-            )
+            merged[key] = merge_managed_entries(current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key])
         elif isinstance(value, list) and isinstance(managed_value, list):
             # ponytail: hook arrays are tiny; index entries only if they grow materially.
             merged[key] = value + [entry for entry in managed_value if entry not in value]
@@ -170,11 +231,7 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
             merged[key] = value
         elif key in managed:
             managed_value = managed[key]
-            if (
-                key == "hooks"
-                and isinstance(value, dict)
-                and isinstance(managed_value, dict)
-            ):
+            if key == "hooks" and isinstance(value, dict) and isinstance(managed_value, dict):
                 merged[key] = merge_hooks(managed_value, value)
             elif key == "env" and isinstance(value, dict) and isinstance(managed_value, dict):
                 merged[key] = value | managed_value
@@ -204,8 +261,9 @@ def main() -> int:
                 "hooks": [
                     {
                         "type": "command",
-                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true',
+                        "command": HOOK_PREFIX + ATTACH_ENV + '"$HOME/.claude/hooks/orchestrator-only.sh" herdr-agents',
                         "timeout": 10,
+                        "onFailure": "block",
                     }
                 ],
             }

@@ -46,3 +46,5 @@ local:9c01191:1	unpinned-command-path
 ## Owned by dotfiles-T128-chain-glue-finish-followup-a01 (advisory P2 of 9c011913; plan 020 step 1.2; rows id<TAB>class)
 
 local:9c01191:2	advisory-p2
+- 2026-10-21T10:04Z: update-branch to b09c88c6 after the pins merge: required unit tests fail on test_lint_comparisons (R1 at chain-finish.sh:67 and :111; the lint merged after round 5); D-024-63 resets the lineage to a02 (two-line lint conformance by another context, no sixth round); design-reset record written; a02 dispatched to a008 (bus 2996).
+

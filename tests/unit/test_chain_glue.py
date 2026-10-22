@@ -706,6 +706,7 @@ class GhBindingTest(TrustedExecContractMixin, unittest.TestCase):
 
     def test_gh_environment_is_minimal(self):
         declared = (
+            "LC_ALL",
             "UV_CACHE_DIR",
             "GH_CONFIG_DIR",
             "GH_PROMPT_DISABLED",

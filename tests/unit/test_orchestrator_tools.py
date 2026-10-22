@@ -84,6 +84,7 @@ class OrchestratorToolsTest(unittest.TestCase):
                 (directory / name).chmod(0o755)
         self.env = {
             **self.binding.env,
+            "LANG": os.environ.get("LANG", "C.UTF-8"),
             "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
             "UV_PYTHON": sys._base_executable,
             "CALLS": str(self.calls),

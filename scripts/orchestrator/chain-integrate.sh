@@ -75,7 +75,7 @@ gh=$(/usr/bin/env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:
     echo 'refused: gh binding' >&2
     exit 2
 }
-gh_environment=(HOME="${HOME}" LANG=C.UTF-8 UV_CACHE_DIR="${UV_CACHE_DIR}" "GH_TOKEN=${GH_TOKEN}" GH_CONFIG_DIR=/var/empty
+gh_environment=(HOME="${HOME}" LANG=C.UTF-8 LC_ALL=C UV_CACHE_DIR="${UV_CACHE_DIR}" "GH_TOKEN=${GH_TOKEN}" GH_CONFIG_DIR=/var/empty
     GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 GH_NO_EXTENSION_UPDATE_NOTIFIER=1 NO_COLOR=1 TERM=dumb GH_PAGER=cat)
 # @description Invoke the checked gh with fixed authority and a constructed environment.
 gh_call() {

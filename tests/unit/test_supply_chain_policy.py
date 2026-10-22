@@ -49,6 +49,20 @@ class GhBindingPolicyTest(unittest.TestCase):
             (root / "README.md").write_text((ROOT / "README.md").read_text())
             source = root / "home/dot_agents/agent-config.yaml"
             source.parent.mkdir(parents=True)
+            if module.yaml is None:
+                # CI already needs Ruby; safe_load independently parses the complete YAML, including duplicate keys.
+                def yaml_fixture(path):
+                    result = subprocess.run(
+                        ["/usr/bin/ruby", "-rjson", "-ryaml", "-e", "puts JSON.generate(YAML.safe_load(STDIN.read))"],
+                        input=path.read_text(),
+                        env={"PATH": "/usr/bin:/bin", "HOME": str(root), "UV_CACHE_DIR": str(root / "cache")},
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                    )
+                    return json.loads(result.stdout)
+
+                module.load_yaml = yaml_fixture
             with patch.object(module, "ROOT", root):
                 for label, tools in cases.items():
                     source.write_text("trusted_tools: " + json.dumps(tools) + "\n" + tail)

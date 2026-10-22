@@ -90,6 +90,7 @@ def gh_env(token: str | None = None) -> dict[str, str]:
             "PATH": "/usr/bin:/bin",
             "HOME": home,
             "LANG": "C.UTF-8",
+            "LC_ALL": "C",
             "UV_CACHE_DIR": cache,
             "GH_CONFIG_DIR": GH_CONFIG_DIR,
             "GH_PROMPT_DISABLED": "1",

@@ -40,6 +40,7 @@ class OrchGatePathTest(unittest.TestCase):
         self.root, self.review = self.t / "repo", self.t / "repo/.claude/worktrees/orchestrator-review"
         for directory in ("bin", "calls", "gate", "pr", "tmp", "repo/scripts/orchestrator", self.review):
             (self.t / directory).mkdir(parents=True, exist_ok=True)
+        (self.t / "bin/jq").symlink_to(shutil.which("jq"))
         shutil.copy(ROOT / "scripts/orchestrator/orch-gate.sh", self.root / "scripts/orchestrator")
         shutil.copy(ROOT / "scripts/pr-feedback.py", self.root / "scripts/pr-feedback.py")
         v = self.root / ".orchestration/validation"

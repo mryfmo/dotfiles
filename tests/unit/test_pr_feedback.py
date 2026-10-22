@@ -36,6 +36,7 @@ class GhFixture:
         self.root, self.home, self.bin, self.calls = root, root / "home", root / "bin", root / "gh.jsonl"
         self.home.mkdir(parents=True, exist_ok=True)
         self.bin.mkdir(exist_ok=True)
+        (self.bin / "jq").symlink_to(shutil.which("jq"))
         self.responses = root / "responses.json"
         self.responses.write_text(json.dumps({"responses": RESPONSES, "metadata": {}}))
         self.target = self.home / ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"
@@ -254,6 +255,7 @@ class GhFixture:
             e, a = row["env"], row["argv"]
             case.assertEqual("/var/empty", e.get("GH_CONFIG_DIR"))
             case.assertEqual(str(self.home), e.get("HOME"))
+            case.assertEqual("C", e.get("LC_ALL"))
             case.assertTrue(Path(e["UV_CACHE_DIR"]).is_absolute())
             case.assertFalse(
                 set(e) & {"GH_HOST", "GH_REPO", "XDG_CONFIG_HOME", "HTTPS_PROXY", "PYTHONPATH", "GIT_DIR"}, row

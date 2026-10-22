@@ -96,6 +96,7 @@ class GhFixture:
                 "http_unix_socket: /tmp/hostile.sock\naliases: {api: '!touch /tmp/never-gh-binding'}\n"
             )
             (directory / "hosts.yml").write_text("hostile.invalid: {user: attacker}\n")
+        self.configuration("empty")
 
     def launcher(self, extra=""):
         bootstrap = self.bootstrap.replace("sys.argv=a\n", "sys.argv=a\n" + extra)
@@ -108,7 +109,7 @@ class GhFixture:
 
     def configuration(self, kind):
         config = self.root / "protected-config"
-        config.mkdir()
+        config.mkdir(exist_ok=True)
         if kind == "missing":
             config.rmdir()
         elif kind == "writable":

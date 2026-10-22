@@ -44,18 +44,22 @@ function add_ghostty_ppa() {
 # @description Run one step that fetches from the Ghostty PPA, passing its output through.
 # @arg $@ string The command to run.
 # @exitcode 0 The step succeeded.
-# @exitcode 75 Every fetch failure the step reports is the Ghostty PPA's, whatever its own exit
+# @exitcode 75 apt's only errors are fetch failures from the Ghostty PPA, whatever its own exit
 #   (apt-get update exits 0 when an index fails to download).
-# @exitcode * Otherwise the step's own status.
+# @exitcode * Otherwise the step's own status: any other apt error stays fatal.
 #
 function ppa_step() {
-    local output status=0 fetches
+    local output status=0 line fetch=0
     output="$("$@" 2>&1)" || status=$?
     printf '%s\n' "${output}"
-    fetches="$(grep -F 'Failed to fetch ' <<< "${output}" || true)"
-    if [ -n "${fetches}" ] && ! grep -qvF -e "Failed to fetch https://${GHOSTTY_PPA_URL}" -e "Failed to fetch http://${GHOSTTY_PPA_URL}" <<< "${fetches}"; then
-        return 75
-    fi
+    while IFS= read -r line; do
+        case ${line} in
+        [EW]": Failed to fetch https://${GHOSTTY_PPA_URL}"* | [EW]": Failed to fetch http://${GHOSTTY_PPA_URL}"*) fetch=1 ;;
+        "Err:"*" https://${GHOSTTY_PPA_URL}"* | "Err:"*" http://${GHOSTTY_PPA_URL}"* | [EW]": Some index files failed to download"*) ;;
+        "E:"* | "Err:"* | "W: Failed to fetch"*) return "${status}" ;;
+        esac
+    done <<< "${output}"
+    [ "${fetch}" -eq 0 ] || return 75
     return "${status}"
 }
 
@@ -64,7 +68,9 @@ function ppa_step() {
 #
 function install_ghostty() {
     local status=0
-    if dpkg -s "${PACKAGES[@]}" > /dev/null 2>&1; then
+    # Only a completed install is skipped: the database status, not dpkg -s's exit (dpkg-query(1): Status-Status).
+    # shellcheck disable=SC2016
+    if [ "$(dpkg-query -W -f '${db:Status-Status}' "${PACKAGES[@]}" 2> /dev/null || true)" = installed ]; then
         return 0
     fi
     install_ghostty_dependencies

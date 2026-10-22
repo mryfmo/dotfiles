@@ -47,3 +47,14 @@ Every fact is a pasted run in `validation.md`. The store probes used disposable 
 5. **`tests/unit/test_check_regime_boundary.py`:** it stubs agmsg's `lib/storage.sh` under a fixture HOME and copies `regime-counters.sh`, so item 6 turns its S2 cases red. The text says the test wildcard "expands only to" three other files. Default: adapt that file's stub to the new reader; it sits inside the `tests/unit/test_*.py` wildcard, and an amendment should name it.
 
 cost: n/a
+
+## Done while holding (independent of the questions)
+
+- **Item 6's revise rule:** `revises = max(RESULTs − 1, this task's ACCEPTANCE status=revise count, 0)`.
+  - The red tests are `5d75a5cb`, run against main's `regime-counters.sh` bytes: `test_status_revise_matrix [2 RESULTs, 3 revises]` and `test_t118_fixture_counts_revises_from_results` fail.
+  - The fix is `2db3d4f8`. Both are green, and so are all 44 tests of `test_regime_counters` and `test_check_regime_boundary`.
+  - T118's fixture holds 10 RESULTs and 20 `status=revise` ACCEPTANCEs, so its count moves from 9 to 20; the other three exported fixtures keep their counts.
+- **Facts for `update_hcom_private` (amendment 2), found before writing it:**
+  1. `tests/unit/test_asset_manifest.py` pins the updater at exactly 17 `manifest_record` calls.
+  2. When chezmoi renders the updater into its run script, the source root is `DOTFILES_SOURCE_DIR`, the canonical clone, which no seat touches.
+  - Defaults: the target installs only when the updater runs from a git checkout's own `scripts/` directory, and records no manifest step: its files sit in that checkout's gitignored `.agents/worklog/`. Both defaults go in the RESULT unless the answer to the questions changes them.

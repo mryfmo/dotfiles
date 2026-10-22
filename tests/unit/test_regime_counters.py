@@ -1,4 +1,7 @@
-"""Exercise scripts/regime-counters.sh on exported and synthetic agmsg history and gh api data.
+"""Exercise scripts/regime-counters.sh on exported and synthetic bus history and gh api data.
+
+The live route reads test_hcom_dispatch.HcomWorld's fixture world through the explicit --passwd-home argument: a fake
+hcom bound in a fixture checkout's private tool directory serves the history as message events of the team's thread.
 
 Fixtures under tests/fixtures/regime-counters/ were exported on 2026-10-11:
 - `<task id>.tsv`: the dotfiles-conformance history read through agmsg's storage facade (the read
@@ -9,17 +12,22 @@ Fixtures under tests/fixtures/regime-counters/ were exported on 2026-10-11:
 then masked with `scripts/validate-agent-assets.py --mask-secrets`.
 """
 
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/regime-counters.sh"
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from test_hcom_dispatch import HcomWorld, header
+
 FIXTURES = ROOT / "tests/fixtures/regime-counters"
 # A complete C-59 re-plan, the value of the record block's replans[<class>] (plan 023 F1).
 REPLAN = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
@@ -29,20 +37,6 @@ T119 = "dotfiles-T119-rolling-release-assets-a01"
 T124 = "dotfiles-T124-wave1-task-validator-a01"
 V0 = "dotfiles-T128-v0-main-tests-a01"
 V0_BOT_HEADS = {"32fe9a36", "56ca6c69", "de138f65", "f6528bba", "2602f575", "e314c502"}
-# Stand-in for the agmsg storage facade (the stop gate's fake): team history from JSONL; it fails
-# when asked for a --limit or when the busy timeout was left at its default. With $HOME/sqlite-rev
-# it poses as the sqlite driver at that schema revision (current revision: 9).
-STORAGE_SH = """
-_AGMSG_STORAGE_SCHEMA_REV=9
-agmsg_storage_load() { [[ -e $HOME/sqlite-rev ]] && _AGMSG_STORAGE_LOADED=sqlite; :; }
-_sqlite_db() { printf '%s/history-%s.jsonl' "$HOME" "$1"; }
-agmsg_sqlite() { cat "$HOME/sqlite-rev"; }
-storage_store_exists() { [[ -f $HOME/history-$1.jsonl ]]; }
-storage_history() {
-    [[ $# == 1 && ${AGMSG_BUSY_TIMEOUT:-} == 1000 ]] || return 9
-    cat "$HOME/history-$1.jsonl"
-}
-"""
 # Fake gh: logs each call, serves $HOME/gh/<path after pulls/, / as _>.json through jq, and fails
 # when the file is missing or a list endpoint is read without --paginate.
 GH = """#!/usr/bin/env bash
@@ -95,20 +89,28 @@ class RegimeCountersTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name)
         self.home = self.temp / "home"
-        scripts = self.home / ".agents/skills/agmsg/scripts"
-        (scripts / "lib").mkdir(parents=True)
-        (scripts / "lib/storage.sh").write_text(STORAGE_SH)
-        (self.home / "gh").mkdir()
+        (self.home / "gh").mkdir(parents=True)
+        self.w = HcomWorld(self.temp / "world")
         bin_dir = self.temp / "bin"
         bin_dir.mkdir()
         (bin_dir / "gh").write_text(GH)
         (bin_dir / "gh").chmod(0o755)
         self.env = {**os.environ, "HOME": str(self.home), "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+        self.env |= {"UV_CACHE_DIR": str(self.w.cache), "TMPDIR": str(self.temp)}
+        self.env.pop("HCOM_DIR", None)
 
-    def run_counters(self, *args, script=SCRIPT, code=0):
-        result = subprocess.run(
-            ["bash", str(script), *args], capture_output=True, text=True, env=self.env, timeout=30, check=False
-        )
+    def run_counters(self, *args, script=None, code=0):
+        """Run the fixture world's copy (or a given copy), as production runs it, against the fixture passwd home."""
+        script = script or self.w.root / "scripts/regime-counters.sh"
+        # A baseline copy (main before T129 a02) takes no --passwd-home: it runs its own route, bash on PATH.
+        baseline = "--passwd-home" not in script.read_text()
+        argv = [
+            "bash" if baseline else "/bin/bash",
+            *([] if baseline else ["--noprofile", "--norc", "-p"]),
+            str(script),
+        ]
+        argv += [*args, *([] if baseline else ["--passwd-home", str(self.w.home)])]
+        result = subprocess.run(argv, capture_output=True, text=True, env=self.env, timeout=60, check=False)
         self.assertEqual(result.returncode, code, result.stderr)
         return result.stdout.splitlines()
 
@@ -118,10 +120,14 @@ class RegimeCountersTest(unittest.TestCase):
         return str(path)
 
     def store(self, rows_tsv):
-        """Put TSV rows into the fake live store as storage_history JSONL."""
-        keys = ("id", "at", "from", "to", "body")
-        lines = [dict(zip(keys, row.split("\t", 4))) for row in rows_tsv.splitlines()]
-        (self.home / "history-dotfiles-conformance.jsonl").write_text("".join(json.dumps(r) + "\n" for r in lines))
+        """Put TSV rows into the fixture world's hcom store as message events of the team's thread (the bodies as the
+        storage facade gave them, a literal backslash-t staying two characters)."""
+        self.w.load()
+        self.w.state["events"] = []
+        self.w.save()
+        for row in rows_tsv.splitlines():
+            _, at, sender, to, body = row.split("\t", 4)
+            self.w.message(sender, to or "orch", body, ts=at.replace("Z", "+00:00"), thread="dotfiles-conformance")
 
     def fixture(self, task, pr=None, *extra):
         args = [task, "--history-file", str(FIXTURES / f"{task}.tsv")]
@@ -220,7 +226,7 @@ class RegimeCountersTest(unittest.TestCase):
         bare = ("rev-e", f"AGMSG-RESULT v1 status=ready_for_review verdict=accept design_sha256={design}")
         self.assertIn("redesign_source=none accepted_by=none", reset(*messages, foreign, bare, src=()))
 
-    def test_a_600_row_history_counts_fully_through_the_storage_facade(self):
+    def test_a_600_row_history_counts_fully_through_the_reader(self):
         filler = [("w", "AGMSG-PONG v1 task_id=OTHER status=alive")] * 595
         self.store(
             tsv(
@@ -240,10 +246,66 @@ class RegimeCountersTest(unittest.TestCase):
 
     def test_a_store_at_another_schema_revision_is_unreadable(self):
         self.store(tsv(("orch", "AGMSG-TASK v1 task_id=T1")))
-        (self.home / "sqlite-rev").write_text("8\n")
+        (self.w.home / ".hcom/hcom.db").write_bytes(header(17))
         self.run_counters("T1", "--history-only", code=1)
-        (self.home / "sqlite-rev").write_text("9\n")
+        (self.w.home / ".hcom/hcom.db").write_bytes(header())
         self.assertEqual("1", fields(self.run_counters("T1", "--history-only")[0])["tasks"])
+
+    def test_hcom_counter_matrix(self):
+        # Item 6 through the reader's JSON view (the ids are hcom's), and constraint 4's record consumption.
+        self.store(
+            tsv(("orch", "AGMSG-TASK v1 task_id=T1"), ("w", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        )
+        lines = self.run_counters("T1", "--history-only")
+        self.assertEqual(
+            ("1", "1", "live"), (fields(lines[0])["tasks"], fields(lines[0])["results"], fields(lines[0])["source"])
+        )
+        self.assertIn("tasks=1 results=2 ", lines[-1])
+        record = self.w.root / ".orchestration/acceptance/T1.md"
+        record.parent.mkdir(parents=True)
+        record.write_text('---\n{"task": "T1", "ledger": [{"id": "a", "class": "x"}]}\n---\n')
+        digest = hashlib.sha256(record.read_bytes()).hexdigest()
+        self.run_counters("T1", "--history-only", "--record-sha256", digest)
+        refused = subprocess.run(
+            [
+                "/bin/bash",
+                "-p",
+                str(self.w.root / "scripts/regime-counters.sh"),
+                "T1",
+                "--history-only",
+                "--record-sha256",
+                "f" * 64,
+                "--passwd-home",
+                str(self.w.home),
+            ],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+        )
+        self.assertEqual((1, ""), (refused.returncode, refused.stdout))
+        self.assertIn("is not a regular text file that hashes to --record-sha256", refused.stderr)
+        for name in ("a record that is a link", "a symlinked acceptance directory", "no record for a digest"):
+            with self.subTest(name):
+                if name == "a record that is a link":
+                    record.rename(self.temp / "T1.md")
+                    record.symlink_to(self.temp / "T1.md")
+                    self.run_counters("T1", "--history-only", code=1)
+                    record.unlink()
+                    (self.temp / "T1.md").rename(record)
+                elif name == "a symlinked acceptance directory":
+                    acc = record.parent
+                    acc.rename(self.temp / "acc")
+                    acc.symlink_to(self.temp / "acc")
+                    self.run_counters("T1", "--history-only", code=1)
+                    acc.unlink()
+                    (self.temp / "acc").rename(acc)
+                else:
+                    record.rename(self.temp / "T1.md")
+                    self.run_counters("T1", "--history-only", "--record-sha256", digest, code=1)
+                    (self.temp / "T1.md").rename(record)
+        self.w.knob("events-fails")
+        self.run_counters("T1", "--history-only", code=1)
 
     def test_a_status_in_free_text_counts_nothing(self):
         # Status and verdict are each body's first status= and verdict= token; later ones are notes.
@@ -293,7 +355,9 @@ class RegimeCountersTest(unittest.TestCase):
     def test_status_revise_matrix(self):
         # Item 6: revises = max(RESULTs - 1, this task's ACCEPTANCE status=revise count, 0); verdict= never selects.
         head, sha = "a" * 40, "b" * 64
-        revise = f"AGMSG-ACCEPTANCE v1 task_id={{}} status=revise previous_head={head} check=tests/x.py::t task_sha256={sha}"
+        revise = (
+            f"AGMSG-ACCEPTANCE v1 task_id={{}} status=revise previous_head={head} check=tests/x.py::t task_sha256={sha}"
+        )
         result = "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"
         cases = {
             "2 RESULTs, 3 revises": ([result] * 2 + [revise.format("T1")] * 3, "3"),
@@ -453,7 +517,7 @@ class RegimeCountersTest(unittest.TestCase):
         self.assertEqual("9", detail(("w", "AGMSG-RESULT v1 task_id=T1 pr=9"))["pr"])
         # Only a numeric PR is fetched: the fake gh logs its single call, for pulls/9.
         self.assertEqual(
-            ["api --paginate repos/{owner}/{repo}/pulls/9/comments --jq .[]"],
+            ["api --hostname github.com --paginate repos/mryfmo/dotfiles/pulls/9/comments --jq .[]"],
             (self.home / "gh-calls").read_text().splitlines(),
         )
 

@@ -1,11 +1,13 @@
 """Exercise the scripts under scripts/orchestrator/ with stubbed host binaries.
 
-Each script runs as a subprocess from its copy in a temporary git repository, with `agmsg-dispatch`, `shasum`,
-`uv`, `gh`, `make`, `codex` and an interpreter `gate-python` stubbed on PATH and `history.sh` stubbed in the directory `AGMSG_SCRIPTS` names;
-git is the real one, against a bare repository standing in for `origin`. A stub records its argv NUL-separated,
-so an argument is compared byte for byte (`gh` and `make` append one line per call).
-The dispatch checker case alone replaces the `uv` stub with a logging wrapper around the real `uv` next on PATH, so
-the module needs a real uv with PyYAML in its cache or reachable index for that case.
+Each script runs as a subprocess from its copy in a temporary git repository, with `shasum`, `uv`, `gh`, `make`,
+`codex` and an interpreter `gate-python` stubbed on PATH; git is the real one, against a bare repository standing in
+for `origin`. A stub records its argv NUL-separated, so an argument is compared byte for byte (`gh` and `make` append
+one line per call). The bus scripts (dispatch.sh, bus-read.sh, bus-history.sh, hcom-dispatch, regime-counters.sh) run
+as production runs them, /bin/bash -p, in test_hcom_dispatch.HcomWorld's fixture world on that repository, reached
+through their explicit --passwd-home argument only: a fake hcom bound in the checkout's private tool directory, and
+the passwd home's fake mise, herdr, uv and python3. The dispatch checker cases replace that uv with a logging wrapper
+around the real uv on PATH, so the module needs a real uv that can fetch PyYAML into its default cache once.
 """
 
 import fcntl
@@ -26,17 +28,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from test_hcom_dispatch import FAKE_HCOM, READ, HcomWorld, header
+
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
 # A run records its argv, cwd and environment, prints {name}-output and fails while {name}-fails exists.
 RUN = RECORD + 'pwd -P > "$CALLS/{name}-cwd"\n/usr/bin/env > "$CALLS/{name}-env"\n'
 RUN += '/bin/cat "$CALLS/{name}-output" 2> /dev/null\n[[ ! -f "$CALLS/{name}-fails" ]] || exit 2\n'
 STUBS = {
-    "agmsg-dispatch": "#!/usr/bin/env bash\n"
-    + RECORD.format(name="agmsg-dispatch")
-    # A send puts its row on the stub bus with the marker in dispatch-marker; dispatch-fails sends nothing.
-    + '[[ -f "$CALLS/dispatch-fails" ]] && exit 1\n'
-    + '[[ -f "$CALLS/dispatch-marker" ]] && printf "  %s [2026-10-13T03:00:00Z] %s → %s: %s\\n" '
-    + '"$(cat "$CALLS/dispatch-marker")" "$2" "$3" "$5" >> "$CALLS/history"\nexit 0\n',
     "shasum": '#!/usr/bin/env python3\nimport hashlib, sys\np = sys.argv[-1]\nprint(hashlib.sha256(open(p, "rb").read()).hexdigest() + "  " + p)\n',
     # As uv does, a .python-version in the cwd that names an executable runs it.
     "uv": "#!/bin/bash\n"
@@ -55,11 +54,14 @@ STUBS = {
     + 'echo transcript\nexit "$(cat "$CALLS/codex-status" 2> /dev/null || echo 0)"\n',
 }
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
-HISTORY_SH = "#!/usr/bin/env bash\n" + RECORD.format(name="history.sh") + 'cat "$CALLS/history"\n'
 
 
 def sha(text):
     return hashlib.sha256(text.encode()).hexdigest()
+
+
+def sha_bytes(data):
+    return hashlib.sha256(data).hexdigest()
 
 
 class OrchestratorToolsTest(unittest.TestCase):
@@ -73,20 +75,29 @@ class OrchestratorToolsTest(unittest.TestCase):
         shutil.copytree(TOOLS, self.repo / "scripts/orchestrator")
         self.calls = self.temp / "calls"
         self.calls.mkdir()
-        bin_dir, agmsg = self.temp / "bin", self.temp / "agmsg"
-        for directory, stubs in ((bin_dir, STUBS), (agmsg, {"history.sh": HISTORY_SH})):
-            directory.mkdir()
-            for name, text in stubs.items():
-                (directory / name).write_text(text)
-                (directory / name).chmod(0o755)
+        bin_dir = self.temp / "bin"
+        bin_dir.mkdir()
+        for name, text in STUBS.items():
+            (bin_dir / name).write_text(text)
+            (bin_dir / name).chmod(0o755)
+        # The hcom bus world on this repository; its calls log lives beside the stubs' calls.
+        self.w = HcomWorld(self.temp / "world", root=self.repo)
+        self.w.load()["agents"] = [{"name": "worker", "tag": "team"}, {"name": "orch", "tag": "team"}]
+        self.w.save()
+        installs = self.w.home / ".local/share/mise/installs"
+        self.w.tool(installs / "uv/bin/uv", f'#!/bin/sh\necho "$*" >> "{self.calls}/uv.log"\nexit 0\n')
+        (installs / "python3/bin").mkdir(parents=True)
+        (installs / "python3/bin/python3").symlink_to(sys.executable)
         self.env = {
             **os.environ,
             "CALLS": str(self.calls),
-            "AGMSG_SCRIPTS": str(agmsg),
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
             "TMPDIR": str(self.temp),
+            "UV_CACHE_DIR": str(self.w.cache),
             **GIT_ENV,
         }
+        for name in ("HCOM_DIR", "AGMSG_SCRIPTS", "BUS_READ_WINDOW", "BUS_READ_LIMIT", "AGMSG_DISPATCH_TIMEOUT"):
+            self.env.pop(name, None)
 
     def run_tool(self, name, *args, code=0, env=None, cwd=None, stdin=None):
         result = subprocess.run(
@@ -132,18 +143,38 @@ class OrchestratorToolsTest(unittest.TestCase):
         path.write_text(text)
         return path
 
-    # dispatch.sh
+    # dispatch.sh (T129 a02: the hcom bus through hcom-dispatch and bus-history, in the fixture world)
 
-    def dispatch(self, line, code=0):
-        self.write("line.txt", line + "\n")
-        return self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", code=code)
+    def bus(self, name, *args, code=0, env=None, cwd=None, fixture=True):
+        result = self.w.run(
+            f"scripts/orchestrator/{name}",
+            *args,
+            env={**self.env, **(env or {})},
+            cwd=cwd or self.repo,
+            fixture=fixture,
+        )
+        self.assertEqual(code, result.returncode, result.stderr)
+        return result
+
+    def sent(self):
+        """The body of every hcom send so far."""
+        return [c["argv"][-1] for c in self.w.hcom_calls("send")]
+
+    def bound(self, line, record):
+        """The line with the record_file= and record_sha256= tokens naming the record's current bytes."""
+        return f"{line} record_file={record.relative_to(self.repo)} record_sha256={sha_bytes(record.read_bytes())}"
+
+    def dispatch(self, line, code=0, record=None, env=None, cwd=None, path="line.txt"):
+        self.write(path, (self.bound(line, record) if record else line) + "\n")
+        args = ["team", "orch", "worker", "w5:pA", self.repo / path] + ([record] if record else [])
+        return self.bus("dispatch.sh", *args, code=code, env=env, cwd=cwd)
 
     def test_dispatch_refuses_a_line_whose_sha256_field_does_not_match_its_file(self):
         self.write(".orchestration/tasks/t.md", "task\n")
         line = f"AGMSG-TASK v1 task_id=t task_file=.orchestration/tasks/t.md task_sha256={sha('other')}"
         result = self.dispatch(line, code=1)
         self.assertIn("task_sha256 mismatch", result.stderr)
-        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertEqual([], self.sent())
 
     def test_dispatch_refuses_a_task_line_without_task_sha256_or_with_a_second_line(self):
         self.write(".orchestration/tasks/t.md", "task\n")
@@ -159,7 +190,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         ):
             with self.subTest(needle=needle, code=code):
                 self.assertIn(needle, self.dispatch(line, code=code).stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
 
     def test_dispatch_passes_the_line_byte_identical(self):
         # Run from another checkout: a relative task_file= is the script's own checkout's (thread 4253994697).
@@ -173,9 +204,11 @@ class OrchestratorToolsTest(unittest.TestCase):
             # Thread 4256541725: a reference to the previous design, checked as hex and never recomputed.
             f" previous_design_sha256={sha('old design')} note=a;b(c)`d`$(e)"
         )
-        self.write("line.txt", line + "\n")
-        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", str(self.repo / "line.txt"), cwd=pr)
-        self.assertEqual(["team", "orch", "worker", "w5:pA", line], self.call("agmsg-dispatch"))
+        self.w.knob("auto-read")
+        out = self.dispatch(line, cwd=pr)
+        self.assertEqual([line], self.sent())
+        self.assertEqual(self.w.load()["events"][-1]["id"], json.loads(out.stdout)["id"])
+        self.assertEqual([], list((self.repo / ".agents/worklog/dispatch-snapshots").iterdir()))
 
     def test_dispatch_refuses_a_line_without_a_task_id(self):
         # Thread 4254893065: a message without exactly one non-empty task_id= is never sent, nor recorded.
@@ -187,12 +220,9 @@ class OrchestratorToolsTest(unittest.TestCase):
             "AGMSG-ACCEPTANCE v1 task_id=t task_id=u status=accepted",
         ):
             with self.subTest(line=line):
-                self.write("line.txt", line + "\n")
-                result = self.run_tool(
-                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
-                )
+                result = self.dispatch(line, code=1, record=record)
                 self.assertIn("exactly one non-empty task_id=", result.stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
                 self.assertEqual(before, record.read_text())
 
     def test_dispatch_refuses_malformed_lines(self):
@@ -222,7 +252,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         ):
             with self.subTest(needle=needle):
                 self.assertIn(needle, self.dispatch(line, code=code).stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
 
     @staticmethod
     def gate_block(path):
@@ -248,81 +278,85 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         ping = "AGMSG-PING v1 task_id=t reason=check"
         # Thread 4254399807: an older identical row on the bus is not this send.
-        (self.calls / "history").write_text(f"  ● [2026-10-12T00:00:00Z] orch → worker: {ping}\n")
-        (self.calls / "dispatch-marker").write_text("○")
-        self.write("line.txt", ping + "\n")
+        self.w.message("orch", "worker", self.bound(ping, record), thread="team")
+        self.w.knob("auto-read")
         inode = record.stat().st_ino
-        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record))
+        out = self.dispatch(ping, record=record)
+        line = self.sent()[-1]
         # Thread 4254844595: the record is replaced whole (a new inode), never rewritten in place.
         self.assertNotEqual(inode, record.stat().st_ino)
         self.assertEqual(["t.md"], sorted(p.name for p in record.parent.iterdir()))
         block, prose = self.gate_block(record)
-        self.assertEqual({"dispatch": [f"{ping} read_at=read"], "format": 1, "ledger": [], "task": "t"}, block)
+        self.assertEqual({"dispatch": [f"{line} read_at=read"], "format": 1, "ledger": [], "task": "t"}, block)
         self.assertEqual("\nProse.\n", prose)
-        # Thread 4254399805: team-wide, never with an agent, which would rename the calling pane.
-        self.assertEqual(["team", "", "200"], self.call("history.sh"))
-        # A record without a block gets one holding only dispatch; an unread message says so.
+        self.assertEqual(f"record_sha256={sha_bytes(record.read_bytes())}\n", out.stdout)
+        # The pre-send read is bounded and team-wide: hcom's message events of the team's thread, newest 200.
+        reads = [c["argv"] for c in self.w.hcom_calls("events")]
+        self.assertIn(["events", "--type", "message", "--full", "--last", "200", "--sql", "msg_thread = 'team'"], reads)
+        # A record without a block gets one holding only dispatch; an unread message says so, with the sender's status.
         plain = self.write(".orchestration/acceptance/u.md", "Prose only.\n")
-        (self.calls / "dispatch-marker").write_text("●")
-        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(plain))
-        self.assertEqual(({"dispatch": [f"{ping} read_at=unread"]}, "Prose only.\n"), self.gate_block(plain))
+        (self.w.calls / "auto-read").unlink()
+        self.dispatch(ping, code=1, record=plain, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+        self.assertEqual(({"dispatch": [f"{self.sent()[-1]} read_at=unread"]}, "Prose only.\n"), self.gate_block(plain))
         # Thread 4256987087: a CRLF record's block is found and its prose keeps every byte.
         crlf = self.repo / ".orchestration/acceptance/c.md"
         crlf.write_bytes(b'---\r\n{"task": "t"}\r\n---\r\n\r\nProse.\r\n')
-        self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(crlf))
+        self.w.knob("auto-read")
+        self.dispatch(ping, record=crlf)
         self.assertTrue(crlf.read_bytes().endswith(b'"task": "t"\n}\n---\n\r\nProse.\r\n'), crlf.read_bytes())
-        self.assertEqual({"dispatch": [f"{ping} read_at=unread"], "task": "t"}, self.gate_block(crlf)[0])
-        # A send that adds no row records nothing, though identical rows are already on the bus.
-        (self.calls / "dispatch-fails").write_text("")
+        self.assertEqual({"dispatch": [f"{self.sent()[-1]} read_at=read"], "task": "t"}, self.gate_block(crlf)[0])
+        # A send that fails records nothing, though identical rows are already on the bus.
+        self.w.load()["agents"] = []
+        self.w.save()
         before = record.read_text()
-        result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1)
-        self.assertIn("this send added no bus row", result.stderr)
+        result = self.dispatch(ping, code=3, record=record)
+        self.assertIn("hcom send exited 1", result.stderr)
         self.assertEqual(before, record.read_text())
         # Thread 4254844587: another task's record is refused before anything is sent.
-        (self.calls / "dispatch-fails").unlink()
-        (self.calls / "agmsg-dispatch").unlink()
+        sends = len(self.sent())
         other = self.write(".orchestration/acceptance/w.md", '---\n{"task": "u"}\n---\n')
-        result = self.run_tool("dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(other), code=1)
+        result = self.dispatch(ping, code=1, record=other)
         self.assertIn("is the record of task u, the line is task t", result.stderr)
-        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertEqual(sends, len(self.sent()))
 
     def test_dispatch_refuses_an_unwritable_record_before_sending(self):
         # The local review of 0d199475 (C-32): a record the atomic replace would fail on is refused before the send.
-        self.write("line.txt", "AGMSG-PING v1 task_id=t reason=check\n")
-        (self.calls / "history").write_text("")
-        locked = self.write("locked/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        locked = self.write(".orchestration/acceptance/locked/t.md", '---\n{"task": "t"}\n---\n')
         locked.parent.chmod(0o555)
         self.addCleanup(locked.parent.chmod, 0o755)
         missing = self.repo / ".orchestration/acceptance/absent.md"
+        outside = self.write("records/t.md", '---\n{"task": "t"}\n---\n')
         # Thread 4256541708: a missing record and one under a regular file are refused whoever runs the test.
         under_file = self.repo / "line.txt/t.md"
-        for record in (missing, under_file, locked):
+        for record in (missing, under_file, outside, locked):
             with self.subTest(record=str(record.relative_to(self.repo))):
                 if record == locked and os.geteuid() == 0:
                     self.skipTest("root writes a read-only directory")
-                result = self.run_tool(
-                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
+                digest = sha_bytes(record.read_bytes()) if record.is_file() else sha("x")
+                self.write("line.txt", f"{ping} record_file={record.relative_to(self.repo)} record_sha256={digest}\n")
+                result = self.bus(
+                    "dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", record, code=1
                 )
-                self.assertIn(f"the record {record} cannot be written", result.stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                # A record that is not there fails the line's own record_sha256 check before the recorder runs.
+                needle = f"the record {record} cannot be written" if record.is_file() else "does not exist"
+                self.assertIn(needle, result.stderr)
+                self.assertEqual([], self.sent())
         self.assertFalse(missing.exists())
 
     def test_dispatch_refuses_a_malformed_record_block_before_sending(self):
-        self.write("line.txt", "AGMSG-PING v1 task_id=t reason=check\n")
-        (self.calls / "history").write_text("")
         for block, needle in (
             ('["t"]', "the block is not a JSON object"),
             ('{"task": "t",}', "the block is not valid JSON"),
             ('{"task": "t", "task": "t"}', "duplicate key task"),
             ('{"task": "t", "dispatch": {}}', "dispatch is not a list"),
+            ('{"task": "t", "counters": "x"}', "counters is not a list"),
         ):
             with self.subTest(needle=needle):
                 record = self.write(".orchestration/acceptance/t.md", f"---\n{block}\n---\n")
-                result = self.run_tool(
-                    "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", str(record), code=1
-                )
+                result = self.dispatch("AGMSG-PING v1 task_id=t reason=check", code=1, record=record)
                 self.assertIn(needle, result.stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
                 self.assertEqual(f"---\n{block}\n---\n", record.read_text())
 
     def test_dispatch_line_grammar_table(self):
@@ -349,15 +383,15 @@ class OrchestratorToolsTest(unittest.TestCase):
         ):
             with self.subTest(needle=needle):
                 self.assertIn(needle, self.dispatch(line, code=code).stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
+        self.w.knob("auto-read")
         for line in (
             f"AGMSG-ACCEPTANCE v1 task_id=t previous_design_sha256={sha('old')}",
             f"AGMSG-TASK\tv1\ttask_id=t\t{task.replace(' ', chr(9))}",
         ):
             with self.subTest(line=line):
                 self.dispatch(line)
-                self.assertEqual(line, self.call("agmsg-dispatch")[4])
-                (self.calls / "agmsg-dispatch").unlink()
+                self.assertEqual(line, self.sent()[-1])
 
     def test_dispatch_refuses_a_tab_separated_task_without_its_hash_fields(self):
         # Thread 4260535901: a tab after AGMSG-TASK must not skip the required-field check.
@@ -368,20 +402,18 @@ class OrchestratorToolsTest(unittest.TestCase):
         ):
             with self.subTest(needle=needle):
                 self.assertIn(needle, self.dispatch(line, code=1).stderr)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.assertEqual([], self.sent())
 
     def test_dispatch_record_path_tokenizes_and_locks(self):
         record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
-        (self.calls / "history").write_text("")
-        (self.calls / "dispatch-marker").write_text("○")
-        args = ["team", "orch", "worker", "w5:pA"]
+        self.w.knob("auto-read")
         # Thread 4255272793: the record check reads the validator's task_id, whatever whitespace precedes it.
-        self.write("line.txt", "AGMSG-PING v1 \ttask_id=u reason=check\n")
-        result = self.run_tool("dispatch.sh", *args, "line.txt", str(record), code=1)
+        result = self.dispatch("AGMSG-PING v1 \ttask_id=u reason=check", code=1, record=record)
         self.assertIn("is the record of task t, the line is task u", result.stderr)
-        self.assertIsNone(self.call("agmsg-dispatch"))
-        # Thread 4255272797: both sends wait for the record directory's lock, then both are recorded.
-        lines = [f"AGMSG-PING v1\ttask_id=t reason=r{n}" for n in (0, 1)]
+        self.assertEqual([], self.sent())
+        # Thread 4255272797: both sends wait for the record directory's lock; the record the first replaces is no
+        # longer the bytes the second line hashed, so the second names its message instead of overwriting.
+        lines = [self.bound(f"AGMSG-PING v1\ttask_id=t reason=r{n}", record) for n in (0, 1)]
         for n, line in enumerate(lines):
             self.write(f"line{n}.txt", line + "\n")
         lock = os.open(record.parent, os.O_RDONLY)
@@ -389,7 +421,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         script = str(self.repo / "scripts/orchestrator/dispatch.sh")
         procs = [
             subprocess.Popen(
-                ["bash", script, *args, f"line{n}.txt", str(record)],
+                ["/bin/bash", "-p", script, "--passwd-home", self.w.home, "team", "orch", "worker", "w5:pA"]
+                + [self.repo / f"line{n}.txt", record],
                 cwd=self.repo,
                 env=self.env,
                 stdout=subprocess.PIPE,
@@ -398,77 +431,86 @@ class OrchestratorToolsTest(unittest.TestCase):
             )
             for n in (0, 1)
         ]
-        deadline = time.monotonic() + 20
-        while len((self.calls / "history").read_text().splitlines()) < 2 and time.monotonic() < deadline:
+        deadline = time.monotonic() + 30
+        while len(self.sent()) < 2 and time.monotonic() < deadline:
             time.sleep(0.05)
-        time.sleep(0.5)
+        time.sleep(1)
         self.assertEqual([None, None], [proc.poll() for proc in procs])
         self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
         fcntl.flock(lock, fcntl.LOCK_UN)
         os.close(lock)
-        for proc in procs:
-            _, err = proc.communicate(timeout=30)
-            self.assertEqual(0, proc.returncode, err)
-        self.assertEqual(
-            sorted(f"{line} read_at=read" for line in lines), sorted(self.gate_block(record)[0]["dispatch"])
-        )
+        results = [(proc.wait(timeout=60), proc.communicate()[1]) for proc in procs]
+        self.assertEqual([0, 1], sorted(code for code, _ in results), results)
+        self.assertIn("changed during the send", next(err for code, err in results if code == 1))
+        self.assertEqual(1, len(self.gate_block(record)[0]["dispatch"]))
 
-    def checker_dispatch(self):
-        """A stub checker beside the copied dispatch.sh and a fake uv that logs, then runs the real uv next on PATH."""
+    def checker_dispatch(self, real=True):
+        """A stub checker beside the copied dispatch.sh, and the passwd home's uv: a fake that logs each call and runs
+        the real uv (real=True), with a cache holding PyYAML, or a fake that only logs and succeeds."""
         self.write(
             "scripts/orchestrator/task-consistency-check.py",
             "import re, sys\nf = sys.argv[-1]\ntid = re.search(r'^task_id: (\\S+)', open(f).read(), re.M)[1]\n"
             "if f'.orchestration/{tid}/**' in open(f).read():\n    sys.exit(print(f'{f}: OK'))\n"
             "print(f'{f}: FAIL')\nprint(f'  C2 allowed_files lacks .orchestration/{tid}/**')\nsys.exit(1)\n",
         )
-        # The fake records each call's exact argv, directory and environment, then runs the real uv next on PATH; uv
-        # runs under env -i, so the calls directory is written into it. Python adds no variable of its own.
-        (self.temp / "bin/uv").unlink()
-        fake = self.temp / "fake-uv/uv"
-        fake.parent.mkdir()
-        fake.write_text(
-            "#!/usr/bin/env python3\nimport json, os, shutil, sys\n"
-            f"calls = {str(self.calls)!r}\n"
+        real_uv = shutil.which("uv") if real else None
+        self.w.tool(
+            self.w.home / ".local/share/mise/installs/uv/bin/uv",
+            f"#!{sys.executable} -I\nimport json, os, sys\ncalls = {str(self.calls)!r}\n"
             "with open(os.path.join(calls, 'uv.log'), 'a') as f:\n    f.write(' '.join(sys.argv[1:]) + '\\n')\n"
             "record = {'argv': sys.argv[1:], 'cwd': os.getcwd(), 'env': dict(os.environ)}\n"
             "with open(os.path.join(calls, 'uv-calls.jsonl'), 'a') as f:\n    f.write(json.dumps(record) + '\\n')\n"
             # uv-cold stands for a cache without PyYAML: the offline probe fails as uv --offline would.
             "if os.path.exists(os.path.join(calls, 'uv-cold')) and sys.argv[-1] == 'import yaml':\n    sys.exit(1)\n"
-            "here = os.path.dirname(os.path.realpath(__file__))\n"
-            "path = os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep) if os.path.realpath(p) != here)\n"
-            "real = shutil.which('uv', path=path)\nos.execv(real, [real, *sys.argv[1:]])\n"
+            + (f"os.execv({real_uv!r}, [{real_uv!r}, *sys.argv[1:]])\n" if real_uv else "sys.exit(0)\n"),
         )
-        fake.chmod(0o755)
-        env = {"PATH": f"{fake.parent}{os.pathsep}{self.env['PATH']}"}
+        if real_uv:
+            subprocess.run(  # warm the default cache once, so the offline runs find PyYAML
+                [real_uv, "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-c", "import yaml"],
+                cwd=self.temp,
+                capture_output=True,
+                check=True,
+            )
+            cache = subprocess.run([real_uv, "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
+            self.env["UV_CACHE_DIR"] = cache
         record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
-        (self.calls / "history").write_text("")
-        (self.calls / "dispatch-marker").write_text("○")
+        self.w.knob("auto-read")
         rel = ".orchestration/tasks/t.md"
 
         def send(front, code, cwd=None, extra=None):
             text = self.write(rel, f"---\nformat: 2\ntask_id: t\n{front}---\n\nBody.\n").read_text()
-            line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}\n")
+            line = f"AGMSG-TASK v1 task_id=t task_file={rel} task_sha256={sha(text)}"
             for name in ("uv.log", "uv-calls.jsonl"):
                 (self.calls / name).unlink(missing_ok=True)
-            args = ["team", "orch", "worker", "w5:pA", line, record]
-            result = self.run_tool("dispatch.sh", *args, code=code, env={**env, **(extra or {})}, cwd=cwd)
-            return result, (self.calls / "uv.log").read_text()
+            result = self.dispatch(line, code=code, record=record, env=extra, cwd=cwd)
+            return result, (self.calls / "uv.log").read_text() if (self.calls / "uv.log").exists() else ""
 
         return rel, record, send
 
+    def snapshot_arg(self, log):
+        """The snapshot path the checker got, which dispatch.sh removes once the check is done."""
+        found = re.findall(r"task-consistency-check\.py --root (\S+) (\S+)", log)
+        self.assertEqual(1, len(found), log)
+        self.assertEqual(str(self.repo), found[0][0])
+        self.assertRegex(
+            found[0][1], rf"^{re.escape(str(self.repo))}/\.agents/worklog/dispatch-snapshots/task\.\w+/t\.md$"
+        )
+        self.assertFalse(Path(found[0][1]).exists())
+        return found[0][1]
+
     def test_dispatch_refuses_a_task_file_failing_the_checker(self):
         # C-52: the checker beside the script is a stub that fails a file lacking its own evidence directory.
-        rel, record, send = self.checker_dispatch()
+        _, record, send = self.checker_dispatch()
         lacking = "allowed_files:\n  - scripts/x.sh\n"
         # Both orders of the duplicate key: PyYAML alone would keep the last value, review in the second.
         duplicates = ("kind: review\nkind: code\n", "kind: code\nkind: review\n")
         for kind in ("kind: code\n", 'kind: "code"\n', "", *duplicates, "kind: review\n: broken\n"):
             with self.subTest(kind=kind):
                 result, log = send(kind + lacking, 1)
-                self.assertIn(f"dispatch: {self.repo / rel} fails the task-consistency check", result.stderr)
+                self.assertIn("dispatch: t.md fails the task-consistency check", result.stderr)
                 self.assertIn("C2 allowed_files lacks .orchestration/t/**", result.stderr)
-                self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
-                self.assertIsNone(self.call("agmsg-dispatch"))
+                self.snapshot_arg(log)
+                self.assertEqual([], self.sent())
                 self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
         # A cold cache stops the send with exit 2 and the warming command, never a fetch through the index.
         (self.calls / "uv-cold").write_text("")
@@ -476,10 +518,9 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertIn("PyYAML is not in the uv cache", result.stderr)
         self.assertIn("make validate-agent-assets", result.stderr)
         self.assertEqual(1, log.count("run "))
-        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.assertEqual([], self.sent())
         (self.calls / "uv-cold").unlink()
         _, log = send("kind: review\n", 0)
-        # The Makefile's UV_PYYAML probe comes first, then the brief parse in the form it chose.
         self.assertRegex(
             log.splitlines()[0],
             r"^run --no-config --no-project --offline --python /\S+ --with pyyaml python -I -c import yaml$",
@@ -502,6 +543,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             '[project]\nname = "caller"\nversion = "0"\ndependencies = ["no-such-package-dispatch-a03"]\n'
         )
         (caller / ".python-version").write_text(f"{pwn}\n")
+        (caller / "uv.toml").write_text('index-url = "http://127.0.0.1:9/simple"\n')
         (caller / "pylib").mkdir()
         (caller / "pylib/yaml.py").write_text(f"open({str(self.calls / 'pwned')!r}, 'w')\n")
         state = {"VIRTUAL_ENV": str(caller / ".venv"), "CONDA_PREFIX": str(caller / ".venv"), "UV_PYTHON": str(pwn)}
@@ -512,23 +554,12 @@ class OrchestratorToolsTest(unittest.TestCase):
         other = self.temp / "other"
         subprocess.run(["git", "init", "-q", str(other)], check=True)
         state |= {"HOME": str(caller / "home"), "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
-        _, _ = send("kind: review\n", 0, cwd=caller, extra=state)
+        send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
         # Positive identity: the exact argv and the exact environment of every uv call, so no other input can reach it.
-        home = pwd.getpwuid((self.repo / "scripts/orchestrator/dispatch.sh").stat().st_uid).pw_dir
-        path = f"{self.temp / 'fake-uv'}{os.pathsep}{self.env['PATH']}"
-        found = subprocess.run(
-            ["env", "-i", f"PATH={path}", f"HOME={home}", "mise", "which", "python3"],
-            cwd=self.repo,
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip()
-        python = found if found.startswith("/") else shutil.which("python3", path=path)
-        given = {**self.env, **state}
-        expected_env = {"PATH": path, "HOME": home, "UV_CACHE_DIR": f"{home}/.cache/uv"}
-        expected_env |= {k: v for k, v in given.items() if k in ("LANG", "LC_ALL") and v}
-        expected_env |= {k: v for k, v in given.items() if k.startswith("AGMSG_")}
+        python = str(self.w.home / ".local/share/mise/installs/python3/bin/python3")
+        expected_env = {"PATH": "/usr/bin:/bin", "HOME": str(self.w.home), "LANG": "C.UTF-8"}
+        expected_env |= {"TMPDIR": self.env["TMPDIR"], "UV_CACHE_DIR": self.env["UV_CACHE_DIR"]}
         head = [
             "run",
             "--no-config",
@@ -541,12 +572,11 @@ class OrchestratorToolsTest(unittest.TestCase):
             "python",
             "-I",
         ]
-        task = str(self.repo / ".orchestration/tasks/t.md")
         calls = [json.loads(line) for line in (self.calls / "uv-calls.jsonl").read_text().splitlines()]
         self.assertEqual(2, len(calls))  # the probe and the brief parse; a brief runs no checker
         self.assertEqual([*head, "-c", "import yaml"], calls[0]["argv"])
-        self.assertEqual([*head, "-c", task], [*calls[1]["argv"][:11], calls[1]["argv"][12]])
-        self.assertEqual(13, len(calls[1]["argv"]))
+        self.assertEqual([*head, "-c"], calls[1]["argv"][:11])
+        self.assertEqual([str(self.repo / "scripts/orchestrator/dispatch.sh"), "BRIEF"], calls[1]["argv"][12:14])
         for call in calls:
             # macOS adds __CF_USER_TEXT_ENCODING to every process, after env -i too; it is no input the script passes.
             call["env"].pop("__CF_USER_TEXT_ENCODING", None)
@@ -572,77 +602,34 @@ class OrchestratorToolsTest(unittest.TestCase):
             "---\nformat: 2\ntask_id: t\nkind: code\nallowed_files:\n  - .orchestration/t/**\n"
             "design_review:\n  receipt: r1\n  design: d.md\n---\n\nBody.\n",
         )
-        line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={task} task_sha256={sha(task.read_text())}\n")
         other = self.temp / "other"
         subprocess.run(["git", "init", "-q", str(other)], check=True)
-        env = {
-            "PATH": f"{self.temp / 'fake-uv'}{os.pathsep}{self.env['PATH']}",
-            "GIT_DIR": str(other / ".git"),
-            "GIT_WORK_TREE": str(other),
-        }
-        args = ["team", "orch", "worker", "w5:pA", line, record]
-        result = self.run_tool("dispatch.sh", *args, code=1, env=env)
+        env = {"GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
+        line = f"AGMSG-TASK v1 task_id=t task_file={task} task_sha256={sha(task.read_text())}"
+        result = self.dispatch(line, code=1, record=record, env=env)
         self.assertIn(f"root: {self.repo}\n", result.stderr)
         self.assertIn("C6 design_review.receipt is stale", result.stderr)
-        checker = f"{self.repo}/scripts/orchestrator/task-consistency-check.py --root {self.repo} {task}"
-        self.assertIn(checker, (self.calls / "uv.log").read_text())
-        self.assertIsNone(self.call("agmsg-dispatch"))
+        self.snapshot_arg((self.calls / "uv.log").read_text())
+        self.assertEqual([], self.sent())
         self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
 
     def test_dispatch_reads_a_bounded_history_window(self):
-        # C-53: each read answers the window the case writes, window-1 before the send and window-2 after it.
-        (self.temp / "agmsg/history.sh").write_text(
-            '#!/usr/bin/env bash\necho "$*" >> "$CALLS/history.log"\n'
-            'n=$(($(cat "$CALLS/reads" 2> /dev/null || echo 0) + 1)) && echo "${n}" > "$CALLS/reads"\n'
-            'cat "$CALLS/window-${n}"\n'
-        )
+        # C-53: the pre-send read takes the newest BUS_READ_WINDOW rows (200 by default) and a bus that cannot be read
+        # is never written; the exact id replaces the old window alignment (item 3).
         ping = "AGMSG-PING v1 task_id=t reason=check"
-        self.write("line.txt", ping + "\n")
-        empty = '---\n{"task": "t"}\n---\n'
-        record = self.write(".orchestration/acceptance/t.md", empty)
-
-        def row(ts, text=ping, mark="●", sender="orch", to="worker"):
-            return f"  {mark} [2026-10-15T00:{ts}Z] {sender} → {to}: {text}"
-
-        def send(pre, post, code=0, window=None):
-            for n, rows in ((1, pre), (2, post)):
-                (self.calls / f"window-{n}").write_text("".join(r + "\n" for r in rows))
-            for name in ("reads", "history.log"):
-                (self.calls / name).unlink(missing_ok=True)
-            record.write_text(empty)
-            env = {"BUS_READ_WINDOW": window} if window else None
-            result = self.run_tool(
-                "dispatch.sh", "team", "orch", "worker", "w5:pA", "line.txt", record, code=code, env=env
-            )
-            self.assertEqual([], list(self.temp.glob("dispatch-window.*")))
-            return result
-
-        def recorded():
-            return self.gate_block(record)[0]["dispatch"]
-
-        # Eviction plus collision: the oldest row of a full window equals the line and leaves it.
-        full = [row("00:00")] + [row(f"{i // 60:02}:{i % 60:02}", f"x{i}") for i in range(1, 200)]
-        send(full, full[1:] + [row("59:00", mark="○")])
-        self.assertEqual([f"{ping} read_at=read"], recorded())
-        self.assertEqual(["team  200", "team  200"], (self.calls / "history.log").read_text().splitlines())
-        send(full[150:], full[151:] + [row("59:00", mark="○")], window="50")
-        self.assertEqual(["team  50", "team  50"], (self.calls / "history.log").read_text().splitlines())
-        # Same second: the newest pre-send row equals the line; the second such row is this send.
-        a, b = row("01:00", "a"), row("02:00", "b")
-        send([a, b, row("03:00")], [a, b, row("03:00"), row("03:00", mark="○")])
-        self.assertEqual([f"{ping} read_at=read"], recorded())
-        # Another seat's row lands after this send: the line's row is still the one recorded.
-        send([a, b], [a, b, row("03:00", mark="○"), row("03:01", "AGMSG-PONG v1 task_id=t", "●", "worker", "orch")])
-        self.assertEqual([f"{ping} read_at=read"], recorded())
-        refusals = (
-            ([a, b], [row("04:00", "c"), row("05:00", "d"), row("06:00")], "raise BUS_READ_WINDOW"),
-            ([a, b], [a, b], "this send added no bus row"),
-            ([row("07:00", "p")] * 200, [row("07:00", "p")] * 200, "does not align uniquely"),
-        )
-        for pre, post, message in refusals:
-            with self.subTest(message=message):
-                self.assertIn(message, send(pre, post, code=1).stderr)
-                self.assertEqual(empty, record.read_text())
+        self.w.knob("auto-read")
+        for window, last in ((None, "200"), ("50", "50")):
+            with self.subTest(window=window):
+                (self.w.calls / "hcom.jsonl").unlink(missing_ok=True)
+                self.dispatch(ping, env={"BUS_READ_WINDOW": window} if window else None)
+                self.assertEqual(last, self.w.hcom_calls("events")[0]["argv"][5])
+        sends = len(self.sent())
+        self.assertIn("usage: dispatch.sh", self.dispatch(ping, code=2, env={"BUS_READ_WINDOW": "0"}).stderr)
+        self.w.knob("events-fails")
+        result = self.dispatch(ping, code=1)
+        self.assertIn("hcom events exited 1", result.stderr)
+        self.assertIn("the bus of team is unreadable; nothing is sent", result.stderr)
+        self.assertEqual(sends, len(self.sent()))
 
     # three-repeat.sh
 
@@ -712,16 +699,18 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         self.assertEqual(["memory", "search", "--limit", "1000", "--", "bookkeeping"], self.call("uv")[3:])
 
-    # bus-read.sh
+    # bus-read.sh (T129 a02 item 5: the same reader, the jq classification unchanged)
 
     def history(self, *messages):
-        """history.sh rows from (minutes ago or a literal <at>, from, to, body), after one line that is not a row."""
+        """hcom message events of the team's thread from (minutes ago or a literal ISO time, from, to, body)."""
         now = datetime.now(UTC)
-        rows = ["agmsg: a line that is not a message"]
+        self.w.load()
+        self.w.state["events"] = []
+        self.w.save()
         for ago, sender, to, body in messages:
-            at = ago if isinstance(ago, str) else (now - timedelta(minutes=ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
-            rows.append(f"  ○ [{at}] {sender} → {to}: {body}")
-        (self.calls / "history").write_text("\n".join(rows) + "\n")
+            self.w.message(
+                sender, to, body, ts=ago if isinstance(ago, str) else now - timedelta(minutes=ago), thread="team"
+            )
 
     def test_bus_read_lists_an_open_task_with_minutes_since_its_latest_event(self):
         self.history(
@@ -736,23 +725,24 @@ class OrchestratorToolsTest(unittest.TestCase):
             (8, "orch", "w4", "AGMSG-ACCEPTANCE v1 task_id=T4 status=withdrawn"),
             (7, "orch", "w2", "AGMSG-ACCEPTANCE v1 task_id=T2 status=under_review"),
         )
-        *lines, skipped = self.run_tool("bus-read.sh", "team").stdout.splitlines()
-        self.assertEqual("skipped=1", skipped)
+        *lines, skipped = self.bus("bus-read.sh", "team").stdout.splitlines()
+        self.assertEqual("skipped=0", skipped)
         self.assertEqual(["T1", "T3"], [re.search(r"task=(\S+)", line).group(1) for line in lines])
         fields = [dict(re.findall(r"(\w+)=(\S+)", line)) for line in lines]
         self.assertEqual(["w1", "w3"], [f["seat"] for f in fields])
         self.assertEqual(["yes", "no"], [f["silent"] for f in fields])
         for f, minutes in zip(fields, (45, 10), strict=True):
             self.assertLessEqual(abs(int(f["minutes"]) - minutes), 1, f)
-        self.assertEqual(["team", "", "100000"], self.call("history.sh"))
-        only = self.run_tool("bus-read.sh", "team", "T3").stdout.splitlines()
+        reads = [c["argv"] for c in self.w.hcom_calls("events")]
+        self.assertEqual(["--last", "100000", "--sql", "msg_thread = 'team'"], reads[0][4:])
+        only = self.bus("bus-read.sh", "team", "T3").stdout.splitlines()
         self.assertEqual(2, len(only))
         self.assertIn("task=T3 ", only[0])
-        self.assertEqual(["open: none", "skipped=1"], self.run_tool("bus-read.sh", "team", "T2").stdout.splitlines())
+        self.assertEqual(["open: none", "skipped=0"], self.bus("bus-read.sh", "team", "T2").stdout.splitlines())
 
     def open_tasks(self):
         """bus-read.sh's (task, seat) pairs and its final line."""
-        out = self.run_tool("bus-read.sh", "team").stdout
+        out = self.bus("bus-read.sh", "team").stdout
         return re.findall(r"^open: task=(\S+) seat=(\S+) ", out, re.MULTILINE), out.splitlines()[-1]
 
     def test_bus_read_ignores_closers_between_other_endpoints(self):
@@ -771,9 +761,9 @@ class OrchestratorToolsTest(unittest.TestCase):
             (7, "w9", "w8", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
             (6, "w9", "w3", "AGMSG-ACCEPTANCE v1 task_id=T3 status=revise"),
         )
-        self.assertEqual(([("T1", "w1")], "skipped=1"), self.open_tasks())
+        self.assertEqual(([("T1", "w1")], "skipped=0"), self.open_tasks())
         # Thread 4256987076: w9's later rows do not reset the silence clock of T1's pair (its TASK, 30 minutes ago).
-        self.assertIn(" silent=yes", self.run_tool("bus-read.sh", "team").stdout.splitlines()[0])
+        self.assertIn(" silent=yes", self.bus("bus-read.sh", "team").stdout.splitlines()[0])
 
     def test_bus_read_closes_a_task_on_any_non_revise_acceptance(self):
         # Thread 4255494139: no status whitelist; any ACCEPTANCE from the opener's sender but revise closes.
@@ -788,10 +778,12 @@ class OrchestratorToolsTest(unittest.TestCase):
             (33, "w4", "orch", "AGMSG-RESULT v1 task_id=T4 status=ready_for_review"),
             (32, "orch", "w4", "AGMSG-ACCEPTANCE v1 task_id=T4 status=revise"),
         )
-        self.assertEqual(([("T4", "w4")], "skipped=1"), self.open_tasks())
+        self.assertEqual(([("T4", "w4")], "skipped=0"), self.open_tasks())
 
     def test_bus_read_skips_and_counts_malformed_rows(self):
-        # The Codex round-2 receipt (C-28): each rejected row would close T1 if it counted; none is an exit.
+        # The Codex round-2 receipt (C-28): each rejected row would close T1 if it counted; none is an exit. A row the
+        # reader cannot frame (a line break in a body, a time outside UTC ISO-8601) refuses the read instead: see
+        # test_history_forged_row_refused.
         self.history(
             (30, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
             (20, "orch", "w1", "AGMSG-PING v1 task_id=T1 reason=check"),
@@ -800,24 +792,20 @@ class OrchestratorToolsTest(unittest.TestCase):
             (20, "w1", "orch", "AGMSG-RESULT v1 task_id= status=ready_for_review"),
             (20, "w1", "orch", "AGMSG-RESULT v1 task_id=T1 task_id=T1"),
             (20, "orch", "w1", "AGMSG-ACCEPTANCE v1 task_id=T1 status=accepted status=accepted"),
-            ("yesterday", "w1", "orch", "AGMSG-RESULT v1 task_id=T1"),
         )
-        # Thread 4256541723: history.sh marks a row ● or ○, so any other first token is not a row.
-        with (self.calls / "history").open("a") as f:
-            f.write("  X [2026-10-13T00:00:00Z] w1 → orch: AGMSG-RESULT v1 task_id=T1\n")
-        # The helper's first line (a shape mismatch) and the eight rows after the TASK.
-        self.assertEqual(([("T1", "w1")], "skipped=9"), self.open_tasks())
+        self.assertEqual(([("T1", "w1")], "skipped=6"), self.open_tasks())
         # An empty history is one empty line on jq's input, never a skipped row.
-        (self.calls / "history").write_text("")
-        self.assertEqual(["open: none", "skipped=0"], self.run_tool("bus-read.sh", "team").stdout.splitlines())
+        self.history()
+        self.assertEqual(["open: none", "skipped=0"], self.bus("bus-read.sh", "team").stdout.splitlines())
 
     def test_bus_read_refuses_a_read_that_reaches_its_limit(self):
         self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(3)])
-        result = self.run_tool("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
+        result = self.bus("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
         self.assertIn("reached its limit of 3 rows", result.stderr)
-        # Thread 4256987062: lines are counted before any is skipped, the helper's first line included.
-        self.history(*[(i, "orch", "w1", f"AGMSG-TASK v1 task_id=T{i}") for i in range(2)])
-        result = self.run_tool("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
+        self.assertEqual("3", self.w.hcom_calls("events")[-1]["argv"][5])
+        # Thread 4256987062: lines are counted before any is skipped.
+        self.history(*[(i, "orch", "w1", f"AGMSG-PING v1 task_id=T{i}") for i in range(3)])
+        result = self.bus("bus-read.sh", "team", code=1, env={"BUS_READ_LIMIT": "3"})
         self.assertIn("reached its limit of 3 rows", result.stderr)
 
     # boundary.sh, ff-main.sh, replay.sh
@@ -1655,6 +1643,604 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual(head, self.git("rev-parse", "HEAD", cwd=review))
         self.assertEqual("", self.git("status", "--porcelain", cwd=review))
         self.assertIsNone(self.call("gate-python"))
+
+    # T129 a02: the hcom bus matrices (items 0 to 7, constraints 1 to 7, design 5.14 items 2, 3, 4, 7 and 9)
+
+    ROUTES = ("bus-history.sh", "bus-read.sh", "regime-counters.sh", "hcom-dispatch", "dispatch.sh")
+
+    def route(self, name, env=None, fixture=True, code=None):
+        """Run one bus route once in the fixture world: a read of the team, or a send of one PING line."""
+        rel = {"regime-counters.sh": "scripts/regime-counters.sh"}.get(name, f"scripts/orchestrator/{name}")
+        rel = "home/dot_local/bin/common/executable_hcom-dispatch" if name == "hcom-dispatch" else rel
+        args = {
+            "bus-history.sh": ["team"],
+            "bus-read.sh": ["team"],
+            "regime-counters.sh": ["t", "--team", "team", "--history-only"],
+        }
+        self.write("line.txt", "AGMSG-PING v1 task_id=t reason=check\n")
+        args |= {"hcom-dispatch": ["team", "orch", "worker", "w5:pA", "AGMSG-PING v1 task_id=t reason=check"]}
+        args |= {"dispatch.sh": ["team", "orch", "worker", "w5:pA", self.repo / "line.txt"]}
+        result = self.w.run(rel, *args[name], env={**self.env, **(env or {})}, fixture=fixture)
+        if code is not None:
+            self.assertEqual(code, result.returncode, f"{name}: {result.stderr}")
+        return result
+
+    def test_hcom_history_matrix(self):
+        # Item 1: chronological marker rows of the team's thread, the JSON view, the bounds and the refusals.
+        before = self.w.store_digest()
+        with self.subTest("empty"):
+            self.assertEqual("", self.bus("bus-history.sh", "team").stdout)
+        a = self.w.message(
+            "orch", "worker", "AGMSG-TASK v1 task_id=t", ts="2026-10-22T01:02:03.456789+00:00", thread="team"
+        )
+        self.w.message(
+            "worker", "orch", "AGMSG-PONG v1 task_id=t status=alive", ts="2026-10-22T01:03:00+00:00", thread="team"
+        )
+        self.w.message(
+            "orch", "worker", "a body\twith a tab and 'quotes'", ts="2026-10-22T01:04:00+00:00", thread="team"
+        )
+        self.w.message("orch", "worker", "another team", thread="other")
+        self.w.read("worker", a)
+        rows = [
+            "○ [2026-10-22T01:02:03Z] orch → worker: AGMSG-TASK v1 task_id=t",
+            "● [2026-10-22T01:03:00Z] worker → orch: AGMSG-PONG v1 task_id=t status=alive",
+            "● [2026-10-22T01:04:00Z] orch → worker: a body\twith a tab and 'quotes'",
+        ]
+        with self.subTest("populated, both markers, another thread left out"):
+            self.assertEqual(rows, self.bus("bus-history.sh", "team").stdout.splitlines())
+        with self.subTest("bounded"):
+            self.assertEqual(rows[1:], self.bus("bus-history.sh", "team", "--limit", "2").stdout.splitlines())
+        with self.subTest("the JSON view keeps the ids, and one id selects one row"):
+            view = [json.loads(line) for line in self.bus("bus-history.sh", "team", "--json").stdout.splitlines()]
+            self.assertEqual([1, 2, 3], [v["id"] for v in view])
+            self.assertEqual(["worker"], view[0]["to"])
+            one = json.loads(self.bus("bus-history.sh", "team", "--json", "--message-id", "2").stdout)
+            self.assertEqual((2, "worker", False), (one["id"], one["from"], one["read"]))
+            self.assertIn(
+                "no message 9", self.bus("bus-history.sh", "team", "--json", "--message-id", "9", code=1).stderr
+            )
+            self.assertIn(
+                "no message 4", self.bus("bus-history.sh", "team", "--json", "--message-id", "4", code=1).stderr
+            )
+        calls = len(self.w.hcom_calls())
+        with self.subTest("only grammar-checked values reach the SQL: a hostile team or id builds none"):
+            for args in (["x' OR 1=1 --"], ["Team"], ["team", "--limit", "0"], ["team", "--message-id", "1"]):
+                self.bus("bus-history.sh", *args, code=2)
+            self.bus("bus-history.sh", "team", "--json", "--message-id", "1 OR 1=1", code=2)
+            self.assertEqual(calls, len(self.w.hcom_calls()))
+        with self.subTest("another schema revision"):
+            (self.w.home / ".hcom/hcom.db").write_bytes(header(17))
+            self.assertIn("schema revision 18", self.bus("bus-history.sh", "team", code=1).stderr)
+            self.assertEqual(calls, len(self.w.hcom_calls()))
+            (self.w.home / ".hcom/hcom.db").write_bytes(header())
+        with self.subTest("the reads left the store's bytes as they were"):
+            self.assertEqual(before["hcom.db"], self.w.store_digest()["hcom.db"])
+            self.assertTrue(all(c["argv"][:1] == ["events"] for c in self.w.hcom_calls()))
+
+    def test_hcom_dispatch_matrix(self):
+        # Item 3, through the actual subprocesses: the send is hcom-dispatch's, the record is the exact id's.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        with self.subTest("read: recorded read, exit 0"):
+            self.w.knob("auto-read")
+            self.dispatch(ping, record=record)
+            sent = self.w.load()["events"][-1]
+            argv = ["send", "--from", "orch", "--json", "--thread", "team", "@team-worker", "--", sent["data"]["text"]]
+            self.assertEqual(argv, self.w.hcom_calls("send")[-1]["argv"])
+            exact = [c["argv"][-1] for c in self.w.hcom_calls("events")]
+            self.assertIn(f"msg_thread = 'team' AND id = {sent['id']}", exact)
+            self.assertEqual([f"{sent['data']['text']} read_at=read"], self.gate_block(record)[0]["dispatch"])
+        with self.subTest("unread: recorded unread, the sender's exit 1 kept"):
+            (self.w.calls / "auto-read").unlink()
+            self.dispatch(ping, code=1, record=record, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+            self.assertTrue(self.gate_block(record)[0]["dispatch"][-1].endswith(" read_at=unread"))
+        with self.subTest("a receipt naming another message is never recorded"):
+            before = record.read_text()
+            other = self.w.message("orch", "worker", "another line", thread="team")
+            self.w.knob("send-output", json.dumps({"delivered_to": ["worker"], "event_id": other}))
+            self.assertIn("is not this send", self.dispatch(ping, code=3, record=record).stderr)
+            self.assertEqual(before, record.read_text())
+            (self.w.calls / "send-output").unlink()
+        with self.subTest("no record: hcom-dispatch's receipt and status pass through"):
+            self.w.knob("auto-read")
+            out = self.dispatch(ping)
+            self.assertEqual(self.w.load()["events"][-1]["id"], json.loads(out.stdout)["id"])
+
+    def test_revise_acceptance_matrix(self):
+        # Item 4 and constraint 7: a revise names previous_head, check and task_sha256 once each, and comes with a
+        # record; the counters run first and their lines join the record's counters list.
+        text = self.write(".orchestration/tasks/t.md", "task\n").read_text()
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        head, task = "a" * 40, f"task_file=.orchestration/tasks/t.md task_sha256={sha(text)}"
+        base = f"AGMSG-ACCEPTANCE v1 task_id=t status=revise previous_head={head} check=tests/x.py::t {task}"
+        self.w.knob("auto-read")
+        refused = {
+            "no previous_head": (base.replace(f" previous_head={head}", ""), "previous_head= exactly once"),
+            "two previous_head": (f"{base} previous_head={head}", "previous_head= exactly once"),
+            "short previous_head": (base.replace(head, "a" * 39), "previous_head= exactly once"),
+            "uppercase previous_head": (base.replace(head, "A" * 40), "previous_head= exactly once"),
+            "no check": (base.replace(" check=tests/x.py::t", ""), "check= exactly once"),
+            "two checks": (f"{base} check=tests/y.py::u", "check= exactly once"),
+            "empty check": (base.replace("check=tests/x.py::t", "check="), "check= exactly once"),
+            "no task_sha256": (base.replace(f" {task}", ""), "needs task_sha256="),
+        }
+        for name, (line, needle) in refused.items():
+            with self.subTest(name):
+                self.assertIn(needle, self.dispatch(line, code=1, record=record).stderr)
+                self.assertEqual([], self.sent())
+        with self.subTest("no record"):
+            self.assertIn("needs its acceptance record", self.dispatch(base, code=1).stderr)
+        with self.subTest("a failing counter refuses before the send"):
+            counters = self.repo / "scripts/regime-counters.sh"
+            kept = counters.read_text()
+            counters.write_text("#!/bin/bash\necho 'regime-counters: stub failure' >&2\nexit 1\n")
+            result = self.dispatch(base, code=1, record=record)
+            self.assertIn("regime-counters: stub failure", result.stderr)
+            self.assertEqual([], self.sent())
+            counters.write_text(kept)
+        with self.subTest("the counters' lines join the record"):
+            self.w.message("w", "orch", "AGMSG-RESULT v1 task_id=t status=ready_for_review", thread="team")
+            self.dispatch(base, record=record)
+            block = self.gate_block(record)[0]
+            self.assertEqual(1, len(block["dispatch"]))
+            (entry,) = block["counters"]
+            self.assertRegex(entry, r"^t \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ task=t tasks=0 .* revises=0 .*; detail: ")
+        with self.subTest("verdict= and other statuses skip only these checks"):
+            for line in (
+                "AGMSG-ACCEPTANCE v1 task_id=t verdict=revise",
+                "AGMSG-ACCEPTANCE v1 task_id=t status=accepted",
+            ):
+                self.dispatch(line)
+                self.assertEqual(line, self.sent()[-1])
+
+    def test_hcom_bus_read_matrix(self):
+        # Item 5: the open-task classification and both markers come from the reader's actual rows.
+        self.history(
+            (30, "orch", "w1", "AGMSG-TASK v1 task_id=T1"),
+            (20, "orch", "w2", "AGMSG-TASK v1 task_id=T2"),
+            (10, "w2", "orch", "AGMSG-RESULT v1 task_id=T2 status=ready_for_review"),
+        )
+        self.w.read("w1", 1)
+        rows = self.bus("bus-history.sh", "team").stdout.splitlines()
+        self.assertEqual(["○", "●", "●"], [r[0] for r in rows])
+        self.assertEqual(([("T1", "w1")], "skipped=0"), self.open_tasks())
+        self.w.knob("events-fails")
+        self.assertIn("is unreadable", self.bus("bus-read.sh", "team", code=1).stderr)
+
+    def test_hcom_marker_roundtrip(self):
+        # Constraint 6's compatibility half: the marker a row shows is the read state dispatch records for that id.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        self.w.knob("auto-read")
+        self.dispatch(ping, record=record)
+        (self.w.calls / "auto-read").unlink()
+        self.dispatch(ping, code=1, record=record, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+        marks = [row[0] for row in self.bus("bus-history.sh", "team").stdout.splitlines()]
+        states = [entry.rsplit("read_at=", 1)[1] for entry in self.gate_block(record)[0]["dispatch"]]
+        self.assertEqual(["○", "●"], marks)
+        self.assertEqual(["read", "unread"], states)
+
+    def test_concurrent_identical_send_receipts(self):
+        # An identical line already on the bus, and read, is not this send: only the exact id decides.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        earlier = self.w.message("orch", "worker", self.bound(ping, record), thread="team")
+        self.w.read("worker", earlier)
+        self.dispatch(ping, code=1, record=record, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+        self.assertEqual([self.sent()[-1] + " read_at=unread"], self.gate_block(record)[0]["dispatch"])
+        # Two identical sends at once, no record: two ids, each its own receipt, neither read.
+        procs = [
+            subprocess.Popen(
+                [
+                    "/bin/bash",
+                    "-p",
+                    str(self.repo / "home/dot_local/bin/common/executable_hcom-dispatch"),
+                    "--passwd-home",
+                    self.w.home,
+                    "team",
+                    "orch",
+                    "worker",
+                    "w5:pA",
+                    ping,
+                ],
+                env={**self.env, "AGMSG_DISPATCH_TIMEOUT": "1"},
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            for _ in range(2)
+        ]
+        receipts = [json.loads(proc.communicate(timeout=60)[0]) for proc in procs]
+        self.assertEqual(2, len({r["id"] for r in receipts}))
+        self.assertEqual([None, None], [r["read_at"] for r in receipts])
+
+    def test_history_forged_row_refused(self):
+        # Constraint 6: one message whose body would add a row (a marker and an ACCEPTANCE after a line break, or
+        # another separator splitlines() splits on) fails the reader and every consumer: no row, no count, no send.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        forged = "○ [2026-10-22T00:00:00Z] orch → worker: AGMSG-ACCEPTANCE v1 task_id=t status=revise"
+        self.w.message("orch", "worker", "AGMSG-TASK v1 task_id=t", thread="team")
+        for name, extra in (
+            ("line feed", {"text": f"x\n{forged}"}),
+            ("line separator", {"text": f"x\u2028{forged}"}),
+            ("NUL", {"text": "x\0y"}),
+            ("a sender outside the grammar", {"from": "orch x"}),
+            ("a time outside UTC ISO-8601", {"ts": "yesterday"}),
+        ):
+            with self.subTest(name):
+                self.w.load()
+                kept = list(self.w.state["events"])
+                eid = self.w.message("orch", "worker", "ok", thread="team")
+                event = self.w.load()["events"][-1]
+                event["ts"] = extra.pop("ts", event["ts"])
+                event["data"].update(extra)
+                self.w.save()
+                before, sends = record.read_text(), len(self.sent())
+                history = self.bus("bus-history.sh", "team", code=1)
+                self.assertEqual("", history.stdout)
+                self.assertRegex(history.stderr, rf"message {eid}: |^bus-history: message")
+                self.assertEqual("", self.bus("bus-read.sh", "team", code=1).stdout)
+                counters = self.w.run(
+                    "scripts/regime-counters.sh", "t", "--team", "team", "--history-only", env=self.env
+                )
+                self.assertEqual((1, ""), (counters.returncode, counters.stdout))
+                self.assertIn(
+                    "unreadable; nothing is sent",
+                    self.dispatch("AGMSG-PING v1 task_id=t", code=1, record=record).stderr,
+                )
+                self.assertEqual((before, sends), (record.read_text(), len(self.sent())))
+                self.w.state["events"] = kept
+                self.w.save()
+
+    def test_production_store_declaration(self):
+        # Constraint 2: the source declaration is the deployed one the fixture home carries; every other shape refuses.
+        self.assertIn("    store_relative_path: .hcom\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.bus("bus-history.sh", "team")
+        declared = self.w.home / ".agents/agent-config.yaml"
+        source = declared.read_text()
+        cases = {
+            "missing": None,
+            "twice": source.replace("    store_relative_path: .hcom\n", "    store_relative_path: .hcom\n" * 2),
+            "absent": source.replace("    store_relative_path: .hcom\n", ""),
+            "absolute": source.replace("store_relative_path: .hcom", "store_relative_path: /tmp/.hcom"),
+            "traversal": source.replace("store_relative_path: .hcom", "store_relative_path: ../.hcom"),
+            "another directory": source.replace("store_relative_path: .hcom", "store_relative_path: .other"),
+            "under another asset": source.replace("    store_relative_path: .hcom\n", "").replace(
+                "  mise:\n", "  mise:\n    store_relative_path: .hcom\n"
+            ),
+        }
+        for name, text in cases.items():
+            with self.subTest(name):
+                declared.unlink(missing_ok=True)
+                if text is not None:
+                    declared.write_text(text)
+                self.assertRegex(
+                    self.bus("bus-history.sh", "team", code=1).stderr, "declaration|declares|declared store"
+                )
+        declared.write_text(source)
+        store, elsewhere = self.w.home / ".hcom", self.w.base / "elsewhere"
+        for name in ("a store directory that is a link", "a store file that is a link", "a declaration that is a link"):
+            with self.subTest(name):
+                if name.startswith("a store directory"):
+                    store.rename(elsewhere)
+                    store.symlink_to(elsewhere)
+                elif name.startswith("a store file"):
+                    (store / "hcom.db").rename(elsewhere.with_suffix(".db"))
+                    (store / "hcom.db").symlink_to(elsewhere.with_suffix(".db"))
+                else:
+                    declared.rename(self.w.base / "config.yaml")
+                    declared.symlink_to(self.w.base / "config.yaml")
+                self.bus("bus-history.sh", "team", code=1)
+                if store.is_symlink():
+                    store.unlink()
+                    elsewhere.rename(store)
+                if (store / "hcom.db").is_symlink():
+                    (store / "hcom.db").unlink()
+                    elsewhere.with_suffix(".db").rename(store / "hcom.db")
+        with self.subTest("production callers pass no --passwd-home: they read the passwd home"):
+            passwd = pwd.getpwuid(os.getuid()).pw_dir
+            for name in self.ROUTES:
+                (self.w.calls / "hcom.jsonl").unlink(missing_ok=True)
+                result = self.route(name, fixture=False)
+                homes = {c["env"].get("HOME") for c in self.w.hcom_calls()}
+                if not homes:  # refused before hcom: the refusal names the passwd home's declaration or store
+                    self.assertNotEqual(0, result.returncode, name)
+                self.assertTrue(passwd in result.stderr or homes == {passwd}, (name, result.stderr, homes))
+                self.assertNotIn(str(self.w.home), homes)
+
+    def test_hostile_hcom_store_refused(self):
+        # Constraint 2: a schema-compatible store fabricated under HCOM_DIR is refused by every route; no row comes
+        # from it, nothing is sent, and neither store changes.
+        evil = self.w.base / "evil"
+        evil.mkdir()
+        (evil / "hcom.db").write_bytes(header())
+        (evil / "fake.json").write_text(json.dumps({**self.w.state, "events": []}))
+        self.w.message("orch", "worker", "AGMSG-TASK v1 task_id=t", thread="team")
+        digests = (self.w.store_digest(), {p.name: sha_bytes(p.read_bytes()) for p in evil.iterdir()})
+        for name in self.ROUTES:
+            with self.subTest(name):
+                result = self.route(name, env={"HCOM_DIR": str(evil)})
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("HCOM_DIR", result.stderr)
+                self.assertNotIn("AGMSG-TASK", result.stdout)
+        self.assertEqual([], self.w.hcom_calls())
+        self.assertEqual(digests, (self.w.store_digest(), {p.name: sha_bytes(p.read_bytes()) for p in evil.iterdir()}))
+
+    def test_private_namespace_matrix(self):
+        # Constraint 1: PATH decoys of every tool the routes use, BUS_HISTORY and AGMSG_SCRIPTS overrides, and
+        # startup payloads (BASH_ENV, ENV, an exported function, PYTHONSTARTUP, PYTHONPATH) never run.
+        decoys, marker = self.temp / "decoys", self.temp / "decoy-ran"
+        decoys.mkdir()
+        names = ("bash", "python3", "jq", "hcom", "herdr", "mise", "uv", "shasum", "cat", "env", "sqlite3", "git", "tr")
+        for name in (*names, "wc", "mktemp", "dirname", "id", "history.sh", "bus-history.sh"):
+            self.w.tool(decoys / name, f"#!/bin/sh\necho {name} >> '{marker}'\nexit 97\n")
+        (decoys / "startup.py").write_text(f"open({str(marker)!r}, 'a').write('pythonstartup\\n')\n")
+        (decoys / "sitecustomize.py").write_text(f"open({str(marker)!r}, 'a').write('pythonpath\\n')\n")
+        hostile = {
+            "PATH": f"{decoys}:{self.env['PATH']}",
+            "BASH_ENV": str(decoys / "bash"),
+            "ENV": str(decoys / "bash"),
+            "BASH_FUNC_cat%%": f"() {{ echo function >> '{marker}'; }}",
+            "PYTHONSTARTUP": str(decoys / "startup.py"),
+            "PYTHONPATH": str(decoys),
+            "BUS_HISTORY": str(decoys / "bus-history.sh"),
+            "AGMSG_SCRIPTS": str(decoys),
+        }
+        self.w.knob("auto-read")
+        for name in self.ROUTES:
+            with self.subTest(name):
+                self.route(name, env=hostile, code=0)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_private_cache_matrix(self):
+        # Constraint 1 and design 5.14 item 9: an absent or relative UV_CACHE_DIR refuses every route before any
+        # child runs; a user site planted under the passwd home never loads in a Python child.
+        for value in (None, "relative/cache"):
+            for name in self.ROUTES:
+                with self.subTest(name, value=value):
+                    env = {"UV_CACHE_DIR": value or ""}
+                    result = self.route(name, env=env)
+                    self.assertEqual(2, result.returncode, result.stderr)
+                    self.assertIn("UV_CACHE_DIR", result.stderr)
+        self.assertEqual([], self.w.hcom_calls())
+        marker = self.temp / "user-site-ran"
+        probe = subprocess.run(
+            [
+                "/usr/bin/env",
+                "-i",
+                f"HOME={self.w.home}",
+                "/usr/bin/python3",
+                "-c",
+                "import site; print(site.getusersitepackages())",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        site = Path(probe.stdout.strip())
+        site.mkdir(parents=True)
+        (site / "planted.pth").write_text(f"import os; open({str(marker)!r}, 'a').write('pth')\n")
+        (site / "usercustomize.py").write_text(f"open({str(marker)!r}, 'a').write('usercustomize')\n")
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        self.w.knob("auto-read")
+        self.bus("bus-history.sh", "team")
+        self.dispatch("AGMSG-PING v1 task_id=t reason=check", record=record)
+        self.assertFalse(marker.exists())
+
+    def test_consumed_bytes_matrix(self):
+        # Constraints 3 and 4: a consumer uses the bytes it hashed, never a later read of the name.
+        text = "---\nformat: 2\ntask_id: t\nkind: code\n---\n\nBody.\n"
+        task = self.write(".orchestration/tasks/t.md", text)
+        seen = self.calls / "checker-saw.json"
+        # The checker swaps the task copy as soon as it starts, after dispatch.sh hashed it, and records what it reads.
+        self.write(
+            "scripts/orchestrator/task-consistency-check.py",
+            f"import json, os, sys\nf = sys.argv[-1]\nopen({str(task)!r}, 'w').write('attacker\\n')\n"
+            f"json.dump({{'path': f, 'text': open(f).read()}}, open({str(seen)!r}, 'w'))\nprint(f + ': OK')\n",
+        )
+        self.w.tool(
+            self.w.home / ".local/share/mise/installs/uv/bin/uv",
+            f"#!{sys.executable} -I\nimport os, sys\nargs = sys.argv[sys.argv.index('python') + 1:]\n"
+            "sys.exit(0) if args[-2:] == ['-c', 'import yaml'] else None\n"
+            f"os.execv({sys.executable!r}, [{sys.executable!r}, *args])\n",
+        )
+        self.w.knob("auto-read")
+        line = f"AGMSG-TASK v1 task_id=t task_file=.orchestration/tasks/t.md task_sha256={sha(text)}"
+        with self.subTest("a task copy swapped after its hash reaches no consumer"):
+            self.dispatch(line)
+            got = json.loads(seen.read_text())
+            self.assertNotEqual(str(task), got["path"])
+            self.assertEqual(text, got["text"])
+            self.assertEqual([line], self.sent())
+        with self.subTest("a task copy replaced before its hash is refused"):
+            self.assertEqual("attacker\n", task.read_text())
+            self.assertIn("task_sha256 mismatch", self.dispatch(line, code=1).stderr)
+            task.write_text(text)
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        with self.subTest("a wrong record digest"):
+            self.write("line.txt", f"{ping} record_file={record.relative_to(self.repo)} record_sha256={sha('x')}\n")
+            result = self.bus("dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", record, code=1)
+            self.assertIn("record_sha256 mismatch", result.stderr)
+        with self.subTest("a record swapped during the send"):
+            sends = len(self.sent())
+            self.write("line.txt", self.bound(ping, record) + "\n")
+            swap = f"import os\nos.rename({str(record)!r}, {str(record)!r} + '.old')\nopen({str(record)!r}, 'w').write(open({str(record)!r} + '.old').read())\nos.remove({str(record)!r} + '.old')\n"
+            self.w.tool(self.w.base / "swap.py", swap)
+            hook = self.w.entry.read_text().replace(
+                '    json.dump(state, open(path, "w"))\n',
+                f'    json.dump(state, open(path, "w"))\n    exec(open({str(self.w.base / "swap.py")!r}).read())\n',
+                1,
+            )
+            self.w.entry.write_text(hook)
+            self.w.bind()
+            result = self.bus("dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", record, code=1)
+            self.assertIn("changed during the send", result.stderr)
+            self.assertEqual(sends + 1, len(self.sent()))
+            self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
+            self.w.entry.write_text(FAKE_HCOM.format(calls=str(self.w.calls), read=READ))
+            self.w.bind()
+        with self.subTest("a symlinked acceptance directory"):
+            acc = self.repo / ".orchestration/acceptance"
+            acc.rename(self.repo / ".orchestration/real-acceptance")
+            acc.symlink_to(self.repo / ".orchestration/real-acceptance")
+            result = self.dispatch(ping, code=1, record=acc / "t.md")
+            self.assertIn("symlinked part", result.stderr)
+            acc.unlink()
+            (self.repo / ".orchestration/real-acceptance").rename(acc)
+        with self.subTest("a safe update prints the next digest, and the old one is spent"):
+            out = self.dispatch(ping, record=record)
+            self.assertEqual(f"record_sha256={sha_bytes(record.read_bytes())}\n", out.stdout)
+            self.write(
+                "line.txt",
+                f"{ping} record_file={record.relative_to(self.repo)} record_sha256={sha(chr(10).join(['---', '{"task": "t"}', '---', '']))}\n",
+            )
+            result = self.bus("dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", record, code=1)
+            self.assertIn("record_sha256 mismatch", result.stderr)
+
+    def test_trusted_path_matrix(self):
+        # Design 5.14 item 3: the record is the checkout's own acceptance directory's, by realpath; a parent that is a
+        # link, a worker root, or another directory refuses; a lexical detour or a case alias of the same directory
+        # does not escape it.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        ping = "AGMSG-PING v1 task_id=t reason=check"
+        self.w.knob("auto-read")
+        detour = self.repo / ".orchestration/tasks/../acceptance/t.md"
+        (self.repo / ".orchestration/tasks").mkdir(exist_ok=True)
+        self.write("line.txt", self.bound(ping, record) + "\n")
+        self.bus("dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", str(detour))
+        alias = self.repo / "alias"
+        alias.symlink_to(self.repo / ".orchestration/acceptance")
+        worker = self.write(".claude/worktrees/x/.orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        for path, needle in ((alias / "t.md", "symlinked part"), (worker, "another directory")):
+            with self.subTest(str(path.relative_to(self.repo))):
+                self.write("line.txt", self.bound(ping, record) + "\n")
+                result = self.bus(
+                    "dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", path, code=1
+                )
+                self.assertIn(needle, result.stderr)
+        case = self.repo / ".orchestration/ACCEPTANCE/t.md"
+        if not case.exists():
+            self.skipTest("a case-sensitive filesystem: no case alias resolves here")
+        with self.subTest("a case alias of the same directory"):
+            self.write("line.txt", self.bound(ping, record) + "\n")
+            self.bus("dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", case)
+
+    def test_contract_attack_matrix(self):
+        # Design 5.14 item 7 through tests/unit/trusted_exec_contract.py, unchanged: shims are not executed, hostile
+        # GIT_* and repository configuration change nothing, a worker root refuses, a post-validation swap is not used.
+        import trusted_exec_contract as tec
+
+        mixin = tec.TrustedExecContractMixin()
+        mixin.addCleanup = self.addCleanup
+        self.w.knob("auto-read")
+        with self.subTest("shim nonexecution"):
+            probe = mixin.shim_probe(self.env)
+            for name in self.ROUTES:
+                self.route(name, env={"PATH": probe.env["PATH"]}, code=0)
+            probe.assert_none_ran()
+        with self.subTest("hostile GIT_* and repository configuration"):
+            git = mixin.hostile_git_probe()
+            with git.attack("environment") as env:
+                for name in self.ROUTES:
+                    self.route(name, env={k: v for k, v in env.items() if k.startswith("GIT_")}, code=0)
+            self.assertFalse(git.hook_marker.exists())
+        with self.subTest("a worker root"):
+            seat = mixin.worker_root_probe()
+            # A host scanner (Spotlight, an endpoint agent) may read a new file once, seconds after it is created:
+            # wait until the input stays unread, so only the route under test can move its access time.
+            for _ in range(20):
+                os.utime(seat.input, ns=(0, tec.BASELINE_NS))
+                time.sleep(0.5)
+                if os.stat(seat.input).st_atime_ns == 0:
+                    break
+            record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+            self.write("line.txt", self.bound("AGMSG-PING v1 task_id=t", record) + "\n")
+            result = self.bus(
+                "dispatch.sh", "team", "orch", "worker", "w5:pA", self.repo / "line.txt", seat.input, code=1
+            )
+            self.assertIn("cannot be written", result.stderr)
+            seat.assert_untouched()
+        with self.subTest("a post-validation replacement"):
+            swapped = mixin.swapped_file_probe()
+            seen = self.calls / "swapped-saw"
+            self.write(
+                "scripts/orchestrator/task-consistency-check.py",
+                f"import os, sys\nos.symlink({str(swapped.attacker)!r}, {str(swapped.base / '.swap')!r})\n"
+                f"os.replace({str(swapped.base / '.swap')!r}, {str(swapped.path)!r})\n"
+                f"open({str(seen)!r}, 'wb').write(open(sys.argv[-1], 'rb').read())\nprint('OK')\n",
+            )
+            self.w.tool(
+                self.w.home / ".local/share/mise/installs/uv/bin/uv",
+                f"#!{sys.executable} -I\nimport os, sys\nargs = sys.argv[sys.argv.index('python') + 1:]\n"
+                "sys.exit(0) if args[-2:] == ['-c', 'import yaml'] else None\n"
+                f"os.execv({sys.executable!r}, [{sys.executable!r}, *args])\n",
+            )
+            line = f"AGMSG-TASK v1 task_id=t task_file={swapped.path} task_sha256={swapped.expected_sha}"
+            self.dispatch(line)
+            swapped.assert_not_consumed(seen.read_bytes())
+
+    def test_fixture_route_isolation(self):
+        # Every child of every route ran in the fixture: hcom, mise and herdr saw the fixture home, and the passwd
+        # home's store and declaration are as they were.
+        passwd = Path(pwd.getpwuid(os.getuid()).pw_dir)
+        live = [passwd / ".hcom", passwd / ".agents/agent-config.yaml"]
+
+        def snapshot():
+            return {
+                str(p): sorted(os.listdir(p)) if p.is_dir() else sha_bytes(p.read_bytes()) for p in live if p.exists()
+            }
+
+        before = snapshot()
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        self.dispatch("AGMSG-PING v1 task_id=t", code=1, record=record, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+        for name in self.ROUTES:
+            self.route(name, env={"AGMSG_DISPATCH_TIMEOUT": "1"})
+        homes = {c["env"]["HOME"] for c in self.w.hcom_calls()}
+        self.assertEqual({str(self.w.home)}, homes)
+        self.assertTrue(self.w.herdr_calls())  # the unconfirmed sends nudged through the fixture home's herdr
+        self.assertEqual(before, snapshot())
+
+    def test_migration_item_matrix(self):
+        # One behavioral subfixture per item 0 to 7, with the agmsg store absent from the fixture home throughout.
+        self.assertFalse((self.w.home / ".agents/skills/agmsg").exists())
+        history = (self.repo / "scripts/orchestrator/bus-history.sh").read_text()
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        self.w.knob("auto-read")
+        with self.subTest("item 0: the SQL templates and the store facts the item-0 run measured on hcom 0.7.30"):
+            for piece in READ.split(" LEFT JOIN"):
+                self.assertIn(piece.split(" json_each")[0], history)
+            self.assertIn("msg_thread = '{team}'", history)
+            self.assertIn('int.from_bytes(head[60:64], "big") != 18', history)
+            self.assertIn('"hcom.db"', history)
+        with self.subTest("item 1: a marker row"):
+            self.w.message("orch", "worker", "AGMSG-TASK v1 task_id=t", thread="team")
+            self.assertRegex(self.bus("bus-history.sh", "team").stdout, r"^[○●] \[\S+Z\] orch → worker: AGMSG-TASK")
+        with self.subTest("item 2: one receipt per send"):
+            self.assertEqual({"id", "read_at"}, set(json.loads(self.route("hcom-dispatch", code=0).stdout)))
+        with self.subTest("item 3: the record is the exact id's"):
+            self.dispatch("AGMSG-PING v1 task_id=t", record=record)
+            self.assertTrue(any(" AND id = " in c["argv"][-1] for c in self.w.hcom_calls("events")))
+        with self.subTest("item 4: a revise without previous_head is never sent"):
+            self.assertIn("previous_head", self.dispatch("AGMSG-ACCEPTANCE v1 task_id=t status=revise", code=1).stderr)
+        with self.subTest("item 5: bus-read reads the reader"):
+            self.assertIn("open: task=t seat=worker", self.bus("bus-read.sh", "team").stdout)
+        with self.subTest("item 6: the counters count through the reader"):
+            for _ in range(2):
+                self.w.message("worker", "orch", "AGMSG-RESULT v1 task_id=t status=ready_for_review", thread="team")
+            out = self.w.run("scripts/regime-counters.sh", "t", "--team", "team", "--history-only", env=self.env)
+            self.assertIn(" results=2 ", out.stdout)
+            self.assertIn(" source=live", out.stdout)
+        with self.subTest("item 7: replay.sh, agent-stop-gate.sh and agmsg-dispatch keep their bus"):
+            for rel in (
+                "scripts/orchestrator/replay.sh",
+                "scripts/agent-stop-gate.sh",
+                "home/dot_local/bin/common/executable_agmsg-dispatch",
+            ):
+                self.assertNotIn("bus-history", (ROOT / rel).read_text(), rel)
+                self.assertNotIn("hcom-dispatch", (ROOT / rel).read_text(), rel)
+            replay = (ROOT / "scripts/orchestrator/replay.sh").read_text()
+            self.assertEqual([], [w for w in ("history.sh", "storage.sh", "sqlite3") if w in replay])
 
 
 if __name__ == "__main__":

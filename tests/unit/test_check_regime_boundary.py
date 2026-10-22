@@ -1,4 +1,8 @@
-"""Exercise the INV-6 probe of scripts/check-regime-boundary.sh against a fake agmsg store and fake gh.
+"""Exercise the INV-6 probe of scripts/check-regime-boundary.sh against the hcom fixture world and fake gh.
+
+The probe runs the counters beside it with no --passwd-home (it is the production caller); the fixture checkout keeps
+the real counters as regime-counters.real.sh and puts a wrapper at the probe's path that adds the fixture world's
+--passwd-home, so the counters read test_hcom_dispatch.HcomWorld's fake hcom, never a live store.
 
 The other probes are tested in tests/unit/test_herdr_agents.py; these tests read only the lines the
 INV-6 probe prints for their own task ids.
@@ -15,6 +19,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from test_hcom_dispatch import HcomWorld
+
 # The probe reads reset_of with `uv run --with pyyaml`; the fake HOME keeps the real uv cache.
 UV_CACHE = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True, check=True).stdout.strip()
 # The redesign task file T1-redesign.md (its reset_of names T1) and the hash a reset record names for it.
@@ -22,16 +29,7 @@ DESIGN_TEXT = "---\nreset_of: [T1]\n---\nredesign\n"
 DESIGN = hashlib.sha256(DESIGN_TEXT.encode()).hexdigest()
 OTHER_TEXT = "---\nreset_of: [T9]\n---\nanother design\n"
 RESET = f"---\nformat: 2\nreset_of: T1\nredesign_task: T1-redesign\nredesign_source: T1-review\ndesign_sha256: {DESIGN}\n---\n"
-# Same fakes as tests/unit/test_regime_counters.py: the storage facade serves JSONL history and
-# refuses a --limit; gh serves $HOME/gh/<path after pulls/, / as _>.json through jq.
-STORAGE_SH = """
-agmsg_storage_load() { :; }
-storage_store_exists() { [[ -f $HOME/history-$1.jsonl ]]; }
-storage_history() {
-    [[ $# == 1 ]] || return 9
-    cat "$HOME/history-$1.jsonl"
-}
-"""
+# gh serves $HOME/gh/<path after pulls/, / as _>.json through jq.
 GH = """#!/usr/bin/env bash
 cat > /dev/null # drains whatever stdin it inherits, as a reading command would
 path="" filter=. paginate=false
@@ -55,10 +53,7 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name)
         self.home = self.temp / "home"
-        self.storage = self.home / ".agents/skills/agmsg/scripts/lib/storage.sh"
-        self.storage.parent.mkdir(parents=True)
-        self.storage.write_text(STORAGE_SH)
-        (self.home / "gh").mkdir()
+        (self.home / "gh").mkdir(parents=True)
         bin_dir = self.temp / "bin"
         bin_dir.mkdir()
         (bin_dir / "gh").write_text(GH)
@@ -70,11 +65,23 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
             "PATH": os.pathsep.join([str(bin_dir), jq_dir, os.path.dirname(shutil.which("uv")), "/usr/bin", "/bin"]),
             "UV_CACHE_DIR": UV_CACHE,
             "UV_PYTHON": sys.executable,
+            "TMPDIR": str(self.temp),
         }
+        self.env.pop("HCOM_DIR", None)
         self.main = self.temp / "dotfiles"
         (self.main / "scripts").mkdir(parents=True)
-        for name in ("check-regime-boundary.sh", "regime-counters.sh"):
-            shutil.copy(ROOT / "scripts" / name, self.main / "scripts")
+        shutil.copy(ROOT / "scripts/check-regime-boundary.sh", self.main / "scripts")
+        self.w = HcomWorld(self.temp / "world", root=self.main)
+        counters = self.main / "scripts/regime-counters.sh"
+        counters.rename(self.main / "scripts/regime-counters.real.sh")
+        # A baseline copy (main before T129 a02) takes no --passwd-home: it runs its own route.
+        flag = (
+            f'--passwd-home "{self.w.home}"' if "--passwd-home" in counters.with_suffix(".real.sh").read_text() else ""
+        )
+        counters.write_text(
+            f'#!/bin/bash\nexec /bin/bash --noprofile --norc -p "${{0%/*}}/regime-counters.real.sh" "$@" {flag}\n'
+        )
+        counters.chmod(0o755)
         (self.main / ".orchestration/tasks").mkdir(parents=True)
         (self.main / ".orchestration/acceptance").mkdir()
         (self.main / ".orchestration/tasks/T1.md").write_text("task\n")
@@ -102,13 +109,11 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         (self.main / ".orchestration/acceptance" / name).write_text(text)
 
     def report(self, *extra):
-        rows = [*self.messages, *extra]
-        (self.home / "history-dotfiles-conformance.jsonl").write_text(
-            "".join(
-                json.dumps({"id": f"m{i}", "at": "2026-10-11T00:00:00Z", "from": f, "to": "x", "body": b}) + "\n"
-                for i, (f, b) in enumerate(rows)
-            )
-        )
+        self.w.load()
+        self.w.state["events"] = []
+        self.w.save()
+        for f, b in [*self.messages, *extra]:
+            self.w.message(f, "x", b, ts="2026-10-11T00:00:00+00:00", thread="dotfiles-conformance")
         result = subprocess.run(
             ["bash", str(self.main / "scripts/check-regime-boundary.sh"), "--report"],
             cwd=self.main,
@@ -261,10 +266,13 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         self.assertEqual([t1, "regime-boundary: T3 S2: revises 3 >= 2 source=live"], self.report())
 
     def test_the_probe_skips_without_the_counters_script_or_a_readable_store(self):
-        (self.main / "scripts/regime-counters.sh").unlink()
+        counters = self.main / "scripts/regime-counters.sh"
+        kept = counters.read_text()
+        counters.unlink()
         self.assertEqual([], self.report())
-        shutil.copy(ROOT / "scripts/regime-counters.sh", self.main / "scripts")
-        self.storage.unlink()
+        counters.write_text(kept)
+        counters.chmod(0o755)
+        self.w.knob("events-fails")  # the reader refuses, so the counters cannot read the bus
         self.assertEqual([], self.report())
 
     def test_a_seated_worker_whose_pane_is_gone_names_the_stale_removal(self):
@@ -274,6 +282,7 @@ class RegimeBoundaryCountsTest(unittest.TestCase):
         git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.main)]
         subprocess.run([*git, "worktree", "add", "-q", "--detach", str(worktree)], check=True)
         scripts = self.home / ".agents/skills/agmsg/scripts"
+        (scripts / "lib").mkdir(parents=True)
         identities = scripts / "identities.sh"
         identities.write_text(
             "#!/usr/bin/env bash\n[[ $1 == */.claude/worktrees/b1 && $2 == claude-code ]] || exit 0\n"

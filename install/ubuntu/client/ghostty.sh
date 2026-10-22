@@ -44,18 +44,20 @@ function add_ghostty_ppa() {
 # @description Run one step that fetches from the Ghostty PPA, passing its output through.
 # @arg $@ string The command to run.
 # @exitcode 0 The step succeeded.
-# @exitcode 75 apt's only errors are fetch failures from the Ghostty PPA, whatever its own exit
-#   (apt-get update exits 0 when an index fails to download).
+# @exitcode 75 apt's only errors are fetch failures from the Ghostty PPA and apt's summary of them, whatever
+#   its own exit (apt-get update exits 0 when an index fails to download). The step runs under LC_ALL=C LANG=C,
+#   which sudo keeps, so apt's diagnostics are the English forms on every locale.
 # @exitcode * Otherwise the step's own status: any other apt error stays fatal.
 #
 function ppa_step() {
     local output status=0 line fetch=0
-    output="$("$@" 2>&1)" || status=$?
+    output="$(LC_ALL=C LANG=C "$@" 2>&1)" || status=$?
     printf '%s\n' "${output}"
     while IFS= read -r line; do
         case ${line} in
         [EW]": Failed to fetch https://${GHOSTTY_PPA_URL}"* | [EW]": Failed to fetch http://${GHOSTTY_PPA_URL}"*) fetch=1 ;;
-        "Err:"*" https://${GHOSTTY_PPA_URL}"* | "Err:"*" http://${GHOSTTY_PPA_URL}"* | [EW]": Some index files failed to download"*) ;;
+        "Err:"*" https://${GHOSTTY_PPA_URL}"* | "Err:"*" http://${GHOSTTY_PPA_URL}"*) ;;
+        [EW]": Some index files failed to download"* | "E: Unable to fetch some archives"*) ;;
         "E:"* | "Err:"* | "W: Failed to fetch"*) return "${status}" ;;
         esac
     done <<< "${output}"

@@ -515,3 +515,78 @@ $ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/dotfiles-T133-pre-send-check-a
 exit=0
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```
+
+## 12. CI at ec811014 (the round-2 diff head)
+
+```console
+$ gh pr checks 442 --repo mryfmo/dotfiles --watch --interval 30
+GitGuardian Security Checks	fail	4s	https://dashboard.gitguardian.com	
+regime	fail	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686367210/job/119521335882	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+public-bootstrap (macos-14, client)	pass	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344852	
+public-bootstrap (ubuntu-24.04, client)	pass	13s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344616	
+public-bootstrap (ubuntu-24.04, server)	pass	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344224	
+test (macos-14, client)	pass	9m38s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344829	
+test (ubuntu-24.04, client)	pass	12m13s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344666	
+test (ubuntu-24.04, server)	pass	6m53s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344761	
+test (ubuntu-26.04, client)	pass	10m9s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344564	
+validate	pass	2m37s	https://github.com/mryfmo/dotfiles/actions/runs/39686370145/job/119521344338	
+GitGuardian Security Checks	fail	4s	https://dashboard.gitguardian.com	
+regime	fail	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686367210/job/119521335882	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+public-bootstrap (macos-14, client)	pass	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344852	
+public-bootstrap (ubuntu-24.04, client)	pass	13s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344616	
+public-bootstrap (ubuntu-24.04, server)	pass	14s	https://github.com/mryfmo/dotfiles/actions/runs/39686370152/job/119521344224	
+test (macos-14, client)	pass	9m38s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344829	
+test (ubuntu-24.04, client)	pass	12m13s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344666	
+test (ubuntu-24.04, server)	pass	6m53s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344761	
+test (ubuntu-26.04, client)	pass	10m9s	https://github.com/mryfmo/dotfiles/actions/runs/39686370214/job/119521344564	
+validate	pass	2m37s	https://github.com/mryfmo/dotfiles/actions/runs/39686370145/job/119521344338	
+exit=1
+```
+
+The two failing checks, read with `XDG_CACHE_HOME="$TMPDIR/gh-cache" gh run view 39686367210 --repo mryfmo/dotfiles --log-failed | grep -o 'regime-ci: .*'` and `gh api repos/mryfmo/dotfiles/commits/ec811014/check-runs` (GitGuardian output):
+
+```console
+regime-ci: warning: dotfiles-T133-pre-send-check-a01: predecessor copy .orchestration/dotfiles-T133-pre-send-check-a01/task.md (reset_of of dotfiles-T133-pre-send-check-a02)
+regime-ci: warning: dotfiles-T133-pre-send-check-a02: precheck absent
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/autoskill.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/dotfiles-T133-pre-send-check-a03-worker-crit.json is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/dotfiles-T133-pre-send-check-a03-worker-review-receipt.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/learning.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/report.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/result.txt is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/sandbox.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/task.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a03/validation.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: allowed-files: scripts/orchestrator/pre_send.py is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a02: caps: 252 changed lines outside tests/, .orchestration/, tests/ exceed 130
+regime-ci: dotfiles-T133-pre-send-check-a02: caps: 407 changed lines under tests/ exceed 300
+regime-ci: warning: dotfiles-T133-pre-send-check-a03: precheck absent
+regime-ci: dotfiles-T133-pre-send-check-a03: task-copy: .orchestration/dotfiles-T133-pre-send-check-a03/task.md differs from the base's dispatched .orchestration/tasks/dotfiles-T133-pre-send-check-a03.md
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/autoskill.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/learning.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/report.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/sandbox.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/task.md is outside allowed_files
+regime-ci: dotfiles-T133-pre-send-check-a03: allowed-files: .orchestration/dotfiles-T133-pre-send-check-a01/validation.md is outside allowed_files
+```
+
+- **`regime`:** it also failed at the orchestrator's head `a30a43ba`. Both causes are base-side, and neither is a file in `allowed_files`:
+  - The base `7da0cdfa` still holds the round-1 text (`53f78f96…`), but amendment 1 requires the copy to be `24b20a34…`. Because the copy no longer matches the base, `a02` stays a target.
+  - `regime-ci.py` exempts only `reset_of` directories, not `retained_predecessor_directories`. So the retained a01 records count against a03's `allowed_files`.
+- **GitGuardian:** the same two findings as before, in commits `78882410` (`.orchestration/dotfiles-T133-trusted-exec-contract-tests-a01/result.txt`) and `70fc2f84` (`tests/unit/test_pre_send.py`, an a01 fixture). They also failed at `a30a43ba` and at `1d72f169`.
+
+## 13. The bounded Bot wait for ec811014
+
+```console
+$ date -u; git log -1 --format=%cI ec811014b27c27faa1b1f3039259a65fbd548f8f
+2026-10-22T00:23:09Z
+2026-10-22T07:25:11+09:00
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/442/reviews --jq '.[]|select(.user.login=="chatgpt-codex-connector[bot]" and .commit_id=="ec811014b27c27faa1b1f3039259a65fbd548f8f")|[.commit_id,.submitted_at]|@tsv'
+exit=0
+$ gh api --paginate repos/mryfmo/dotfiles/pulls/442/comments --jq '.[]|select(.in_reply_to_id == null and .user.login=="chatgpt-codex-connector[bot]" and .original_commit_id=="ec811014b27c27faa1b1f3039259a65fbd548f8f")|[.id,.original_commit_id,.path]|@tsv'
+exit=0
+```
+
+The push was at 22:25:11Z and the listing at 00:23:09Z, more than 15 minutes later. There is no Bot review of the head, so the result is `bot: none`. No `@codex review` comment was posted.

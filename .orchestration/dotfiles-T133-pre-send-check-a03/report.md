@@ -100,3 +100,11 @@ cost: n/a (the seat's token and time usage is not visible to the worker)
 - **Round-2 residuals:**
   - `UV_CACHE_DIR` is checked with `-d` only, so an explicit value that names the shared default cache passes. The task forbids only an unset or non-directory value and a fallback.
   - The sandbox-exception and record-placement audit rows are the orchestrator's (amendment 1).
+- **CI at the round-2 head `ec811014` (validation §12):**
+  - The 7 test, validate and bootstrap checks pass.
+  - `regime` fails for base-side reasons, as it already did at `a30a43ba`:
+    - the base still holds the round-1 task text;
+    - `regime-ci.py` does not exempt `retained_predecessor_directories`.
+  - GitGuardian fails on the two pre-existing commits `78882410` and `70fc2f84`.
+  - None of these is a file in `allowed_files`.
+- **The Bot:** `bot: none` for `ec811014` (validation §13).

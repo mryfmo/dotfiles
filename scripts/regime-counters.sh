@@ -8,8 +8,9 @@
 #   `gh api --paginate` on this repository. A message's task, status and verdict
 #   are its first `task_id=`, `status=` and `verdict=` tokens, split on whitespace runs (tabs too) as dispatch.sh reads a line (later ones are
 #   free text). Counts follow INV-6's sentence only: amendments = AGMSG-TASKs -
-#   1; revises = AGMSG-RESULTs - 1, whatever their status; questions = PONGs of
-#   status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
+#   1; revises = the larger of AGMSG-RESULTs - 1 (whatever their status) and this
+#   task's ACCEPTANCEs of status revise (a `verdict=` token never counts); questions =
+#   PONGs of status question; withdrawn = ACCEPTANCEs of status withdrawn, informational.
 #   Bot heads are the distinct `original_commit_id` of Codex Bot
 #   (`chatgpt-codex-connector[bot]`) review comments whose title line carries a
 #   P0 or P1 badge, counted only for commits after the first RESULT's `head=` in
@@ -128,6 +129,7 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
   | {tasks: [$tasks[].id], results: [$results[].id], authors: $authors,
      questions: [kind("AGMSG-PONG")[] | select(tok("status") == "question") | .id],
      withdrawn: [kind("AGMSG-ACCEPTANCE")[] | select(tok("status") == "withdrawn") | .id],
+     revised: [kind("AGMSG-ACCEPTANCE")[] | select(tok("status") == "revise") | .id],
      head: ($results[0] // null | if . then tok("head") else null end | if . and test("^[0-9a-f]{7,40}$") then . else null end),
      pr: (if $pr != "" then $pr else [$results[] | tok("pr") | select(.)][0] | if . == null or test("^[0-9]+$") then . else "invalid" end end),
      first: $tasks[0].at, last: $results[-1].at,
@@ -174,7 +176,7 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
   def replan: type == "object" and keys == ["design", "implementation", "specification", "verification"] and all(.[]; text);
   def replans: (if . == null then {} else . end) | type == "object" and all(to_entries[]; (.key | test("^[a-z0-9-]+\\z")) and (.value | replan));
   bot as $b | ($b | if type == "array" then length else . end) as $n
-  | ([($c.tasks | length) - 1, 0] | max) as $amendments | ([($c.results | length) - 1, 0] | max) as $revises
+  | ([($c.tasks | length) - 1, 0] | max) as $amendments | ([($c.results | length) - 1, ($c.revised | length), 0] | max) as $revises
   | "task=\($t) tasks=\($c.tasks | length) amendments=\($amendments) questions=\($c.questions | length) results=\($c.results | length) withdrawn=\($c.withdrawn | length) revises=\($revises) first_result_head=\($c.head // "none") bot_p1_heads_after_result=\($n) audits=unknown wall=\($c.first // "none")..\($c.last // "none") (\(if $c.first and $c.last then ($c.last | fromdateiso8601) - ($c.first | fromdateiso8601) | hm else "-" end)) source=\($s)",
     ([["revises", $revises], ["amendments", $amendments], ["questions", ($c.questions | length)], ["bot_p1_heads", $n]][]
       | select((.[1] | type) == "number" and .[1] >= $limit) | "S2: \(.[0]) \(.[1]) >= \($limit) source=\($s)"),

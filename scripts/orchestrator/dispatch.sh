@@ -126,6 +126,7 @@ eval "home=~${owner}" # the name is checked above; ~name is its passwd home
 }
 child=(/usr/bin/env -i PATH=/usr/bin:/bin HOME="${home}" LANG=C.UTF-8 TMPDIR="${TMPDIR:-/tmp}" UV_CACHE_DIR="${UV_CACHE_DIR}")
 [[ -z ${AGMSG_DISPATCH_TIMEOUT:-} ]] || child+=("AGMSG_DISPATCH_TIMEOUT=${AGMSG_DISPATCH_TIMEOUT}")
+[[ ${AGMSG_DISPATCH_TIMEOUT:-1} =~ ^[1-9][0-9]{0,5}$ ]] || usage
 bash_p=(/bin/bash --noprofile --norc -p)
 self="${root}/scripts/orchestrator/dispatch.sh"
 # bash 3.2 keeps here-documents in /tmp, which a sandbox may refuse: each Python section sits in one that never runs
@@ -240,7 +241,7 @@ for t in "${tokens[@]}"; do
         (umask 077 && /bin/cat -- "${path}" > "${snapshot}") || exit 1
         path=${snapshot}
     fi
-    got="$(/usr/bin/shasum -a 256 "${path}")" && got=${got%% *}
+    got="$("${child[@]}" /usr/bin/shasum -a 256 "${path}")" && got=${got%% *} # shasum is Perl: no inherited PERL5*
     [[ ${got} == "${want}" ]] || {
         echo "dispatch: ${field} mismatch: the line has ${want}, ${path} hashes to ${got}" >&2
         exit 1
@@ -292,9 +293,7 @@ BRIEF
         }
     fi
 fi
-# The checker has read the snapshot; nothing after this point reads it.
-[[ -z ${snapdir} ]] || /bin/rm -rf -- "${snapdir}"
-snapdir=
+[[ -z ${snapdir} ]] || /bin/rm -rf -- "${snapdir}" # the checker has read the snapshot; nothing after this reads it
 window=${BUS_READ_WINDOW:-200}
 [[ ${window} =~ ^[1-9][0-9]*$ ]] || usage
 # Constraint 6: a bus that cannot be read (a forged row, a foreign store) is never written.
@@ -312,7 +311,7 @@ import fcntl, hashlib, json, os, re, stat, subprocess, sys
 from datetime import datetime, timezone
 
 root, path, line, team, sender, to, pane, task, record_file, record_sha, revise = sys.argv[1:12]
-fixture, child = [a for a in sys.argv[12:14] if a], json.loads(sys.argv[14])
+fixture, child = [a for a in sys.argv[12:14] if a], sys.argv[14:]  # child: env -i and its NAME=value arguments
 bash_p = ["/bin/bash", "--noprofile", "--norc", "-p"]
 
 def fail(why, code=1):
@@ -440,4 +439,4 @@ sys.exit(send.returncode)
 RECORDER
 exec "${child[@]}" /usr/bin/python3 -I -c "${boot}" "${self}" RECORDER "${root}" "${record}" "${line}" "${team}" "${from}" "${to}" "${pane}" \
     "$(value_of task_id)" "$(value_of record_file)" "$(value_of record_sha256)" "${revise}" \
-    "${fixture[0]:-}" "${fixture[1]:-}" "$(printf '%s\n' "${child[@]}" | /usr/bin/python3 -I -c 'import json, sys; print(json.dumps(sys.stdin.read().splitlines()))')"
+    "${fixture[0]:-}" "${fixture[1]:-}" "${child[@]}"

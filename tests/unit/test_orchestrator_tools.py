@@ -2003,6 +2003,9 @@ class OrchestratorToolsTest(unittest.TestCase):
             self.w.tool(decoys / name, f"#!/bin/sh\necho {name} >> '{marker}'\nexit 97\n")
         (decoys / "startup.py").write_text(f"open({str(marker)!r}, 'a').write('pythonstartup\\n')\n")
         (decoys / "sitecustomize.py").write_text(f"open({str(marker)!r}, 'a').write('pythonpath\\n')\n")
+        (decoys / "pwn.pm").write_text(f"open(my $f, '>>', '{marker}'); print $f \"perl5opt\\n\"; 1;\n")
+        for name in ("xcrun", "python3", "perl"):  # DEVELOPER_DIR steers the /usr/bin shims of the developer tools
+            self.w.tool(decoys / "dev/usr/bin" / name, f"#!/bin/sh\necho developer_dir >> '{marker}'\nexit 97\n")
         hostile = {
             "PATH": f"{decoys}:{self.env['PATH']}",
             "BASH_ENV": str(decoys / "bash"),
@@ -2012,12 +2015,30 @@ class OrchestratorToolsTest(unittest.TestCase):
             "PYTHONPATH": str(decoys),
             "BUS_HISTORY": str(decoys / "bus-history.sh"),
             "AGMSG_SCRIPTS": str(decoys),
+            "PERL5OPT": "-Mpwn",
+            "PERL5LIB": str(decoys),
+            "DEVELOPER_DIR": str(decoys / "dev"),
         }
         self.w.knob("auto-read")
         for name in self.ROUTES:
             with self.subTest(name):
                 self.route(name, env=hostile, code=0)
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        # The record path with a hashed file: shasum (Perl) and the recorder's child prefix run under these too.
+        record = self.write(".orchestration/acceptance/t.md", '---\n{"task": "t"}\n---\n')
+        self.write("design.md", "design\n")
+        line = f"AGMSG-PING v1 task_id=t design=design.md design_sha256={sha('design' + chr(10))}"
+        with self.subTest("dispatch.sh with a hashed file and a record"):
+            self.dispatch(line, record=record, env=hostile)
+            self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        with self.subTest("a line break in an inherited value adds no argument"):
+            self.dispatch(
+                line, code=2, record=record, env={**hostile, "AGMSG_DISPATCH_TIMEOUT": f"2\n{decoys / 'bash'}"}
+            )
+            self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        with self.subTest("a forged digest is still refused under PERL5OPT"):
+            forged = f"AGMSG-PING v1 task_id=t design=design.md design_sha256={'0' * 64}"
+            self.assertIn("design_sha256 mismatch", self.dispatch(forged, code=1, env=hostile).stderr)
 
     def test_private_cache_matrix(self):
         # Constraint 1 and design 5.14 item 9: an absent or relative UV_CACHE_DIR refuses every route before any
@@ -2105,7 +2126,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             self.assertIn("changed during the send", result.stderr)
             self.assertEqual(sends + 1, len(self.sent()))
             self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
-            self.w.entry.write_text(FAKE_HCOM.format(calls=str(self.w.calls), read=READ))
+            self.w.entry.write_text(FAKE_HCOM.format(calls=str(self.w.calls), read=READ, base=str(self.w.base)))
             self.w.bind()
         with self.subTest("a symlinked acceptance directory"):
             acc = self.repo / ".orchestration/acceptance"

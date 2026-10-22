@@ -65,7 +65,10 @@ def fail(code, why):
     sys.exit(code)
 
 def run(argv, timeout=120):
-    return subprocess.run(argv, env=env, cwd="/", stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
+    try:
+        return subprocess.run(argv, env=env, cwd="/", stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        fail(3, f"{os.path.basename(argv[0])} timed out after {timeout} s; check the bus before resending")
 
 fixture = args[:2] if args[:1] == ["--passwd-home"] else []
 if fixture and (len(args) < 2 or not args[1].startswith("/") or not os.path.isdir(args[1])):
@@ -118,7 +121,7 @@ def wait(until):
     while not seen():
         if until - time.monotonic() <= 0:
             return False
-        time.sleep(min(until - time.monotonic(), 5))
+        time.sleep(max(0, min(until - time.monotonic(), 5)))
     return True
 
 start = time.monotonic()

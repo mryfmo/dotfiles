@@ -66,12 +66,12 @@ parser.add_argument("--json", action="store_true")
 parser.add_argument("team")
 a = parser.parse_args(args)
 team, as_json, home = a.team, a.json, a.passwd_home
-checks = ((TEAM, team), (LIMIT, a.limit or "1"), (ID, a.message_id or "1"))
-if not all(re.fullmatch(p, v) for p, v in checks) or (a.message_id and not as_json):
+checks = ((TEAM, team), (LIMIT, "1" if a.limit is None else a.limit), (ID, "1" if a.message_id is None else a.message_id))
+if not all(re.fullmatch(p, v) for p, v in checks) or (a.message_id is not None and not as_json):
     usage()
 if home is not None and not (home.startswith("/") and os.path.isdir(home)):
     usage()
-limit, mid = int(a.limit) if a.limit else None, int(a.message_id) if a.message_id else None
+limit, mid = (None if v is None else int(v) for v in (a.limit, a.message_id))
 home = home or pwd.getpwuid(os.getuid()).pw_dir
 
 def store():

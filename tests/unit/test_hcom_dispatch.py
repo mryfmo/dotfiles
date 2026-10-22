@@ -36,10 +36,12 @@ READ = (
 FAKE_HCOM = r"""#!/usr/bin/python3 -I
 import json, os, re, sys
 from datetime import datetime, timezone
-CALLS, READ = {calls!r}, {read!r}
+CALLS, READ, BASE = {calls!r}, {read!r}, {base!r}
 args, home = sys.argv[1:], os.environ.get("HOME", "")
 with open(os.path.join(CALLS, "hcom.jsonl"), "a") as f:
     f.write(json.dumps({{"argv": args, "env": dict(os.environ)}}) + "\n")
+if not home.startswith(BASE + "/"):  # a home outside the fixture (the passwd home): never read a live store
+    sys.exit(9)
 path = os.path.join(home, ".hcom", "fake.json")
 state = json.load(open(path))
 knob = lambda name: os.path.join(CALLS, name)
@@ -115,7 +117,7 @@ class HcomWorld:
         self.save()
         self.entry = self.root / ".agents/worklog/uv-tools/hcom/bin/hcom"
         self.entry.parent.mkdir(parents=True)
-        self.entry.write_text(FAKE_HCOM.format(calls=str(self.calls), read=READ))
+        self.entry.write_text(FAKE_HCOM.format(calls=str(self.calls), read=READ, base=str(self.base)))
         self.entry.chmod(0o755)
         self.bind()
         installs = self.home / ".local/share/mise/installs"

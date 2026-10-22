@@ -466,7 +466,19 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         if real_uv:
             subprocess.run(  # warm the default cache once, so the offline runs find PyYAML
-                [real_uv, "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-c", "import yaml"],
+                [
+                    real_uv,
+                    "run",
+                    "--no-config",
+                    "--no-project",
+                    "--python",
+                    sys.executable,
+                    "--with",
+                    "pyyaml",
+                    "python",
+                    "-c",
+                    "import yaml",
+                ],
                 cwd=self.temp,
                 capture_output=True,
                 check=True,

@@ -1,0 +1,407 @@
+"""Exercise scripts/orchestrator/pre-send.sh, the final-byte task preflight (T133 pre-send-check-a01, reset as a02).
+
+The real script, consistency checker and validator are linked into a temporary repository root, so owner records
+resolve there and no live record changes. The script's pinned interpreter path, under a temporary HOME, links to
+this interpreter, and its .cache/uv links to the real uv cache, so uv runs offline. Every run's output must be fixed labels
+and line numbers only, on both streams. Refused secret and home fixtures are built from fragments.
+"""
+
+import ast
+import hashlib
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+TID = "dotfiles-T999-fixture-a01"
+LINKS = ("scripts/orchestrator/pre-send.sh", "scripts/orchestrator/task-consistency-check.py")
+LINKS += ("scripts/validate-agent-assets.py",)
+LINKS += tuple(r for r in ("scripts/orchestrator/pre_send.py",) if (ROOT / r).exists())  # absent on legacy heads
+LEAK = "=".join(("pass" + "word ", " 'hunt" + "er2x'"))  # the validator's pattern matches only once assembled
+TOKEN = hashlib.sha256(b"pre-send fixture").hexdigest()[:30]  # made at run time; no 8-character run may leak
+HOMES = ("/Us" + "ers/alice/notes", "see /ho" + "me/bob", "/ro" + "ot/.ssh/id", "/var/ro" + "ot/Library")
+LABELS = "front-matter|consistency|secret-pattern|literal-home|self-cap|bash-syntax|owner-section|input|tempfile|interpreter|startup"
+GRAMMAR = re.compile(
+    "(?:"
+    + LABELS
+    + r"): refused( line\(s\) \d+(,\d+)*)?|sha256: [0-9a-f]{64}|preflight: helper failed \(exit 1\)|refused: UV_CACHE_DIR absent"
+)
+
+
+def validator_pattern():  # this test's own reading of the validator's one assignment, parsed and never run
+    tree = ast.parse((ROOT / "scripts/validate-agent-assets.py").read_text())
+    names = {n.targets[0].id: n.value for n in tree.body if isinstance(n, ast.Assign) and hasattr(n.targets[0], "id")}
+    return re.compile(*map(ast.literal_eval, names["SECRET_PATTERN"].args))
+
+
+class PreSendTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = subprocess.run([shutil.which("uv"), "cache", "dir"], capture_output=True, text=True, check=True)
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.tmp = Path(temp.name).resolve()
+        self.root, home = self.tmp / "repo", self.tmp / "home"
+        for rel in LINKS:
+            (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / rel).symlink_to(ROOT / rel)
+        pinned = home / ".local/share/mise/installs/python/3.15.0/bin/python3"
+        pinned.parent.mkdir(parents=True)
+        pinned.symlink_to(os.path.realpath(sys.executable))
+        (home / ".cache").mkdir()  # legacy heads clear UV_CACHE_DIR and read uv's default cache under HOME
+        (home / ".cache/uv").symlink_to(self.cache.stdout.strip())
+        mise = home / ".local/bin/mise"  # the pinned mise answers `which uv` with the real uv, as on the host
+        mise.parent.mkdir(parents=True)
+        mise.write_text(f"#!/bin/sh\necho {os.path.realpath(shutil.which('uv'))}\n")
+        mise.chmod(0o755)
+        self.home = home
+        self.env = {"PATH": os.environ["PATH"], "HOME": str(home), "TMPDIR": str(self.tmp), "LANG": "C.UTF-8"}
+        self.env["UV_CACHE_DIR"] = self.cache.stdout.strip()  # the explicit private cache (design 5.14 item 9)
+
+    def task(self, body="", items=1, name=TID, front=""):  # the fixture's line 12 is its last Item heading
+        text = f"---\nformat: 2\ntask_id: {TID}\nkind: code\nsecurity: false\n{front}allowed_files:\n"
+        text += f"  - .orchestration/{TID}/**\n---\n\n# Fixture\n" + "".join(f"\n## Item {i}\n" for i in range(items))
+        path = self.tmp / f"{name}.md"
+        path.write_text(text + body)
+        return path
+
+    def run_send(self, *args, cwd=None, env=None):  # the entrypoint itself; every run: labels and numbers only
+        cmd, env = [str(self.root / LINKS[0]), *map(str, args)], {**self.env, **(env or {})}
+        result = subprocess.run(cmd, env=env, cwd=cwd, capture_output=True, text=True, timeout=120, check=False)
+        self.assertEqual("", result.stderr)
+        self.assertTrue(all(GRAMMAR.fullmatch(x) for x in result.stdout.splitlines()), result.stdout)
+        return result
+
+    def refused(self, result, reason, lines=None):
+        self.assertEqual(1, result.returncode, result.stdout)
+        got = result.stdout.splitlines() if lines else [x.split(" line")[0] for x in result.stdout.splitlines()]
+        self.assertIn(f"{reason}: refused" + (f" line(s) {lines}" if lines else ""), got)
+
+    def passed(self, path):
+        result = self.run_send(path)
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertEqual(f"sha256: {hashlib.sha256(path.read_bytes()).hexdigest()}", result.stdout.splitlines()[-1])
+
+    def test_consistency_refusal(self):
+        self.refused(self.run_send(self.task(name="dotfiles-T999-other-a01")), "consistency")
+
+    def test_secret_pattern_matches_validator(self):
+        path = self.task(f"\nkeep {LEAK}\npassword: none\n\n## Checks\n\n```\n{LEAK}\n```\n")
+        lines = [i for i, line in enumerate(path.read_text().split("\n"), 1) if validator_pattern().search(line)]
+        self.assertEqual([14, 20], lines)  # the body line and the last Checks line, not the near miss
+        self.refused(self.run_send(path), "secret-pattern", "14,20")
+
+    def test_secret_spanning_two_lines(self):
+        path = self.task("\n" + LEAK.replace("= ", "=\n"))
+        self.assertFalse(any(map(validator_pattern().search, path.read_text().split("\n"))))
+        self.refused(self.run_send(path), "secret-pattern", "14,15")
+
+    def test_literal_home_refusal(self):
+        # the validator's pattern: user and root homes on both platforms, a bare home name too (PR #442 4322154981)
+        body = f"\n{HOMES[0]}\n$HOME/ok and <home>/ok and /Users/<home>\n{HOMES[1]}\n{HOMES[2]}\n{HOMES[3]}\n"
+        self.refused(self.run_send(self.task(body)), "literal-home", "14,16,17,18")
+        self.passed(self.task("\n$HOME/ok and <home>/ok\n"))
+
+    def test_self_cap(self):
+        for spelling in ("at or under **{} lines**", "at or under {} lines"):
+            with self.subTest(spelling=spelling):
+                path = self.task(f"\nThis text stays {spelling.format('CAP')}.\n")
+                text, n = path.read_text(), path.read_text().count("\n")
+                path.write_text(text.replace("CAP", str(n)))
+                self.passed(path)  # equal to the cap
+                path.write_text(text.replace("CAP", str(n - 1)))
+                self.refused(self.run_send(path), "self-cap", "14")  # the declaration's line
+        self.passed(self.task("\nNo cap here.\n"))
+        path = self.task("\nThis text stays at or under CAP lines.")  # no final newline: wc -l is one under
+        path.write_text(path.read_text().replace("CAP", str(path.read_text().count("\n"))))
+        self.passed(path)
+
+    def test_fenced_bash_syntax(self):
+        sentinel = self.tmp / "sentinel"
+        blocks = (f"touch {sentinel}", "if then", "fi )")
+        path = self.task("".join(f"\n```bash\n{b}\n```\n" for b in blocks))
+        self.refused(self.run_send(path), "bash-syntax", "18,22")  # each failing block's opener
+        self.assertFalse(sentinel.exists())  # parsed, never run
+        self.passed(self.task(f"\n```bash\n{blocks[0]}\n```\n\n```sh\necho two\n```\n"))
+        self.assertFalse(sentinel.exists())
+
+    def fence(self, opener, closer, info):  # a valid block, then a failing one in the given form at line 18
+        body = f"\n```sh\necho ok\n```\n\n{opener}{info}\nif then\n{closer}"
+        self.refused(self.run_send(self.task(body)), "bash-syntax", "18")
+
+    def test_complete_fences_before_shell_selection(self):
+        # a bash-looking example inside a larger non-shell fence is data; attributes on a shell opener still select it
+        self.passed(self.task("\n````markdown\n```bash\nif then\n```\n````\n"))
+        self.refused(self.run_send(self.task("\n```bash {.example}\nif then\n```\n")), "bash-syntax", "14")
+
+    def test_owner_section_and_rows(self):
+        body = f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/r.md.\n"
+        record = self.root / ".orchestration/acceptance/r.md"
+        record.parent.mkdir(parents=True)
+        head = f"## Owned by {TID}"
+        cases = [
+            (None, 2, True),
+            ("# r\n\n## Other\n- x\n", 2, True),
+            (f"{head}\n\n## Next\n", 1, True),
+            (f"{head} (rows id<TAB>class)\nlocal:abc1234:1\tfix\n", 1, False),
+            (f"# r\n\n{head}\n- one bullet\n\n## Next\n", 1, False),
+            (f"{head}\n\n## Next\n- outside\nlocal:abc1234:2\tfix\n", 1, True),
+            (f"{head}\n\n## Next\n", 2, False),
+        ]
+        for text, items, refuses in cases:
+            with self.subTest(text=text, items=items):
+                record.unlink(missing_ok=True)
+                if text is not None:
+                    record.write_text(text)
+                path = self.task(body, items=items)
+                if refuses:  # the task's reference line
+                    self.refused(self.run_send(path), "owner-section", str(12 + 2 * items))
+                else:
+                    self.passed(path)
+
+    def test_task_id_yaml_comment(self):
+        # local:d067910:3: a trailing YAML comment is no part of task_id, so the owner check still runs
+        path = self.task(f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/none.md.\n")
+        path.write_text(path.read_text().replace(f"task_id: {TID}\n", f"task_id: {TID} # owner\n"))
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_checker_exit_and_line_numbers_only(self):
+        # PyYAML marks the open sequence (task line 6) and where its close was due (7); only those numbers are printed
+        self.refused(self.run_send(self.task(front="bad: [ unclosed\n")), "consistency", "6,7")
+
+    def test_checker_diagnostics_never_echo_secret_fragments(self):
+        # local:d067910:1 and local:09e2e95:1 (P1): a clipped excerpt of a secret-shaped line leaks no 8-character run
+        result = self.run_send(self.task(front="bad: [ " + "=".join(("tok" + "en ", f" '{TOKEN}'")) + "\n"))
+        self.refused(result, "consistency")
+        self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
+
+    def test_output_is_labels_and_numbers_only(self):
+        body = f"\n{LEAK}\n{HOMES[0]}\nat or under 3 lines\n\n```bash\nif then\n```\n"
+        path = self.task(body, name="dotfiles-T999-other-a01", front=f"bad: [ {TOKEN}\n")
+        result = self.run_send(path)
+        self.assertEqual(1, result.returncode)
+        for line in result.stdout.splitlines():  # run_send holds both streams to the grammar; no input text at all
+            self.assertTrue(GRAMMAR.fullmatch(line) and not any(w in line for w in ("hunt", "alice", TOKEN[:8], "if")))
+        uv = [shutil.which("uv"), "run", "--no-config", "--no-project", "--offline", "--with", "pyyaml", "python", "-I"]
+        checker = subprocess.run(
+            [*uv, str(ROOT / LINKS[1]), "--root", str(self.root), "--", str(path)],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            check=False,
+        )
+        sources = [
+            *path.read_text().split("\n"),
+            LEAK,
+            checker.stdout,
+            checker.stderr,
+        ]  # task lines, secret, checker text
+        streams = "\n".join(result.stdout.splitlines()[:-1]) + result.stderr  # the digest line is no task text
+        streams = re.sub(
+            rf"(?:{LABELS}): refused|preflight: helper failed \(exit 1\)", "", streams
+        )  # fixed labels only
+        self.assertFalse({s[i : i + 8] for s in sources for i in range(len(s) - 7) if s[i : i + 8] in streams})
+
+    def test_checker_option_terminator(self):  # audit:7888241:1: a file named --help is a task, not checker help
+        (self.tmp / "--help").write_text("no front matter\n")
+        self.refused(self.run_send("--help", cwd=self.tmp), "consistency")
+
+    def test_checker_structured_locations_only(self):  # audit:7888241:2: quoted digits are no location
+        result = self.run_send(self.task(front='bad: [ "line 1234567890, column 7"\n'))
+        self.refused(result, "consistency", "6,7")
+        self.assertFalse(re.search(r"\d{8}", result.stdout.replace(result.stdout.splitlines()[-1], "")))
+
+    def test_owner_commonmark_boundaries(self):  # audit:7888241:3: every CommonMark level-two heading ends a section
+        record = self.root / ".orchestration/acceptance/r.md"
+        record.parent.mkdir(parents=True)
+        body = f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/r.md.\n"
+        for heading in ("##\tNext", "   ## Next", "##", "## Next ##"):
+            with self.subTest(heading=heading):
+                record.write_text(f"## Owned by {TID}\n\n{heading}\n- another section's row\nlocal:abc1234:3\tfix\n")
+                self.refused(self.run_send(self.task(body)), "owner-section", "14")
+
+    def test_helper_exit_one_empty_stdout(self):  # audit:7888241:4: a crashed helper is named, never a bare digest
+        (self.root / LINKS[2]).unlink()
+        (self.root / LINKS[2]).write_text("def broken(:\n")
+        result = self.run_send(self.task())
+        self.assertEqual(1, result.returncode)
+        self.assertEqual("preflight: helper failed (exit 1)", result.stdout.splitlines()[0])
+        self.assertTrue(result.stdout.splitlines()[-1].startswith("sha256: "))
+
+    def test_digest_uses_validated_buffer(self):  # audit:7888241:5: the checker rewrites the task mid-run
+        path = self.task()
+        original = path.read_bytes()
+        (self.root / LINKS[1]).unlink()
+        (self.root / LINKS[1]).write_text(f"import pathlib\npathlib.Path({str(path)!r}).write_text('replaced')\n")
+        result = self.run_send(path)
+        self.assertEqual(b"replaced", path.read_bytes())
+        self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+
+    def test_entrypoint_clears_bash_env(self):  # audit:7888241:6: an inherited BASH_ENV prints nothing
+        hook = self.tmp / "hook.sh"
+        hook.write_text("echo BASHENV-MARKER; echo BASHENV-MARKER >&2\n")
+        result = self.run_send(self.task(), env={"BASH_ENV": str(hook)})
+        self.assertNotIn("BASHENV-MARKER", result.stdout + result.stderr)
+        self.assertEqual(0, result.returncode)
+
+    def test_all_refusals_are_reported(self):
+        sentinel = self.tmp / "sentinel"
+        body = f"\n{LEAK}\n{HOMES[0]}\nat or under 3 lines\n`## Owned by {TID}` in .orchestration/acceptance/x.md\n"
+        path = self.task(body + f"\n```bash\ntouch {sentinel}\nif then\n```\n", name="dotfiles-T999-other-a01")
+        result = self.run_send(path)
+        for reason in ("consistency", "secret-pattern", "literal-home", "self-cap", "bash-syntax", "owner-section"):
+            self.refused(result, reason)
+        self.assertEqual(f"sha256: {hashlib.sha256(path.read_bytes()).hexdigest()}", result.stdout.splitlines()[-1])
+        self.assertFalse(sentinel.exists())
+
+    def test_passes_and_prints_final_sha256(self):
+        path = self.task("\nRun `$HOME/x`, at or under **40 lines**.\n\n```bash\necho ok\n```\n")
+        self.passed(path)  # and nothing but the digest
+        self.assertEqual(1, len(self.run_send(path).stdout.splitlines()))
+
+    def test_input_refusal(self):
+        for args in ((), (self.task(), self.task()), (self.tmp / "absent.md",), (self.tmp,)):
+            with self.subTest(args=args):
+                result = self.run_send(*args)
+                self.assertEqual((1, "input: refused\n"), (result.returncode, result.stdout))
+
+    def owner_task(self, items=1, record=None, extra=""):  # a task naming r.md's owner section; returns the task path
+        rec = self.root / ".orchestration/acceptance/r.md"
+        rec.parent.mkdir(parents=True, exist_ok=True)
+        rec.unlink(missing_ok=True)
+        if record is not None:
+            rec.write_bytes(record.encode())
+        return self.task(f"\nFix the rows under `## Owned by {TID}` in .orchestration/acceptance/r.md.\n{extra}", items)
+
+    def test_multiline_task_id_has_parser_locations(self):  # audit:1d72f16:1: no location from task-supplied digits
+        path = self.task(name="dotfiles-T999-other-a01")
+        fake = '\\n  in \\"<unicode string>\\", line ' + "12345" + "67890, column 7:\\n"
+        path.write_text(path.read_text().replace(f"task_id: {TID}\n", f'task_id: "{TID}{fake}"\n'))
+        result = self.run_send(path)
+        self.refused(result, "consistency")
+        self.assertIn("consistency: refused", result.stdout.splitlines())  # YAML is valid: no mark, so no lines
+        self.assertFalse(re.search(r"\d{8}", "\n".join(result.stdout.splitlines()[:-1])))
+
+    def test_crlf_tilde_closer(self):  # audit:1d72f16:2: CRLF and lone CR close fences and delimit front matter
+        body = "\n~~~text\nplain\n~~~\n\n```bash\nif then\n```\n"
+        for eol in ("\r\n", "\r"):
+            with self.subTest(eol=repr(eol)):
+                path = self.task(body)
+                path.write_bytes(path.read_bytes().replace(b"\n", eol.encode()))
+                self.refused(self.run_send(path), "bash-syntax", "18")
+        path = self.owner_task()  # CRLF front matter still names the owner, whose record is missing
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_fenced_item_does_not_supply_owner_work(self):  # audit:1d72f16:3: a fenced `## Item` is no Item
+        path = self.owner_task(record=f"## Owned by {TID}\n\n## Next\n", extra="\n```markdown\n## Item 9\n```\n")
+        self.refused(self.run_send(path), "owner-section", "14")
+
+    def test_digest_survives_replacement_and_helper_failure(self):  # audit:1d72f16:4: one buffer, never reopened
+        path = self.task()
+        original = path.read_bytes()
+        (self.root / LINKS[1]).unlink()
+        (self.root / LINKS[1]).write_text(f"import pathlib\npathlib.Path({str(path)!r}).write_text('replaced')\n")
+        (self.root / LINKS[2]).unlink()
+        (self.root / LINKS[2]).write_text("def broken(:\n")  # the later helper failure
+        result = self.run_send(path)
+        self.assertEqual((1, b"replaced"), (result.returncode, path.read_bytes()))
+        self.assertEqual(f"sha256: {hashlib.sha256(original).hexdigest()}", result.stdout.splitlines()[-1])
+
+    def test_entrypoint_fixed_environment(self):  # audit:1d72f16:5: a minimal and a decoy PATH both find pinned uv
+        decoy, marker = self.tmp / "decoy", self.tmp / "decoy-ran"
+        decoy.mkdir()
+        for name in ("uv", "python3", "bash", "env", "mise", "dirname"):
+            (decoy / name).write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+            (decoy / name).chmod(0o755)
+        for path_value in ("/usr/bin:/bin", f"{decoy}:/usr/bin:/bin"):
+            with self.subTest(path=path_value):
+                fixed = {"PATH": path_value, **{k: self.env[k] for k in ("HOME", "TMPDIR", "UV_CACHE_DIR")}}
+                result = subprocess.run(
+                    [str(self.root / LINKS[0]), str(self.task())],
+                    env=fixed,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                self.assertEqual((0, ""), (result.returncode, result.stderr), result.stdout)
+                self.assertFalse(marker.exists())
+
+    def test_temp_failure_is_redacted(self):  # audit:1d72f16:6: an unwritable TMPDIR gives a fixed refusal only
+        locked = self.tmp / "locked"
+        locked.mkdir(mode=0o500)
+        self.addCleanup(locked.chmod, 0o700)
+        result = self.run_send(self.task(f"\n{TOKEN}\n"), env={"TMPDIR": str(locked)})
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("tempfile: refused", result.stdout.splitlines())
+        self.assertFalse([i for i in range(len(TOKEN) - 7) if TOKEN[i : i + 8] in result.stdout + result.stderr])
+
+    def test_missing_front_matter_or_bom_is_refused(self):  # audit:a30a43b:1: never a silent empty mapping
+        path = self.owner_task()  # whose owner record is missing
+        text = path.read_text()
+        for raw in (text.split("---\n", 2)[2].encode(), b"\xef\xbb\xbf" + text.encode()):
+            with self.subTest(raw=raw[:3]):
+                path.write_bytes(raw)
+                result = self.run_send(path)
+                self.refused(result, "front-matter")
+                self.refused(result, "owner-section")
+
+    def test_setext_heading_ends_the_owner_section(self):  # audit:a30a43b:2
+        for title in ("Next", "T1\tcode\nT2\tdoc"):  # a multi-line title holds no rows either
+            with self.subTest(title=title):
+                path = self.owner_task(record=f"## Owned by {TID}\n\n{title}\n---\n- another section's row\n")
+                self.refused(self.run_send(path), "owner-section", "14")
+        self.passed(self.owner_task(record=f"## Owned by {TID}\n- \n---\n- real\n"))  # a thematic break, no title
+
+    def test_itemized_heading_is_not_an_item(self):  # audit:a30a43b:3
+        path = self.owner_task(record=f"## Owned by {TID}\n\n## Next\n", extra="\n## Itemized background\n")
+        self.refused(self.run_send(path), "owner-section", "14")
+        self.passed(self.owner_task(record=f"## Owned by {TID}\n", extra="\n## Item 1: titled\n"))  # two Items
+
+    def test_whitespace_bullet_is_not_work(self):  # audit:a30a43b:4
+        self.refused(self.run_send(self.owner_task(record=f"## Owned by {TID}\n- \t\n")), "owner-section", "14")
+
+    def test_startup_exit_one_is_named(self):  # audit:a30a43b:5: a startup exit 1 is never two empty streams
+        fake = self.tmp / "uv"
+        fake.write_text("#!/bin/sh\nexit 1\n")
+        fake.chmod(0o755)
+        (self.home / ".local/bin/mise").write_text(f"#!/bin/sh\necho {fake}\n")
+        result = self.run_send(self.task())
+        self.assertEqual((1, "preflight: helper failed (exit 1)\n"), (result.returncode, result.stdout))
+
+    def test_private_cache_required(self):  # design 5.14 item 9: no fallback to the shared default cache
+        path, file = self.task(), self.tmp / "not-a-dir"
+        file.write_text("")
+        for cache in ({}, {"UV_CACHE_DIR": str(file)}):
+            with self.subTest(cache=cache):
+                env = {k: v for k, v in self.env.items() if k != "UV_CACHE_DIR"} | cache
+                cmd = [str(self.root / LINKS[0]), str(path)]
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=120, check=False)
+                expected = (1, "refused: UV_CACHE_DIR absent\n", "")
+                self.assertEqual(expected, (result.returncode, result.stdout, result.stderr))
+        self.passed(path)
+
+
+FENCES = {  # one test per fence form, bash and sh both
+    "backtick": ("```", "```\n", "bash"),
+    "tilde": ("~~~", "~~~\n", "sh"),
+    "longer_opener": ("`````", "`````\n", "bash"),
+    "longer_closer": ("~~~", "~~~~~~\n", "sh"),
+    "indented_opener": ("   ```", "```\n", "bash"),
+    "indented_closer": ("```", "   ```\n", "sh"),
+    "open_at_the_end": ("````", "", "bash"),
+}
+for _name, _form in FENCES.items():
+    setattr(PreSendTest, f"test_fence_{_name}", lambda self, form=_form: self.fence(*form))
+
+
+if __name__ == "__main__":
+    unittest.main()

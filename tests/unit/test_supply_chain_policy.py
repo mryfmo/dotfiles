@@ -23,6 +23,7 @@ class GhBindingPolicyTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("gh_policy", ROOT / "scripts/validate-agent-assets.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        validate = getattr(module, "validate_gh_binding", module.validate_agent_manifest)
         canonical = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         tail = "\n".join(line for line in canonical.splitlines() if not line.startswith("trusted_tools:"))
         declaration = {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}
@@ -52,27 +53,27 @@ class GhBindingPolicyTest(unittest.TestCase):
                 for label, tools in cases.items():
                     source.write_text("trusted_tools: " + json.dumps(tools) + "\n" + tail)
                     with self.subTest(label=label), self.assertRaises(SystemExit):
-                        module.validate_agent_manifest()
+                        validate()
                 source.write_text("trusted_tools: " + json.dumps({"gh": declaration}) + "\n" + tail)
-                module.validate_agent_manifest()
+                validate()
                 with self.subTest("HOME"), patch.dict(os.environ, HOME="/tmp/forged"), self.assertRaises(SystemExit):
-                    module.validate_agent_manifest()
+                    validate()
                 resolve = Path.resolve
 
                 def redirected(path, *args, **kwargs):
                     return Path("/tmp/shims/gh") if str(path).endswith("/bin/gh") else resolve(path, *args, **kwargs)
 
                 with self.subTest("shims"), patch.object(Path, "resolve", redirected), self.assertRaises(SystemExit):
-                    module.validate_agent_manifest()
+                    validate()
                 (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "latest"\n')
                 with self.subTest(label="mismatched pin"), self.assertRaises(SystemExit):
-                    module.validate_agent_manifest()
+                    validate()
                 (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
                 value = json.dumps({"gh": declaration})
                 for key in ("trusted_tools", '"trusted_tools"', '"\\x74rusted_tools"', "trusted_tools "):
                     source.write_text(canonical + "\n" + key + ": " + value + "\n")
                     with self.subTest(serialized=key), self.assertRaises(SystemExit):
-                        module.validate_agent_manifest()
+                        validate()
 
 
 class SupplyChainPolicyTest(unittest.TestCase):

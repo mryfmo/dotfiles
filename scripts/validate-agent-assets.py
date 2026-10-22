@@ -800,7 +800,7 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
 
 
-def validate_agent_manifest() -> dict[str, Any]:
+def validate_gh_binding() -> None:
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
     manifest = load_yaml(manifest_path)
     try:
@@ -842,6 +842,11 @@ def validate_agent_manifest() -> dict[str, Any]:
             raise ValueError
     except (KeyError, TypeError, ValueError, OSError, IndexError):
         fail("trusted_tools.gh must match the exact mise pin and normalized passwd-home install path")
+
+
+def validate_agent_manifest() -> dict[str, Any]:
+    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+    manifest = load_yaml(manifest_path)
     if manifest.get("schema_version") != 1:
         fail(f"{manifest_path} schema_version must be 1")
     targets = set(manifest.get("target_agents", []))
@@ -1687,6 +1692,7 @@ def report_regime_boundary() -> None:
 
 def main() -> None:
     manifest = validate_agent_manifest()
+    validate_gh_binding()
     validate_assets(manifest)
     validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()

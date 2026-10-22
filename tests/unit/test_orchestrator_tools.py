@@ -24,6 +24,8 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from tests.unit.test_pr_feedback import GhFixture
+
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "scripts/orchestrator"
 RECORD = 'printf \'%s\\0\' "$@" > "$CALLS/{name}"\n'
@@ -67,9 +69,10 @@ class OrchestratorToolsTest(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name).resolve()
+        self.binding = GhFixture(self.temp / "gh-binding")
         self.repo = self.temp / "repo"
         self.repo.mkdir()
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.binding.git(self.repo, "init", "-q")
         shutil.copytree(TOOLS, self.repo / "scripts/orchestrator")
         self.calls = self.temp / "calls"
         self.calls.mkdir()
@@ -80,7 +83,9 @@ class OrchestratorToolsTest(unittest.TestCase):
                 (directory / name).write_text(text)
                 (directory / name).chmod(0o755)
         self.env = {
-            **os.environ,
+            **self.binding.env,
+            "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
+            "UV_PYTHON": sys._base_executable,
             "CALLS": str(self.calls),
             "AGMSG_SCRIPTS": str(agmsg),
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
@@ -107,21 +112,16 @@ class OrchestratorToolsTest(unittest.TestCase):
         return path.read_text().split("\0")[:-1] if path.exists() else None
 
     def git(self, *args, cwd=None):
-        return subprocess.run(
-            ["git", "-c", "commit.gpgsign=false", *args],
-            cwd=cwd or self.repo,
-            env={**os.environ, **GIT_ENV},
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
+        return self.binding.git(cwd or self.repo, *args)
 
     def origin(self, *files):
         """Commit the given repo files as main, and push it to a bare repository that is `origin`."""
         self.git("add", "--", *files)
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.git("branch", "-M", "main")
-        self.git("init", "-q", "--bare", str(self.temp / "origin.git"))
+        bare = self.temp / "origin.git"
+        bare.mkdir()
+        self.binding.git(bare, "init", "-q", "--bare", bare=True)
         self.git("remote", "add", "origin", str(self.temp / "origin.git"))
         self.git("push", "-q", "origin", "main")
         self.git("fetch", "-q", "origin")
@@ -164,7 +164,8 @@ class OrchestratorToolsTest(unittest.TestCase):
     def test_dispatch_passes_the_line_byte_identical(self):
         # Run from another checkout: a relative task_file= is the script's own checkout's (thread 4253994697).
         pr = self.temp / "pr"
-        subprocess.run(["git", "init", "-q", str(pr)], check=True)
+        pr.mkdir()
+        self.binding.git(pr, "init", "-q")
         self.write(".orchestration/tasks/t.md", "task\n")
         self.write("design.md", "design\n")
         line = (
@@ -436,7 +437,8 @@ class OrchestratorToolsTest(unittest.TestCase):
             "if os.path.exists(os.path.join(calls, 'uv-cold')) and sys.argv[-1] == 'import yaml':\n    sys.exit(1)\n"
             "here = os.path.dirname(os.path.realpath(__file__))\n"
             "path = os.pathsep.join(p for p in os.environ['PATH'].split(os.pathsep) if os.path.realpath(p) != here)\n"
-            "real = shutil.which('uv', path=path)\nos.execv(real, [real, *sys.argv[1:]])\n"
+            "real = shutil.which('uv', path=path)\n"
+            f"os.execv(real, [real, '--cache-dir', {self.env['UV_CACHE_DIR']!r}, *sys.argv[1:]])\n"
         )
         fake.chmod(0o755)
         env = {"PATH": f"{fake.parent}{os.pathsep}{self.env['PATH']}"}
@@ -510,7 +512,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         (caller / "home/.config/uv").mkdir(parents=True)
         (caller / "home/.config/uv/uv.toml").write_text('index-url = "http://127.0.0.1:9/simple"\n')
         other = self.temp / "other"
-        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        other.mkdir()
+        self.binding.git(other, "init", "-q")
         state |= {"HOME": str(caller / "home"), "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
         _, _ = send("kind: review\n", 0, cwd=caller, extra=state)
         self.assertFalse((self.calls / "pwned").exists())
@@ -574,7 +577,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         )
         line = self.write("line.txt", f"AGMSG-TASK v1 task_id=t task_file={task} task_sha256={sha(task.read_text())}\n")
         other = self.temp / "other"
-        subprocess.run(["git", "init", "-q", str(other)], check=True)
+        other.mkdir()
+        self.binding.git(other, "init", "-q")
         env = {
             "PATH": f"{self.temp / 'fake-uv'}{os.pathsep}{self.env['PATH']}",
             "GIT_DIR": str(other / ".git"),
@@ -658,7 +662,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.assertEqual(["memory", "search", "--limit", "1000", "--", "--help"], self.call("uv")[3:])
         # Thread 4253994697: a PR worktree's contextdb CLI is PR-controlled code, so the root is the script's own.
         pr = self.temp / "pr"
-        subprocess.run(["git", "init", "-q", str(pr)], check=True)
+        pr.mkdir()
+        self.binding.git(pr, "init", "-q")
         (pr / ".orchestration/learning/mistakes").mkdir(parents=True)
         (pr / ".orchestration/learning/mistakes/M-PR.md").write_text("classes: [bookkeeping]\n")
         self.write(".orchestration/learning/mistakes/M-OWN.md", "classes: [bookkeeping]\n")
@@ -1510,7 +1515,8 @@ class OrchestratorToolsTest(unittest.TestCase):
         `link`, and when `plant` a `.python-version` naming its own executable `pwn`, which touches `pwned`."""
         for rel in ("scripts/require-crit-review.py", "scripts/validate-agent-assets.py"):
             self.write(rel, "gate\n")
-        self.origin("scripts/require-crit-review.py", "scripts/validate-agent-assets.py")
+        self.write("scripts/pr-feedback.py", (ROOT / "scripts/pr-feedback.py").read_text())
+        self.origin("scripts/require-crit-review.py", "scripts/validate-agent-assets.py", "scripts/pr-feedback.py")
         worktree = self.temp / "pr"
         self.git("worktree", "add", "-q", "-b", "pr", str(worktree), "main")
         v = ".orchestration/validation/t-a01"
@@ -1539,7 +1545,11 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.write(".orchestration/acceptance/t-a01.md", "---\n{}\n---\n")
         (self.calls / "uv-output").write_text(f"{self.temp}/bin/gate-python\n")
         # env -i drops CALLS, so the gate interpreter's stub carries the calls directory itself.
-        (self.temp / "bin/gate-python").write_text(STUBS["gate-python"].replace("$CALLS", str(self.calls)))
+        binding = f'[[ $* != *--gh-binding* ]] || exec "{self.binding.python}" "$@"\n'
+        (self.temp / "bin/gate-python").write_text(
+            STUBS["gate-python"].replace("#!/bin/bash\n", "#!/bin/bash\n" + binding).replace("$CALLS", str(self.calls))
+        )
+        (self.temp / "bin/uv").write_text(STUBS["uv"].replace("$CALLS", str(self.calls)))
         return worktree, head
 
     def run_gate(self, worktree, code=0):
@@ -1585,7 +1595,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         env = (self.calls / "gate-python-env").read_text().splitlines()
         env = dict(line.split("=", 1) for line in env if "=" in line)
         allowed = {"PATH", "HOME", "PYTHONSAFEPATH", "AGENT_REVIEWED", "REVIEW_EVIDENCE", "PR_FEEDBACK_EVIDENCE"}
-        allowed |= {"AUDIT_EVIDENCE", "ACCEPTANCE_EVIDENCE"}
+        allowed |= {"AUDIT_EVIDENCE", "ACCEPTANCE_EVIDENCE", "GH_TOKEN", "UV_CACHE_DIR"}
         # The names the stub's own bash exports; PWD last, as GitGuardian reads a string literal after it as a password.
         own = {"SHLVL", "_", "PWD"}
         # Names only, so a failure prints no value.
@@ -1648,10 +1658,9 @@ class OrchestratorToolsTest(unittest.TestCase):
         worktree, head = self.gate()
         review = self.repo / ".claude/worktrees/orchestrator-review"
         self.git("checkout", "-q", "--detach", head, cwd=review)
-        (self.temp / "bin/mise").write_text('#!/bin/bash\nprintf "%s\\n" "/opt/mise/shims/$2"\n')
-        (self.temp / "bin/mise").chmod(0o755)
+        self.binding.declaration({"gh": {"version": "2.102.0", "path": "~/mise/shims/gh"}})
         result = self.run_tool("orch-gate.sh", "t-a01", worktree, 9, code=2)
-        self.assertIn("no binary for gh outside a shims directory", result.stderr)
+        self.assertEqual("refused: gh binding", result.stderr.strip())
         self.assertEqual(head, self.git("rev-parse", "HEAD", cwd=review))
         self.assertEqual("", self.git("status", "--porcelain", cwd=review))
         self.assertIsNone(self.call("gate-python"))

@@ -73,9 +73,10 @@ bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"
 # mise resolves under env -i, so no MISE_CONFIG_FILE or MISE_TRUSTED_CONFIG_PATHS of this shell picks the binary
 # (PR #355 thread 4267889542).
 ln -s -- "${gh}" "${bin}/gh"
-found="$(env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR}" mise which git 2> /dev/null || command -v git)" || found=
-[[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for git outside a shims directory ('${found}')"
-ln -s -- "${found}" "${bin}/git"
+name=git
+found="$(env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR}" mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
+[[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')" # lint-comparisons: allow raw absolute non-shim spelling before execution
+ln -s -- "${found}" "${bin}/${name}"
 moved=1
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do

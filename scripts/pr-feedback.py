@@ -74,7 +74,11 @@ def gh_env(token: str | None = None) -> dict[str, str]:
         home = pwd.getpwuid(os.getuid()).pw_dir
         cache = os.environ.get("UV_CACHE_DIR", "")
         config = Path(GH_CONFIG_DIR)
-        if os.environ.get("HOME") != home or not Path(home).is_absolute() or not Path(cache).is_absolute():
+        if (
+            os.environ.get("HOME") != home  # lint-comparisons: allow literal passwd-home identity
+            or not Path(home).is_absolute()
+            or not Path(cache).is_absolute()
+        ):
             raise ValueError
         if config.is_symlink() or any(config.iterdir()):
             raise ValueError
@@ -144,7 +148,7 @@ def gh_binding() -> str:
                 info = component.stat()
                 if info.st_uid not in {0, os.getuid()} or info.st_mode & 0o022:
                     raise ValueError
-                if component == home:
+                if component.samefile(home):
                     break
         if not os.access(target, os.X_OK):
             raise ValueError
@@ -167,7 +171,7 @@ def gh(args: list[str]) -> str:
 
 def gh_fetch(path: str, paginate: bool = False) -> Any:
     """Return the JSON for a REST path; paginated responses become a list of pages."""
-    if not path.startswith("repos/mryfmo/dotfiles/"):
+    if not path.startswith("repos/mryfmo/dotfiles/"):  # lint-comparisons: allow literal REST namespace
         raise SystemExit("refused: gh binding")
     if paginate:
         return json.loads(gh(["api", "--paginate", "--slurp", path, "--hostname", "github.com"]))

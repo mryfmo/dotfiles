@@ -155,14 +155,18 @@ class GhFixture:
     def records(self):
         return [json.loads(s) for s in self.calls.read_text().splitlines()] if self.calls.exists() else []
 
-    def git(self, repo, *args):
-        gitdir = repo / ".git"
+    def git(self, repo, *args, bare=False):
+        gitdir = repo if bare else repo / ".git"
         if gitdir.is_file():
             gitdir = Path(gitdir.read_text().strip().removeprefix("gitdir: "))
         cache = str(self.root / "cache")
         env = {"PATH": "/usr/bin:/bin", "HOME": str(self.home), "UV_CACHE_DIR": cache}
         env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL="/dev/null")
-        argv = ["/usr/bin/git", f"--git-dir={gitdir}", f"--work-tree={repo}"]
+        argv = ["/usr/bin/git", f"--git-dir={gitdir}"]
+        if not bare:
+            argv.append(f"--work-tree={repo}")
+        if args[0] == "clone":
+            argv = ["/usr/bin/git"]
         for option in (
             "core.hooksPath=/dev/null",
             "core.fsmonitor=false",
@@ -668,8 +672,10 @@ class PrFeedbackTest(unittest.TestCase):
         self.assertIn("gh auth login", stderr.getvalue())
 
     def test_gh_never_receives_forced_colour(self) -> None:
-        with mock.patch.dict(self.module.os.environ, {"CLICOLOR_FORCE": "1"}):
-            env = self.module.gh_env()
+        f = GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory())).resolve())
+        result = f.run(SCRIPT, "--gh-binding", env={"CLICOLOR_FORCE": "1"})
+        self.assertEqual(0, result.returncode, result.stderr)
+        env = f.records()[0]["env"]
         self.assertNotIn("CLICOLOR_FORCE", env)
         self.assertEqual(env["NO_COLOR"], "1")
 

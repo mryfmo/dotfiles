@@ -14,6 +14,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.unit.test_pr_feedback import GhFixture
+
 ROOT = Path(__file__).resolve().parents[2]
 HEAD = "0123456789abcdef0123456789abcdef01234567"
 LOG = '#!/bin/bash\nprintf "%s\\n" "{name} $* $(pwd -P)" >> "{t}/calls/log"\n'
@@ -34,10 +36,12 @@ class OrchGatePathTest(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.t = Path(temp.name).resolve()
+        self.binding = GhFixture(self.t / "binding")
         self.root, self.review = self.t / "repo", self.t / "repo/.claude/worktrees/orchestrator-review"
         for directory in ("bin", "calls", "gate", "pr", "tmp", "repo/scripts/orchestrator", self.review):
             (self.t / directory).mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / "scripts/orchestrator/orch-gate.sh", self.root / "scripts/orchestrator")
+        shutil.copy(ROOT / "scripts/pr-feedback.py", self.root / "scripts/pr-feedback.py")
         v = self.root / ".orchestration/validation"
         v.mkdir(parents=True)
         (v / "t-a01-pr-feedback.json").write_text('{"pr": 9}\n')
@@ -50,13 +54,19 @@ class OrchGatePathTest(unittest.TestCase):
 
     def stub(self, path, body):
         name = Path(path).name
+        if path == "gate/python":
+            body = f'[[ $* != *--gh-binding* ]] || exec "{self.binding.python}" "$@"\n' + body
         (self.t / path).write_text((LOG + body).format(name=name, t=self.t, head=HEAD))
         (self.t / path).chmod(0o755)
 
     def run_gate(self, code):
         """Run the gate from outside the root; return the stub log as (command, cwd) pairs."""
         (self.t / "calls/log").unlink(missing_ok=True)
-        env = {**os.environ, "PATH": f"{self.t}/bin{os.pathsep}{os.environ['PATH']}", "TMPDIR": str(self.t / "tmp")}
+        env = {
+            **self.binding.env,
+            "PATH": f"{self.t}/bin{os.pathsep}{self.binding.env['PATH']}",
+            "TMPDIR": str(self.t / "tmp"),
+        }
         # A caller's mise overrides that would point mise which at a payload (PR #355 thread 4267889542).
         env |= {"MISE_CONFIG_FILE": f"{self.t}/payload.toml", "MISE_TRUSTED_CONFIG_PATHS": str(self.t)}
         script = self.root / "scripts/orchestrator/orch-gate.sh"
@@ -84,21 +94,23 @@ class OrchGatePathTest(unittest.TestCase):
         # Compare the intersection only, so a failure prints no caller PATH.
         self.assertEqual(set(), {private} & {str(self.t / "bin"), *os.environ["PATH"].split(os.pathsep)})
         links = dict(line.split(" ", 1) for line in (self.t / "calls/gate-path").read_text().splitlines())
-        self.assertEqual({f"{private}/{n}": f"{self.t}/installs/{n}" for n in ("gh", "git")}, links)
+        self.assertEqual({f"{private}/gh": str(self.binding.target), f"{private}/git": f"{self.t}/installs/git"}, links)
         # Resolved in the trusted root, before the head is checked out in the review worktree.
         mise = [i for i, (command, _) in enumerate(log) if command.startswith("mise ")]
-        self.assertEqual(
-            [("mise which gh", str(self.root)), ("mise which git", str(self.root))], [log[i] for i in mise]
-        )
+        self.assertEqual([("mise which git", str(self.root))], [log[i] for i in mise])
         checkout = log.index((f"git -C {self.review} checkout -q --detach {HEAD}", str(self.root)))
         self.assertLess(mise[-1], checkout)
 
     def test_orch_gate_refuses_a_binary_resolved_under_a_shims_directory(self):
-        for answer in ('printf "%s\\n" "{t}/mise/shims/$2"\n', "exit 0\n"):
-            with self.subTest(answer=answer):
-                self.stub("bin/mise", answer)
+        for kind in ("shim", "missing"):
+            with self.subTest(kind=kind):
+                self.binding.declaration()
+                if kind == "shim":
+                    self.binding.declaration({"gh": {"version": "2.102.0", "path": "~/mise/shims/gh"}})
+                else:
+                    self.binding.target.unlink()
                 log = self.run_gate(2)
-                self.assertIn("no binary for gh outside a shims directory", self.stderr)
+                self.assertEqual("refused: gh binding", self.stderr.strip())
                 self.assertEqual([], [command for command, _ in log if command.endswith(HEAD)])
                 self.assertEqual([], os.listdir(self.review))
                 self.assertFalse((self.t / "calls/gate-env").exists())

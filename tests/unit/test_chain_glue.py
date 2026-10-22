@@ -661,14 +661,15 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
 
     def test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head(self):
         # The local review of f20826e (P1): the thread step posts the sweep's dispositions, so a sweep of an earlier
-        # head of the same PR refuses before any GitHub write; the PR head read is the only gh call.
+        # head of the same PR refuses before any GitHub write; the PR's head and base reads are the only gh calls.
         self.finish_ready()
         sweep, stale = self.v / f"{TASK}-pr-feedback.json", "0" * 40
         sweep.write_text(json.dumps({"pr": 7, "head_sha": stale, "items": []}))
         result = self.finish(code=10)
         self.assertIn(f"the sweep JSON is head {stale}'s, not the audited head {self.head}'s", result.stderr)
         self.assertEqual([], [p.name for p in self.calls.glob("*.log") if p.name not in ("gh.log", "uv.log")])
-        self.assertEqual(["pr view 7 --json headRefOid --jq .headRefOid"], self.calls_of("gh"))
+        reads = ["pr view 7 --json headRefOid --jq .headRefOid", "pr view 7 --json baseRefName --jq .baseRefName"]
+        self.assertEqual(reads, self.calls_of("gh"))
         self.assertEqual("", self.log())
         sweep.write_text(json.dumps({"pr": 7, "head_sha": self.head, "items": []}))
         self.finish()

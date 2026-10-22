@@ -90,6 +90,9 @@ head=${out} sha7=${out:0:7} v=${main}/.orchestration/validation
 summary=${v}/${task}-audit-${sha7}.md.last.md
 pre "${gh}" pr view "${pr}" --json headRefOid --jq .headRefOid
 [[ ${out} == "${head}" && -f ${summary} ]] || refuse 10 "head differs from the audit: ${head} (PR ${out}, summary ${summary#"${main}"/})"
+# The merge binds the audited head; its base must be main as well (PR #378 thread 4302085368).
+pre "${gh}" pr view "${pr}" --json baseRefName --jq .baseRefName
+[ "${out}" = main ] || refuse 10 "PR ${pr} does not target main: ${out:-none}"
 record=${main}/.orchestration/acceptance/${task}.md sweep=${v}/${task}-pr-feedback.json
 # The gate's own inputs, checked before the thread step writes to GitHub.
 for f in "${record}" "${sweep}" "${v}/${task}-audit-${sha7}.md" "${v}/${task}-review-receipt.md" "${v}/${task}-crit.json"; do
@@ -103,15 +106,17 @@ log=${v}/${task}-chain-${sha7}.log # T7's log, appended; nothing is logged befor
 comments=${v}/${task}-pr-comments.json ledger=${v}/${task}-ledger-${sha7}.tsv dispositions=${v}/${task}-audit-dispositions-${sha7}.tsv
 cost=${v}/${task}-pr-cost-${sha7}.sh tools=${v}/${task}-pr-cost-bin-${sha7}
 trap 'rm -f -- "${comments}" "${ledger}" "${dispositions}" "${cost}" && rm -rf -- "${tools}"' EXIT
-# After the fast-forward the main checkout's mise config is the merged head's, so pr-cost.sh runs under env -i
-# with a PATH of links to the tools it calls, resolved here as orch-gate.sh resolves gh and git (local review of f4d86ee5).
+# After the merge the main checkout's mise config is the merged head's, so ff-main.sh and pr-cost.sh run under env -i
+# with a PATH of links to the tools they call, resolved here as orch-gate.sh resolves gh and git (local review of
+# f4d86ee5; PR #378 thread 4302085363).
 mkdir -p -- "${tools}"
-for name in gh git jq awk date mkdir tr wc tail; do
+for name in gh git jq awk date mkdir tr wc tail mktemp dirname mv cp rm; do
     found=$(pick "${name}")
     [[ ${found} == /* && "$(realpath -- "${found%/*}" 2> /dev/null)/" != */shims/* ]] || refuse 10 "no ${name} for pr-cost.sh outside a shims directory: ${found:-none}"
     ln -sf -- "${found}" "${tools}/${name}"
 done
 cost_run() { env -i PATH="${tools}" HOME="${HOME}" "${BASH}" "${cost}" "$1"; } # HOME stays out of the log line
+ff_run() { env -i PATH="${tools}" HOME="${HOME}" TMPDIR="${TMPDIR:-/tmp}" "${BASH}" "${main}/scripts/orchestrator/ff-main.sh"; }
 # (1) Every finding, under either verdict, needs its line: the gate's ledger check adds audit:<sha7>:<n> for each.
 # The last non-blank line, trimmed, as the gate's AUDIT_VERDICT reads it (local review of f4d86ee5).
 verdict=$(/usr/bin/grep -v -E '^[[:space:]]*$' "${summary}" | tail -n 1 | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' || true)
@@ -170,7 +175,7 @@ done
 [[ ${out} =~ ^[0-9a-f]{40}$ ]] || refuse 10 "merge enqueued, not landed: PR ${pr} not merged after ${polls} polls"
 merged=${out}
 step merge 0 "${git}" -C "${main}" fetch -q origin main
-step ff-main 0 "${main}/scripts/orchestrator/ff-main.sh"
+step ff-main 0 ff_run
 step pr-cost 0 cost_run "${pr}"
 # (9) Printed for the orchestrator to send (C-53); this script sends nothing.
 accept="AGMSG-ACCEPTANCE v1 task_id=${task} status=accepted reason=merged-as-${merged}-pr-${pr}-head-${sha7} next_action=<the orchestrator fills this before sending>"

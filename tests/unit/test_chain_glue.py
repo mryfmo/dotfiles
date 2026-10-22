@@ -38,6 +38,7 @@ jq=; prev=; for a; do [ "$prev" != --jq ] || jq=$a; prev=$a; done
 case "$1 $2" in
 "pr view")
     if [[ " $* " == *" isDraft "* ]]; then cat "$CALLS/draft" 2> /dev/null || echo false
+    elif [[ " $* " == *" baseRefName "* ]]; then cat "$CALLS/base" 2> /dev/null || echo main
     elif [[ " $* " == *" state,mergeCommit "* ]]; then
         # One JSON object per line, one line per call; the last line repeats.
         f=$CALLS/merge-views && head -n 1 "$f" | JQ -r "$jq"
@@ -760,6 +761,28 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
             with self.subTest(found=found):
                 result = self.finish(code=10, env={"PATH": f"{found.parent}{os.pathsep}{self.env['PATH']}"})
                 self.assertIn(f"no jq for pr-cost.sh outside a shims directory: {found}", result.stderr)
+
+    def test_finish_runs_ff_main_with_the_pre_merge_links(self):
+        # PR #378 thread 4302085363 (P1): after the merge moved main, a merged mise.toml could redirect ff-main.sh's
+        # git, mkdir, cp or rm, so it runs under env -i with the PATH of links resolved before the merge.
+        self.finish_ready()
+        hook = "#!/bin/sh\nfor c in git mktemp dirname mkdir mv cp rm; do command -v $c > /dev/null || echo $c; done"
+        self.executable(self.calls / "ff-main-hook", f'{hook} >> "{self.calls}/missing"\n')
+        self.finish()
+        [path] = re.findall(r"^path: (.*)$", (self.calls / "ff-main.log").read_text(), re.MULTILINE)
+        self.assertEqual(f"{self.v}/{TASK}-pr-cost-bin-{self.head[:7]}", path)
+        self.assertEqual("", (self.calls / "missing").read_text())
+
+    def test_finish_refuses_a_pr_whose_base_is_not_main(self):
+        # PR #378 thread 4302085368 (P2): the merge binds the audited head, and the base must be main too.
+        self.finish_ready()
+        (self.calls / "base").write_text("release\n")
+        result = self.finish(code=10)
+        self.assertIn("PR 7 does not target main: release", result.stderr)
+        self.assertEqual([], self.calls_of("resolve-threads"))
+        self.assertNotIn(
+            "gh pr merge", (self.calls / "order.log").read_text() if (self.calls / "order.log").exists() else ""
+        )
 
     def test_finish_reads_the_last_nonblank_line_as_the_verdict(self):
         # The local review of f4d86ee5 (P2): trailing blank lines and spaces do not hide the verdict, as the gate reads it.

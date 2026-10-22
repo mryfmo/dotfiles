@@ -1,4 +1,6 @@
 import json
+import copy
+import importlib.util
 import os
 import re
 import shutil
@@ -6,11 +8,73 @@ import subprocess
 import tempfile
 import tomllib
 import unittest
+from unittest import mock
 import zipfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class GhBindingPolicyTest(unittest.TestCase):
+    def test_gh_exact_pin(self):
+        tools = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]
+        self.assertEqual("2.102.0", tools["github:cli/cli"])
+
+    def test_gh_declaration_policy(self):
+        spec = importlib.util.spec_from_file_location("gh_policy", ROOT / "scripts/validate-agent-assets.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        manifest = module.load_yaml(ROOT / "home/dot_agents/agent-config.yaml")
+        declaration = {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}
+        cases = {"missing": None, "not mapping": [], "no gh": {}, "malformed": {"gh": "gh"}}
+        for label, value in {
+            "version": "latest",
+            "missing version": None,
+            "path": "/tmp/gh",
+            "traversal": "~/x/../.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+            "shims": "~/.local/share/mise/shims/gh",
+            "latest": "~/.local/share/mise/installs/github-cli-cli/latest/bin/gh",
+            "relative": ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+            "missing path": None,
+        }.items():
+            candidate = dict(declaration)
+            key = "version" if "version" in label else "path"
+            candidate[key] = value
+            cases[label] = {"gh": candidate}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "home/dot_mise").mkdir(parents=True)
+            (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
+            (root / "README.md").write_text((ROOT / "README.md").read_text())
+            with mock.patch.object(module, "ROOT", root):
+                for label, tools in cases.items():
+                    candidate = copy.deepcopy(manifest)
+                    candidate["trusted_tools"] = tools
+                    with self.subTest(label=label), mock.patch.object(module, "load_yaml", return_value=candidate):
+                        with self.assertRaises(SystemExit):
+                            module.validate_agent_manifest()
+                candidate["trusted_tools"] = {"gh": declaration}
+                with mock.patch.object(module, "load_yaml", return_value=candidate):
+                    module.validate_agent_manifest()
+                    with self.subTest(label="forged HOME"), mock.patch.dict(os.environ, {"HOME": "/tmp/forged-home"}):
+                        with self.assertRaises(SystemExit):
+                            module.validate_agent_manifest()
+                    resolve = Path.resolve
+
+                    def redirected(path, *args, **kwargs):
+                        return (
+                            Path("/tmp/shims/gh")
+                            if str(path).endswith("/github-cli-cli/2.102.0/bin/gh")
+                            else resolve(path, *args, **kwargs)
+                        )
+
+                    with self.subTest(label="resolved shims"), mock.patch.object(Path, "resolve", redirected):
+                        with self.assertRaises(SystemExit):
+                            module.validate_agent_manifest()
+                    (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "latest"\n')
+                    with self.subTest(label="mismatched pin"), self.assertRaises(SystemExit):
+                        module.validate_agent_manifest()
 
 
 class SupplyChainPolicyTest(unittest.TestCase):

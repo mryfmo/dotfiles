@@ -6,6 +6,9 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,6 +28,301 @@ BASE_SHA = "b" * 40
 BOT = {"login": "coderabbitai[bot]", "type": "Bot"}
 HUMAN = {"login": "moriya-fumio-thd", "type": "User"}
 ACTIONS = {"slug": "github-actions"}
+
+
+class GhFixture:
+    """A measured test namespace: change passwd home, never prebind gh or change consumer bytes."""
+
+    def __init__(self, root):
+        self.root, self.home = root, root / "home"
+        self.home.mkdir(parents=True, exist_ok=True)
+        self.bin, self.calls = root / "bin", root / "gh.jsonl"
+        self.bin.mkdir(exist_ok=True)
+        self.responses = root / "responses.json"
+        self.responses.write_text(json.dumps({"responses": RESPONSES, "metadata": {}}))
+        self.target = self.home / ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"
+        self.manifest = self.home / ".agents/agent-config.yaml"
+        self.declaration()
+        self.python = self.bin / "python"
+        bootstrap = (
+            "import os,pwd,runpy,sys,types\n"
+            f"sys.path.insert(0,{str(Path(importlib.util.find_spec('yaml').origin).parents[1])!r})\n"
+            f"pwd.getpwuid=lambda uid: types.SimpleNamespace(pw_dir={str(self.home)!r})\n"
+            f"sys.executable={str(self.python)!r}\n"
+            "a=sys.argv[1:]\n"
+            f"with open({str(root / 'python.jsonl')!r},'a') as f: f.write(__import__('json').dumps({{'argv':a,'env':dict(os.environ)}})+'\\n')\n"
+            "while a and a[0] in ('-I','-P','-s'): a.pop(0)\n"
+            "sys.argv=a\n"
+            "if a[0]=='-c': exec(compile(a[1],'<fixture>','exec'))\n"
+            "else: runpy.run_path(a[0],run_name='__main__')\n"
+        )
+        self.bootstrap = bootstrap
+        self.launcher()
+        code = (
+            f"#!{sys.executable} -I\n"
+            "import json,os,sys\n"
+            f"a=sys.argv[1:]; d=json.load(open({str(self.responses)!r}))\n"
+            f"with open({str(self.calls)!r},'a') as f: f.write(json.dumps({{'target':os.path.realpath(sys.argv[0]),'argv':a,'env':dict(os.environ)}})+'\\n')\n"
+            "if a==['--version']: print('gh version 2.102.0 (fixture)'); sys.exit()\n"
+            "if a[:2]==['auth','status']: sys.exit()\n"
+            "if a[:2]==['repo','view']: print(json.dumps({'nameWithOwner':'mryfmo/dotfiles'})); sys.exit()\n"
+            "if a[:2]==['pr','view']: print(json.dumps(d['metadata'])); sys.exit()\n"
+            "if a[0]=='api':\n"
+            " p=next(x for x in a[1:] if x.startswith('repos/') or x in ('user','graphql'))\n"
+            " if p=='user': result={'login':'declared-user'}\n"
+            " elif p=='graphql': result={'data':{'repository':{'pullRequest':{'reviewThreads':{'nodes':[],'pageInfo':{'hasNextPage':False,'endCursor':None}}}}}}\n"
+            " else: result=d['responses'].get(p,[])\n"
+            " print(json.dumps(result)); sys.exit()\n"
+            "print('unsupported fixture command',a,file=sys.stderr); sys.exit(91)\n"
+        )
+        self.executable(self.target, code)
+        self.executable(self.bin / "gh", code)
+        self.executable(
+            self.bin / "mise",
+            f"#!/bin/sh\n# @brief Report only a hostile gh discovery answer.\n[ \"$2\" = gh ] || exit 1\nprintf '%s\\n' {str(self.bin / 'gh')!r}\n",
+        )
+        self.env = {
+            "PATH": f"{self.bin}:/usr/bin:/bin",
+            "HOME": str(self.home),
+            "LANG": "C.UTF-8",
+            "UV_CACHE_DIR": str(root / "cache"),
+            "GH_TOKEN": "synthetic-gh-binding-credential",
+            "GH_HOST": "hostile.invalid",
+            "GH_REPO": "hostile/fork",
+            "GH_CONFIG_DIR": str(root / "evil-config"),
+            "XDG_CONFIG_HOME": str(root / "evil-xdg"),
+            "HTTPS_PROXY": "http://hostile.invalid:9",
+        }
+        for directory in (self.home / ".config/gh", root / "evil-config", root / "evil-xdg/gh"):
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "config.yml").write_text(
+                "http_unix_socket: /tmp/hostile.sock\naliases: {api: '!touch /tmp/never-gh-binding'}\n"
+            )
+            (directory / "hosts.yml").write_text("hostile.invalid: {user: attacker}\n")
+
+    def launcher(self, extra=""):
+        bootstrap = self.bootstrap.replace("sys.argv=a\n", "sys.argv=a\n" + extra)
+        launcher = (
+            "#!/bin/bash -p\n# @brief Run the measured fixture Python with the consumer's actual isolation flags.\n"
+            'flags=(); while [[ $1 == -I || $1 == -P || $1 == -s ]]; do flags+=("$1"); shift; done\n'
+            f'exec {shlex.quote(sys._base_executable)} "${{flags[@]}}" -c {shlex.quote(bootstrap)} "${{flags[@]}}" "$@"\n'
+        )
+        self.executable(self.python, launcher)
+
+    def configuration(self, kind):
+        config = self.root / "protected-config"
+        config.mkdir()
+        if kind == "missing":
+            config.rmdir()
+        elif kind == "writable":
+            config.chmod(0o777)
+        elif kind == "payload":
+            (config / "hosts.yml").write_text("hostile.invalid: {http_unix_socket: /tmp/hostile.sock}\n")
+        elif kind == "symlink":
+            config.rmdir()
+            config.symlink_to(self.home, target_is_directory=True)
+        elif kind == "ancestor":
+            self.root.chmod(0o777)
+        # Model the protected filesystem root; preserve actual modes, types, symlinks and payload bytes below it.
+        extra = (
+            "import pathlib,os\nP=pathlib.Path; original_new=P.__new__; original_stat=P.stat\n"
+            f"fixture=P({str(self.root)!r}); parents=set(fixture.parents)\n"
+            f"def namespace(cls,*a,**k): return original_new(cls,*(({str(config)!r},) if a==('/var/empty',) else a),**k)\n"
+            "def measured(p,*a,**k):\n s=list(original_stat(p,*a,**k)); s[4]=0\n if p in parents: s[0]&=~0o022\n return os.stat_result(s)\n"
+            "P.__new__=staticmethod(namespace); P.stat=measured\n"
+        )
+        self.launcher(extra)
+
+    @staticmethod
+    def executable(path, text):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        path.chmod(0o755)
+
+    def declaration(self, value=None):
+        self.manifest.parent.mkdir(parents=True, exist_ok=True)
+        tools = {"gh": {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}}
+        self.manifest.write_text(json.dumps({"trusted_tools": tools if value is None else value}))
+
+    def run(self, script=SCRIPT, *args, cwd=None, env=None):
+        return subprocess.run(
+            [str(self.python), "-I", str(script), *map(str, args)],
+            cwd=cwd or self.root,
+            env=self.env | (env or {}),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def records(self):
+        return [json.loads(s) for s in self.calls.read_text().splitlines()] if self.calls.exists() else []
+
+    def git(self, repo, *args):
+        gitdir = repo / ".git"
+        if gitdir.is_file():
+            gitdir = Path(gitdir.read_text().strip().removeprefix("gitdir: "))
+        env = {
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(self.home),
+            "UV_CACHE_DIR": str(self.root / "cache"),
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+        }
+        argv = [
+            "/usr/bin/git",
+            f"--git-dir={gitdir}",
+            f"--work-tree={repo}",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            *map(str, args),
+        ]
+        return subprocess.run(argv, cwd=repo, env=env, text=True, capture_output=True, check=True).stdout.strip()
+
+    def gate_repository(self):
+        self.repo, self.pr = self.root / "repo", self.root / "pr"
+        self.repo.mkdir()
+        self.git(self.repo, "init", "-q", "-b", "main")
+        for rel in (
+            "scripts/pr-feedback.py",
+            "scripts/require-crit-review.py",
+            "scripts/validate-agent-assets.py",
+            "scripts/orchestrator/orch-gate.sh",
+            "scripts/orchestrator/local-review.sh",
+        ):
+            target = self.repo / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / rel, target)
+        (self.repo / "README.md").write_text("base\n")
+        self.git(self.repo, "add", ".")
+        self.git(self.repo, "commit", "-qm", "base")
+        self.base = self.git(self.repo, "rev-parse", "HEAD")
+        self.git(self.repo, "remote", "add", "origin", "https://hostile.invalid/foreign/fork.git")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/main", self.base)
+        self.git(self.repo, "worktree", "add", "-qb", "pr", self.pr, "main")
+        (self.pr / "README.md").write_text("changed\n")
+        self.git(self.pr, "add", "README.md")
+        self.git(self.pr, "commit", "-qm", "change")
+        self.head = self.git(self.pr, "rev-parse", "HEAD")
+        self.review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.git(self.repo, "worktree", "add", "-q", "--detach", self.review, "main")
+        feedback = {
+            "repo": REPO,
+            "pr": 180,
+            "head_sha": self.head,
+            "base_ref": "main",
+            "base_sha": self.base,
+            "items": [],
+        }
+        data = {
+            "metadata": {"headRefOid": self.head, "baseRefName": "main", "baseRefOid": self.base},
+            "responses": {
+                f"repos/{REPO}/pulls/180": {"head": {"sha": self.head}, "base": {"ref": "main", "sha": self.base}}
+            },
+        }
+        self.responses.write_text(json.dumps(data))
+        v = ".orchestration/validation/binding"
+        self.inputs = {
+            "PR_FEEDBACK_EVIDENCE": v + "-pr-feedback.json",
+            "AUDIT_EVIDENCE": v + f"-audit-{self.head[:7]}.md",
+            "REVIEW_EVIDENCE": v + "-review-receipt.md",
+            "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/binding.md",
+            "AGENT_REVIEWED": "1",
+        }
+        files = {
+            self.inputs["PR_FEEDBACK_EVIDENCE"]: json.dumps(feedback),
+            self.inputs["AUDIT_EVIDENCE"]: "fixture audit\n",
+            self.inputs["AUDIT_EVIDENCE"] + ".last.md": "Verdict: correct\n",
+            v + "-crit.json": json.dumps(
+                [{"id": "fixture", "body": "controlled fixture approval", "scope": "review", "resolved": True}]
+            ),
+            self.inputs[
+                "REVIEW_EVIDENCE"
+            ]: f"review_surface: crit-data\nreviewer: codex\nreview_source: {v}-crit.json\nreview_outcome: approved\n",
+            self.inputs["ACCEPTANCE_EVIDENCE"]: "---\n"
+            + json.dumps({"format": 1, "task": "binding", "head": self.head, "pr": 180, "ledger": [], "searches": []})
+            + "\n---\n",
+        }
+        for rel, text in files.items():
+            for repo in (self.repo, self.pr):
+                target = repo / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text)
+        uv = f'#!/bin/bash -p\n# @brief Run the fixture interpreter.\nif [[ "$1 $2" == "python find" ]]; then printf "%s\\n" {shlex.quote(str(self.python))}; exit; fi\nwhile [[ $1 != python ]]; do shift; done; shift\nexec {shlex.quote(str(self.python))} "$@"\n'
+        self.executable(self.bin / "uv", uv)
+
+    def assert_bound(self, case):
+        records = self.records()
+        case.assertTrue(records, "no real gh descendant observed")
+        for row in records:
+            case.assertEqual(str(self.target), row["target"], row)
+            e, a = row["env"], row["argv"]
+            case.assertEqual("/var/empty", e.get("GH_CONFIG_DIR"))
+            case.assertEqual(str(self.home), e.get("HOME"))
+            case.assertTrue(Path(e["UV_CACHE_DIR"]).is_absolute())
+            case.assertFalse(
+                set(e) & {"GH_HOST", "GH_REPO", "XDG_CONFIG_HOME", "HTTPS_PROXY", "PYTHONPATH", "GIT_DIR"}, row
+            )
+            if a == ["--version"]:
+                case.assertNotIn("GH_TOKEN", e)
+            else:
+                case.assertEqual(self.env["GH_TOKEN"], e.get("GH_TOKEN"))
+                if a[0] in ("api", "auth"):
+                    case.assertIn("github.com", a)
+                if a[0] == "pr":
+                    case.assertEqual("github.com/mryfmo/dotfiles", a[a.index("--repo") + 1])
+
+
+class GhBindingTest(unittest.TestCase):
+    def fixture(self):
+        temp = tempfile.TemporaryDirectory(prefix="gh-binding-")
+        self.addCleanup(temp.cleanup)
+        return GhFixture(Path(temp.name).resolve())
+
+    def test_collector_hostile_repository(self):
+        f = self.fixture()
+        result = f.run(SCRIPT, "180", "--repo", REPO)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(SHA, json.loads(result.stdout)["head_sha"])
+        api = [r for r in f.records() if r["argv"][0] == "api"]
+        self.assertTrue(api)
+        self.assertTrue(all("github.com" in r["argv"] for r in api))
+        f.assert_bound(self)
+
+    def test_collector_binding_refusals(self):
+        for kind in ("missing", "version", "path", "executable", "forged HOME"):
+            with self.subTest(kind=kind):
+                f = self.fixture()
+                env = {}
+                if kind == "missing":
+                    f.manifest.unlink()
+                elif kind == "version":
+                    f.target.write_text(f.target.read_text().replace("gh version 2.102.0", "gh version 9.9.9"))
+                elif kind == "path":
+                    f.target.unlink()
+                    f.target.symlink_to(f.bin / "gh")
+                elif kind == "executable":
+                    f.target.chmod(0o644)
+                else:
+                    env["HOME"] = str(f.root / "forged")
+                result = f.run(SCRIPT, "180", "--repo", REPO, env=env)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("refused: gh binding", result.stderr.strip())
+                self.assertFalse([r for r in f.records() if r["argv"] != ["--version"]])
+
+    def test_collector_rejects_conflicting_repository(self):
+        f = self.fixture()
+        result = f.run(SCRIPT, "180", "--repo", "hostile/fork")
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(f.records())
+
 
 # Shapes recorded from mryfmo/dotfiles #180 and #181, trimmed to the fields read.
 RESPONSES: dict[str, Any] = {

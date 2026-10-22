@@ -15,12 +15,83 @@ import time
 import unittest
 from pathlib import Path
 
+from tests.unit.test_pr_feedback import GhFixture
+
 
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
 FIXTURES = ROOT / "tests/fixtures/gate-evidence"
 # A complete C-59 re-plan, the value of the record block's replans[<class>] (plan 023 F1).
 REPLAN = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
+
+
+class GhBindingTest(unittest.TestCase):
+    def fixture(self):
+        temp = tempfile.TemporaryDirectory(prefix="gate-gh-binding-")
+        self.addCleanup(temp.cleanup)
+        f = GhFixture(Path(temp.name).resolve())
+        f.gate_repository()
+        return f
+
+    def test_gate_hostile_repository(self):
+        f = self.fixture()
+        (f.pr / "scripts/pr-feedback.py").write_text("raise RuntimeError('PR collector must never execute')\n")
+        result = f.run(f.repo / "scripts/require-crit-review.py", "--base", "main", cwd=f.pr, env=f.inputs)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("PR feedback evidence accepted", result.stdout)
+        views = [r for r in f.records() if r["argv"][:2] == ["pr", "view"]]
+        self.assertTrue(views)
+        self.assertTrue(all("github.com/mryfmo/dotfiles" in r["argv"] for r in views))
+        f.assert_bound(self)
+        self.assertIn("foreign/fork", f.git(f.repo, "remote", "get-url", "origin"))
+
+    def test_collector_ignores_startup_hooks(self):
+        f = self.fixture()
+        userbase, startup = f.root / "userbase", f.root / "startup"
+        startup.mkdir()
+        markers = {name: f.root / (name + "-executed") for name in ("pth", "site", "user", "startup")}
+        hostile = {
+            "PYTHONUSERBASE": str(userbase),
+            "PYTHONPATH": str(startup),
+            "PYTHONSTARTUP": str(startup / "interactive.py"),
+        }
+        probe = subprocess.run(
+            [sys._base_executable, "-c", "import site; print(site.getusersitepackages())"],
+            env=f.env | hostile,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        site = Path(probe.stdout.strip())
+        site.mkdir(parents=True)
+        for path, name in (
+            (site / "planted.pth", "pth"),
+            (startup / "sitecustomize.py", "site"),
+            (site / "usercustomize.py", "user"),
+            (startup / "interactive.py", "startup"),
+        ):
+            path.write_text(f"import pathlib; pathlib.Path({str(markers[name])!r}).write_text('executed')\n")
+        control = subprocess.run(
+            [sys._base_executable, "-i"],
+            input="raise SystemExit\n",
+            env=f.env | hostile,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, control.returncode, control.stderr)
+        for marker in markers.values():
+            self.assertTrue(marker.exists(), "negative control never executed the planted hook")
+            marker.unlink()
+        result = f.run(f.repo / "scripts/require-crit-review.py", "--base", "main", cwd=f.pr, env=f.inputs | hostile)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("PR feedback evidence accepted", result.stdout)
+        self.assertFalse([m for m in markers.values() if m.exists()])
+        descendants = [json.loads(s) for s in (f.root / "python.jsonl").read_text().splitlines()]
+        collectors = [r for r in descendants if any(a.endswith("/pr-feedback.py") for a in r["argv"])]
+        self.assertTrue(collectors)
+        self.assertTrue(all("-I" in r["argv"] for r in collectors))
+        f.assert_bound(self)
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:

@@ -5,7 +5,7 @@
 #   Plan 023 PR C stage 1 (T129 hcom-dispatch bus a02): agmsg-dispatch's argument form, word joining and deadline
 #   (AGMSG_DISPATCH_TIMEOUT, default 120 s) over hcom. Identifiers keep agmsg-dispatch's grammar, the team also
 #   scripts/orchestrator/bus-history.sh's `^[a-z0-9][a-z0-9-]{0,63}$`; a body with NUL or a line separator is refused.
-#   One `hcom send --from <from> --json --thread <team> @<team>-<to> -- <body>` is made, never repeated; its
+#   One `hcom send --from <from> --json --thread <team> @<to> -- <body>` is made, never repeated; its
 #   `event_id` is the message, never matched by sender or body, and its receipt is confirmed only through
 #   bus-history.sh's exact-id view, whose sender, recipient and body must be this send's. Unconfirmed at half the
 #   deadline, the pane gets one `herdr pane run <pane> "hcom: new message for <to>"` (herdr as the passwd home's mise
@@ -89,7 +89,7 @@ except (OSError, UnicodeError):
     bound = False
 if not bound or not re.fullmatch(r"[0-9a-f]{64}", want):
     fail(2, "refused: hcom binding")
-sent = run([entry, "send", "--from", sender, "--json", "--thread", team, f"@{team}-{to}", "--", body])
+sent = run([entry, "send", "--from", sender, "--json", "--thread", team, f"@{to}", "--", body])
 if sent.returncode:
     fail(3, f"hcom send exited {sent.returncode}; nothing is known to be sent")
 lines = [line for line in sent.stdout.decode("utf-8", "replace").splitlines() if line.strip()]

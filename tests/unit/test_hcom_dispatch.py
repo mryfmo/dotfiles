@@ -236,7 +236,7 @@ class HcomDispatchTest(unittest.TestCase):
                 out = self.send(*words)
                 sends = self.w.hcom_calls("send")
                 self.assertEqual(1, len(sends))
-                argv = ["send", "--from", ORCH, "--json", "--thread", TEAM, f"@{TEAM}-{WORKER}", "--", body]
+                argv = ["send", "--from", ORCH, "--json", "--thread", TEAM, f"@{WORKER}", "--", body]
                 self.assertEqual(argv, sends[0]["argv"])
                 self.assertEqual(body, self.w.load()["events"][-1]["data"]["text"])
                 receipt = json.loads(out.stdout)

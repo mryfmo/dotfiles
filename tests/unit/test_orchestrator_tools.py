@@ -1700,6 +1700,21 @@ class OrchestratorToolsTest(unittest.TestCase):
         ]
         with self.subTest("populated, both markers, another thread left out"):
             self.assertEqual(rows, self.bus("bus-history.sh", "team").stdout.splitlines())
+        with self.subTest("a worker's thread reply names no recipient: shown -, unread"):
+            self.w.message(
+                "worker",
+                "orch",
+                "AGMSG-RESULT v1 task_id=t",
+                ts="2026-10-22T01:05:00+00:00",
+                thread="team",
+                delivered_to=[],
+            )
+            self.assertEqual(
+                "● [2026-10-22T01:05:00Z] worker → -: AGMSG-RESULT v1 task_id=t",
+                self.bus("bus-history.sh", "team").stdout.splitlines()[-1],
+            )
+            self.w.load()["events"].pop()
+            self.w.save()
         with self.subTest("bounded"):
             self.assertEqual(rows[1:], self.bus("bus-history.sh", "team", "--limit", "2").stdout.splitlines())
         with self.subTest("the JSON view keeps the ids, and one id selects one row"):
@@ -1737,7 +1752,7 @@ class OrchestratorToolsTest(unittest.TestCase):
             self.w.knob("auto-read")
             self.dispatch(ping, record=record)
             sent = self.w.load()["events"][-1]
-            argv = ["send", "--from", "orch", "--json", "--thread", "team", "@team-worker", "--", sent["data"]["text"]]
+            argv = ["send", "--from", "orch", "--json", "--thread", "team", "@worker", "--", sent["data"]["text"]]
             self.assertEqual(argv, self.w.hcom_calls("send")[-1]["argv"])
             exact = [c["argv"][-1] for c in self.w.hcom_calls("events")]
             self.assertIn(f"msg_thread = 'team' AND id = {sent['id']}", exact)

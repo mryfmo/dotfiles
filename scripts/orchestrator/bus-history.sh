@@ -6,12 +6,13 @@
 #   regime-counters.sh, through hcom's write-free `events` read (`sqlite3 -readonly` cannot open its idle WAL store).
 #   The team is hcom-dispatch's `--thread` label, and the SQL a fixed template into which only the checked team
 #   (`^[a-z0-9][a-z0-9-]{0,63}$`) and message id (`^[1-9][0-9]{0,18}$`) go. A row is read (`○`) when every
-#   recipient's `instances.last_event_id` is at or past its id, else unread (`●`). hcom runs only from this
-#   checkout's `.agents/worklog/uv-tools/hcom/bin/hcom`, with the sha256 update_hcom_private recorded beside it. The
-#   store is the deployed declaration's `assets.hcom.store_relative_path` under the passwd home: hcom's default
-#   `.hcom` (HCOM_DIR is never set), resolving inside the declared location, at user_version 18. Every row is checked
-#   before any output: a field outside its grammar, or NUL or a str.splitlines() separator in a body, fails the whole
-#   read. Children get only PATH=/usr/bin:/bin, HOME (the passwd home), LANG, TMPDIR and UV_CACHE_DIR.
+#   recipient's `instances.last_event_id` is at or past its id, else unread (`●`, also a thread reply naming no
+#   recipient, shown `-`). hcom runs only from this checkout's `.agents/worklog/uv-tools/hcom/bin/hcom`, with the
+#   sha256 update_hcom_private recorded beside it. The store is the deployed declaration's
+#   `assets.hcom.store_relative_path` under the passwd home: hcom's default `.hcom` (HCOM_DIR is never set), resolving
+#   inside the declared location, at user_version 18. Every row is checked before any output: a field outside its
+#   grammar, or NUL or a str.splitlines() separator in a body, fails the whole read. Children get only
+#   PATH=/usr/bin:/bin, HOME (the passwd home), LANG, TMPDIR and UV_CACHE_DIR.
 # @arg $1 string Team.
 # @option --limit <n> Only the newest n messages.
 # @option --json One JSON object per message: id, at, from, to (a list), body, read.
@@ -153,7 +154,7 @@ def row(event):
     if not isinstance(ts, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{1,9})?\+00:00", ts):
         refuse(f"message {eid}: its time is not UTC ISO-8601")
     sender, to, body = data.get("from"), data.get("delivered_to"), data.get("text")
-    names = [sender] + (to if isinstance(to, list) and to else [None])
+    names = [sender] + (to if isinstance(to, list) else [None])  # a worker's thread reply may name no recipient
     if not all(isinstance(n, str) and NAME.match(n) for n in names) or data.get("thread") != team:
         refuse(f"message {eid}: a sender, recipient or thread outside the grammar")
     if not isinstance(body, str) or BREAKS & set(body):
@@ -174,6 +175,6 @@ for r in sorted(rows, key=lambda r: r["id"]):
     if as_json:
         out.append(json.dumps(r, ensure_ascii=False, sort_keys=True))
     else:
-        out.append(f"{'○' if r['read'] else '●'} [{r['at']}] {r['from']} → {','.join(r['to'])}: {r['body']}")
+        out.append(f"{'○' if r['read'] else '●'} [{r['at']}] {r['from']} → {','.join(r['to']) or '-'}: {r['body']}")
 sys.stdout.write("".join(line + "\n" for line in out))
 PYTHON

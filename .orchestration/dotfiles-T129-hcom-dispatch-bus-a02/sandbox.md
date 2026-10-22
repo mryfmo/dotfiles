@@ -5,7 +5,18 @@
   - `mkdir -p ~/Workspace/dotfiles/.agents/worklog/uv-tools` printed `mkdir: ~/Workspace/dotfiles/.agents/worklog/uv-tools: Operation not permitted` (exit 1);
   - `: > ~/Workspace/dotfiles/.agents/worklog/uv-tools-probe` printed `operation not permitted` (exit 1);
   - the directory did not exist before or after.
-- **Inside the sandbox ran:** `git fetch`, `git switch -c … --no-track`, the hcom probes against disposable stores under `$TMPDIR`, and `sqlite3` on copies of those stores.
-- **Refused by the permission layer:** one probe command that began with `rm -rf` of a scratch store; it was rerun with a fresh `mktemp -d` directory instead.
+- **Inside the sandbox ran:**
+  - `git` fetch, switch, commit and push;
+  - the hcom probes against disposable stores under `$TMPDIR`;
+  - `update_hcom_private` into this worktree's own `.agents/worklog/uv-tools` (amendment 2's validation place);
+  - the real-hcom smoke on fixture homes under `$TMPDIR`;
+  - every test and static check;
+  - `gh` reads.
+- **Network:** the uv warm-ups that fetch PyYAML ran with `pypi.org` and `files.pythonhosted.org` allowed for that command. The measured `env -i` invocation passed the sandbox proxy variables, and nothing else.
+- **bash 3.2 here-documents (validation §11):**
+  - `/bin/bash`, macOS's 3.2, keeps every here-document and here-string in a temporary file under `/tmp`, which this sandbox refuses: `cannot create temp file for here document: Operation not permitted`.
+  - The scripts therefore use no here-document that runs.
+- **Refused by the permission layer:** one probe command that began with `rm -rf` of a scratch store; it was rerun with a fresh `mktemp -d` directory.
 - **Outside the sandbox:** only `agmsg-dispatch`, through the permission gate (the deployed `excludedCommands` is empty, Checks).
-- **Not run:** Bats; the live `~/.hcom` store.
+- **Never touched:** the live `~/.hcom` store and `~/.agents/agent-config.yaml` (no write; the production-callers subtest reads the declaration's path and stops there), and the main checkout's `.agents/worklog/uv-tools`.
+- **Not run:** Bats.

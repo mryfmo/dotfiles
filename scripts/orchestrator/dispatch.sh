@@ -357,7 +357,7 @@ def read_all(fd):
     return b"".join(iter(lambda: os.read(fd, 1 << 16), b""))
 
 def linked(name):
-    """True when a component of the absolute path is a symbolic link: lstat each one (realpath can touch atimes)."""
+    """True when a component of the absolute path is a symbolic link: lstat each one, opening nothing."""
     part = "/"
     for piece in name.strip("/").split("/"):
         part = os.path.join(part, piece)

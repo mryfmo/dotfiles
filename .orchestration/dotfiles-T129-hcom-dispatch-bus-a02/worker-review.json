@@ -1,0 +1,72 @@
+[
+  {
+    "id": "r1",
+    "scope": "file",
+    "file": "scripts/orchestrator/dispatch.sh",
+    "line": 443,
+    "resolved": true,
+    "body": "P1: the recorder's env -i prefix was rebuilt by printf | /usr/bin/python3 outside env -i (a line break in an inherited value, or DEVELOPER_DIR, could choose its programs). Fixed in 7ad4d56d: the prefix is passed as arguments, AGMSG_DISPATCH_TIMEOUT is checked; test_private_namespace_matrix drives the record path (red on the pre-fix bytes, validation \u00a719)."
+  },
+  {
+    "id": "r2",
+    "scope": "file",
+    "file": "scripts/orchestrator/dispatch.sh",
+    "line": 243,
+    "resolved": true,
+    "body": "P1: /usr/bin/shasum is Perl and ran with PERL5OPT/PERL5LIB inherited, so a module could forge a digest. Fixed in 7ad4d56d: it runs under env -i; the namespace matrix plants PERL5OPT=-Mpwn (red on the pre-fix bytes)."
+  },
+  {
+    "id": "r3",
+    "scope": "file",
+    "file": "scripts/orchestrator/bus-read.sh",
+    "line": 86,
+    "resolved": true,
+    "body": "P2: under the Q2 contract (3150) a worker's --thread reply reaches the other thread members, never the orchestrator (reproduced on hcom 0.7.30, validation \u00a717), so bus-read's frozen close rule never closes a task and replies cross to other workers. Item 5 freezes the jq: reported in the RESULT for the orchestrator's decision, with a default."
+  },
+  {
+    "id": "r4",
+    "scope": "file",
+    "file": "scripts/regime-counters.sh",
+    "line": 93,
+    "resolved": true,
+    "body": "P2: check-regime-boundary.sh (not in allowed_files) runs the counters without UV_CACHE_DIR and skips its INV-6 probe on a failure, so the probe goes silent. Reported as a residual owned by dotfiles-T129-hcom-dispatch-bus-a02-followup-a01 (the caller exports a private absolute UV_CACHE_DIR)."
+  },
+  {
+    "id": "r5",
+    "scope": "file",
+    "file": "home/dot_local/bin/common/executable_hcom-dispatch",
+    "line": 67,
+    "resolved": true,
+    "body": "P3: an uncaught TimeoutExpired or a negative sleep exited 1 (the unread status) without a receipt. Fixed in 7ad4d56d: a timeout exits 3, and the sleep is floored at 0."
+  },
+  {
+    "id": "r6",
+    "scope": "file",
+    "file": "scripts/orchestrator/bus-history.sh",
+    "line": 69,
+    "resolved": true,
+    "body": "P3: an empty --message-id or --limit counted as absent. Fixed in 7ad4d56d: values are tested against None."
+  },
+  {
+    "id": "r7",
+    "scope": "file",
+    "file": "scripts/regime-counters.sh",
+    "line": 119,
+    "resolved": true,
+    "body": "P3: gh is still found through PATH; the bound gh is T133 gh-binding a02's (PR #456, open), constraint 5's named prerequisite: residual, with fixed --hostname and repository already in place."
+  },
+  {
+    "id": "r8",
+    "scope": "file",
+    "file": "tests/unit/test_orchestrator_tools.py",
+    "line": 1967,
+    "resolved": true,
+    "body": "P3: the production-callers subtest reaches the passwd home. Mitigated in 7ad4d56d: the fake hcom refuses to run against a home outside the fixture; the reader's read-only declaration and header checks of the passwd home remain, which that subtest exists to show."
+  },
+  {
+    "id": "r9",
+    "scope": "review",
+    "resolved": true,
+    "body": "Independent agent review (fresh context, given the code and the binding constraints only) of 8f6613bb; verdict incorrect on r1 and r2, both fixed and re-tested in 7ad4d56d. Sound by its reading: the SQL guard, exact-id matching, row framing, the declaration and store checks, the record and snapshot handling, refusal paths, bash 3.2 and Python 3.9 compatibility, update_hcom_private."
+  }
+]

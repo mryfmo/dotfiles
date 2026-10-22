@@ -87,3 +87,24 @@ cost: n/a
   - `bash -n`, `shellcheck`, `shfmt -i 4 -sr -d` and the comparison lint exit 0.
 - **Caps, from merge-base `7b21659e`:** 59 of 110 outside `tests/` and `.orchestration/`, and 107 of 160 under `tests/`.
 - **The `regime` failure:** on `ed76b740` it came only from the stale task copy, which predated amendment 3's `allowed_files`. The records commit carries the amended copy.
+
+## Revise 3 (AGMSG-ACCEPTANCE status=revise round=3 amendment=4, 2026-10-22T04:10:11Z; previous head 930a76a0)
+
+- **Producer:** worker (Claude seat).
+- **The audit:** the task-level audit of `e6b645fc` found four P2s, three of them in this task's scope. Amendment 4 (`9be19bd6…`) is now the task copy.
+- **Commits:** the red tests and `smoke.sh` are `4ecf2f00`, and the fix is `9d268181`.
+
+| Finding | Fix | Fixture, red at 4ecf2f00, green at 9d268181 |
+| --- | --- | --- |
+| a PPA fetch warning beside another apt error (a post-update hook) became an outage | `ppa_step` reads apt's output line by line: Ghostty-PPA fetch failures, the PPA's `Err:` lines and the `Some index files failed to download` summary are the outage's lines; any other `E:`, `Err:` or `W: Failed to fetch` line returns apt's own status | `a non-fetch apt error after a PPA warning stays fatal` (red: exit 0 with the retry line) |
+| `dpkg -s` skipped a half-configured ghostty | the skip needs `dpkg-query -W -f '${db:Status-Status}' ghostty` to print `installed` (a never-installed package prints nothing) | `a half-configured ghostty is installed, not skipped` (red: skipped) |
+| validation.md held a placeholder grep and prose in place of commands | rewritten: every block is a command as executed, with its output and exit; `smoke.sh` replaces the prose-described harness | n/a |
+
+- **The fixtures:** they now model dpkg. `dpkg -s` succeeds for any status record, and `dpkg-query` prints the status. `an installed ghostty is left as it is` uses `STATUS=installed`.
+- **The fourth finding:** the acceptance record's deferral is the orchestrator's.
+- **The base:** the branch is at the orchestrator's update-branch head `e6b645fc`, which carries main `d06d94fd`.
+- **Checks:**
+  - CI at `9d268181`: ok 6 to 17, and every check except `regime`;
+  - `bash -n`, `shellcheck`, `shfmt` and the comparison lint exit 0.
+- **Caps, from the merge-base:** 65 of 110 outside `tests/` and `.orchestration/`, and 131 of 160 under `tests/`.
+- **`regime`:** it fails only because main carries this text's amendment 3 (`bc6a455f`) while the copy is amendment 4 (`9be19bd6`). It needs amendment 4 on main, then a re-run.

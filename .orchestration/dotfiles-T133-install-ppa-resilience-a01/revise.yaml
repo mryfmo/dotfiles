@@ -1,0 +1,7 @@
+# The revise round of 2026-10-22T02:33:03Z (AGMSG-ACCEPTANCE status=revise round=2 amendment=3), as the message contract asks.
+previous_head: 44134e36c167ab57a6ca048b2dd75ff7431b87f8
+reason: "the task-level audit of 44134e36 (Verdict incorrect, five P2): an exit-0 apt-get update with a failed PPA index missed the skip path; any Launchpad fetch line turned a mixed failure into success; a skipped install was never retried from the run_once_ caller; validation.md was not verbatim"
+checks:
+  - "tests/install/ubuntu/client/ghostty.bats::an apt-get update that reports a failed PPA index without a non-zero exit is an outage"
+  - "tests/install/ubuntu/client/ghostty.bats::a fetch failure from another host stays fatal even when the PPA also failed"
+  - "tests/install/ubuntu/client/ghostty.bats::the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it"

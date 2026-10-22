@@ -66,3 +66,24 @@ task_sha256: 45fb80f66c9ca36ef5dc3595d516404b64b6060fab4bd2a2c3b7e3174a83488f
 - **A pool outage:** it leaves the PPA configured, which the next `make update` reuses.
 
 cost: n/a
+
+## Revise 2 (AGMSG-ACCEPTANCE status=revise round=2 amendment=3, 2026-10-22T02:33:03Z; previous head 44134e36)
+
+- **Producer:** worker (Claude seat).
+- **The audit:** the task-level audit of `44134e36` found five P2s, four of them in this task's scope. Amendment 3 (`bc6a455f…`, now the task copy) adds Item 3 and the three checks.
+- **The base:** main was merged first, at `7b21659e`, as merge commit `51668a16`.
+- **Commits:** the red tests are `ae120581` and the fix is `ed76b740`.
+
+| Finding | Fix | Fixture (`tests/install/ubuntu/client/ghostty.bats`), red at ae120581, green at ed76b740 |
+| --- | --- | --- |
+| an exit-0 `apt-get update` with a failed PPA index missed the skip | `ppa_step` classifies by output, whatever the exit: when every `Failed to fetch` line names `ppa.launchpadcontent.net/mkasberg/ghostty-ubuntu/`, it returns 75 | `an apt-get update that reports a failed PPA index without a non-zero exit is an outage` (red: exit 1, the install attempted) |
+| any Launchpad fetch line made a mixed failure a success | a fetch failure from any other source, the Ubuntu archive or another PPA on the same host, keeps apt's own status | `a fetch failure from another host stays fatal even when the PPA also failed` (red: exit 0 with the retry line, for both cases) |
+| a skipped install was never retried (the caller was a `run_once_` script) | the step moves to `home/.chezmoiscripts/ubuntu/run_after_06-client-install-ghostty.sh.tmpl`, with the same guard as `run_after_05-client-install-zed.sh.tmpl`. The misc `run_once_` script drops the include, and the installer returns 0 at once when `dpkg -s ghostty` succeeds | `the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it` (red: no template), and `an installed ghostty is left as it is` (red: apt called) |
+| validation.md was not verbatim | rewritten: every command with its output, JSON as JSON, the lint red run included (§3) | n/a |
+
+- **The fifth finding:** the deferral in the acceptance record is the orchestrator's.
+- **Checks:**
+  - CI at `ed76b740` passes ok 6 to 15 in the ubuntu-24.04 client job;
+  - `bash -n`, `shellcheck`, `shfmt -i 4 -sr -d` and the comparison lint exit 0.
+- **Caps, from merge-base `7b21659e`:** 59 of 110 outside `tests/` and `.orchestration/`, and 107 of 160 under `tests/`.
+- **The `regime` failure:** on `ed76b740` it came only from the stale task copy, which predated amendment 3's `allowed_files`. The records commit carries the amended copy.

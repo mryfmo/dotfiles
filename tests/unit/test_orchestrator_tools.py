@@ -85,6 +85,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.env = {
             **self.binding.env,
             "LANG": os.environ.get("LANG", "C.UTF-8"),
+            "LC_ALL": "C",
             "UV_CACHE_DIR": os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
             "UV_PYTHON": sys._base_executable,
             "CALLS": str(self.calls),

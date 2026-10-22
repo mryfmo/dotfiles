@@ -21,6 +21,7 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/pr-feedback.py"
+JQ = shutil.which("jq")
 REPO = "mryfmo/dotfiles"
 SHA = "aa17407b680691a42f421721479d7cd14c4421fa"
 BASE_SHA = "b" * 40
@@ -36,7 +37,7 @@ class GhFixture:
         self.root, self.home, self.bin, self.calls = root, root / "home", root / "bin", root / "gh.jsonl"
         self.home.mkdir(parents=True, exist_ok=True)
         self.bin.mkdir(exist_ok=True)
-        (self.bin / "jq").symlink_to(shutil.which("jq"))
+        (self.bin / "jq").symlink_to(JQ)
         self.responses = root / "responses.json"
         self.responses.write_text(json.dumps({"responses": RESPONSES, "metadata": {}}))
         self.target = self.home / ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"

@@ -24,22 +24,17 @@ readonly APT_FAKES='
             warn:"update "*) [ ! -e "${HOME}/ppa-added" ] || printf "W: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable [IP: 185.125.190.80 443]\nW: Some index files failed to download. They have been ignored, or old ones used instead.\n" "${ppa}" ;;
             hook:"update "*)
                 [ -e "${HOME}/ppa-added" ] || return 0
-                printf "W: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable\n" "${ppa}"
-                printf "E: Problem executing scripts APT::Update::Post-Invoke-Success 'false'\nE: Sub-process returned an error code\n"
+                printf "W: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable\nE: Problem executing scripts APT::Update::Post-Invoke-Success 'false'\nE: Sub-process returned an error code\n" "${ppa}"
                 return 100 ;;
             summary:"install ghostty")
-                printf "Err:3 %s noble/main amd64 ghostty amd64 1.2.0\n  503  Service Unavailable\n" "${ppa}"
-                printf "E: Failed to fetch %s/pool/main/g/ghostty/ghostty_1.2.0_amd64.deb  503  Service Unavailable\n" "${ppa}"
-                printf "E: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?\n"
+                printf "Err:3 %s noble/main amd64 ghostty amd64 1.2.0\n  503  Service Unavailable\nE: Failed to fetch %s/pool/main/g/ghostty/ghostty_1.2.0_amd64.deb  503  Service Unavailable\nE: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?\n" "${ppa}" "${ppa}"
                 return 100 ;;
             locale:"update "*)
                 [ -e "${HOME}/ppa-added" ] || return 0
                 printf "apt-get locale LC_ALL=%s LANG=%s\n" "${LC_ALL:-}" "${LANG:-}" >> "${HOME}/calls.log"
-                if [ "${LC_ALL:-}" = C ]; then
-                    printf "E: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable\n" "${ppa}"
-                else
-                    printf "E: %s/dists/noble/InRelease の取得に失敗しました  503  Service Unavailable\n" "${ppa}"
-                fi
+                local line="E: Failed to fetch %s/dists/noble/InRelease  503  Service Unavailable\n"
+                [ "${LC_ALL:-}" = C ] || line="E: %s/dists/noble/InRelease の取得に失敗しました  503  Service Unavailable\n"
+                printf "${line}" "${ppa}"
                 return 100 ;;
             warn:"install ghostty") printf "E: Unable to locate package ghostty\n"; return 100 ;;
             mixed:"update "* | otherppa:"update "*)

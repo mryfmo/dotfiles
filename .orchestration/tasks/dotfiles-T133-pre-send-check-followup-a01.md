@@ -5,6 +5,7 @@ kind: code
 security: false
 allowed_files:
   - scripts/orchestrator/pre-send.sh
+  - scripts/orchestrator/pre_send.py
   - tests/unit/test_pre_send.py
   - .orchestration/dotfiles-T133-pre-send-check-followup-a01/**
 after: [dotfiles-T133-pre-send-check-a01]
@@ -13,6 +14,8 @@ threat_table:
     disposition: "residual: the edits are exactly the owned rows of the lineage's acceptance record (item 1), each with its test named in report.md; the task-level audit from main compares the diff against the rows"
   - control: the PR edits tests/unit/test_pre_send.py only within the owned rows (item 1)
     disposition: "residual: one fixture per owned row, red before the fix and green after"
+  - control: the PR edits scripts/orchestrator/pre_send.py only within the owned rows (item 1)
+    disposition: "residual: the Python module behind pre-send.sh carries the owned heading-grammar, owner-record and fence-state rows (audit 128a208 findings 1-3, 7; audit a30a43b rows 1-4); each edit has its test in tests/unit/test_pre_send.py and the task-level audit from main compares the diff against the rows"
   - control: the task-file copy on the branch (.orchestration/dotfiles-T133-pre-send-check-followup-a01/task.md)
     disposition: "residual: byte-identical to the dispatched file (its sha256 is in the TASK line); the orchestrator compares at acceptance"
   - control: the branch evidence records under .orchestration/dotfiles-T133-pre-send-check-followup-a01/ (report.md, validation.md, sandbox.md, learning.md)
@@ -38,7 +41,7 @@ premises: []
 
 # AGMSG-TASK dotfiles-T133-pre-send-check-followup-a01 — the pre-send check lineage's owner task (advisory P2 of PR #442)
 
-Written 2026-10-20 by the orchestrator seat before the first advisory disposition of PR #442 (C-51: the owner task exists before the first advisory row). It owns the advisory rows recorded under `## Owned by dotfiles-T133-pre-send-check-followup-a01` in `.orchestration/acceptance/dotfiles-T133-pre-send-check-a01.md` (plan 020 step 1.2); it is dispatched after PR #442 merges, to a seat the orchestrator names, and only when that section holds at least one row (C-102).
+Written 2026-10-20 by the orchestrator seat before the first advisory disposition of PR #442 (C-51: the owner task exists before the first advisory row). It owns the advisory rows recorded under `## Owned by dotfiles-T133-pre-send-check-followup-a01` in the lineage's acceptance records `.orchestration/acceptance/dotfiles-T133-pre-send-check-a02.md` and `-a03.md` (plan 020 step 1.2; the a03 record carries the current rows, pointer widened 2026-10-22 after audit:a30a43b:9); it is dispatched after PR #442 merges, to a seat the orchestrator names, and only when that section holds at least one row (C-102).
 
 ## Item 1
 

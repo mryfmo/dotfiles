@@ -122,7 +122,7 @@ gh_list() {
 if [[ -n ${history_file} ]]; then
     history="$(/bin/cat -- "${history_file}")"
 elif ! history="$(read_history "${team}")"; then
-    echo "regime-counters: the agmsg history of ${team} is unreadable" >&2
+    echo "regime-counters: the bus history of ${team} is unreadable" >&2
     exit 1
 fi
 rows='def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . then .[($k | length) + 1:] else null end;

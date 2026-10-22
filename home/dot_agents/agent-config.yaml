@@ -545,6 +545,9 @@ assets:
     reason: PyPI serves a sha256 per file from the same index and no signature or attestation; the reviewed sha256 of the exact wheel is the check.
     install_path: ~/.local/bin/hcom
     installer: scripts/update-agent-assets.sh#update_hcom
+    # The bus store under the passwd home that scripts/orchestrator/bus-history.sh reads (T129 constraint 2):
+    # hcom's own default directory, measured with hcom 0.7.30; the reader never sets HCOM_DIR.
+    store_relative_path: .hcom
     render:
       file: scripts/lib/installer-pins.sh
       constants: {HCOM_PIN_VERSION: pin, HCOM_DARWIN_ARM64_SHA256: sha256.darwin-arm64, HCOM_DARWIN_AMD64_SHA256: sha256.darwin-amd64, HCOM_LINUX_AMD64_SHA256: sha256.linux-amd64, HCOM_LINUX_ARM64_SHA256: sha256.linux-arm64}

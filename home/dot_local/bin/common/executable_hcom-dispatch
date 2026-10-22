@@ -1,0 +1,139 @@
+#!/bin/bash -p
+# @file hcom-dispatch
+# @brief Send one message through hcom, confirm its receipt by its hcom id, and nudge the recipient's pane once.
+# @description
+#   Plan 023 PR C stage 1 (T129 hcom-dispatch bus a02): agmsg-dispatch's argument form, word joining and deadline
+#   (AGMSG_DISPATCH_TIMEOUT, default 120 s) over hcom. Identifiers keep agmsg-dispatch's grammar, the team also
+#   scripts/orchestrator/bus-history.sh's `^[a-z0-9][a-z0-9-]{0,63}$`; a body with NUL or a line separator is refused.
+#   One `hcom send --from <from> --json --thread <team> @<team>-<to> -- <body>` is made, never repeated; its
+#   `event_id` is the message, never matched by sender or body, and its receipt is confirmed only through
+#   bus-history.sh's exact-id view, whose sender, recipient and body must be this send's. Unconfirmed at half the
+#   deadline, the pane gets one `herdr pane run <pane> "hcom: new message for <to>"` (herdr as the passwd home's mise
+#   answers it). stdout carries one receipt `{"id": <n>, "read_at": <UTC time or null>}`; read_at is when this script
+#   first saw the recipient's cursor at or past the id (hcom stores none). hcom runs only from this checkout's
+#   `.agents/worklog/uv-tools/hcom/bin/hcom` after its sha256 check, every child under `env -i` with
+#   PATH=/usr/bin:/bin, HOME (the passwd home), LANG, TMPDIR and UV_CACHE_DIR. A copy outside a checkout refuses.
+# @option --passwd-home <dir> Test fixtures only, before the team: the directory standing for the passwd home.
+# @arg $1 string Team.
+# @arg $2 string Sender.
+# @arg $3 string Recipient.
+# @arg $4 string Herdr pane id.
+# @arg $@ string Message words, joined with spaces.
+# @env UV_CACHE_DIR The caller's private uv cache, an absolute path; children get it.
+# @exitcode 0 Sent and read.
+# @exitcode 1 Sent, unread at the deadline (read_at null).
+# @exitcode 2 Usage error or a refusal before the send: nothing was sent.
+# @exitcode 3 The send failed, or has no usable id or exact-id match: no receipt; check the bus before resending.
+set -euo pipefail
+
+if [[ -z ${UV_CACHE_DIR:-} || -n ${UV_CACHE_DIR%%/*} ]]; then
+    echo "hcom-dispatch: UV_CACHE_DIR must be an absolute path" >&2
+    exit 2
+fi
+if [[ -n ${HCOM_DIR:-} ]]; then
+    echo "hcom-dispatch: refused: an inherited HCOM_DIR names another store" >&2
+    exit 2
+fi
+timeout=${AGMSG_DISPATCH_TIMEOUT:-120}
+if [[ ! ${timeout} =~ ^[1-9][0-9]{0,5}$ ]]; then
+    echo "hcom-dispatch: timeout must be a positive integer up to 999999 seconds" >&2
+    exit 2
+fi
+root="$(cd -P -- "$(/usr/bin/dirname -- "${BASH_SOURCE[0]}")/../../../.." && pwd -P)"
+if [[ ! -e ${root}/.git || ! -f ${root}/scripts/orchestrator/bus-history.sh ]]; then
+    echo "hcom-dispatch: run it from a checkout; ${BASH_SOURCE[0]} is not inside one" >&2
+    exit 2
+fi
+# bash 3.2 keeps here-documents in /tmp, which a sandbox may refuse: the Python below is read from this file instead.
+boot='import sys
+src = open(sys.argv[1], encoding="utf-8").read().split("\n")
+start = src.index(": << \x27PYTHON\x27") + 1
+sys.argv = sys.argv[1:]
+exec(compile("\n".join(src[start:src.index("PYTHON", start)]), sys.argv[0], "exec"))'
+exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 TMPDIR="${TMPDIR:-/tmp}" UV_CACHE_DIR="${UV_CACHE_DIR}" /usr/bin/python3 -I -c "${boot}" \
+    "${root}/home/dot_local/bin/common/executable_hcom-dispatch" "${root}" "${timeout}" "$@"
+: << 'PYTHON'
+import hashlib, json, os, pwd, re, stat, subprocess, sys, time
+from datetime import datetime, timezone
+
+root, timeout, args = sys.argv[1], int(sys.argv[2]), sys.argv[3:]
+NAME, TEAM, PANE = r"[a-z0-9][a-z0-9_-]{0,63}", r"[a-z0-9][a-z0-9-]{0,63}", r"[A-Za-z0-9][A-Za-z0-9:._-]{0,63}"
+BREAKS = set("\0\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029")  # NUL and every separator str.splitlines() splits on
+
+def fail(code, why):
+    sys.stderr.write(f"hcom-dispatch: {why}\n")
+    sys.exit(code)
+
+def run(argv, timeout=120):
+    return subprocess.run(argv, env=env, cwd="/", stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
+
+fixture = args[:2] if args[:1] == ["--passwd-home"] else []
+if fixture and (len(args) < 2 or not args[1].startswith("/") or not os.path.isdir(args[1])):
+    fail(2, "--passwd-home needs an absolute directory")
+args = args[len(fixture):]
+if len(args) < 5:
+    fail(2, "usage: hcom-dispatch [--passwd-home <dir>] <team> <from> <to> <pane_id> <message...>")
+team, sender, to, pane, body = args[0], args[1], args[2], args[3], " ".join(args[4:])
+if not (re.fullmatch(TEAM, team) and re.fullmatch(NAME, sender) and re.fullmatch(NAME, to) and re.fullmatch(PANE, pane)):
+    fail(2, "identifiers must match ^[a-z0-9][a-z0-9_-]{0,63}$ (the team ^[a-z0-9][a-z0-9-]{0,63}$) and the pane id its own")
+if not body or BREAKS & set(body):
+    fail(2, "the message is empty or holds NUL or a line separator")
+home = fixture[1] if fixture else pwd.getpwuid(os.getuid()).pw_dir
+env = {"PATH": "/usr/bin:/bin", "HOME": home, "LANG": "C.UTF-8", "TMPDIR": os.environ["TMPDIR"],
+       "UV_CACHE_DIR": os.environ["UV_CACHE_DIR"]}
+entry = os.path.join(root, ".agents/worklog/uv-tools/hcom/bin/hcom")
+try:
+    want = open(entry + ".sha256", encoding="ascii").read().strip()
+    bound = stat.S_ISREG(os.lstat(entry).st_mode) and hashlib.sha256(open(entry, "rb").read()).hexdigest() == want
+except (OSError, UnicodeError):
+    bound = False
+if not bound or not re.fullmatch(r"[0-9a-f]{64}", want):
+    fail(2, "refused: hcom binding")
+sent = run([entry, "send", "--from", sender, "--json", "--thread", team, f"@{team}-{to}", "--", body])
+if sent.returncode:
+    fail(3, f"hcom send exited {sent.returncode}; nothing is known to be sent")
+lines = [line for line in sent.stdout.decode("utf-8", "replace").splitlines() if line.strip()]
+try:
+    mid = json.loads(lines[0]).get("event_id") if len(lines) == 1 else None
+except (ValueError, AttributeError):
+    mid = None
+if type(mid) is not int or mid < 1:
+    fail(3, "sent, but hcom printed no single event_id; check the bus before resending")
+view = ["/bin/bash", "--noprofile", "--norc", "-p", os.path.join(root, "scripts/orchestrator/bus-history.sh")]
+view += fixture + [team, "--json", "--message-id", str(mid)]
+
+def seen():
+    """True once this id's receipt is read; an exact-id view that is not this send's exits 3."""
+    done = run(view, timeout=180)
+    try:
+        got = json.loads(done.stdout) if done.returncode == 0 else None
+    except ValueError:
+        got = None
+    if not isinstance(got, dict) or (got.get("id"), got.get("from"), got.get("to"), got.get("body")) != (mid, sender, [to], body):
+        why = done.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] or ["its fields differ"]
+        fail(3, f"sent message {mid}; its exact-id view is not this send ({why[0]}); check the bus before resending")
+    return got.get("read") is True
+
+def wait(until):
+    while not seen():
+        if until - time.monotonic() <= 0:
+            return False
+        time.sleep(min(until - time.monotonic(), 5))
+    return True
+
+start = time.monotonic()
+read = wait(start + timeout / 2)
+if not read:
+    mise = os.path.join(home, ".local/bin/mise")
+    which = run([mise, "which", "herdr"]) if os.path.isfile(mise) else None
+    herdr = which.stdout.decode().strip() if which and which.returncode == 0 else ""
+    if herdr.startswith(home + "/.local/share/mise/installs/") and os.path.isfile(herdr):
+        run([herdr, "pane", "run", pane, f"hcom: new message for {to}"])
+    else:
+        sys.stderr.write("hcom-dispatch: no bound herdr to nudge the pane\n")
+    read = wait(start + timeout)
+at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if read else None
+print(json.dumps({"id": mid, "read_at": at}, sort_keys=True))
+if not read:
+    fail(1, f"sent message {mid}; unread at the deadline; check the bus before resending")
+PYTHON

@@ -1,11 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # @file regime-counters.sh
 # @brief Count the INV-6 reset signals of one agmsg task from history and GitHub.
 # @description
 #   Plan 006 A3, the counting half of INV-6 (V3a wires it into the hook and the
-#   gate). History is the whole team history, read through agmsg's storage
-#   facade the way scripts/agent-stop-gate.sh read_history reads it; GitHub is
-#   `gh api --paginate` on this repository. A message's task, status and verdict
+#   gate). History is the whole team history, read through this checkout's bus-history.sh `--json` view (hcom
+#   ids; plan 023 PR C stage 1); GitHub is `gh api --hostname github.com --paginate` on repos/mryfmo/dotfiles. A message's task, status and verdict
 #   are its first `task_id=`, `status=` and `verdict=` tokens, split on whitespace runs (tabs too) as dispatch.sh reads a line (later ones are
 #   free text). Counts follow INV-6's sentence only: amendments = AGMSG-TASKs -
 #   1; revises = the larger of AGMSG-RESULTs - 1 (whatever their status) and this
@@ -41,6 +40,8 @@
 #   no RESULT carries `pr=`, `invalid` for another value; the TASK senders, every
 #   counted message id and Bot head); with --reset-hash, a `reset:` line.
 #   Every line ends in `source=live`, or `source=fixture` when a test seam fed it.
+#   The record is read once, by name under the checkout's own `.orchestration/acceptance/`; jq runs under `env -i`
+#   without HOME (no ~/.jq library) from `/usr/bin/jq`, else Homebrew's.
 # @arg $1 string Task id.
 # @option --team <team> agmsg team (default dotfiles-conformance).
 # @option --pr <n> Pull request (default: the first `pr=` token of the task's RESULTs).
@@ -49,10 +50,13 @@
 # @option --reset-source <task id> The task id that accept must carry (the reset record's `redesign_source`); without it nothing is accepted.
 # @option --list-tasks Print each task id with an AGMSG-TASK in history instead of counting one.
 # @option --history-file <tsv> Test seam: `id at from to body` rows (jq @tsv) instead of the store.
+# @option --record-sha256 <sha256> The acceptance record's bytes must hash to this, or the count is refused.
+# @option --passwd-home <dir> Test fixtures only: the directory standing for the passwd home, passed to the reader.
+# @env UV_CACHE_DIR The caller's private uv cache, an absolute path; children get it.
 # @option --github-file <json> Test seam: `{"comments": [...], "commits": [...]}`, gh api objects, instead of gh.
 # @exitcode 0 Counted (or listed).
-# @exitcode 1 The agmsg history is unreadable.
-# @exitcode 2 Usage error.
+# @exitcode 1 The history is unreadable, or the record is not a regular file there or not the --record-sha256 one.
+# @exitcode 2 Usage error, or UV_CACHE_DIR absent or relative.
 # @example
 #   scripts/regime-counters.sh dotfiles-T128-v0-main-tests-a01 --pr 317
 # shellcheck disable=SC2016 # single-quoted jq programs, not shell expansions
@@ -65,11 +69,12 @@ usage() {
 # INV-6's constant for every count; changing it is a hashed design change (INV-7).
 threshold=2
 team=dotfiles-conformance task="" pr="" reset_hash="" reset_source="" history_only=false list=false history_file="" github_file=""
+record_sha256="" passwd_home=""
 while (($#)); do
     case $1 in
     --history-only) history_only=true ;;
     --list-tasks) list=true ;;
-    --team | --pr | --reset-hash | --reset-source | --history-file | --github-file)
+    --team | --pr | --reset-hash | --reset-source | --history-file | --github-file | --record-sha256 | --passwd-home)
         (($# > 1)) || usage
         name="${1#--}" && printf -v "${name//-/_}" '%s' "$2" && shift
         ;;
@@ -84,34 +89,38 @@ done
 [[ ${list} == true || -n ${task} ]] || usage
 [[ -z ${pr} || ${pr} =~ ^[0-9]+$ ]] || usage
 [[ -z ${reset_hash} || ${reset_hash} =~ ^[0-9a-f]{64}$ ]] || usage
+[[ -z ${record_sha256} || ${record_sha256} =~ ^[0-9a-f]{64}$ ]] && [[ -z ${passwd_home} || (-z ${passwd_home%%/*} && -d ${passwd_home}) ]] || usage
+if [[ -z ${UV_CACHE_DIR:-} || -n ${UV_CACHE_DIR%%/*} ]]; then
+    echo "regime-counters: UV_CACHE_DIR must be an absolute path" >&2
+    exit 2
+fi
+jq=/usr/bin/jq
+[[ -x ${jq} ]] || jq=/opt/homebrew/bin/jq
+jq() { /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 "${jq}" "$@"; }
 source=live
 [[ -z ${history_file}${github_file} ]] || source=fixture
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+root="$(cd -P -- "$(/usr/bin/dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
-# @description Print the team history as `id at from to body` rows, chronological.
-#   Same guarded read as agent-stop-gate.sh: a sqlite store at another schema
-#   revision is unreadable, never re-initialized. Call it only in $( ).
+# @description Print the team history as `id at from to body` rows, chronological, from the reader's JSON view:
+#   the ids are hcom's, and a refused read (a foreign store, another schema, a forged row) is unreadable.
 # @arg $1 string Team.
 read_history() {
-    set +e # the agmsg library is not written for errexit
-    export AGMSG_BUSY_TIMEOUT=1000
-    # shellcheck disable=SC1091
-    source "${HOME}/.agents/skills/agmsg/scripts/lib/storage.sh" && agmsg_storage_load && storage_store_exists "$1" || return 1
-    if [[ ${_AGMSG_STORAGE_LOADED:-} == sqlite ]]; then
-        [[ "$(agmsg_sqlite "$(_sqlite_db "$1")" 'PRAGMA user_version;' 2> /dev/null)" == "${_AGMSG_STORAGE_SCHEMA_REV:-}" ]] || return 1
-    fi
-    storage_history "$1" | jq -r '[.id, .at, .from, .to, .body] | @tsv'
+    local json
+    json="$(/usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 TMPDIR="${TMPDIR:-/tmp}" UV_CACHE_DIR="${UV_CACHE_DIR}" ${HCOM_DIR:+"HCOM_DIR=${HCOM_DIR}"} \
+        /bin/bash --noprofile --norc -p "${root}/scripts/orchestrator/bus-history.sh" \
+        ${passwd_home:+--passwd-home "${passwd_home}"} "$1" --json)" || return 1
+    printf '%s\n' "${json}" | jq -r '[(.id | tostring), .at, .from, (.to | join(",")), .body] | @tsv'
 }
 
 # @description Print one PR list endpoint as a JSON array, every page.
 # @arg $1 int Pull request.
 # @arg $2 string `comments` or `commits`.
 gh_list() {
-    (cd -- "${root}" && gh api --paginate "repos/{owner}/{repo}/pulls/$1/$2" --jq '.[]' 2> /dev/null) | jq -cs .
+    (cd -- "${root}" && gh api --hostname github.com --paginate "repos/mryfmo/dotfiles/pulls/$1/$2" --jq '.[]' 2> /dev/null) | jq -cs .
 }
 
 if [[ -n ${history_file} ]]; then
-    history="$(cat -- "${history_file}")"
+    history="$(/bin/cat -- "${history_file}")"
 elif ! history="$(read_history "${team}")"; then
     echo "regime-counters: the agmsg history of ${team} is unreadable" >&2
     exit 1
@@ -120,10 +129,10 @@ rows='def tok($k): [.toks[] | select(startswith($k + "="))][0] // null | if . th
 def rows: inputs | split("\t") | {id: .[0], at: .[1], from: .[2], body: (.[4:] | join("\t"))}
   | .toks = [.body | gsub("\\\\(?<c>[tnr\\\\])"; {t: "\t", n: "\n", r: "\r"}[.c] // "\\") | splits("\\s+") | select(. != "")] | .task = (tok("task_id") // "") | select(.toks[1] == "v1");'
 if [[ ${list} == true ]]; then
-    jq -nrR --arg s "${source}" "${rows}"'[rows | select(.toks[0] == "AGMSG-TASK" and .task != "") | .task] | unique[] | "\(.) source=\($s)"' <<< "${history}"
+    printf '%s\n' "${history}" | jq -nrR --arg s "${source}" "${rows}"'[rows | select(.toks[0] == "AGMSG-TASK" and .task != "") | .task] | unique[] | "\(.) source=\($s)"'
     exit 0
 fi
-counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" --arg src "${reset_source}" "${rows}"'[rows] as $all | [$all[] | select(.task == $t)] as $m
+counts="$(printf '%s\n' "${history}" | jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" --arg src "${reset_source}" "${rows}"'[rows] as $all | [$all[] | select(.task == $t)] as $m
   | def kind($k): [$m[] | select(.toks[0] == $k)];
   kind("AGMSG-TASK") as $tasks | kind("AGMSG-RESULT") as $results | ([$tasks[].from] | unique) as $authors
   | {tasks: [$tasks[].id], results: [$results[].id], authors: $authors,
@@ -134,33 +143,55 @@ counts="$(jq -ncR --arg t "${task}" --arg pr "${pr}" --arg hash "${reset_hash}" 
      pr: (if $pr != "" then $pr else [$results[] | tok("pr") | select(.)][0] | if . == null or test("^[0-9]+$") then . else "invalid" end end),
      first: $tasks[0].at, last: $results[-1].at,
      accepted_by: [$all[] | select($hash != "" and $src != "" and .task == $src and .toks[0] == "AGMSG-RESULT" and tok("verdict") == "accept" and tok("design_sha256") == $hash)
-       | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}' <<< "${history}")"
+       | .from | select(. as $f | any($authors[]; . == $f) | not)] | unique}')"
 
 # {rec: the record's JSON block}, {why: <slug>} for a block it ignores, or null for no record, a prose one or another task's.
-record=null
-if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && -f ${root}/.orchestration/acceptance/${task}.md ]]; then
-    record="$(jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
+# @description Print the record's bytes, read once by name under the acceptance directory (no link, a regular file
+#   without NUL, the --record-sha256 bytes when given), or nothing when there is none.
+read_record() {
+    /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 /usr/bin/python3 -I -c 'import hashlib, os, stat, sys
+acc, name, want = sys.argv[1:4]
+try:
+    if os.path.realpath(acc) != acc:
+        raise OSError("a symlinked part")
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=os.open(acc, os.O_RDONLY | os.O_DIRECTORY))
+except FileNotFoundError:
+    sys.exit(f"regime-counters: no record {name} for --record-sha256" if want else 0)
+except OSError as e:
+    sys.exit(f"regime-counters: the record {name} cannot be read: {e}")
+data = b"".join(iter(lambda: os.read(fd, 1 << 16), b"")) if stat.S_ISREG(os.fstat(fd).st_mode) else b"\0"
+if b"\0" in data or (want and hashlib.sha256(data).hexdigest() != want):
+    sys.exit(f"regime-counters: the record {name} is not a regular text file that hashes to --record-sha256")
+sys.stdout.buffer.write(data)' "${root}/.orchestration/acceptance" "$1" "${record_sha256}"
+}
+record=null text=
+if [[ ${task} =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    text="$(read_record "${task}.md" && printf x)" || exit 1
+    text=${text%x}
+fi
+if [[ -n ${text} ]]; then
+    record="$(printf '%s' "${text}" | jq -cRs 'split("\n") | if .[0] == "---" then .[1:] | index("---") as $e | if $e then .[:$e] | join("\n")
       | (try {rec: fromjson} catch {why: "block-not-json"})
       | if has("why") then . elif (.rec | type) == "object" and (.rec.ledger | type) == "array" and .rec.task == $t then
           [.rec.ledger[] | if type != "object" then "ledger-row-not-object" elif (.id | type) != "string" then "id-not-string"
             elif (.class | type) != "string" or (.class | test("^[a-z0-9-]+$") | not) then "class-not-slug" else empty end][0] as $why
           | if $why then {why: $why} else . end
         else null end
-      else null end else null end' --arg t "${task}" "${root}/.orchestration/acceptance/${task}.md")"
+      else null end else null end' --arg t "${task}")"
 fi
 
 github=null state=skipped
 if [[ ${history_only} == false ]]; then
     state=unknown
-    pr="$(jq -r '.pr // empty' <<< "${counts}")"
+    pr="$(printf '%s\n' "${counts}" | jq -r '.pr // empty')"
     if [[ -n ${github_file} ]]; then
-        github="$(cat -- "${github_file}")" && state=ok
+        github="$(/bin/cat -- "${github_file}")" && state=ok
     elif [[ ${pr} =~ ^[0-9]+$ ]] && comments="$(gh_list "${pr}" comments)" && commits="$(gh_list "${pr}" commits)"; then
         github="$(printf '{"comments":%s,"commits":%s}' "${comments}" "${commits}")" && state=ok
     fi
 fi
 
-jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" --arg t "${task}" --arg s "${source}" --arg hash "${reset_hash}" --arg src "${reset_source}" --argjson limit "${threshold}" '. as $gh
+printf '%s\n' "${github}" | jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" --arg t "${task}" --arg s "${source}" --arg hash "${reset_hash}" --arg src "${reset_source}" --argjson limit "${threshold}" '. as $gh
   | def title: (.body // "") | split("\n")[0]; def codex: .user.login == "chatgpt-codex-connector[bot]";
   def bot: if $state != "ok" then $state elif $c.head == null then "unknown" else
       [$gh.commits[].sha] as $shas | [range(0; $shas | length) | select($shas[.] | startswith($c.head))][0] as $i
@@ -190,4 +221,4 @@ jq -r --argjson c "${counts}" --argjson rec "${record}" --arg state "${state}" -
       | group_by(.key)[] | select(length >= 3) | "S1: candidate class=unclassified count=\(length) title=\(.[0].title | tojson) source=\(if $rec.why then "record-ignored:\($rec.why)" else $s end)"
       else empty end),
     "detail: pr=\($c.pr // "none") authors=\($c.authors | list) tasks=\($c.tasks | list) results=\($c.results | list) questions=\($c.questions | list) withdrawn=\($c.withdrawn | list) bot_heads=\(if ($b | type) == "array" then $b | list else "-" end) source=\($s)",
-    (if $hash != "" then "reset: design_sha256=\($hash) redesign_source=\(if $src != "" then $src else "none" end) accepted_by=\($c.accepted_by | if length > 0 then join(",") else "none" end) source=\($s)" else empty end)' <<< "${github}"
+    (if $hash != "" then "reset: design_sha256=\($hash) redesign_source=\(if $src != "" then $src else "none" end) accepted_by=\($c.accepted_by | if length > 0 then join(",") else "none" end) source=\($s)" else empty end)'

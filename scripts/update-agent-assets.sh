@@ -1044,6 +1044,50 @@ function update_hcom() (
 )
 
 #
+# @description Install the kept verified hcom wheel into this checkout's `.agents/worklog/uv-tools` (UV_TOOL_BIN_DIR
+#   too, so ~/.local/bin/hcom stays), the only hcom the bus scripts run (T129 amendment 2), with the entry's sha256
+#   beside it. Only a checkout's own updater runs it (not chezmoi's copy); its gitignored files need no manifest step.
+# @exitcode 1 The kept wheel is missing or differs from its pin, or the install leaves no regular entry.
+#
+function update_hcom_private() (
+    local url expected wheel actual tools entry
+    case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64 | Darwin-aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
+    Darwin-x86_64 | Darwin-amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
+    Linux-x86_64 | Linux-amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
+    Linux-aarch64 | Linux-arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
+    *)
+        printf 'Skipping the private hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        return 0
+        ;;
+    esac
+    if [ -n "${DOTFILES_SOURCE_DIR:-}" ] || [ ! -e "${DOTFILES_REPO_SOURCE_DIR}/.git" ]; then
+        printf 'Skipping the private hcom: only a checkout'"'"'s own scripts/update-agent-assets.sh installs it.\n'
+        return 0
+    fi
+    has_command uv || {
+        printf 'Skipping the private hcom: uv command not found.\n'
+        return 0
+    }
+    section "hcom (private, for the bus scripts)"
+    wheel="${HOME}/.local/share/agent-assets/hcom/${url##*/}"
+    actual="$(shasum -a 256 "${wheel}" 2> /dev/null | awk '{ print $1 }')" || actual=
+    if [ "${actual}" != "${expected}" ]; then
+        printf 'private hcom: the kept wheel %s does not hash to its pin %s (got %s); run update_hcom.\n' "${wheel}" "${expected}" "${actual:-none}" >&2
+        return 1
+    fi
+    tools="${DOTFILES_REPO_SOURCE_DIR}/.agents/worklog/uv-tools"
+    UV_TOOL_DIR="${tools}" UV_TOOL_BIN_DIR="${tools}/bin" uv tool install --force "${wheel}" || return 1
+    entry="${tools}/hcom/bin/hcom"
+    if [ ! -f "${entry}" ] || [ -L "${entry}" ]; then
+        printf 'private hcom: the install left no regular file at %s.\n' "${entry}" >&2
+        return 1
+    fi
+    shasum -a 256 "${entry}" | awk '{ print $1 }' > "${entry}.sha256"
+    printf 'private hcom %s at %s.\n' "${HCOM_PIN_VERSION}" "${entry}"
+)
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1251,6 +1295,7 @@ function main() {
     update_terminal_browser
     update_omp
     update_hcom
+    update_hcom_private
     update_compactiondb
     update_agmsg
     ensure_herdr_integrations

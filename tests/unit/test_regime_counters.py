@@ -134,14 +134,14 @@ class RegimeCountersTest(unittest.TestCase):
     # Fixtures exported from the real store and gh api.
 
     def test_t118_fixture_counts_revises_from_results(self):
-        # The plan's baseline names T118 "the 20-revise task" (20 ACCEPTANCE status=revise);
-        # INV-6 counts RESULTs minus one, which the fixture puts at 9.
+        # The plan's baseline names T118 "the 20-revise task" (20 ACCEPTANCE status=revise): the revise count, above
+        # RESULTs minus one (9), is the count (item 6).
         lines = self.fixture(T118)
         self.assertEqual(
-            {"tasks": "2", "amendments": "1", "questions": "0", "results": "10", "revises": "9"},
+            {"tasks": "2", "amendments": "1", "questions": "0", "results": "10", "revises": "20"},
             {k: fields(lines[0])[k] for k in ("tasks", "amendments", "questions", "results", "revises")},
         )
-        self.assertIn("S2: revises 9 >= 2 source=fixture", lines)
+        self.assertIn("S2: revises 20 >= 2 source=fixture", lines)
 
     def test_t119_fixture_counts_every_task_after_the_first_as_an_amendment(self):
         # Ten TASKs: eight carry amendment=, the ninth after the first is the 21:48:45Z
@@ -289,6 +289,24 @@ class RegimeCountersTest(unittest.TestCase):
             ("m1,m3,m6", "m2", "m0", "orch"),
             (detail["results"], detail["withdrawn"], detail["tasks"], detail["authors"]),
         )
+
+    def test_status_revise_matrix(self):
+        # Item 6: revises = max(RESULTs - 1, this task's ACCEPTANCE status=revise count, 0); verdict= never selects.
+        head, sha = "a" * 40, "b" * 64
+        revise = f"AGMSG-ACCEPTANCE v1 task_id={{}} status=revise previous_head={head} check=tests/x.py::t task_sha256={sha}"
+        result = "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"
+        cases = {
+            "2 RESULTs, 3 revises": ([result] * 2 + [revise.format("T1")] * 3, "3"),
+            "4 RESULTs, 1 revise": ([result] * 4 + [revise.format("T1")], "3"),
+            "another task's revises": ([result] * 2 + [revise.format("T2")] * 3, "1"),
+            "a verdict-only revise": ([result] * 2 + ["AGMSG-ACCEPTANCE v1 task_id=T1 verdict=revise"] * 3, "1"),
+            "no RESULT and no revise": ([], "0"),
+        }
+        for name, (bodies, want) in cases.items():
+            with self.subTest(name):
+                rows = tsv(("orch", "AGMSG-TASK v1 task_id=T1"), *(("orch", body) for body in bodies))
+                got = fields(self.run_counters("T1", "--history-only", "--history-file", self.write("h.tsv", rows))[0])
+                self.assertEqual(want, got["revises"])
 
     def test_a_tab_separated_task_counts_as_an_amendment(self):
         # dispatch.sh sends any whitespace run between tokens (the audit of 8576645c, P1 at dispatch.sh:80).

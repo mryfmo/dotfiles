@@ -170,11 +170,65 @@ $ XDG_CACHE_HOME="$TMPDIR/ghcache" gh run view --repo mryfmo/dotfiles --job 1196
 exit 0
 ```
 
-## 8. At 9d268181: bash -n, shellcheck, shfmt, the comparison lint, the caps from the merge-base
+## 8. Revise 4 red at 2f2f0262 (the revise-4 tests on the revise-3 installer)
+
+```text
+$ gh run view 39726434917 --repo mryfmo/dotfiles --json headSha,conclusion
+{"conclusion":"failure","headSha":"2f2f02626876445dea2cce11edc65f6408fc1160"}
+exit 0
+$ XDG_CACHE_HOME="$TMPDIR/ghcache" gh run view --repo mryfmo/dotfiles --job 119651293012 --log | cut -f3- | grep -E 'ok [0-9]+ \[ubuntu-client\] (PACKAGES for ghostty|DEPENDENCY_PACKAGES for ghostty|ghostty$|an unreachable PPA|a failed PPA|a non-PPA|an apt-get update|a fetch failure|an installed ghostty|a non-fetch|a half-configured|apt.s download|apt diagnostics|the ghostty step)|# branch|ghostty\.bats, line|#   `'
+2026-10-22T05:17:31.2589837Z ok 6 [ubuntu-client] PACKAGES for ghostty
+2026-10-22T05:17:31.5825618Z ok 7 [ubuntu-client] DEPENDENCY_PACKAGES for ghostty
+2026-10-22T05:17:51.4669498Z # branch: the PPA answered; ghostty must be installed
+2026-10-22T05:17:53.6704061Z ok 8 [ubuntu-client] ghostty
+2026-10-22T05:17:54.1534720Z ok 9 [ubuntu-client] an unreachable PPA never fails the apply
+2026-10-22T05:17:54.6623321Z ok 10 [ubuntu-client] a failed PPA package download never fails the apply
+2026-10-22T05:17:55.1734513Z ok 11 [ubuntu-client] an apt-get update that reports a failed PPA index without a non-zero exit is an outage
+2026-10-22T05:17:55.6732951Z ok 12 [ubuntu-client] a fetch failure from another host stays fatal even when the PPA also failed
+2026-10-22T05:17:56.1552684Z ok 13 [ubuntu-client] an installed ghostty is left as it is
+2026-10-22T05:17:56.6337757Z ok 14 [ubuntu-client] a non-fetch apt error after a PPA warning stays fatal
+2026-10-22T05:17:57.1284631Z ok 15 [ubuntu-client] a half-configured ghostty is installed, not skipped
+2026-10-22T05:17:57.5999477Z not ok 16 [ubuntu-client] apt's download-failure summary counts as a PPA outage
+2026-10-22T05:17:57.6009840Z # (in test file tests/install/ubuntu/client/ghostty.bats, line 172)
+2026-10-22T05:17:57.6076457Z #   `[ "${status}" -eq 0 ]' failed
+2026-10-22T05:17:58.0850562Z not ok 17 [ubuntu-client] apt diagnostics are classified under a stable locale
+2026-10-22T05:17:58.0855465Z # (in test file tests/install/ubuntu/client/ghostty.bats, line 181)
+2026-10-22T05:17:58.0932301Z #   `[ "${status}" -eq 0 ]' failed
+2026-10-22T05:17:58.5687116Z ok 18 [ubuntu-client] the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it
+2026-10-22T05:17:59.0594830Z ok 19 [ubuntu-client] a non-PPA apt failure still fails the apply
+exit 0
+```
+
+## 9. Revise 4 green at 86219d7f (the fix 98de3ce6 and the tests trim)
+
+```text
+$ gh run view 39728728199 --repo mryfmo/dotfiles --json headSha,conclusion
+{"conclusion":"success","headSha":"86219d7f2eeffb74db84ffe47d52dd5e88f41d16"}
+exit 0
+$ XDG_CACHE_HOME="$TMPDIR/ghcache" gh run view --repo mryfmo/dotfiles --job 119658584134 --log | cut -f3- | grep -E 'ok [0-9]+ \[ubuntu-client\] (PACKAGES for ghostty|DEPENDENCY_PACKAGES for ghostty|ghostty$|an unreachable PPA|a failed PPA|a non-PPA|an apt-get update|a fetch failure|an installed ghostty|a non-fetch|a half-configured|apt.s download|apt diagnostics|the ghostty step)|# branch|ghostty\.bats, line|#   `'
+2026-10-22T05:41:58.7636331Z ok 6 [ubuntu-client] PACKAGES for ghostty
+2026-10-22T05:41:59.0740680Z ok 7 [ubuntu-client] DEPENDENCY_PACKAGES for ghostty
+2026-10-22T05:42:26.6188705Z # branch: the PPA answered; ghostty must be installed
+2026-10-22T05:42:28.8258307Z ok 8 [ubuntu-client] ghostty
+2026-10-22T05:42:29.3370169Z ok 9 [ubuntu-client] an unreachable PPA never fails the apply
+2026-10-22T05:42:29.8564108Z ok 10 [ubuntu-client] a failed PPA package download never fails the apply
+2026-10-22T05:42:30.4123281Z ok 11 [ubuntu-client] an apt-get update that reports a failed PPA index without a non-zero exit is an outage
+2026-10-22T05:42:30.9688933Z ok 12 [ubuntu-client] a fetch failure from another host stays fatal even when the PPA also failed
+2026-10-22T05:42:31.4931043Z ok 13 [ubuntu-client] an installed ghostty is left as it is
+2026-10-22T05:42:32.0232056Z ok 14 [ubuntu-client] a non-fetch apt error after a PPA warning stays fatal
+2026-10-22T05:42:32.5621233Z ok 15 [ubuntu-client] a half-configured ghostty is installed, not skipped
+2026-10-22T05:42:33.0998395Z ok 16 [ubuntu-client] apt's download-failure summary counts as a PPA outage
+2026-10-22T05:42:33.6324920Z ok 17 [ubuntu-client] apt diagnostics are classified under a stable locale
+2026-10-22T05:42:34.1774883Z ok 18 [ubuntu-client] the ghostty step is a guarded run_after_ script and the misc run_once_ script no longer includes it
+2026-10-22T05:42:34.7068908Z ok 19 [ubuntu-client] a non-PPA apt failure still fails the apply
+exit 0
+```
+
+## 10. At 86219d7f: bash -n, shellcheck, shfmt, the comparison lint, the caps from the merge-base
 
 ```text
 $ git rev-parse HEAD
-9d26818177aa61b5be2cda360070c697b047a8fd
+86219d7f2eeffb74db84ffe47d52dd5e88f41d16
 exit 0
 $ bash -n install/ubuntu/client/ghostty.sh
 exit 0
@@ -187,27 +241,18 @@ exit 0
 $ git merge-base origin/main HEAD
 d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 exit 0
-$ git diff --numstat $(git merge-base origin/main HEAD) HEAD
-4	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/autoskill.md
-7	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/learning.md
-89	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/report.md
-2	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/result.txt
-7	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/revise.yaml
-9	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/sandbox.md
-23	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/smoke.sh
-71	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/task.md
-171	0	.orchestration/dotfiles-T133-install-ppa-resilience-a01/validation.md
+$ git diff --numstat $(git merge-base origin/main HEAD) HEAD -- install home tests
 13	0	home/.chezmoiscripts/ubuntu/run_after_06-client-install-ghostty.sh.tmpl
 0	3	home/.chezmoiscripts/ubuntu/run_once_50-client-install-misc.sh.tmpl
-45	4	install/ubuntu/client/ghostty.sh
-129	2	tests/install/ubuntu/client/ghostty.bats
+47	4	install/ubuntu/client/ghostty.sh
+157	2	tests/install/ubuntu/client/ghostty.bats
 exit 0
 $ git diff --numstat $(git merge-base origin/main HEAD) HEAD | awk -F'\t' '$3 !~ /^(tests|\.orchestration)\// {o+=$1+$2} $3 ~ /^tests\// {t+=$1+$2} END {print "changed_non_tests=" o " changed_tests=" t}'
-changed_non_tests=65 changed_tests=131
+changed_non_tests=67 changed_tests=159
 exit 0
 ```
 
-## 9. smoke.sh (the fakes in plain bash, not Bats) against the installers of 9d268181, 930a76a0 and 44134e36
+## 11. smoke.sh (the fakes in plain bash, not Bats, under ja_JP.UTF-8) against the installers of 86219d7f, 059a40cf and 930a76a0
 
 ```text
 $ bash .orchestration/dotfiles-T133-install-ppa-resilience-a01/smoke.sh ./install/ubuntu/client/ghostty.sh
@@ -219,6 +264,22 @@ warn exit=0 install-attempted=0 installed=0 retry-line=1
 mixed exit=100 install-attempted=0 installed=0 retry-line=0
 otherppa exit=100 install-attempted=0 installed=0 retry-line=0
 hook exit=100 install-attempted=0 installed=0 retry-line=0
+summary exit=0 install-attempted=1 installed=0 retry-line=1
+locale exit=0 install-attempted=0 installed=0 retry-line=1
+status=installed exit=0 install-attempted=0 installed=0 retry-line=0
+status=half-configured exit=0 install-attempted=1 installed=1 retry-line=0
+exit 0
+$ git show 059a40cf:install/ubuntu/client/ghostty.sh > "$TMPDIR/g059.sh" && bash .orchestration/dotfiles-T133-install-ppa-resilience-a01/smoke.sh "$TMPDIR/g059.sh"
+update exit=0 install-attempted=0 installed=0 retry-line=1
+pool exit=0 install-attempted=1 installed=0 retry-line=1
+archive exit=100 install-attempted=0 installed=0 retry-line=0
+none exit=0 install-attempted=1 installed=1 retry-line=0
+warn exit=0 install-attempted=0 installed=0 retry-line=1
+mixed exit=100 install-attempted=0 installed=0 retry-line=0
+otherppa exit=100 install-attempted=0 installed=0 retry-line=0
+hook exit=100 install-attempted=0 installed=0 retry-line=0
+summary exit=100 install-attempted=1 installed=0 retry-line=0
+locale exit=100 install-attempted=0 installed=0 retry-line=0
 status=installed exit=0 install-attempted=0 installed=0 retry-line=0
 status=half-configured exit=0 install-attempted=1 installed=1 retry-line=0
 exit 0
@@ -231,19 +292,9 @@ warn exit=0 install-attempted=0 installed=0 retry-line=1
 mixed exit=100 install-attempted=0 installed=0 retry-line=0
 otherppa exit=100 install-attempted=0 installed=0 retry-line=0
 hook exit=0 install-attempted=0 installed=0 retry-line=1
+summary exit=0 install-attempted=1 installed=0 retry-line=1
+locale exit=100 install-attempted=0 installed=0 retry-line=0
 status=installed exit=0 install-attempted=0 installed=0 retry-line=0
 status=half-configured exit=0 install-attempted=0 installed=0 retry-line=0
-exit 0
-$ git show 44134e36:install/ubuntu/client/ghostty.sh > "$TMPDIR/g441.sh" && bash .orchestration/dotfiles-T133-install-ppa-resilience-a01/smoke.sh "$TMPDIR/g441.sh"
-update exit=0 install-attempted=0 installed=0 retry-line=1
-pool exit=0 install-attempted=1 installed=0 retry-line=1
-archive exit=100 install-attempted=0 installed=0 retry-line=0
-none exit=0 install-attempted=1 installed=1 retry-line=0
-warn exit=1 install-attempted=1 installed=0 retry-line=0
-mixed exit=0 install-attempted=0 installed=0 retry-line=1
-otherppa exit=0 install-attempted=0 installed=0 retry-line=1
-hook exit=0 install-attempted=0 installed=0 retry-line=1
-status=installed exit=0 install-attempted=1 installed=1 retry-line=0
-status=half-configured exit=0 install-attempted=1 installed=1 retry-line=0
 exit 0
 ```

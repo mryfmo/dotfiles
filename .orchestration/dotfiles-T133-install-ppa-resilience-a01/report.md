@@ -108,3 +108,25 @@ cost: n/a
   - `bash -n`, `shellcheck`, `shfmt` and the comparison lint exit 0.
 - **Caps, from the merge-base:** 65 of 110 outside `tests/` and `.orchestration/`, and 131 of 160 under `tests/`.
 - **`regime`:** it fails only because main carries this text's amendment 3 (`bc6a455f`) while the copy is amendment 4 (`9be19bd6`). It needs amendment 4 on main, then a re-run.
+
+## Revise 4 (AGMSG-ACCEPTANCE status=revise round=4 amendment=5, 2026-10-22T05:08:24Z; previous head 059a40cf)
+
+- **Producer:** worker (Claude seat).
+- **The round:** the one P0/P1 fix round after the local review of `059a40cf`. Amendment 5 (`a9805365…`) is now the task copy.
+- **Commits:**
+  - `2f2f0262`: the red tests, `smoke.sh` under `ja_JP.UTF-8` and the amendment-5 copy;
+  - `98de3ce6`: the fix;
+  - `86219d7f`: the trim of the tests to 159 of 160 lines. It merges adjacent `printf` calls in the fakes; no fixture's behaviour or assertion changes, and `smoke.sh` prints the same lines before and after.
+
+| Finding | Fix | Fixture, red at 2f2f0262, green at 86219d7f |
+| --- | --- | --- |
+| apt's summary of a failed download (`E: Unable to fetch some archives, …`) kept apt's failure status | `ppa_step` counts the summary forms (`E: Unable to fetch some archives`, `E:`/`W: Some index files failed to download`) as part of the outage; the per-URL lines must still name the PPA host, and any other `E:`, `Err:` or `W: Failed to fetch` line keeps apt's status | `apt's download-failure summary counts as a PPA outage` (red: exit 100, no retry line) |
+| under a non-C locale apt's diagnostics are translated and escape the classification | each PPA step runs as `LC_ALL=C LANG=C "$@"`, which `sudo` keeps, so apt prints the English forms on every locale | `apt diagnostics are classified under a stable locale` (red: exit 100; green: the fake apt sees `LC_ALL=C LANG=C`) |
+| the executed smoke script had no threat row | the row is amendment 5's text in `task.md` | n/a |
+
+- **Checks:**
+  - CI at `86219d7f`: ok 6 to 19 in the ubuntu-24.04 client job, and every check except `regime` (validation §9);
+  - `bash -n`, `shellcheck`, `shfmt` and the comparison lint exit 0 (§10);
+  - `smoke.sh` runs every mode under `ja_JP.UTF-8`. At `86219d7f`, summary and locale exit 0 with the retry line, and hook, mixed and otherppa exit 100. On the round-3 installer `059a40cf`, summary and locale exit 100 (§11).
+- **Caps, from merge-base `d06d94fd`:** 67 of 110 outside `tests/` and `.orchestration/`, and 159 of 160 under `tests/`.
+- **`regime`:** it fails only because main's dispatched copy is amendment 3 (`bc6a455f`) while this copy is amendment 5 (`a9805365`). It needs amendment 5 on main, then a re-run.

@@ -1,6 +1,6 @@
-# The revise round of 2026-10-22T04:10:11Z (AGMSG-ACCEPTANCE status=revise round=3 amendment=4), as the message contract asks.
-previous_head: 930a76a09c7b11daab4e5595eaa3fb709e6501d6
-reason: "the task-level audit of e6b645fc (Verdict incorrect, four P2): a PPA fetch warning beside another apt error became an outage; dpkg -s skipped a half-configured ghostty; validation.md held a placeholder grep and prose in place of commands"
+# The revise round of 2026-10-22T05:08:24Z (AGMSG-ACCEPTANCE status=revise round=4 amendment=5), as the message contract asks.
+previous_head: 059a40cffa260f551250fd341c5609098657a1cc
+reason: "the one P0/P1 fix round after the local review of 059a40cf: apt's download-failure summary (E: Unable to fetch some archives) kept apt's failure status, and apt's translated diagnostics under a non-C locale escaped the classification"
 checks:
-  - "tests/install/ubuntu/client/ghostty.bats::a non-fetch apt error after a PPA warning stays fatal"
-  - "tests/install/ubuntu/client/ghostty.bats::a half-configured ghostty is installed, not skipped"
+  - "tests/install/ubuntu/client/ghostty.bats::apt's download-failure summary counts as a PPA outage"
+  - "tests/install/ubuntu/client/ghostty.bats::apt diagnostics are classified under a stable locale"

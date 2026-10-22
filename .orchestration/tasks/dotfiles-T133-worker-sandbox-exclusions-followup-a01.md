@@ -6,6 +6,7 @@ security: false
 allowed_files:
   - home/dot_agents/agent-config.yaml
   - tests/unit/test_generate_agent_configs.py
+  - .github/workflows/regime-linux-dispatch.yml
   - .orchestration/dotfiles-T133-worker-sandbox-exclusions-followup-a01/**
 after: [dotfiles-T133-worker-sandbox-exclusions-a02]
 threat_table:
@@ -47,6 +48,10 @@ Each owned row (any advisory P2 of the local review or the task-level audit of t
 ## Item 2 (Linux runtime check, the residual of the a02 text)
 
 The a02 text removes the exclusions on the evidence of a macOS Claude seat (messages 2827 and 2830 sent from sandboxed Bash) and records the Linux runtime as unmeasured. This owner measures it: a GitHub Actions job on `ubuntu-24.04` that installs the rendered Claude settings, starts the herdr server socket (or a unix-socket stand-in at the allowlisted path) and runs `scripts/orchestrator/dispatch.sh` inside the Claude sandbox against it, recording exit code and output; the job is advisory (no required context) and its result is pasted into the acceptance record. If Linux denies the socket, the owner proposes the Linux-only exclusion list as a design item for 5.14 item 10 instead of silently restoring it. One test asserts the job's workflow file names the allowlisted socket path from the manifest.
+
+## Item 3 (D-024-72, handoff R8-3 of 2026-10-22)
+
+Only the Linux measurement of Item 2 is extended here: it records the EPERM a sandboxed Claude Bash gets on the Herdr socket verbatim, next to the macOS allowUnixSockets result. The exclusions stay empty on both platforms (design 5.14 item 10; Claude Code sandboxing: excludedCommands run unsandboxed and are for a tool trusted with full access; settings reference: allowUnixSockets applies on macOS). The herdr-agents message fix belongs to `dotfiles-T133-herdr-agents-eperm-a01` (its own allowed_files); the SKILL and README sentences that still describe an agmsg-dispatch exclusion are shared sources and go to the operator under Routing (Orchestrator Playbook step 3), recorded as a records item of D-024-72.
 
 ## Check and Completion
 

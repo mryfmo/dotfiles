@@ -77,6 +77,12 @@ Before production edits, add these six behavioral regressions against production
 - test_digest_survives_replacement_and_helper_failure: replace the original pathname after validation, then force the later helper failure; assert the final digest equals hashlib's hash of the original buffer, never the replacement (digest-toctou, audit:1d72f16:4).
 - test_entrypoint_fixed_environment: spawn the real entrypoint under `env -i PATH=/usr/bin:/bin` and a decoy inherited PATH, with required HOME/TMPDIR supplied; both locate pinned uv/Python and discard inherited PATH. Assert the decoy never runs; retain the inherited BASH_ENV fixture (inherited-environment, audit:1d72f16:5).
 - test_temp_failure_is_redacted: non-writable TMPDIR triggers the audited heredoc/temp failure; assert exit 1, a fixed refusal and no raw diagnostics or eight-character fixture fragments on either stream (diagnostic-redaction, audit:1d72f16:6).
+- test_missing_front_matter_or_bom_is_refused: a text without the opening `---` and a text with a UTF-8 BOM both end in a fixed `front-matter: refused`, never a silent empty mapping; the owner check does not skip a missing owner record (audit:a30a43b:1).
+- test_setext_heading_ends_the_owner_section: a setext level-two heading (`Title` over `---`) closes the owner section, so a bullet under it is not owner work (audit:a30a43b:2).
+- test_itemized_heading_is_not_an_item: `## Itemized background` does not count as an Item; only `## Item <n>` headings do (audit:a30a43b:3).
+- test_whitespace_bullet_is_not_work: an owner section whose only bullet is `- ` followed by whitespace is empty (audit:a30a43b:4).
+- test_startup_exit_one_is_named: a startup subprocess exiting 1 produces the fixed `preflight: helper failed (exit 1)` on stdout and nothing else on either stream (audit:a30a43b:5).
+- test_private_cache_required: the entrypoint under `env -i` without UV_CACHE_DIR, or with UV_CACHE_DIR naming a file, prints `refused: UV_CACHE_DIR absent` and exits 1; with a private directory it proceeds (design 5.14 item 9).
 
 ## Check
 
@@ -84,7 +90,7 @@ Worker Playbook step 4 applies: every command stays sandboxed, including HTTPS p
 
 Host facts (orchestrator measurement, repeated in Checks): mise is `$HOME/.local/bin/mise`; Python is `$HOME/.local/share/mise/installs/python/3.15.0/bin/python3`. Resolve uv once with `/usr/bin/env -i PATH=/usr/bin:/bin HOME="$HOME" "$HOME/.local/bin/mise" which uv`; paste its actual absolute output in validation.md as uv_path, never guess a version, add a bin subdirectory or invent a pin file. Author-probed absolute fallback: `$HOME/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv` (expand HOME); if neither resolution nor that executable is available, use a fixed startup refusal. No PATH search fallback.
 
-The fixed entrypoint PATH is uv_path's directory plus /usr/bin:/bin, HOME and TMPDIR are worker values, and LANG=C.UTF-8; clear every inherited variable outside that set. Run `/usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py`.
+The fixed entrypoint PATH is uv_path's directory plus /usr/bin:/bin, HOME and TMPDIR are worker values, UV_CACHE_DIR is an explicit private cache directory (design 5.14 item 9: the entrypoint refuses with the fixed label `refused: UV_CACHE_DIR absent` when the variable is unset or names a non-directory, and never falls back to the shared default cache), and LANG=C.UTF-8; clear every inherited variable outside that set. Run `/usr/bin/env -i PATH="$(dirname "$uv_path"):/usr/bin:/bin" HOME="$HOME" TMPDIR="$TMPDIR" UV_CACHE_DIR="$TMPDIR/uv-cache" LANG=C.UTF-8 "$HOME/.local/share/mise/installs/python/3.15.0/bin/python3" -I tests/unit/test_pre_send.py`.
 
 Run `bash -n scripts/orchestrator/pre-send.sh`, `shellcheck -x scripts/orchestrator/pre-send.sh` and `shfmt -i 4 -sr -d scripts/orchestrator/pre-send.sh`. Run `ruff check --config ruff.toml scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py` and `ruff format --config ruff.toml --check scripts/orchestrator/pre_send.py tests/unit/test_pre_send.py`. Python syntax is covered by real execution; shell syntax/lint applies to the shell file. Never run Bats locally.
 
@@ -92,7 +98,7 @@ Caps: at most 360 changed lines outside `tests/` and `.orchestration/`, and at m
 Measure additions plus deletions with `git diff --numstat <merge-base> <head>`, where head is RESULT's final 40-hex commit and merge-base is `git merge-base origin/main <head>` at RESULT time (C-123).
 Author measurement: head 1d72f16978018c3d016bbc239d79d3d7d0675105, merge-base e00de4e0e4158de19e2c8921e572461e7e9e4ca0, totals 104 implementation / 260 tests; caps leave 256 / 220 lines for the redesign. Current-line blame attribution a01/a02 is 26/78 implementation and 126/134 tests; distinguish this from change churn. At RESULT remeasure the full cumulative diff, separately attribute inherited a01/a02 and a03 work, and report both commits, caps and totals; never reset accounting to a03 alone.
 
-Paste every executed validation command, exit status and verbatim redacted output into validation.md, with producer; every claimed commit/PR identifier must appear there. Record a six-row class/attack/selector/red-sha/green-sha table and preserved 28-test results, before and after implementation. Red evidence names the production baseline and red-fixture commit; green evidence names the fix commit.
+Paste every executed validation command, exit status and verbatim redacted output into validation.md, with producer (summaries are not evidence; the `gh pr checks --watch` output and the bounded Bot-wait observation are pasted too); every claimed commit/PR identifier must appear there. Record a six-row class/attack/selector/red-sha/green-sha table and preserved 28-test results, before and after implementation. Red evidence names the production baseline and red-fixture commit; green evidence names the fix commit.
 
 After each push inspect final-head Actions with `gh pr checks 442 --repo mryfmo/dotfiles --watch`; fix in-scope failures and repeat. Follow Worker Playbook step 15's bounded Bot wait and at most one worker Bot fix-round. Before RESULT run make require-crit-review; if required, follow AGENTS.md's crit-data JSON/receipt procedure, using -worker- evidence names in the a03 directory, never a browser review.
 
@@ -107,6 +113,10 @@ Under .orchestration/dotfiles-T133-pre-send-check-a03/ save task.md byte-identic
 Push inside the sandbox, without -u: `GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push https://github.com/mryfmo/dotfiles.git tools/pre-send-check-a01`. Rewrite PR #442's English title/body for the final a03 design, actual test count and cumulative cap totals before RESULT (audit:1d72f16:8).
 
 Once exact-head CI passes and the bounded Bot wait completes, send AGMSG-RESULT v1 task_id=dotfiles-T133-pre-send-check-a03 status=ready_for_review with pr, head, merge_base, both numeric caps, changed_non_tests, changed_tests, inherited attribution, six red/green SHAs, task_copy SHA256 and all artifact paths. No worker merge; orchestration feedback/acceptance changes remain orchestrator-owned.
+
+## Amendment 1 (2026-10-21T22:13Z; D-024-66)
+
+The round-1 audit of a30a43ba found nine P2 and no P1. Round 2 fixes the five implementation rows (the six fixtures added to Item 2 above, red at a30a43ba on their behavioural assertion and green at the fix commit), restores design 5.14 item 9 in the entrypoint contract (an explicit private UV_CACHE_DIR with a fixed refusal when absent; the a03 round-1 contract had dropped the variable, an orchestrator error), and makes validation.md verbatim. The sandbox-exception and record-placement rows are the orchestrator's and are dispositioned in the acceptance record.
 
 ## Checks
 

@@ -23,4 +23,17 @@ re-plan: executable-provenance (rows text-security:922292d:1, text-security:0edb
 a06 lineage: TASKs=2 (cap amendment resend) revises=1 RESULTs=2 questions=0 blocked-PONGs=6 (snapshot 08:02Z). a07: not dispatched; amendments=0.
 - 2026-10-21T09:41Z: Checks re-pasted with the observed values after the pins merge (canonical main 4eafd890454e495fdb1d429734c5835e46c87652, merge-base with c439b63c unchanged, design digest equal, --hostname github.com in the command); bytes c6cebe47312094927a3a607149d8dc8c5d2bcbbfebed3a7d96f63a22da979779; round 4 runs on these bytes.
 - 2026-10-21T09:47Z: owner declaration for the records boundary: the residual rows of this lineage named above are owned by dotfiles-T133-gh-binding-a01 (owner stub under .orchestration/tasks/).
+- 2026-10-21T21:24Z: C-80 round 4 (`…-text-security-c6cebe4.md`, run by the orchestrator unsandboxed: the classifier approved the call this time): Verdict incorrect. P1: non-authoritative gh output still selected the measurement base and the prerequisites, so a substituted gh could pass the candidate head off as main. P2: `--repo mryfmo/dotfiles` without a fixed host. P2: Checks lacked the exact commands and stage exits of line 119. Edit: the measurement and every prerequisite now come from a fresh private bare clone fetched anonymously over HTTPS with git only (no gh anywhere in the measurement path; #435's merge state is its merge commit's ancestry of refs/heads/main; the design digest is `git show` of that ref); Checks rebuilt with each command and exit; bytes a3125e128a240b1800372977cc3f52bc97cd702e3a5f7f48e46fa1e813b77e65; round 5 is the third and last review under the re-plan line.
+
+text-security:c6cebe4:1	executable-provenance
+text-security:c6cebe4:2	canonical-host-binding
+text-security:c6cebe4:3	checks-omission
+- 2026-10-21T21:28Z: C-80 round 5 (`…-text-security-a3125e1.md`, orchestrator-run): Verdict incorrect, three P1 and two P2. The executable-provenance class moved from gh to bare git (PATH/mise substitution can forge the clone and the measurement), to unsanitised GIT_* (GIT_CONFIG_COUNT rewrites the fixed URL, GIT_DIR redirects reads), and to the checker's forwarded credentials ("non-authoritative" does not stop disclosure); P2: the private clone directory has no worker-write exclusion or consumption-time identity binding; P2: the design-publication assertion is counted, not performed. Five rounds, five incorrect verdicts, one class: no text can close it before a trusted-executable binding exists on the host (design 5.14 items 2-4/9: dotfiles-T133-trusted-entrypoint-binding-a01 and dotfiles-T133-gh-binding-a01), which is the same wall a08 declared at its line 63. STOP (feedback: re-plan, not a patch): the a07 authoring stops here; the decision (hold behind the binding, or an explicit operator waiver of the surviving P1 for dispatch) is escalated with materials.
+
+text-security:a3125e1:1	executable-provenance
+text-security:a3125e1:2	environment-sanitisation
+text-security:a3125e1:3	executable-provenance
+text-security:a3125e1:4	measurement-object-trust
+text-security:a3125e1:5	checks-omission
+- 2026-10-21T21:30Z: D-024-65 (operator option A): a07 held, undispatched, until the trusted-entrypoint binding is deployed; the C-80 resumes then on these bytes (a3125e1…) or an amended text; #440 open, #411 waits.
 

@@ -11,10 +11,10 @@ installer=$1
 fakes=$(sed -n "/^readonly APT_FAKES='\$/,/^'\$/p" tests/install/ubuntu/client/ghostty.bats | sed '1d;$d')
 fakes=$(sed "s|\"'\"\${SCRIPT_PATH}\"'\"|${installer}|" <<< "${fakes}")
 count() { if [ -e "$2" ]; then grep -c -- "$1" "$2" || true; else echo 0; fi; }
-for mode in update pool archive none warn mixed otherppa hook status=installed status=half-configured; do
+for mode in update pool archive none warn mixed otherppa hook summary locale status=installed status=half-configured; do
     home=$(mktemp -d "${TMPDIR:-/tmp}/ghostty-smoke.XXXXXX")
     case ${mode} in status=*) setting=STATUS=${mode#status=} ;; *) setting=FAIL=${mode} ;; esac
-    out=$(env HOME="${home}" "${setting}" bash -c "${fakes}
+    out=$(env HOME="${home}" LANG=ja_JP.UTF-8 LC_ALL=ja_JP.UTF-8 "${setting}" bash -c "${fakes}
 main" 2>&1)
     rc=$?
     printf '%s exit=%s install-attempted=%s installed=%s retry-line=%s\n' "${mode}" "${rc}" \

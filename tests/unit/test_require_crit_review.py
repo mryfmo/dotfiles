@@ -17,7 +17,6 @@ from pathlib import Path
 
 from tests.unit.test_pr_feedback import GhFixture
 
-
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
 FIXTURES = ROOT / "tests/fixtures/gate-evidence"
@@ -26,12 +25,28 @@ REPLAN = {key: f"the {key} part" for key in ("specification", "design", "impleme
 
 
 class GhBindingTest(unittest.TestCase):
-    def fixture(self):
-        temp = tempfile.TemporaryDirectory(prefix="gate-gh-binding-")
-        self.addCleanup(temp.cleanup)
-        f = GhFixture(Path(temp.name).resolve())
-        f.gate_repository()
+    def fixture(self, legacy=None):
+        f = GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="gate-gh-binding-"))).resolve())
+        f.gate_repository(legacy)
         return f
+
+    def test_selected_legacy_collector_has_fixed_namespace(self):
+        legacy = "import json,subprocess,sys\nfrom pathlib import Path\n"
+        legacy += "r=subprocess.run(['gh','api','repos/mryfmo/dotfiles/pulls/180'],capture_output=True,text=True,check=True)\n"
+        legacy += "p=json.loads(r.stdout); assert p['head']['sha']\n"
+        legacy += "Path(sys.argv[-1]).write_text(json.dumps(dict(repo='mryfmo/dotfiles',head_sha=p['head']['sha'],items=[])))\n"
+        f = self.fixture(legacy)
+        (f.repo / "scripts/pr-feedback.py").write_text((ROOT / "scripts/pr-feedback.py").read_text())
+        result = f.run(f.repo / "scripts/require-crit-review.py", "--base", "main", cwd=f.pr, env=f.inputs)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("PR feedback evidence accepted", result.stdout)
+        calls = [r for r in f.records() if r["argv"] == ["api", "repos/mryfmo/dotfiles/pulls/180"]]
+        self.assertTrue(calls)
+        for row in calls:
+            self.assertEqual(str(f.target), row["target"])
+            self.assertEqual("github.com", row["env"]["GH_HOST"])
+            self.assertNotIn("GH_REPO", row["env"])
+        self.assertEqual(legacy, f.git(f.repo, "show", f"{f.base}:scripts/pr-feedback.py") + "\n")
 
     def test_gate_hostile_repository(self):
         f = self.fixture()
@@ -55,12 +70,8 @@ class GhBindingTest(unittest.TestCase):
             "PYTHONPATH": str(startup),
             "PYTHONSTARTUP": str(startup / "interactive.py"),
         }
-        probe = subprocess.run(
-            [sys._base_executable, "-c", "import site; print(site.getusersitepackages())"],
-            env=f.env | hostile,
-            text=True,
-            capture_output=True,
-            check=True,
+        probe = run(
+            [sys._base_executable, "-c", "import site; print(site.getusersitepackages())"], f.root, f.env | hostile
         )
         site = Path(probe.stdout.strip())
         site.mkdir(parents=True)
@@ -95,9 +106,23 @@ class GhBindingTest(unittest.TestCase):
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    merged_env = os.environ.copy()
-    if env:
-        merged_env.update(env)
+    merged_env = {"PATH": "/usr/bin:/bin", "HOME": str(cwd), "UV_CACHE_DIR": str(cwd / "cache")}
+    merged_env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL="/dev/null")
+    if command[0] == "git":
+        command = [
+            "/usr/bin/git",
+            f"--git-dir={cwd / '.git'}",
+            f"--work-tree={cwd}",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "commit.gpgsign=false",
+            *command[1:],
+        ]
+    else:
+        merged_env.update(env or {})
     return subprocess.run(
         command,
         cwd=cwd,
@@ -112,21 +137,22 @@ def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> sub
 class ReviewGuardTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="crit-guard-test-"))
+        self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-")).resolve()
+        self.binding = GhFixture(self.collected_dir / "binding")
+        self.collected = self.collected_dir / "collected.json"
         run(["git", "init"], self.temp_dir)
         run(["git", "config", "user.email", "codex@example.com"], self.temp_dir)
         run(["git", "config", "user.name", "Codex"], self.temp_dir)
         (self.temp_dir / "README.md").write_text("# Test\n")
         # Stand-in collector: the guard re-runs scripts/pr-feedback.py under
-        # --base; this one writes the document $FAKE_COLLECTED points to.
+        # --base; this one writes the immutable fixture response file.
         collector = self.temp_dir / "scripts/pr-feedback.py"
         collector.parent.mkdir()
         collector.write_text(
             "import os, sys\n"
             "assert sys.argv[sys.argv.index('--repo') + 1] == 'mryfmo/dotfiles'\n"
-            "if not os.environ.get('FAKE_COLLECTED'):\n"
-            "    sys.exit('gh is not authenticated')\n"
             "out = sys.argv[sys.argv.index('--json') + 1]\n"
-            "open(out, 'w').write(open(os.environ['FAKE_COLLECTED']).read())\n"
+            f"open(out, 'w').write(open({str(self.collected)!r}).read())\n"
         )
         # A tracked mistake record: S6 greps these for the classes the acceptance record repeats.
         mistakes = self.temp_dir / ".orchestration/learning/mistakes"
@@ -134,22 +160,24 @@ class ReviewGuardTest(unittest.TestCase):
         (mistakes / "M-20261012-3.md").write_text("---\nclasses: [evidence, class-count-scope]\n---\n")
         run(["git", "add", "README.md", "scripts/pr-feedback.py", ".orchestration"], self.temp_dir)
         run(["git", "commit", "-m", "init"], self.temp_dir)
-        self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-"))
-        self.collected = self.collected_dir / "collected.json"
         self.base_sha = self.head_commit()
         self.metadata = self.collected_dir / "metadata.json"
-        fake_gh = self.collected_dir / "gh"
+        fake_gh = self.binding.target
+        original = fake_gh.read_text()
         fake_gh.write_text(
             f"#!{sys.executable}\n"
             "import json, os, sys\n"
+            "if sys.argv[1:] == ['--version']: print('gh version 2.102.0 (fixture)'); sys.exit()\n"
             "if sys.argv[1:] == ['repo', 'view', '--json', 'nameWithOwner']:\n"
             "    print(json.dumps({'nameWithOwner': os.environ.get('GH_REPO', 'mryfmo/dotfiles')}))\n"
-            "else:\n"
-            "    assert sys.argv[1:] in (['pr', 'view', '1', '--json', 'headRefOid,baseRefName,baseRefOid'], ['pr', 'view', '1', '--repo', 'mryfmo/dotfiles', '--json', 'headRefOid,baseRefName,baseRefOid'])\n"
+            "elif sys.argv[1:3] == ['pr', 'view']:\n"
+            "    assert sys.argv[1:] == ['pr', 'view', '1', '--repo', 'github.com/mryfmo/dotfiles', '--json', 'headRefOid,baseRefName,baseRefOid']\n"
             "    if os.environ.get('GH_REPO') and '--repo' not in sys.argv:\n"
             "        print(json.dumps({'headRefOid': 'f' * 40, 'baseRefName': 'main', 'baseRefOid': 'f' * 40}))\n"
             "    else:\n"
-            "        print(open(os.environ['FAKE_PR_METADATA']).read())\n"
+            f"        print(open({str(self.metadata)!r}).read())\n"
+            "else:\n"
+            f"    exec({original!r})\n"
         )
         fake_gh.chmod(0o755)
 
@@ -473,6 +501,8 @@ class ReviewGuardTest(unittest.TestCase):
                 }
             )
         )
+        pull = {"head": {"sha": self.head_commit()}, "base": {"ref": "main", "sha": self.base_sha}}
+        self.binding.responses.write_text(json.dumps({"responses": {"repos/mryfmo/dotfiles/pulls/1": pull}}))
         return relative_path
 
     def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
@@ -514,14 +544,11 @@ class ReviewGuardTest(unittest.TestCase):
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
             "CRIT_REVIEW": "",
-            "HOME": str(self.collected_dir / "role-home"),
-            "FAKE_COLLECTED": str(self.collected),
-            "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
         }
         if "ACCEPTANCE_EVIDENCE" not in (env or {}):
             defaults["ACCEPTANCE_EVIDENCE"] = self.write_record("acceptance-s6-present.md")
-        return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
+        return self.binding.run(GUARD, "--base", base, cwd=self.temp_dir, env=defaults | (env or {}))
 
     def test_the_gate_has_no_github_identity_check(self) -> None:
         # One GitHub login per machine: the gate binds evidence to the PR, never the acting account.
@@ -533,8 +560,8 @@ class ReviewGuardTest(unittest.TestCase):
         self.commit_on_branch("docs/change.md")
         evidence = self.write_feedback([])
         # A populated default gh store triggers no identity API call; the fake gh rejects any `gh api`.
-        hosts = self.collected_dir / "role-home/.config/gh/hosts.yml"
-        hosts.parent.mkdir(parents=True)
+        hosts = self.binding.home / ".config/gh/hosts.yml"
+        hosts.parent.mkdir(parents=True, exist_ok=True)
         hosts.write_text("github.com:\n    user: fixture\n")
 
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": evidence})
@@ -879,7 +906,8 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
 
-        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "FAKE_COLLECTED": ""})
+        self.collected.unlink()
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
 
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("could not re-collect PR #1 feedback", result.stdout)
@@ -1075,11 +1103,12 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "commit", "-m", "base has no collector"], self.temp_dir)
         self.base_sha = self.head_commit()
         self.commit_on_branch("scripts/pr-feedback.py")
-        collector.write_text(source)
+        collector.write_text("open('pr-collector-executed', 'w').write('unsafe')\n" + source)
         run(["git", "commit", "-am", "introduce collector"], self.temp_dir)
         feedback = self.write_feedback([])
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
         self.assertIn("PR feedback evidence accepted", result.stdout)
+        self.assertFalse((self.temp_dir / "pr-collector-executed").exists())
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base="HEAD")
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("is not bound to PR #1 base", result.stdout)

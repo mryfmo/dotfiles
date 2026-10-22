@@ -1,6 +1,5 @@
-import json
-import copy
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -8,10 +7,9 @@ import subprocess
 import tempfile
 import tomllib
 import unittest
-from unittest import mock
 import zipfile
 from pathlib import Path
-
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -25,7 +23,8 @@ class GhBindingPolicyTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("gh_policy", ROOT / "scripts/validate-agent-assets.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        manifest = module.load_yaml(ROOT / "home/dot_agents/agent-config.yaml")
+        canonical = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        tail = "\n".join(line for line in canonical.splitlines() if not line.startswith("trusted_tools:"))
         declaration = {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}
         cases = {"missing": None, "not mapping": [], "no gh": {}, "malformed": {"gh": "gh"}}
         for label, value in {
@@ -47,33 +46,32 @@ class GhBindingPolicyTest(unittest.TestCase):
             (root / "home/dot_mise").mkdir(parents=True)
             (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
             (root / "README.md").write_text((ROOT / "README.md").read_text())
-            with mock.patch.object(module, "ROOT", root):
+            source = root / "home/dot_agents/agent-config.yaml"
+            source.parent.mkdir(parents=True)
+            with patch.object(module, "ROOT", root):
                 for label, tools in cases.items():
-                    candidate = copy.deepcopy(manifest)
-                    candidate["trusted_tools"] = tools
-                    with self.subTest(label=label), mock.patch.object(module, "load_yaml", return_value=candidate):
-                        with self.assertRaises(SystemExit):
-                            module.validate_agent_manifest()
-                candidate["trusted_tools"] = {"gh": declaration}
-                with mock.patch.object(module, "load_yaml", return_value=candidate):
+                    source.write_text("trusted_tools: " + json.dumps(tools) + "\n" + tail)
+                    with self.subTest(label=label), self.assertRaises(SystemExit):
+                        module.validate_agent_manifest()
+                source.write_text("trusted_tools: " + json.dumps({"gh": declaration}) + "\n" + tail)
+                module.validate_agent_manifest()
+                with self.subTest("HOME"), patch.dict(os.environ, HOME="/tmp/forged"), self.assertRaises(SystemExit):
                     module.validate_agent_manifest()
-                    with self.subTest(label="forged HOME"), mock.patch.dict(os.environ, {"HOME": "/tmp/forged-home"}):
-                        with self.assertRaises(SystemExit):
-                            module.validate_agent_manifest()
-                    resolve = Path.resolve
+                resolve = Path.resolve
 
-                    def redirected(path, *args, **kwargs):
-                        return (
-                            Path("/tmp/shims/gh")
-                            if str(path).endswith("/github-cli-cli/2.102.0/bin/gh")
-                            else resolve(path, *args, **kwargs)
-                        )
+                def redirected(path, *args, **kwargs):
+                    return Path("/tmp/shims/gh") if str(path).endswith("/bin/gh") else resolve(path, *args, **kwargs)
 
-                    with self.subTest(label="resolved shims"), mock.patch.object(Path, "resolve", redirected):
-                        with self.assertRaises(SystemExit):
-                            module.validate_agent_manifest()
-                    (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "latest"\n')
-                    with self.subTest(label="mismatched pin"), self.assertRaises(SystemExit):
+                with self.subTest("shims"), patch.object(Path, "resolve", redirected), self.assertRaises(SystemExit):
+                    module.validate_agent_manifest()
+                (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "latest"\n')
+                with self.subTest(label="mismatched pin"), self.assertRaises(SystemExit):
+                    module.validate_agent_manifest()
+                (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
+                value = json.dumps({"gh": declaration})
+                for key in ("trusted_tools", '"trusted_tools"', '"\\x74rusted_tools"', "trusted_tools "):
+                    source.write_text(canonical + "\n" + key + ": " + value + "\n")
+                    with self.subTest(serialized=key), self.assertRaises(SystemExit):
                         module.validate_agent_manifest()
 
 
@@ -439,6 +437,7 @@ main
         held["node"] = "node = "
         held["python"] = "python = "
         held["uv"] = "uv = "
+        held["github:cli/cli"] = '"github:cli/cli" = '
         held["http:gcloud"] = '[tools."http:gcloud"]'
         # The exact blocc pin avoids the sandbox's blocked version-registry query.
         held["github:shuntaka9576/blocc"] = '"github:shuntaka9576/blocc" = '

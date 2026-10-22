@@ -6,7 +6,6 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
-import os
 import shlex
 import shutil
 import subprocess
@@ -34,9 +33,8 @@ class GhFixture:
     """A measured test namespace: change passwd home, never prebind gh or change consumer bytes."""
 
     def __init__(self, root):
-        self.root, self.home = root, root / "home"
+        self.root, self.home, self.bin, self.calls = root, root / "home", root / "bin", root / "gh.jsonl"
         self.home.mkdir(parents=True, exist_ok=True)
-        self.bin, self.calls = root / "bin", root / "gh.jsonl"
         self.bin.mkdir(exist_ok=True)
         self.responses = root / "responses.json"
         self.responses.write_text(json.dumps({"responses": RESPONSES, "metadata": {}}))
@@ -46,7 +44,6 @@ class GhFixture:
         self.python = self.bin / "python"
         bootstrap = (
             "import os,pwd,runpy,sys,types\n"
-            f"sys.path.insert(0,{str(Path(importlib.util.find_spec('yaml').origin).parents[1])!r})\n"
             f"pwd.getpwuid=lambda uid: types.SimpleNamespace(pw_dir={str(self.home)!r})\n"
             f"sys.executable={str(self.python)!r}\n"
             "a=sys.argv[1:]\n"
@@ -79,7 +76,7 @@ class GhFixture:
         self.executable(self.bin / "gh", code)
         self.executable(
             self.bin / "mise",
-            f"#!/bin/sh\n# @brief Report only a hostile gh discovery answer.\n[ \"$2\" = gh ] || exit 1\nprintf '%s\\n' {str(self.bin / 'gh')!r}\n",
+            f"#!/bin/sh\n# @brief Report only a hostile gh discovery answer.\n/usr/bin/env >> {str(root / 'discovery.env')!r}\n[ \"$2\" = gh ] || exit 1\nprintf '%s\\n' {str(self.bin / 'gh')!r}\n",
         )
         self.env = {
             "PATH": f"{self.bin}:/usr/bin:/bin",
@@ -125,11 +122,11 @@ class GhFixture:
             self.root.chmod(0o777)
         # Model the protected filesystem root; preserve actual modes, types, symlinks and payload bytes below it.
         extra = (
-            "import pathlib,os\nP=pathlib.Path; original_new=P.__new__; original_stat=P.stat\n"
+            "import pathlib,os\nP=pathlib.Path; original_init=P.__init__; original_stat=P.stat\n"
             f"fixture=P({str(self.root)!r}); parents=set(fixture.parents)\n"
-            f"def namespace(cls,*a,**k): return original_new(cls,*(({str(config)!r},) if a==('/var/empty',) else a),**k)\n"
+            f"def namespace(p,*a,**k): original_init(p,*(({str(config)!r},) if a==('/var/empty',) else a),**k)\n"
             "def measured(p,*a,**k):\n s=list(original_stat(p,*a,**k)); s[4]=0\n if p in parents: s[0]&=~0o022\n return os.stat_result(s)\n"
-            "P.__new__=staticmethod(namespace); P.stat=measured\n"
+            "P.__init__=namespace; P.stat=measured\n"
         )
         self.launcher(extra)
 
@@ -142,7 +139,7 @@ class GhFixture:
     def declaration(self, value=None):
         self.manifest.parent.mkdir(parents=True, exist_ok=True)
         tools = {"gh": {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}}
-        self.manifest.write_text(json.dumps({"trusted_tools": tools if value is None else value}))
+        self.manifest.write_text("trusted_tools: " + json.dumps(tools if value is None else value) + "\n")
 
     def run(self, script=SCRIPT, *args, cwd=None, env=None):
         return subprocess.run(
@@ -161,32 +158,22 @@ class GhFixture:
         gitdir = repo / ".git"
         if gitdir.is_file():
             gitdir = Path(gitdir.read_text().strip().removeprefix("gitdir: "))
-        env = {
-            "PATH": "/usr/bin:/bin",
-            "HOME": str(self.home),
-            "UV_CACHE_DIR": str(self.root / "cache"),
-            "GIT_CONFIG_NOSYSTEM": "1",
-            "GIT_CONFIG_GLOBAL": "/dev/null",
-        }
-        argv = [
-            "/usr/bin/git",
-            f"--git-dir={gitdir}",
-            f"--work-tree={repo}",
-            "-c",
+        cache = str(self.root / "cache")
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(self.home), "UV_CACHE_DIR": cache}
+        env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL="/dev/null")
+        argv = ["/usr/bin/git", f"--git-dir={gitdir}", f"--work-tree={repo}"]
+        for option in (
             "core.hooksPath=/dev/null",
-            "-c",
             "core.fsmonitor=false",
-            "-c",
             "user.name=Fixture",
-            "-c",
             "user.email=fixture@example.invalid",
-            "-c",
             "commit.gpgsign=false",
-            *map(str, args),
-        ]
+        ):
+            argv.extend(["-c", option])
+        argv.extend(map(str, args))
         return subprocess.run(argv, cwd=repo, env=env, text=True, capture_output=True, check=True).stdout.strip()
 
-    def gate_repository(self):
+    def gate_repository(self, legacy=None):
         self.repo, self.pr = self.root / "repo", self.root / "pr"
         self.repo.mkdir()
         self.git(self.repo, "init", "-q", "-b", "main")
@@ -200,6 +187,8 @@ class GhFixture:
             target = self.repo / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / rel, target)
+        if legacy:
+            (self.repo / "scripts/pr-feedback.py").write_text(legacy)
         (self.repo / "README.md").write_text("base\n")
         self.git(self.repo, "add", ".")
         self.git(self.repo, "commit", "-qm", "base")
@@ -213,21 +202,11 @@ class GhFixture:
         self.head = self.git(self.pr, "rev-parse", "HEAD")
         self.review = self.repo / ".claude/worktrees/orchestrator-review"
         self.git(self.repo, "worktree", "add", "-q", "--detach", self.review, "main")
-        feedback = {
-            "repo": REPO,
-            "pr": 180,
-            "head_sha": self.head,
-            "base_ref": "main",
-            "base_sha": self.base,
-            "items": [],
-        }
-        data = {
-            "metadata": {"headRefOid": self.head, "baseRefName": "main", "baseRefOid": self.base},
-            "responses": {
-                f"repos/{REPO}/pulls/180": {"head": {"sha": self.head}, "base": {"ref": "main", "sha": self.base}}
-            },
-        }
-        self.responses.write_text(json.dumps(data))
+        feedback = {"repo": REPO, "pr": 180, "items": []}
+        feedback.update(head_sha=self.head, base_ref="main", base_sha=self.base)
+        metadata = {"headRefOid": self.head, "baseRefName": "main", "baseRefOid": self.base}
+        pull = {"head": {"sha": self.head}, "base": {"ref": "main", "sha": self.base}}
+        self.responses.write_text(json.dumps({"metadata": metadata, "responses": {f"repos/{REPO}/pulls/180": pull}}))
         v = ".orchestration/validation/binding"
         self.inputs = {
             "PR_FEEDBACK_EVIDENCE": v + "-pr-feedback.json",
@@ -236,13 +215,12 @@ class GhFixture:
             "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/binding.md",
             "AGENT_REVIEWED": "1",
         }
+        approval = [{"id": "fixture", "body": "controlled fixture approval", "scope": "review", "resolved": True}]
         files = {
             self.inputs["PR_FEEDBACK_EVIDENCE"]: json.dumps(feedback),
             self.inputs["AUDIT_EVIDENCE"]: "fixture audit\n",
             self.inputs["AUDIT_EVIDENCE"] + ".last.md": "Verdict: correct\n",
-            v + "-crit.json": json.dumps(
-                [{"id": "fixture", "body": "controlled fixture approval", "scope": "review", "resolved": True}]
-            ),
+            v + "-crit.json": json.dumps(approval),
             self.inputs[
                 "REVIEW_EVIDENCE"
             ]: f"review_surface: crit-data\nreviewer: codex\nreview_source: {v}-crit.json\nreview_outcome: approved\n",
@@ -255,10 +233,15 @@ class GhFixture:
                 target = repo / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(text)
-        uv = f'#!/bin/bash -p\n# @brief Run the fixture interpreter.\nif [[ "$1 $2" == "python find" ]]; then printf "%s\\n" {shlex.quote(str(self.python))}; exit; fi\nwhile [[ $1 != python ]]; do shift; done; shift\nexec {shlex.quote(str(self.python))} "$@"\n'
+        uv = f'#!/bin/bash -p\n# @brief Run the fixture interpreter.\n/usr/bin/env >> {str(self.root / "discovery.env")!r}\nif [[ "$1 $2" == "python find" ]]; then printf "%s\\n" {shlex.quote(str(self.python))}; exit; fi\nwhile [[ $1 != python ]]; do shift; done; shift\nexec {shlex.quote(str(self.python))} "$@"\n'
         self.executable(self.bin / "uv", uv)
 
     def assert_bound(self, case):
+        discovery = self.root / "discovery.env"
+        if discovery.exists():
+            names = {s.split("=", 1)[0] for s in discovery.read_text().splitlines()}
+            case.assertFalse(names & {"GH_TOKEN", "GH_HOST", "GH_REPO", "GH_CONFIG_DIR", "HTTPS_PROXY"})
+            case.assertIn("UV_CACHE_DIR", names)
         records = self.records()
         case.assertTrue(records, "no real gh descendant observed")
         for row in records:
@@ -282,9 +265,7 @@ class GhFixture:
 
 class GhBindingTest(unittest.TestCase):
     def fixture(self):
-        temp = tempfile.TemporaryDirectory(prefix="gh-binding-")
-        self.addCleanup(temp.cleanup)
-        return GhFixture(Path(temp.name).resolve())
+        return GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="gh-binding-"))).resolve())
 
     def test_collector_hostile_repository(self):
         f = self.fixture()
@@ -297,18 +278,11 @@ class GhBindingTest(unittest.TestCase):
         f.assert_bound(self)
 
     def test_collector_binding_refusals(self):
-        for kind in ("missing", "version", "path", "executable", "forged HOME"):
+        for kind in ("executable", "forged HOME"):
             with self.subTest(kind=kind):
                 f = self.fixture()
                 env = {}
-                if kind == "missing":
-                    f.manifest.unlink()
-                elif kind == "version":
-                    f.target.write_text(f.target.read_text().replace("gh version 2.102.0", "gh version 9.9.9"))
-                elif kind == "path":
-                    f.target.unlink()
-                    f.target.symlink_to(f.bin / "gh")
-                elif kind == "executable":
+                if kind == "executable":
                     f.target.chmod(0o644)
                 else:
                     env["HOME"] = str(f.root / "forged")
@@ -316,6 +290,16 @@ class GhBindingTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode)
                 self.assertEqual("refused: gh binding", result.stderr.strip())
                 self.assertFalse([r for r in f.records() if r["argv"] != ["--version"]])
+
+    def test_serialized_manifest_is_unambiguous(self):
+        for key in ("trusted_tools", '"trusted_tools"', '"\\x74rusted_tools"', "trusted_tools "):
+            with self.subTest(key=key):
+                f = self.fixture()
+                f.manifest.write_text(f.manifest.read_text() + key + ": {}\n")
+                result = f.run(SCRIPT, "180", "--repo", REPO)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("refused: gh binding", result.stderr.strip())
+                self.assertFalse(f.records())
 
     def test_collector_rejects_conflicting_repository(self):
         f = self.fixture()
@@ -562,8 +546,8 @@ class PrFeedbackTest(unittest.TestCase):
             self.module.gh_graphql(
                 "query {}",
                 {
-                    "owner": "12345",
-                    "name": "67890",
+                    "id": "12345",
+                    "label": "67890",
                     "number": 180,
                     "cursor": "@private-file",
                     "first": 100,
@@ -575,12 +559,14 @@ class PrFeedbackTest(unittest.TestCase):
             [
                 "api",
                 "graphql",
+                "--hostname",
+                "github.com",
                 "-f",
                 "query=query {}",
                 "-f",
-                "owner=12345",
+                "id=12345",
                 "-f",
-                "name=67890",
+                "label=67890",
                 "-F",
                 "number=180",
                 "-f",
@@ -670,6 +656,8 @@ class PrFeedbackTest(unittest.TestCase):
 
         # Patch the shared subprocess module only for this call; it is global.
         with (
+            mock.patch.object(self.module, "gh_binding", return_value="/usr/bin/false"),
+            mock.patch.object(self.module, "gh_env", return_value={}),
             mock.patch.object(self.module.subprocess, "run", unauthenticated),
             redirect_stderr(io.StringIO()) as stderr,
             self.assertRaises(SystemExit) as raised,

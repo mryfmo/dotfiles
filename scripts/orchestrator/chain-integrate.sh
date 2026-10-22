@@ -63,11 +63,28 @@ main=$(cd -- "$3" 2> /dev/null && pwd -P) || refuse 10 "invalid argument: $3"
 cd -- "${main}"
 # Resolved before any fetch or checkout and run by absolute path, as local-review.sh resolves codex: a mise shim
 # would pick its binary by the directory it runs in.
-pick() { env -i PATH="${PATH}" HOME="${HOME}" mise which "$1" 2> /dev/null || command -v "$1" || true; }
-gh=$(pick gh) git=$(pick git) uv=$(pick uv) shasum=$(pick shasum) date=$(pick date)
-for found in "${gh}" "${git}" "${uv}" "${shasum}" "${date}"; do
+pick() { env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:-}" mise which "$1" 2> /dev/null || command -v "$1" || true; }
+git=$(pick git) uv=$(pick uv) shasum=$(pick shasum) date=$(pick date)
+for found in "${git}" "${uv}" "${shasum}" "${date}"; do
     [[ ${found} == /* && ${found} != */shims/* ]] || refuse 10 "no binary outside a shims directory: ${found:-none}"
 done
+python=$(/usr/bin/env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:-}" "${uv}" python find)
+binding_source=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)/pr-feedback.py
+gh=$(/usr/bin/env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:-}" "${uv}" run --no-config --no-project --offline --python "${python}" python -I "${binding_source}" --gh-binding) || exit 2
+[[ -n ${GH_TOKEN:-} ]] || {
+    echo 'refused: gh binding' >&2
+    exit 2
+}
+gh_environment=(HOME="${HOME}" LANG=C.UTF-8 UV_CACHE_DIR="${UV_CACHE_DIR}" "GH_TOKEN=${GH_TOKEN}" GH_CONFIG_DIR=/var/empty
+    GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 GH_NO_EXTENSION_UPDATE_NOTIFIER=1 NO_COLOR=1 TERM=dumb GH_PAGER=cat)
+# @description Invoke the checked gh with fixed authority and a constructed environment.
+gh_call() {
+    case $1 in
+    pr) set -- "$@" --repo github.com/mryfmo/dotfiles ;;
+    api | auth) set -- "$@" --hostname github.com ;;
+    esac
+    /usr/bin/env -i PATH=/usr/bin:/bin "${gh_environment[@]}" "${gh}" "$@"
+}
 [ "$("${git}" -C "${main}" symbolic-ref -q --short HEAD || true)" = main ] || refuse 10 "main checkout is not on main"
 fresh() { pre "${git}" -C "${main}" fetch -q origin main && pre "${git}" -C "${main}" rev-parse HEAD origin/main && { [ "${out%%$'\n'*}" = "${out##*$'\n'}" ] || refuse 10 "main checkout is not origin/main: run scripts/orchestrator/ff-main.sh"; }; }
 fresh
@@ -85,7 +102,7 @@ pre "${git}" -C "${review}" status --porcelain
 [ -z "${out}" ] || refuse 10 "review worktree is not clean"
 record=${main}/.orchestration/acceptance/${task}.md
 [ -f "${record}" ] || refuse 10 "no acceptance record ${record#"${main}"/}"
-pre "${gh}" pr view "${pr}" --json isDraft --jq .isDraft
+pre gh_call pr view "${pr}" --json isDraft --jq .isDraft
 [ "${out}" = false ] || refuse 10 "draft PR: the worker marks it ready"
 pre "${git}" -C "${review}" fetch -q origin main
 # The log names repository paths only, so an extra TSV must be in the main checkout (PR #372 thread 4291474891).
@@ -99,7 +116,7 @@ for attempt in 1 2 3; do
     step fetch 0 "${git}" -C "${review}" checkout -q --detach FETCH_HEAD
     step fetch 0 "${git}" -C "${review}" rev-parse HEAD
     head=${out}
-    step fetch 0 "${gh}" pr view "${pr}" --json headRefOid --jq .headRefOid
+    step fetch 0 gh_call pr view "${pr}" --json headRefOid --jq .headRefOid
     [ "${out}" = "${head}" ] || refuse 10 "head mismatch: re-run"
     sha7=${head:0:7}
     # The log is named by the head, so the lines before it are written once it is known; a new head's log holds them all.
@@ -107,12 +124,12 @@ for attempt in 1 2 3; do
     [ ! -e "${v}/${task}-audit-${sha7}.md.last.md" ] || refuse 10 "head already audited: one chain per head"
     step base 0,1 "${git}" -C "${review}" merge-base --is-ancestor origin/main HEAD
     if ((rc == 0)); then
-        step checks any "${gh}" pr checks "${pr}" --required --watch
+        step checks any gh_call pr checks "${pr}" --required --watch
         ((rc == 0)) || refuse 12 "required checks failed"
         # Plan 020 step 4: the Bot wait is never gated, so it ends present or absent and the chain goes on.
         q="[.[] | select(.user.login == \"chatgpt-codex-connector[bot]\" and .commit_id == \"${head}\")] | length"
         t0=$("${date}" +%s)
-        while step bot 0 "${gh}" api "repos/{owner}/{repo}/pulls/${pr}/reviews" --paginate --jq "${q}"; do
+        while step bot 0 gh_call api "repos/mryfmo/dotfiles/pulls/${pr}/reviews" --paginate --jq "${q}"; do
             n=$((${out//$'\n'/+})) # one count per page
             ((n == 0 && $("${date}" +%s) - t0 < ${CHAIN_BOT_WAIT:-900})) || break
             sleep 30
@@ -124,9 +141,9 @@ for attempt in 1 2 3; do
         ((rc == 1)) || break
     fi
     ((attempt < 3)) || refuse 13 "base moved three times"
-    step base 0 "${gh}" pr update-branch "${pr}"
+    step base 0 gh_call pr update-branch "${pr}"
     t0=$("${date}" +%s) # GitHub builds the merge commit asynchronously: poll the head check's query until it moves.
-    while step base 0 "${gh}" pr view "${pr}" --json headRefOid --jq .headRefOid && [ "${out}" = "${head}" ]; do
+    while step base 0 gh_call pr view "${pr}" --json headRefOid --jq .headRefOid && [ "${out}" = "${head}" ]; do
         (($("${date}" +%s) - t0 < ${CHAIN_POLL_MAX:-120})) || refuse 10 "update-branch head not visible"
         sleep "${CHAIN_POLL_SECONDS:-5}"
     done
@@ -150,10 +167,10 @@ if ((rc == 3)); then
 fi
 sweep=${v}/${task}-pr-feedback.json comments=${v}/${task}-pr-comments.json
 step pr-feedback 0 "${uv}" run --no-project python -I "${main}/scripts/pr-feedback.py" "${pr}" --json "${sweep}"
-step fill-sweep 0 "${gh}" api user --jq .login
+step fill-sweep 0 gh_call api user --jq .login
 login=${out}
 # One compact object per line, joined into one array, so a second page does not end the JSON after the first.
-step fill-sweep 0 "${gh}" api "repos/{owner}/{repo}/pulls/${pr}/comments" --paginate --jq '.[]'
+step fill-sweep 0 gh_call api "repos/mryfmo/dotfiles/pulls/${pr}/comments" --paginate --jq '.[]'
 printf '[%s]\n' "${out//$'\n'/,}" > "${comments}"
 step fill-sweep 0,1 "${uv}" run --no-project python -I "${main}/scripts/orchestrator/fill_sweep.py" "${sweep}" "${comments}" ${extra:+"${extra}"} --orchestrator-login "${login}"
 rm -f -- "${comments}"

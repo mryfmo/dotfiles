@@ -73,7 +73,7 @@ resolve() { # <name> <what> [<found by command -v alone>]
     if [ -n "${3:-}" ]; then
         found=$(command -v "$1") || found=
     else
-        found=$(env -i PATH="$PATH" HOME="$HOME" mise which "$1" 2> /dev/null || command -v "$1") || found=
+        found=$(env -i PATH="$PATH" HOME="$HOME" UV_CACHE_DIR="${UV_CACHE_DIR:-}" mise which "$1" 2> /dev/null || command -v "$1") || found=
     fi
     [ -n "$found" ] || {
         echo "local-review: no $2 $1"
@@ -85,6 +85,21 @@ resolve() { # <name> <what> [<found by command -v alone>]
         exit 2
     }
 }
+resolve uv "binding interpreter launcher"
+uv=$found
+python=$(/usr/bin/env -i PATH="$PATH" HOME="$HOME" UV_CACHE_DIR="${UV_CACHE_DIR:-}" "$uv" python find)
+gh=$(/usr/bin/env -i PATH="$PATH" HOME="$HOME" UV_CACHE_DIR="${UV_CACHE_DIR:-}" "$python" -I "$R/scripts/pr-feedback.py" --gh-binding) || exit 2
+[[ -n ${GH_TOKEN:-} ]] || {
+    echo 'refused: gh binding' >&2
+    exit 2
+}
+gh_environment=(HOME="$HOME" LANG=C.UTF-8 UV_CACHE_DIR="$UV_CACHE_DIR" "GH_TOKEN=$GH_TOKEN" GH_CONFIG_DIR=/var/empty
+    GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 GH_NO_EXTENSION_UPDATE_NOTIFIER=1 NO_COLOR=1 TERM=dumb GH_PAGER=cat)
+bin=$(mktemp -d "${TMPDIR:-/tmp}/local-review-gh.XXXXXX")
+trap 'rm -rf -- "$bin"' EXIT
+ln -s -- "$gh" "$bin/gh"
+resolve git "review descendant"
+ln -s -- "$found" "$bin/git"
 resolve "${CODEX_BIN:-codex}" "review binary" "${CODEX_BIN:-}"
 run=("$found")
 # An env shebang would find its interpreter on PATH at exec time, in the PR worktree (the audit of c45f9b5).
@@ -110,7 +125,7 @@ base=$(git -C "$W" merge-base main HEAD)
 t0=$(date -u +%FT%TZ)
 tmp=$(mktemp "${TMPDIR:-/tmp}/local-review.XXXXXX")
 rc=0
-(cd "$W" && "${run[@]}" --profile review -s read-only review --base main < /dev/null > "$tmp" 2>&1) || rc=$?
+(cd "$W" && /usr/bin/env -i PATH="$bin" "${gh_environment[@]}" "${run[@]}" --profile review -s read-only review --base main < /dev/null > "$tmp" 2>&1) || rc=$?
 if [ "$rc" != 0 ]; then
     # A failed review is no sample: no file, so the next run reviews again (PR #357 thread 4270918132).
     echo "local-review: codex exited $rc; no review file written (transcript $tmp)"

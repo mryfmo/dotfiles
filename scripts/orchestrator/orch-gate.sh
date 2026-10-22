@@ -9,12 +9,12 @@
 #   `.claude/worktrees/orchestrator-review` out at the head; a head that tracks a symlink under `.orchestration`
 #   is refused, so no copy follows a link out of the worktree. It copies them in and runs, with the review worktree
 #   as its working tree, the gate `make require-crit-review` runs, but this checkout's copy: the head's Makefile
-#   and gate are PR-controlled (PR #350 thread 4265190252), so `scripts/require-crit-review.py` and the validator
-#   it loads must equal origin/main's here. The interpreter is `uv python find` in this checkout, resolved before
+#   and gate are PR-controlled (PR #350 thread 4265190252), so the gate, validator and gh binding source
+#   must equal origin/main's here. The interpreter is `uv python find` in this checkout, resolved before
 #   the review worktree is entered and run directly, so no uv reads the head's `.python-version` or `uv.toml`
 #   (uv runs an executable a `.python-version` names; the audit of f48593d6). The gate runs under `env -i` with
-#   HOME as this shell has it, a PATH of one private directory of links to `gh` and `git` as this checkout resolves
-#   them (`mise which` under `env -i`, else `command -v`; a path under a `shims` directory or none is refused), its
+#   HOME as this shell has it, a private PATH linking gh's checked declaration and git resolved here
+#   (`mise which` under `env -i`, else `command -v`; a shims path or none is refused), its
 #   inputs AUDIT_EVIDENCE, ACCEPTANCE_EVIDENCE, PR_FEEDBACK_EVIDENCE, REVIEW_EVIDENCE and AGENT_REVIEWED=1, and
 #   PYTHONSAFEPATH=1, as `-I -P <gate> --base origin/main`: nothing else of this shell or of the head reaches the
 #   gate or the collector and gh it starts (the audits of a06c874e and 6847aa9f). A trap set before the private
@@ -50,7 +50,7 @@ sweep="${v}/${task}-pr-feedback.json" audit="${v}/${task}-audit-${head:0:7}.md"
 record=".orchestration/acceptance/${task}.md" receipt="${v}/${task}-review-receipt.md"
 evidence=("${sweep}" "${audit}" "${audit}.last.md" "${receipt}" "${v}/${task}-crit.json" "${record}")
 cd -- "${root}"
-git diff --quiet origin/main -- scripts/require-crit-review.py scripts/validate-agent-assets.py ||
+git diff --quiet origin/main -- scripts/require-crit-review.py scripts/validate-agent-assets.py scripts/pr-feedback.py ||
     refuse "the gate here differs from origin/main's"
 for f in "${evidence[@]}"; do
     [[ -f ${f} ]] || refuse "${f} is missing"
@@ -58,7 +58,12 @@ done
 [[ $(jq -r .pr "${sweep}") == "${pr}" ]] || refuse "${sweep} is not the sweep of PR ${pr}"
 [[ -z $(git ls-tree -r "${head}" -- .orchestration | awk '$1 == "120000"') ]] ||
     refuse "${head:0:7} tracks a symlink under .orchestration (PR #350 thread 4265190259)"
-python="$(uv python find)" || refuse "uv found no interpreter in ${root}"
+python="$(/usr/bin/env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:-}" uv python find)" || refuse "uv found no interpreter in ${root}"
+gh=$(/usr/bin/env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR:-}" "${python}" -I "${root}/scripts/pr-feedback.py" --gh-binding) || exit 2
+[[ -n ${GH_TOKEN:-} ]] || {
+    echo 'refused: gh binding' >&2
+    exit 2
+}
 [[ -z $(git -C "${review}" status --porcelain --untracked-files=all) ]] || refuse "the review worktree is not clean"
 trap '[[ -z ${bin:-} ]] || rm -rf -- "${bin}"
 [[ -z ${moved:-} ]] || { git -C "${review}" clean -fdq -- .orchestration; git -C "${review}" checkout -qf --detach origin/main; }' EXIT
@@ -67,11 +72,10 @@ bin="$(mktemp -d "${TMPDIR:-/tmp}/orch-gate.XXXXXX")"
 # from the review worktree's mise.toml (the audit of 6847aa9f). gh and git are what the gate and its collector run.
 # mise resolves under env -i, so no MISE_CONFIG_FILE or MISE_TRUSTED_CONFIG_PATHS of this shell picks the binary
 # (PR #355 thread 4267889542).
-for name in gh git; do
-    found="$(env -i PATH="${PATH}" HOME="${HOME}" mise which "${name}" 2> /dev/null || command -v "${name}")" || found=
-    [[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for ${name} outside a shims directory ('${found}')"
-    ln -s -- "${found}" "${bin}/${name}"
-done
+ln -s -- "${gh}" "${bin}/gh"
+found="$(env -i PATH="${PATH}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR}" mise which git 2> /dev/null || command -v git)" || found=
+[[ ${found} == /* && ${found} != */shims/* ]] || refuse "no binary for git outside a shims directory ('${found}')"
+ln -s -- "${found}" "${bin}/git"
 moved=1
 git -C "${review}" checkout -q --detach "${head}"
 for f in "${evidence[@]}"; do
@@ -84,7 +88,7 @@ rc=0
     cd -- "${review}" || exit 2
     # Built, not filtered: CRIT_REVIEW=off, CRIT_REVIEWED=1 (thread 4265190267) or a PYTHONPATH that loads the head's
     # sitecustomize.py into the collector (the audit of a06c874e) cannot come along.
-    env -i PATH="${bin}" HOME="${HOME}" AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" \
+    env -i PATH="${bin}" HOME="${HOME}" UV_CACHE_DIR="${UV_CACHE_DIR}" "GH_TOKEN=${GH_TOKEN}" AUDIT_EVIDENCE="${audit}" ACCEPTANCE_EVIDENCE="${record}" \
         PR_FEEDBACK_EVIDENCE="${sweep}" REVIEW_EVIDENCE="${receipt}" AGENT_REVIEWED=1 PYTHONSAFEPATH=1 \
         "${python}" -I -P "${root}/scripts/require-crit-review.py" --base origin/main
 ) || rc=$?

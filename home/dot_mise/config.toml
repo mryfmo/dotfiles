@@ -40,7 +40,8 @@ ruff = "latest"
 
 "github:x-motemen/ghq" = "latest"
 "github:d-kuro/gwq" = "latest"
-"github:cli/cli" = "latest"
+# Held: canonical GitHub reads require the declared gh executable and version.
+"github:cli/cli" = "2.102.0"
 "github:ogulcancelik/herdr" = "latest"
 # Fixed pin avoids the sandbox's blocked version-registry query.
 "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }

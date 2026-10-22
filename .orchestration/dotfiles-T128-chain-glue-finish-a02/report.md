@@ -55,3 +55,21 @@ The new test is `ChainIntegrateTest::test_shim_exclusion_compares_the_resolved_p
 `realpath` resolves the directory at check time, so a directory relinked between the check and the run is not seen. Under the threat table this is accepted: the check is a guard against picking up mise shims, not a trust boundary.
 
 cost: n/a
+
+## Round 4: the Bot fix round (AGMSG-ACCEPTANCE status=revise round=4, 2026-10-21T22:50:55Z; previous head 2b586637)
+
+- **Producer:** worker (Claude seat).
+- **Why this round:** the sweep of `2b586637` found two Bot threads from the a01 rounds that were never dispositioned. Both are real in the current code. This is the text's one worker Bot fix round (Worker Playbook step 15); the text is unchanged.
+- **Commits:** the red tests are `7dfe6b9d` and the fix is `afbe3d4d`.
+
+| Thread | Fix in `scripts/orchestrator/chain-finish.sh` | Test (`ChainIntegrateTest::…`), red at 2b586637, green at afbe3d4d |
+| --- | --- | --- |
+| 4302085363 (P1) | `ff-main.sh` runs as `ff_run`: `env -i PATH=<the pre-merge links> HOME TMPDIR`, like `cost_run`. The link set gains `mktemp`, `dirname`, `mv`, `cp` and `rm`, which `ff-main.sh` calls | `test_finish_runs_ff_main_with_the_pre_merge_links`: ff-main's PATH was the inherited one; now it is the links directory, and a hook finds each of its commands there |
+| 4302085368 (P2) | after the head check, before any GitHub write: `gh pr view --json baseRefName`, refusing with exit 10 and `PR <n> does not target main: <base>` unless the base is `main` | `test_finish_refuses_a_pr_whose_base_is_not_main`: exit 0 and the merge ran; now exit 10, with no thread resolved and no merge |
+
+- **An updated test:** `test_finish_refuses_a_sweep_whose_head_differs_from_the_audited_head` now expects both read-only `gh` calls, head and base, before that refusal. Its intent, no GitHub write, is unchanged.
+- **Checks:** `test_chain_glue` and `test_lint_comparisons` pass. `bash -n`, `shellcheck`, `ruff check` and the comparison lint exit 0.
+- **Caps:**
+  - PR-wide, from merge-base `4eafd890`: 183 of 200 outside `tests/` and `.orchestration/`, and 314 of 320 under `tests/`;
+  - this round: +9/−4 and +26/−2.
+- **Bot:** no `@codex review` was requested after the fix, because `gh pr comment` matches an ask rule this seat does not run.

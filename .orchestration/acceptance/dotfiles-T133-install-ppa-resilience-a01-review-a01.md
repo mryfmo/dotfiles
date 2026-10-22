@@ -1,0 +1,19 @@
+---
+{
+  "dispatch": [
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-install-ppa-resilience-a01-review-a01 status=revise pr=none round=4 amendment=3 design_file=.orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01.md design_sha256=1b5b64ea643700b74d59e7e0913dfb25d6ae6049eae562de9e69fbdc865df88a previous_design_sha256=45fb80f66c9ca36ef5dc3595d516404b64b6060fab4bd2a2c3b7e3174a83488f reason=amendment-3-of-the-install-ppa-text-after-the-audit-of-44134e36(five-P2):Item-3-moves-the-ghostty-step-into-its-own-run_-script-so-a-skipped-install-is-retried-at-every-apply(chezmoi-run_once_-records-completion);Item-1-tightens-the-outage-detector(exit-0-update-with-a-failed-PPA-index-is-an-outage;a-non-PPA-fetch-failure-stays-fatal);Item-2-adds-three-fixtures;allowed_files-widened-to-the-two-chezmoiscripts-templates-with-threat-rows;review-items-unchanged(hash,scope-exactly-the-PPA-failure-path-plus-the-run_-split,read-only) next_action=review-round-4:compute-the-hash,judge-items-1-3-of-your-task,RESULT-with-verdict=accept|reject read_at=read",
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-install-ppa-resilience-a01-review-a01 status=revise pr=none round=5 amendment=3 revision=2 design_file=.orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01.md design_sha256=bc6a455f69646a15c4042503e775e93f359171ee535f3fdbff8e501a02a8a7b5 previous_design_sha256=1b5b64ea643700b74d59e7e0913dfb25d6ae6049eae562de9e69fbdc865df88a reason=your-round-4-findings-answered:(1)the-caps-sentence-of-the-Check-section-now-reads-110/160(the-Amendments-entry-only-points-to-it);(2)the-new-template-is-run_after_06-client-install-ghostty.sh.tmpl-with-the-same-guard-as-run_after_05-client-install-zed.sh.tmpl(os-linux,idLike-debian,system-client);allowed_files,threat-rows-and-the-structural-selector-renamed-accordingly;nothing-else-changed next_action=review-round-5:compute-the-hash,judge-items-1-3,RESULT-with-verdict=accept|reject read_at=read",
+    "AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-install-ppa-resilience-a01-review-a01 status=accepted round=5 pr=none verdict=accept design_file=.orchestration/tasks/dotfiles-T133-install-ppa-resilience-a01.md design_sha256=bc6a455f69646a15c4042503e775e93f359171ee535f3fdbff8e501a02a8a7b5 reason=amendment-3-revision-2-accepted-at-round-5;the-revise-round-of-the-install-ppa-task-is-dispatched-to-a008-on-these-bytes next_action=none:the-seat-is-free read_at=read"
+  ]
+}
+---
+# Acceptance: dotfiles-T133-install-ppa-resilience-a01-review-a01
+
+Anchor review of the install-ppa-resilience text by a011 (worker-d). Rounds 1-3 (2026-10-21T22:23Z to 22:28Z, bus rows 3009-3015): reject, reject, accept at design sha 45fb80f66c9ca36ef5dc3595d516404b64b6060fab4bd2a2c3b7e3174a83488f; recorded in the main task's record until this file was created on 2026-10-22T02:26Z (dispatch.sh needs the record to exist before a send).
+
+## Counters (INV-6)
+
+amendments=0 revises=0 questions=0 at the round-1 dispatch; round 4 = amendment 3 of the design text after the audit of 44134e36 (D-024-74).
+dispatch: [2026-10-22T02:26:35Z] claude-deep-dot → claude-standard-dot-a011: AGMSG-ACCEPTANCE v1 task_id=dotfiles-T133-install-ppa-resilience-a01-review-a01 status=revise round=4 amendment=3 design_sha256=1b5b64ea643700b74d59e7e0913dfb25d6ae6049eae562de9e69fbdc865df88a (bus row ○ read; hand line, dispatch.sh wrote no line into this prose record)
+- 2026-10-22T02:29Z: round 4 RESULT (a011) reject on two findings (caps sentence outside the Check section; unguarded run_ template); fixed at design sha bc6a455f69646a15c4042503e775e93f359171ee535f3fdbff8e501a02a8a7b5 (run_after_06 template with the zed guard, caps 110/160 in Check); round 5 sent (bus row after 2026-10-22T02:29Z, hand line).
+- 2026-10-22T02:32Z: round 5 RESULT (a011) accept at design sha bc6a455f69646a15c4042503e775e93f359171ee535f3fdbff8e501a02a8a7b5; ACCEPTANCE status=accepted sent (hand line).

@@ -8,15 +8,15 @@ import fnmatch
 import json
 import os
 import posixpath
+import pwd
 import re
 import subprocess
 import sys
+import tomllib
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 try:
     import yaml
@@ -798,6 +798,50 @@ def validate_assets(manifest: dict[str, Any]) -> None:
         for match in LITERAL_VERSION_ASSIGNMENT.finditer(path.read_text()):
             if (relative, match.group(1)) not in rendered:
                 fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
+
+
+def validate_gh_binding() -> None:
+    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+    manifest = load_yaml(manifest_path)
+    try:
+
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError
+            return value
+
+        lines = [s for s in manifest_path.read_text().splitlines() if s.strip() and not s.startswith("#")]
+        roots = [re.fullmatch(r"([a-z_][a-z0-9_]*)\s*:.*", s) for s in lines if not s[0].isspace()]
+        if (
+            not lines[0].startswith("trusted_tools: ")
+            or not all(roots)
+            or len({m[1] for m in roots}) != len(roots)
+            or json.loads(lines[0].removeprefix("trusted_tools: "), object_pairs_hook=unique)
+            != manifest["trusted_tools"]
+        ):
+            raise ValueError
+        declaration = manifest["trusted_tools"]["gh"]
+        version, spelling = declaration["version"], declaration["path"]
+        home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+        pin = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]["github:cli/cli"]
+        expected = f"~/.local/share/mise/installs/github-cli-cli/{version}/bin/gh"
+        if (
+            set(declaration) != {"version", "path"}
+            or not isinstance(version, str)
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
+            or version != pin
+            or spelling != expected
+            or os.environ.get("HOME") != str(home)
+            or not home.is_absolute()
+        ):
+            raise ValueError
+        expanded = home / spelling[2:]
+        resolved = expanded.resolve()
+        if not expanded.is_absolute() or not resolved.is_relative_to(home) or "shims" in resolved.parts:
+            raise ValueError
+    except (KeyError, TypeError, ValueError, OSError, IndexError):
+        fail("trusted_tools.gh must match the exact mise pin and normalized passwd-home install path")
 
 
 def validate_agent_manifest() -> dict[str, Any]:
@@ -1648,6 +1692,7 @@ def report_regime_boundary() -> None:
 
 def main() -> None:
     manifest = validate_agent_manifest()
+    validate_gh_binding()
     validate_assets(manifest)
     validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()

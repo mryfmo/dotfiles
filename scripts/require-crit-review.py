@@ -10,12 +10,11 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from collections import Counter
 from functools import cache
-import sys
 from pathlib import Path
-
 
 REVIEWED_ENV = "CRIT_REVIEWED"
 NATIVE_REVIEWED_ENV = "AGENT_REVIEWED"
@@ -514,30 +513,34 @@ def missing_feedback(collected: list, saved: list) -> Counter:
     return missing
 
 
+@cache
+def gh_client():
+    spec = importlib.util.spec_from_file_location("bound_gh", Path(__file__).with_name("pr-feedback.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
     """Bind the base before executing a collector, independently of PR-owned JSON/code."""
-    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY", "GH_REPO"}}
-    env["NO_COLOR"] = "1"
+    repo = "mryfmo/dotfiles"
+    if evidence.get("repo") != repo:
+        return [f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"]
+    bound = gh_client().gh_binding()
+    env = gh_client().gh_env(os.environ.get("GH_TOKEN", ""))
     failure = f"could not verify PR #{pr} base on GitHub; fetch the base and rerun scripts/pr-feedback.py"
     try:
-        repository = subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner"],
-            cwd=root,
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        repo_data = json.loads(repository.stdout) if repository.returncode == 0 else None
-        repo = repo_data.get("nameWithOwner") if isinstance(repo_data, dict) else None
-        if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
-            return [failure]
-        if evidence.get("repo") != repo:
-            return [
-                f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"
-            ]
         result = subprocess.run(
-            ["gh", "pr", "view", str(pr), "--repo", repo, "--json", "headRefOid,baseRefName,baseRefOid"],
+            [
+                bound,
+                "pr",
+                "view",
+                str(pr),
+                "--repo",
+                "github.com/mryfmo/dotfiles",
+                "--json",
+                "headRefOid,baseRefName,baseRefOid",
+            ],
             cwd=root,
             env=env,
             capture_output=True,
@@ -606,14 +609,24 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
         collected_path = Path(temporary) / "collected.json"
         # An advanced local base may contain untrusted code despite a safe merge-base.
         # Execute only the GitHub-authenticated base's collector, including bootstrap.
-        collector = root / "scripts/pr-feedback.py"
+        collector = Path(__file__).with_name("pr-feedback.py")
         base_collector = run_git(["show", f"{evidence['base_sha']}:scripts/pr-feedback.py"], root)
         if base_collector.returncode == 0:
             collector = Path(temporary) / "pr-feedback.py"
             collector.write_text(base_collector.stdout)
+        python = Path(sys.executable).resolve(strict=True)
+        if not python.is_file() or not os.access(python, os.X_OK):
+            return ["refused: collector interpreter"]
+        # Older authenticated collectors use bare gh and its default host; supply constants, never ambient values.
+        bin_path = Path(temporary) / "bin"
+        bin_path.mkdir()
+        (bin_path / "gh").symlink_to(gh_client().gh_binding())
+        env = gh_client().gh_env(os.environ.get("GH_TOKEN", ""))
+        env.update(PATH=f"{bin_path}:/usr/bin:/bin", GH_HOST="github.com")
         result = subprocess.run(
-            [sys.executable, str(collector), str(pr), "--repo", evidence["repo"], "--json", str(collected_path)],
+            [str(python), "-I", str(collector), str(pr), "--repo", "mryfmo/dotfiles", "--json", str(collected_path)],
             cwd=root,
+            env=env,
             check=False,
             text=True,
             stdout=subprocess.PIPE,

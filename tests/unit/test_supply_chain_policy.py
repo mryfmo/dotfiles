@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import os
 import re
@@ -8,9 +9,85 @@ import tomllib
 import unittest
 import zipfile
 from pathlib import Path
-
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class GhBindingPolicyTest(unittest.TestCase):
+    def test_gh_exact_pin(self):
+        tools = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]
+        self.assertEqual("2.102.0", tools["github:cli/cli"])
+
+    def test_gh_declaration_policy(self):
+        spec = importlib.util.spec_from_file_location("gh_policy", ROOT / "scripts/validate-agent-assets.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        validate = getattr(module, "validate_gh_binding", module.validate_agent_manifest)
+        canonical = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        tail = "\n".join(line for line in canonical.splitlines() if not line.startswith("trusted_tools:"))
+        declaration = {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}
+        cases = {"missing": None, "not mapping": [], "no gh": {}, "malformed": {"gh": "gh"}}
+        for label, value in {
+            "version": "latest",
+            "missing version": None,
+            "path": "/tmp/gh",
+            "traversal": "~/x/../.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+            "shims": "~/.local/share/mise/shims/gh",
+            "latest": "~/.local/share/mise/installs/github-cli-cli/latest/bin/gh",
+            "relative": ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+            "missing path": None,
+        }.items():
+            candidate = dict(declaration)
+            key = "version" if "version" in label else "path"
+            candidate[key] = value
+            cases[label] = {"gh": candidate}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "home/dot_mise").mkdir(parents=True)
+            (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
+            (root / "README.md").write_text((ROOT / "README.md").read_text())
+            source = root / "home/dot_agents/agent-config.yaml"
+            source.parent.mkdir(parents=True)
+            if module.yaml is None:
+                # CI already needs Ruby; safe_load independently parses the complete YAML, including duplicate keys.
+                def yaml_fixture(path):
+                    result = subprocess.run(
+                        ["/usr/bin/ruby", "-rjson", "-ryaml", "-e", "puts JSON.generate(YAML.safe_load(STDIN.read))"],
+                        input=path.read_text(),
+                        env={"PATH": "/usr/bin:/bin", "HOME": str(root), "UV_CACHE_DIR": str(root / "cache")},
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                    )
+                    return json.loads(result.stdout)
+
+                module.load_yaml = yaml_fixture
+            with patch.object(module, "ROOT", root):
+                for label, tools in cases.items():
+                    source.write_text("trusted_tools: " + json.dumps(tools) + "\n" + tail)
+                    with self.subTest(label=label), self.assertRaises(SystemExit):
+                        validate()
+                source.write_text("trusted_tools: " + json.dumps({"gh": declaration}) + "\n" + tail)
+                validate()
+                with self.subTest("HOME"), patch.dict(os.environ, HOME="/tmp/forged"), self.assertRaises(SystemExit):
+                    validate()
+                resolve = Path.resolve
+
+                def redirected(path, *args, **kwargs):
+                    return Path("/tmp/shims/gh") if str(path).endswith("/bin/gh") else resolve(path, *args, **kwargs)
+
+                with self.subTest("shims"), patch.object(Path, "resolve", redirected), self.assertRaises(SystemExit):
+                    validate()
+                (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "latest"\n')
+                with self.subTest(label="mismatched pin"), self.assertRaises(SystemExit):
+                    validate()
+                (root / "home/dot_mise/config.toml").write_text('[tools]\n"github:cli/cli" = "2.102.0"\n')
+                value = json.dumps({"gh": declaration})
+                for key in ("trusted_tools", '"trusted_tools"', '"\\x74rusted_tools"', "trusted_tools "):
+                    source.write_text(canonical + "\n" + key + ": " + value + "\n")
+                    with self.subTest(serialized=key), self.assertRaises(SystemExit):
+                        validate()
 
 
 class SupplyChainPolicyTest(unittest.TestCase):
@@ -375,6 +452,7 @@ main
         held["node"] = "node = "
         held["python"] = "python = "
         held["uv"] = "uv = "
+        held["github:cli/cli"] = '"github:cli/cli" = '
         held["http:gcloud"] = '[tools."http:gcloud"]'
         # The exact blocc pin avoids the sandbox's blocked version-registry query.
         held["github:shuntaka9576/blocc"] = '"github:shuntaka9576/blocc" = '

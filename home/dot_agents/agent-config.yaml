@@ -13,6 +13,9 @@
 #   The Claude sandbox allowWrite list is rendered from the same entries.
 # - Let upstream install.sh own ~/.agents/skills/agmsg; never vendor it (assets.agmsg).
 
+# The first data line is JSON so isolated stdlib consumers can read this protected declaration.
+trusted_tools: {"gh": {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}}
+
 schema_version: 1
 
 target_agents:

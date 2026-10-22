@@ -13,9 +13,14 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from tests.unit.test_pr_feedback import ROOT, GhFixture
+from tests.unit.trusted_exec_contract import TrustedExecContractMixin, assert_sanitized_env
 
 CHAIN = Path(__file__).resolve().parents[2] / "scripts/orchestrator/chain-integrate.sh"
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -133,12 +138,41 @@ class ChainIntegrateTest(unittest.TestCase):
             "CHAIN_POLL_SECONDS": "0",
             "CHAIN_BOT_WAIT": "0",
         }
+        self.binding = GhFixture(self.temp / "binding")
+        payload_env = dict(self.env)
+        code = self.binding.target.read_text()
+        dispatch = (
+            "if a!=['--version']:\n"
+            " import subprocess\n"
+            f" sys.exit(subprocess.run(['/bin/bash','-p','-c',{GH.replace('JQ', shutil.which('jq') or 'jq')!r},sys.argv[0],*a],env={payload_env!r}).returncode)\n"
+        )
+        code = code.replace("if a==['--version']", dispatch + "if a==['--version']")
+        for target in (self.binding.target, self.binding.bin / "gh"):
+            self.executable(target, code)
+        self.env.update(self.binding.env)
+        self.env["PATH"] = f"{self.binding.bin}:{bin_dir}:/usr/bin:/bin"
+        self.executable(
+            bin_dir / "uv",
+            f'#!/bin/bash -p\n# @brief Resolve only the fixture interpreter for binding.\nif [[ "$1 $2" == "python find" ]]; then /usr/bin/env >> {str(self.binding.root / "discovery.env")!r}; printf "%s\\n" {self.binding.python}; exit; fi\nif [[ ${{!#}} == --gh-binding ]]; then for operand; do [[ $operand != */pr-feedback.py ]] || file=$operand; done; exec {self.binding.python} -I "$file" --gh-binding; fi\n'
+            + UV.split("\n", 1)[1],
+        )
 
     def git(self, *args, cwd=None):
+        repo = Path(cwd or self.main)
+        options = ["-C", str(repo), "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"]
+        if (repo / ".git").exists():
+            options += [f"--git-dir={repo / '.git'}", f"--work-tree={repo}"]
         return subprocess.run(
-            ["git", "-c", "commit.gpgsign=false", *args],
-            cwd=cwd or self.main,
-            env={**os.environ, **GIT_ENV},
+            ["/usr/bin/git", *options, "-c", "commit.gpgsign=false", *args],
+            cwd=repo,
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": str(self.temp),
+                "UV_CACHE_DIR": str(self.temp / "cache"),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                **GIT_ENV,
+            },
             capture_output=True,
             text=True,
             check=True,
@@ -260,7 +294,7 @@ class ChainIntegrateTest(unittest.TestCase):
         for name in expected:
             self.assertIn(f"cwd: {self.main}\n", (self.calls / f"{name}.log").read_text())
         self.assertIn(f"review: {self.review}\n", (self.calls / "local-review.log").read_text())
-        self.assertIn("pr checks 7 --required --watch", self.calls_of("gh"))
+        self.assertIn("pr checks 7 --required --watch --repo github.com/mryfmo/dotfiles", self.calls_of("gh"))
         # The ledger holds the gate's ids only; the comments are one array across pages.
         ledger = (self.calls / "acceptance-front-matter.log").read_text()
         self.assertIn("4280648512\tclass-a\naudit:abcdef1:2\tclass-b\n", ledger)
@@ -288,8 +322,11 @@ class ChainIntegrateTest(unittest.TestCase):
         self.assertNotEqual(self.head, merged)
         self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
         gh = self.calls_of("gh")
-        self.assertEqual(1, gh.count("pr update-branch 7"))
-        self.assertIn("pr view 7 --json headRefOid --jq .headRefOid", gh[gh.index("pr update-branch 7") + 1 :])
+        self.assertEqual(1, gh.count("pr update-branch 7 --repo github.com/mryfmo/dotfiles"))
+        self.assertIn(
+            "pr view 7 --json headRefOid --jq .headRefOid --repo github.com/mryfmo/dotfiles",
+            gh[gh.index("pr update-branch 7 --repo github.com/mryfmo/dotfiles") + 1 :],
+        )
         # The first head's log ends at the update-branch; the merged head's log holds both rounds.
         self.assertEqual(1, self.log().count("+pull/7/head:refs/remotes/pr/7\n"))
         self.assertNotIn(" checks rc=", self.log())  # a head behind the base waits for no CI
@@ -314,7 +351,7 @@ git -C "{self.main}" pull -q --ff-only
         merged = (self.calls / "head").read_text().strip()
         self.assertNotEqual(self.head, merged)
         self.assertEqual(f"chain-integrate: {TASK} {merged} Verdict: correct", out.splitlines()[-1])
-        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7"))
+        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7 --repo github.com/mryfmo/dotfiles"))
         first = re.findall(r"^\S+ (\S+) rc=\d+: ", self.log(), re.MULTILINE)
         self.assertEqual(
             ["checks", "bot", "base", "base", "base"], first[first.index("checks") : first.index("checks") + 5]
@@ -338,7 +375,7 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.executable(self.calls / "update-hook", hook)
         result = self.chain(code=10)
         self.assertIn("main checkout is not origin/main: run scripts/orchestrator/ff-main.sh", result.stderr)
-        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7"))
+        self.assertEqual(1, self.calls_of("gh").count("pr update-branch 7 --repo github.com/mryfmo/dotfiles"))
         for name in ("sandbox-scan", "local-review", "orch-audit"):
             self.assertEqual([], self.calls_of(name))
 
@@ -576,6 +613,150 @@ git -C "{self.seed}" -c commit.gpgsign=false commit -q -m e && git -C "{self.see
         self.chain(env={"CHAIN_SCAN_JUDGED": self.head[:7]})
         self.assertIn("sandbox scan: judged by the orchestrator", self.log())
         self.assertEqual([f"{TASK} {self.head} 7"], self.calls_of("local-review"))
+
+
+class GhBindingTest(TrustedExecContractMixin, unittest.TestCase):
+    def consumer(self, name, attack=None):
+        if name == "chain-integrate":
+            case = ChainIntegrateTest()
+            case.setUp()
+            self.addCleanup(case.doCleanups)
+            f = case.binding
+            if attack:
+                attack(f)
+            command = [str(CHAIN), TASK, "7", str(case.main), str(case.review), OWNER]
+            cwd, env = case.temp, case.env
+        else:
+            f = GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="consumer-gh-"))).resolve())
+            f.gate_repository()
+            if attack:
+                attack(f)
+            if name in ("collector", "gate"):
+                script = "pr-feedback.py" if name == "collector" else "require-crit-review.py"
+                args = ("180", "--repo", "mryfmo/dotfiles") if name == "collector" else ("--base", "main")
+                return f, f.run(f.repo / "scripts" / script, *args, cwd=f.pr, env=f.inputs)
+            else:
+                script = f.repo / "scripts/orchestrator" / (name + ".sh")
+                args = ("binding", str(f.pr), "180")
+                if name == "local-review":
+                    args = ("binding", f.head, "180")
+                    f.executable(
+                        f.bin / "codex",
+                        f"#!{sys.executable} -I\nimport json,subprocess\nr=subprocess.run(['gh','api','user','--hostname','github.com'],capture_output=True,text=True,check=True)\nassert json.loads(r.stdout)['login']=='declared-user'\nprint('codex\\nConsumed declared-user response')\n",
+                    )
+                command, cwd, env = [str(script), *args], f.repo, f.env | f.inputs
+        result = subprocess.run(
+            ["/bin/bash", "--noprofile", "--norc", "-p", *command],
+            cwd=cwd,
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        return f, result
+
+    def positive(self, name):
+        f, result = self.consumer(name)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        f.assert_bound(self)
+        return f, result
+
+    def test_chain_integrate_authenticated_decoy(self):
+        _, result = self.positive("chain-integrate")
+        self.assertIn("Verdict: correct", result.stdout)
+
+    def test_orch_gate_authenticated_decoy(self):
+        _, result = self.positive("orch-gate")
+        self.assertIn("PR feedback evidence accepted", result.stdout)
+
+        def tamper(f):
+            path = f.repo / "scripts/pr-feedback.py"
+            path.write_text(path.read_text() + "\n# PR-controlled sibling\n")
+
+        f, refused = self.consumer("orch-gate", tamper)
+        self.assertNotEqual(0, refused.returncode)
+        self.assertIn("differs from origin/main", refused.stderr)
+        self.assertFalse(f.records())
+
+    def test_local_review_authenticated_decoy(self):
+        _, result = self.positive("local-review")
+        self.assertIn("local-review: 0 findings", result.stdout)
+
+    def test_consumer_binding_matrix(self):
+        for name in ("chain-integrate", "orch-gate", "local-review", "gate", "collector"):
+            for kind in ("missing", "version", "path", "configuration"):
+
+                def attack(f, kind=kind):
+                    if kind == "missing":
+                        f.manifest.unlink()
+                    elif kind == "version":
+                        f.target.write_text(f.target.read_text().replace("gh version 2.102.0", "gh version 9.9.9"))
+                    elif kind == "path":
+                        f.target.unlink()
+                        f.target.symlink_to(f.bin / "gh")
+                    else:
+                        f.configuration("payload")
+
+                with self.subTest(consumer=name, refusal=kind):
+                    f, result = self.consumer(name, attack)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("refused: gh binding", result.stderr)
+                    self.assertFalse([r for r in f.records() if r["argv"] != ["--version"]])
+
+    def test_gh_environment_is_minimal(self):
+        declared = (
+            "LC_ALL",
+            "UV_CACHE_DIR",
+            "GH_CONFIG_DIR",
+            "GH_PROMPT_DISABLED",
+            "GH_NO_UPDATE_NOTIFIER",
+            "GH_NO_EXTENSION_UPDATE_NOTIFIER",
+            "NO_COLOR",
+            "TERM",
+            "GH_PAGER",
+        )
+        for name in ("chain-integrate", "orch-gate", "local-review", "gate", "collector"):
+            with self.subTest(consumer=name):
+                f, result = self.consumer(name)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                for row in f.records():
+                    env = dict(row["env"])
+                    env.pop("__CF_USER_TEXT_ENCODING", None)  # CPython adds this macOS variable after exec.
+                    if name == "local-review" and row["argv"] != ["--version"]:
+                        self.assertNotIn(str(f.bin), env["PATH"])
+                        env["PATH"] = "/usr/bin:/bin"  # the private gh/git namespace has its own checked links
+                    assert_sanitized_env(env, declared + (() if row["argv"] == ["--version"] else ("GH_TOKEN",)))
+
+    def test_protected_gh_configuration(self):
+        for kind in ("empty", "missing", "writable", "payload", "symlink", "ancestor"):
+            with self.subTest(kind=kind):
+                f = GhFixture(
+                    Path(self.enterContext(tempfile.TemporaryDirectory(prefix="unsafe-gh-config-"))).resolve()
+                )
+                f.configuration(kind)
+                result = f.run(ROOT / "scripts/pr-feedback.py", "180", "--repo", "mryfmo/dotfiles")
+                if kind == "empty":
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    continue
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("refused: gh binding", result.stderr.strip())
+                self.assertFalse(f.records())
+
+    def test_git_environment_cannot_redirect_fixture_writes(self):
+        probe = self.hostile_git_probe()
+        before = {str(p.relative_to(probe.attacker)): p.read_bytes() for p in probe.attacker.rglob("*") if p.is_file()}
+        with probe.attack("environment") as hostile, mock.patch.dict(os.environ, hostile, clear=True):
+            case = ChainIntegrateTest()
+            case.setUp()
+            self.addCleanup(case.doCleanups)
+            case.git("config", "include.path", str(probe.config))
+            case.git("config", "core.worktree", str(probe.attacker))
+            case.git("config", "core.hooksPath", str(probe.attacker))
+            case.commit(case.main, "fixture-write.txt", "legitimate fixture write\n")
+        after = {str(p.relative_to(probe.attacker)): p.read_bytes() for p in probe.attacker.rglob("*") if p.is_file()}
+        self.assertEqual(before, after)
+        self.assertFalse(probe.hook_marker.exists())
 
 
 if __name__ == "__main__":

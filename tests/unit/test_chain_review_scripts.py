@@ -14,13 +14,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.unit.test_pr_feedback import GhFixture
+
 TOOLS = Path(__file__).resolve().parents[2] / "scripts/orchestrator"
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 STUB = (
     "#!/usr/bin/env bash\n"
     '{{ printf "argv:"; printf " %s" "$@"; printf "\\ncwd: %s\\nhead: %s\\npath: %s\\nstdin: %s\\n" '
-    '"$(pwd -P)" "$(git rev-parse HEAD)" "$PATH" "$(cat)"; }} >> "$CALLS/{name}.log"\n'
-    'cat "$CALLS/transcript"\nexit "$(cat "$CALLS/status" 2> /dev/null || echo 0)"\n'
+    '"$(pwd -P)" "$(/usr/bin/git rev-parse HEAD)" "$PATH" "$(/bin/cat)"; }} >> "{calls}/{name}.log"\n'
+    '{record}/bin/cat "{calls}/transcript"\nexit "$(/bin/cat "{calls}/status" 2> /dev/null || echo 0)"\n'
 )
 ARGV = "argv: --profile review -s read-only review --base main"
 SCAN_HIT = "sandbox scan: unsandboxed mutation calls above (C-29); judge before the audit"
@@ -31,26 +33,23 @@ class ChainReviewScriptsTest(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.temp = Path(temp.name).resolve()
+        self.binding = GhFixture(self.temp / "gh-binding")
         self.repo = self.temp / "repo"
+        self.repo.mkdir()
         self.calls = self.temp / "calls"
         self.calls.mkdir()
-        self.git("init", "-q", "-b", "main", str(self.repo), cwd=self.temp)
+        self.git("init", "-q", "-b", "main")
+        source = self.write("scripts/pr-feedback.py", (TOOLS.parent / "pr-feedback.py").read_text())
+        self.git("add", str(source))
         self.write("a.txt", "a\n")
         self.git("add", "a.txt")
         self.git("commit", "-q", "-m", "main")
-        self.env = {**os.environ, **GIT_ENV, "CALLS": str(self.calls), "TMPDIR": str(self.temp)}
+        self.env = {**self.binding.env, **GIT_ENV, "CALLS": str(self.calls), "TMPDIR": str(self.temp)}
         for name in ("CODEX_BIN", "ORCH_REVIEW_WORKTREE"):
             self.env.pop(name, None)
 
     def git(self, *args, cwd=None):
-        return subprocess.run(
-            ["git", "-c", "commit.gpgsign=false", *args],
-            cwd=cwd or self.repo,
-            env={**os.environ, **GIT_ENV},
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
+        return self.binding.git(cwd or self.repo, *args)
 
     def write(self, rel, text, root=None):
         path = (root or self.repo) / rel
@@ -60,7 +59,8 @@ class ChainReviewScriptsTest(unittest.TestCase):
 
     def stub(self, path, name):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(STUB.format(name=name))
+        record = f'for p in "$PATH"/*; do printf "%s %s\\n" "$p" "$(/usr/bin/readlink "$p")"; done >> "{self.calls}/{name}.path"\n'
+        path.write_text(STUB.format(name=name, calls=self.calls, record=record))
         path.chmod(0o755)
 
     def mise(self, body):
@@ -68,7 +68,10 @@ class ChainReviewScriptsTest(unittest.TestCase):
         path = self.temp / "bin/mise"
         path.parent.mkdir(parents=True, exist_ok=True)
         log = f'echo "argv: $* MISE_CONFIG_FILE=${{MISE_CONFIG_FILE:-unset}}" >> "{self.calls}/mise.log"\n'
-        path.write_text("#!/bin/bash\n" + log + body)
+        self.binding.executable(self.temp / "bin/uv", f'#!/bin/bash\nprintf "%s\\n" "{self.binding.python}"\n')
+        fixed = f'[[ $2 != uv ]] || {{ printf "%s\\n" "{self.temp}/bin/uv"; exit; }}\n'
+        fixed += '[[ $2 != git ]] || { printf "%s\\n" /usr/bin/git; exit; }\n'
+        path.write_text("#!/bin/bash\n" + fixed + log + body)
         path.chmod(0o755)
 
     def review_head(self, name="review"):
@@ -83,12 +86,23 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.stub(self.temp / "bin/codex", "codex")
         self.mise("exit 1\n")
         (self.repo / ".orchestration/validation").mkdir(parents=True, exist_ok=True)
-        path = f"{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        path = f"{self.temp / 'bin'}{os.pathsep}{self.binding.env['PATH']}"
         return review, head, {"ORCH_REVIEW_WORKTREE": str(review), "PATH": path}
 
     def log(self, name):
         path = self.calls / f"{name}.log"
-        return path.read_text() if path.exists() else ""
+        text = path.read_text() if path.exists() else ""
+        paths = re.findall(r"^path: (.+)$", text, re.MULTILINE)
+        if paths:
+            expected = {}
+            for private in paths:
+                self.assertEqual(1, len(private.split(os.pathsep)))
+                self.assertEqual(self.temp, Path(private).parent)
+                expected |= {f"{private}/gh": str(self.binding.target), f"{private}/git": "/usr/bin/git"}
+                text = text.replace(f"path: {private}\n", "path: checked gh/git\n")
+            links = dict(line.split(" ", 1) for line in (self.calls / f"{name}.path").read_text().splitlines())
+            self.assertEqual(expected, links)
+        return text
 
     def run_tool(self, name, *args, code=0, env=None, cwd=None):
         # The review binary must not read what the caller's stdin holds.
@@ -118,13 +132,13 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.stub(self.temp / "bin/codex", "codex")
         self.mise("exit 1\n")
         (self.repo / ".orchestration/validation").mkdir(parents=True)
-        path = f"./bin{os.pathsep}{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        path = f"./bin{os.pathsep}{self.temp / 'bin'}{os.pathsep}{self.binding.env['PATH']}"
         env = {"ORCH_REVIEW_WORKTREE": str(review), "PATH": path}
         # An earlier marker's message is not the final one; the worktree prefix is stripped; a repeated line counts once.
         final = f"One finding.\n- [P2] {review}/b.txt:1 b is new\n- [P2] {review}/b.txt:1 b is new\n"
         (self.calls / "transcript").write_text(f"codex\n- [P1] {review}/a.txt:1 superseded\ncodex\n{final}")
         finding = "- [P2] b.txt:1 b is new"
-        call = f"{ARGV}\ncwd: {review}\nhead: {head}\npath: {path}\nstdin: \n"
+        call = f"{ARGV}\ncwd: {review}\nhead: {head}\npath: checked gh/git\nstdin: \n"
 
         def out(task):
             return self.repo / f".orchestration/validation/{task}-local-review-{head[:7]}.md"

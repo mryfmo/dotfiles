@@ -6,6 +6,8 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,12 +21,300 @@ sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/pr-feedback.py"
+JQ = shutil.which("jq")
 REPO = "mryfmo/dotfiles"
 SHA = "aa17407b680691a42f421721479d7cd14c4421fa"
 BASE_SHA = "b" * 40
 BOT = {"login": "coderabbitai[bot]", "type": "Bot"}
 HUMAN = {"login": "moriya-fumio-thd", "type": "User"}
 ACTIONS = {"slug": "github-actions"}
+
+
+class GhFixture:
+    """A measured test namespace: change passwd home, never prebind gh or change consumer bytes."""
+
+    def __init__(self, root):
+        self.root, self.home, self.bin, self.calls = root, root / "home", root / "bin", root / "gh.jsonl"
+        self.home.mkdir(parents=True, exist_ok=True)
+        self.bin.mkdir(exist_ok=True)
+        (self.bin / "jq").symlink_to(JQ)
+        self.responses = root / "responses.json"
+        self.responses.write_text(json.dumps({"responses": RESPONSES, "metadata": {}}))
+        self.target = self.home / ".local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"
+        self.manifest = self.home / ".agents/agent-config.yaml"
+        self.declaration()
+        self.python = self.bin / "python"
+        bootstrap = (
+            "import os,pwd,runpy,sys,types\n"
+            f"pwd.getpwuid=lambda uid: types.SimpleNamespace(pw_dir={str(self.home)!r})\n"
+            f"sys.executable={str(self.python)!r}\n"
+            "a=sys.argv[1:]\n"
+            f"with open({str(root / 'python.jsonl')!r},'a') as f: f.write(__import__('json').dumps({{'argv':a,'env':dict(os.environ)}})+'\\n')\n"
+            "while a and a[0] in ('-I','-P','-s'): a.pop(0)\n"
+            "sys.argv=a\n"
+            "if a[0]=='-c': exec(compile(a[1],'<fixture>','exec'))\n"
+            "else: runpy.run_path(a[0],run_name='__main__')\n"
+        )
+        self.bootstrap = bootstrap
+        self.launcher()
+        code = (
+            f"#!{sys.executable} -I\n"
+            "import json,os,sys\n"
+            f"a=sys.argv[1:]; d=json.load(open({str(self.responses)!r}))\n"
+            f"with open({str(self.calls)!r},'a') as f: f.write(json.dumps({{'target':os.path.realpath(sys.argv[0]),'argv':a,'env':dict(os.environ)}})+'\\n')\n"
+            "if a==['--version']: print('gh version 2.102.0 (fixture)'); sys.exit()\n"
+            "if a[:2]==['auth','status']: sys.exit()\n"
+            "if a[:2]==['repo','view']: print(json.dumps({'nameWithOwner':'mryfmo/dotfiles'})); sys.exit()\n"
+            "if a[:2]==['pr','view']: print(json.dumps(d['metadata'])); sys.exit()\n"
+            "if a[0]=='api':\n"
+            " p=next(x for x in a[1:] if x.startswith('repos/') or x in ('user','graphql'))\n"
+            " if p=='user': result={'login':'declared-user'}\n"
+            " elif p=='graphql': result={'data':{'repository':{'pullRequest':{'reviewThreads':{'nodes':[],'pageInfo':{'hasNextPage':False,'endCursor':None}}}}}}\n"
+            " else: result=d['responses'].get(p,[])\n"
+            " print(json.dumps(result)); sys.exit()\n"
+            "print('unsupported fixture command',a,file=sys.stderr); sys.exit(91)\n"
+        )
+        self.executable(self.target, code)
+        self.executable(self.bin / "gh", code)
+        self.executable(
+            self.bin / "mise",
+            f"#!/bin/sh\n# @brief Report only a hostile gh discovery answer.\n/usr/bin/env >> {str(root / 'discovery.env')!r}\n[ \"$2\" = gh ] || exit 1\nprintf '%s\\n' {str(self.bin / 'gh')!r}\n",
+        )
+        self.env = {
+            "PATH": f"{self.bin}:/usr/bin:/bin",
+            "HOME": str(self.home),
+            "LANG": "C.UTF-8",
+            "UV_CACHE_DIR": str(root / "cache"),
+            "GH_TOKEN": "synthetic-gh-binding-credential",
+            "GH_HOST": "hostile.invalid",
+            "GH_REPO": "hostile/fork",
+            "GH_CONFIG_DIR": str(root / "evil-config"),
+            "XDG_CONFIG_HOME": str(root / "evil-xdg"),
+            "HTTPS_PROXY": "http://hostile.invalid:9",
+        }
+        for directory in (self.home / ".config/gh", root / "evil-config", root / "evil-xdg/gh"):
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "config.yml").write_text(
+                "http_unix_socket: /tmp/hostile.sock\naliases: {api: '!touch /tmp/never-gh-binding'}\n"
+            )
+            (directory / "hosts.yml").write_text("hostile.invalid: {user: attacker}\n")
+        self.configuration("empty")
+
+    def launcher(self, extra=""):
+        bootstrap = self.bootstrap.replace("sys.argv=a\n", "sys.argv=a\n" + extra)
+        launcher = (
+            "#!/bin/bash -p\n# @brief Run the measured fixture Python with the consumer's actual isolation flags.\n"
+            'flags=(); while [[ $1 == -I || $1 == -P || $1 == -s ]]; do flags+=("$1"); shift; done\n'
+            f'exec {shlex.quote(sys._base_executable)} "${{flags[@]}}" -c {shlex.quote(bootstrap)} "${{flags[@]}}" "$@"\n'
+        )
+        self.executable(self.python, launcher)
+
+    def configuration(self, kind):
+        config = self.root / "protected-config"
+        config.mkdir(exist_ok=True)
+        if kind == "missing":
+            config.rmdir()
+        elif kind == "writable":
+            config.chmod(0o777)
+        elif kind == "payload":
+            (config / "hosts.yml").write_text("hostile.invalid: {http_unix_socket: /tmp/hostile.sock}\n")
+        elif kind == "symlink":
+            config.rmdir()
+            config.symlink_to(self.home, target_is_directory=True)
+        elif kind == "ancestor":
+            self.root.chmod(0o777)
+        # Model the protected filesystem root; preserve actual modes, types, symlinks and payload bytes below it.
+        extra = (
+            "import pathlib,os\nP=pathlib.Path; original_init=P.__init__; original_stat=P.stat\n"
+            f"fixture=P({str(self.root)!r}); parents=set(fixture.parents)\n"
+            f"def namespace(p,*a,**k): original_init(p,*(({str(config)!r},) if a==('/var/empty',) else a),**k)\n"
+            "def measured(p,*a,**k):\n s=list(original_stat(p,*a,**k)); s[4]=0\n if p in parents: s[0]&=~0o022\n return os.stat_result(s)\n"
+            "P.__init__=namespace; P.stat=measured\n"
+        )
+        self.launcher(extra)
+
+    @staticmethod
+    def executable(path, text):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        path.chmod(0o755)
+
+    def declaration(self, value=None):
+        self.manifest.parent.mkdir(parents=True, exist_ok=True)
+        tools = {"gh": {"version": "2.102.0", "path": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh"}}
+        self.manifest.write_text("trusted_tools: " + json.dumps(tools if value is None else value) + "\n")
+
+    def run(self, script=SCRIPT, *args, cwd=None, env=None):
+        return subprocess.run(
+            [str(self.python), "-I", str(script), *map(str, args)],
+            cwd=cwd or self.root,
+            env=self.env | (env or {}),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def records(self):
+        return [json.loads(s) for s in self.calls.read_text().splitlines()] if self.calls.exists() else []
+
+    def git(self, repo, *args, bare=False):
+        gitdir = repo if bare else repo / ".git"
+        if gitdir.is_file():
+            gitdir = Path(gitdir.read_text().strip().removeprefix("gitdir: "))
+        cache = str(self.root / "cache")
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(self.home), "UV_CACHE_DIR": cache}
+        env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL="/dev/null")
+        argv = ["/usr/bin/git", f"--git-dir={gitdir}"]
+        if not bare:
+            argv.append(f"--work-tree={repo}")
+        if args[0] == "clone":
+            argv = ["/usr/bin/git"]
+        for option in (
+            "core.hooksPath=/dev/null",
+            "core.fsmonitor=false",
+            "user.name=Fixture",
+            "user.email=fixture@example.invalid",
+            "commit.gpgsign=false",
+        ):
+            argv.extend(["-c", option])
+        argv.extend(map(str, args))
+        return subprocess.run(argv, cwd=repo, env=env, text=True, capture_output=True, check=True).stdout.strip()
+
+    def gate_repository(self, legacy=None):
+        self.repo, self.pr = self.root / "repo", self.root / "pr"
+        self.repo.mkdir()
+        self.git(self.repo, "init", "-q", "-b", "main")
+        for rel in (
+            "scripts/pr-feedback.py",
+            "scripts/require-crit-review.py",
+            "scripts/validate-agent-assets.py",
+            "scripts/orchestrator/orch-gate.sh",
+            "scripts/orchestrator/local-review.sh",
+        ):
+            target = self.repo / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / rel, target)
+        if legacy:
+            (self.repo / "scripts/pr-feedback.py").write_text(legacy)
+        (self.repo / "README.md").write_text("base\n")
+        self.git(self.repo, "add", ".")
+        self.git(self.repo, "commit", "-qm", "base")
+        self.base = self.git(self.repo, "rev-parse", "HEAD")
+        self.git(self.repo, "remote", "add", "origin", "https://hostile.invalid/foreign/fork.git")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/main", self.base)
+        self.git(self.repo, "worktree", "add", "-qb", "pr", self.pr, "main")
+        (self.pr / "README.md").write_text("changed\n")
+        self.git(self.pr, "add", "README.md")
+        self.git(self.pr, "commit", "-qm", "change")
+        self.head = self.git(self.pr, "rev-parse", "HEAD")
+        self.review = self.repo / ".claude/worktrees/orchestrator-review"
+        self.git(self.repo, "worktree", "add", "-q", "--detach", self.review, "main")
+        feedback = {"repo": REPO, "pr": 180, "items": []}
+        feedback.update(head_sha=self.head, base_ref="main", base_sha=self.base)
+        metadata = {"headRefOid": self.head, "baseRefName": "main", "baseRefOid": self.base}
+        pull = {"head": {"sha": self.head}, "base": {"ref": "main", "sha": self.base}}
+        self.responses.write_text(json.dumps({"metadata": metadata, "responses": {f"repos/{REPO}/pulls/180": pull}}))
+        v = ".orchestration/validation/binding"
+        self.inputs = {
+            "PR_FEEDBACK_EVIDENCE": v + "-pr-feedback.json",
+            "AUDIT_EVIDENCE": v + f"-audit-{self.head[:7]}.md",
+            "REVIEW_EVIDENCE": v + "-review-receipt.md",
+            "ACCEPTANCE_EVIDENCE": ".orchestration/acceptance/binding.md",
+            "AGENT_REVIEWED": "1",
+        }
+        approval = [{"id": "fixture", "body": "controlled fixture approval", "scope": "review", "resolved": True}]
+        files = {
+            self.inputs["PR_FEEDBACK_EVIDENCE"]: json.dumps(feedback),
+            self.inputs["AUDIT_EVIDENCE"]: "fixture audit\n",
+            self.inputs["AUDIT_EVIDENCE"] + ".last.md": "Verdict: correct\n",
+            v + "-crit.json": json.dumps(approval),
+            self.inputs[
+                "REVIEW_EVIDENCE"
+            ]: f"review_surface: crit-data\nreviewer: codex\nreview_source: {v}-crit.json\nreview_outcome: approved\n",
+            self.inputs["ACCEPTANCE_EVIDENCE"]: "---\n"
+            + json.dumps({"format": 1, "task": "binding", "head": self.head, "pr": 180, "ledger": [], "searches": []})
+            + "\n---\n",
+        }
+        for rel, text in files.items():
+            for repo in (self.repo, self.pr):
+                target = repo / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text)
+        uv = f'#!/bin/bash -p\n# @brief Run the fixture interpreter.\n/usr/bin/env >> {str(self.root / "discovery.env")!r}\nif [[ "$1 $2" == "python find" ]]; then printf "%s\\n" {shlex.quote(str(self.python))}; exit; fi\nwhile [[ $1 != python ]]; do shift; done; shift\nexec {shlex.quote(str(self.python))} "$@"\n'
+        self.executable(self.bin / "uv", uv)
+
+    def assert_bound(self, case):
+        discovery = self.root / "discovery.env"
+        if discovery.exists():
+            names = {s.split("=", 1)[0] for s in discovery.read_text().splitlines()}
+            case.assertFalse(names & {"GH_TOKEN", "GH_HOST", "GH_REPO", "GH_CONFIG_DIR", "HTTPS_PROXY"})
+            case.assertIn("UV_CACHE_DIR", names)
+        records = self.records()
+        case.assertTrue(records, "no real gh descendant observed")
+        for row in records:
+            case.assertEqual(str(self.target), row["target"], row)
+            e, a = row["env"], row["argv"]
+            case.assertEqual("/var/empty", e.get("GH_CONFIG_DIR"))
+            case.assertEqual(str(self.home), e.get("HOME"))
+            case.assertEqual("C", e.get("LC_ALL"))
+            case.assertTrue(Path(e["UV_CACHE_DIR"]).is_absolute())
+            case.assertFalse(
+                set(e) & {"GH_HOST", "GH_REPO", "XDG_CONFIG_HOME", "HTTPS_PROXY", "PYTHONPATH", "GIT_DIR"}, row
+            )
+            if a == ["--version"]:
+                case.assertNotIn("GH_TOKEN", e)
+            else:
+                case.assertEqual(self.env["GH_TOKEN"], e.get("GH_TOKEN"))
+                if a[0] in ("api", "auth"):
+                    case.assertIn("github.com", a)
+                if a[0] == "pr":
+                    case.assertEqual("github.com/mryfmo/dotfiles", a[a.index("--repo") + 1])
+
+
+class GhBindingTest(unittest.TestCase):
+    def fixture(self):
+        return GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="gh-binding-"))).resolve())
+
+    def test_collector_hostile_repository(self):
+        f = self.fixture()
+        result = f.run(SCRIPT, "180", "--repo", REPO)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(SHA, json.loads(result.stdout)["head_sha"])
+        api = [r for r in f.records() if r["argv"][0] == "api"]
+        self.assertTrue(api)
+        self.assertTrue(all("github.com" in r["argv"] for r in api))
+        f.assert_bound(self)
+
+    def test_collector_binding_refusals(self):
+        for kind in ("executable", "forged HOME"):
+            with self.subTest(kind=kind):
+                f = self.fixture()
+                env = {}
+                if kind == "executable":
+                    f.target.chmod(0o644)
+                else:
+                    env["HOME"] = str(f.root / "forged")
+                result = f.run(SCRIPT, "180", "--repo", REPO, env=env)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("refused: gh binding", result.stderr.strip())
+                self.assertFalse([r for r in f.records() if r["argv"] != ["--version"]])
+
+    def test_serialized_manifest_is_unambiguous(self):
+        for key in ("trusted_tools", '"trusted_tools"', '"\\x74rusted_tools"', "trusted_tools "):
+            with self.subTest(key=key):
+                f = self.fixture()
+                f.manifest.write_text(f.manifest.read_text() + key + ": {}\n")
+                result = f.run(SCRIPT, "180", "--repo", REPO)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("refused: gh binding", result.stderr.strip())
+                self.assertFalse(f.records())
+
+    def test_collector_rejects_conflicting_repository(self):
+        f = self.fixture()
+        result = f.run(SCRIPT, "180", "--repo", "hostile/fork")
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(f.records())
+
 
 # Shapes recorded from mryfmo/dotfiles #180 and #181, trimmed to the fields read.
 RESPONSES: dict[str, Any] = {
@@ -264,8 +554,8 @@ class PrFeedbackTest(unittest.TestCase):
             self.module.gh_graphql(
                 "query {}",
                 {
-                    "owner": "12345",
-                    "name": "67890",
+                    "id": "12345",
+                    "label": "67890",
                     "number": 180,
                     "cursor": "@private-file",
                     "first": 100,
@@ -277,12 +567,14 @@ class PrFeedbackTest(unittest.TestCase):
             [
                 "api",
                 "graphql",
+                "--hostname",
+                "github.com",
                 "-f",
                 "query=query {}",
                 "-f",
-                "owner=12345",
+                "id=12345",
                 "-f",
-                "name=67890",
+                "label=67890",
                 "-F",
                 "number=180",
                 "-f",
@@ -372,6 +664,8 @@ class PrFeedbackTest(unittest.TestCase):
 
         # Patch the shared subprocess module only for this call; it is global.
         with (
+            mock.patch.object(self.module, "gh_binding", return_value="/usr/bin/false"),
+            mock.patch.object(self.module, "gh_env", return_value={}),
             mock.patch.object(self.module.subprocess, "run", unauthenticated),
             redirect_stderr(io.StringIO()) as stderr,
             self.assertRaises(SystemExit) as raised,
@@ -381,8 +675,10 @@ class PrFeedbackTest(unittest.TestCase):
         self.assertIn("gh auth login", stderr.getvalue())
 
     def test_gh_never_receives_forced_colour(self) -> None:
-        with mock.patch.dict(self.module.os.environ, {"CLICOLOR_FORCE": "1"}):
-            env = self.module.gh_env()
+        f = GhFixture(Path(self.enterContext(tempfile.TemporaryDirectory())).resolve())
+        result = f.run(SCRIPT, "--gh-binding", env={"CLICOLOR_FORCE": "1"})
+        self.assertEqual(0, result.returncode, result.stderr)
+        env = f.records()[0]["env"]
         self.assertNotIn("CLICOLOR_FORCE", env)
         self.assertEqual(env["NO_COLOR"], "1")
 

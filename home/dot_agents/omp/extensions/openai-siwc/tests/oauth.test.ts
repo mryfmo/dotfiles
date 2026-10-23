@@ -95,6 +95,12 @@ test("refresh rotates the refresh token with the saved client_id and resource", 
 	await expect(oauth().refreshToken(login)).rejects.toThrow("refresh_token failed: 400 invalid_grant");
 });
 
+test("refresh stops when omp cancels it", async () => {
+	const login = await oauth().login(browser());
+	await expect(oauth().refreshToken(login, AbortSignal.abort(new Error("refresh cancelled by omp")))).rejects.toThrow("refresh cancelled by omp");
+	expect(server.tokenRequests.filter(form => form.get("grant_type") === "refresh_token")).toHaveLength(0);
+});
+
 test("refresh without a registration record tells the operator to log in", async () => {
 	await expect(oauth().refreshToken({ access: "a", refresh: "r", expires: 0 })).rejects.toThrow("run /login openai-siwc");
 });
@@ -125,12 +131,16 @@ test("login honours cancellation while waiting for the browser", async () => {
 	expect(closed).toBe(1);
 });
 
+// Only a sandbox refusal skips; any other bind failure (a Bun.serve API change) fails the run.
+// Bun 1.4 reports a refused listen on port 0 as EADDRINUSE, which port 0 cannot genuinely be.
 const canBindLoopback = (() => {
 	try {
 		Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() }).stop(true);
 		return true;
-	} catch {
-		return false;
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		if (code === "EPERM" || code === "EACCES" || code === "EADDRINUSE") return false;
+		throw error;
 	}
 })();
 if (!canBindLoopback) console.warn("SKIP loopback bind test: this sandbox refuses binding 127.0.0.1");

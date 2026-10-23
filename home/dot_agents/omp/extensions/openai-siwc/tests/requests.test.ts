@@ -62,24 +62,39 @@ const { buildModel } = await import(path.join(PI, "pi-catalog/src/build.ts"));
 const FAKE_BEARER = "fake-bearer";
 const sse = (type: string, data: object) => `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
 
-function fakeResponses(captured: unknown[]) {
+type Respond = (body: { model: string }) => Response;
+
+function fakeResponses(captured: unknown[], respond: Respond) {
 	return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		expect(String(input)).toBe("https://api.openai.com/v1/responses");
 		const body = JSON.parse(String(init?.body));
 		captured.push(body);
-		const message = { type: "message", id: "msg_1", role: "assistant", status: "completed", content: [{ type: "output_text", text: "PONG", annotations: [] }] };
-		const response = { id: "resp_1", object: "response", status: "completed", model: body.model, output: [message], usage: { input_tokens: 3, output_tokens: 1, total_tokens: 4 } };
-		const stream =
-			sse("response.created", { response: { ...response, status: "in_progress", output: [] } }) +
-			sse("response.output_item.added", { output_index: 0, item: { ...message, status: "in_progress", content: [] } }) +
-			sse("response.output_text.delta", { item_id: "msg_1", output_index: 0, content_index: 0, delta: "PONG" }) +
-			sse("response.output_item.done", { output_index: 0, item: message }) +
-			sse("response.completed", { response });
-		return new Response(stream, { headers: { "Content-Type": "text/event-stream" } });
+		return respond(body);
 	};
 }
 
-async function runTurn(compat: object | undefined) {
+const completed: Respond = body => {
+	const message = { type: "message", id: "msg_1", role: "assistant", status: "completed", content: [{ type: "output_text", text: "PONG", annotations: [] }] };
+	const response = { id: "resp_1", object: "response", status: "completed", model: body.model, output: [message], usage: { input_tokens: 3, output_tokens: 1, total_tokens: 4 } };
+	const stream =
+		sse("response.created", { response: { ...response, status: "in_progress", output: [] } }) +
+		sse("response.output_item.added", { output_index: 0, item: { ...message, status: "in_progress", content: [] } }) +
+		sse("response.output_text.delta", { item_id: "msg_1", output_index: 0, content_index: 0, delta: "PONG" }) +
+		sse("response.output_item.done", { output_index: 0, item: message }) +
+		sse("response.completed", { response });
+	return new Response(stream, { headers: { "Content-Type": "text/event-stream" } });
+};
+
+// `retry-after: 0` keeps omp's transport backoff at zero so the attempt count is observable fast.
+const planError =
+	(status: number, code: string): Respond =>
+	() =>
+		Response.json(
+			{ error: { message: `fake ${code}`, type: "invalid_request_error", code } },
+			{ status, headers: { "retry-after": "0" } },
+		);
+
+async function runTurn(compat: object | undefined, respond: Respond = completed) {
 	const model = buildModel({
 		id: "gpt-6.1-sol",
 		name: "GPT-6.1 Sol",
@@ -94,7 +109,12 @@ async function runTurn(compat: object | undefined) {
 		compat,
 	});
 	const captured: Record<string, unknown>[] = [];
-	const events: { type: string; reason?: string; message?: { content: { type: string; text?: string }[] } }[] = [];
+	const events: {
+		type: string;
+		reason?: string;
+		message?: { content: { type: string; text?: string }[] };
+		error?: { stopReason: string; errorMessage?: string; errorStatus?: number; api?: string };
+	}[] = [];
 	const stream = streamSimple(
 		model,
 		{ systemPrompt: "You are the auditor.", messages: [{ role: "user", content: "Reply PONG", timestamp: 0 }] },
@@ -104,7 +124,7 @@ async function runTurn(compat: object | undefined) {
 			maxTokens: 1000,
 			cacheRetention: "long",
 			reasoning: "high",
-			fetch: fakeResponses(captured),
+			fetch: fakeResponses(captured, respond),
 			// What sdk.ts wires to before_provider_request, where this extension's hook runs.
 			onPayload: (payload: unknown) => rewriteResponsesRequest(payload),
 		},
@@ -137,4 +157,27 @@ test("the rewrite alone still cleans omp's default request (developer item, cach
 	const { body, last } = await runTurn(undefined);
 	expectSiwcShape(body);
 	expect(last?.type).toBe("done");
+});
+
+// omp's own error classifier; TurnRecovery retries a failed turn only when `retriable` holds.
+const AIError = await import(path.join(PI, "pi-ai/src/error/index.ts"));
+
+test("subscription_sharing_usage_unavailable on a 403 ends the turn after one request and is not retried", async () => {
+	const { last, calls } = await runTurn(SIWC_COMPAT, planError(403, "subscription_sharing_usage_unavailable"));
+	expect(calls).toBe(1);
+	expect(last?.type).toBe("error");
+	expect(last?.error?.errorMessage).toContain("subscription_sharing_usage_unavailable");
+	expect(AIError.retriable(AIError.classifyMessage(last?.error ?? {}))).toBe(false);
+});
+
+test("subscription_sharing_usage_limit_exceeded on a 429 is a usage limit, not a provider retry", async () => {
+	const { last, calls } = await runTurn(SIWC_COMPAT, planError(429, "subscription_sharing_usage_limit_exceeded"));
+	expect(last?.type).toBe("error");
+	expect(last?.error?.errorMessage).toContain("subscription_sharing_usage_limit_exceeded");
+	const id = AIError.classifyMessage(last?.error ?? {});
+	expect(AIError.is(id, AIError.Flag.UsageLimit)).toBe(true);
+	expect(AIError.isProviderRetryableError(new Error(last?.error?.errorMessage))).toBe(false);
+	// shortcut: omp 18.11.3's transport (fetchWithRetry) still resends a 429 up to 6 times and no
+	// extension hook reaches it on the built-in transport; this pins the count until one does.
+	expect(calls).toBe(6);
 });

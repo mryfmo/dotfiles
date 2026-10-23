@@ -41,7 +41,8 @@ type Payload = Record<string, unknown>;
  * Returns the payload the SIWC preview accepts: rejected fields removed, system and developer
  * items folded into `instructions`, `store:false` and `stream:true` forced.
  * Throws on `previous_response_id`: omp then sent delta-only input, so stripping the id would
- * silently drop the conversation history.
+ * silently drop the conversation history. The throw only reports; omp's runner catches it and
+ * sends the unrewritten payload, so `src/index.ts` refuses to load under `PI_OPENAI_STATEFUL`.
  */
 export function rewriteResponsesRequest(payload: unknown): Payload {
 	if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
@@ -87,7 +88,3 @@ function systemItemText(item: unknown): string | undefined {
 		.filter(text => text !== "")
 		.join("\n");
 }
-
-// TODO(unit U3b): measure the wire shape of `subscription_sharing_usage_limit_exceeded` and
-// `subscription_sharing_usage_unavailable` (HTTP status and body, or a `response.failed` event)
-// before mapping them; omp 18.11.3 retries a 429 five times, which a quota error should not trigger.

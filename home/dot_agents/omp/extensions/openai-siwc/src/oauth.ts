@@ -93,15 +93,19 @@ export function createSiwcOAuth(deps: SiwcOAuthDeps) {
 			}
 		},
 
-		async refreshToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
+		async refreshToken(credentials: OAuthCredentials, signal?: AbortSignal): Promise<OAuthCredentials> {
 			const registration = await loadRegistration(deps.agentDir);
 			if (!registration?.clientId) throw new Error("openai-siwc: no issued client_id for this profile; run /login openai-siwc");
-			const tokens = await postToken(fetchFor(), {
-				grant_type: "refresh_token",
-				client_id: registration.clientId,
-				refresh_token: credentials.refresh,
-				resource: RESOURCE,
-			});
+			const tokens = await postToken(
+				fetchFor(),
+				{
+					grant_type: "refresh_token",
+					client_id: registration.clientId,
+					refresh_token: credentials.refresh,
+					resource: RESOURCE,
+				},
+				signal,
+			);
 			const refreshed = toCredentials(tokens, now(), { requirePlanScope: false, fallbackRefresh: credentials.refresh });
 			return { ...credentials, ...refreshed, accountId: refreshed.accountId ?? credentials.accountId, email: refreshed.email ?? credentials.email };
 		},
@@ -131,7 +135,7 @@ export function buildAuthorizeUrl(args: {
 		nonce: args.nonce,
 		code_challenge: args.challenge,
 		code_challenge_method: "S256",
-		// TODO(unit U3b): the sign-in page marks ext_agent_host_id "Required"; measure whether a
+		// TODO(gate G2): the sign-in page marks ext_agent_host_id "Required"; measure whether a
 		// later sign-in with the issued client_id accepts it (sent here) or rejects it.
 		ext_agent_host_id: args.registration.hostId,
 	});
@@ -194,12 +198,13 @@ interface TokenResponse {
 	scope?: unknown;
 }
 
-async function postToken(fetchImpl: Fetch, form: Record<string, string>): Promise<TokenResponse> {
+async function postToken(fetchImpl: Fetch, form: Record<string, string>, signal?: AbortSignal): Promise<TokenResponse> {
+	const timeout = AbortSignal.timeout(TOKEN_TIMEOUT_MS);
 	const response = await fetchImpl(TOKEN_URL, {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
 		body: new URLSearchParams(form),
-		signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
+		signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
 	});
 	const text = await response.text();
 	if (!response.ok) throw new Error(`openai-siwc: ${form.grant_type} failed: ${response.status} ${describeTokenError(text)}`);
@@ -230,7 +235,7 @@ function toCredentials(
 	}
 	const scopes = typeof tokens.scope === "string" ? tokens.scope.split(" ") : undefined;
 	// "A valid ID token alone does not authorize ChatGPT plan usage" (sign-in page).
-	// TODO(unit U3b): measure whether a refresh response carries `scope`; absent is accepted on refresh only.
+	// TODO(gate G2): measure whether a refresh response carries `scope`; absent is accepted on refresh only.
 	if ((options.requirePlanScope || scopes) && !scopes?.includes(PLAN_SCOPE)) {
 		throw new Error(`openai-siwc: the grant lacks ${PLAN_SCOPE}; this account cannot use ChatGPT plan inference here`);
 	}
@@ -238,7 +243,7 @@ function toCredentials(
 	if (options.nonce && claims && claims.nonce !== undefined && claims.nonce !== options.nonce) {
 		throw new Error("openai-siwc: id_token nonce does not match this sign-in");
 	}
-	// TODO(unit U3b): confirm the SIWC id_token carries the same account claim as the Codex route.
+	// TODO(gate G2): confirm the SIWC id_token carries the same account claim as the Codex route.
 	const account = claims?.[ACCOUNT_CLAIM] as { chatgpt_account_id?: unknown } | undefined;
 	return {
 		access,

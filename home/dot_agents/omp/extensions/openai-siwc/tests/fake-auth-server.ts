@@ -60,6 +60,7 @@ export class FakeAuthServer {
 
 	fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		expect(String(input)).toBe(TOKEN_URL);
+		init?.signal?.throwIfAborted();
 		const form = new URLSearchParams(String(init?.body));
 		this.tokenRequests.push(form);
 		if (form.get("resource") !== RESOURCE) return oauthError("invalid_target");

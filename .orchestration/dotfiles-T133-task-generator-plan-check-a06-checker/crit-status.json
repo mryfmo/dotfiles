@@ -1,0 +1,10 @@
+{
+  "branch": "tools/task-generator-plan-check-a05-checker",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "~/.crit/reviews/1dbbbe468069/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}

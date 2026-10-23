@@ -1,0 +1,17 @@
+{
+  "status": "final_revision_frozen",
+  "fixed_base": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+  "numstat": "419\t27\tscripts/orchestrator/task-consistency-check.py\n6\t5\ttests/unit/test_regime_ci.py\n35\t22\ttests/unit/test_task_checkers.py\n652\t0\ttests/unit/test_task_consistency_c11_c15.py\n",
+  "production_changed": 446,
+  "production_cap": 450,
+  "all_test_changed": 720,
+  "test_cap": 720,
+  "worker_test_changed": 709,
+  "inherited_test_changed": 11,
+  "literal_complete_caps_pass": true,
+  "bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  }
+}

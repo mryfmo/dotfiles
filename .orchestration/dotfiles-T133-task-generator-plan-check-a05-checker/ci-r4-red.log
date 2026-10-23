@@ -1,0 +1,8 @@
+scripts/orchestrator/task-consistency-check.py:65: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:91: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:220: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:261: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:405: R4 Python compares a path or URL by its string form
+scripts/orchestrator/task-consistency-check.py:435: R4 Python compares a path or URL by its string form
+
+exit=1

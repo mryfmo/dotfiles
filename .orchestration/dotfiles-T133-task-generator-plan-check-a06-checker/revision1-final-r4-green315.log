@@ -1,0 +1,11 @@
+runtime /private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-red-cache-315/builds-v0/.tmp18nSpn/bin/python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+source f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800 test be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1
+test_c6_receipt_uses_canonical_design_bytes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c6_receipt_uses_canonical_design_bytes) ... fixture-seed ~/.local/share/mise/installs/python/3.15.0/bin/python3.15 ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv 0  
+ok
+test_c15_uses_canonical_main_only (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c15_uses_canonical_main_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.395s
+
+OK
+FINAL-R4-GREEN {"tests": 2, "failures": 0, "errors": 0, "skips": 0}

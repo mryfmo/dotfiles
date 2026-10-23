@@ -1,0 +1,17 @@
+{
+  "actual_mask_exit": 0,
+  "all_selected_artifacts_scanned": true,
+  "secret_matches": 0,
+  "home_path_matches": 0,
+  "all_json_parse": true,
+  "all_artifact_modes": "0644",
+  "exact_task_copy_sha256": "b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af",
+  "excluded": "timestamped uncommitted worklogs and foreign untracked paths",
+  "canonical_validator_sha256": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+  "code_binding": {
+    "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+    "tests/unit/test_task_consistency_c11_c15.py": "09db2fd0ed46a0ed77da3c13eead96a9c864ff5f4ab5ba3c3068d42cee7e17cc",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "scan_method": "Canonical JSON string and raw text secret/home patterns; recomputed after inventory convergence."
+}

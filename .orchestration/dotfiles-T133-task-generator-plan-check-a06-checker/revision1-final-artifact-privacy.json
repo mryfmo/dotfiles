@@ -1,0 +1,19 @@
+{
+  "actual_mask_exit": 0,
+  "selected_artifact_files_scanned": 285,
+  "all_selected_artifacts_scanned": true,
+  "secret_matches": 0,
+  "home_path_matches": 0,
+  "all_json_parse": true,
+  "all_artifact_modes": "0644",
+  "exact_task_copy_sha256": "b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af",
+  "excluded": "timestamped uncommitted worklogs and foreign untracked paths",
+  "canonical_validator_sha256": "67fbe32bd15a17bc64c121921c0b2db07ce9d8adf81ab657931e72610f2897dd",
+  "code_binding": {
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "scan_method": "Canonical SECRET_PATTERN/strip_allowed_secret_placeholders and home_path_pattern over raw text and canonical json_strings decoded keys/values after evidence masking and inventory convergence.",
+  "issues": []
+}

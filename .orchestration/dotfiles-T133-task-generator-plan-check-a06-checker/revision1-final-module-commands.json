@@ -1,0 +1,22 @@
+[
+  {
+    "ver": "315",
+    "kind": "new",
+    "cmd": "PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-new-315' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv run --no-config --no-project --offline --python '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' --with pyyaml python -I -m unittest discover -s tests/unit -p 'test_task_consistency_c11_c15.py' -v > '.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new315.log' 2>&1"
+  },
+  {
+    "ver": "315",
+    "kind": "legacy",
+    "cmd": "PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-legacy-315' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv run --no-config --no-project --offline --python '~/.local/share/mise/installs/python/3.15.0/bin/python3.15' --with pyyaml python -I -m unittest discover -s tests/unit -p 'test_task_checkers.py' -v > '.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy315.log' 2>&1"
+  },
+  {
+    "ver": "312",
+    "kind": "new",
+    "cmd": "PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-new-312' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.12.15/bin/python3.12' ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv run --no-config --no-project --offline --python '~/.local/share/mise/installs/python/3.12.15/bin/python3.12' --with pyyaml python -I -m unittest discover -s tests/unit -p 'test_task_consistency_c11_c15.py' -v > '.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-new312.log' 2>&1"
+  },
+  {
+    "ver": "312",
+    "kind": "legacy",
+    "cmd": "PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-final-legacy-312' TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.12.15/bin/python3.12' ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv run --no-config --no-project --offline --python '~/.local/share/mise/installs/python/3.12.15/bin/python3.12' --with pyyaml python -I -m unittest discover -s tests/unit -p 'test_task_checkers.py' -v > '.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/revision1-final-modules-legacy312.log' 2>&1"
+  }
+]

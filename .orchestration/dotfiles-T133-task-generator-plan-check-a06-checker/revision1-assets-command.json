@@ -1,0 +1,51 @@
+{
+  "tree": "36b4cee9749729470c34112f7b059190126b583b",
+  "cwd": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-assets-ntus9x_g",
+  "argv": [
+    "make",
+    "validate-agent-assets"
+  ],
+  "env": {
+    "HOME": "~",
+    "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "UV_CACHE_DIR": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-assets-cache-qw3y118t",
+    "UV_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+    "UV_OFFLINE": "1",
+    "UV_NO_CONFIG": "1",
+    "UV_NO_PROJECT": "1",
+    "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15"
+  },
+  "prepare": [
+    [
+      "/usr/bin/git",
+      "-c",
+      "core.hooksPath=/dev/null",
+      "clone",
+      "--shared",
+      "--no-checkout",
+      "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-assets-ntus9x_g"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-assets-ntus9x_g",
+      "read-tree",
+      "36b4cee9749729470c34112f7b059190126b583b"
+    ],
+    [
+      "/usr/bin/git",
+      "-C",
+      "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-revision1-assets-ntus9x_g",
+      "checkout-index",
+      "-a"
+    ]
+  ],
+  "code_binding": {
+    "scripts/orchestrator/task-consistency-check.py": "f43de893ab5f7d3d68bac6be5cf8c04c6e33d4303bd38e6eab56dc2726880800",
+    "tests/unit/test_task_consistency_c11_c15.py": "be102aab7c88dc74f3be5019005992f53485b0a8ed3addcb8abb4decb338dbe1",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "scope": "Clean selected tree with exact final source/test bytes; final result/inventory data-only additions receive canonical privacy scan."
+}

@@ -1,0 +1,11 @@
+{
+  "actual_exit": 2,
+  "snapshot": "9a5cdca46dda4aac692062789accd499fc707a43",
+  "code_bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "dd44ae3415ee7e6d6b0c3ca39782bdecac4fb0f9f44a69b69b601f4022e62187",
+    "tests/unit/test_task_consistency_c11_c15.py": "57b3887a9d9d0854c838ea0e384a6228ea8855c0533bb3eedf524775598c0de3",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+  },
+  "interrupted_as_obsolete_after_R4_addendum": true,
+  "not_a_final_complete_suite": true
+}

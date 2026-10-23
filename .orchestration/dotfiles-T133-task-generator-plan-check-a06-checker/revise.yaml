@@ -1,0 +1,12 @@
+task_id: dotfiles-T133-task-generator-plan-check-a06-checker
+previous_head: b8bf806655496b7a897aea25e1b43319095fac23
+round: 1
+owner_message: 2827
+status: active
+checks:
+  - tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_private_cache_when_unset
+  - tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions
+  - tests/unit/test_regime_ci.py::RegimeCiTest::test_regime_ci_accepts_a_base_that_moved_past_the_merge_base
+result_requires:
+  - orchestrator_ci_green
+  - security_review_addendum_dispositioned

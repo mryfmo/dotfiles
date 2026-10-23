@@ -1,0 +1,186 @@
+[
+  {
+    "id": "resolver-priority",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_interpreter_resolution_order",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "655308f40059366bdb447cfc2fdbc0aca9cb7d13c93442d6d3b668e17f26e642"
+  },
+  {
+    "id": "dispatch-optional-bindings",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_dispatch_env_i_invocation",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "5c34a2a347afd8d2f890646c4ec3e4e64a094fbb20ff38cf47faf56c601a1b18"
+  },
+  {
+    "id": "probe-status",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c14_rejects_failed_probe_with_matching_stdout",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "d840f8ce197d4d1e558d4e752337ee4449b41da27e8be83676676c4a1fd52982"
+  },
+  {
+    "id": "gh-token-preservation",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_gh_child_preserves_parent_tokens",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "35dd05abe25c9920ec5671ec69a69e493fae48ce8bc77f3055317e5e2bae3c15"
+  },
+  {
+    "id": "canonical-design-only",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c15_uses_canonical_main_only",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "f38b24106a8ae2fc2c4b2422f6ae20c5add2c14a963d41a03cae048f767432b5"
+  },
+  {
+    "id": "canonical-design-hash",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c6_receipt_uses_canonical_design_bytes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "76d53d080b00ed41021b42b3544dac1de4f067643ed25e9170427862341bc524"
+  },
+  {
+    "id": "reject-git-pathspec",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_distinguishes_globs_from_git_pathspecs",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "76adff82136e6725e4432e59f5201c6c6edda3ad9433d813c257f493f54dcf55"
+  },
+  {
+    "id": "root-applied-files",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_covers_root_files",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "976762e29c8ede791d7e824016c43b9c4c0c55408a003a1040fcfebd09cd5a65"
+  },
+  {
+    "id": "directory-child-rows",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_separates_directory_and_child_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "58243c5efc99bebb65f6d43d3bb5ceb4fe71be088f85306ce67e2fdfb9f54a90"
+  },
+  {
+    "id": "dot-normalisation",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_normalises_dot_spellings",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "7147a0291f124c6038f57d73f999ca543773e7c7869693cbc1b1998c77f0d471"
+  },
+  {
+    "id": "escaping-scope",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_rejects_escaping_scopes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "6ff1031d8e1cd7264422234aa9f4cb0f44e833fbe9c8fbb2de60b0066805a309"
+  },
+  {
+    "id": "resolved-exemption",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_symlink_to_applied_file_is_finding",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "d83aa1c791b8d504921779d1b5bc2f170c895799d5388f7d3c497ea8d4dcad5d"
+  },
+  {
+    "id": "case-identity",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_case_alias_to_applied_file_is_finding",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "c6164df294263d7c345d7bc8b38174ad4c03664543755c03942f4cea270772f0"
+  },
+  {
+    "id": "applied-skill",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c12_covers_applied_skill_instructions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "0fe7449343a793ec543bc54ae8552f6ab9c5a83fc2364300b2336548759d5785"
+  },
+  {
+    "id": "c16-coverage",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c16_requires_reference_and_all_item_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "184a14e9d8b5a927454c99fce804cb63da107cd291076c66ae074b56483b5b3e"
+  },
+  {
+    "id": "reset-hidden-predecessor",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_reset_scope_rejects_hidden_predecessor_artifacts",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "8806b760fd680ce4db908711633b89babffb0fd8431a18e04b321c992230da27"
+  },
+  {
+    "id": "c11-payload",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_retained_c11_c13_and_fixed_probe_controls",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "cfbc9f220275ac7f63a676f4b5f150ef43d8526b494aa86b59dc76c897b16728"
+  },
+  {
+    "id": "c13-disposition",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_retained_c11_c13_and_fixed_probe_controls",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "9fd4bfd4f7d31d9cac0eb03467d2ecd2aff2274c847f31815f8c50936d731239"
+  },
+  {
+    "id": "untrusted-binding",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_checker_rejects_untrusted_bindings_and_git_configuration",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "7805dfecb02f1fe31055250a67e94776fe41e4736f99e76f1ae03afa87eca295"
+  },
+  {
+    "id": "same-consumed-bytes",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_isolated_child_and_same_bytes_survive_hostile_startup_inputs",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "dbe3fa87547d256f005368b8f967db5359415a20af56144ad7f5b9912d9dfff1"
+  },
+  {
+    "id": "directory-symlink-prefix",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_rejects_escaping_scopes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "deac39a89c241c26945880ac06dd095e897bc81bf1ec70472c20f5e29cae1a56"
+  },
+  {
+    "id": "equal-root-globs",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_separates_directory_and_child_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "459f8afb2e6ca05e2be3f3dd9eff0b53db4c804812e74c54a938587e30199fff"
+  },
+  {
+    "id": "one-item-per-row",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c16_requires_reference_and_all_item_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "c079674a71f8dd9c211b373facb42c40a4864ba3820e2c612d1f56760701dcf9"
+  }
+]

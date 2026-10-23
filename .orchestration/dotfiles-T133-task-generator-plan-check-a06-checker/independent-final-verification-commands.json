@@ -1,0 +1,52 @@
+{
+  "bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+    "tests/unit/test_task_consistency_c11_c15.py": "3d7b31c8782b65e73972e72c18d39f2ed5cf24e52c24eb7c8243fdf6bea0f56a",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task.md": "b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af"
+  },
+  "post_bindings": {
+    "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+    "tests/unit/test_task_consistency_c11_c15.py": "3d7b31c8782b65e73972e72c18d39f2ed5cf24e52c24eb7c8243fdf6bea0f56a",
+    "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f",
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/task.md": "b9e04cb9b2fdb9d4fea9f8f93eec3a88de55b72d5114797103c98e9784b572af"
+  },
+  "commands": [
+    {
+      "version": "3.15.0",
+      "runtime_sha256": "cb7eda29a44cc53c3093a315b80b784eef7f97906f64e0b1cc22cf66e422d133",
+      "argv": [
+        "~/.local/share/mise/installs/python/3.15.0/bin/python3.15",
+        "-I",
+        "-c",
+        "import sys,unittest;print(sys.version);sys.path.insert(0,'~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit');names=['test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs'];suite=unittest.defaultTestLoader.loadTestsFromNames(names);result=unittest.TextTestRunner(verbosity=2).run(suite);sys.exit(not result.wasSuccessful())"
+      ],
+      "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+      "environment": {
+        "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+        "UV_CACHE_DIR": "~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache",
+        "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15"
+      },
+      "exit": 0,
+      "log": "independent-final-verification-3.15.0.log"
+    },
+    {
+      "version": "3.12.15",
+      "runtime_sha256": "3274dde21f9767655564d093e63c9a5faacefbf1d41bc1e6bf8b6f6e5a441903",
+      "argv": [
+        "~/.local/share/mise/installs/python/3.12.15/bin/python3.12",
+        "-I",
+        "-c",
+        "import sys,unittest;print(sys.version);sys.path.insert(0,'~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit');names=['test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls', 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs'];suite=unittest.defaultTestLoader.loadTestsFromNames(names);result=unittest.TextTestRunner(verbosity=2).run(suite);sys.exit(not result.wasSuccessful())"
+      ],
+      "cwd": "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+      "environment": {
+        "PATH": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin",
+        "UV_CACHE_DIR": "~/Workspace/dotfiles/.claude/worktrees/worker-g/.uv-cache",
+        "TRUSTED_PYTHON": "~/.local/share/mise/installs/python/3.12.15/bin/python3.12"
+      },
+      "exit": 0,
+      "log": "independent-final-verification-3.12.15.log"
+    }
+  ]
+}

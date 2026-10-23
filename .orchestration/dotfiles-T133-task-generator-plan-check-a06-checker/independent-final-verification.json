@@ -1,0 +1,32 @@
+[
+  {
+    "id": "a06-final-pipeline:1",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: directory intent is preserved in the comparison key after original-path resolution. Independent real-CLI escaping-scope and directory/child valid-control regressions passed on Python 3.15.0 and 3.12.15.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 86,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-pipeline:2",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: C10 preserves original non-delimited Unicode script spelling through extraction and confinement. Independent real-CLI NFD/NFC escaping-path and confined controls passed on Python 3.15.0 and 3.12.15.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 389,
+    "resolved": true
+  },
+  {
+    "id": "a06-lint-adjustment:1",
+    "body": "Resolved on final source 42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e: applied-directory classification uses PurePosixPath ancestry of the already-resolved comparison name, preserving real backslash filenames without changing operand grammar or resolving again. The new real-CLI regression rejects the unnamed extensionless scripts/evil\\name and accepts the ordinary named extensionless control after removal. Both runtimes passed; backslash operand rejection remains tested.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 475,
+    "resolved": true
+  },
+  {
+    "id": "a06-final-verification:approval",
+    "body": "Approved the source/test changes bound in independent-final-verification.md after connected-code inspection and independent 13-selector real-CLI runs on Python 3.15.0 and 3.12.15, both exit 0, with before/after hashes unchanged. No remaining substantive finding. Each run skips only the explicitly observed native Unicode two-file collision case; deterministic distinct-file and same-target collisions, overlap deduplication, valid controls and operand-grammar checks run. This is local process evidence, not reviewer authentication or a replacement for final-head CI, task audit, owner acceptance and integration gates.",
+    "scope": "review",
+    "resolved": true
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "command": "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff format --config ruff.toml --check scripts/orchestrator/task-consistency-check.py tests/unit/test_task_consistency_c11_c15.py tests/unit/test_task_checkers.py",
+    "exit": 0,
+    "output": "final-python-format.log"
+  },
+  {
+    "command": "~/.local/share/mise/installs/python/3.15.0/bin/python3.15 -I scripts/lint-comparisons.py --changed scripts/orchestrator/task-consistency-check.py tests/unit/test_task_consistency_c11_c15.py tests/unit/test_task_checkers.py",
+    "exit": 0,
+    "output": "final-production-r4.log"
+  }
+]

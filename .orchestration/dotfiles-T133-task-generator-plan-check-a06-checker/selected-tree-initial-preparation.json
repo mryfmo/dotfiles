@@ -1,0 +1,6 @@
+{
+  "actual_exit": 1,
+  "stage": "cache preparation before clone and before validator launch",
+  "error": "shutil.copytree default dereferenced dangling cached Python 3.12 symlinks; no validator ran",
+  "correction": "new private cache copied with symlinks=True; cached dependency artifacts retained; actual native UV/interpreter binding remains explicit"
+}

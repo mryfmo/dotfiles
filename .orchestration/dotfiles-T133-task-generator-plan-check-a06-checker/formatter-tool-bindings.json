@@ -1,0 +1,26 @@
+[
+  {
+    "tool": "shfmt",
+    "path": "~/.local/share/mise/installs/shfmt/3.14.1/shfmt",
+    "resolved": "~/.local/share/mise/installs/shfmt/3.14.1/shfmt",
+    "sha256": "b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5"
+  },
+  {
+    "tool": "ruff",
+    "path": "~/.local/share/mise/installs/ruff/latest/ruff-aarch64-apple-darwin/ruff",
+    "resolved": "~/.local/share/mise/installs/ruff/0.17.1/ruff-aarch64-apple-darwin/ruff",
+    "sha256": "1cd36902264ba39d8eada510c026a44236ddb55f67937694d8a22b2708fdc0e0"
+  },
+  {
+    "tool": "node",
+    "path": "~/.local/share/mise/installs/node/26.12.0/bin/node",
+    "resolved": "~/.local/share/mise/installs/node/26.12.0/bin/node",
+    "sha256": "12ccc7c7d8b9b33ac0740fc7c2590d2aba14ccfa0a40f3d3f7a6c4c60c87f07c"
+  },
+  {
+    "tool": "prettier",
+    "path": "~/.local/share/mise/installs/npm-prettier/3.9.10/lib/node_modules/prettier/bin/prettier.cjs",
+    "resolved": "~/.local/share/mise/installs/npm-prettier/3.9.10/lib/node_modules/prettier/bin/prettier.cjs",
+    "sha256": "6e922134a3c76fd4de202959bb6aef50bde0c994148075003a15569b7197906e"
+  }
+]

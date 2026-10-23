@@ -1,0 +1,14 @@
+[
+  {
+    "label": "base",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f",
+    "log": "full-unit-base.log",
+    "cmd": "/usr/bin/env -i HOME='~' PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' LANG=C.UTF-8 UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-cache-unit-base' UV_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' UV_OFFLINE=1 UV_NO_CONFIG=1 UV_NO_PROJECT=1 TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' make unit-test > '~/Workspace/dotfiles/.claude/worktrees/worker-g/.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-unit-base.log' 2>&1"
+  },
+  {
+    "label": "candidate",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+    "log": "full-unit-candidate.log",
+    "cmd": "/usr/bin/env -i HOME='~' PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin:/usr/bin:/bin' LANG=C.UTF-8 UV_CACHE_DIR='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-cache-unit-candidate' UV_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' UV_OFFLINE=1 UV_NO_CONFIG=1 UV_NO_PROJECT=1 TRUSTED_PYTHON='~/.local/share/mise/installs/python/3.15.0/bin/python3.15' make unit-test > '~/Workspace/dotfiles/.claude/worktrees/worker-g/.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-unit-candidate.log' 2>&1"
+  }
+]

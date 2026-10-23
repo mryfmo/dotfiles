@@ -1,0 +1,111 @@
+[
+  {
+    "label": "base",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f",
+    "commands": [
+      [
+        "/usr/bin/git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "clone",
+        "--shared",
+        "--no-checkout",
+        "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f"
+      ],
+      [
+        "/usr/bin/git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f",
+        "checkout",
+        "--detach",
+        "--force",
+        "60a6fb2b324d0381c4a6e539b37c650105154a7e"
+      ],
+      [
+        "/usr/bin/git",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f",
+        "update-ref",
+        "refs/remotes/origin/main",
+        "60a6fb2b324d0381c4a6e539b37c650105154a7e"
+      ]
+    ],
+    "head": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+    "checker_sha256": "0f84a229bced899c51bfcb7b627aea8c98879b72fd14d7f2556f1e96f7d63234",
+    "code_bindings": {
+      "scripts/orchestrator/task-consistency-check.py": "0f84a229bced899c51bfcb7b627aea8c98879b72fd14d7f2556f1e96f7d63234",
+      "tests/unit/test_task_checkers.py": "c6672780ef87df8016e7670eaa2b36444d9c3d860af72873589105ab71d971a5"
+    }
+  },
+  {
+    "label": "candidate",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+    "commands": [
+      [
+        "/usr/bin/git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "clone",
+        "--shared",
+        "--no-checkout",
+        "~/Workspace/dotfiles/.claude/worktrees/worker-g",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e"
+      ],
+      [
+        "/usr/bin/git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+        "checkout",
+        "--detach",
+        "--force",
+        "06ffefbc633fe37bcef107385ea96810b2a9a0c5"
+      ],
+      [
+        "/usr/bin/git",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+        "update-ref",
+        "refs/remotes/origin/main",
+        "60a6fb2b324d0381c4a6e539b37c650105154a7e"
+      ],
+      [
+        "/usr/bin/git",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+        "add",
+        "--",
+        "scripts/orchestrator/task-consistency-check.py",
+        "tests/unit/test_task_consistency_c11_c15.py",
+        "tests/unit/test_task_checkers.py"
+      ],
+      [
+        "/usr/bin/git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.test",
+        "-C",
+        "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+        "commit",
+        "-m",
+        "test: freeze checker validation snapshot"
+      ]
+    ],
+    "head": "c52e74e118584d45a8bce4f33226bfafc348b89e",
+    "checker_sha256": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+    "code_bindings": {
+      "scripts/orchestrator/task-consistency-check.py": "42183ecc521ae501e705d23a36d3cdb3394298c33eb00b45205a7911092b2d9e",
+      "tests/unit/test_task_consistency_c11_c15.py": "55c31abd30f195965013a26b21ded96b6fefd758a6675d10d7836700a6358080",
+      "tests/unit/test_task_checkers.py": "20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f"
+    }
+  }
+]

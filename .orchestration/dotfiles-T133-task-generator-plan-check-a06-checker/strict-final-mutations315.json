@@ -1,0 +1,322 @@
+[
+  {
+    "id": "resolver-priority",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_interpreter_resolution_order",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "cd5bc46e66019d70e74b97330fc4d2b62730145f200ac86760857b7097d97f2e"
+  },
+  {
+    "id": "dispatch-optional-bindings",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_dispatch_env_i_invocation",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "4742fdde0c0ca5ce257ebd0ce1e25854e75191923b218eacb97cb825e8d46921"
+  },
+  {
+    "id": "probe-status",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c14_rejects_failed_probe_with_matching_stdout",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "ca390e7e1175c301e42d7f08f6ecec228be3d6f88ebbdbc43644ea00f35dbf88"
+  },
+  {
+    "id": "gh-token-preservation",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_gh_child_preserves_parent_tokens",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "5f13de9c59b264ec03a2a3bf6e7d5ead80ee780f31e44b599cfdba2000f396a9"
+  },
+  {
+    "id": "canonical-design-only",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c15_uses_canonical_main_only",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "bca4313b108358286102dbec75f0d5b07cb545bdac92f6c1300afda598236951"
+  },
+  {
+    "id": "canonical-design-hash",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c6_receipt_uses_canonical_design_bytes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "71830282049a9f658126c319888bc7bff83b0cafa164f36e0029895bd07aa5a3"
+  },
+  {
+    "id": "reject-git-pathspec",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_distinguishes_globs_from_git_pathspecs",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "6d2fbf01d1bb2ab87e7a691ce2244dfee8a6dbdc60125982dec141bca1adef33"
+  },
+  {
+    "id": "root-applied-files",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_covers_root_files",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "bdaf6fc0a98f86ddfadb1ff9415cf8eeeba8fc03ff6c89ed5a242b1c1e372b62"
+  },
+  {
+    "id": "directory-child-rows",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_separates_directory_and_child_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "a462020e3b0029cb9a6695878f4ec714b02e7c72e3e9c1190bfb759bb8659697"
+  },
+  {
+    "id": "dot-normalisation",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_normalises_dot_spellings",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "f5035691fab627cecbb2aebbe42fce47b0e98fca56c702475e5414796040ead1"
+  },
+  {
+    "id": "escaping-scope",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_rejects_escaping_scopes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "a8839d48b1c8cfe7394f2ff6e43b257f6638f18f97e56aea411212f63982d068"
+  },
+  {
+    "id": "resolved-exemption",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_symlink_to_applied_file_is_finding",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "cc4389ac8f4d67599d4877b5a4ee8487dec51ded70e6b91bbc500f779a8db050"
+  },
+  {
+    "id": "case-identity",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_exempt_case_alias_to_applied_file_is_finding",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "c95e6c8d6b12ada433e4f3ac9103184c65aaea8d4488e108a27b6cb29f49dffb"
+  },
+  {
+    "id": "applied-skill",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c12_covers_applied_skill_instructions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "70cac49fed90e1f71d67703499e27ead7e050c0184d3f37af644a40ceffddfe1"
+  },
+  {
+    "id": "c16-coverage",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c16_requires_reference_and_all_item_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "5fc2bc408970f3d7761261a833fa0e909fef4eac7b8d652e724b87f23f78a9c7"
+  },
+  {
+    "id": "reset-hidden-predecessor",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_reset_scope_rejects_hidden_predecessor_artifacts",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "026eef68c0b5fae03a1aff2f5a1bacc5691637b8df6fe6d53bfeb2c36402007e"
+  },
+  {
+    "id": "c11-payload",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_retained_c11_c13_and_fixed_probe_controls",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "7ffd07365cf8e454a233c71e654bc3700948590e7ea1384a18bdb746a3c6ae07"
+  },
+  {
+    "id": "c13-disposition",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_retained_c11_c13_and_fixed_probe_controls",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "7349890bd2f0148a786ce1a0ea1381192324eaafcd19b1166863e22046bb72cf"
+  },
+  {
+    "id": "untrusted-binding",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_checker_rejects_untrusted_bindings_and_git_configuration",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "0a37df255fdd7e1944effeba03579941ead37b21281c0b98293b6d2f78a6fb87"
+  },
+  {
+    "id": "same-consumed-bytes",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_isolated_child_and_same_bytes_survive_hostile_startup_inputs",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "356e98394c824f9215879d5d38fa2818a559a36a30ef85f9ca8b4cbe5167dc79"
+  },
+  {
+    "id": "directory-symlink-prefix",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_rejects_escaping_scopes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "8f158a1809fbc7aaea9171ed33fcb6764970d281f1f532accb8b5dc68e6c3d61"
+  },
+  {
+    "id": "equal-root-globs",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_separates_directory_and_child_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "fecaeecc3debda3eeced6bc43add858bd5fca30e935cece7946675e5c003087e"
+  },
+  {
+    "id": "one-item-per-row",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "329326762c78ac2aad5b31ce55f40dac37527f6fb240d4971fc7d68e59282619"
+  },
+  {
+    "id": "tokens-stay-out-of-argv",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_gh_child_preserves_parent_tokens",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "26d70e7b5128505dba5a78f750f4aa06e63cb778e0984ef83c9b26a0ad6f0b7c"
+  },
+  {
+    "id": "original-enumerated-path",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_resolves_original_unicode_path",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "7707bde85da20085afc9745385fb42e74e19fc3fb371c397f40cd004b86b7a24"
+  },
+  {
+    "id": "directory-alias-glob",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "20dbe18c71a9c4b6a08c93fcdd57bacb90647e7098917dcb655b77918c0fd20a"
+  },
+  {
+    "id": "directory-alias-literal",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_rejects_internal_directory_alias",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "5a3d826cb87c4ef41510c46d1554a2d27d0c28c002b99ab15098199a70f2a5b4"
+  },
+  {
+    "id": "duplicate-item-occurrences",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_rejects_multi_item_rows",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "8c78129e77b1a0f1a79a6bf73ae75b5bb9d3098ef8678fc039c47a8450f4da49"
+  },
+  {
+    "id": "normalised-directory-pruning",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c12_prunes_with_normalised_directory_names",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "2e770fb69a51b54a78370ea9951517e4f59ba127b335a5bcb4553566bac767b2"
+  },
+  {
+    "id": "resolved-c16-applicability",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_security_c16_uses_resolved_literal_alias",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "ba1a47c8473b5964431eb9475da84494b93b53eb6f9d93bc0c093f8f1e147d46"
+  },
+  {
+    "id": "collision-refusal",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "9701fc850fc9c98eae96878f0ad977721747597aa4a4352bcf0d6fa18559c50c"
+  },
+  {
+    "id": "pipeline-c14-original",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_preserves_identity",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "73e1be6011edbe9f8a8d1abdae432ff2fa6b97bcbcb89dc6f15d9f36c809440c"
+  },
+  {
+    "id": "directory-intent",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_path_grammar_rejects_escaping_scopes",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "77f27eaa24dde82b98b0d3145718a60f797ebf7d2b4d69be64502db092154927"
+  },
+  {
+    "id": "c10-unicode-original",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c10_confines_original_unicode_script_paths",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "b44f526719235374f044675dd764e56544f26943c165304667aea9005bf32671"
+  },
+  {
+    "id": "applied-filesystem-ancestry",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_c12_classifies_backslash_filenames_from_resolved_ancestry",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "fdf34b5d4f84a49af19bf449d9aa305676896c508cce6570728af5ed88a01d51"
+  },
+  {
+    "id": "row-token-identity",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "ebb1c9787eefea7f1a66a953ac321f57d40e4ace2bebce77c8c0f2deb112c90d"
+  },
+  {
+    "id": "row-token-original-spelling",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "87aadd7819ee8ec85802f71ee1fe887bede76f0c1f1fb9fb9120f8f0c4b26338"
+  },
+  {
+    "id": "literal-scope-target-identity",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_rejects_normalised_collisions",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "f4734db958bf2fd1d2cee2c7989fff59a432b923f8f7f9b52566914b5d82cdeb"
+  },
+  {
+    "id": "pipeline-c6-original",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_preserves_identity",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "19fc3b432d81476bef994cfc1a580ba2b486cf94efe10b851f25a86a114ab13c"
+  },
+  {
+    "id": "pipeline-c11-original",
+    "selector": "tests/unit/test_task_consistency_c11_c15.py::TaskConsistencyC11C15Test::test_canonical_path_pipeline_preserves_identity",
+    "killed": true,
+    "errors": 0,
+    "skipped": 0,
+    "mutant_sha256": "b4cd0b329a2d65acbb5f69deb417530f7c02e26b3bf2bf1be4907f3551a00273"
+  }
+]

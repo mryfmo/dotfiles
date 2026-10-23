@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/case.py", line 451, in __init__
+    testMethod = getattr(self, methodName)
+AttributeError: 'TaskConsistencyC11C15Test' object has no attribute 'test_c16_requires_reference_and_all_item_rows,test_path_grammar_separates_directory_and_child_rows'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import pathlib,sys,unittest;sys.path.insert(0,str(pathlib.Path('tests/unit').resolve()));import test_task_consistency_c11_c15 as t;names=['test_path_grammar_distinguishes_globs_from_git_pathspecs','test_path_grammar_rejects_escaping_scopes','test_c16_requires_reference_and_all_item_rows,test_path_grammar_separates_directory_and_child_rows'];r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(t.TaskConsistencyC11C15Test(n) for n in names));sys.exit(not r.wasSuccessful())
+                                                                                                                                                                                                                                                                                                                                                                                                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/suite.py", line 24, in __init__
+    self.addTests(tests)
+    ~~~~~~~~~~~~~^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/suite.py", line 57, in addTests
+    for test in tests:
+                ^^^^^
+  File "<string>", line 1, in <genexpr>
+    import pathlib,sys,unittest;sys.path.insert(0,str(pathlib.Path('tests/unit').resolve()));import test_task_consistency_c11_c15 as t;names=['test_path_grammar_distinguishes_globs_from_git_pathspecs','test_path_grammar_rejects_escaping_scopes','test_c16_requires_reference_and_all_item_rows,test_path_grammar_separates_directory_and_child_rows'];r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(t.TaskConsistencyC11C15Test(n) for n in names));sys.exit(not r.wasSuccessful())
+                                                                                                                                                                                                                                                                                                                                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/unittest/case.py", line 456, in __init__
+    raise ValueError("no such test method in %s: %s" %
+          (self.__class__, methodName))
+ValueError: no such test method in <class 'test_task_consistency_c11_c15.TaskConsistencyC11C15Test'>: test_c16_requires_reference_and_all_item_rows,test_path_grammar_separates_directory_and_child_rows

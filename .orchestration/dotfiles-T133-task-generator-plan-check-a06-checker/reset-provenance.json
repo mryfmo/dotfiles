@@ -1,0 +1,13 @@
+{
+  "task_sha256": "90ca0ae9563df4b352dfb26c6b6aa60132386e15ce9ff50bcf998a43097a12e6",
+  "head": "06ffefbc633fe37bcef107385ea96810b2a9a0c5",
+  "base": "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+  "retained_predecessor_directories": [
+    ".orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/"
+  ],
+  "source_changed_at_reset": 420,
+  "test_changed_at_reset": 704,
+  "source_cap": 440,
+  "test_cap": 700,
+  "old_tracked_restored": true
+}

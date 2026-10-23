@@ -1,0 +1,24 @@
+[
+  {
+    "id": "a06-revision1:R1",
+    "body": "Verified resolved on source dd44ae3415ee7e6d6b0c3ca39782bdecac4fb0f9f44a69b69b601f4022e62187: unset UV_CACHE_DIR no longer causes import-time refusal; launch retains explicit absolute caches, rejects supplied relative/empty values, and supplies a cleaned-up private absolute temporary child cache when unset. Independent real-CLI unset-cache/cleanup/relative-refusal regression passed on Python 3.15.0 and 3.12.15, alongside retained executable and token-environment controls.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 138,
+    "resolved": true
+  },
+  {
+    "id": "a06-revision1:R2",
+    "body": "Verified resolved on source dd44ae3415ee7e6d6b0c3ca39782bdecac4fb0f9f44a69b69b601f4022e62187: applied-file coverage uses the original operand's confined resolved target.is_file while collision keys retain original enumerated names. The deterministic absent-alternate one-file wrong-target case and distinct-target/same-target collision controls passed independently on Python 3.15.0 and 3.12.15. Only the separately reported native NFC/NFD alias subtest skipped.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 479,
+    "resolved": true
+  },
+  {
+    "id": "a06-revision1:scoped-implementation-approval",
+    "body": "Approved the R1/R2 implementation on source dd44ae3415ee7e6d6b0c3ca39782bdecac4fb0f9f44a69b69b601f4022e62187 and tests 57b3887a9d9d0854c838ea0e384a6228ea8855c0533bb3eedf524775598c0de3 after connected-code review and 8 independent real-CLI selectors per runtime on Python 3.15.0 and 3.12.15, both exit 0 with unchanged bindings. No new code finding. This scoped process approval does not resolve the documented complete fixed-base test count of 731 versus the task's 720 cap, certify Linux CI or full-suite/mutation results, dispose of the pending root security addendum, or approve task acceptance/merge.",
+    "scope": "review",
+    "resolved": true
+  }
+]

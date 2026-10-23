@@ -1,0 +1,18 @@
+[
+  {
+    "id": "a06-final-pipeline:1",
+    "body": "P1 high confidence: path_entry strips the trailing slash from scripts/, so the final match excludes descendants before confinement checks. Real CLI returns OK for an outside-pointing scripts/escape.py under scripts/ and C12 confinement under scripts/**. Owner disposition is required before another scope-filter repair.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 440,
+    "resolved": false
+  },
+  {
+    "id": "a06-final-pipeline:2",
+    "body": "P2 high confidence: C10's extraction regex excludes combining marks and never sends decomposed Unicode names to path_entry. Real CLI docs sentence with scripts/cafe\\u0301.py pointing outside passes, while NFC spelling fails C10. The regex predates the pipeline, but this leaves an expressly required consumer outside original-path confinement.",
+    "scope": "line",
+    "path": "scripts/orchestrator/task-consistency-check.py",
+    "line": 387,
+    "resolved": false
+  }
+]

@@ -1,0 +1,3 @@
+uv run --offline --with pyyaml scripts/validate-agent-assets.py
+ERROR: .orchestration/dotfiles-T133-task-generator-plan-check-a05-checker/mutations-scanner-fixed.log names a home directory; normalise it with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`
+make: *** [validate-agent-assets] Error 1

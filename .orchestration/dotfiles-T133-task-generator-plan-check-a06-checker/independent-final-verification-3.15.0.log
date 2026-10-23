@@ -1,0 +1,23 @@
+3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+native-NFC-NFD-distinct=False
+test_c12_classifies_backslash_filenames_from_resolved_ancestry (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c12_classifies_backslash_filenames_from_resolved_ancestry) ... ok
+test_path_grammar_rejects_escaping_scopes (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_rejects_escaping_scopes) ... ok
+test_c10_confines_original_unicode_script_paths (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_c10_confines_original_unicode_script_paths) ... ok
+test_path_grammar_separates_directory_and_child_rows (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_separates_directory_and_child_rows) ... ok
+test_path_grammar_normalises_dot_spellings (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_normalises_dot_spellings) ... ok
+test_canonical_path_pipeline_preserves_identity (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_preserves_identity) ... ok
+test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) ... 
+  test_canonical_path_pipeline_rejects_normalised_collisions (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_canonical_path_pipeline_rejects_normalised_collisions) [native two-file collision] ... skipped 'observed NFC/NFD samefile alias; modeled collision and one-file control ran'
+test_security_c12_prunes_with_normalised_directory_names (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_prunes_with_normalised_directory_names) ... ok
+test_security_c12_resolves_original_unicode_path (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_resolves_original_unicode_path) ... ok
+test_security_c12_rejects_internal_directory_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c12_rejects_internal_directory_alias) ... ok
+test_security_c16_uses_resolved_literal_alias (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_security_c16_uses_resolved_literal_alias) ... ok
+test_retained_c11_c13_and_fixed_probe_controls (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_retained_c11_c13_and_fixed_probe_controls) ... ok
+test_path_grammar_distinguishes_globs_from_git_pathspecs (test_task_consistency_c11_c15.TaskConsistencyC11C15Test.test_path_grammar_distinguishes_globs_from_git_pathspecs) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 17.816s
+
+OK (skipped=1)

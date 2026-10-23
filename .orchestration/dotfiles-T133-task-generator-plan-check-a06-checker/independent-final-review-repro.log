@@ -1,0 +1,31 @@
+python 3.15.0 (main, Oct 10 2026, 06:22:37) [Clang 21.0.0 (clang-2100.3.34.2)]
+sha256 scripts/orchestrator/task-consistency-check.py 5c09a95ad36f07ad28958ee9d9efcbb25cb8db64795ed8d655485047121a3cf3
+sha256 tests/unit/test_task_consistency_c11_c15.py 2979c99ff8055071340a0888e755b6a87719e486d80ff8033af0ec15072dd862
+sha256 tests/unit/test_task_checkers.py 20eff6f4cf0cbdb55da3f1265edaec6a3479f238a08a7ef36abfe03a8968e99f
+SCOPE='scripts/' EXIT=0
+t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+SCOPE='scripts/**' EXIT=1
+t-a01.md: FAIL
+  C12 confinement: scripts/escape.py
+  C12 the scope scripts/** matches unsafe or unnamed scripts/tool.py
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+NAME='scripts/caf\xe9.py' EXIT=1
+t-a01.md: FAIL
+  C10 rule sentence names scripts/café.py, a path outside the checkout
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+
+NAME='scripts/cafe\u0301.py' EXIT=0
+t-a01.md: OK
+api-input-sha256 5a84b79716842f146f7533d890cc7308cad7b21abdc29c1852c6b3bb8ad66672
+canonical-main aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+api-input-sha256 eac1a220d55f355b06773fad79f256881d14d7842d318ed7b9e33ec7156a18db
+

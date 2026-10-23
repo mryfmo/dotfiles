@@ -1,0 +1,80 @@
+{
+  "before_sha256": "3407e3035a398393235e397681301fc642fabc566e4d65042a2fe5e2895427d9",
+  "after_sha256": "a0b179be40de5c0dbb3822d17fa20d63de587586b3e6b4850d664c24c48dace7",
+  "all_assertion_AST_multiplicities_equal": true,
+  "net_lines_saved": 29,
+  "changes": [
+    {
+      "old": "        outside = self.temp / \"outside.py\"\n        outside.write_text(\"outside\\n\")",
+      "new": "        outside = self.put(self.temp / \"outside.py\", \"outside\\n\")",
+      "occurrences": 4,
+      "line_saving": 4
+    },
+    {
+      "old": "        outside = self.temp / \"outside\"\n        outside.write_text(\"outside secret\\n\")",
+      "new": "        outside = self.put(self.temp / \"outside\", \"outside secret\\n\")",
+      "occurrences": 1,
+      "line_saving": 1
+    },
+    {
+      "old": "        directory = self.temp / \"external\"\n        directory.mkdir()\n        (directory / \"tool.py\").write_text(\"outside\\n\")",
+      "new": "        directory = self.put(self.temp / \"external/tool.py\", \"outside\\n\").parent",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        worker = self.temp / \".claude/worktrees/seat/python\"\n        worker.parent.mkdir(parents=True)\n        worker.write_text(\"invalid\")",
+      "new": "        worker = self.put(self.temp / \".claude/worktrees/seat/python\", \"invalid\")",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        self.task(\n            allowed=[\"tests/fixtures/**\"],\n            extra=[dict(control=\"tests/fixtures/alias\", disposition=RESIDUAL)],\n        )",
+      "new": "        row = dict(control=\"tests/fixtures/alias\", disposition=RESIDUAL)\n        self.task(allowed=[\"tests/fixtures/**\"], extra=[row])",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        result = subprocess.run(\n            [*uv(), *args],\n            env=self.env if env is None else env,\n            cwd=self.repo,\n            capture_output=True,\n            text=True,\n            check=False,\n        )",
+      "new": "        env = self.env if env is None else env\n        result = subprocess.run([*uv(), *args], env=env, cwd=self.repo, capture_output=True, text=True)",
+      "occurrences": 1,
+      "line_saving": 6
+    },
+    {
+      "old": "        self.task(\n            allowed=[\"scripts/\", \"scripts/tool.py\"],\n            extra=[dict(control=\"scripts/ and scripts/tool.py\", disposition=RESIDUAL)],\n        )",
+      "new": "        row = dict(control=\"scripts/ and scripts/tool.py\", disposition=RESIDUAL)\n        self.task(allowed=[\"scripts/\", \"scripts/tool.py\"], extra=[row])",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        self.task(\n            allowed=[\"scripts/*.py\", \"scripts/*.sh\"],\n            extra=[dict(control=\"scripts/tool.py and scripts/tool.sh\", disposition=RESIDUAL)],\n        )",
+      "new": "        row = dict(control=\"scripts/tool.py and scripts/tool.sh\", disposition=RESIDUAL)\n        self.task(allowed=[\"scripts/*.py\", \"scripts/*.sh\"], extra=[row])",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        for pair, trim in (((0, 1), 0), ((0, 0), 0), ((11, 12), 0), ((0, 1), 2)):",
+      "new": "        allowed = [\"scripts/orchestrator/*.py\"]\n        for pair, trim in (((0, 1), 0), ((0, 0), 0), ((11, 12), 0), ((0, 1), 2)):",
+      "occurrences": 1,
+      "line_saving": -1
+    },
+    {
+      "old": "            self.task(\n                allowed=[\"scripts/orchestrator/*.py\"],\n                extra=[concrete, *items[trim:], combined],\n                security=True,\n                body=REFERENCE,\n            )",
+      "new": "            self.task(allowed=allowed, extra=[concrete, *items[trim:], combined], security=True, body=REFERENCE)",
+      "occurrences": 1,
+      "line_saving": 5
+    },
+    {
+      "old": "        row = dict(\n            control=\"task metadata reset copies: .orchestration/t-a00/task.md and .orchestration/t-a01/task.md\",\n            disposition=RESIDUAL,\n        )",
+      "new": "        copies = \".orchestration/t-a00/task.md and .orchestration/t-a01/task.md\"\n        row = dict(control=f\"task metadata reset copies: {copies}\", disposition=RESIDUAL)",
+      "occurrences": 1,
+      "line_saving": 2
+    },
+    {
+      "old": "        print(\n            f\"fixture-seed python={PYTHON} uv={UV} exit={result.returncode}\\n{result.stdout}{result.stderr}\", flush=True\n        )",
+      "new": "        print(\"fixture-seed\", PYTHON, UV, result.returncode, result.stdout, result.stderr, flush=True)",
+      "occurrences": 1,
+      "line_saving": 2
+    }
+  ]
+}

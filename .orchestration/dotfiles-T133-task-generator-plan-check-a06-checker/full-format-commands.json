@@ -1,0 +1,14 @@
+[
+  {
+    "label": "base",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-base-v8llyj7f",
+    "log": "full-format-base.log",
+    "cmd": "/usr/bin/env -i HOME='~' PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/format-bin:/usr/bin:/bin' LANG=C.UTF-8 make format > '~/Workspace/dotfiles/.claude/worktrees/worker-g/.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-format-base.log' 2>&1"
+  },
+  {
+    "label": "candidate",
+    "path": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/a06-full-candidate-72rre10e",
+    "log": "full-format-candidate.log",
+    "cmd": "/usr/bin/env -i HOME='~' PATH='/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/format-bin:/usr/bin:/bin' LANG=C.UTF-8 make format > '~/Workspace/dotfiles/.claude/worktrees/worker-g/.orchestration/dotfiles-T133-task-generator-plan-check-a06-checker/full-format-candidate.log' 2>&1"
+  }
+]

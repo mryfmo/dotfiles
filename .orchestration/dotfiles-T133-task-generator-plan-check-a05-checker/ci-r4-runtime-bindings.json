@@ -1,0 +1,14 @@
+{
+  "base": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e",
+  "parent_bin": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin",
+  "python_install": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/python",
+  "bindings": {
+    "git": "/usr/bin/git",
+    "uv": "~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv",
+    "gh": "~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh",
+    "bash": "/bin/bash"
+  },
+  "python312": "~/.local/share/mise/installs/python/3.12.15/bin/python3.12",
+  "python312_sha256": "3274dde21f9767655564d093e63c9a5faacefbf1d41bc1e6bf8b6f6e5a441903",
+  "python312_binding": "/private/var/folders/py/p9bt7jvj2g7_hh3cvsgcv6600000gn/T/a012-a05-runtime-ze2fbz0e/parent-bin/python3.12"
+}

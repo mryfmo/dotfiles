@@ -1,0 +1,6 @@
+test_the_changed_files_are_clean_against_the_baseline (test_lint_comparisons.LintComparisonsTest.test_the_changed_files_are_clean_against_the_baseline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.349s
+
+OK

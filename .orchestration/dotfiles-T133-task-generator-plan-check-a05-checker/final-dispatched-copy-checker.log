@@ -1,0 +1,8 @@
+warning: interpreter fallback to real sys.executable
+api-input-sha256 53ff002a7e7a6fe134e01ba48e18579b274380187b5d32160133fcc1a484a5c3
+canonical-main 60a6fb2b324d0381c4a6e539b37c650105154a7e
+api-input-sha256 964257d08de9ec25cd3b34ef53f31a14862dbfb7de7f4dc68edc56ff4ed27778
+api-input-sha256 f11fc62e5caea285653c197a40396505198c0ba7df2995aee006b96c9aea9b77
+task.md: warning: C14: not run (no trusted sha)
+task.md: FAIL
+  C1 task_id dotfiles-T133-task-generator-plan-check-a05-checker != file task

@@ -1,0 +1,40 @@
+test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files) ... fixture-seed python=~/.local/share/mise/installs/python/3.15.0/bin/python3.15 uv=~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv exit=0
+
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope agents.md matches unsafe or unnamed AGENTS.md
+  C12 the scope tests/unit/test_agmsg_orchestration_docs.py matches unsafe or unnamed tests/unit/test_agmsg_orchestration_docs.py
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope tests/unit/test_agmsg_orchestration_docs.py matches unsafe or unnamed tests/unit/test_agmsg_orchestration_docs.py
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope .orchestration/dotfiles-t128-process-rules-a05/** matches unsafe or unnamed .orchestration/dotfiles-T128-process-rules-a05/revise.yaml
+  C12 the scope home/dot_agents/skills/agmsg-orchestration/skill.md matches unsafe or unnamed home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  C12 the scope scripts/check-regime-boundary.sh matches unsafe or unnamed scripts/check-regime-boundary.sh
+  C12 the scope tests/unit/test_regime_counters.py matches unsafe or unnamed tests/unit/test_regime_counters.py
+  C12 the scope tests/unit/test_check_regime_boundary.py matches unsafe or unnamed tests/unit/test_check_regime_boundary.py
+  C12 the scope scripts/check-regime-boundary.sh matches unsafe or unnamed scripts/check-regime-boundary.sh
+  C12 the scope tests/unit/test_regime_counters.py matches unsafe or unnamed tests/unit/test_regime_counters.py
+  C12 the scope tests/unit/test_check_regime_boundary.py matches unsafe or unnamed tests/unit/test_check_regime_boundary.py
+  C12 the scope .github/workflows/remote.yaml matches unsafe or unnamed .github/workflows/remote.yaml
+  C12 the scope .github/workflows/test.yaml matches unsafe or unnamed .github/workflows/test.yaml
+  C12 the scope tests/unit/test_workflow_orchestration_skip.py matches unsafe or unnamed tests/unit/test_workflow_orchestration_skip.py
+  C12 the scope .github/workflows/remote.yaml matches unsafe or unnamed .github/workflows/remote.yaml
+  C12 the scope .github/workflows/test.yaml matches unsafe or unnamed .github/workflows/test.yaml
+  C12 the scope tests/unit/test_workflow_orchestration_skip.py matches unsafe or unnamed tests/unit/test_workflow_orchestration_skip.py
+FAIL
+
+======================================================================
+FAIL: test_task_consistency_check_detects_the_ten_historical_files (test_task_checkers.TaskCheckersTest.test_task_consistency_check_detects_the_ten_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_checkers.py", line 99, in test_task_consistency_check_detects_the_ten_historical_files
+    self.assertEqual(expected, self.failing_checks(*files, root=ROOT))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'dot[32 chars]: {'C2', 'C6'}, 'dotfiles-T128-process-rules-a[616 chars]C6'}} != {'dot[32 chars]: {'C12', 'C2', 'C6'}, 'dotfiles-T128-process-[686 chars]C7'}}
+Diff is 2824 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 1 test in 1.488s
+
+FAILED (failures=1)

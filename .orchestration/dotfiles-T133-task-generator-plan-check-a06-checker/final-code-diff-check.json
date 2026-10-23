@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "/usr/bin/git",
+    "diff",
+    "--cached",
+    "--check",
+    "60a6fb2b324d0381c4a6e539b37c650105154a7e",
+    "--",
+    "scripts/orchestrator/task-consistency-check.py",
+    "tests/unit/test_task_consistency_c11_c15.py",
+    "tests/unit/test_task_checkers.py"
+  ],
+  "actual_exit": 0,
+  "output": "final-code-diff-check.log",
+  "whole_evidence_scan": "final-diff-check.json exit2 reports preserved raw log trailing whitespace/EOF; no forensic log or retained a05 alteration, non-gating diagnostic"
+}

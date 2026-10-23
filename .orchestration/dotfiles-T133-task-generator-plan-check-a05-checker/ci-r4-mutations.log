@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/a012-a05-ci-r4-mutations.py", line 4, in <module>
+    import test_task_consistency_c11_c15 as t
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-g/tests/unit/test_task_consistency_c11_c15.py", line 16, in <module>
+    UV = str(Path(shutil.which("uv")).resolve())
+             ~~~~^^^^^^^^^^^^^^^^^^^^
+  File "~/.local/share/mise/installs/python/3.15.0/lib/python3.15/pathlib/__init__.py", line 153, in __init__
+    raise TypeError(
+    ...<2 lines>...
+        f"not {type(path).__name__!r}")
+TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'

@@ -584,6 +584,31 @@ assets:
     render:
       file: scripts/update-agent-assets.sh
       constants: {PI_CLAUDE_BRIDGE_PIN_VERSION: pin, PI_CLAUDE_BRIDGE_TARBALL_SHA256: sha256}
+  pstack:
+    source: git-commit
+    upstream: cursor/plugins
+    pin: 9b93e81fb2921b9263d9463c15bafeabfe3903aa
+    verify: sha256
+    sha256: dd3933cffdf3afbb1b0b80fff18b5061fb1b5d76968febe8c6446c9b1c491624
+    note: >-
+      harness/pstack/claude-code is the Claude Code build of the plugin (the source of the
+      cursor-plugins marketplace entry); at the pin, the main commit of 2026-10-22T19:11:22Z
+      that the installed plugin was cloned at (installed_plugins.json gitCommitSha), its
+      plugin.json says 0.15.30 and its tree equals the installed cache
+      ~/.claude/plugins/cache/cursor-plugins/pstack/0.15.30 byte for byte (diff -r,
+      2026-10-23). sha256 is GitHub's source archive of the commit
+      (https://github.com/cursor/plugins/archive/<pin>.tar.gz). No installer step: the
+      two chezmoi externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
+      read pin and sha256 from this entry (include + fromYaml) and place that tree's
+      skills/* under ~/.agents/skills and docs/** under ~/.agents/docs at every chezmoi
+      apply, so every omp seat's agents provider loads the skills (docs/omp-skills.md);
+      check_pstack in scripts/update-agent-assets.sh proves it for make doctor.
+      pstack/LICENSE MIT (Lauren Tan); the repository root declares no licence, so only
+      the pstack tree is taken. Bump pin and sha256 together after reviewing the upstream
+      diff; chezmoi downloads the archive again only when the URL changes.
+    reason: the monorepo publishes no per-plugin tag, release, checksum or signature; the commit and the archive hash are the only check.
+    install_path: ~/.agents/skills/<skill> and ~/.agents/docs
+    installer: home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

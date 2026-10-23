@@ -137,7 +137,8 @@ doctor:
 	./scripts/check-tools.sh || tool_status=$$?; \
 	./scripts/check-sleep.sh || tool_status=$$?; \
 	if [ -x "$$HOME/.local/bin/omp" ]; then ./scripts/update-agent-assets.sh check_pi_claude_bridge || tool_status=$$?; \
-	else echo "optional warning: pi-claude-bridge check skipped because omp is not installed"; fi; \
+		./scripts/update-agent-assets.sh check_pstack || tool_status=$$?; \
+	else echo "optional warning: pi-claude-bridge and pstack checks skipped because omp is not installed"; fi; \
 	if [ -d home/dot_agents ] && [ -d home/dot_claude ] && [ -d home/dot_codex ]; then \
 		./scripts/check-agent-runtime.py || runtime_status=$$?; \
 	else \

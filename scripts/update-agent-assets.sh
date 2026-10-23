@@ -1177,6 +1177,39 @@ function check_pi_claude_bridge() {
 }
 
 #
+# @description Confirm the pstack skills chezmoi places under ~/.agents/skills reach an omp seat.
+# @description
+#   No installer step runs for pstack: the two externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
+#   deploy the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply. The check
+#   fails when the poteto-mode skill or the Claude Code adapter its first paragraph links is missing, or when
+#   `omp skill list`, run from an empty directory so no project skill tree takes part, does not name poteto-mode.
+#   Without omp the file check alone decides.
+# @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.
+#
+function check_pstack() {
+    local file cwd listing
+    for file in "${HOME}/.agents/skills/poteto-mode/SKILL.md" "${HOME}/.agents/docs/harness/claude-code.md"; do
+        [ -f "${file}" ] || {
+            printf 'pstack: %s is missing; run make update.\n' "${file}" >&2
+            return 1
+        }
+    done
+    has_command omp || {
+        printf 'pstack skills are in place; omp is not installed, so the seat listing is not checked.\n'
+        return 0
+    }
+    cwd="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+    listing="$(cd "${cwd}" && perl -e 'alarm 60; exec @ARGV' omp --no-session skill list --json 2> /dev/null)" || true
+    rmdir "${cwd}"
+    if ! printf '%s\n' "${listing}" | jq -e '.skills[] | select(.name == "poteto-mode")' > /dev/null 2>&1; then
+        printf '%s\n' "${listing}" >&2
+        printf 'pstack: omp skill list does not name poteto-mode.\n' >&2
+        return 1
+    fi
+    printf 'pstack skills reach %s: %s skills listed, poteto-mode among them.\n' "$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')" "$(printf '%s\n' "${listing}" | jq '.skills | length')"
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1359,18 +1392,18 @@ function update_agmsg() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge or check_pi_claude_bridge.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge or check_pstack.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack]\n' >&2
         exit 2
     fi
 

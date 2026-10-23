@@ -88,7 +88,7 @@ class HcomSeatTest(unittest.TestCase):
 
     def launch_line(self, role, name, directory, *exts):
         return [
-            "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--",
+            "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--go", "--",
             "--profile", role, "--config", str(self.policies / f"{role}.yml"), "--config", str(self.profiles / f"{role}.yml"),
             *(flag for ext in exts for flag in ("-e", str(ext))),
         ]  # fmt: skip

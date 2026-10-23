@@ -6,12 +6,16 @@
 #   `hcom omp` starts in a herdr pane (`hcom omp --help`: `hcom [N] omp [args...]`,
 #   `--tag <name>`, `--dir <path>`, `--terminal <preset>`; hcom gives the seat
 #   HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For `<role>` the launch line is
-#   `hcom omp --tag <name> --dir <dir> --terminal herdr -- --profile <role>
+#   `hcom omp --tag <name> --dir <dir> --terminal herdr --go -- --profile <role>
 #   --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml
 #   -e <ext>...`; hcom drops the `--` and forwards what follows to omp verbatim
-#   (hcom 0.7.30 `extract_launch_flags`, `src/commands/launch.rs:572-581`). The
-#   profile equals the role. A named profile reads its own
-#   `~/.omp/profiles/<role>/agent/config.yml` (pi-utils `src/dirs.ts:312-315`, U10),
+#   (hcom 0.7.30 `extract_launch_flags`, `src/commands/launch.rs:572-581`). `--go`
+#   is hcom's launch gate: inside an AI tool, hcom without it prints `== LAUNCH
+#   PREVIEW == / Add --go to proceed.` and starts nothing (`launch.rs:48,388-389`,
+#   measured on the real host 2026-10-23), and `extract_launch_flags` consumes it
+#   only before the `--` (`launch.rs:650-652`). The profile equals the role. A
+#   named profile reads its own `~/.omp/profiles/<role>/agent/config.yml`
+#   (pi-utils `src/dirs.ts:312-315`, U10),
 #   so the manifest's `modelRoles.default` and `skills.customDirectories` reach the
 #   seat only through the second overlay, rendered per role (U14); the first overlay
 #   owns the approval mode (U6). Both are required. The extensions default to the
@@ -98,7 +102,7 @@ orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
-argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr -- --profile "${role}" --config "${policy}" --config "${profile}")
+argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}")
 for ext in "${exts[@]}"; do
     argv+=(-e "${ext}")
 done

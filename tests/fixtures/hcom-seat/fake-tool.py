@@ -2,10 +2,11 @@
 """One fake for `hcom`, `herdr` and `omp` in the hcom-seat tests; the test symlinks it under each name.
 
 Every call appends `{"argv": [...], "cwd": ..., "env": {HCOM_*}}` as one JSON line to `$FAKE_CALLS/<tool>`.
-`hcom omp` plays hcom 0.7.30's herdr terminal preset (`herdr tab create --label <tag>`, then
-`herdr pane run <pane> ...`): the omp tool-args after `--` run in `--dir` with HCOM_LAUNCHED=1 and HCOM_TAG set,
-the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581` at v0.7.30),
-HCOM_DIR inherited. `herdr pane run` executes the command it is given. `omp` records and exits 0.
+`hcom omp` plays hcom 0.7.30's `--go` gate (without `--go` it prints the launch preview and starts nothing, as hcom
+does inside an AI tool, `src/commands/launch.rs:48` at v0.7.30) and its herdr terminal preset (`herdr tab create
+--label <tag>`, then `herdr pane run <pane> ...`): the omp tool-args after `--` run in `--dir` with HCOM_LAUNCHED=1
+and HCOM_TAG set, the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581`
+at v0.7.30), HCOM_DIR inherited. `herdr pane run` executes the command it is given. `omp` records and exits 0.
 """
 
 import json
@@ -21,6 +22,10 @@ with open(os.path.join(os.environ["FAKE_CALLS"], tool), "a", encoding="utf-8") a
 
 if tool == "hcom" and argv[:1] == ["omp"] and "--" in argv:
     flags, tool_args = argv[1 : argv.index("--")], argv[argv.index("--") + 1 :]
+    if "--go" not in flags:
+        print("== LAUNCH PREVIEW ==\nAdd --go to proceed.")
+        sys.exit(0)
+    flags.remove("--go")
     option = {flags[i]: flags[i + 1] for i in range(0, len(flags), 2)}
     if option.get("--terminal") != "herdr":
         sys.exit(f"fake-hcom: terminal preset {option.get('--terminal')} is not played here")

@@ -1,0 +1,13 @@
+{
+  "name": "openai-siwc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "omp provider extension for the official Sign in with ChatGPT route",
+  "type": "module",
+  "omp": {
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "test": "bun test"
+  }
+}

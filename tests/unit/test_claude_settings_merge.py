@@ -588,12 +588,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                         settings["sandbox"]["network"].get("allowMachLookup", []),
                     )
                     self.assertEqual(
-                        ["agmsg-dispatch *"]
-                        + (
-                            ["gh *", "herdr-agents *", f"{self.home_dir}/.agents/skills/agmsg/scripts/actas-claim.sh *"]
-                            if os_name == "Linux"
-                            else []
-                        ),
+                        [],
                         settings["sandbox"]["excludedCommands"],
                     )
                     if "sandbox" in json.loads(current):

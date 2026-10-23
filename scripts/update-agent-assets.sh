@@ -271,11 +271,11 @@ function crit_version() {
 function ensure_crit_cli() {
     local artifact checksum tag="${CRIT_PIN_VERSION}" target
 
-    case "$(uname -s)/$(uname -m)" in
-    Linux/x86_64 | Linux/amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
-    Linux/aarch64 | Linux/arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
-    Darwin/x86_64 | Darwin/amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
-    Darwin/arm64 | Darwin/aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
+    case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64 | Linux-amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
+    Linux-aarch64 | Linux-arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
+    Darwin-x86_64 | Darwin-amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
+    Darwin-arm64 | Darwin-aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
     *)
         printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
@@ -915,11 +915,35 @@ function update_terminal_browser() {
 }
 
 #
+# @description Resolve path segments lexically as Node's path.resolve does, which npm applies to a bin link and to its
+#   prefix before its ownership check (bin-links check-bin): an absolute segment restarts the path, empty and `.`
+#   segments drop, and `..` drops its parent.
+# @arg $@ path Segments, the first one absolute.
+# @stdout The resolved path.
+#
+function normalize_node_path() {
+    local segment part resolved=""
+    local -a parts=()
+    for segment in "$@"; do
+        [ -z "${segment}" ] || [ -n "${segment%%/*}" ] || resolved="" # an absolute segment starts with its separator
+        IFS=/ read -ra parts <<< "${segment}"
+        for part in ${parts[@]+"${parts[@]}"}; do # empty for ""; bash before 4.4 calls "${parts[@]}" unbound then
+            case "${part}" in
+            "" | .) ;;
+            ..) resolved="${resolved%/*}" ;;
+            *) resolved="${resolved}/${part}" ;;
+            esac
+        done
+    done
+    printf '%s\n' "${resolved:-/}"
+}
+
+#
 # @description Verify the pinned omp tarball before npm installs it.
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual
+    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link resolved
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -931,7 +955,7 @@ function update_omp() (
         printf 'omp %s is already installed.\n' "${installed}"
         return 0
     fi
-    download_dir="$(mktemp -d)" || return
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     tarball="${download_dir}/omp-${OMP_PIN_VERSION}.tgz"
     curl -fsSL "${OMP_TARBALL_URL}" -o "${tarball}" || return
@@ -940,11 +964,25 @@ function update_omp() (
         printf 'omp checksum mismatch: expected %s, got %s.\n' "${OMP_TARBALL_SHA256}" "${actual}" >&2
         return 1
     fi
+    # npm refuses with EEXIST to replace a bin entry it does not own, so a standalone file or a link outside this
+    # prefix's package (a mise or manual install, a dangling link included) moves to a kept path, and comes back when
+    # the install fails; a directory stays for npm to judge.
+    # npm resolves the link against the bin directory, and its prefix, before its ownership check (bin-links check-bin),
+    # so both fold here too, and a target that leaves this prefix's package is not npm's own (the Bot's 4307029052).
+    link="$(readlink "${entry}")" || link=""
+    resolved="$(normalize_node_path "${entry%/*}" "${link}")"
+    if { [ -f "${entry}" ] || [ -L "${entry}" ]; } &&
+        [[ "${resolved}" != "$(normalize_node_path "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent")/"* ]]; then
+        aside="${HOME}/.local/share/agent-assets/omp/omp.previous"
+        printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link} and resolves to ${resolved})}"
+        mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
+    fi
     # Allow this reviewed pin before the default three-day cooldown expires.
-    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" || return
-    installed="$("${HOME}/.local/bin/omp" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
+    npm_config_min_release_age=0 npm install -g --prefix "${HOME}/.local" "${tarball}" &&
+        installed="$("${entry}" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     installed="${installed#omp/}"
     if [ "${installed}" != "${OMP_PIN_VERSION}" ]; then
+        [ -z "${aside}" ] || { rm -f "${entry}" && mv "${aside}" "${entry}" && printf 'Put the previous %s back.\n' "${entry}"; }
         printf 'omp version mismatch: expected %s, got %s.\n' "${OMP_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
@@ -952,16 +990,16 @@ function update_omp() (
 )
 
 #
-# @description Verify the pinned platform wheel before uv installs hcom.
+# @description Verify the pinned platform wheel before uv installs hcom, and keep it where uv's receipt points.
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_hcom() (
-    local url expected installed download_dir wheel actual
-    case "$(uname -s)/$(uname -m)" in
-    Darwin/arm64 | Darwin/aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
-    Darwin/x86_64 | Darwin/amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
-    Linux/x86_64 | Linux/amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
-    Linux/aarch64 | Linux/arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
+    local url expected installed download_dir wheel actual wheel_dir
+    case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64 | Darwin-aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
+    Darwin-x86_64 | Darwin-amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
+    Linux-x86_64 | Linux-amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
+    Linux-aarch64 | Linux-arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
     *)
         printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 0
@@ -972,12 +1010,16 @@ function update_hcom() (
         return 0
     }
     section "hcom"
+    # uv's receipt records the wheel's path as hcom's source and `uv tool upgrade` re-reads it, so the verified wheel
+    # lives at a managed path that outlives the run.
+    wheel_dir="${HOME}/.local/share/agent-assets/hcom"
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
-    if [ "${installed}" = "${HCOM_PIN_VERSION}" ]; then
+    # A pinned install without the retained wheel (one from before the wheel was kept) is reinstalled to repair it.
+    if [ "${installed}" = "${HCOM_PIN_VERSION}" ] && [ -f "${wheel_dir}/${url##*/}" ]; then
         printf 'hcom %s is already installed.\n' "${installed}"
         return 0
     fi
-    download_dir="$(mktemp -d)" || return
+    download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
     trap 'rm -rf "${download_dir}"' EXIT
     wheel="${download_dir}/${url##*/}"
     curl -fsSL "${url}" -o "${wheel}" || return
@@ -986,13 +1028,19 @@ function update_hcom() (
         printf 'hcom checksum mismatch: expected %s, got %s.\n' "${expected}" "${actual}" >&2
         return 1
     fi
-    uv tool install --force "${wheel}" || return
+    mkdir -p "${wheel_dir}" && mv -f "${wheel}" "${wheel_dir}/" || return
+    wheel="${wheel_dir}/${url##*/}"
+    # A failed install drops the retained wheel, so the next run retries instead of skipping on it (4303338055).
+    uv tool install --force "${wheel}" || {
+        rm -f "${wheel}"
+        return 1
+    }
     installed="$("${HOME}/.local/bin/hcom" --version 2> /dev/null | awk 'NR == 1 { print $NF }')" || installed=none
     if [ "${installed}" != "${HCOM_PIN_VERSION}" ]; then
         printf 'hcom version mismatch: expected %s, got %s.\n' "${HCOM_PIN_VERSION}" "${installed}" >&2
         return 1
     fi
-    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" -- "uv tool install --force <verified-hcom-wheel>"
+    manifest_record "update_hcom" installer "${HCOM_PIN_VERSION}" "${HOME}/.local/bin/hcom" "${wheel}" -- "uv tool install --force <verified-hcom-wheel>"
 )
 
 #
@@ -1040,7 +1088,7 @@ function agmsg_state_snapshot() {
         [ ! -e "${skill_dir}/${relative}" ] || paths+=("${skill_dir}/${relative}")
     done
     ((${#paths[@]})) || return 0
-    list="$(mktemp)" || return 1
+    list="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
     if ! find "${paths[@]}" -type f -print0 > "${list}"; then
         rm -f "${list}"
         printf 'agmsg: could not list the live state under %s\n' "${skill_dir}" >&2
@@ -1098,9 +1146,9 @@ function install_pinned_agmsg() (
         install_args=(--update "${install_args[@]}")
     fi
 
-    tarball="$(mktemp)" || return 1
-    extract_dir="$(mktemp -d)" || return 1
-    install_log="$(mktemp)" || return 1
+    tarball="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
+    extract_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
+    install_log="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return 1
     trap 'rm -f "${tarball}" "${install_log}"; rm -rf "${extract_dir}"' EXIT
     curl -fsSL "${fetch_url}" -o "${tarball}" || {
         printf 'agmsg download failed: %s; nothing was installed\n' "${fetch_url}" >&2

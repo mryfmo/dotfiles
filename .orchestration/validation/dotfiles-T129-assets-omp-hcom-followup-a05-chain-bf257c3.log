@@ -1,0 +1,9 @@
+2026-10-19T21:14:18Z fetch rc=0: git -C . fetch -q origin +pull/433/head:refs/remotes/pr/433
+2026-10-19T21:14:19Z fetch rc=0: git -C .claude/worktrees/orchestrator-review fetch -q origin +pull/433/head
+2026-10-19T21:14:19Z fetch rc=0: git -C .claude/worktrees/orchestrator-review checkout -q --detach FETCH_HEAD
+2026-10-19T21:14:19Z fetch rc=0: git -C .claude/worktrees/orchestrator-review rev-parse HEAD
+2026-10-19T21:14:20Z fetch rc=0: gh pr view 433 --json headRefOid --jq .headRefOid
+2026-10-19T21:14:20Z base rc=1: git -C .claude/worktrees/orchestrator-review merge-base --is-ancestor origin/main HEAD
+2026-10-19T21:14:24Z base rc=0: gh pr update-branch 433
+2026-10-19T21:14:25Z base rc=0: gh pr view 433 --json headRefOid --jq .headRefOid
+2026-10-19T21:14:31Z base rc=0: gh pr view 433 --json headRefOid --jq .headRefOid

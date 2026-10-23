@@ -19,6 +19,38 @@ ALWAYS_LOADED_RULES = (
 )
 PAIR_AUDIT = "herdr-agents --audit <head-sha> --task <id>"
 HEADLESS_AUDIT = "codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C <repo> -o <out>.last.md"
+OLD_ACCEPTANCE = (
+    "Acceptance review, adversarial RESULT review, and review-profile work remain orchestrator-side; "
+    "never delegate them to a worker, and keep `make require-crit-review` as the final integration step. "
+    "Revisit only if worker-side model capability surpasses the orchestrator tier."
+)
+ACCEPTANCE = (
+    "Only acceptance decisions and final merge stay orchestrator-side. Seats and scripts handle "
+    "integration, adversarial RESULT review, review-profile work, gate and records through `verdict.sh`, "
+    "`audit-pool.sh`, `result-precheck.sh`, `acceptance-front-matter.py` and `dispatch.sh --next`. "
+    "Pending each mechanism, Delegation's interim exemption permits manual orchestrator execution. "
+    "Every code-changing RESULT gets one task-level audit of its final head; findings are input, never "
+    'approval (the "Task-level audit" bullet).'
+)
+CONTRACT_ADDITIONS = {
+    "\n`AGMSG-RESULT v1` fields:": (
+        "\nTask front matter's optional `requires_decision:` lists decision ids without which the task may not "
+        "proceed. The task-consistency checker verifies each id exists in `.orchestration/decisions.tsv` "
+        "with a result other than `pending`.\n"
+    ),
+    "\nTasks that create persistent side effects": (
+        "\nBefore sending, the worker writes the RESULT line's `key=value` pairs to "
+        "`.orchestration/<task>/result.txt`; `result-precheck.sh` reads that file.\n"
+    ),
+    "\nRESULT reports must mark durable facts": (
+        "\nThe RESULT field `precheck=<sha256 of precheck.json>` is the digest of the precheck evidence "
+        "already emitted by P1-5.\n"
+    ),
+    "\n`question`: the worker holds and asks; INV-6 counts it.": (
+        "\nThe optional PONG field `context=<percent>` reports the seat's context usage. "
+        "`dispatch.sh --next` reads it and refuses a seat above its context threshold.\n"
+    ),
+}
 
 
 def words(path: Path) -> int:
@@ -36,7 +68,7 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
             "is never an implicit opt-out",
             "Every repository mutation goes to a seated worker of the manifest's `worker_kind`",
             "or after the operator's explicit opt-out for the current task",
-            "`make require-crit-review` stay with the orchestrator and are never delegated",
+            "adversarial RESULT review",
             "one task-level audit of its final head",
             "AGMSG-PONG v1 status=blocked",
             "except the few commands Worker Playbook step 4 sends through the permission gate",
@@ -82,6 +114,45 @@ class AgmsgOrchestrationRuleTest(unittest.TestCase):
         self.assertIn("records reach `main` only between integrations (plan 020 step 3)", RULE.read_text())
         invariants = SKILL.read_text().split("## Review and integration invariants", 1)[1].split("\n## ", 1)[0]
         self.assertIn("queued only while no other PR is between its final head and its merge", invariants)
+
+    def acceptance_paragraphs(self) -> tuple[str, str]:
+        rule = RULE.read_text().split("- **Acceptance.** ", 1)[1].split("\n", 1)[0]
+        invariants = AgmsgRegimePatternTest.section(SKILL.read_text(), "## Review and integration invariants")
+        paragraphs = re.findall(r"(?m)^- (?:Acceptance review,|Only acceptance decisions).*", invariants)
+        self.assertEqual(len(paragraphs), 1)
+        return rule, paragraphs[0].removeprefix("- ")
+
+    def test_acceptance_paragraph_names_the_seat_mechanisms(self) -> None:
+        for name, paragraph in zip(("rule", "skill"), self.acceptance_paragraphs(), strict=True):
+            with self.subTest(document=name):
+                self.assertEqual(paragraph, ACCEPTANCE)
+        for obsolete in ("are never delegated", "never delegate them to a worker", "Revisit only if worker-side"):
+            with self.subTest(obsolete=obsolete):
+                self.assertNotIn(obsolete, RULE.read_text() + SKILL.read_text())
+
+    def test_acceptance_paragraph_matches_skill(self) -> None:
+        self.assertEqual(*self.acceptance_paragraphs())
+
+    def test_delegation_lists_the_interim_integration_exemption(self) -> None:
+        delegation = RULE.read_text().split("- **Delegation.** ", 1)[1].split("\n", 1)[0]
+        for token in (
+            "declared exemptions",
+            "interim manual",
+            "integration",
+            "reviews",
+            "gate",
+            "records",
+            "pending",
+            "mechanisms",
+            "agmsg/herdr control plane",
+            "evidence-sync bookkeeping",
+            "acceptance decision",
+            "final merge",
+            "repository-free hygiene",
+            "the operator's explicit opt-out for the current task",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, delegation)
 
     def test_word_budgets(self) -> None:
         self.assertLessEqual(words(RULE), 450)
@@ -250,12 +321,24 @@ class AgmsgRegimePatternTest(unittest.TestCase):
                 if outer:
                     text = self.section(text, *outer)
                 fixture = ROOT / "tests/fixtures/regime" / f"{name}.md"
+                expected = fixture.read_text()
+                replacements = {OLD_ACCEPTANCE: ACCEPTANCE} if name == "invariants" else {}
+                if name == "message-contract":
+                    replacements = {anchor: addition + anchor for anchor, addition in CONTRACT_ADDITIONS.items()}
+                for anchor, replacement in replacements.items():
+                    self.assertEqual(expected.count(anchor), 1, f"fixture anchor drift: {name}: {anchor}")
+                    expected = expected.replace(anchor, replacement, 1)
                 self.assertEqual(
                     self.normalized(start + self.section(text, start, end)),
-                    self.normalized(fixture.read_text()),
-                    f"regime rule section {name} changed: declare the change by updating "
-                    f"tests/fixtures/regime/{name}.md in the same commit and listing it in the RESULT",
+                    self.normalized(expected),
+                    f"regime rule section {name} changed outside its declared fixture replacements",
                 )
+
+    def test_contract_names_context_decisions_result_file_and_precheck(self) -> None:
+        contract = self.section(SKILL.read_text(), "## Message Contract v1")
+        for anchor, addition in CONTRACT_ADDITIONS.items():
+            with self.subTest(anchor=anchor):
+                self.assertIn(addition.strip(), contract)
 
     def test_skill_names_no_unlanded_mechanism(self) -> None:
         pattern = (

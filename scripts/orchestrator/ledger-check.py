@@ -2,7 +2,8 @@
 
 `ledger-check.py <record.md> <sweep.json> <audit .last.md>...` (plan 007 T704; orch-audit.sh runs it on every audit):
 a row is a record line `<id><TAB><class>`, the id a Codex Bot review comment or badged review of the sweep, or
-`audit:<sha7>:<n>` for the n-th `[P0]` to `[P3]` line, bulleted or not, of an audit named `*-audit-<sha7>.md*`. Prints `ledger rows <n>; findings <n>; gaps <n>`
+`audit:<sha7>:<n>` for the n-th `[P0]` to `[P3]` line, bulleted or not, of an audit named `*-audit-<sha7>.md*` (the
+sha7 of its first line `inherited-from: <sha7>` when present). Prints `ledger rows <n>; findings <n>; gaps <n>`
 and one `GAP <id>` line per missing row; exit 1 when a row is missing.
 """
 
@@ -26,9 +27,13 @@ def main(record, sweep, *audits):
         elif item["source"] == "review" and item.get("author") == BOT and any(t in body for t in BADGES):
             need.append(url.rpartition("pullrequestreview-")[2])  # a badged review body, as the gate counts it
     for path in audits:
-        sha7 = re.search(r"-audit-([0-9a-f]{7})\.md", path).group(1)
-        count = len(re.findall(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", Path(path).read_text(), re.MULTILINE))
+        text = Path(path).read_text()
+        # An inherited audit (chain-integrate.sh) keeps the ids of the head it ran on, which its first line names.
+        marker = re.match(r"inherited-from: ([0-9a-f]{7})\n", text)
+        sha7 = marker.group(1) if marker else re.search(r"-audit-([0-9a-f]{7})\.md", path).group(1)
+        count = len(re.findall(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", text, re.MULTILINE))
         need += [f"audit:{sha7}:{n}" for n in range(1, count + 1)]
+    need = list(dict.fromkeys(need))  # an audit and its inherited copy name the same ids (audit:274a536:5)
     gaps = [key for key in need if key not in rows]
     print(f"ledger rows {len(rows)}; findings {len(need)}; gaps {len(gaps)}", *(f"GAP {g}" for g in gaps), sep="\n")
     return 1 if gaps else 0

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "replan-worker-review-p2-short-sha-parent-link",
+    "scope": "scripts/orchestrator/chain-integrate.sh",
+    "body": "P2, declared at first (F1's existing code, outside R1/R2), then fixed in c0fe9a13 when the Codex Bot raised it as P1 thread 4306231809 on PR #413 (red in c8afed77: test_inheritance_requires_the_parent_chain_log_to_name_its_full_sha). The original finding: The only link between the merge's first parent and the audited head is the 7-character name `${task}-audit-${parent:0:7}`. The patch-id check and the new merge-tree check both compare the head against its actual parent, not against the audited head. A hostile worker could therefore grind a commit whose first 7 hex characters match the audited head's, with any content, push a clean merge of main into it, and inherit that audit. This needs deliberate effort (about 2^28 tries, seconds to minutes with a grinder) and cannot happen by accident. Fix direction: bind the parent's full sha to the audit it inherits, e.g. record the full sha in the audit file or compare against the head the audit ran on. The task's scope is R1 and R2 only (\"no other change\"), so it is proposed for the owner task dotfiles-T129-audit-inherit-replan-json-followup-a02.",
+    "resolved": true
+  },
+  {
+    "id": "replan-worker-review-p3-double-count",
+    "scope": "scripts/orchestrator/ledger-check.py",
+    "body": "P3, declared. orch-audit.sh passes every `*.md.last.md` of the task to ledger-check.py. An inherited summary now yields the same ids as its parent's own summary, and `need` is a list, so `findings <n>` counts them twice and a missing row's `GAP` line prints twice. Only the printed text is affected: the exit code is right, and the gate builds a set. A one-line dedupe would fix it; it is left to the owner task with the P2 above, since R2's text names only the id source.",
+    "resolved": true
+  },
+  {
+    "id": "replan-worker-review-approval",
+    "scope": "review",
+    "body": "One round on d3891c0b by a fresh read-only subagent, given the commits and the task file, not the worker's conclusions. Verdict: correct.\n\nR1 fails closed: a conflict (merge-tree exits 1) gives a fresh audit; an older git without --write-tree (exit 129) gives a fresh audit; a non-merge head is skipped by the existing is-ancestor head^2 condition; an octopus merge's extra parent makes the trees differ. Under set -euo pipefail both new lines sit in || lists. `tree` is a new name. The patch-id and is-ancestor conditions still apply. Liveness: on GitHub's real update-branch merge 741e242 the local merge-tree tree equals the head's (7a47cd74…), so the honest case keeps inheriting.\n\nR2 matches the marker chain-integrate.sh writes and the gate's INHERITED_FROM parsing, including CRLF files and a trailing-space marker, where both fall back to the file name.\n\nTests: both are red on 598ca1f9 and green on d3891c0b, and the relocation fixture's patch-id equality is asserted.\n\nCaps are 17 of 60 and 58 of 120 against 741e242. shellcheck, shfmt and ruff are clean. The task copy is byte-identical. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  }
+]

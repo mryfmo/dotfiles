@@ -21,6 +21,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/regime-counters.sh"
 FIXTURES = ROOT / "tests/fixtures/regime-counters"
+# A complete C-59 re-plan, the value of the record block's replans[<class>] (plan 023 F1).
+REPLAN = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
+WHITESPACE = "".join(filter(str.isspace, map(chr, range(0x110000))))  # the 29 characters str.strip() removes
 T118 = "dotfiles-T118-rolling-tools-single-update-a01"
 T119 = "dotfiles-T119-rolling-release-assets-a01"
 T124 = "dotfiles-T124-wave1-task-validator-a01"
@@ -467,13 +470,15 @@ class RegimeCountersTest(unittest.TestCase):
             [line for line in lines if line.startswith("S1:")],
         )
 
-    def s1_record_lines(self, cls, body):
+    def s1_record_lines(self, cls, body="", replans=None):
         repo = self.temp / "repo"
         (repo / "scripts").mkdir(parents=True, exist_ok=True)
         shutil.copy(SCRIPT, repo / "scripts")
         (repo / ".orchestration/acceptance").mkdir(parents=True, exist_ok=True)
         ledger = [{"id": f"42500286{i:02d}", "class": cls} for i in range(3)]
-        block = json.dumps({"format": 1, "task": "T1", "ledger": ledger})
+        block = json.dumps(
+            {"format": 1, "task": "T1", "ledger": ledger, **({} if replans is None else {"replans": replans})}
+        )
         (repo / ".orchestration/acceptance/T1.md").write_text(f"---\n{block}\n---\n{body}")
         lines = self.run_counters(
             "T1",
@@ -486,41 +491,66 @@ class RegimeCountersTest(unittest.TestCase):
         return [line for line in lines if line.startswith("S1:")]
 
     def test_s1_reports_replan_present_for_the_class(self):
-        for words in (
-            "verification, implementation, design, specification.",
-            "specification design\u0301 implementation verification",
-        ):
-            with self.subTest(words=words):
-                lines = self.s1_record_lines("bookkeeping", f"re-plan: bookkeeping -> {words}\n")
-                self.assertEqual(lines, ["S1: class=bookkeeping count=3 re-plan=present source=record"])
+        lines = self.s1_record_lines("bookkeeping", replans={"bookkeeping": dict(reversed(REPLAN.items()))})
+        self.assertEqual(lines, ["S1: class=bookkeeping count=3 re-plan=present source=record"])
 
-    def test_s1_reports_replan_missing_without_a_complete_matching_line(self):
-        for body in (
-            "",
-            "re-plan: other -> specification design implementation verification\n",
-            " re-plan: bookkeeping -> specification design implementation verification\n",
-            "re-plan: bookkeeping -> specification design implementation\n",
-            "re-plan: bookkeeping -> specification designation implementation verification\n",
-            "re-plan: bookkeeping -> specification design\nimplementation verification\n",
+    def test_s1_reports_replan_missing_without_the_four_keys(self):
+        for label, replans in (
+            ("no replans", None),
+            ("an empty object", {}),
+            ("another class", {"other": REPLAN}),
+            *((f"no {key}", {"bookkeeping": {k: v for k, v in REPLAN.items() if k != key}}) for key in REPLAN),
+            ("a blank part", {"bookkeeping": {**REPLAN, "design": " "}}),
+            ("a part that is no string", {"bookkeeping": {**REPLAN, "design": 1}}),
+            ("an entry that is text", {"bookkeeping": "specification design implementation verification"}),
+            ("a list", ["bookkeeping"]),
         ):
-            with self.subTest(body=body):
+            with self.subTest(label):
                 self.assertEqual(
-                    self.s1_record_lines("bookkeeping", body),
+                    self.s1_record_lines("bookkeeping", replans=replans),
                     ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
                 )
 
-    def test_s1_excludes_advisory_p2_at_three_rows(self):
-        self.assertEqual(self.s1_record_lines("advisory-p2", ""), [])
-
-    def test_s1_replan_words_are_ascii_letter_runs(self):
-        for words, expected in (
-            ("specification design\u1c89 implementation verification", "present"),
-            ("specification design\u1c89 implementation", "missing"),
+    def test_s1_applies_the_gate_s_exact_replan_schema(self):
+        # Owned row audit:274a536:1 (= local:274a536:1): the gate's record_field_errors() and the front-matter writer
+        # accept replans only as {<class slug>: exactly the four keys, each a string with text after str.strip()}, the
+        # whole object at once; the counters read the same object and report a re-plan only where the gate accepts it.
+        for label, replans in (
+            ("an extra key", {"bookkeeping": {**REPLAN, "notes": "n"}}),
+            ("a malformed entry under another class", {"bookkeeping": REPLAN, "other": {"design": "d"}}),
+            ("a class that is no slug", {"bookkeeping": REPLAN, "Other Class": REPLAN}),
+            ("a part only str.strip() empties", {"bookkeeping": {**REPLAN, "design": "\x1c"}}),
+            ("a part of all 29 characters str.strip() removes", {"bookkeeping": {**REPLAN, "design": WHITESPACE}}),
+            ("a class key with a trailing newline", {"bookkeeping": REPLAN, "other\n": REPLAN}),  # fullmatch, not $
+            ("replans false", False),  # never null-coalesced into an empty object
         ):
-            with self.subTest(words=words):
+            with self.subTest(label):
                 self.assertEqual(
-                    self.s1_record_lines("bookkeeping", f"re-plan: bookkeeping -> {words}\n"),
-                    [f"S1: class=bookkeeping count=3 re-plan={expected} source=record"],
+                    self.s1_record_lines("bookkeeping", replans=replans),
+                    ["S1: class=bookkeeping count=3 re-plan=missing source=record"],
+                )
+        # the class names those 29 characters and no other: a letter, or a format character str.isspace() rejects, is text
+        for extra in "x\u200b\u180e\u2060\ufeff":
+            with self.subTest(extra=extra):
+                replans = {"bookkeeping": {**REPLAN, "design": WHITESPACE + extra}}
+                lines = self.s1_record_lines("bookkeeping", replans=replans)
+                self.assertEqual(["S1: class=bookkeeping count=3 re-plan=present source=record"], lines)
+
+    def test_s1_excludes_advisory_p2_at_three_rows(self):
+        self.assertEqual(self.s1_record_lines("advisory-p2", replans={"advisory-p2": REPLAN}), [])
+
+    def test_s1_replan_token_comes_from_the_record_block_json(self):
+        # Plan 023 F1: the counters read the block's replans object, the one the gate reads; a body line is prose.
+        line = "re-plan: bookkeeping -> specification, design, implementation, verification.\n"
+        for label, body, replans, token in (
+            ("the object", "", {"bookkeeping": REPLAN}, "present"),
+            ("neither", "", None, "missing"),
+            ("a body line alone", line, None, "missing"),
+        ):
+            with self.subTest(label):
+                self.assertEqual(
+                    self.s1_record_lines("bookkeeping", body, replans),
+                    [f"S1: class=bookkeeping count=3 re-plan={token} source=record"],
                 )
 
     def test_s1_reads_the_ledger_classes_of_the_acceptance_record(self):

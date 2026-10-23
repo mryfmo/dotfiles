@@ -1,0 +1,26 @@
+[
+  {
+    "id": "t133-worker-review-p2-gh-exit-codes",
+    "scope": "scripts/orchestrator/ci-rerun.sh",
+    "body": "P2, fixed. Under set -e a failing `gh run view` or `gh run rerun` returned gh's own exit code. gh exits 4 when it needs authentication and 2 when cancelled, so a seat without gh's token read as \"already rerun once\" (4) or a usage error (2), and the `@exitcode 1` line was false. The reviewer reproduced it with a stub gh that exits 4. Red in 20096edf: test_a_failing_gh_exits_1_never_with_the_scripts_own_codes failed with 1 != 4 and 1 != 2. Fixed in 414e475b: every gh call, both jq calls (jq 1.6 exits 2 on bad input) and the signature read end in `|| exit 1`, and the @exitcode line says so.",
+    "resolved": true
+  },
+  {
+    "id": "t133-worker-review-p2-bootstrap-path-coverage",
+    "scope": ".github/workflows/remote.yaml",
+    "body": "P2, declared (task text). The bootstrap path pattern is item 3's text verbatim and misses `vendor/` and `.chezmoiroot`. scripts/update-agent-assets.sh resolves its source root through vendor/compactiondb and copies it during run_once_after_06, and .chezmoiroot selects chezmoi's source directory. A PR changing only those paths gives should_run=false. The consequence is coverage only: the three required public-bootstrap contexts still report, and a break first shows on main's push. Widening the pattern is a change to the task's text, so it is named in report.md and the RESULT for the orchestrator.",
+    "resolved": true
+  },
+  {
+    "id": "t133-worker-review-p3-macos-pattern-and-rerun-scope",
+    "scope": ".github/workflows/test.yaml",
+    "body": "Two P3, declared. (1) The OS-independent pattern `.*\\.md$` (the task's text) also matches the Markdown under `home/` and `install/`, so `home/x.md` plus a unit test gives should_test=false on macos-14. That is in tension with the task's sentence that a home change keeps macOS; a `home/` shell file does keep it. Separately, `scripts/check-statusline-tools.py` runs under sandbox-exec only on macOS. (2) ci-rerun.sh fetches `status` and `event` but does not require a completed run or the PR's current head. `gh run rerun --failed` on a superseded head's run would re-enter the `pr-<N>` group and could cancel the newest head's run, and `--failed` also reruns cancelled or timed-out jobs that no signature checked. Both are named in report.md for the follow-up owner.",
+    "resolved": true
+  },
+  {
+    "id": "t133-worker-review-scope-and-approval",
+    "scope": "review",
+    "body": "One review round on 3affaac7 by a fresh read-only subagent (given the commits and the task file, not the worker's conclusions): `Verdict: incorrect` on the P2 of ci-rerun.sh's exit codes. It confirmed:\n- The concurrency block is exactly the task's expression, top-level, once per file, and push, schedule and dispatch never share a PR's group.\n- No job-level if or needs; every heavy step keeps its decision; the decide steps fail closed.\n- A cancelled superseded run reports on its old commit only.\n- The moved job equals main's except the decide and skip edits.\n- The private workflow's triggers, permissions and pinned actions are right.\n- jq and gh fields: `databaseId` and `conclusion` exist.\n- The flake regex matches the pasted log line and is narrow.\n- Tests are red on 0b7c5b4c and green on 3affaac7.\n- Caps 231/250 and 220/350.\n- shellcheck, shfmt and ruff are clean, except the I001 of test_workflow_security.py, which already exists at 99a4a80f.\n\nIts P3 on the concurrency comment (a schedule or dispatch run on a pushed commit shares that commit's group) is fixed in 414e475b's comment text. After the fix round the worker re-ran the 27 tests green, plus shellcheck and shfmt. This is local process evidence, not the task-level audit or reviewer authentication.",
+    "resolved": true
+  }
+]

@@ -1,0 +1,12 @@
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:483](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:483) — The screening set omits project skills-directory plugins: a pre-existing `.claude/skills/<name>/.claude-plugin/plugin.json` can load bundled command hooks after the launcher accepts workspace trust, despite every screened settings/MCP file passing; deny-after-start controls do not validate those existing payloads. Add refusal or screening, a threat row and a regression fixture. [Loading rules](https://code.claude.com/docs/en/plugins/loading#plugins-shared-through-a-repository).
+
+- [P1] High confidence [dotfiles-T133-worker-write-boundary-a02.md:504](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:504) — MCP source enumeration omits the worker configuration’s global state (`.claude.json`), which holds user-scoped and project-local server definitions; pre-existing commands/helpers there remain executable despite empty project `.mcp.json` files and disabled project approvals. Screen these sources or exclude them at execution, with corresponding threat coverage and tests. [MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+
+- [P2] High confidence [dotfiles-T133-worker-write-boundary-a02.md:655](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-a02.md:655) — The deferred ledger contract still obtains its SHA from locally selected `origin`; remote configuration or inherited `GIT_CONFIG_*` can select another commit, while the fixed-repository contents API proves existence rather than membership in canonical main. Replace this stale contract with the fixed-repository main-ref API already required by design §5.14(8). [Git configuration](https://git-scm.com/docs/git-config).
+
+All 22 allowed-file entries have threat rows; all 53 rows are residuals, with none claiming closure. Explicitly deferred executable binding, same-UID races and shared capabilities were not re-reported.
+
+📝 まとめ: Completed the read-only design review and cited-context checks; findings remain for orchestrator disposition.
+
+Not checked: implementation tests, CI or live enforcement; unscreened execution sources remain design risks. No files changed.
+Verdict: incorrect

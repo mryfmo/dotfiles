@@ -1475,6 +1475,36 @@ class OrchestratorToolsTest(unittest.TestCase):
         self.front_matter()
         self.assertEqual([], self.gate_block(record)[0]["audit_findings"])
 
+    def test_front_matter_keeps_and_validates_the_replans_object(self):
+        # Plan 023 F1: the C-59 re-plans live in the block as replans; the rewrite keeps them, another shape is exit 2.
+        shutil.copy(ROOT / "scripts/require-crit-review.py", self.repo / "scripts/require-crit-review.py")
+        self.origin()
+        head = self.git("rev-parse", "HEAD")
+        self.write("sweep.json", json.dumps({"pr": 9, "head_sha": head, "items": []}))
+        record = self.repo / ".orchestration/acceptance/t-a01.md"
+        self.front_matter()
+        self.assertEqual({}, self.gate_block(record)[0]["replans"])
+        replan = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
+        record.write_text("---\n" + json.dumps({"task": "t-a01", "replans": {"stale-path": replan}}) + "\n---\n")
+        self.front_matter()
+        self.assertEqual({"stale-path": replan}, self.gate_block(record)[0]["replans"])
+        for label, replans, key in (
+            ("a list", ["stale-path"], "replans"),
+            (
+                "a missing part",
+                {"stale-path": {k: v for k, v in replan.items() if k != "design"}},
+                "replans.stale-path",
+            ),
+            ("an extra part", {"stale-path": {**replan, "notes": "more"}}, "replans.stale-path"),
+            ("a blank part", {"stale-path": {**replan, "design": " "}}, "replans.stale-path"),
+            ("a key that is no slug", {"Stale Path": replan}, "replans.Stale Path"),
+        ):
+            with self.subTest(label):
+                text = "---\n" + json.dumps({"task": "t-a01", "replans": replans}) + "\n---\n"
+                record.write_text(text)
+                self.assertIn(f"{key} must be", self.front_matter(code=2))
+                self.assertEqual(text, record.read_text())
+
     def gate(self, link=False, plant=False):
         """origin/main with the gate files, a PR head, the review worktree, evidence; the head tracks a symlink when
         `link`, and when `plant` a `.python-version` naming its own executable `pwn`, which touches `pwned`."""

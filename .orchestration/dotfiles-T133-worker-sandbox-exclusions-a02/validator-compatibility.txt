@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "~/Workspace/dotfiles/.claude/worktrees/worker-h/tests/unit/test_validate_agent_assets.py", line 22, in <module>
+    from tests.unit.test_generate_agent_configs import load_manifest_fixture
+ModuleNotFoundError: No module named 'tests'. Did you mean: 'test'?

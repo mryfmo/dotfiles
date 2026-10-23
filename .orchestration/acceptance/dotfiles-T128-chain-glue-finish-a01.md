@@ -33,3 +33,18 @@ local-finding: f20826e:1 fixed:4d4e3b22
 - 2026-10-17T09:44:38Z RESULT round 5 `status=done` (bus 09:43:30Z, a006): head `8d09f80e` on af4f1e99; `4301998951 fixed:6fba7690` (after `gh pr merge` the chain polls `gh pr view --json state,mergeCommit` until MERGED, CHAIN_MERGE_WAIT polls of CHAIN_POLL_SECONDS, default 40 × 15 s, takes mergeCommit, else exit 10); ACCEPTANCE `pending-integration` by dispatch-direct; the chain reruns after #379's.
 
 4301998951	merge-landing-race
+
+## Local review of 9c011913 (chain 3): one P1 and one P2, filed 2026-10-17T12:25Z
+
+local-finding: 9c01191:1 to-audit:a local P0/P1 goes to the audit as input (plan 021 S21); the audit of the chain's head judges it and a surviving P1 is the operator's decision (- [P1] Pin launcher and cleanup commands before fast-forwarding — scripts/orchestrator/chain-finish.sh:114-114); evidence=.orchestration/validation/dotfiles-T128-chain-glue-finish-a01-local-review-9c01191.md
+local-finding: 9c01191:2 not-applicable:advisory P2 owned by dotfiles-T128-chain-glue-finish-followup-a01 (- [P2] Verify that the merged PR still has the audited head — scripts/orchestrator/chain-finish.sh:166-167); evidence=shasum -a 256 .orchestration/tasks/dotfiles-T128-chain-glue-finish-followup-a01.md (d38491aca272c69e6cfea38f858ed00d1d5c4fc6e7bf3210b9a13ff38b05f991)
+- input from PR #390's RESULT (a006, 12:03Z): chain-finish.sh keys audit-finding lines on the head sha7, so an inherited audit (F1) makes it exit 12 on an update-branch-only head; for the owner task's list.
+- main moved to ce032e14 (#391) after this review; the chain is rerun on the update-branch head, whose local review is new.
+
+local:9c01191:1	unpinned-command-path
+
+## Owned by dotfiles-T128-chain-glue-finish-followup-a01 (advisory P2 of 9c011913; plan 020 step 1.2; rows id<TAB>class)
+
+local:9c01191:2	advisory-p2
+- 2026-10-21T10:04Z: update-branch to b09c88c6 after the pins merge: required unit tests fail on test_lint_comparisons (R1 at chain-finish.sh:67 and :111; the lint merged after round 5); D-024-63 resets the lineage to a02 (two-line lint conformance by another context, no sixth round); design-reset record written; a02 dispatched to a008 (bus 2996).
+

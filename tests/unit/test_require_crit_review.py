@@ -19,6 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GUARD = ROOT / "scripts/require-crit-review.py"
 FIXTURES = ROOT / "tests/fixtures/gate-evidence"
+# A complete C-59 re-plan, the value of the record block's replans[<class>] (plan 023 F1).
+REPLAN = {key: f"the {key} part" for key in ("specification", "design", "implementation", "verification")}
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -416,23 +418,27 @@ class ReviewGuardTest(unittest.TestCase):
             text = (FIXTURES / fixture).read_text()
         elif text is None:
             data = {"format": 1, "task": "test", "head": "HEAD", "pr": 1, "ledger": [], "searches": [], **fields}
-            block = json.dumps({key: value for key, value in data.items() if value is not None}, indent=2)
-            text = f"---\n{block}\n---\n\n# prose\n"
             ledger = data.get("ledger")
             classes = (
                 [row["class"] for row in ledger if isinstance(row, dict) and isinstance(row.get("class"), str)]
                 if isinstance(ledger, list)
                 else []
             )
-            text += "".join(
-                f"re-plan: {cls} -> specification, design, implementation, verification.\n"
-                for cls in sorted(set(classes))
-                if classes.count(cls) >= 3
-            )
+            data.setdefault("replans", {cls: REPLAN for cls in sorted(set(classes)) if classes.count(cls) >= 3})
+            block = json.dumps({key: value for key, value in data.items() if value is not None}, indent=2)
+            text = f"---\n{block}\n---\n\n# prose\n"
         head = self.head_commit()
         text = text.replace('"head": "HEAD"', f'"head": "{head}"').replace('"audit:HEAD7:', f'"audit:{head[:7]}:')
         self.write_review_file(".orchestration/acceptance/test.md", text)
         return ".orchestration/acceptance/test.md"
+
+    def rewrite_replans(self, record: str, replans: object, body: str = "") -> None:
+        """Set the replans value of the record's JSON block (left out when None) and replace its prose with body."""
+        path = self.temp_dir / record
+        block = json.loads(path.read_text().partition("\n---\n")[0].removeprefix("---\n"))
+        block.pop("replans", None)
+        block.update({} if replans is None else {"replans": replans})
+        path.write_text(f"---\n{json.dumps(block, indent=2)}\n---\n{body}")
 
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
@@ -1323,66 +1329,109 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
 
-    def test_s1_class_at_three_without_a_replan_line_is_refused(self) -> None:
+    def test_s1_class_at_three_without_a_replans_object_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         record = self.write_record("acceptance-s6-present.md")
-        path = self.temp_dir / record
-        path.write_text(path.read_text().partition("\n---\n")[0] + "\n---\n")
+        self.rewrite_replans(record, None)
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
         self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+        self.assertIn("S1: class-count-scope at 3 rows without a re-plan (C-59)", result.stdout)
         self.assertNotIn("S6:", result.stdout)
 
-    def test_s1_class_at_three_with_all_replan_words_is_accepted(self) -> None:
+    def test_s1_class_at_three_with_the_four_keys_is_accepted(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         record = self.write_record("acceptance-s6-present.md")
-        path = self.temp_dir / record
-        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
-        for words in (
-            "verification, implementation, design, specification.",
-            "specification design\u0301 implementation verification",
-        ):
-            with self.subTest(words=words):
-                path.write_text(block + f"re-plan: class-count-scope -> {words}\n")
-                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
-                self.assertEqual(result.returncode, 0, result.stdout)
-                self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+        self.rewrite_replans(record, {"class-count-scope": dict(reversed(REPLAN.items()))})
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
 
-    def test_s1_class_at_three_with_a_missing_replan_word_is_refused(self) -> None:
+    def test_s1_class_at_three_with_a_missing_key_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         record = self.write_record("acceptance-s6-present.md")
-        path = self.temp_dir / record
-        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
-        words = ("specification", "design", "implementation", "verification")
-        for missing in words:
+        for missing in REPLAN:
             with self.subTest(missing=missing):
-                text = " ".join(word for word in words if word != missing)
-                path.write_text(block + f"re-plan: class-count-scope -> {text}\n")
+                self.rewrite_replans(record, {"class-count-scope": {k: v for k, v in REPLAN.items() if k != missing}})
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
                 self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
+                self.assertIn("malformed block: replans must be", result.stdout)
 
-    def test_s1_replan_words_are_ascii_letter_runs(self) -> None:
+    def test_s1_replan_is_read_from_the_record_block_json(self) -> None:
+        # Plan 023 F1: the re-plan is the record block's replans object; no prose line is read any more.
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
         record = self.write_record("acceptance-s6-present.md")
-        path = self.temp_dir / record
-        block = path.read_text().partition("\n---\n")[0] + "\n---\n"
-        for words, expected in (
-            ("specification design\u1c89 implementation verification", 0),
-            ("specification design\u1c89 implementation", 1),
+        env = {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record}
+        self.rewrite_replans(record, {"class-count-scope": REPLAN})
+        self.assertEqual(self.guard_base(env).returncode, 0)
+        s1, malformed = "S1: class-count-scope at 3 rows without a re-plan (C-59)", "malformed block: replans must be"
+        line = "re-plan: class-count-scope -> specification, design, implementation, verification.\n"
+        for label, replans, body, message in (
+            ("a body line alone", {}, line, s1),
+            ("a blank part", {"class-count-scope": {**REPLAN, "design": " "}}, "", malformed),
+            ("a list", ["class-count-scope"], "", malformed),
+            (
+                "an entry that is text",
+                {"class-count-scope": "specification design implementation verification"},
+                "",
+                malformed,
+            ),
         ):
-            with self.subTest(words=words):
-                path.write_text(block + f"re-plan: class-count-scope -> {words}\n")
-                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record})
-                self.assertEqual(result.returncode, expected, result.stdout)
-                if expected:
-                    self.assertIn("S1: class-count-scope at 3 rows without a re-plan line (C-59)", result.stdout)
-                else:
-                    self.assertIn(f"Acceptance evidence accepted: {record}", result.stdout)
+            with self.subTest(label):
+                self.rewrite_replans(record, replans, body)
+                result = self.guard_base(env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+
+    def test_a_malformed_replans_entry_is_refused_at_any_threshold(self) -> None:
+        # PR #390 thread 4302490297: the gate holds every entry to the writer's rule, the four keys and no other, each
+        # a non-empty string, for a class below the three-row threshold as for one at it.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        record = self.write_record("acceptance-s6-present.md")
+        env = {"PR_FEEDBACK_EVIDENCE": feedback, "ACCEPTANCE_EVIDENCE": record}
+        below = "threat-row-outside-paths"  # one ledger row in the fixture
+        self.rewrite_replans(record, {"class-count-scope": REPLAN, below: REPLAN})
+        self.assertEqual(self.guard_base(env).returncode, 0)
+        for label, replans in (
+            ("incomplete, below the threshold", {"class-count-scope": REPLAN, below: {**REPLAN, "design": ""}}),
+            ("a key missing, below the threshold", {"class-count-scope": REPLAN, below: {"design": "d"}}),
+            ("a part that is no string, below", {"class-count-scope": REPLAN, below: {**REPLAN, "design": 1}}),
+            ("an extra key, below the threshold", {"class-count-scope": REPLAN, below: {**REPLAN, "notes": "n"}}),
+            ("an extra key, at the threshold", {"class-count-scope": {**REPLAN, "notes": "n"}}),
+        ):
+            with self.subTest(label):
+                self.rewrite_replans(record, replans)
+                result = self.guard_base(env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("malformed block: replans must be", result.stdout)
+
+    def test_s6_reads_an_inherited_audit_s_ids_under_the_parent_sha7(self) -> None:
+        # Plan 023 F1: an inherited audit's first line names the head it ran on, whose ids its ledger rows carry.
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(json.loads((FIXTURES / "pr-feedback-right.json").read_text())["items"])
+        audit, parent7 = f".orchestration/validation/test-audit-{self.head_commit()[:7]}.md", "abcdef1"
+        self.write_review_file(audit, f"inherited-from: {parent7}\ntranscript\n")
+        self.write_review_file(
+            f"{audit}.last.md",
+            f"inherited-from: {parent7}\n[P2] high impl a:1 one\n- [P3] low impl b:2 two\nVerdict: correct\n",
+        )
+        threads = [
+            {"id": 4244248692, "class": "threat-row-outside-paths"},
+            {"id": 4244378809, "class": "result-head-binding"},
+        ]
+        env = {"PR_FEEDBACK_EVIDENCE": feedback, "AUDIT_EVIDENCE": audit}
+        parent = [{"id": f"audit:{parent7}:{n}", "class": "audit-finding"} for n in (1, 2)]
+        result = self.guard_base({**env, "ACCEPTANCE_EVIDENCE": self.write_record(ledger=threads + parent)})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        own = [{"id": f"audit:HEAD7:{n}", "class": "audit-finding"} for n in (1, 2)]
+        result = self.guard_base({**env, "ACCEPTANCE_EVIDENCE": self.write_record(ledger=threads + own)})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        # Two findings, the marker line not one of them: exactly the parent's two ids are missing.
+        self.assertIn(f"S6: ledger lacks audit:{parent7}:1, audit:{parent7}:2\n", result.stdout)
 
     def test_s6_class_at_three_without_a_searches_entry_is_refused(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

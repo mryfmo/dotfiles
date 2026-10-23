@@ -34,10 +34,12 @@ export const HISTORY_LIMIT = 100_000;
 // Per kind (its AGMSG- prefix dropped), what a row from the seat / from another seat does to its
 // task: a string opens it with that debt, null closes it, undefined leaves it alone. The newest
 // moving row per task_id decides, so a HOLD or MERGED after a RESULT closes it and a new TASK reopens it.
+// A VERDICT closes from any seat: the audit seat answers the seat's `U<n>-audit` TASK under that same
+// task_id (hcom-audit SKILL), while the seat's debt on `U<n>` itself waits for its own VERDICT, MERGED or HOLD.
 const MOVES: Record<string, [seat: string | null | undefined, other: string | null | undefined]> = {
 	TASK: ["awaiting RESULT", undefined],
 	RESULT: [undefined, "owes a VERDICT, MERGED or HOLD line"],
-	VERDICT: [null, undefined],
+	VERDICT: [null, null],
 	MERGED: [null, undefined],
 	HOLD: [null, undefined],
 };

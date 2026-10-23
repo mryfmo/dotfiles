@@ -19,12 +19,12 @@ omp fires `session_stop` when a main-agent turn is about to settle (`src/extensi
 
 The gate reads the thread's rows since the seat started, `scripts/orchestrator/bus-history.sh $HCOM_TEAM --limit 100000 --since <seat start>` from the seat's cwd (the checkout), and keeps the newest row per `task_id` among the rows that move a task. The script keeps the newest `--limit` rows (default 200), so the gate asks for far more than a program writes and treats a full window as unreadable (a warning, the turn ends unchecked) rather than as proof of no debt:
 
-| Row, by kind (an `AGMSG-` prefix is dropped) and sender | Effect on its `task_id`                            |
-| ------------------------------------------------------- | -------------------------------------------------- |
-| `TASK` from the seat                                    | open: awaiting RESULT                              |
-| `RESULT` from another seat                              | open: owes a VERDICT, MERGED or HOLD line          |
-| `VERDICT`, `MERGED` or `HOLD` from the seat             | closed                                             |
-| anything else (PING, PONG, another seat's VERDICT, …)   | no effect; the previous moving row keeps the state |
+| Row, by kind (an `AGMSG-` prefix is dropped) and sender            | Effect on its `task_id`                                                         |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `TASK` from the seat                                               | open: awaiting RESULT                                                           |
+| `RESULT` from another seat                                         | open: owes a VERDICT, MERGED or HOLD line                                       |
+| `VERDICT` from any seat, `MERGED` or `HOLD` from the seat          | closed; the audit seat answers the seat's `U<n>-audit` TASK under that id (U9b) |
+| anything else (PING, PONG, another seat's TASK, MERGED or HOLD, …) | no effect; the previous moving row keeps the state                              |
 
 One message lists the open items with their row ids and the ways out: answer them, wait with `hcom listen`, or send `HOLD v1 task_id=<id> note=<why>`, the auditable override that the skill names. `OMP_STOP_GATE_ALLOW_OPEN=1` ends the turn with the warning instead of the block.
 

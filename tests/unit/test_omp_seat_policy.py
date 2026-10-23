@@ -70,7 +70,7 @@ COMMON_DENIES = [
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
-# The audit seat's reply on the thread route (hcom-audit SKILL); measured on 2026-10-23, the `@operator` route was denied.
+# The audit seat's reply line (hcom-audit SKILL); it goes on the thread route through `hcom-reply` (U6d).
 VERDICT = "AGMSG-VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
     ("bash", "XDG_CACHE_HOME=x gh pr merge 1", "deny"),
@@ -168,27 +168,34 @@ TABLE = {
         ("bash", "gh pr create --title t", "deny"),
         ("bash", "uv run --no-project -m pytest -q", "deny"),
         ("bash", "echo hi", "deny"),
-        ("bash", f"hcom send --thread regime -- '{VERDICT}'", "allow"),
-        ("bash", f'hcom send --thread regime -- "{VERDICT} findings=0"', "allow"),
-        ("bash", "hcom send --thread regime -- 'AGMSG-PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
-        ("bash", f"hcom send --thread regime -- '{VERDICT}' | tee x", "deny"),
-        ("bash", f"hcom send --thread regime -- '{VERDICT}'; rm x", "deny"),
+        # U6d: the reply goes through `hcom-reply`, which takes the identity from `hcom list self name`;
+        # `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form included.
+        ("bash", f"hcom-reply regime -- '{VERDICT}'", "allow"),
+        ("bash", f'hcom-reply regime -- "{VERDICT} findings=0"', "allow"),
+        ("bash", "hcom-reply regime -- 'AGMSG-PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
+        ("bash", f"hcom-reply regime -- '{VERDICT}' | tee x", "deny"),
+        ("bash", f"hcom-reply regime -- '{VERDICT}'; rm x", "deny"),
         (
             "bash",
-            'hcom send --thread regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
+            'hcom-reply regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
             "deny",
         ),
+        # An env prefix or a path is not the allowed form.
+        ("bash", f"HCOM_DIR=x hcom-reply regime -- '{VERDICT}'", "deny"),
+        ("bash", f"~/.local/bin/common/hcom-reply regime -- '{VERDICT}'", "deny"),
+        ("bash", f"hcom send --thread regime -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send @operator --intent ack --reply-to 26 --thread regime --name vera -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --from coordinator -- '{VERDICT}'", "deny"),
-        # The line the audit seat typed on 2026-10-23 (hcom's prompt demands `--name <its name>`); allowed since U6c.
+        # The line the audit seat typed on 2026-10-23 (hcom's prompt demands `--name <its name>`).
         (
             "bash",
             "hcom send --thread regime --intent ack --name tuba -- 'AGMSG-VERDICT v1 task_id=U11-audit-2 verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'",
-            "allow",
+            "deny",
         ),
-        # D-024-135: `--name` is unauthenticated (an outside shell's `--name worker-soma` was recorded with sender
-        # `soma`, bus row 84), so a deny here protected nothing; `--from` and `-b` stay denied below.
-        ("bash", f"hcom send --thread regime --intent ack --name worker-soma -- '{VERDICT}'", "allow"),
+        # D-024-136: a caller-chosen `--name worker-soma` is recorded with sender `soma` (bus row 84) and
+        # stop-gate.ts trusts `from`, so the seat that reads pull-request content gets no `--name` at all.
+        ("bash", f"hcom send --thread regime --name worker-soma -- '{VERDICT}'", "deny"),
+        ("bash", f"hcom send --thread regime --intent ack --name worker-soma -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime -b -- '{VERDICT}'", "deny"),
         ("bash", "hcom kill audit-vera", "deny"),
         # U9d: the audit seat cannot move its own worktree.

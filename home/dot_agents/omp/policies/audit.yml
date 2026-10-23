@@ -95,6 +95,10 @@ bash:
       approval: deny
     - match: "*gh api* --input*"
       approval: deny
+    # U6d (D-024-136): `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form
+    # included; the seat replies through `hcom-reply` below, which takes the identity from the launch.
+    - match: "*hcom send*"
+      approval: deny
     # The read-only git and gh commands an audit needs; an allow never rides a pipe or a redirect.
     - match: "git status"
       approval: allow
@@ -122,17 +126,12 @@ bash:
       approval: allow
     - match: "gh api repos/*"
       approval: allow
-    # The one bus reply (hcom-audit SKILL): the thread route under the identity hcom bound at
-    # launch, so a claimed `--from`, `--name` or `-b` is refused first. Quotes do not break the
-    # allow, but a `$` or a backtick inside double quotes does (src/tools/bash.ts:94-136), so
-    # the seat pastes the sha and never writes `$(...)` in the line.
-    - match: "*hcom send *--from*"
-      approval: deny
-    - match: "*hcom send *--name*"
-      approval: deny
-    - match: "*hcom send * -b *"
-      approval: deny
-    - match: "hcom send --thread * -- *"
+    # The one bus reply (hcom-audit SKILL): `hcom-reply <team> -- <line>` runs `hcom send` with the
+    # identity from `hcom list self name` and refuses any word but the team before `--`, so no `--name`,
+    # `--from` or `-b` comes from the model (README "Threat table"). An env prefix or a path is not this
+    # form and meets the catch-all. Quotes do not break the allow, but a `$` or a backtick inside double
+    # quotes does (src/tools/bash.ts:94-136), so the seat pastes the sha and never writes `$(...)`.
+    - match: "hcom-reply * -- *"
       approval: allow
     # Everything else is denied.
     - match: "*"

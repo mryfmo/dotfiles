@@ -4477,6 +4477,7 @@
 <li><code>agmsg_state_snapshot</code></li>
 <li><code>build_understand_anything_core</code></li>
 <li><code>check_pi_claude_bridge</code></li>
+<li><code>check_pstack</code></li>
 <li><code>claude_crit_plugin_is_enabled</code></li>
 <li><code>claude_ponytail_plugin_is_enabled</code></li>
 <li><code>claude_understand_anything_plugin_is_enabled</code></li>
@@ -5698,6 +5699,39 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Confirm the pstack skills chezmoi places under ~/.agents/skills reach an omp seat.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   No installer step runs for pstack: the two externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl</span>
+<span class="c1">#   deploy the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply. The check</span>
+<span class="c1">#   fails when the poteto-mode skill or the Claude Code adapter its first paragraph links is missing, or when</span>
+<span class="c1">#   `omp skill list`, run from an empty directory so no project skill tree takes part, does not name poteto-mode.</span>
+<span class="c1">#   Without omp the file check alone decides.</span>
+<span class="c1"># @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_pstack<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>file<span class="w"> </span>cwd<span class="w"> </span>listing
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/poteto-mode/SKILL.md"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/docs/harness/claude-code.md"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: %s is missing; run make update.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span>has_command<span class="w"> </span>omp<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack skills are in place; omp is not installed, so the seat listing is not checked.\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">cwd</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/update-agent-assets.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cwd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>perl<span class="w"> </span>-e<span class="w"> </span><span class="s1">'alarm 60; exec @ARGV'</span><span class="w"> </span>omp<span class="w"> </span>--no-session<span class="w"> </span>skill<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>rmdir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cwd</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.skills[] | select(.name == "poteto-mode")'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack: omp skill list does not name poteto-mode.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pstack skills reach %s: %s skills listed, poteto-mode among them.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>omp<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'NR == 1 { print $NF }'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.skills | length'</span><span class="k">)</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Sync the vendored CompactionDB tree without deleting project runtime state.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_compactiondb<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -5880,18 +5914,18 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
-<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge or check_pi_claude_bridge.</span>
+<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge or check_pstack.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">:</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="o">)</span>
+<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pstack<span class="o">)</span>
 <span class="w">            </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">return</span>
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 

@@ -4638,7 +4638,11 @@
 <td>closed</td>
 </tr>
 <tr>
-<td>anything else (PING, PONG, another seat's VERDICT, …)</td>
+<td><code>VERDICT</code> on a <code>U&lt;n&gt;-audit</code> id from the seat named in the <code>to</code> column of the seat's newest TASK under that id, while that TASK still awaits</td>
+<td>closed: the audit seat's answer (U9b, U9c)</td>
+</tr>
+<tr>
+<td>anything else (PING, PONG, another seat's TASK, MERGED or HOLD, a VERDICT from any other seat or on any other id, …)</td>
 <td>no effect; the previous moving row keeps the state</td>
 </tr>
 </tbody>
@@ -4679,7 +4683,7 @@
 <p>Without <code>HCOM_TEAM</code> or a seat name the gate is inert and says so at every stop; a <code>bus-history.sh</code> failure ends the turn with the failure in the warning. Both are visible, never silent (M-20261023-01). In print mode (<code>omp -p</code>, <code>omp-run.sh</code>) there is no UI, so the warning goes to stderr, which <code>omp-run.sh</code> holds and replays; interactively it is <code>ctx.ui.notify(…, "warning")</code>.</p>
 <h3 id="measured">Measured<a class="headerlink" href="#measured" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts</code>: 5 tests, 18 assertions, pass. They cover the open and closed transitions above, the exact message, the block on the first settle and the capped continuation on the next, <code>OMP_STOP_GATE_ALLOW_OPEN</code>, the inert case, and the <code>bus-history.sh</code> argv (<code>&lt;team&gt; --since &lt;ISO second&gt;Z</code>).</li>
+<li><code>bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts</code>: 7 tests, 25 assertions, pass (U9c run, 2026-10-23). They cover the open and closed transitions above, the three VERDICTs that settle nothing, the exact message, the block on the first settle and the capped continuation on the next, <code>OMP_STOP_GATE_ALLOW_OPEN</code>, the inert case, and the <code>bus-history.sh</code> argv (<code>&lt;team&gt; --since &lt;ISO second&gt;Z</code>).</li>
 <li>Load check under <code>HOME=$TMPDIR/u9-home</code> with a fake <code>scripts/orchestrator/bus-history.sh</code> in the cwd: <code>omp --no-extensions -e &lt;hooks dir&gt; --no-session --max-time 60 --model openai/gpt-5 -p "Reply with the single word PONG."</code> exits 1 with <code>error: No API key found for openai.</code>; no <code>Failed to load extension</code> in stderr or in <code>$HOME/.omp/logs/omp.2026-10-23.*.log</code> (grep count 0). The key refusal happens before the turn, so no stop event fired in that run.</li>
 <li>Bridge-route run, same HOME, <code>-e ~/.local/lib/omp-extensions/pi-claude-bridge -e &lt;hooks dir&gt; --model claude-bridge/claude-haiku-4-5 --max-time 90</code>, the fake bus holding one TASK from <code>orch</code> without a RESULT: the bridge fails inside the turn (<code>Not logged in · Please run /login</code>, the operator-only step), so the stop event fires. The fake recorded <code>u9team --since 2026-10-23T04:54:14Z</code>; stderr holds the gate's warning <code>stop-gate: 1 open item(s) on hcom thread u9team: U9 awaiting RESULT (row 3). …</code> 10 times, one per settle pass: the block, the eight capped continuations, and the pass at which omp refused a ninth and ended the turn (exit 1). No <code>Failed to load extension</code> in stderr or the two omp logs (grep count 0 each).</li>
 </ul>
@@ -4695,7 +4699,7 @@
 <tbody>
 <tr>
 <td><code>stop-gate.ts</code>, the decision</td>
-<td>closed: <code>openItems</code> is a pure function over the TSV; the transition tests assert each row of the table above</td>
+<td>closed: <code>openItems</code> is a pure function over the TSV; the transition tests assert each row of the table above, including that a worker's VERDICT on its own unit and a stranger's VERDICT on the audit id leave the debt open (U9c)</td>
 </tr>
 <tr>
 <td><code>stop-gate.ts</code>, the message reaching the model</td>
@@ -4720,7 +4724,7 @@
 </tbody>
 </table>
 <h2 id="the-skill">The skill<a class="headerlink" href="#the-skill" title="Permanent link">&para;</a></h2>
-<p><code>home/dot_agents/skills/hcom-orchestration/SKILL.md</code> (36 lines), reachable in every seat through <code>skills.customDirectories</code> (<code>docs/omp-skills.md</code>). It compresses the program's own method, <code>.orchestration/orchestrate/regime-cutover/preferences.md</code> and the briefs, into the loop brief → TASK → RESULT → verdict → merge with <code>gh pr merge --squash --match-head-commit</code>, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the <code>hcom-worker</code> skill (U7).</p>
+<p><code>home/dot_agents/skills/hcom-orchestration/SKILL.md</code> (36 lines), reachable in every seat through <code>skills.customDirectories</code> (<code>docs/omp-skills.md</code>). It compresses the program's own method, <code>.orchestration/orchestrate/regime-cutover/preferences.md</code> and the briefs, into the loop brief → TASK → RESULT → verdict → merge with <code>gh pr merge --squash --match-head-commit</code>, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the <code>hcom-worker</code> skill (U7) and the audit seat's the <code>hcom-audit</code> skill (U6b).</p>
 <h2 id="doctor-wiring">Doctor wiring<a class="headerlink" href="#doctor-wiring" title="Permanent link">&para;</a></h2>
 <p><code>make doctor</code> now runs <code>./scripts/update-agent-assets.sh check_pi_claude_bridge</code> when <code>~/.local/bin/omp</code> exists and counts its failure in <code>tools=</code>; without omp it prints <code>optional warning: pi-claude-bridge check skipped because omp is not installed</code>, in line with <code>check_omp</code> and <code>check_hcom</code> in <code>scripts/check-tools.sh</code>. The check spends one short model turn on a logged-in host (<code>update-agent-assets.sh</code>, the function's shdoc), which is why it lives in the manual doctor and not in CI.</p>
 <h2 id="agentsmd">AGENTS.md<a class="headerlink" href="#agentsmd" title="Permanent link">&para;</a></h2>

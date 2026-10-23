@@ -7,9 +7,12 @@
 #   `--tag <name>`, `--dir <path>`, `--terminal <preset>`; hcom gives the seat
 #   HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For `<role>` the launch line is
 #   `hcom omp --tag <name> --dir <dir> --terminal herdr -- --profile <role>
-#   --config ~/.agents/omp/policies/<role>.yml -e <ext>...`. The profile equals the
-#   role, so the seat's rendered `modelRoles.default` applies (U4) and the role's
-#   policy overlay owns the approval mode (U6). The extensions default to the
+#   --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml
+#   -e <ext>...`. The profile equals the role. A named profile reads its own
+#   `~/.omp/profiles/<role>/agent/config.yml` (pi-utils `src/dirs.ts:312-315`, U10),
+#   so the manifest's `modelRoles.default` and `skills.customDirectories` reach the
+#   seat only through the second overlay, rendered per role (U14); the first overlay
+#   owns the approval mode (U6). Both are required. The extensions default to the
 #   directory the role's model route needs, the pi-claude-bridge for orchestrator
 #   and worker and the openai-siwc for audit, plus the other one when it is
 #   present; `--ext` replaces that list. The orchestrator sits in the repository
@@ -17,7 +20,7 @@
 #   which is created detached from `origin/main` when absent and reused otherwise.
 #   Every input is checked before anything is created or started: an unknown role,
 #   a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, an unset HCOM_DIR, hcom absent from
-#   PATH, an absent overlay or extension directory, or a cwd outside a git checkout
+#   PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout
 #   is exit 2 with the reason. `--dry-run` prints the launch line and creates and
 #   starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
@@ -74,7 +77,9 @@ esac
 [[ -n ${HCOM_DIR:-} ]] || refuse 'HCOM_DIR is unset; export the program'\''s private hcom store first'
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 policy=${HOME}/.agents/omp/policies/${role}.yml
+profile=${HOME}/.agents/omp/profiles/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
+[[ -f ${profile} ]] || refuse "profile overlay absent: ${profile}"
 if ((${#user_exts[@]})); then
     exts=("${user_exts[@]}")
 elif [[ ! -d ${exts[1]} ]]; then
@@ -89,7 +94,7 @@ orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
-argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr -- --profile "${role}" --config "${policy}")
+argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr -- --profile "${role}" --config "${policy}" --config "${profile}")
 for ext in "${exts[@]}"; do
     argv+=(-e "${ext}")
 done

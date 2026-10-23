@@ -35,9 +35,12 @@ class HcomSeatTest(unittest.TestCase):
         root = Path(self.temp.name)
         self.home = root / "home"
         self.policies = self.home / ".agents/omp/policies"
+        self.profiles = self.home / ".agents/omp/profiles"
         self.policies.mkdir(parents=True)
+        self.profiles.mkdir(parents=True)
         for role in ("orchestrator", "worker", "audit"):
             (self.policies / f"{role}.yml").write_text("tools: {}\n")
+            (self.profiles / f"{role}.yml").write_text("modelRoles: {}\n")
         self.bridge = self.home / ".local/lib/omp-extensions/pi-claude-bridge"
         self.siwc = self.home / ".agents/omp/extensions/openai-siwc"
         self.bridge.mkdir(parents=True)
@@ -86,7 +89,7 @@ class HcomSeatTest(unittest.TestCase):
     def launch_line(self, role, name, directory, *exts):
         return [
             "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--",
-            "--profile", role, "--config", str(self.policies / f"{role}.yml"),
+            "--profile", role, "--config", str(self.policies / f"{role}.yml"), "--config", str(self.profiles / f"{role}.yml"),
             *(flag for ext in exts for flag in ("-e", str(ext))),
         ]  # fmt: skip
 
@@ -139,6 +142,7 @@ class HcomSeatTest(unittest.TestCase):
 
     def test_refusals_exit_2_before_anything_is_created_or_started(self):
         (self.policies / "audit.yml").unlink()
+        (self.profiles / "orchestrator.yml").unlink()
         outside = Path(self.temp.name) / "outside"
         outside.mkdir()
         for label, args, overrides, cwd in (
@@ -149,7 +153,8 @@ class HcomSeatTest(unittest.TestCase):
             ("unknown flag", ["worker", "--pane", "w1"], {}, None),
             ("HCOM_DIR unset", ["worker"], {"HCOM_DIR": None}, None),
             ("hcom absent", ["worker"], {"PATH": "/usr/bin:/bin"}, None),
-            ("policy absent", ["audit"], {}, None),
+            ("policy overlay absent", ["audit"], {}, None),
+            ("profile overlay absent", ["orchestrator"], {}, None),
             ("required extension absent", ["audit", "--ext", str(self.home / "nowhere")], {}, None),
             ("outside a checkout", ["worker"], {}, outside),
         ):

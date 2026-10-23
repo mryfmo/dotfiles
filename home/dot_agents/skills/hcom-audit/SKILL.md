@@ -25,10 +25,10 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 
 ## Reply
 
-Send exactly one VERDICT line on the team thread, with no target. The orchestrator is an external sender on the bus (`hcom-dispatch` sends with `--from`), so `@<from>` would fail with hcom's "No active agent"; the thread the TASK seeded is the route back (README "Routes", seat to the orchestrator). Paste the sha: a `$(...)` or a backtick inside the line voids the policy allow, and so do an unquoted pipe, `;`, `&` or redirect and a claimed `--from`, `--name` or `-b`.
+Send exactly one VERDICT line on the team thread, with no target. The orchestrator is an external sender on the bus (`hcom-dispatch` sends with `--from`), so `@<from>` would fail with hcom's "No active agent"; the thread the TASK seeded is the route back (README "Routes", seat to the orchestrator). The line may carry `--intent ack --name <your hcom name>`, as hcom's own prompt requires. Paste the sha: a `$(...)` or a backtick inside the line voids the policy allow, and so do a pipe, `;`, `&`, a redirect, `--from` and `-b`.
 
 ```bash
-hcom send --thread <team> -- "AGMSG-VERDICT v1 task_id=<id> verdict=<correct|incorrect|blocked> head=<sha> [findings=<n>]"
+hcom send --thread <team> [--intent ack --name <your name>] -- "AGMSG-VERDICT v1 task_id=<id> verdict=<correct|incorrect|blocked> head=<sha> [findings=<n>]"
 ```
 
 `<team>` is the TASK row's thread. The findings themselves go in your turn's text, the report the brief asks for; the line carries only the verdict. `HCOM_DIR` is inherited from your launch and never changed.

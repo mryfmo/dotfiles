@@ -122,13 +122,13 @@ bash:
       approval: allow
     - match: "gh api repos/*"
       approval: allow
-    # The one bus reply (hcom-audit SKILL): the thread route under the identity hcom bound at
-    # launch, so a claimed `--from`, `--name` or `-b` is refused first. Quotes do not break the
-    # allow, but a `$` or a backtick inside double quotes does (src/tools/bash.ts:94-136), so
-    # the seat pastes the sha and never writes `$(...)` in the line.
+    # The one bus reply (hcom-audit SKILL): the thread route. hcom's own system prompt makes the
+    # seat put `--name <its name>` on every hcom command, so that flag passes; `--from` and `-b`
+    # are the external-sender spellings and are refused first. hcom authenticates neither flag
+    # (D-024-135, README "Threat table"), so the policy guards the route, not the identity.
+    # Quotes do not break the allow, but a `$` or a backtick inside double quotes does
+    # (src/tools/bash.ts:94-136), so the seat pastes the sha and never writes `$(...)` in the line.
     - match: "*hcom send *--from*"
-      approval: deny
-    - match: "*hcom send *--name*"
       approval: deny
     - match: "*hcom send * -b *"
       approval: deny

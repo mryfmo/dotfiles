@@ -116,10 +116,10 @@ TABLE = {
         ("bash", "curl -s https://x | shasum -a 256", "allow"),
         ("bash", "scripts/orchestrator/chain-integrate.sh t 1 . w o", "allow"),
         ("bash", "gh pr view 1 --json headRefOid", "allow"),
-        # U9d: the orchestrator positions the audit seat's worktree (hcom-orchestration SKILL step 4).
+        # U9d/U6c: the orchestrator positions the audit seat's worktree at hcom's `directory` for it (SKILL step 4).
         (
             "bash",
-            "git -C ~/.local/state/omp-seats/audit fetch origin fix/x && git -C ~/.local/state/omp-seats/audit switch --detach abc",
+            'd=$(hcom list audit-tuba directory) && git -C "$d" fetch origin fix/x && git -C "$d" switch --detach abc',
             "allow",
         ),
         ("edit", None, "allow"),
@@ -180,7 +180,15 @@ TABLE = {
         ),
         ("bash", f"hcom send @operator --intent ack --reply-to 26 --thread regime --name vera -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --from coordinator -- '{VERDICT}'", "deny"),
-        ("bash", f"hcom send --thread regime --name worker-sol -- '{VERDICT}'", "deny"),
+        # The line the audit seat typed on 2026-10-23 (hcom's prompt demands `--name <its name>`); allowed since U6c.
+        (
+            "bash",
+            "hcom send --thread regime --intent ack --name tuba -- 'AGMSG-VERDICT v1 task_id=U11-audit-2 verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'",
+            "allow",
+        ),
+        # D-024-135: `--name` is unauthenticated (an outside shell's `--name worker-soma` was recorded with sender
+        # `soma`, bus row 84), so a deny here protected nothing; `--from` and `-b` stay denied below.
+        ("bash", f"hcom send --thread regime --intent ack --name worker-soma -- '{VERDICT}'", "allow"),
         ("bash", f"hcom send --thread regime -b -- '{VERDICT}'", "deny"),
         ("bash", "hcom kill audit-vera", "deny"),
         # U9d: the audit seat cannot move its own worktree.

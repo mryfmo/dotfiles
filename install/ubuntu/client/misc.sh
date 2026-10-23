@@ -31,6 +31,7 @@ readonly PACKAGES=(
 # @description Install the optional Ubuntu client packages.
 #
 function install_misc() {
+    sudo apt-get update
     sudo apt-get install -y "${PACKAGES[@]}"
 }
 

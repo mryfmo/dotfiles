@@ -44,6 +44,13 @@ function teardown() {
     fi
 }
 
+@test "[ubuntu-client] install_misc refreshes the index before installing" {
+    run bash -c 'source "'"${SCRIPT_PATH}"'"; sudo() { echo "$*" >> "'"${BATS_TEST_TMPDIR}"'/sudo.log"; }; install_misc'
+    [ "${status}" -eq 0 ]
+    [ "$(sed -n 1p "${BATS_TEST_TMPDIR}/sudo.log")" = "apt-get update" ]
+    [[ "$(sed -n 2p "${BATS_TEST_TMPDIR}/sudo.log")" == "apt-get install -y "* ]]
+}
+
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
     run env PATH="${BATS_TEST_TMPDIR}" /bin/bash -c '
         source "'"${SCRIPT_PATH}"'"

@@ -116,6 +116,12 @@ TABLE = {
         ("bash", "curl -s https://x | shasum -a 256", "allow"),
         ("bash", "scripts/orchestrator/chain-integrate.sh t 1 . w o", "allow"),
         ("bash", "gh pr view 1 --json headRefOid", "allow"),
+        # U9d: the orchestrator positions the audit seat's worktree (hcom-orchestration SKILL step 4).
+        (
+            "bash",
+            "git -C ~/.local/state/omp-seats/audit fetch origin fix/x && git -C ~/.local/state/omp-seats/audit switch --detach abc",
+            "allow",
+        ),
         ("edit", None, "allow"),
         ("task", None, "allow"),
     ],
@@ -177,6 +183,9 @@ TABLE = {
         ("bash", f"hcom send --thread regime --name worker-sol -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime -b -- '{VERDICT}'", "deny"),
         ("bash", "hcom kill audit-vera", "deny"),
+        # U9d: the audit seat cannot move its own worktree.
+        ("bash", "git fetch origin main", "deny"),
+        ("bash", "git switch --detach abc", "deny"),
         ("edit", None, "deny"),
         ("write", None, "deny"),
         ("ast_edit", None, "deny"),

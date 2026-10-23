@@ -30,7 +30,8 @@ model; this document covers only the asset.
    `home/dot_agents/agent-config.yaml`;
 2. extracts it into a staging directory beside the target and applies every
    `home/dot_agents/assets/pi-claude-bridge/patches/*.patch` in name order
-   with `patch -p1`;
+   with `patch -p1 -F0` (no fuzz: GNU patch would otherwise apply a patch
+   whose context drifted and exit 0);
 3. copies the committed `bun.lock` in and runs
    `bun install --production --omit=peer --frozen-lockfile`, so the dependency
    set is the reviewed one (peers are omitted because omp's legacy pi compat
@@ -53,7 +54,7 @@ upstream `package/` tree, so a reviewer can re-derive it.
 
 | Patch                                | Why                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `01-omp-shim-exports.patch`          | omp's legacy `pi-coding-agent` shim does not export `formatSkillsForPrompt`, so `src/skills.ts` carries Pi's implementation (MIT, same output). The expand hint uses the shim's `keyText`, and the deprecated AskClaude tool runs without session context (a `shortcut:` comment marks it).                                                                                     |
+| `01-omp-shim-exports.patch`          | omp's legacy `pi-coding-agent` shim does not export `formatSkillsForPrompt`, so `src/skills.ts` carries Pi's implementation (MIT, same output). The shim does export `keyHint` and `buildSessionContext` (`gap-check.ts` lists both as FOUND), so upstream's calls to them stay.                                                                                                |
 | `02-content-text.patch`              | The `pi-ai` shim does not export `contentText`; `src/transcript.ts` carries pi-ai 1.4.0's eight-line implementation (MIT). Without it omp logs `Failed to load extension ... Export named 'contentText' not found`.                                                                                                                                                             |
 | `03-no-bash-timeout-injection.patch` | Decision 38: the bridge added `timeout: 120` to every bash tool call it handed to Pi (`mapToolArgs` in `src/index.ts`; seen on the wire as `{"command":...,"timeout":120}`). omp's bash tool keeps its own timeout handling.                                                                                                                                                    |
 | `04-setting-sources-none.patch`      | The provider `query()` passes `settingSources: []`, so the child Claude Code loads no user, project or local `settings.json`: the host's hooks, plugins and permission rules do not run inside bridge turns. The claude.ai login is not a setting and still applies. Measured 2026-10-23: with the default, the child's thinking cited the host's superpowers system reminders. |
@@ -100,8 +101,8 @@ fails when stderr or the omp log files written by that run contain
 `Failed to load extension`, and passes when the output reaches the model
 (`PONG` with a login, `Not logged in` without). Point `HOME` at a scratch
 directory to keep the session out of the real `~/.omp`; under the real HOME a
-logged-in host spends one short model turn. `make doctor` can call the same
-function.
+logged-in host spends one short model turn. The function is callable from
+`make doctor` once the Makefile wires it (follow-up).
 
 ## Fallbacks
 

@@ -4,20 +4,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import stopGate, { gateMessage, HISTORY_LIMIT, openItems } from "../stop-gate";
 
-// One bus-history.sh row: id, at, from, to, kind (first word), body.
-const row = (id: number, from: string, text: string): string =>
-	[id, "2026-10-23T05:00:00+00:00", from, "-", text.split(" ")[0], text].join("\t");
+// One bus-history.sh row: id, at, from, to (the delivered seat; `-` for a thread reply), kind (first word), body.
+const row = (id: number, from: string, text: string, to = "-"): string =>
+	[id, "2026-10-23T05:00:00+00:00", from, to, text.split(" ")[0], text].join("\t");
 
 const ROWS = [
-	row(3, "orch", "AGMSG-TASK v1 task_id=t1 brief=briefs/U9.md"),
-	row(4, "orch", "TASK v1 task_id=t2 brief=briefs/U14.md"),
+	row(3, "orch", "AGMSG-TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
+	row(4, "orch", "TASK v1 task_id=t2 brief=briefs/U14.md", "worker"),
 	row(5, "orch", "AGMSG-PING v1 task_id=t1"),
 	row(6, "worker", "AGMSG-RESULT v1 task_id=t1 status=ready_for_review pr=https://example/pull/1 head=abc"),
 	row(7, "worker", "RESULT v1 task_id=t2 status=ready_for_review pr=https://example/pull/2 head=def"),
-	row(8, "orch", "TASK v1 task_id=t2-audit head=def brief=briefs/U14.md"),
+	row(8, "orch", "TASK v1 task_id=t2-audit head=def brief=briefs/U14.md", "audit"),
 	row(9, "audit", "AGMSG-VERDICT v1 task_id=t2-audit verdict=correct head=def findings=0"),
 	row(10, "orch", "MERGED v1 task_id=t2 sha=0123456"),
-	row(11, "orch", "TASK v1 task_id=t3 brief=briefs/U11.md"),
+	row(11, "orch", "TASK v1 task_id=t3 brief=briefs/U11.md", "worker"),
 	row(12, "orch", "PONG v1 status=idle"),
 ];
 const tsv = (rows: string[]): string => `${rows.join("\n")}\n`;
@@ -29,12 +29,24 @@ test("an unanswered TASK and an unjudged RESULT are open; MERGED closes, PING an
 	]);
 });
 
-test("the audit seat's VERDICT closes the TASK sent to it under the same task_id and nothing else; the seat's own HOLD or VERDICT closes its debt", () => {
+test("the tasked audit seat's VERDICT closes the `-audit` TASK sent to it; the seat's own HOLD or VERDICT closes its debt", () => {
 	expect(openItems(tsv(ROWS.slice(0, 6)), "orch").map(item => item.taskId)).toEqual(["t1", "t2", "t2-audit"]);
 	expect(openItems(tsv(ROWS.slice(0, 7)), "orch").map(item => item.taskId)).toEqual(["t1", "t2"]);
 	const held = [...ROWS, row(13, "orch", "HOLD v1 task_id=t3 note=waiting"), row(14, "orch", "VERDICT v1 task_id=t1 verdict=correct")];
 	expect(openItems(tsv(held), "orch")).toEqual([]);
 	expect(openItems("", "orch")).toEqual([]);
+});
+
+test("another seat's VERDICT settles nothing else: not a worker's on its own unit, not a stranger's on the audit id, not one on an id never tasked", () => {
+	const open = ROWS.slice(0, 6);
+	const still = [
+		{ taskId: "t1", owes: "owes a VERDICT, MERGED or HOLD line", id: 6 },
+		{ taskId: "t2", owes: "owes a VERDICT, MERGED or HOLD line", id: 7 },
+		{ taskId: "t2-audit", owes: "awaiting RESULT", id: 8 },
+	];
+	expect(openItems(tsv([...open, row(13, "worker", "VERDICT v1 task_id=t2 verdict=correct head=def")]), "orch")).toEqual(still);
+	expect(openItems(tsv([...open, row(13, "worker", "AGMSG-VERDICT v1 task_id=t2-audit verdict=correct head=def")]), "orch")).toEqual(still);
+	expect(openItems(tsv([...open, row(13, "audit", "VERDICT v1 task_id=t9-audit verdict=correct head=def")]), "orch")).toEqual(still);
 });
 
 test("the message lists every item with its row and both ways out", () => {

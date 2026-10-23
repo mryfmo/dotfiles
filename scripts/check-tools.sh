@@ -197,6 +197,39 @@ function check_hcom() {
 }
 
 #
+# @description Refuse the Anthropic OAuth route: Anthropic goes through ANTHROPIC_API_KEY only.
+#   Fails on ANTHROPIC_OAUTH_TOKEN in the environment and on an Anthropic OAuth credential in
+#   omp's auth store; an existing store that cannot be read is a failure too. Prints paths,
+#   names and counts only, never a value.
+#
+function check_anthropic_auth_route() {
+    local store="${PI_CODING_AGENT_DIR:-${HOME%/}/.omp/agent}/agent.db" n
+
+    if [ -n "${ANTHROPIC_OAUTH_TOKEN+set}" ]; then
+        printf 'required failed: ANTHROPIC_OAUTH_TOKEN is set; Anthropic goes through ANTHROPIC_API_KEY only (unset it)\n' >&2
+        ((required_failures += 1))
+    else
+        printf 'found:   ANTHROPIC_OAUTH_TOKEN -> unset\n'
+    fi
+
+    if [ ! -e "${store}" ]; then
+        printf 'not applicable: omp auth store (%s absent)\n' "${store}"
+        return 0
+    fi
+    # stderr is discarded because a schema mismatch echoes the query text.
+    n="$(sqlite3 -readonly "${store}" "select count(*) from auth_credentials where provider='anthropic' and credential_type='oauth'" 2> /dev/null)" || n=
+    if [[ ! ${n} =~ ^[0-9]+$ ]]; then
+        printf 'required failed: omp auth store at %s could not be verified (sqlite3 missing or its schema changed); remove the Anthropic login in omp or make the store readable\n' "${store}" >&2
+        ((required_failures += 1))
+    elif [ "${n}" -eq 0 ]; then
+        printf 'found:   omp auth store -> %s (no Anthropic OAuth credential)\n' "${store}"
+    else
+        printf 'required failed: omp auth store holds %s Anthropic OAuth credential(s) at %s; remove the Anthropic login in omp and use ANTHROPIC_API_KEY\n' "${n}" "${store}" >&2
+        ((required_failures += 1))
+    fi
+}
+
+#
 # @description Report Zed on Ubuntu clients. run_after_05-client-install-zed installs it only with an
 #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
 #
@@ -337,6 +370,7 @@ function main() {
     section "Agent tools"
     check_omp
     check_hcom
+    check_anthropic_auth_route
 
     section "Zed"
     check_zed

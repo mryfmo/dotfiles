@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MERGE_SCRIPT = ROOT / "home/dot_omp/agent/modify_config.yml"
+MERGE_SCRIPT = ROOT / "home/dot_omp/private_agent/modify_private_config.yml"
 MANAGED = "# Generated fixture.\nmodelRoles:\n  default: anthropic/claude-managed\n"
 
 
@@ -25,12 +25,12 @@ class OmpConfigMergeTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def merge(self, current: str, pythonpath: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def merge(self, current: str, path: Path | None = None) -> subprocess.CompletedProcess[str]:
         env = {**os.environ, "CHEZMOI_SOURCE_DIR": str(self.source_dir)}
-        if pythonpath is not None:
-            env["PYTHONPATH"] = str(pythonpath)
+        if path is not None:
+            env["PATH"] = str(path)
         return subprocess.run(
-            [shutil.which("uv"), "run", "--no-project", "--with", "pyyaml", "python", str(MERGE_SCRIPT)],
+            ["/bin/sh", str(MERGE_SCRIPT)],
             input=current,
             text=True,
             capture_output=True,
@@ -64,16 +64,21 @@ class OmpConfigMergeTest(unittest.TestCase):
                 self.assertEqual(result.stdout, current)
                 self.assertEqual(len(result.stderr.splitlines()), 1)
 
-    def test_missing_pyyaml_passes_through_byte_for_byte(self) -> None:
-        stub = self.source_dir / "stub"
-        (stub / "yaml").mkdir(parents=True)
-        (stub / "yaml/__init__.py").write_text('raise ImportError("stub without PyYAML")\n')
+    def test_second_apply_is_a_no_op(self) -> None:
+        first = self.merge("theme:\n  dark: night\nmodelRoles:\n  default: anthropic/claude-old\n").stdout
+
+        self.assertEqual(self.merge(first).stdout, first)
+
+    def test_missing_uv_passes_through_byte_for_byte(self) -> None:
+        bin_dir = self.source_dir / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "cat").symlink_to(shutil.which("cat"))
         current = "modelRoles:\n  default: anthropic/claude-old\n# a comment omp may not keep\n"
 
-        result = self.merge(current, pythonpath=stub)
+        result = self.merge(current, path=bin_dir)
 
         self.assertEqual(result.stdout, current)
-        self.assertIn("PyYAML", result.stderr)
+        self.assertIn("uv", result.stderr)
 
 
 if __name__ == "__main__":

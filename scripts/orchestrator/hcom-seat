@@ -8,7 +8,9 @@
 #   HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For `<role>` the launch line is
 #   `hcom omp --tag <name> --dir <dir> --terminal herdr -- --profile <role>
 #   --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml
-#   -e <ext>...`. The profile equals the role. A named profile reads its own
+#   -e <ext>...`; hcom drops the `--` and forwards what follows to omp verbatim
+#   (hcom 0.7.30 `extract_launch_flags`, `src/commands/launch.rs:572-581`). The
+#   profile equals the role. A named profile reads its own
 #   `~/.omp/profiles/<role>/agent/config.yml` (pi-utils `src/dirs.ts:312-315`, U10),
 #   so the manifest's `modelRoles.default` and `skills.customDirectories` reach the
 #   seat only through the second overlay, rendered per role (U14); the first overlay

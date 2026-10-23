@@ -4,6 +4,7 @@
 Every call appends `{"argv": [...], "cwd": ..., "env": {HCOM_*}}` as one JSON line to `$FAKE_CALLS/<tool>`.
 `hcom omp` plays hcom 0.7.30's herdr terminal preset (`herdr tab create --label <tag>`, then
 `herdr pane run <pane> ...`): the omp tool-args after `--` run in `--dir` with HCOM_LAUNCHED=1 and HCOM_TAG set,
+the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581` at v0.7.30),
 HCOM_DIR inherited. `herdr pane run` executes the command it is given. `omp` records and exits 0.
 """
 

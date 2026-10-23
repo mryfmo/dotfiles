@@ -13,6 +13,7 @@ allowed_files:
   - .orchestration/dotfiles-T133-result-precheck-a04/**
 after: []
 reset_of: [dotfiles-T133-result-precheck-a03]
+retained_predecessor_directories: [.orchestration/dotfiles-T133-result-precheck-a01/, .orchestration/dotfiles-T133-result-precheck-a02/, .orchestration/dotfiles-T133-result-precheck-a03/]
 threat_table:
   - control: "scripts/orchestrator/result-precheck.sh (checks fail closed; a masking failure suppresses both masker streams, deletes captured text, records only masking failed and the masker's exit code, and fails the precheck; evidence writes refuse symlinked components and use same-directory temporary files renamed into place; blob paths are confined before creation; EXIT cleanup masks captures)"
     disposition: "closed: tests/unit/test_result_precheck.py::test_precheck_fails_closed_when_masking_fails"
@@ -252,3 +253,7 @@ masked 0 match(es) in .orchestration/tasks/dotfiles-T133-result-precheck-a04.md
 The fixtures do not validate live bus delivery or live hook deployment.
 Until `PRECHECK_REQUIRED=1` is enabled, invalid precheck evidence warns and acceptance dispatch continues.
 2026-10-19T01:2xZ amendment 1: task=dotfiles-T133-result-precheck-a04 tasks=1 amendments=0 questions=0 results=0 withdrawn=0 revises=0 source=live
+
+## Amendment 1 (2026-10-21T09:34Z, orchestrator; D-024-61)
+
+The regime verifier on PR #411's update-branch head 94fa6465 refused two things the text left implicit: the a01/a02 predecessor artifact directories that the branch carries (inherited read-only through the a01 -> a02 -> a03 -> a04 lineage) are now declared in `retained_predecessor_directories`, and the committed precheck must cover the final head: after every update-branch the worker re-runs the precheck on the new head and commits `precheck.json` for it in a records-only round, since the verifier compares the precheck head with the PR head outside this task's directory. No code requirement changes.

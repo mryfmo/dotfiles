@@ -1,0 +1,280 @@
+[
+  {
+    "_links": {
+      "html": {
+        "href": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4322154977"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442"
+      },
+      "self": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154977"
+      }
+    },
+    "author_association": "NONE",
+    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Parse all valid Bash fence forms**\n\nRecognize fenced Bash blocks whose opening fence is longer than three backticks or indented by up to three spaces. The current regex accepts only a column-zero, exactly-three-backtick opener, so a task containing ````bash` followed by invalid shell syntax is skipped and can pass without a `bash-syntax` refusal. The cited threat-table closure is therefore not established by the test, which exercises only exact triple-backtick fences.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+    "commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "created_at": "2026-10-20T06:40:07Z",
+    "diff_hunk": "@@ -0,0 +1,83 @@\n+#!/usr/bin/env bash\n+# @file pre-send.sh\n+# @brief Check a task text's final bytes before each send, with every machine check CI or the regime applies to it.\n+# @description\n+#   Promoted from the orchestrator's glue (C-100, C-102, M-20261020-01, M-20261020-03). It reads the one task text it\n+#   is given as data: it never edits the file and never runs its prose. Every check runs even after another refuses:\n+#   the task-consistency checker, the validator's own SECRET_PATTERN (line numbers only, never the matched text),\n+#   literal macOS and Linux home paths, the text's self cap (`at or under N lines` against `wc -l`), `/bin/bash -n`\n+#   over every fenced bash block, and the `## Owned by <task_id>` section the text reads from a named record. Each\n+#   refusal prints one named line, and a readable text's sha256 is printed last. Python runs as the pinned 3.15\n+#   interpreter with -I, and uv runs with --no-config --offline. This preflight catches mistakes; it is no trust\n+#   boundary against a hostile same-user process.\n+# @arg $1 string The task text to check.\n+# @exitcode 0 Every check passes.\n+# @exitcode 1 A check refuses, or the argument is missing or unreadable.\n+set -u\n+root=\"$(cd -- \"$(dirname -- \"$0\")/../..\" && pwd)\"\n+py=\"${HOME}/.local/share/mise/installs/python/3.15.0/bin/python3\"\n+if [[ $# -ne 1 ]]; then\n+    echo \"input: refused (usage: pre-send.sh <task.md>)\"\n+    exit 1\n+fi\n+task=\"$1\"\n+if [[ ! -f ${task} || ! -r ${task} ]]; then\n+    echo \"input: refused (not a readable file: ${task})\"\n+    exit 1\n+fi\n+rc=0\n+refuse() {\n+    echo \"$1: refused ($2)\"\n+    rc=1\n+}\n+\n+checker=\"${root}/scripts/orchestrator/task-consistency-check.py\"\n+out=\"$(uv run --no-config --no-project --offline --python \"${py}\" --with pyyaml python -I \"${checker}\" --root \"${root}\" \"${task}\" 2>&1)\" ||\n+    refuse consistency \"$(printf '%s' \"${out}\" | tr -s '\\n ' ' ')\"\n+\n+# SECRET_PATTERN is read from the validator's syntax tree, never imported or copied; fenced blocks are parsed, never run.\n+\"${py}\" -I - \"${root}/scripts/validate-agent-assets.py\" \"${task}\" << 'PY' || rc=1\n+import ast, re, subprocess, sys\n+tree = ast.parse(open(sys.argv[1], encoding=\"utf-8\").read())\n+calls = [n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], \"id\", \"\") == \"SECRET_PATTERN\"]\n+try:\n+    pattern = re.compile(*map(ast.literal_eval, calls[0].args))\n+except (IndexError, ValueError, TypeError, re.error):\n+    sys.exit(print(\"secret-pattern: refused (no literal SECRET_PATTERN in the validator)\") or 1)\n+text, rc = open(sys.argv[2], encoding=\"utf-8\", errors=\"replace\").read(), 0\n+hits = [str(i) for i, line in enumerate(text.split(\"\\n\"), 1) if pattern.search(line)]\n+if hits:\n+    rc = print(f\"secret-pattern: refused ({len(hits)} match(es) on line(s) {','.join(hits)})\") or 1\n+blocks = re.findall(r\"^```(?:bash|sh)\\n(.*?)^```\", text, re.DOTALL | re.MULTILINE)",
+    "html_url": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4322154977",
+    "id": 4322154977,
+    "line": null,
+    "node_id": "PRRC_kwDOSMyAV88AAAABAZ7Z4Q",
+    "original_commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "original_line": 51,
+    "original_position": 51,
+    "original_start_line": null,
+    "path": "scripts/orchestrator/pre-send.sh",
+    "position": 1,
+    "pull_request_review_id": 5581569967,
+    "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442",
+    "reactions": {
+      "+1": 0,
+      "-1": 0,
+      "confused": 0,
+      "eyes": 0,
+      "heart": 0,
+      "hooray": 0,
+      "laugh": 0,
+      "rocket": 0,
+      "total_count": 0,
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154977/reactions"
+    },
+    "side": "RIGHT",
+    "start_line": null,
+    "start_side": null,
+    "subject_type": "line",
+    "updated_at": "2026-10-20T06:40:07Z",
+    "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154977",
+    "user": {
+      "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+      "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+      "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+      "gravatar_id": "",
+      "html_url": "https://github.com/apps/chatgpt-codex-connector",
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "node_id": "BOT_kgDOC98s_g",
+      "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+      "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+      "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+      "site_admin": false,
+      "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+      "type": "Bot",
+      "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+      "user_view_type": "public"
+    }
+  },
+  {
+    "_links": {
+      "html": {
+        "href": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4322154981"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442"
+      },
+      "self": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154981"
+      }
+    },
+    "author_association": "NONE",
+    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject root home-directory literals**\n\nExpand the literal-home check to cover root homes such as `~/.ssh/...` on Linux and `~/...` or `~/...` on macOS. These are home-directory literals, and the repository's authoritative `compiled_home_path_pattern` already treats them as such, but this narrower expression produces no hit and lets a task containing those local-only paths pass.\n\nAGENTS.md reference: [AGENTS.md:L72-L72](https://github.com/mryfmo/dotfiles/blob/6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947/AGENTS.md#L72-L72)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+    "commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "created_at": "2026-10-20T06:40:07Z",
+    "diff_hunk": "@@ -0,0 +1,83 @@\n+#!/usr/bin/env bash\n+# @file pre-send.sh\n+# @brief Check a task text's final bytes before each send, with every machine check CI or the regime applies to it.\n+# @description\n+#   Promoted from the orchestrator's glue (C-100, C-102, M-20261020-01, M-20261020-03). It reads the one task text it\n+#   is given as data: it never edits the file and never runs its prose. Every check runs even after another refuses:\n+#   the task-consistency checker, the validator's own SECRET_PATTERN (line numbers only, never the matched text),\n+#   literal macOS and Linux home paths, the text's self cap (`at or under N lines` against `wc -l`), `/bin/bash -n`\n+#   over every fenced bash block, and the `## Owned by <task_id>` section the text reads from a named record. Each\n+#   refusal prints one named line, and a readable text's sha256 is printed last. Python runs as the pinned 3.15\n+#   interpreter with -I, and uv runs with --no-config --offline. This preflight catches mistakes; it is no trust\n+#   boundary against a hostile same-user process.\n+# @arg $1 string The task text to check.\n+# @exitcode 0 Every check passes.\n+# @exitcode 1 A check refuses, or the argument is missing or unreadable.\n+set -u\n+root=\"$(cd -- \"$(dirname -- \"$0\")/../..\" && pwd)\"\n+py=\"${HOME}/.local/share/mise/installs/python/3.15.0/bin/python3\"\n+if [[ $# -ne 1 ]]; then\n+    echo \"input: refused (usage: pre-send.sh <task.md>)\"\n+    exit 1\n+fi\n+task=\"$1\"\n+if [[ ! -f ${task} || ! -r ${task} ]]; then\n+    echo \"input: refused (not a readable file: ${task})\"\n+    exit 1\n+fi\n+rc=0\n+refuse() {\n+    echo \"$1: refused ($2)\"\n+    rc=1\n+}\n+\n+checker=\"${root}/scripts/orchestrator/task-consistency-check.py\"\n+out=\"$(uv run --no-config --no-project --offline --python \"${py}\" --with pyyaml python -I \"${checker}\" --root \"${root}\" \"${task}\" 2>&1)\" ||\n+    refuse consistency \"$(printf '%s' \"${out}\" | tr -s '\\n ' ' ')\"\n+\n+# SECRET_PATTERN is read from the validator's syntax tree, never imported or copied; fenced blocks are parsed, never run.\n+\"${py}\" -I - \"${root}/scripts/validate-agent-assets.py\" \"${task}\" << 'PY' || rc=1\n+import ast, re, subprocess, sys\n+tree = ast.parse(open(sys.argv[1], encoding=\"utf-8\").read())\n+calls = [n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], \"id\", \"\") == \"SECRET_PATTERN\"]\n+try:\n+    pattern = re.compile(*map(ast.literal_eval, calls[0].args))\n+except (IndexError, ValueError, TypeError, re.error):\n+    sys.exit(print(\"secret-pattern: refused (no literal SECRET_PATTERN in the validator)\") or 1)\n+text, rc = open(sys.argv[2], encoding=\"utf-8\", errors=\"replace\").read(), 0\n+hits = [str(i) for i, line in enumerate(text.split(\"\\n\"), 1) if pattern.search(line)]\n+if hits:\n+    rc = print(f\"secret-pattern: refused ({len(hits)} match(es) on line(s) {','.join(hits)})\") or 1\n+blocks = re.findall(r\"^```(?:bash|sh)\\n(.*?)^```\", text, re.DOTALL | re.MULTILINE)\n+bad = [str(n) for n, b in enumerate(blocks, 1) if subprocess.run([\"/bin/bash\", \"-n\"], input=b, text=True, capture_output=True).returncode]\n+if bad:\n+    rc = print(f\"bash-syntax: refused (block(s) {','.join(bad)})\") or 1\n+sys.exit(rc)\n+PY\n+\n+homes=\"$(LC_ALL=C /usr/bin/grep -nE '/(Users|home)/[A-Za-z0-9._-]+' \"${task}\" | cut -d: -f1 | paste -sd, -)\"",
+    "html_url": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4322154981",
+    "id": 4322154981,
+    "line": null,
+    "node_id": "PRRC_kwDOSMyAV88AAAABAZ7Z5Q",
+    "original_commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "original_line": 58,
+    "original_position": 58,
+    "original_start_line": null,
+    "path": "scripts/orchestrator/pre-send.sh",
+    "position": 1,
+    "pull_request_review_id": 5581569967,
+    "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442",
+    "reactions": {
+      "+1": 0,
+      "-1": 0,
+      "confused": 0,
+      "eyes": 0,
+      "heart": 0,
+      "hooray": 0,
+      "laugh": 0,
+      "rocket": 0,
+      "total_count": 0,
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154981/reactions"
+    },
+    "side": "RIGHT",
+    "start_line": null,
+    "start_side": null,
+    "subject_type": "line",
+    "updated_at": "2026-10-20T06:40:07Z",
+    "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4322154981",
+    "user": {
+      "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+      "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+      "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+      "gravatar_id": "",
+      "html_url": "https://github.com/apps/chatgpt-codex-connector",
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "node_id": "BOT_kgDOC98s_g",
+      "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+      "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+      "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+      "site_admin": false,
+      "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+      "type": "Bot",
+      "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+      "user_view_type": "public"
+    }
+  },
+  {
+    "_links": {
+      "html": {
+        "href": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4333030980"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442"
+      },
+      "self": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333030980"
+      }
+    },
+    "author_association": "COLLABORATOR",
+    "body": "Disposition (orchestrator): `fixed:c1ba793de9e4e79390dcc9f9c7f6a089c65e2a09` (the a02 helper parses every fence CommonMark-style: up to three spaces of indentation, openers of three or more backticks or tildes, closers of at least the opener's length; tests 2c437db2 cover tilde fences and a fence left open at the end; the security review of 78882410 lists complete fence parsing as supported).",
+    "commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "created_at": "2026-10-21T04:26:48Z",
+    "diff_hunk": "@@ -0,0 +1,83 @@\n+#!/usr/bin/env bash\n+# @file pre-send.sh\n+# @brief Check a task text's final bytes before each send, with every machine check CI or the regime applies to it.\n+# @description\n+#   Promoted from the orchestrator's glue (C-100, C-102, M-20261020-01, M-20261020-03). It reads the one task text it\n+#   is given as data: it never edits the file and never runs its prose. Every check runs even after another refuses:\n+#   the task-consistency checker, the validator's own SECRET_PATTERN (line numbers only, never the matched text),\n+#   literal macOS and Linux home paths, the text's self cap (`at or under N lines` against `wc -l`), `/bin/bash -n`\n+#   over every fenced bash block, and the `## Owned by <task_id>` section the text reads from a named record. Each\n+#   refusal prints one named line, and a readable text's sha256 is printed last. Python runs as the pinned 3.15\n+#   interpreter with -I, and uv runs with --no-config --offline. This preflight catches mistakes; it is no trust\n+#   boundary against a hostile same-user process.\n+# @arg $1 string The task text to check.\n+# @exitcode 0 Every check passes.\n+# @exitcode 1 A check refuses, or the argument is missing or unreadable.\n+set -u\n+root=\"$(cd -- \"$(dirname -- \"$0\")/../..\" && pwd)\"\n+py=\"${HOME}/.local/share/mise/installs/python/3.15.0/bin/python3\"\n+if [[ $# -ne 1 ]]; then\n+    echo \"input: refused (usage: pre-send.sh <task.md>)\"\n+    exit 1\n+fi\n+task=\"$1\"\n+if [[ ! -f ${task} || ! -r ${task} ]]; then\n+    echo \"input: refused (not a readable file: ${task})\"\n+    exit 1\n+fi\n+rc=0\n+refuse() {\n+    echo \"$1: refused ($2)\"\n+    rc=1\n+}\n+\n+checker=\"${root}/scripts/orchestrator/task-consistency-check.py\"\n+out=\"$(uv run --no-config --no-project --offline --python \"${py}\" --with pyyaml python -I \"${checker}\" --root \"${root}\" \"${task}\" 2>&1)\" ||\n+    refuse consistency \"$(printf '%s' \"${out}\" | tr -s '\\n ' ' ')\"\n+\n+# SECRET_PATTERN is read from the validator's syntax tree, never imported or copied; fenced blocks are parsed, never run.\n+\"${py}\" -I - \"${root}/scripts/validate-agent-assets.py\" \"${task}\" << 'PY' || rc=1\n+import ast, re, subprocess, sys\n+tree = ast.parse(open(sys.argv[1], encoding=\"utf-8\").read())\n+calls = [n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], \"id\", \"\") == \"SECRET_PATTERN\"]\n+try:\n+    pattern = re.compile(*map(ast.literal_eval, calls[0].args))\n+except (IndexError, ValueError, TypeError, re.error):\n+    sys.exit(print(\"secret-pattern: refused (no literal SECRET_PATTERN in the validator)\") or 1)\n+text, rc = open(sys.argv[2], encoding=\"utf-8\", errors=\"replace\").read(), 0\n+hits = [str(i) for i, line in enumerate(text.split(\"\\n\"), 1) if pattern.search(line)]\n+if hits:\n+    rc = print(f\"secret-pattern: refused ({len(hits)} match(es) on line(s) {','.join(hits)})\") or 1\n+blocks = re.findall(r\"^```(?:bash|sh)\\n(.*?)^```\", text, re.DOTALL | re.MULTILINE)",
+    "html_url": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4333030980",
+    "id": 4333030980,
+    "in_reply_to_id": 4322154977,
+    "line": null,
+    "node_id": "PRRC_kwDOSMyAV88AAAABAkTORA",
+    "original_commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "original_line": 51,
+    "original_position": 51,
+    "original_start_line": null,
+    "path": "scripts/orchestrator/pre-send.sh",
+    "position": 1,
+    "pull_request_review_id": 5594957908,
+    "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442",
+    "reactions": {
+      "+1": 0,
+      "-1": 0,
+      "confused": 0,
+      "eyes": 0,
+      "heart": 0,
+      "hooray": 0,
+      "laugh": 0,
+      "rocket": 0,
+      "total_count": 0,
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333030980/reactions"
+    },
+    "side": "RIGHT",
+    "start_line": null,
+    "start_side": null,
+    "subject_type": "line",
+    "updated_at": "2026-10-21T04:26:48Z",
+    "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333030980",
+    "user": {
+      "avatar_url": "https://avatars.githubusercontent.com/u/319443150?v=4",
+      "events_url": "https://api.github.com/users/moriya-fumio-thd/events{/privacy}",
+      "followers_url": "https://api.github.com/users/moriya-fumio-thd/followers",
+      "following_url": "https://api.github.com/users/moriya-fumio-thd/following{/other_user}",
+      "gists_url": "https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}",
+      "gravatar_id": "",
+      "html_url": "https://github.com/moriya-fumio-thd",
+      "id": 319443150,
+      "login": "moriya-fumio-thd",
+      "node_id": "U_kgDOEwpQzg",
+      "organizations_url": "https://api.github.com/users/moriya-fumio-thd/orgs",
+      "received_events_url": "https://api.github.com/users/moriya-fumio-thd/received_events",
+      "repos_url": "https://api.github.com/users/moriya-fumio-thd/repos",
+      "site_admin": false,
+      "starred_url": "https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/moriya-fumio-thd/subscriptions",
+      "type": "User",
+      "url": "https://api.github.com/users/moriya-fumio-thd",
+      "user_view_type": "public"
+    }
+  },
+  {
+    "_links": {
+      "html": {
+        "href": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4333031187"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442"
+      },
+      "self": {
+        "href": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333031187"
+      }
+    },
+    "author_association": "COLLABORATOR",
+    "body": "Disposition (orchestrator): `fixed:0bfa4eda24d35e9b474cd202e49cd985a98c9710` (pre-send.sh reads home literals through the validator's own compiled_home_path_pattern, whose machine-independent forms include ~, ~ and ~; scripts/validate-agent-assets.py:1400-1404).",
+    "commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "created_at": "2026-10-21T04:26:51Z",
+    "diff_hunk": "@@ -0,0 +1,83 @@\n+#!/usr/bin/env bash\n+# @file pre-send.sh\n+# @brief Check a task text's final bytes before each send, with every machine check CI or the regime applies to it.\n+# @description\n+#   Promoted from the orchestrator's glue (C-100, C-102, M-20261020-01, M-20261020-03). It reads the one task text it\n+#   is given as data: it never edits the file and never runs its prose. Every check runs even after another refuses:\n+#   the task-consistency checker, the validator's own SECRET_PATTERN (line numbers only, never the matched text),\n+#   literal macOS and Linux home paths, the text's self cap (`at or under N lines` against `wc -l`), `/bin/bash -n`\n+#   over every fenced bash block, and the `## Owned by <task_id>` section the text reads from a named record. Each\n+#   refusal prints one named line, and a readable text's sha256 is printed last. Python runs as the pinned 3.15\n+#   interpreter with -I, and uv runs with --no-config --offline. This preflight catches mistakes; it is no trust\n+#   boundary against a hostile same-user process.\n+# @arg $1 string The task text to check.\n+# @exitcode 0 Every check passes.\n+# @exitcode 1 A check refuses, or the argument is missing or unreadable.\n+set -u\n+root=\"$(cd -- \"$(dirname -- \"$0\")/../..\" && pwd)\"\n+py=\"${HOME}/.local/share/mise/installs/python/3.15.0/bin/python3\"\n+if [[ $# -ne 1 ]]; then\n+    echo \"input: refused (usage: pre-send.sh <task.md>)\"\n+    exit 1\n+fi\n+task=\"$1\"\n+if [[ ! -f ${task} || ! -r ${task} ]]; then\n+    echo \"input: refused (not a readable file: ${task})\"\n+    exit 1\n+fi\n+rc=0\n+refuse() {\n+    echo \"$1: refused ($2)\"\n+    rc=1\n+}\n+\n+checker=\"${root}/scripts/orchestrator/task-consistency-check.py\"\n+out=\"$(uv run --no-config --no-project --offline --python \"${py}\" --with pyyaml python -I \"${checker}\" --root \"${root}\" \"${task}\" 2>&1)\" ||\n+    refuse consistency \"$(printf '%s' \"${out}\" | tr -s '\\n ' ' ')\"\n+\n+# SECRET_PATTERN is read from the validator's syntax tree, never imported or copied; fenced blocks are parsed, never run.\n+\"${py}\" -I - \"${root}/scripts/validate-agent-assets.py\" \"${task}\" << 'PY' || rc=1\n+import ast, re, subprocess, sys\n+tree = ast.parse(open(sys.argv[1], encoding=\"utf-8\").read())\n+calls = [n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], \"id\", \"\") == \"SECRET_PATTERN\"]\n+try:\n+    pattern = re.compile(*map(ast.literal_eval, calls[0].args))\n+except (IndexError, ValueError, TypeError, re.error):\n+    sys.exit(print(\"secret-pattern: refused (no literal SECRET_PATTERN in the validator)\") or 1)\n+text, rc = open(sys.argv[2], encoding=\"utf-8\", errors=\"replace\").read(), 0\n+hits = [str(i) for i, line in enumerate(text.split(\"\\n\"), 1) if pattern.search(line)]\n+if hits:\n+    rc = print(f\"secret-pattern: refused ({len(hits)} match(es) on line(s) {','.join(hits)})\") or 1\n+blocks = re.findall(r\"^```(?:bash|sh)\\n(.*?)^```\", text, re.DOTALL | re.MULTILINE)\n+bad = [str(n) for n, b in enumerate(blocks, 1) if subprocess.run([\"/bin/bash\", \"-n\"], input=b, text=True, capture_output=True).returncode]\n+if bad:\n+    rc = print(f\"bash-syntax: refused (block(s) {','.join(bad)})\") or 1\n+sys.exit(rc)\n+PY\n+\n+homes=\"$(LC_ALL=C /usr/bin/grep -nE '/(Users|home)/[A-Za-z0-9._-]+' \"${task}\" | cut -d: -f1 | paste -sd, -)\"",
+    "html_url": "https://github.com/mryfmo/dotfiles/pull/442#discussion_r4333031187",
+    "id": 4333031187,
+    "in_reply_to_id": 4322154981,
+    "line": null,
+    "node_id": "PRRC_kwDOSMyAV88AAAABAkTPEw",
+    "original_commit_id": "6a9edf5bb76a0e2bf4cc7acded62db0dcae7c947",
+    "original_line": 58,
+    "original_position": 58,
+    "original_start_line": null,
+    "path": "scripts/orchestrator/pre-send.sh",
+    "position": 1,
+    "pull_request_review_id": 5594958141,
+    "pull_request_url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/442",
+    "reactions": {
+      "+1": 0,
+      "-1": 0,
+      "confused": 0,
+      "eyes": 0,
+      "heart": 0,
+      "hooray": 0,
+      "laugh": 0,
+      "rocket": 0,
+      "total_count": 0,
+      "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333031187/reactions"
+    },
+    "side": "RIGHT",
+    "start_line": null,
+    "start_side": null,
+    "subject_type": "line",
+    "updated_at": "2026-10-21T04:26:51Z",
+    "url": "https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4333031187",
+    "user": {
+      "avatar_url": "https://avatars.githubusercontent.com/u/319443150?v=4",
+      "events_url": "https://api.github.com/users/moriya-fumio-thd/events{/privacy}",
+      "followers_url": "https://api.github.com/users/moriya-fumio-thd/followers",
+      "following_url": "https://api.github.com/users/moriya-fumio-thd/following{/other_user}",
+      "gists_url": "https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}",
+      "gravatar_id": "",
+      "html_url": "https://github.com/moriya-fumio-thd",
+      "id": 319443150,
+      "login": "moriya-fumio-thd",
+      "node_id": "U_kgDOEwpQzg",
+      "organizations_url": "https://api.github.com/users/moriya-fumio-thd/orgs",
+      "received_events_url": "https://api.github.com/users/moriya-fumio-thd/received_events",
+      "repos_url": "https://api.github.com/users/moriya-fumio-thd/repos",
+      "site_admin": false,
+      "starred_url": "https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/moriya-fumio-thd/subscriptions",
+      "type": "User",
+      "url": "https://api.github.com/users/moriya-fumio-thd",
+      "user_view_type": "public"
+    }
+  }
+]

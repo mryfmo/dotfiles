@@ -3,6 +3,7 @@ format: 2
 task_id: dotfiles-T133-worker-write-boundary-slice1-a01
 kind: code
 security: true
+previous_sha256: 527f7f9460b694bedb177c81a0713932322cebe28c6ef1b71290fd36468224e9
 worker: a010
 worker_kind: codex
 worker_profile: security
@@ -185,10 +186,12 @@ Report visible impact: this slice declares/tests worker/admin policy, startup co
 No session loses its stop gate from this slice because the tracked commands do not change. dotfiles-T133-worker-write-boundary-slice5-a01 owns switching .claude/settings.json only after stage A provisions <home>/.claude/hooks/orchestrator-only.sh; this slice neither installs that file nor activates its tracked references.
 No deployment, make update/application, login/keyring change, system installation, restart, permission-policy deployment, live socket/worker probe or live-dependent release. Later slices own screening/output registration, orchestrator activation, update/staging/docs/ignore and deployment reconciliation.
 
+Amendment 1 (`previous_sha256: 527f7f9460b694bedb177c81a0713932322cebe28c6ef1b71290fd36468224e9`): the Codex sandbox denies the Herdr socket, so `agmsg-dispatch` cannot carry this seat's messages (your PONG attempt for PING 2984 exited 1: `PermissionDenied`, `pane not found or unavailable: wJ:p1`). The named route for every PONG and the RESULT of this task is the pane-less path of Orchestrator Playbook step 6, run from sandboxed Bash: write the single line to a file under `.orchestration/dotfiles-T133-worker-write-boundary-slice1-a01/` and send it with `~/.agents/skills/agmsg/scripts/send.sh dotfiles-conformance codex-standard-dot-a010 claude-deep-dot --body-file <that file>` (a013 delivered its PONGs this way on 2026-10-21T05:59Z). This route is the named route, not 'another tool' under the boundary-denial sentence above, and the orchestrator reads the bus at each milestone. First reply `AGMSG-PONG v1 task_id=dotfiles-T133-worker-write-boundary-slice1-a01 status=alive` by that route, then start round 1 as written; the unsent `blocked-pong.txt` and `liveness-2998.txt` stay as evidence.
+
 ## Checks
 
 ```text
-prerequisites merged in canonical main 4eafd890454e495fdb1d429734c5835e46c87652 (gh api repos/mryfmo/dotfiles/branches/main): dotfiles-T133-worker-sandbox-exclusions-a02 = PR #448 merge e042663b2d6efd9205f7d388bf881c01d3880642; dotfiles-T133-trusted-entrypoint-pins-a01 = PR #449 merge 4eafd890454e495fdb1d429734c5835e46c87652; the dispatch branch starts fresh from that main, so merge-base = that SHA
+prerequisites merged in canonical main 7da0cdfab9de9fbea673b82379acd4e317115065 (gh api --hostname github.com repos/mryfmo/dotfiles/branches/main --jq .commit.sha, 2026-10-22T00:46Z, exit 0; git merge-base --is-ancestor 4eafd890454e495fdb1d429734c5835e46c87652 7da0cdfa exit 0): dotfiles-T133-worker-sandbox-exclusions-a02 = PR #448 merge e042663b2d6efd9205f7d388bf881c01d3880642; dotfiles-T133-trusted-entrypoint-pins-a01 = PR #449 merge 4eafd890454e495fdb1d429734c5835e46c87652; the dispatch branch starts fresh from that main, so merge-base = that SHA
 post-prerequisite baseline at that main: agent-config.yaml worker 284:    excludedCommands: [] 285:    linux_excluded_commands: []; validate-agent-assets.py line 344 fails any non-empty worker excludedCommands; home/dot_mise/config.toml node = "26.12.0" python = "3.15.0" uv = "0.13.1"
-observed 2026-10-21T09:17Z by the orchestrator (Claude seat, sandboxed Bash); C1-C10/C7b via pre-send.sh on these bytes exit 0 (see the anchor review record); every value is pasted command output
+observed 2026-10-21T09:17Z and re-observed host-bound 2026-10-22T00:46Z (amendment 1) by the orchestrator (Claude seat, sandboxed Bash); C1-C10/C7b via pre-send.sh on these bytes exit 0 (see the anchor review record); every value is pasted command output
 ```

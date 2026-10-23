@@ -87,3 +87,4 @@ U13-landed	phase2	regime CI の Program-Unit マーカー（pstack U13）着地	
 U3-U4-landed	phase2	openai-siwc 拡張（U3）と omp 設定描画（U4）着地	merged	#458 → 8846f34b, #406 → 34e216e9; 5 program PRs on main; U7/U10 spawned	2026-10-23T03:48:01Z
 G1-asset-pong	phase2	本番 HOME にブリッジ資産を導入し patch 04 入りで PONG（操作者）	passed	install receipt (trimmed patch 01 74964fc8…, SDK 0.3.309) + PONG via ~/.local/lib/omp-extensions/pi-claude-bridge; U2 merge armed	2026-10-23T03:53:48Z
 U2-landed	phase2	ブリッジ資産（U2）と記録同期（#464）着地	merged	#461 → a729702e, #464 → 0f0fe4c6; main checkout ff; remaining: U7, U10 in flight; U9, U11, U12 next	2026-10-23T04:25:13Z
+code-units-landed	phase2	コード側 11 ユニット着地、切替 X へ	ready-for-X	main c67d4d0b; X0 make update presented to the operator	2026-10-23T05:58:55Z

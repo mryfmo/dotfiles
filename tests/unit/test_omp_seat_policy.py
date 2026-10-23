@@ -167,7 +167,11 @@ TABLE = {
         ("bash", "hcom send --thread regime -- 'AGMSG-PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
         ("bash", f"hcom send --thread regime -- '{VERDICT}' | tee x", "deny"),
         ("bash", f"hcom send --thread regime -- '{VERDICT}'; rm x", "deny"),
-        ("bash", 'hcom send --thread regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"', "deny"),
+        (
+            "bash",
+            'hcom send --thread regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
+            "deny",
+        ),
         ("bash", f"hcom send @operator --intent ack --reply-to 26 --thread regime --name vera -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --from coordinator -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --name worker-sol -- '{VERDICT}'", "deny"),

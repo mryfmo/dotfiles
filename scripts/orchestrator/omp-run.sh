@@ -65,10 +65,10 @@ orchestrator | worker | audit) ;;
 *) refuse "unknown role '${role}'; roles are orchestrator, worker and audit" ;;
 esac
 [[ ${mode} == text || ${mode} == json ]] || refuse "mode must be text or json, not '${mode}'"
-# omp and the extension paths are made absolute before the cd, so a relative PATH entry cannot pick <cwd>/bin/omp
-# from a PR head and omp loads the directories that were checked.
+# omp and the extension paths are resolved with realpath before the cd, so a relative PATH entry cannot pick
+# <cwd>/bin/omp from a PR head and omp loads the directories that were checked.
 omp_bin=$(command -v omp) || refuse 'omp not found on PATH'
-[[ ${omp_bin} == /* ]] || omp_bin=${PWD}/${omp_bin}
+omp_bin=$(realpath "${omp_bin}")
 [[ -s ${prompt_file} ]] || refuse "prompt file missing or empty: ${prompt_file}"
 policy=${HOME}/.agents/omp/policies/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay not found: ${policy}"
@@ -76,8 +76,7 @@ policy=${HOME}/.agents/omp/policies/${role}.yml
 argv=(--profile "${role}" --config "${policy}")
 for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory not found: ${ext}"
-    [[ ${ext} == /* ]] || ext=${PWD}/${ext}
-    argv+=(-e "${ext}")
+    argv+=(-e "$(realpath "${ext}")")
 done
 [[ -d ${cwd} ]] || refuse "cwd not found: ${cwd}"
 argv+=(--no-session --max-time "${max_time}")

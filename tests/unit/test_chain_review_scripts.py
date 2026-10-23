@@ -22,7 +22,11 @@ STUB = (
     '"$(pwd -P)" "$(git rev-parse HEAD)" "$PATH" "$(cat)"; }} >> "$CALLS/{name}.log"\n'
     'cat "$CALLS/transcript"\nexit "$(cat "$CALLS/status" 2> /dev/null || echo 0)"\n'
 )
-ARGV = "argv: --profile review -s read-only review --base main"
+POLICY = (
+    '-c shell_environment_policy.set.GIT_NO_REPLACE_OBJECTS="1" '
+    '-c shell_environment_policy.set.GIT_GRAFT_FILE="/dev/null"'
+)
+ARGV = f"argv: --profile review -s read-only {POLICY} review --base "  # then canonical main's sha, as gh prints it
 SCAN_HIT = "sandbox scan: unsandboxed mutation calls above (C-29); judge before the audit"
 
 
@@ -71,6 +75,15 @@ class ChainReviewScriptsTest(unittest.TestCase):
         path.write_text("#!/bin/bash\n" + log + body)
         path.chmod(0o755)
 
+    def gh(self, answer, status=0):
+        """A gh stub first on PATH: it logs its argv, prints answer as `gh api --jq .object.sha` would, and exits status."""
+        path = self.temp / "bin/gh"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f'#!/bin/bash\necho "argv: $*" >> "{self.calls}/gh.log"\nprintf "%s\\n" "{answer}"\nexit {status}\n'
+        )
+        path.chmod(0o755)
+
     def review_head(self, name="review"):
         """A clean review worktree at main, a head commit made in it, codex stubbed and mise failing on PATH."""
         review = self.temp / name
@@ -81,6 +94,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
         head = self.git("rev-parse", "HEAD", cwd=review)
         self.git("checkout", "-q", "--detach", "main", cwd=review)
         self.stub(self.temp / "bin/codex", "codex")
+        self.gh(self.git("rev-parse", "main"))
         self.mise("exit 1\n")
         (self.repo / ".orchestration/validation").mkdir(parents=True, exist_ok=True)
         path = f"{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
@@ -116,6 +130,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
         head, base = self.git("rev-parse", "HEAD", cwd=review), self.git("rev-parse", "main")
         self.git("checkout", "-q", "--detach", "main", cwd=review)
         self.stub(self.temp / "bin/codex", "codex")
+        self.gh(base)
         self.mise("exit 1\n")
         (self.repo / ".orchestration/validation").mkdir(parents=True)
         path = f"./bin{os.pathsep}{self.temp / 'bin'}{os.pathsep}{os.environ['PATH']}"
@@ -124,7 +139,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
         final = f"One finding.\n- [P2] {review}/b.txt:1 b is new\n- [P2] {review}/b.txt:1 b is new\n"
         (self.calls / "transcript").write_text(f"codex\n- [P1] {review}/a.txt:1 superseded\ncodex\n{final}")
         finding = "- [P2] b.txt:1 b is new"
-        call = f"{ARGV}\ncwd: {review}\nhead: {head}\npath: {path}\nstdin: \n"
+        call = f"{ARGV}{base}\ncwd: {review}\nhead: {head}\npath: {path}\nstdin: \n"
 
         def out(task):
             return self.repo / f".orchestration/validation/{task}-local-review-{head[:7]}.md"
@@ -147,7 +162,7 @@ class ChainReviewScriptsTest(unittest.TestCase):
             text = out("t-a").read_text()
             front = f"---\ntask: t-a\nhead: {head}\npr: 9\nbase: {base}\nstarted: .+\nfinished: .+\nfindings: 1\n"
             self.assertRegex(text, "^" + re.escape(front).replace(r"\.\+", ".+"))
-            self.assertIn("engine: codex review --base main (profile review, read-only)\n---\n", text)
+            self.assertIn(f"engine: codex review --base {base} (profile review, read-only)\n---\n", text)
             self.assertIn(f"\n{finding}\n\n```text\nOne finding.\n{finding}\n{finding}\n```\n", text)
             self.assertNotIn("superseded", text)
             self.assertEqual([], list(self.temp.glob("local-review.*")))
@@ -225,8 +240,77 @@ class ChainReviewScriptsTest(unittest.TestCase):
         self.run_tool("local-review.sh", "t-a", head, 9, env=env)
         self.assertEqual(1, self.log("installed").count(ARGV))
         self.assertEqual("", self.log("codex"))
-        asked = [f"argv: which {name} MISE_CONFIG_FILE=unset" for name in ("codex", "codex", "bash")]
+        asked = [f"argv: which {name} MISE_CONFIG_FILE=unset" for name in ("codex", "codex", "bash", "gh")]
         self.assertEqual(asked, self.log("mise").splitlines())
+
+    def test_local_review_takes_its_base_from_canonical_main_never_a_local_ref(self):
+        # a07 item 2 (the P1-6 slice-1 text review): a worker seat can move main and origin/main in the shared .git.
+        review, head, env = self.review_head()
+        canonical = self.git("rev-parse", "main")
+        for ref in ("refs/heads/main", "refs/remotes/origin/main"):  # planted at the head under review
+            self.git("update-ref", ref, head)
+        (self.calls / "transcript").write_text("codex\nNo findings.\n")
+        for answer, status, reason in (
+            ("", 1, "canonical main could not be read"),
+            ("main", 0, "canonical main could not be read"),
+            ("0" * 40, 0, "is not a local commit (fetch origin main first)"),
+            (canonical, 1, "canonical main could not be read"),  # a sha printed by a failing call is no answer
+        ):
+            with self.subTest(answer=answer, status=status):
+                self.gh(answer, status)
+                self.assertIn(reason, self.run_tool("local-review.sh", "t-a", head, 9, code=2, env=env))
+                self.assertEqual(canonical, self.git("rev-parse", "HEAD", cwd=review))
+        self.assertEqual("", self.log("codex"))
+        self.gh(canonical)
+        self.run_tool("local-review.sh", "t-a", head, 9, env=env)
+        api = "argv: api repos/mryfmo/dotfiles/git/ref/heads/main --hostname github.com --jq .object.sha\n"
+        self.assertEqual(api * 5, self.log("gh"))
+        self.assertEqual(f"{ARGV}{canonical}\n", self.log("codex").splitlines(keepends=True)[0])
+        out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
+        self.assertIn(f"\nbase: {canonical}\n", out.read_text())
+        # Design 5.14 item 8: refs/replace/ and info/grafts in the shared .git can hide the head's change from a review
+        # from the merge base, as codex takes it: a replacement gives canonical main the head's tree, and a graft cuts
+        # the head off canonical main. A parentless fake keeps both attacks acyclic, so merge-base answers the same way
+        # on every run.
+        merge = self.temp / "bin/merge-review"
+        merge.write_text(
+            '#!/bin/bash\nb=$(git merge-base "${@: -1}" HEAD)\nprintf "codex\\n"\n'
+            'git diff --name-only "$b" HEAD | sed "s/.*/- [P2] &:1 changed/"\n'
+        )
+        merge.chmod(0o755)
+        fake = self.git("commit-tree", "-m", "fake", head + "^{tree}")
+        grafts = self.repo / ".git/info/grafts"
+        for name, plant, unplant in (
+            ("replace", lambda: self.git("replace", canonical, fake), lambda: self.git("replace", "-d", canonical)),
+            ("graft", lambda: grafts.write_text(f"{head} {fake}\n"), grafts.unlink),
+        ):
+            with self.subTest(name):
+                plant()
+                try:
+                    merged = {**env, "CODEX_BIN": str(merge)}
+                    stdout = self.run_tool("local-review.sh", f"t-{name}", head, 9, code=3, env=merged)
+                    self.assertIn("- [P2] b.txt:1 changed", stdout)
+                finally:
+                    unplant()
+
+    def test_local_review_passes_no_replace_and_no_graft_to_the_commands_codex_spawns(self):
+        # Local review of dbc8b67: Codex's shell_environment_policy.inherit=core drops exported variables from the
+        # commands it spawns, so the two values reach them only as shell_environment_policy.set overrides.
+        _, head, env = self.review_head()
+        codex = self.temp / "bin/policy-codex"
+        codex.write_text(
+            '#!/bin/bash\nkept=()\nfor a in "$@"; do\n    case $a in shell_environment_policy.set.*)\n'
+            '        echo "override: $a" >> "$CALLS/policy.log"\n        kv=${a#shell_environment_policy.set.}\n'
+            '        v=${kv#*=}; v=${v#\\"}; kept+=("${kv%%=*}=${v%\\"}") ;;\n    esac\ndone\n'
+            "# inherit=core: the spawned command starts from an empty environment plus the set overrides.\n"
+            'env -i PATH=/usr/bin:/bin "${kept[@]}" /usr/bin/env | /usr/bin/grep "^GIT_" | sort >> "$CALLS/spawned.log"\n'
+            'printf "codex\\nNo findings.\\n"\n'
+        )
+        codex.chmod(0o755)
+        self.run_tool("local-review.sh", "t-a", head, 9, env={**env, "CODEX_BIN": str(codex)})
+        overrides = [f"override: {o.removeprefix('-c ')}" for o in POLICY.split(" -c ")]
+        self.assertEqual(overrides, self.log("policy").splitlines())
+        self.assertEqual(["GIT_GRAFT_FILE=/dev/null", "GIT_NO_REPLACE_OBJECTS=1"], self.log("spawned").splitlines())
 
     def test_local_review_resolves_the_review_binary_before_the_checkout(self):
         # audit:b6ce4ff:4: mise answers while the review worktree is still where the run found it, not at the head.
@@ -282,10 +366,12 @@ class ChainReviewScriptsTest(unittest.TestCase):
         interp.chmod(0o755)
         out = self.repo / f".orchestration/validation/t-a-local-review-{head[:7]}.md"
         with self.subTest("the interpreter mise answers runs the binary"):
-            self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+            # mise knows the installed tools only, so gh falls back to the stub on PATH.
+            self.mise(f'[ -e "{self.temp}/installs/$2" ] && printf "%s\\n" "{self.temp}/installs/$2"\n')
             self.run_tool("local-review.sh", "t-a", head, 9, env=env)
             self.assertEqual(
-                f"--flag {binary} {ARGV.removeprefix('argv: ')}\n", (self.calls / "interp.argv").read_text()
+                f"--flag {binary} {ARGV.removeprefix('argv: ')}{self.git('rev-parse', 'main')}\n",
+                (self.calls / "interp.argv").read_text(),
             )
             self.assertEqual(1, self.log("codex").count(ARGV))
         out.unlink()
@@ -315,9 +401,9 @@ class ChainReviewScriptsTest(unittest.TestCase):
             f'#!/bin/bash\nprintf "%s %s\\n" "$0" "$*" > "{self.calls}/fakeinterp.argv"\nshift 2\nexec /bin/bash "$@"\n'
         )
         interp.chmod(0o755)
-        self.mise(f'printf "%s\\n" "{self.temp}/installs/$2"\n')
+        self.mise(f'[ -e "{self.temp}/installs/$2" ] && printf "%s\\n" "{self.temp}/installs/$2"\n')
         self.run_tool("local-review.sh", "t-a", head, 9, env=env)
-        expected = f"{interp} --flag x {binary} {ARGV.removeprefix('argv: ')}\n"
+        expected = f"{interp} --flag x {binary} {ARGV.removeprefix('argv: ')}{self.git('rev-parse', 'main')}\n"
         self.assertEqual(expected, (self.calls / "fakeinterp.argv").read_text())
         self.assertEqual(1, self.log("codex").count(ARGV))
 

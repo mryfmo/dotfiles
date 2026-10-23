@@ -122,6 +122,18 @@ bash:
       approval: allow
     - match: "gh api repos/*"
       approval: allow
+    # The one bus reply (hcom-audit SKILL): the thread route under the identity hcom bound at
+    # launch, so a claimed `--from`, `--name` or `-b` is refused first. Quotes do not break the
+    # allow, but a `$` or a backtick inside double quotes does (src/tools/bash.ts:94-136), so
+    # the seat pastes the sha and never writes `$(...)` in the line.
+    - match: "*hcom send *--from*"
+      approval: deny
+    - match: "*hcom send *--name*"
+      approval: deny
+    - match: "*hcom send * -b *"
+      approval: deny
+    - match: "hcom send --thread * -- *"
+      approval: allow
     # Everything else is denied.
     - match: "*"
       approval: deny

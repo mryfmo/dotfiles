@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@oh-my-pi/pi-coding-agent": [
+        "../../../../.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
+      ],
+      "@oh-my-pi/*": [
+        "../../../../.local/lib/node_modules/@oh-my-pi/pi-coding-agent/node_modules/@oh-my-pi/*"
+      ]
+    }
+  },
+  "include": ["src", "tests"]
+}

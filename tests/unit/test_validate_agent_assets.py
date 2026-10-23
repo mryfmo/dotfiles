@@ -348,6 +348,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             name: {
                 "claude": {"model": "claude-model", "effort": "high"},
                 "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
+                "omp": {"model": "claude-bridge/claude-model"},
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
@@ -379,6 +380,30 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_valid_agent_manifest()
 
         self.module.validate_agent_manifest()
+
+    def test_agent_manifest_accepts_the_four_omp_providers_and_rejects_others(self) -> None:
+        accepted = (
+            "claude-bridge/claude-model",
+            "openai-siwc/gpt-model",
+            "anthropic/claude-model",
+            "openai-codex/gpt-model",
+        )
+        for value in accepted:
+            with self.subTest(value=value):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["audit"]["omp"]["model"] = value
+                self.module.validate_agent_manifest()
+        for value in ("foo/bar", "claude-bridge/claude model", "claude-model", None):
+            with self.subTest(value=value):
+                manifest = self.write_valid_agent_manifest()
+                if value is None:
+                    del manifest["model_profiles"]["audit"]["omp"]
+                else:
+                    manifest["model_profiles"]["audit"]["omp"]["model"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
 
     def test_agent_manifest_rejects_invalid_or_missing_worker_kind(self) -> None:
         for value in ("banana", None):

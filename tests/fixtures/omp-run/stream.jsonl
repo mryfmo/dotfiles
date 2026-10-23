@@ -1,0 +1,4 @@
+{"type":"tool_execution_start","toolName":"bash","args":{"command":"echo bridged-tool-ok","timeout":120}}
+{"type":"tool_execution_end","toolName":"bash","result":{"content":[{"type":"text","text":"bridged-tool-ok\n"}]},"isError":false}
+{"type":"turn_end"}
+{"type":"agent_end"}

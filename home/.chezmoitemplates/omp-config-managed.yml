@@ -1,0 +1,3 @@
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+modelRoles:
+  default: claude-bridge/claude-fable-5-1

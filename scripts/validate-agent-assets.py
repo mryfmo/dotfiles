@@ -800,6 +800,11 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
 
 
+# omp model roles: Claude seats through pi-claude-bridge, OpenAI seats through openai-siwc
+# (D-024-129/130); anthropic and openai-codex stay expressible as fallback routes.
+OMP_MODEL_RE = re.compile(r"^(openai-codex|openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+
+
 def validate_agent_manifest() -> dict[str, Any]:
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
     manifest = load_yaml(manifest_path)
@@ -881,6 +886,10 @@ def validate_agent_manifest() -> dict[str, Any]:
             for key in keys:
                 if not profile.get(agent, {}).get(key):
                     fail(f"{manifest_path} model profile {name}.{agent}.{key} is required")
+        omp = profile.get("omp")
+        omp_model = omp.get("model") if isinstance(omp, dict) else None
+        if not isinstance(omp_model, str) or not OMP_MODEL_RE.fullmatch(omp_model):
+            fail(f"{manifest_path} model profile {name}.omp.model must match {OMP_MODEL_RE.pattern}: {omp_model!r}")
     if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):
         fail(f"{manifest_path} must keep model settings in model_profiles only")
     for name, server in manifest.get("mcp_servers", {}).items():

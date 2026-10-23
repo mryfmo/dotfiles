@@ -1,0 +1,55 @@
+#!/bin/sh
+# @file home/dot_omp/private_agent/modify_private_config.yml
+# @brief Carry the managed omp model role into ~/.omp/agent/config.yml.
+# @description
+#   chezmoi passes the live config on stdin. The merge sets modelRoles.default
+#   from home/.chezmoitemplates/omp-config-managed.yml and keeps every other
+#   key and role omp wrote. It runs under `uv run --with pyyaml`, so the system
+#   python3 needs no PyYAML. Without uv, or when the live file is not a YAML
+#   mapping, it prints its input unchanged with one warning on stderr and
+#   exits 0, so chezmoi apply never clobbers omp's file.
+set -eu
+
+if ! command -v uv > /dev/null 2>&1; then
+  echo "omp config: uv is not installed; left ~/.omp/agent/config.yml unchanged" >&2
+  exec cat
+fi
+
+merge=$(cat <<'PY'
+import os
+import sys
+from pathlib import Path
+
+import yaml
+
+
+def keep(current, reason):
+    print(f"omp config: {reason}; left ~/.omp/agent/config.yml unchanged", file=sys.stderr)
+    sys.stdout.write(current)
+    return 0
+
+
+def main():
+    current = sys.stdin.read()
+    managed_path = Path(os.environ["CHEZMOI_SOURCE_DIR"]) / ".chezmoitemplates/omp-config-managed.yml"
+    managed = yaml.safe_load(managed_path.read_text())
+    try:
+        data = yaml.safe_load(current) if current.strip() else {}
+    except yaml.YAMLError:
+        return keep(current, "the live file is not valid YAML")
+    if not isinstance(data, dict):
+        return keep(current, "the live file is not a YAML mapping")
+    if data.get("modelRoles") is None:
+        data["modelRoles"] = {}
+    if not isinstance(data["modelRoles"], dict):
+        return keep(current, "modelRoles is not a mapping")
+    data["modelRoles"]["default"] = managed["modelRoles"]["default"]
+    sys.stdout.write(yaml.safe_dump(data, sort_keys=False))
+    return 0
+
+
+sys.exit(main())
+PY
+)
+
+exec uv run --quiet --no-project --with pyyaml python -c "$merge"

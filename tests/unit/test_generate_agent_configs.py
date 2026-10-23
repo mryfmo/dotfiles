@@ -1671,9 +1671,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.model_profiles(missing_express)
 
     def test_model_profiles_require_an_omp_model_from_the_provider_allowlist(self) -> None:
-        refused = "model profile standard.omp.model must be <provider>/<id> with provider openai-codex or anthropic"
+        refused = (
+            "model profile standard.omp.model must be <provider>/<id> "
+            "with provider claude-bridge, openai-siwc, anthropic or openai-codex"
+        )
         for value, message in (
             (None, "model profile standard is missing omp"),
+            ("foo/bar", refused),
             ("openai/gpt-x", refused),
             ("anthropic/claude x", refused),
             ("anthropic/claude-x\n", refused),
@@ -1689,9 +1693,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.module.model_profiles(manifest)
                 self.assertIn(message, stderr.getvalue())
 
-        self.assertEqual(
-            self.module.model_profiles(sample_manifest())["standard"]["omp"], {"model": "anthropic/sonnet"}
-        )
+        for value in ("claude-bridge/claude-x", "openai-siwc/gpt-x", "anthropic/claude-x", "openai-codex/gpt-x"):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                manifest["model_profiles"]["standard"]["omp"]["model"] = value
+                self.assertEqual(self.module.model_profiles(manifest)["standard"]["omp"], {"model": value})
 
     def test_omp_config_renders_the_interactive_profile_as_the_default_role(self) -> None:
         manifest = sample_manifest()
@@ -1706,32 +1712,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(text, header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n")
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)
-
-    def test_model_profiles_env_renders_one_omp_model_line_per_profile_in_sorted_order(self) -> None:
-        manifest = sample_manifest()
-        for name in ("review", "deep", "security", "audit"):
-            manifest["model_profiles"][name] = {
-                "claude": {"model": "sonnet", "effort": "high"},
-                "codex": {"model": "gpt-6.1-sol", "model_reasoning_effort": "high"},
-                "omp": {"model": f"anthropic/{name}-model"},
-            }
-
-        lines = self.module.render_model_profiles_env(manifest).splitlines()
-
-        self.assertEqual(
-            [line for line in lines if "_OMP_MODEL=" in line],
-            [
-                'MODEL_PROFILE_AUDIT_OMP_MODEL="anthropic/audit-model"',
-                'MODEL_PROFILE_DEEP_OMP_MODEL="anthropic/deep-model"',
-                'MODEL_PROFILE_EXPRESS_OMP_MODEL="openai-codex/gpt-5.6-luna"',
-                'MODEL_PROFILE_REVIEW_OMP_MODEL="anthropic/review-model"',
-                'MODEL_PROFILE_SECURITY_OMP_MODEL="anthropic/security-model"',
-                'MODEL_PROFILE_STANDARD_OMP_MODEL="anthropic/sonnet"',
-            ],
-        )
-        for name in ("audit", "deep", "express", "review", "security", "standard"):
-            index = lines.index(f'MODEL_PROFILE_{name.upper()}_CODEX_ARGS="--profile {name}"')
-            self.assertTrue(lines[index + 1].startswith(f"MODEL_PROFILE_{name.upper()}_OMP_MODEL="))
 
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

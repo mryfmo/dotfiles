@@ -82,8 +82,9 @@ PROFILE_AGENT_KEYS = {
     "omp": ("model",),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
-# Anthropic by API key and OpenAI by the openai-codex OAuth provider only (plan 023 Decision).
-OMP_MODEL_RE = re.compile(r"^(openai-codex|anthropic)/[A-Za-z0-9._-]+$")
+# Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
+# (D-024-129/130); anthropic and openai-codex stay expressible as fallback routes.
+OMP_MODEL_RE = re.compile(r"^(openai-codex|openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 RUNTIME_PREFIXES = (
     "hooks.state",
@@ -116,7 +117,7 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                     if not isinstance(value, str) or not OMP_MODEL_RE.fullmatch(value):
                         fail(
                             f"model profile {name}.omp.model must be <provider>/<id> "
-                            "with provider openai-codex or anthropic"
+                            "with provider claude-bridge, openai-siwc, anthropic or openai-codex"
                         )
                 elif not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")
@@ -1299,7 +1300,6 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
             claude_args += f" --advisor {claude['advisor']}"
         lines.append(f'MODEL_PROFILE_{var}_CLAUDE_ARGS="{claude_args}"')
         lines.append(f'MODEL_PROFILE_{var}_CODEX_ARGS="--profile {name}"')
-        lines.append(f'MODEL_PROFILE_{var}_OMP_MODEL="{profile["omp"]["model"]}"')
     return "\n".join(lines) + "\n"
 
 

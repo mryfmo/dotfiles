@@ -4,6 +4,7 @@
 The store is `$HCOM_DIR/events.jsonl`. Every call appends its argv as one JSON line to `$FAKE_HCOM_CALLS/argv`.
 `FAKE_HCOM_AGENTS` (comma-separated) are the active agents; a mention of any other name fails as hcom does.
 `FAKE_HCOM_HIDE_EVENTS=1` makes `events` print nothing, standing in for a row the bus lost.
+`FAKE_HCOM_SELF` is the launched identity `list self name` prints; unset, it fails as hcom does from a plain shell.
 As hcom does, the update notice goes to stderr and the receipt to stdout.
 """
 
@@ -74,6 +75,11 @@ elif command == "events":
     ]
     for row in sorted(selected, key=lambda row: row["id"])[-int(option(flags, "--last") or 20) :]:
         print(json.dumps(row, separators=(",", ":"), sort_keys=True))
+elif command == "list" and flags == ["self", "name"]:
+    if not os.environ.get("FAKE_HCOM_SELF"):
+        print("Error: Cannot use 'self' without identity. Run 'hcom start' first.", file=sys.stderr)
+        sys.exit(1)
+    print(os.environ["FAKE_HCOM_SELF"])
 else:
     print(f"fake-hcom: unsupported command {command}", file=sys.stderr)
     sys.exit(2)

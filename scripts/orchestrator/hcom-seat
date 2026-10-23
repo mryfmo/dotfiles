@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# @file hcom-seat
+# @brief Start one omp seat for a role in a herdr pane through `hcom omp`, with its profile, policy overlay and extensions wired in.
+# @description
+#   Plan 025 W5b (U7), the minimal form before X. A seat is one omp process that
+#   `hcom omp` starts in a herdr pane (`hcom omp --help`: `hcom [N] omp [args...]`,
+#   `--tag <name>`, `--dir <path>`, `--terminal <preset>`; hcom gives the seat
+#   HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For `<role>` the launch line is
+#   `hcom omp --tag <name> --dir <dir> --terminal herdr -- --profile <role>
+#   --config ~/.agents/omp/policies/<role>.yml -e <ext>...`. The profile equals the
+#   role, so the seat's rendered `modelRoles.default` applies (U4) and the role's
+#   policy overlay owns the approval mode (U6). The extensions default to the
+#   directory the role's model route needs, the pi-claude-bridge for orchestrator
+#   and worker and the openai-siwc for audit, plus the other one when it is
+#   present; `--ext` replaces that list. The orchestrator sits in the repository
+#   this command runs in; every other role gets the worktree `<seats-root>/<name>`,
+#   which is created detached from `origin/main` when absent and reused otherwise.
+#   Every input is checked before anything is created or started: an unknown role,
+#   a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, an unset HCOM_DIR, hcom absent from
+#   PATH, an absent overlay or extension directory, or a cwd outside a git checkout
+#   is exit 2 with the reason. `--dry-run` prints the launch line and creates and
+#   starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
+#   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
+# @arg $1 string Role: orchestrator, worker or audit.
+# @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role).
+# @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats).
+# @option --ext <dir> Extension directory, repeatable; replaces the role's default list.
+# @option --dry-run Print the launch line and exit 0 without creating a worktree or starting hcom.
+# @env HCOM_DIR The program's private hcom store (required: without it hcom would use ~/.hcom).
+# @stdout The launch line with --dry-run, else hcom's output.
+# @exitcode 0 Dry run printed, or hcom reports the seat ready.
+# @exitcode 2 A refusal, before anything is created or started.
+# @exitcode * hcom's own status otherwise.
+# @example
+#   HCOM_DIR=/path/to/.hcom scripts/orchestrator/hcom-seat worker --name worker-2 --dry-run
+set -euo pipefail
+
+usage='usage: hcom-seat <orchestrator|worker|audit> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run]'
+refuse() {
+    echo "hcom-seat: $*" >&2
+    exit 2
+}
+
+(($# >= 1)) || refuse "${usage}"
+role=$1
+shift
+name=${role} seats_root=${HOME}/.local/state/omp-seats dry_run=0 user_exts=()
+while (($#)); do
+    case $1 in
+    --dry-run) dry_run=1 ;;
+    --name | --seats-root | --ext)
+        (($# >= 2)) || refuse "${usage}"
+        case $1 in
+        --name) name=$2 ;;
+        --seats-root) seats_root=$2 ;;
+        --ext) user_exts+=("$2") ;;
+        esac
+        shift
+        ;;
+    *) refuse "${usage}" ;;
+    esac
+    shift
+done
+
+bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
+siwc=${HOME}/.agents/omp/extensions/openai-siwc
+# One row per role: the extension its model route needs first, the optional one second.
+case ${role} in
+orchestrator | worker) exts=("${bridge}" "${siwc}") ;;
+audit) exts=("${siwc}" "${bridge}") ;;
+*) refuse "unknown role '${role}'; expected orchestrator, worker or audit" ;;
+esac
+[[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+[[ -n ${HCOM_DIR:-} ]] || refuse 'HCOM_DIR is unset; export the program'\''s private hcom store first'
+command -v hcom > /dev/null || refuse 'hcom not found on PATH'
+policy=${HOME}/.agents/omp/policies/${role}.yml
+[[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
+if ((${#user_exts[@]})); then
+    exts=("${user_exts[@]}")
+elif [[ ! -d ${exts[1]} ]]; then
+    exts=("${exts[0]}")
+fi
+for ext in "${exts[@]}"; do
+    [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
+done
+repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
+case ${role} in
+orchestrator) dir=${repo} ;;
+*) dir=${seats_root}/${name} ;;
+esac
+
+argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr -- --profile "${role}" --config "${policy}")
+for ext in "${exts[@]}"; do
+    argv+=(-e "${ext}")
+done
+if ((dry_run)); then
+    printf '%q ' "${argv[@]}"
+    echo
+    exit 0
+fi
+if [[ ! -e ${dir} ]]; then
+    git -C "${repo}" worktree add --detach "${dir}" origin/main
+elif [[ ! -d ${dir} ]]; then
+    refuse "seat directory is not a directory: ${dir}"
+fi
+exec "${argv[@]}"

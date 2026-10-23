@@ -1,0 +1,21 @@
+# Standing orders (paste verbatim into every spawn and resume)
+
+1. Operator decision D-024-131 (2026-10-23 JST): the agmsg regime is OFF for this program. pstack orchestrate runs it; poteto-agent workers implement directly in isolated worktrees. No agmsg seats, task texts, PING/PONG, anchor or C-80 rounds.
+2. `main` is PR-only (GitHub ruleset). Never push to `main`. One branch per unit, one writer per worktree. Only the coordinator merges, with `gh pr merge --squash --match-head-commit <verified head sha>` after CI is green and the ledger has a verdict for that sha.
+3. No force-push, no rebase or retarget of a branch you do not own, no PR close, no `rm -rf` outside your own worktree or `$TMPDIR`, no edits outside the brief's SCOPE paths.
+4. Never modify the real `~/.omp`, `~/.claude` settings or hooks, `~/.codex`, or the Keychain. Dry-run omp under `HOME=$TMPDIR/<unit>-home`. A step that needs a browser login, the Keychain, or an interactive prompt is reported as an exact command for the operator, never run.
+5. Every claim in a report carries pasted output or a `file:line`. A handout row for the operator carries two extra columns, `source` (doc or `file:line` defining the command's behaviour) and `dry-run` (your scratch-HOME run and its output, or `operator-only: <reason>`). An instrument that cannot show the failure it should detect is refused (M-20261023-01).
+6. Secrets (tokens, keys, cookies) are never printed, logged, or written. Redact in receipts and reports.
+7. Vendored third-party code enters the repo as a pinned tarball (sha256) plus `.patch` files, never as an edited copy. Record patch sha256 in the receipt.
+8. Shell scripts carry shdoc comments in English. Python runs as `uv run --no-project`. Tests assert behaviour the user observes. A known shortcut carries `shortcut: <limit>, <when to upgrade>`.
+9. Network only to the hosts the brief names. Wrap any command that could block in `perl -e 'alarm <s>; exec @ARGV' …`. Never run `--help` probes against interactive TUIs without the wrapper.
+10. Models: workers run on the parent model unless the brief says otherwise; the verifier of a unit runs in a fresh context and, where the tool allows, on a different model than the worker.
+11. Respect TIMEBOX. On expiry, write partial findings and stop. Never wait on a human.
+12. REPORT shape: status, branch, head sha, PR, verdict, what you ran (commands and pasted output), deviations from the brief, suggested follow-ups. Facts only.
+13. Human-facing text is Japanese. Code, records, commit messages and PR descriptions are English.
+14. Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. PR bodies end with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+15. CI must be green before a unit is `landed`. Bot review comments are fixed at root cause or dismissed with a pasted refutation; never suppressed.
+16. Read `.orchestration/validation/025-v13-facts-20261023.md` and `.orchestration/validation/025-pilot-facts.md` before touching the bridge or SIWC routes; they hold every measured fact so far.
+17. Every program PR body carries its own line `Program-Unit: regime-cutover/U<n>` (the unit id). The `regime` CI check reads it (U13); until U13 lands that check stays red on program PRs and is not a merge blocker, every other check must be green.
+18. A `gh pr update-branch` merge commit does not void a verifier verdict when the PR diff against main is unchanged; the coordinator checks the diff is unchanged and that CI is green on the new head, then merges with `--match-head-commit <new head>`.
+19. Git operations are permitted without per-command approval (D-024-132): fetch, `pull --ff-only`, branch, worktree, commit, push of your own unit branch, and the per-command `git -c url.https://github.com/mryfmo/dotfiles.git.pushInsteadOf=git@github.com:mryfmo/dotfiles.git push …` override of the global SSH rewrite. Still forbidden: pushing to `main`, force-push, rebasing a branch you do not own.

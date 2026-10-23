@@ -1303,8 +1303,26 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+SKILLS_DIRECTORY_RE = re.compile(r"^(~|/)[A-Za-z0-9._/-]*$")
+
+
+def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:
+    directories = manifest.get("omp", {}).get("skills_directories")
+    if not isinstance(directories, list) or not directories:
+        fail("omp.skills_directories must be a non-empty list")
+    for directory in directories:
+        if not isinstance(directory, str) or not SKILLS_DIRECTORY_RE.fullmatch(directory):
+            fail(f"omp.skills_directories entries must be ~/ or absolute paths: {directory!r}")
+    return directories
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
-    return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {interactive_profile(manifest)['omp']['model']}\n"
+    directories = "".join(f"    - {directory}\n" for directory in omp_skills_directories(manifest))
+    return (
+        f"# {GENERATED_HEADER}\n"
+        f"modelRoles:\n  default: {interactive_profile(manifest)['omp']['model']}\n"
+        f"skills:\n  customDirectories:\n{directories}"
+    )
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:

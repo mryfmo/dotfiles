@@ -66,6 +66,7 @@ def sample_manifest() -> dict:
             },
         },
         "interactive_profile": "standard",
+        "omp": {"skills_directories": ["~/.agents/skills"]},
         "codex": {
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
             "model_reasoning_summary": "concise",
@@ -1703,15 +1704,32 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = sample_manifest()
         path = self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"
         header = f"# {self.module.GENERATED_HEADER}\n"
+        skills = "skills:\n  customDirectories:\n    - ~/.agents/skills\n"
 
         self.assertEqual(
-            self.module.expected_outputs(manifest)[path], header + "modelRoles:\n  default: anthropic/sonnet\n"
+            self.module.expected_outputs(manifest)[path],
+            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills,
         )
         manifest["interactive_profile"] = "express"
+        manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
         text = self.module.expected_outputs(manifest)[path]
-        self.assertEqual(text, header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n")
+        self.assertEqual(
+            text,
+            header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills + "    - /srv/skills\n",
+        )
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)
+
+    def test_omp_skills_directories_must_be_home_or_absolute_paths(self) -> None:
+        for value in (None, [], "~/.agents/skills", ["skills"], ["~/.agents/skills; rm -rf"], [3]):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                if value is None:
+                    del manifest["omp"]
+                else:
+                    manifest["omp"]["skills_directories"] = value
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.render_omp_config(manifest)
 
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

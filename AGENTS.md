@@ -37,15 +37,14 @@
 
 ## Agent Review Evidence
 
-- Locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` as repo-local agent evidence.
-- Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
-- When the crit CLI or its data is unavailable, save the independent agent review in that same JSON shape (hand-written records are acceptable), mark each record `resolved: true` after addressing it, and reference it from the receipt exactly as crit-exported evidence; the guard validates shape, not provenance.
-- This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.
-- Before merging a pull request, follow the integration order in the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and `home/dot_config/claude/rules/pr-integration.md`: the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE` and `ACCEPTANCE_EVIDENCE` (the record's `audit_findings` disposition an `incorrect` verdict).
+- Review evidence for a unit is its verdict row in the program store's `ledger.tsv` (`.orchestration/orchestrate/regime-cutover/`), written for the exact head sha, plus the verifier's file under `verdicts/` when one was written; the loop that produces them is `home/dot_agents/skills/hcom-orchestration/SKILL.md`.
+- Agent evidence must contain at least one resolved record. For a finding-free review, the verdict row still names what was reproduced.
+- When the verifier seat is unavailable, a fresh-context review of the same head is recorded in the same row shape; the row names who judged and from what, since this evidence is process evidence, not reviewer authentication.
+- Before merging a pull request, follow the hcom-orchestration SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then `gh pr merge --squash --match-head-commit <head sha>`. The retired agmsg gate (`make require-crit-review`) ran the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE` and `ACCEPTANCE_EVIDENCE` (the record's `audit_findings` disposition an `incorrect` verdict).
 
 ## Audit
 
-Standing review rules for the auditor (the task-level audit of a final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes; read-only sandbox):
+Standing review rules for the auditor (the verifier's audit of a unit's final head, run in a fresh context or as the audit seat through `scripts/orchestrator/omp-run.sh --role audit`, per `home/dot_agents/skills/hcom-orchestration/SKILL.md`; read-only):
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
 - Cover:

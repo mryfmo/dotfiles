@@ -18,6 +18,7 @@ Generated files include:
 - `home/dot_codex/modify_private_config.toml`
 - `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
+- `home/.chezmoitemplates/omp-config-managed.yml`
 - `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/agents/project-map.md`
@@ -50,6 +51,10 @@ The merge script keeps managed settings from `agent-config.yaml` authoritative w
 - `projects`
 
 Current-target tables outside the generated baseline are also preserved so local Codex additions are not lost during `chezmoi apply`.
+
+## omp runtime state
+
+omp writes its own keys into `~/.omp/agent/config.yml`, so the file is managed through `home/dot_omp/private_agent/modify_private_config.yml`; the `private_` attributes keep `~/.omp/agent` at 0700 and the file at 0600, because the directory also holds omp's auth databases. The script sets `modelRoles.default` from the generated `home/.chezmoitemplates/omp-config-managed.yml` and keeps every other key and role. Its merge runs under `uv run --no-project --with pyyaml`, so the system `python3` needs no PyYAML; without `uv` it leaves the file unchanged and warns on stderr.
 
 ## Commands
 

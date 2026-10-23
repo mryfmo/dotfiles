@@ -254,7 +254,8 @@ class RegimeCiTest(unittest.TestCase):
         self.assertEqual(line, verify["run"])
         head = "${{ github.event.pull_request.head.sha }}"
         token = {"GH_TOKEN": "${{ github.token }}"}
-        self.assertEqual(({"HEAD_SHA": head} | token, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        body = {"PR_BODY": "${{ github.event.pull_request.body }}"}  # the program marker's source (D-024-131)
+        self.assertEqual(({"HEAD_SHA": head} | token | body, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
@@ -405,6 +406,43 @@ class RegimeCiTest(unittest.TestCase):
         result = self.regime()
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("regime-ci: no target: 1 changed path(s) outside .orchestration/ and no task copy", result.stdout)
+
+    def test_regime_ci_accepts_a_program_pr_by_its_program_unit_marker(self):
+        # D-024-131 (U13): a regime-cutover program PR carries no task copy; the body's own line
+        # `Program-Unit: regime-cutover/U<n>` passes the no-target rule, nothing else in a body does, and a task copy
+        # is still checked whatever the body says.
+        refusal = "regime-ci: no target: 12 changed path(s) outside .orchestration/ and no task copy"
+        result = self.build(code={f"src/u{i}.sh": "a\n" for i in range(12)}, evidence=False)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(refusal, result.stdout)
+        body = "## Why\n\nThe unit's change.\n\nProgram-Unit: regime-cutover/U3\n\nGenerated with Claude Code\n"
+        for accepted in (body, body.replace("\n", "\r\n")):  # a body edited on github.com carries CRLF
+            result = self.regime(PR_BODY=accepted)
+            self.assertEqual(
+                (0, "regime-ci: no target (program unit U3, D-024-131)\n"),
+                (result.returncode, result.stdout),
+                result.stderr,
+            )
+        rejected = (
+            "",
+            "Program-Unit: regime-cutover/U",
+            "Program-Unit: regime-cutover/U3a",
+            "Program-Unit: regime-cutover/u3",
+            "program-unit: regime-cutover/U3",
+            "Program-Unit: other-program/U3",
+            "Program-Unit:  regime-cutover/U3",
+            " Program-Unit: regime-cutover/U3",
+            "Program-Unit: regime-cutover/U3 ",
+            "`Program-Unit: regime-cutover/U3`",
+            "see Program-Unit: regime-cutover/U3 above",
+        )
+        for text in rejected:
+            result = self.regime(PR_BODY=text)
+            self.assertEqual((1, True), (result.returncode, refusal in result.stdout), (text, result.stdout))
+        self.build(copy=TASK + "altered\n")
+        result = self.regime(PR_BODY=body)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(f"regime-ci: {T}: task-copy: .orchestration/{T}/task.md differs from the base's", result.stdout)
 
     def test_regime_ci_warns_without_precheck_and_without_dispatched_text(self):
         result = self.build(dispatched=None, precheck_head="absent")

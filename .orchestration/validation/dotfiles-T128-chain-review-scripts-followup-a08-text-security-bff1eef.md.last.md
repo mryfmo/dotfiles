@@ -1,0 +1,13 @@
+[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md:65 Keeping `local-advisory.sh` unchanged disconnects enforcement from the reviewed artifact: it still reads `.orchestration/validation/<task>-local-review-<sha7>.md`, whereas Item 3 writes a private full-head filename; when the new review returns P1 findings, a planted legacy `findings: 0` makes the advisory consumer return success and lets `chain-integrate.sh` continue.
+
+[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md:77 A mode-0700 directory under `${TMPDIR:-/tmp}` does not establish a worker-inaccessible object store: same-UID workers with access to that temporary root can modify it, and item 3’s worker-root/symlink/case checks do not exclude shared scratch space; replacement after fetch can therefore change the content consumed by the reviewer, while the named stub test establishes no write boundary.
+
+[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md:23 Cache provenance cannot be `closed` while line 30 acknowledges unenforced Claude file-tool protection and `after: []` imposes no deployment prerequisite: a worker can forge an anchored-cache artifact containing the publicly computable head/base/tree and `findings: 0`; fresh canonical lookup and fetch validate those identifiers, not who produced the review.
+
+[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md:31 Referencing a trusted-parent contract does not supply a trusted caller: `chain-integrate.sh:143` directly executes the script with inherited environment, and neither this task nor the named binding owner authorizes changing that caller; `BASH_ENV` or Linux loader injection can execute before child sanitization, including before an unsandboxed gh invocation, so clean Git/gh children cannot compensate for the missing entry boundary.
+
+[P2] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a08.md:92 Preserving every inherited regression conflicts with the required executable binding: the inherited tests explicitly require PATH-selected `mise which` calls and interpreter fallback, while design §5.14 item 9 prohibits both; they also require exactly two Codex environment overrides despite the configured reviewer PATH containing mise shims, so these assertions must be revised to verify the actual descendant Git binding.
+
+📝 まとめ: タスク本文と参照記録を読み取り専用で審査し、実行・成果物の結び付けと保護前提に5件の指摘を確認しました。
+Not checked: implementation, live sandbox enforcement, or test execution; the stated controls do not yet establish the claimed boundaries.
+Verdict: incorrect

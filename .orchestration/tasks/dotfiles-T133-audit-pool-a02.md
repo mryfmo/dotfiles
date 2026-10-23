@@ -10,7 +10,7 @@ allowed_files:
   - tests/unit/test_audit_pool.py
   - .orchestration/dotfiles-T133-audit-pool-a02/**
   - tests/unit/trusted_exec_contract.py
-after: [dotfiles-T133-worker-write-boundary-a02]
+after: [dotfiles-T133-worker-write-boundary-slice4-a01]
 reset_of: [dotfiles-T133-audit-pool-a01]
 threat_table:
   - control: "scripts/orchestrator/audit-pool.sh (trusted execution, frozen requests, queue ownership, physical-slot locks, full-head identities, validated outputs and bounded retries)"

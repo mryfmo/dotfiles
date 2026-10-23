@@ -10,7 +10,7 @@ allowed_files:
   - .orchestration/dotfiles-T133-ci-efficiency-followup-a04/**
   - scripts/orchestrator/trusted-interpreter.sh
   - tests/unit/test_trusted_interpreter.py
-after: [dotfiles-T133-worker-write-boundary-a02]
+after: [dotfiles-T133-worker-write-boundary-slice2-a01]
 reset_of: [dotfiles-T133-ci-efficiency-followup-a02]
 threat_table:
   - control: scripts/orchestrator/ci-rerun.sh interpreter selection and invocation

@@ -7,7 +7,7 @@ allowed_files:
   - scripts/orchestrator/hold-playbook.sh
   - tests/unit/test_hold_playbook.py
   - .orchestration/dotfiles-T133-hold-playbook-a02/**
-after: [dotfiles-T133-worker-write-boundary-a02, dotfiles-T133-ci-efficiency-followup-a04]
+after: [dotfiles-T133-worker-write-boundary-slice2-a01, dotfiles-T133-ci-efficiency-followup-a04]
 reset_of: [dotfiles-T133-hold-playbook-a01]
 threat_table:
   - control: scripts/orchestrator/hold-playbook.sh interpreter selection

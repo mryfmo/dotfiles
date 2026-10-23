@@ -1,0 +1,10 @@
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` The replacement authority path invokes bare `git` without binding its executable; PATH/mise substitution can forge clone, prerequisite and measurement results, reproducing the rejected `gh` provenance defect.
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:135` The clone prefix does not remove inherited `GIT_*`, and subsequent commands omit even that prefix: a read-only probe confirmed `GIT_CONFIG_COUNT` can rewrite the fixed GitHub URL despite both stated options; `GIT_DIR` can likewise redirect subsequent repository reads.
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:35` Calling checker output “non-authoritative” does not mitigate executing substituted `gh` with forwarded credentials; no binding prerequisite or credential suppression prevents disclosure, and Linux execution outside the sandbox cannot rely on sandbox containment.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` A fresh “private” clone establishes initial separation from shared objects, but the specified `<dir>` has no demonstrated worker-write exclusion or consumption-time identity binding; same-UID replacement can still alter objects or refs subsequently treated as authoritative.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:137` Counting two “5.14” occurrences does not perform the inherited exact design-publication assertion; Checks also omits that assertion’s command and exit, so its claimed prerequisite success does not satisfy line 119.
+
+📝 まとめ: Reviewed the threat rows and cited acceptance/review context; five findings remain for orchestrator disposition. No files changed.
+
+Not checked: future implementation or live Linux/race behavior; executable, credential and object-store binding remain unresolved.
+Verdict: incorrect

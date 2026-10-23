@@ -1,0 +1,8 @@
+- [P1] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:117` “Non-authoritative” `gh` output still selects the cap-measurement base and establishes dispatch prerequisites: a substituted executable can report the candidate head as canonical main, satisfying ancestry and producing a zero diff even in an authentic private clone; the residual also leaves forwarded credentials exposed, without requiring the binding prerequisite before use.
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:135` The prerequisite command uses `--repo mryfmo/dotfiles` without fixing its host, so inherited `GH_HOST` can select another server even with genuine `gh`; use `--repo github.com/mryfmo/dotfiles` or a fixed-host API request. [GitHub CLI environment documentation](https://cli.github.com/manual/gh_help_environment).
+- [P2] High confidence `.orchestration/tasks/dotfiles-T133-task-generator-plan-check-a07-checker.md:137` Checks asserts successful design publication but omits the exact contents-API/assertion commands and individual stage exits required by line 119; line 138 supplies only a pre-paste pre-send exit, so these reviewed bytes do not contain the prerequisite evidence required before review and dispatch.
+
+📝 まとめ: Reviewed all 52 threat rows and cited context without changing files; findings remain input for the orchestrator.
+
+Not checked: future implementation, live sandbox enforcement, or race execution; declared same-user and startup risks remain.
+Verdict: incorrect

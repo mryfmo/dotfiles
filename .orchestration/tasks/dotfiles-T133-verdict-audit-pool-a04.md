@@ -9,7 +9,7 @@ allowed_files:
   - .schemas/audit.json
   - tests/unit/test_verdict.py
   - .orchestration/dotfiles-T133-verdict-audit-pool-a04/**
-after: [dotfiles-T133-worker-write-boundary-a02]
+after: [dotfiles-T133-worker-write-boundary-slice4-a01]
 reset_of: [dotfiles-T133-verdict-audit-pool-a03]
 threat_table:
   - control: "scripts/orchestrator/verdict.sh (nine conditions, trusted-parent startup, fixed executable identities, contained output and explicit security metadata)"

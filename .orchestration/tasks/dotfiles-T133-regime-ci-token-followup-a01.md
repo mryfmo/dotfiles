@@ -48,6 +48,10 @@ Each owned row (any advisory P2 of the local review or the task-level audit of t
 
 The residual rows of `dotfiles-T133-regime-ci-token-a01` that name this owner: (a) regime-ci.py's `CHECKER_RUN` resolves `uv` and the interpreter through PATH; the owner binds them to the mise install directories named in the manifest, with a test that a PATH holding a decoy `uv` first is not used; (b) regime-ci.py's git reads inherit `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE`; the owner clears them for every git child (`env -u`), with a test that a hostile `GIT_DIR` does not redirect the base read. Each row gets one red-then-green test in `tests/unit/test_regime_ci.py`.
 
+## Item 3 (added 2026-10-21T05:04Z: text corrections of the a01 lineage)
+
+The dispatched a01 text (d4798ebf) carries two threat-table defects that an amendment would push the lineage to INV-6 S2 for: row 21 names `test_regime_ci_keeps_tokens_out_of_argv_and_output` as the closure of the output-secrecy control although only `test_regime_ci_redacts_tokens_in_checker_diagnostics` exercises the leak and its fix; row 24 and line 70 say the token reaches only public repository contents although `contents: read` covers the workflow repository's private contents. This owner carries them as the first items of the lineage's successor text (regime-ci-token-a02, authored by the orchestrator's review-profile context when this owner is dispatched), which binds row 21 to the redaction test and corrects the authority wording; this owner does not edit the dispatched a01 copy.
+
 ## Check and Completion
 
 The Check and Completion clauses of `.orchestration/tasks/dotfiles-T133-regime-ci-token-a01.md` apply as written, with `dotfiles-T133-regime-ci-token-followup-a02` as the owner of any advisory P2 and `task_copy=<sha256 of .orchestration/dotfiles-T133-regime-ci-token-followup-a01/task.md>` in the RESULT. Design 5.14 applies by reference (D-024-30).

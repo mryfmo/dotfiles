@@ -1,0 +1,39 @@
+diff -ruN a/src/skills.ts b/src/skills.ts
+--- a/src/skills.ts	1985-10-26 17:15:00
++++ b/src/skills.ts	2026-10-23 10:46:20
+@@ -1,4 +1,34 @@
+-import { formatSkillsForPrompt, type Skill } from "@earendil-works/pi-coding-agent";
++import { type Skill } from "@earendil-works/pi-coding-agent";
++
++// omp's legacy pi shim does not export formatSkillsForPrompt; this is Pi's implementation
++// (pi-coding-agent dist/core/skills.js, MIT), same output.
++function formatSkillsForPrompt(skills: Skill[], fileReadTool: "read" | "bash" | "indirect" = "read"): string {
++	const visibleSkills = skills.filter((s) => !s.disableModelInvocation);
++	if (visibleSkills.length === 0) return "";
++	const lines = [
++		"\n\nThe following skills provide specialized instructions for specific tasks.",
++		fileReadTool === "read"
++			? "Use the read tool to load a skill's file when the task matches its description."
++			: fileReadTool === "bash"
++				? "Use bash to load a skill's file when the task matches its description."
++				: "Load a skill's file when the task matches its description.",
++		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool calls.",
++		"",
++		"<available_skills>",
++	];
++	for (const skill of visibleSkills) {
++		lines.push("  <skill>");
++		lines.push(`    <name>${escapeXml(skill.name)}</name>`);
++		lines.push(`    <description>${escapeXml(skill.description)}</description>`);
++		lines.push(`    <location>${escapeXml(skill.filePath)}</location>`);
++		lines.push("  </skill>");
++	}
++	lines.push("</available_skills>");
++	return lines.join("\n");
++}
++function escapeXml(str: string): string {
++	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
++}
+ 
+ export const MCP_SERVER_NAME = "custom-tools";
+ export const MCP_TOOL_PREFIX = `mcp__${MCP_SERVER_NAME}__`;

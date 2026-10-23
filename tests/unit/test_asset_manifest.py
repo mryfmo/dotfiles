@@ -217,10 +217,11 @@ class AssetManifestTest(unittest.TestCase):
             "update_terminal_browser",
             "update_omp",
             "update_hcom",
+            "update_pi_claude_bridge",
             "update_compactiondb",
         )
 
-        self.assertEqual(17, updater.count('manifest_record "'))
+        self.assertEqual(18, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),

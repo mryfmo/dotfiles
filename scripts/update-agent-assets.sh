@@ -77,6 +77,11 @@ readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.
 AGMSG_PIN_COMMIT="c487be269c1973aeb01ca831806eb3f65ff3366d"
 AGMSG_PIN_SHA256="9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059"
 AGMSG_PIN_VERSION="1.5.0"
+# Rendered from assets.pi-claude-bridge in home/dot_agents/agent-config.yaml; change the version and sha256 there
+# together after reviewing the upstream diff, then regenerate bun.lock and re-check the patches.
+PI_CLAUDE_BRIDGE_PIN_VERSION="0.9.3"
+PI_CLAUDE_BRIDGE_TARBALL_SHA256="8d582b2fee1615b64a59890e3ac0af03c1e11bd06ba1997accdb767969556d67"
+PI_CLAUDE_BRIDGE_ASSET_DIR="${DOTFILES_REPO_SOURCE_DIR}/home/dot_agents/assets/pi-claude-bridge"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/f5/ed/5e951b0e6fcadef1a2598e82b969b3eaa387a3e202f8987102d0e84cddfc/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl"
@@ -84,6 +89,7 @@ HCOM_DARWIN_AMD64_URL="https://files.pythonhosted.org/packages/ba/c3/04dd3c68d87
 HCOM_LINUX_AMD64_URL="https://files.pythonhosted.org/packages/21/fb/0a48f19a1c39b4ff59412f1fe34130c14acbc55da69097018d729191c6d2/hcom-0.7.30-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 HCOM_LINUX_ARM64_URL="https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl"
 readonly OMP_TARBALL_URL="https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-${OMP_PIN_VERSION}.tgz"
+readonly PI_CLAUDE_BRIDGE_TARBALL_URL="https://registry.npmjs.org/pi-claude-bridge/-/pi-claude-bridge-${PI_CLAUDE_BRIDGE_PIN_VERSION}.tgz"
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"
 readonly TERMINAL_BROWSER_INSTALLER_URL="https://terminal-browser.sh/install"
 
@@ -1044,6 +1050,133 @@ function update_hcom() (
 )
 
 #
+# @description Print the inputs an installed pi-claude-bridge must match: the pinned tarball's sha256, then one
+#   line per patch in application order, then bun.lock. The install writes these lines as the head of its RECEIPT.
+# @stdout One `<file name> <sha256>` line per input.
+# @exitcode 1 A patch or the lockfile is missing from home/dot_agents/assets/pi-claude-bridge.
+#
+function pi_claude_bridge_inputs() {
+    local file
+    printf 'pi-claude-bridge-%s.tgz %s\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}"
+    for file in "${PI_CLAUDE_BRIDGE_ASSET_DIR}"/patches/*.patch "${PI_CLAUDE_BRIDGE_ASSET_DIR}/bun.lock"; do
+        [ -f "${file}" ] || {
+            printf 'pi-claude-bridge asset file missing: %s\n' "${file}" >&2
+            return 1
+        }
+        printf '%s %s\n' "${file##*/}" "$(shasum -a 256 "${file}" | awk '{ print $1 }')"
+    done
+}
+
+#
+# @description Install the pinned pi-claude-bridge tarball with this repository's patches and locked dependencies
+#   as an omp extension directory, loaded with `omp -e <install dir>` (plan 025 decisions 30, 37, 38).
+# @description
+#   The tarball is verified against its reviewed sha256, the patches under
+#   home/dot_agents/assets/pi-claude-bridge/patches apply in name order, Bun installs the dependency set the
+#   committed bun.lock pins (peers excluded: omp's legacy pi compat layer provides them), and gap-check.ts refuses
+#   a tree whose legacy pi imports omp's shims do not export, so an omp upgrade that drops one fails here instead
+#   of in the first session. The staged tree replaces the install directory only after every check passes, and
+#   a run whose RECEIPT already matches the pinned inputs changes nothing.
+# @exitcode 1 A checksum, patch, dependency install or import check failed; the existing install is unchanged.
+#
+function update_pi_claude_bridge() (
+    local install_dir="${HOME}/.local/lib/omp-extensions/pi-claude-bridge"
+    local omp_dir="${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
+    local inputs download_dir tarball actual staging="" patch_file previous
+    has_command bun || {
+        printf 'Skipping pi-claude-bridge: bun command not found.\n'
+        return 0
+    }
+    [ -d "${omp_dir}" ] || {
+        printf 'Skipping pi-claude-bridge: omp is not installed at %s.\n' "${omp_dir}"
+        return 0
+    }
+    section "pi-claude-bridge"
+    inputs="$(pi_claude_bridge_inputs)" || return
+    if [ -d "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" ] &&
+        [ "$(sed -n '1,/^bun.lock /p' "${install_dir}/RECEIPT" 2> /dev/null)" = "${inputs}" ]; then
+        printf 'pi-claude-bridge %s is already installed.\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}"
+    else
+        download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+        trap 'rm -rf "${download_dir}" ${staging:+"${staging}"}' EXIT
+        tarball="${download_dir}/pi-claude-bridge-${PI_CLAUDE_BRIDGE_PIN_VERSION}.tgz"
+        curl -fsSL "${PI_CLAUDE_BRIDGE_TARBALL_URL}" -o "${tarball}" || return
+        actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return
+        if [ "${actual}" != "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}" ]; then
+            printf 'pi-claude-bridge checksum mismatch: expected %s, got %s.\n' "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}" "${actual}" >&2
+            return 1
+        fi
+        # Staged beside the target so the final rename stays on one filesystem.
+        mkdir -p "${install_dir%/*}" && staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
+        tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
+        for patch_file in "${PI_CLAUDE_BRIDGE_ASSET_DIR}"/patches/*.patch; do
+            # -F0: GNU patch would apply a patch whose context drifted with fuzz and exit 0; Apple patch refuses either way.
+            patch -p1 -s -F0 -d "${staging}" -i "${patch_file}" || {
+                printf 'pi-claude-bridge patch %s did not apply.\n' "${patch_file##*/}" >&2
+                return 1
+            }
+        done
+        cp "${PI_CLAUDE_BRIDGE_ASSET_DIR}/bun.lock" "${staging}/bun.lock" || return
+        (cd "${staging}" && bun install --production --omit=peer --frozen-lockfile) || return
+        bun run "${PI_CLAUDE_BRIDGE_ASSET_DIR}/gap-check.ts" "${staging}/src" "${omp_dir}" || {
+            printf 'pi-claude-bridge imports a name omp does not export (rows above); install refused.\n' >&2
+            return 1
+        }
+        {
+            printf '%s\n' "${inputs}"
+            jq -r '"\(.name) \(.version)"' "${staging}"/node_modules/@anthropic-ai/*/package.json | LC_ALL=C sort
+        } > "${staging}/RECEIPT" || return
+        previous="${install_dir}.previous"
+        rm -rf "${previous}"
+        if [ -e "${install_dir}" ]; then
+            mv "${install_dir}" "${previous}" || return
+        fi
+        mv "${staging}" "${install_dir}" || {
+            [ ! -e "${previous}" ] || mv "${previous}" "${install_dir}"
+            return 1
+        }
+        staging=""
+        rm -rf "${previous}"
+        printf 'pi-claude-bridge %s installed into %s.\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}"
+        cat "${install_dir}/RECEIPT"
+    fi
+    manifest_record "update_pi_claude_bridge" installer "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}" "${install_dir}/RECEIPT" "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" -- "curl -fsSL ${PI_CLAUDE_BRIDGE_TARBALL_URL}" "shasum -a 256 <tarball>" "patch -p1 -F0 -d <staging> -i <each home/dot_agents/assets/pi-claude-bridge/patches/*.patch in order>" "bun install --production --omit=peer --frozen-lockfile" "bun run gap-check.ts <staging>/src ${omp_dir}"
+)
+
+#
+# @description Load the installed pi-claude-bridge in one omp session and fail on a load error.
+# @description
+#   `omp models` never evaluates extension modules, so the check is the session path: a one-prompt run under
+#   `--no-extensions -e <install dir>` whose stderr and the omp log files it wrote must not contain `Failed to
+#   load extension`, and which must reach the model (`PONG`, or `Not logged in` before the operator's /login).
+#   Point HOME at a scratch directory to keep the session out of the real ~/.omp; under the real HOME a logged-in
+#   host spends one short model turn.
+# @exitcode 1 omp reported a load error or did not reach the model; omp's output is printed above the verdict.
+#
+function check_pi_claude_bridge() {
+    local install_dir="${HOME}/.local/lib/omp-extensions/pi-claude-bridge" marker output failed_logs
+    [ -d "${install_dir}" ] || {
+        printf 'pi-claude-bridge is not installed at %s; run make update.\n' "${install_dir}" >&2
+        return 1
+    }
+    marker="$(mktemp "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
+    output="$(perl -e 'alarm 90; exec @ARGV' omp --no-extensions -e "${install_dir}" --no-session --model claude-bridge/claude-haiku-4-5 --max-time 60 -p "Reply with the single word PONG." 2>&1)" || true
+    printf '%s\n' "${output}"
+    # The stderr line is truncated to the display width; the log carries the full error.
+    failed_logs="$(find "${HOME}/.omp/logs" -name 'omp.*.log' -newer "${marker}" -exec grep -l 'Failed to load extension' {} + 2> /dev/null || true)"
+    rm -f "${marker}"
+    if printf '%s\n' "${output}" | grep -q 'Failed to load extension' || [ -n "${failed_logs}" ]; then
+        printf 'pi-claude-bridge did not load in omp%s.\n' "${failed_logs:+; omp log: ${failed_logs}}" >&2
+        return 1
+    fi
+    if ! printf '%s\n' "${output}" | grep -Eq 'PONG|Not logged in'; then
+        printf 'pi-claude-bridge loaded but omp did not reach the model.\n' >&2
+        return 1
+    fi
+    printf 'pi-claude-bridge loaded in %s.\n' "$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')"
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1226,11 +1359,18 @@ function update_agmsg() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $@ string Command-line arguments.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge or check_pi_claude_bridge.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
-        printf 'Usage: scripts/update-agent-assets.sh\n' >&2
+        case "$#:$1" in
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge)
+            export PATH="${HOME}/.local/share/mise/shims:${PATH}"
+            "$1"
+            return
+            ;;
+        esac
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge]\n' >&2
         exit 2
     fi
 
@@ -1250,6 +1390,7 @@ function main() {
     update_terminal_code
     update_terminal_browser
     update_omp
+    update_pi_claude_bridge
     update_hcom
     update_compactiondb
     update_agmsg

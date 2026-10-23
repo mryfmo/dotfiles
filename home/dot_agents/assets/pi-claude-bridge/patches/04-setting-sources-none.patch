@@ -1,0 +1,24 @@
+diff -ruN a/src/index.ts b/src/index.ts
+--- a/src/index.ts	2026-10-23 10:46:20
++++ b/src/index.ts	2026-10-23 10:46:20
+@@ -2002,7 +2002,7 @@
+ 	// + per-project) and .mcp.json. Since pi executes tools (not CC), those are pure
+ 	// token overhead. --strict-mcp-config tells the binary to use ONLY mcpServers passed
+ 	// programmatically and ignore filesystem MCP entries — applied unconditionally because
+-	// settingSources is left at CC's default, which loads all sources.
++	// settingSources is [] below (patched for omp), so filesystem MCP entries are already out; the flag stays on.
+ 	const strictMcpConfigEnabled = providerSettings.strictMcpConfig !== false;
+ 	const claudeExecutable = providerSettings.pathToClaudeCodeExecutable;
+ 
+@@ -2030,6 +2030,11 @@
+ 		env: childEnv,
+ 		tools: [],
+ 		permissionMode: "bypassPermissions",
++		// Patched for omp: no user, project or local settings.json reaches the child, so the host's Claude Code
++		// hooks, plugins and permission rules do not run inside bridge turns. The claude.ai login is not a
++		// setting and still applies. Measured 2026-10-23: with the default, the child's thinking cited the
++		// host's superpowers system reminders.
++		settingSources: [] as SettingSource[],
+ 		includePartialMessages: true,
+ 		// includeGitInstructions:false drops the gitStatus block from the preset.
+ 		// That block is the trailing suffix of the cached system block, and a

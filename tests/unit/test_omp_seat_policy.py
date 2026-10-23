@@ -70,6 +70,8 @@ COMMON_DENIES = [
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
+# The audit seat's reply on the thread route (hcom-audit SKILL); measured on 2026-10-23, the `@operator` route was denied.
+VERDICT = "AGMSG-VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
     ("bash", "XDG_CACHE_HOME=x gh pr merge 1", "deny"),
     ("bash", "gh pr merge 1 --admin --squash --match-head-commit abc", "deny"),
@@ -160,6 +162,17 @@ TABLE = {
         ("bash", "gh pr create --title t", "deny"),
         ("bash", "uv run --no-project -m pytest -q", "deny"),
         ("bash", "echo hi", "deny"),
+        ("bash", f"hcom send --thread regime -- '{VERDICT}'", "allow"),
+        ("bash", f'hcom send --thread regime -- "{VERDICT} findings=0"', "allow"),
+        ("bash", "hcom send --thread regime -- 'AGMSG-PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
+        ("bash", f"hcom send --thread regime -- '{VERDICT}' | tee x", "deny"),
+        ("bash", f"hcom send --thread regime -- '{VERDICT}'; rm x", "deny"),
+        ("bash", 'hcom send --thread regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"', "deny"),
+        ("bash", f"hcom send @operator --intent ack --reply-to 26 --thread regime --name vera -- '{VERDICT}'", "deny"),
+        ("bash", f"hcom send --thread regime --from coordinator -- '{VERDICT}'", "deny"),
+        ("bash", f"hcom send --thread regime --name worker-sol -- '{VERDICT}'", "deny"),
+        ("bash", f"hcom send --thread regime -b -- '{VERDICT}'", "deny"),
+        ("bash", "hcom kill audit-vera", "deny"),
         ("edit", None, "deny"),
         ("write", None, "deny"),
         ("ast_edit", None, "deny"),
@@ -195,7 +208,8 @@ def pattern_regex(pattern):
 
 def segments(command):
     """bash.ts:281-285 over shell-tokenize.ts:14-28.
-    shortcut: splits on the operator characters without honouring quotes; no table row quotes one."""
+    shortcut: splits on the operator characters without honouring quotes; the one row that quotes `$(…)` is denied
+    on the whole line too."""
     return [normalize(part) for part in re.split(r"[\n;&|()]+", command) if part.strip()]
 
 

@@ -1346,7 +1346,11 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     directories = [
         re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", directory) for directory in omp_skills_directories(manifest)
     ]
-    return omp_config_yaml(model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"], directories)
+    model = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"]
+    # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:668-677) would open the
+    # first-run wizard over the pane: startup.setupWizard=false empties the scene list (pi-tui
+    # src/setup/wizard.ts:52) and setupVersion=2 (CURRENT_SETUP_VERSION) skips the gate's wizard import.
+    return omp_config_yaml(model, directories) + "setupVersion: 2\nstartup:\n  setupWizard: false\n"
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:

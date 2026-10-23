@@ -1742,21 +1742,25 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         profiles = self.temp_dir / "home/dot_agents/omp/profiles"
         header = f"# {self.module.GENERATED_HEADER}\n"
         skills = "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
+        wizard = "setupVersion: 2\nstartup:\n  setupWizard: false\n"
 
         overlays = {
             path.name: text for path, text in self.module.expected_outputs(manifest).items() if path.parent == profiles
         }
 
         self.assertEqual(sorted(overlays), ["audit.yml.tmpl", "worker.yml.tmpl"])
-        self.assertEqual(overlays["worker.yml.tmpl"], header + "modelRoles:\n  default: anthropic/sonnet\n" + skills)
         self.assertEqual(
-            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills
+            overlays["worker.yml.tmpl"], header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + wizard
+        )
+        self.assertEqual(
+            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills + wizard
         )
         self.assertEqual(
             execute_chezmoi_template(overlays["worker.yml.tmpl"], self.temp_dir),
             header
             + "modelRoles:\n  default: anthropic/sonnet\n"
-            + skills.replace("{{ .chezmoi.homeDir }}", "/render-home"),
+            + skills.replace("{{ .chezmoi.homeDir }}", "/render-home")
+            + wizard,
         )
 
     def test_omp_roles_must_map_launcher_safe_roles_to_model_profiles(self) -> None:

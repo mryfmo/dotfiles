@@ -84,3 +84,6 @@ G1-bridge-tool	phase2	ブリッジ経路のツール呼び出し（操作者端�
 U5-landed	phase2	hcom-dispatch と bus-history（pstack U5）着地	merged	PR #460 squash a39ce5d6; 9 tests incl. a real hcom round trip; regime check red by design until U13	2026-10-23T02:00:14Z
 U6-landed	phase2	omp 席ポリシー 3 役（pstack U6）着地	merged	PR #459 squash 6f154b60; 6 tests / 142 subtests; live omp config read-back; bot P1 x3 answered	2026-10-23T02:49:41Z
 U13-landed	phase2	regime CI の Program-Unit マーカー（pstack U13）着地	merged	PR #462 squash 3953e9cf; program PRs no longer need a task copy; #458/#461 update-branched	2026-10-23T03:06:51Z
+U3-U4-landed	phase2	openai-siwc 拡張（U3）と omp 設定描画（U4）着地	merged	#458 → 8846f34b, #406 → 34e216e9; 5 program PRs on main; U7/U10 spawned	2026-10-23T03:48:01Z
+G1-asset-pong	phase2	本番 HOME にブリッジ資産を導入し patch 04 入りで PONG（操作者）	passed	install receipt (trimmed patch 01 74964fc8…, SDK 0.3.309) + PONG via ~/.local/lib/omp-extensions/pi-claude-bridge; U2 merge armed	2026-10-23T03:53:48Z
+U2-landed	phase2	ブリッジ資産（U2）と記録同期（#464）着地	merged	#461 → a729702e, #464 → 0f0fe4c6; main checkout ff; remaining: U7, U10 in flight; U9, U11, U12 next	2026-10-23T04:25:13Z

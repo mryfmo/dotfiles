@@ -1110,7 +1110,8 @@ function update_pi_claude_bridge() (
         mkdir -p "${install_dir%/*}" && staging="$(mktemp -d "${install_dir}.staging.XXXXXX")" || return
         tar xzf "${tarball}" -C "${staging}" --strip-components=1 || return
         for patch_file in "${PI_CLAUDE_BRIDGE_ASSET_DIR}"/patches/*.patch; do
-            patch -p1 -s -d "${staging}" -i "${patch_file}" || {
+            # -F0: GNU patch would apply a patch whose context drifted with fuzz and exit 0; Apple patch refuses either way.
+            patch -p1 -s -F0 -d "${staging}" -i "${patch_file}" || {
                 printf 'pi-claude-bridge patch %s did not apply.\n' "${patch_file##*/}" >&2
                 return 1
             }
@@ -1139,7 +1140,7 @@ function update_pi_claude_bridge() (
         printf 'pi-claude-bridge %s installed into %s.\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}"
         cat "${install_dir}/RECEIPT"
     fi
-    manifest_record "update_pi_claude_bridge" installer "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}" "${install_dir}/RECEIPT" "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" -- "curl -fsSL ${PI_CLAUDE_BRIDGE_TARBALL_URL}" "shasum -a 256 <tarball>" "patch -p1 -d <staging> -i <each home/dot_agents/assets/pi-claude-bridge/patches/*.patch in order>" "bun install --production --omit=peer --frozen-lockfile" "bun run gap-check.ts <staging>/src ${omp_dir}"
+    manifest_record "update_pi_claude_bridge" installer "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${install_dir}" "${install_dir}/RECEIPT" "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" -- "curl -fsSL ${PI_CLAUDE_BRIDGE_TARBALL_URL}" "shasum -a 256 <tarball>" "patch -p1 -F0 -d <staging> -i <each home/dot_agents/assets/pi-claude-bridge/patches/*.patch in order>" "bun install --production --omit=peer --frozen-lockfile" "bun run gap-check.ts <staging>/src ${omp_dir}"
 )
 
 #

@@ -66,7 +66,7 @@ def sample_manifest() -> dict:
             },
         },
         "interactive_profile": "standard",
-        "omp": {"skills_directories": ["~/.agents/skills"]},
+        "omp": {"skills_directories": ["~/.agents/skills"], "roles": {"worker": "standard"}},
         "codex": {
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
             "model_reasoning_summary": "concise",
@@ -170,6 +170,10 @@ statusMessage = "Closing session"
 
 
 def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -> dict:
+    return json.loads(execute_chezmoi_template(text, temp_dir, os_name))
+
+
+def execute_chezmoi_template(text: str, temp_dir: Path, os_name: str = "darwin") -> str:
     result = subprocess.run(
         [
             CHEZMOI,
@@ -191,7 +195,7 @@ def render_claude_template(text: str, temp_dir: Path, os_name: str = "darwin") -
         capture_output=True,
         check=True,
     )
-    return json.loads(result.stdout)
+    return result.stdout
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -1730,6 +1734,50 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     manifest["omp"]["skills_directories"] = value
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     self.module.render_omp_config(manifest)
+
+    def test_omp_role_overlays_render_one_file_per_role_from_the_mapped_profile(self) -> None:
+        manifest = sample_manifest()
+        manifest["omp"]["roles"] = {"worker": "standard", "audit": "express"}
+        manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
+        profiles = self.temp_dir / "home/dot_agents/omp/profiles"
+        header = f"# {self.module.GENERATED_HEADER}\n"
+        skills = "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n    - /srv/skills\n"
+
+        overlays = {
+            path.name: text for path, text in self.module.expected_outputs(manifest).items() if path.parent == profiles
+        }
+
+        self.assertEqual(sorted(overlays), ["audit.yml.tmpl", "worker.yml.tmpl"])
+        self.assertEqual(overlays["worker.yml.tmpl"], header + "modelRoles:\n  default: anthropic/sonnet\n" + skills)
+        self.assertEqual(
+            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills
+        )
+        self.assertEqual(
+            execute_chezmoi_template(overlays["worker.yml.tmpl"], self.temp_dir),
+            header
+            + "modelRoles:\n  default: anthropic/sonnet\n"
+            + skills.replace("{{ .chezmoi.homeDir }}", "/render-home"),
+        )
+
+    def test_omp_roles_must_map_launcher_safe_roles_to_model_profiles(self) -> None:
+        for value in (None, {}, "worker", ["worker"], {"worker": "nope"}, {"Worker-1": "standard"}, {"worker": 3}):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                if value is None:
+                    del manifest["omp"]["roles"]
+                else:
+                    manifest["omp"]["roles"] = value
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.expected_outputs(manifest)
+
+    def test_every_seat_policy_role_has_a_committed_omp_overlay(self) -> None:
+        roles = load_manifest_fixture(self.temp_dir)["omp"]["roles"]
+        policies = {path.stem for path in (ROOT / "home/dot_agents/omp/policies").glob("*.yml")}
+
+        self.assertTrue(policies)
+        self.assertLessEqual(policies, set(roles))
+        for role in roles:
+            self.assertTrue((ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl").is_file(), role)
 
     def test_manifest_adds_one_allowlisted_omp_model_per_profile_and_nothing_else(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

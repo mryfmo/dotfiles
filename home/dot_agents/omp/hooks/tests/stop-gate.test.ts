@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import stopGate, { gateMessage, openItems } from "../stop-gate";
+import stopGate, { gateMessage, HISTORY_LIMIT, openItems } from "../stop-gate";
 
 // One bus-history.sh row: id, at, from, to, kind (first word), body.
 const row = (id: number, from: string, text: string): string =>
@@ -46,13 +46,16 @@ test("the message lists every item with its row and both ways out", () => {
 type StopResult = { decision?: "block"; continue?: boolean; reason?: string } | undefined;
 type Handler = (event: { type: "session_stop"; stop_hook_active: boolean }, ctx: unknown) => StopResult;
 
-/** A scratch repository whose bus-history.sh prints `rows` and records its argv. */
-function seat(rows: string[], env: Record<string, string | undefined>) {
+/** A scratch repository whose bus-history.sh records its argv and prints `rows`, or a window full of open TASKs. */
+function seat(rows: string[], env: Record<string, string | undefined>, full = false) {
 	const cwd = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "stop-gate-"));
 	mkdirSync(join(cwd, "scripts/orchestrator"), { recursive: true });
 	writeFileSync(join(cwd, "rows.tsv"), tsv(rows));
 	const fake = join(cwd, "scripts/orchestrator/bus-history.sh");
-	writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" > "${cwd}/argv"\ncat "${cwd}/rows.tsv"\n`);
+	const body = full
+		? `seq 1 "$3" | awk '{ print $1 "\\t2026-10-23T05:00:00+00:00\\torch\\t-\\tTASK\\tTASK v1 task_id=t" $1 }'`
+		: `cat "${cwd}/rows.tsv"`;
+	writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" > "${cwd}/argv"\n${body}\n`);
 	chmodSync(fake, 0o755);
 	const saved: Record<string, string | undefined> = {};
 	for (const [key, value] of Object.entries({ HCOM_TEAM: "u9team", HCOM_NAME: "orch", OMP_STOP_GATE_ALLOW_OPEN: undefined, ...env })) {
@@ -80,7 +83,14 @@ test("open items block the first settle and ride the capped continuation afterwa
 	expect(first?.reason).toContain("t1 owes a VERDICT, MERGED or HOLD line (row 6); t3 awaiting RESULT (row 10)");
 	expect(stop(true)).toEqual({ decision: undefined, continue: true, reason: first?.reason });
 	expect(warnings).toEqual([`warning: ${first?.reason}`, `warning: ${first?.reason}`]);
-	expect(readFileSync(join(cwd, "argv"), "utf8")).toMatch(/^u9team --since \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\n$/);
+	expect(readFileSync(join(cwd, "argv"), "utf8")).toMatch(/^u9team --limit 100000 --since \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\n$/);
+});
+
+test("a full history window is not trusted: the turn ends with a warning instead of a verdict", () => {
+	const { warnings, stop } = seat([], {}, true);
+	expect(stop()).toBeUndefined();
+	expect(warnings).toHaveLength(1);
+	expect(warnings[0]).toStartWith(`warning: stop-gate: bus history is full at ${HISTORY_LIMIT} rows since `);
 });
 
 test("all answered allows silently; OMP_STOP_GATE_ALLOW_OPEN allows with the warning; no team is inert", () => {

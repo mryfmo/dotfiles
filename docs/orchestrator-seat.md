@@ -17,7 +17,7 @@ omp fires `session_stop` when a main-agent turn is about to settle (`src/extensi
 
 ### The rule
 
-The gate reads the thread's rows since the seat started, `scripts/orchestrator/bus-history.sh $HCOM_TEAM --since <seat start>` from the seat's cwd (the checkout), and keeps the newest row per `task_id` among the rows that move a task:
+The gate reads the thread's rows since the seat started, `scripts/orchestrator/bus-history.sh $HCOM_TEAM --limit 100000 --since <seat start>` from the seat's cwd (the checkout), and keeps the newest row per `task_id` among the rows that move a task. The script keeps the newest `--limit` rows (default 200), so the gate asks for far more than a program writes and treats a full window as unreadable (a warning, the turn ends unchecked) rather than as proof of no debt:
 
 | Row, by kind (an `AGMSG-` prefix is dropped) and sender | Effect on its `task_id`                            |
 | ------------------------------------------------------- | -------------------------------------------------- |

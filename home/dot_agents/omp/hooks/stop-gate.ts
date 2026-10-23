@@ -27,6 +27,10 @@ type Ctx = { cwd: string; hasUI: boolean; ui: { notify(message: string, type?: "
 // omp's parseFlag truthy set (pi-utils src/env.ts:472-482).
 const TRUTHY = new Set(["1", "y", "Y", "true", "TRUE", "yes", "YES", "on", "ON"]);
 
+// bus-history.sh keeps the newest --limit rows (default 200), so an old debt would fall out of a busy
+// thread's window. Ask for far more than a program writes, and never trust a window that is full.
+export const HISTORY_LIMIT = 100_000;
+
 // Per kind (its AGMSG- prefix dropped), what a row from the seat / from another seat does to its
 // task: a string opens it with that debt, null closes it, undefined leaves it alone. The newest
 // moving row per task_id decides, so a HOLD or MERGED after a RESULT closes it and a new TASK reopens it.
@@ -57,7 +61,14 @@ export function gateMessage(open: OpenItem[], team: string): string {
 }
 
 function run(command: string, args: string[], cwd?: string): { out: string; error?: string } {
-	const result = spawnSync(command, args, { cwd, encoding: "utf8", timeout: 20_000, stdio: ["ignore", "pipe", "pipe"] });
+	// 64 MiB holds a full HISTORY_LIMIT window of long rows; the default 1 MiB would report ENOBUFS first.
+	const result = spawnSync(command, args, {
+		cwd,
+		encoding: "utf8",
+		timeout: 20_000,
+		maxBuffer: 64 * 1024 * 1024,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
 	if (result.status === 0) return { out: result.stdout };
 	return { out: "", error: (result.stderr || result.error?.message || `exit ${result.status}`).trim() };
 }
@@ -78,9 +89,14 @@ export default function stopGate(pi: ExtensionAPI): void {
 			warn(ctx, `stop-gate: inert, ${team ? "the seat has no hcom name" : "HCOM_TEAM is unset"}; the turn ends unchecked.`);
 			return;
 		}
-		const history = run(join(ctx.cwd, "scripts/orchestrator/bus-history.sh"), [team, "--since", since], ctx.cwd);
+		const args = [team, "--limit", String(HISTORY_LIMIT), "--since", since];
+		const history = run(join(ctx.cwd, "scripts/orchestrator/bus-history.sh"), args, ctx.cwd);
 		if (history.error !== undefined) {
 			warn(ctx, `stop-gate: bus unread (${history.error}); the turn ends unchecked.`);
+			return;
+		}
+		if (history.out.split("\n").filter(line => line !== "").length >= HISTORY_LIMIT) {
+			warn(ctx, `stop-gate: bus history is full at ${HISTORY_LIMIT} rows since ${since}, so older debts may be hidden; the turn ends unchecked.`);
 			return;
 		}
 		const open = openItems(history.out, seat);

@@ -371,6 +371,57 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.terminal_browser_receipt_paths(self.temp_dir / "no-home"),
         )
 
+    def test_chezmoi_managed_child_names_keeps_direct_children_and_tolerates_failure(self) -> None:
+        root = self.temp_dir / "home/.agents/skills"
+        listing = mock.Mock(
+            returncode=0,
+            stdout=f"{root}\n{root / 'architect'}\n{root / 'architect/references'}\n{root / 'unslop'}\n",
+            stderr="",
+        )
+        with mock.patch.object(self.module.subprocess, "run", return_value=listing) as run:
+            self.assertEqual({"architect", "unslop"}, self.module.chezmoi_managed_child_names(root))
+        self.assertEqual(
+            ["chezmoi", "--no-pager", "managed", "--include=dirs", "--path-style=absolute", str(root)],
+            run.call_args.args[0],
+        )
+        with mock.patch.object(
+            self.module.subprocess, "run", return_value=mock.Mock(returncode=1, stdout="", stderr="no source")
+        ):
+            self.assertEqual(set(), self.module.chezmoi_managed_child_names(root))
+        with mock.patch.object(self.module.subprocess, "run", side_effect=OSError("no chezmoi")):
+            self.assertEqual(set(), self.module.chezmoi_managed_child_names(root))
+
+    def test_chezmoi_external_skill_dirs_are_neither_unmanaged_nor_orphans(self) -> None:
+        # The pstack skills (assets.pstack) are chezmoi externals: managed, but with no copy under home/.
+        home = self.temp_dir / "home"
+        source = self.temp_dir / "repo-source"
+        agents = home / ".agents"
+        skills = agents / "skills"
+        (source / "dot_agents/skills/managed").mkdir(parents=True)
+        (source / "dot_agents/skills/managed/SKILL.md").write_text("content\n")
+        for path in (skills / "managed", skills / "poteto-mode", skills / "orphan-skill", agents / "docs/harness"):
+            path.mkdir(parents=True)
+        (skills / "managed/SKILL.md").write_text("content\n")
+        (skills / "poteto-mode/SKILL.md").write_text("pstack\n")
+        (skills / "orphan-skill/SKILL.md").write_text("stray\n")
+        (agents / "docs/harness/claude-code.md").write_text("adapter\n")
+        managed = {skills: {"managed", "poteto-mode"}, agents: {"skills", "docs"}}
+        with (
+            mock.patch.object(
+                self.module, "chezmoi_managed_child_names", side_effect=lambda root: managed.get(root, set())
+            ),
+            mock.patch.object(self.module, "HOME", home),
+            mock.patch.object(self.module, "SOURCE_ROOT", source),
+        ):
+            orphans = self.module.orphaned_asset_warnings(home, source)
+            shared = self.module.compare_shared_skills()
+
+        self.assertEqual(
+            [f"WARN: orphaned agent asset: {skills / 'orphan-skill'}; manual review required"],
+            orphans,
+        )
+        self.assertEqual([f"WARN: unmanaged skill dir: {skills / 'orphan-skill'}"], shared)
+
     def test_ignored_paths_suppress_receipt_linked_tree_entries(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
         self.write_target("agmsg/scripts/send.sh", executable=True)

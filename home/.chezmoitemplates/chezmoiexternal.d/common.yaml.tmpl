@@ -38,3 +38,31 @@
   refreshPeriod: "720h"
   stripComponents: 3
   include: ["**/LINESeedJP_*.otf"]
+
+{{/* pstack skills for every omp seat (docs/omp-skills.md): GitHub's source archive of cursor/plugins at
+     assets.pstack.pin in dot_agents/agent-config.yaml, the manifest being the only place the pin and its
+     sha256 live. harness/pstack/claude-code is the Claude Code build of the plugin (the cursor-plugins
+     marketplace entry's source); its skills/* land beside the repository's own skills under ~/.agents/skills,
+     where omp's agents provider reads them, and its docs/** under ~/.agents/docs so a skill's ../../docs link
+     resolves. A pstack skill named like a skill under dot_agents/skills makes chezmoi refuse the apply as an
+     inconsistent state instead of overwriting either copy.
+     shortcut: a skill upstream drops stays deployed, because ~/.agents/skills is not exact (other installers
+     own siblings there); add a .chezmoiremove entry when a pin bump drops one. */ -}}
+{{ $pstack := (include "dot_agents/agent-config.yaml" | fromYaml).assets.pstack -}}
+{{ $pstackURL := printf "https://github.com/cursor/plugins/archive/%s.tar.gz" $pstack.pin -}}
+".agents/skills":
+  type: "archive"
+  url: {{ $pstackURL | quote }}
+  checksum:
+    sha256: {{ $pstack.sha256 | quote }}
+  stripComponents: 5
+  include: ["*/harness/pstack/claude-code/skills/**"]
+
+".agents/docs":
+  type: "archive"
+  url: {{ $pstackURL | quote }}
+  checksum:
+    sha256: {{ $pstack.sha256 | quote }}
+  exact: true
+  stripComponents: 5
+  include: ["*/harness/pstack/claude-code/docs/**"]

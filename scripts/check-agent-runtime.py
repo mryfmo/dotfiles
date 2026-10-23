@@ -247,6 +247,32 @@ def terminal_browser_receipt_paths(home: Path | None = None) -> set[Path]:
     return {normalized_path(Path(line)) for line in lines if line.strip()}
 
 
+def chezmoi_managed_child_names(root: Path) -> set[str]:
+    """Names of the directories chezmoi manages directly under root, externals included.
+
+    The pstack skills (assets.pstack) arrive as chezmoi externals, so they are managed without a copy under
+    home/; chezmoi itself verifies them. Empty when chezmoi cannot answer.
+    """
+    try:
+        result = subprocess.run(
+            ["chezmoi", "--no-pager", "managed", "--include=dirs", "--path-style=absolute", str(root)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError:
+        return set()
+    if result.returncode != 0:
+        return set()
+    root = normalized_path(root)
+    return {
+        normalized_path(Path(line)).name
+        for line in result.stdout.splitlines()
+        if line.strip() and normalized_path(Path(line)).parent == root
+    }
+
+
 def compare_tree_contents(
     label: str,
     expected: dict[Path, str],
@@ -298,12 +324,14 @@ def compare_shared_skills() -> list[str]:
         return ["shared skill directory is missing: ~/.agents/skills"]
     expected_sources = source_files(source_root)
     expected = {rel: path.read_text() for rel, path in expected_sources.items()}
+    external_skills = chezmoi_managed_child_names(target_root) - {rel.parts[0] for rel in expected if rel.parts}
     return compare_tree_contents(
         "shared skill directory",
         expected,
         target_root,
         expected_sources,
         warn_unmanaged_top_level=True,
+        ignored_paths={target_root / name for name in external_skills},
     )
 
 
@@ -488,8 +516,11 @@ def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None =
         | receipt_skill_names
         # agmsg is owned by its upstream installer (update_agmsg), not chezmoi.
         | {"agmsg", "db", "run", "teams"}
+        # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
+        | chezmoi_managed_child_names(skills_root)
     )
-    candidates = [(path, source_root_names, AGENT_ROOT_ALLOWLIST) for path in direct_asset_directories(agents_root)] + [
+    root_allowlist = AGENT_ROOT_ALLOWLIST | chezmoi_managed_child_names(agents_root)
+    candidates = [(path, source_root_names, root_allowlist) for path in direct_asset_directories(agents_root)] + [
         (path, source_skill_names, skill_allowlist) for path in direct_asset_directories(skills_root)
     ]
     for path, source_names, allowlist in candidates:

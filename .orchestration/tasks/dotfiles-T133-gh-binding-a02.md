@@ -3,6 +3,7 @@ format: 2
 task_id: dotfiles-T133-gh-binding-a02
 kind: code
 security: true
+previous_sha256: 728f0ffe540d8eddc2261eeb89de3cdf11066a9660e900f9527c2f8833421eca
 dispatch_status: blocked-pre-anchor
 design_review: {design: .orchestration/plans/024-design-quality.md}
 requires_decision: [D-024-69]
@@ -15,6 +16,7 @@ allowed_files:
   - scripts/require-crit-review.py
   - scripts/pr-feedback.py
   - tests/unit/test_*.py
+  - scripts/lint-comparisons-baseline.tsv
   - .orchestration/dotfiles-T133-gh-binding-a02/**
 threat_table:
   - {control: "home/dot_mise/config.toml", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
@@ -26,6 +28,7 @@ threat_table:
   - {control: "scripts/require-crit-review.py", disposition: "closed: tests/unit/test_require_crit_review.py::GhBindingTest::test_gate_hostile_repository"}
   - {control: "scripts/pr-feedback.py", disposition: "closed: tests/unit/test_pr_feedback.py::GhBindingTest::test_collector_hostile_repository"}
   - {control: "tests/unit/test_*.py", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence-integrity automation; independently inspect the four authorized modules and their behavioral red/green logs."}
+  - {control: "scripts/lint-comparisons-baseline.tsv (amendment 3: stale-row removal only; no row is added, every new R1/R4 hit is fixed in the allowed sources)", disposition: "closed: tests/unit/test_lint_comparisons.py::LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline (the existing lint test, run by make unit-test on the final head; it fails on a stale row of a changed file and on an unbaselined hit)"}
   - {control: ".orchestration/dotfiles-T133-gh-binding-a02/** including task.md", disposition: "residual: dotfiles-T133-gh-binding-followup-a01 owns evidence automation; compare anchored bytes, task-copy digest and literal full head against the independently audited PR."}
   - {control: "pin", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_exact_pin"}
   - {control: "declaration", disposition: "closed: tests/unit/test_supply_chain_policy.py::GhBindingPolicyTest::test_gh_declaration_policy"}
@@ -72,7 +75,7 @@ Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does 
 
 0. Inventory: local HEAD/origin/main observed at 7da0cdfab9de9fbea673b82379acd4e317115065; chain-finish.sh is absent and regime-ci.py/task-consistency-check.py currently use Git, not gh. These are local observations, pending gh-free canonical confirmation before C-80/anchor.
    Implement the three present shell routes and their real gate/collector descendants. Do not invent chain-finish or add canonical-network behavior to the checkers; dotfiles-T133-gh-binding-followup-a01 owns all three future routes and their positive authenticated decoy fixtures.
-   The shell wildcard authorizes only chain-integrate.sh, orch-gate.sh and local-review.sh; the test wildcard authorizes only test_supply_chain_policy.py, test_chain_glue.py, test_require_crit_review.py and test_pr_feedback.py. If canonical inventory differs, reauthor/review the whole inventory and threat table before dispatch.
+   The shell wildcard authorizes only chain-integrate.sh, orch-gate.sh and local-review.sh; the test wildcard authorizes test_supply_chain_policy.py, test_chain_glue.py, test_require_crit_review.py and test_pr_feedback.py for new fixtures, and, for fixture adoption only (a fixture adopts the bound gh and the declaration; no assertion is weakened, deleted or re-targeted), test_orch_gate_path.py, test_orchestrator_tools.py, test_chain_review_scripts.py, test_validate_agent_assets.py and test_agmsg_orchestration_docs.py, the modules that exercise the scripts this task changes (amendment 2). If canonical inventory differs, reauthor/review the whole inventory and threat table before dispatch.
 1. Pin `"github:cli/cli" = "2.102.0"` in home/dot_mise/config.toml with one adjacent English reason comment following pins-a01; retain unrelated pins. Installed target: `~/.local/share/mise/installs/github-cli-cli/2.102.0/bin/gh`.
 2. Declare trusted_tools.gh with version "2.102.0" and that home-relative absolute target in agent-config.yaml; later uv/Python/Node entries are siblings.
    validate-agent-assets.py checks pin equality, normalized home-anchored spelling, absolute expansion under the real user's home, and no shims component in spelling or resolved path. Refuse missing/malformed declarations, traversal, forged HOME and mismatched identities; give every rule a separate refusal subtest.
@@ -93,7 +96,7 @@ Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does 
 
 ## Check
 
-The final diff has at most 350 changed lines outside `tests/` and `.orchestration/`, and at most 700 under `tests/`.
+The final diff has at most 350 changed lines outside `tests/` and `.orchestration/`, and at most 1000 under `tests/` (amendment 2: the fixture adoption in the five legacy modules).
 Measure with `git diff --numstat <merge-base40> <head40>`.
 Caps are PR-wide additions plus deletions from git merge-base <authenticated-main40> <head40> (C-123), never round deltas; record dispatch measurement_base40, final main/head/merge-base SHAs, every numstat row and both totals, and recount after update-branch. Expected width is about 200/400; 350/700 includes fixtures and one Bot fix round, with no exemption from a07's 446/709 rewrite.
 Write fixtures first and implement every closed selector. Each active shell route and both Python consumers needs a positive authenticated operation, synthetic credential, fixed host/repository and consumed response through declared gh; separately test missing/version/path refusals. Matrices cover all five consumers, including review/gate descendants; absent checkers/chain-finish are not passing entries.
@@ -110,7 +113,7 @@ Worker Playbook step 4 applies: every command sandboxed; any denial sends AGMSG-
 Create fresh branch with `git switch -c tools/gh-binding-a02 --no-track origin/main`; push `git push https://github.com/mryfmo/dotfiles.git tools/gh-binding-a02`, never -u or shared-config changes; open one draft PR. Follow step 15's ready/CI/Bot wait, with at most one worker Bot fix round; surviving P0/P1 stops for the operator. Worker never merges.
 Under .orchestration/dotfiles-T133-gh-binding-a02/ write task.md byte-identical to the complete anchored dispatch, report.md, validation.md with verbatim stdout/stderr and real exit statuses, sandbox.md, learning.md, autoskill.md and result.txt; normalize home paths and retain no secrets.
 Each evidence item names producer/seat: worker (Codex seat), orchestrator (Claude seat, sandboxed Bash), or author (Codex review-profile seat, sandboxed exec). report.md maps all rows/selectors, scope, counts, red/green pairs and limitations; sandbox.md records denials, learning.md triage, autoskill.md actual use/not-used, and cost is n/a unless measured.
-Write AGMSG-RESULT v1 before sending: task_id, status, PR, literal head=<full40>, authenticated_main=<full40>, merge_base=<full40>, measurement_base40, source_cap=350, test_cap=700, source_changed/test_changed, every red/green SHA pair, task_copy=<repo-local task.md>, task_copy_sha256 and artifact paths. ready_for_review requires passing CI; include Bot findings and dispositions per step 15.
+Write AGMSG-RESULT v1 before sending: task_id, status, PR, literal head=<full40>, authenticated_main=<full40>, merge_base=<full40>, measurement_base40, source_cap=350, test_cap=1000, source_changed/test_changed, every red/green SHA pair, task_copy=<repo-local task.md>, task_copy_sha256 and artifact paths. ready_for_review requires passing CI; include Bot findings and dispositions per step 15.
 Keep plan/todo/learn updated and uncommitted, one active todo per owner. Use agent-side Crit data/evidence only, no browser/publication; pass make require-crit-review with its receipt before RESULT. The orchestrator alone follows Playbook step 10's feedback, audit, acceptance, gate and integration order.
 
 ## Anchor
@@ -120,6 +123,12 @@ Before C-80/anchor the orchestrator creates/expands dotfiles-T133-gh-binding-fol
 Obtain main40 and design digest gh-free from a fresh private HTTPS bare clone of https://github.com/mryfmo/dotfiles.git with an independent object store. Record exact sanitized producer commands/outputs and design 5.14 items 1/2/9 protection/parent observations, then paste the five payload lines below before review.
 Change dispatch_status only after evidence exists; C-80 reviews and anchors the whole populated text, with no later paste. Inventory differences require reauthoring, not extra files or invented passing fixtures.
 Installation/deployment is separate from code/CI: observe the version-specific declared install, protected manifest/config and positive real consumer probes under the measured parent before enabling authenticated acceptance reads. Future checker adoption stays unclosed.
+Amendment 1 (`previous_sha256: 3c1d54a9191af00478de29a1d69f251719fed4f692f0cb50a9d1adbf65ba36c9`): the seat's first command, the branch creation of 2026-10-22T03:05Z, exited 0 and created `tools/gh-binding-a02`, but git printed two `Unable to create .git/packed-refs.lock: Operation not permitted` lines, because the shared common dir is read-only for a Codex seat by design (T64 writable roots: objects, refs, logs and the seat's worktrees entry; the common dir itself, config, hooks, info, HEAD and packed-refs stay read-only). Under this text a denial of exactly that kind, an `Operation not permitted` on `.git/packed-refs.lock` or `.git/config.lock` from a git command whose exit status is 0 and whose stated effect is present, is the boundary working as designed: record the command, its exit status and the stderr lines in sandbox.md as measured state and continue; never retry it outside the sandbox. Every other denial, including one of these paths with a non-zero exit, stays an `AGMSG-PONG v1 status=blocked` and a hold, as line 109 says. The branch created at 03:05Z is kept; the orchestrator verified it as the worktree's HEAD.
+
+Amendment 2 (`previous_sha256: 2adb14773dc6ec1563b0ddb518edf27e4b23d6eb8c9a817c9f243cbc1faf82f7`): CI on 2804b176 (1342 tests, 55 failures, 4 errors) showed that the fixtures of test_orch_gate_path.py, test_orchestrator_tools.py and test_chain_review_scripts.py assume an ambient PATH gh and the old call recorder, because they exercise orch-gate.sh, local-review.sh and the gate this task binds; test_validate_agent_assets.py and test_agmsg_orchestration_docs.py exercise the validator and the scripts' text the same way. Item 0 (the inventory sentence at line 76) therefore authorizes those five modules for fixture adoption only, the test cap becomes 1000 (source cap unchanged at 350), and the worker's RESULT lists, per legacy module, the fixtures adopted and asserts that no assertion changed meaning (one line per module in report.md). Nothing else changes.
+
+Amendment 3 (`previous_sha256: 86513b290ea19e044c8d7c06cd8dfb9afbc90fc1a4b5c173154e49d08b8b4f9c`): CI at 2804b176 fails `test_lint_comparisons` on new R1/R4 hits (orch-gate.sh:77, pr-feedback.py:77/147/170) and on a stale baseline row (`scripts/orchestrator/orch-gate.sh R1`): the lint exits 1 on a stale row in a changed file. The new hits are fixed in the allowed sources (no baseline row is added); `scripts/lint-comparisons-baseline.tsv` joins allowed_files for stale-row removal only, with its threat row above, closed by the existing `LintComparisonsTest::test_the_changed_files_are_clean_against_the_baseline` (no new test in that module). The test-row wording now says nine modules, and amendment 2's authorization sentence is Item 0's inventory sentence (line 76), not Item 6. Nothing else changes.
+
 ## Checks
 
 ```text

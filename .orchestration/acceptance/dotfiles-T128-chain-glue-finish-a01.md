@@ -47,4 +47,5 @@ local:9c01191:1	unpinned-command-path
 
 local:9c01191:2	advisory-p2
 - 2026-10-21T10:04Z: update-branch to b09c88c6 after the pins merge: required unit tests fail on test_lint_comparisons (R1 at chain-finish.sh:67 and :111; the lint merged after round 5); D-024-63 resets the lineage to a02 (two-line lint conformance by another context, no sixth round); design-reset record written; a02 dispatched to a008 (bus 2996).
+- 2026-10-21T22:48Z: omission found by the a02 chain's sweep: the Bot review 5557059265 (2026-10-17 08:42Z, on 8d09f80e) left 4302085363 (P1) and 4302085368 (P2) undispositioned in this record; both are handled in the a02 lineage (D-024-68). Sweep class S2-bot added to defect-sweep.sh.
 

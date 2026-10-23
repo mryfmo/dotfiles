@@ -10,7 +10,7 @@ allowed_files:
   - home/dot_codex/modify_private_standard.config.toml
   - home/dot_codex/modify_private_security.config.toml
   - .orchestration/dotfiles-T133-codex-worker-network-a01/**
-after: [dotfiles-T133-worker-write-boundary-a02]
+after: [dotfiles-T133-worker-write-boundary-slice1-a01]
 threat_table:
   - control: home/dot_agents/agent-config.yaml
     disposition: "residual: only the standard and security Codex profiles gain sandbox network access; the shared sandbox defaults, writable roots, approval policy and permission hooks remain unchanged."

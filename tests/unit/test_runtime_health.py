@@ -107,6 +107,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_terminal_browser() { :; }
                     update_omp() { :; }
                     update_hcom() { :; }
+                    update_pi_claude_bridge() { :; }
                     update_compactiondb() { :; }
                     update_agmsg() { :; }
                     ensure_herdr_integrations() { :; }

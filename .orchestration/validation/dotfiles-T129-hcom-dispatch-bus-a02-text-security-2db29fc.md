@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a16212-15cf-7321-82db-5770f8917309
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 タスク本文と参照先のレビュー・acceptance 記録を読み、設計上の判断が実行対象に結び付くかを確認します。読み取り専用で進め、security review と agmsg-orchestration の関連手順を参照します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -294,7 +294,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail-review
@@ -451,7 +451,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in ~/Workspace/dotfiles
  succeeded in 13ms:
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
  M .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
@@ -816,13 +816,13 @@ exec
    159	```
 
 exec
-/bin/zsh -lc "sed -n '81,127p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '81,127p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,80p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,80p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|task-level audit|threat.table' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|task-level audit|threat.table' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json;g=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([{k:n.get(k) for k in (\"filePath\",\"summary\")} for n in g.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"dispatch\",\"bus-read\",\"agent-config\",\"update_hcom\"))],ensure_ascii=False))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json;g=json.load(open(\".ua/knowledge-graph.json\")); print(json.dumps([{k:n.get(k) for k in (\"filePath\",\"summary\")} for n in g.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"dispatch\",\"bus-read\",\"agent-config\",\"update_hcom\"))],ensure_ascii=False))'" in ~/Workspace/dotfiles
  succeeded in 146ms:
 ---
 format: 2
@@ -1281,7 +1281,7 @@ d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 
 **Preferring concise outputs**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '94,122p'; rg -n 'Codex seat worklogs|"'^## '"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '94,122p'; rg -n 'Codex seat worklogs|"'^## '"' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 70ms:
     94	6. Before rendering any marker row, validate header fields and reject NUL and every body line separator recognized by downstream splitlines, including CR/LF, VT/FF, FS/GS/RS, NEL and Unicode line/paragraph separators; preserve ordinary tabs/quotes. Buffer validation so failure emits no partial history; readers refuse the failed read. test_history_forged_row_refused plants one hcom message containing a forged marker/ACCEPTANCE row, exercises bus-history plus all three consumers, and asserts refusal, no fabricated event/count, no send and no record mutation. test_hcom_marker_roundtrip proves valid marker compatibility; only ID selection in item 3 supersedes the old sent-row algorithm.
     95	7. test_status_revise_matrix and dispatch subfixtures use AGMSG-ACCEPTANCE v1 status=revise previous_head=… check=… task_sha256=…; preserve amendment digest validation. Receipt-identity fixtures cover send/query IDs missing/malformed/ambiguous and injection attempts, duplicate payloads with opposite receipts and a valid exact-ID match; store-declaration/framing fixtures separately close all three round-1 findings.
@@ -1427,7 +1427,7 @@ on what you checked.
 Lists findings, changes no code.
 
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -15; rg -n '5.14|D-024-79|D-024-81|C-80|hcom-dispatch-bus-a02' .orchestration/plans/024-design-quality.md .orchestration/acceptance --glob '*.md' --glob '*.json'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -15; rg -n '5.14|D-024-79|D-024-81|C-80|hcom-dispatch-bus-a02' .orchestration/plans/024-design-quality.md .orchestration/acceptance --glob '*.md' --glob '*.json'" in ~/Workspace/dotfiles
  succeeded in 77ms:
 .claude/contextdb/contextdb/cli.py
 .claude/contextdb/contextdb/config.py
@@ -1881,11 +1881,11 @@ exec
 codex
 本文には、履歴の偽装行・送信 ID・実際に読むバイト列を検証する対策が入っています。いまは amendment 2 の「private tool directory」が実際の worker 書き込み境界で保護されるかと、参照先のホスト実行契約との整合性を確認しています。
 exec
-/bin/zsh -lc "sed -n '225,258p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '103,120p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,258p' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '103,120p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-7c44fca.md.last.md; rg --files .orchestration/acceptance .orchestration/tasks | rg '(hcom-dispatch-bus|gh-binding|normalised-comparison-lint-a01|seat-liveness|seat-launch-args)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-7c44fca.md.last.md; rg --files .orchestration/acceptance .orchestration/tasks | rg '(hcom-dispatch-bus|gh-binding|normalised-comparison-lint-a01|seat-liveness|seat-launch-args)'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat tests/unit/trusted_exec_contract.py; rg -n 'update_hcom|UV_TOOL_DIR|UV_TOOL_BIN_DIR|uv tool' scripts/update-agent-assets.sh; rg -n 'writable_roots|allowWrite|excludedCommands|gh|worklog|worker_write|worker-write' home/dot_agents/agent-config.yaml" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat tests/unit/trusted_exec_contract.py; rg -n 'update_hcom|UV_TOOL_DIR|UV_TOOL_BIN_DIR|uv tool' scripts/update-agent-assets.sh; rg -n 'writable_roots|allowWrite|excludedCommands|gh|worklog|worker_write|worker-write' home/dot_agents/agent-config.yaml" in ~/Workspace/dotfiles
  succeeded in 164ms:
 ## Codex seat worklogs
 
@@ -2319,7 +2319,7 @@ class TrustedExecContractMixin:
 
 **Managing output limits**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-7c44fca.md.last.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-7c44fca.md.last.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md' in ~/Workspace/dotfiles
  succeeded in 4ms:
 [P1] high .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md:122 Amendment 1 still executes hcom from the shared uv directory forbidden by design item 9: hashing before invocation leaves replacement between verification and execution possible, while the prescribed fixture replaces the file before verification; consume a verified, protected executable and test that handoff before marking this boundary closed.
 
@@ -2358,7 +2358,7 @@ Verdict: incorrect[P1] high .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus
 Not checked: implementation, live Linux execution or adversarial races; same-user isolation remains a declared residual, and these controls do not establish it.
 Verdict: incorrect
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; tail -55 .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md; tail -45 .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; tail -55 .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md; tail -45 .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 # Acceptance: dotfiles-T129-hcom-dispatch-bus-a02
 
@@ -2496,7 +2496,7 @@ dispatch: [2026-10-22T01:29:09Z] claude-deep-dot → claude-standard-dot-a011: A
 
 **Inspecting hcom binary wheel**
 exec
-/bin/zsh -lc "sed -n '117,121p' .orchestration/plans/024-design-quality.md; sed -n '108,137p' home/dot_agents/agent-config.yaml; sed -n '269,302p' home/dot_agents/agent-config.yaml; sed -n '985,1048p' scripts/update-agent-assets.sh; sed -n '1,105p' scripts/update-agent-assets.sh" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '117,121p' .orchestration/plans/024-design-quality.md; sed -n '108,137p' home/dot_agents/agent-config.yaml; sed -n '269,302p' home/dot_agents/agent-config.yaml; sed -n '985,1048p' scripts/update-agent-assets.sh; sed -n '1,105p' scripts/update-agent-assets.sh" in ~/Workspace/dotfiles
  succeeded in 23ms:
 7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
       - total-output-tokens
@@ -2734,10 +2734,10 @@ function has_command() {
 
 
 exec
-/bin/zsh -lc "ls -l .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md; file /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom; sed -n '1,115p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-d61a0f2.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-5f9caa3.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "ls -l .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md; file ~/.local/share/uv/tools/hcom/bin/hcom; sed -n '1,115p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-d61a0f2.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-5f9caa3.md.last.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 ls: .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md: No such file or directory
-/Users/a0004262/.local/share/uv/tools/hcom/bin/hcom: Mach-O 64-bit executable arm64
+~/.local/share/uv/tools/hcom/bin/hcom: Mach-O 64-bit executable arm64
 ---
 format: 2
 task_id: dotfiles-T133-gh-binding-a02
@@ -2873,7 +2873,7 @@ Verdict: incorrect
 **Analyzing tool installation and permission issues**
 **Checking installer documentation and effects**
 exec
-/bin/zsh -lc "sed -n '118,145p' .orchestration/plans/024-design-quality.md; cat .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md | tail -65; rg -n 'Completion|INV-6' .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '118,145p' .orchestration/plans/024-design-quality.md; cat .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md | tail -65; rg -n 'Completion|INV-6' .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md; sed -n '1,90p' .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md" in ~/Workspace/dotfiles
  succeeded in 30ms:
 - 2026-10-15T07:10:45Z RESULT (bus 07:08:58Z): PR #367, head `ee929382` on 59599783, branch `tools/seat-liveness`, 4 files, the three tests (gone/present/unknown; the skipped-claim case quiet; whole calls lists), 201 tests run locally with 3 new passing and 31 pre-existing sandbox failures identical on origin/main (baseline worktree, validation section 1), CI 13 green including the four unit-test jobs, 8 of 8 mutants caught, caps 162/200 and 140/1000, no Bot thread, task_copy eb50e54f equals the dispatched hash, CompactionDB memory 1c390546…. Orchestrator read of the diff: as items 1 and 2 (the pane-state function in both scripts, stale lines only when the claim was not skipped, all rows read first, the leader check kept, the record moved under stale/); no finding. Pending-integration ACCEPTANCE sent (send.sh); the chain starts after PR #364 lands (serial merges).
 
@@ -3019,7 +3019,7 @@ re-plan: presence-not-structure -> specification: a rule's acceptance condition 
 - 2026-10-17T14:56Z chain 1 on the update-branch head 7c8e7484 (onto e9bc99d2): CI run 39042275123 fails `test_the_tracked_tree_is_clean_against_the_baseline` with stale baseline rows for home/dot_claude/hooks/executable_project-map-reload.sh (PR #379's merge changed the baselined lines); the chain stopped at prep (exit 4). D-387-last: this PR integrates last with one final baseline refresh round (a merge consequence, revises 3 by count, recorded as such), after the other open PRs merge; a005 was told by PING and continues dotfiles-T130-sandbox-portability-a01 meanwhile.
 
 exec
-/bin/zsh -lc "rg -n 'codex|allowWrite|writable_roots|hcom|%q|item 1|tail' .agents/worklog/orchestrator-glue/checks-paste.sh; ls -ld .agents .agents/worklog .agents/worklog/uv-tools; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; rg --files /Users/a0004262/.local/share/mise/installs/uv | head -8" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'codex|allowWrite|writable_roots|hcom|%q|item 1|tail' .agents/worklog/orchestrator-glue/checks-paste.sh; ls -ld .agents .agents/worklog .agents/worklog/uv-tools; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; rg --files ~/.local/share/mise/installs/uv | head -8" in ~/Workspace/dotfiles
  succeeded in 11ms:
 19:stage() { local label=$1; shift; local out st=0; out=$("$@" 2>&1) || st=$?; printf '%s: `%s` -> `%s` (exit %s)\n' "$label" "$(printf '%q ' "$@" | mask)" "$(printf '%s' "$out" | "$TR" '\n' ' ' | "$SED" 's/ *$//' | mask)" "$st"; return 0; }
 36:  stage "after: assets-omp-hcom lineage on main" "${E[@]}" HOME="$priv/home" GIT_DIR="$priv/dotfiles.git" "$GIT" log -1 --format=%h%x20%s 740772ef
@@ -3041,14 +3041,14 @@ ls: .agents/worklog/uv-tools: No such file or directory
 drwxr-xr-x@ 4 a0004262  staff  128 Oct 22 12:01 .agents
 drwxr-xr-x@ 7 a0004262  staff  224 Oct 22 12:02 .agents/worklog
 2db29fc2af0ba7de58ca712bc24d03c9965a5918fce7d3fdac12d71be899bf70  .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md
-/Users/a0004262/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv
-/Users/a0004262/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uvx
-/Users/a0004262/.local/share/mise/installs/uv/0.12.20/uv-aarch64-apple-darwin/uv
-/Users/a0004262/.local/share/mise/installs/uv/0.12.20/uv-aarch64-apple-darwin/uvx
-/Users/a0004262/.local/share/mise/installs/uv/0.12.17/uv-aarch64-apple-darwin/uv
-/Users/a0004262/.local/share/mise/installs/uv/0.12.17/uv-aarch64-apple-darwin/uvx
-/Users/a0004262/.local/share/mise/installs/uv/0.12.19/uv-aarch64-apple-darwin/uvx
-/Users/a0004262/.local/share/mise/installs/uv/0.12.19/uv-aarch64-apple-darwin/uv
+~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv
+~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uvx
+~/.local/share/mise/installs/uv/0.12.20/uv-aarch64-apple-darwin/uv
+~/.local/share/mise/installs/uv/0.12.20/uv-aarch64-apple-darwin/uvx
+~/.local/share/mise/installs/uv/0.12.17/uv-aarch64-apple-darwin/uv
+~/.local/share/mise/installs/uv/0.12.17/uv-aarch64-apple-darwin/uvx
+~/.local/share/mise/installs/uv/0.12.19/uv-aarch64-apple-darwin/uvx
+~/.local/share/mise/installs/uv/0.12.19/uv-aarch64-apple-darwin/uv
 
 **Inspecting missing line in design file**
 codex
@@ -3056,7 +3056,7 @@ amendment 2 が記録済みとする worker の書き込み境界は、現在の
 web search: 
 web search: site.docs.astral.sh uv UV_TOOL_BIN_DIR UV_TOOL_DIR tool install executables directory
 exec
-/bin/zsh -lc "/usr/bin/env -i PATH=/usr/bin:/bin HOME=/Users/a0004262 UV_CACHE_DIR=/Users/a0004262/Workspace/dotfiles/.agents/worklog/uv-cache /Users/a0004262/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv help tool install | rg -n -A8 -B5 'executables|UV_TOOL|force|no-config|python'; sed -n '54,85p' .agents/worklog/orchestrator-glue/checks-paste.sh; python3 -c 'from pathlib import Path; p=Path(\".orchestration/plans/024-design-quality.md\"); print(\"lines\",len(p.read_text().splitlines())); print(\"\\n\".join(f\"{i}: {l[:180]}\" for i,l in enumerate(p.read_text().splitlines(),1) if 103<=i<=118))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/env -i PATH=/usr/bin:/bin HOME=~ UV_CACHE_DIR=~/Workspace/dotfiles/.agents/worklog/uv-cache ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv help tool install | rg -n -A8 -B5 'executables|UV_TOOL|force|no-config|python'; sed -n '54,85p' .agents/worklog/orchestrator-glue/checks-paste.sh; python3 -c 'from pathlib import Path; p=Path(\".orchestration/plans/024-design-quality.md\"); print(\"lines\",len(p.read_text().splitlines())); print(\"\\n\".join(f\"{i}: {l[:180]}\" for i,l in enumerate(p.read_text().splitlines(),1) if 103<=i<=118))'" in ~/Workspace/dotfiles
  succeeded in 130ms:
 1-Install commands provided by a Python package.
 2-
@@ -3278,7 +3278,7 @@ lines 117
 
 **Checking output length limits**
 exec
-/bin/zsh -lc "sed -n '115,116p' .orchestration/plans/024-design-quality.md; sed -n '1,110p' /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '20,65p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '115,116p' .orchestration/plans/024-design-quality.md; sed -n '1,110p' ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '20,65p'" in ~/Workspace/dotfiles
  succeeded in 25ms:
 9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
 10. **worker は sandbox 外でコマンドを実行しない（D-024-17 の改訂）** 2026-10-19T03:45Z の実測で `gh api` は Claude sandbox の中から成功した（sandbox の proxy は CONNECT 型で TLS を終端しない；keychain のトークンも読めた）。worker 席の除外コマンドは空にし、gh も git push も sandbox 内の proxy 経由で実行する。Codex 席は `sandbox_workspace_write.network_access = true` で同じ状態にし、permgate の codex ポリシーは sandbox 外への escape を承認しない（permgate の変更は操作者の手順）。wrapper 方式（絶対パス、env -i、固定 GH_CONFIG_DIR）は LD_PRELOAD と引数転送（`gh repo clone -- --config`）を閉じられないので採らない。
@@ -3382,9 +3382,9 @@ Never cut: validation at trust boundaries, error handling that prevents data los
     65	premises: []
 
 exec
-/bin/zsh -lc "/usr/bin/env -i PATH=/usr/bin:/bin HOME=/Users/a0004262 UV_CACHE_DIR=/Users/a0004262/Workspace/dotfiles/.agents/worklog/uv-cache UV_TOOL_DIR=/Users/a0004262/Workspace/dotfiles/.agents/worklog/uv-tools /Users/a0004262/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv tool dir --bin --no-config; rg -n 'permgate|worker-write-boundary|Edit\\(|Write\\(' home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json | head -25; rg -n 'sha256|hcom' /Users/a0004262/.agents/.installed-manifest.json | tail -10" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/env -i PATH=/usr/bin:/bin HOME=~ UV_CACHE_DIR=~/Workspace/dotfiles/.agents/worklog/uv-cache UV_TOOL_DIR=~/Workspace/dotfiles/.agents/worklog/uv-tools ~/.local/share/mise/installs/uv/0.13.1/uv-aarch64-apple-darwin/uv tool dir --bin --no-config; rg -n 'permgate|worker-write-boundary|Edit\\(|Write\\(' home/dot_agents/agent-config.yaml home/.chezmoitemplates/claude-settings-managed.json | head -25; rg -n 'sha256|hcom' ~/.agents/.installed-manifest.json | tail -10" in ~/Workspace/dotfiles
  succeeded in 40ms:
-/Users/a0004262/.local/bin
+~/.local/bin
 home/dot_agents/agent-config.yaml:143:      command: '{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex'
 home/dot_agents/agent-config.yaml:218:      - Edit(.env*)
 home/dot_agents/agent-config.yaml:323:      command: ~/.local/bin/common/permgate claude
@@ -3392,8 +3392,8 @@ home/.chezmoitemplates/claude-settings-managed.json:20:      "Edit(.env*)",
 home/.chezmoitemplates/claude-settings-managed.json:200:            "command": "~/.local/bin/common/permgate claude",
 197:        "sha256sum <tarball> (shasum -a 256 on macOS)",
 226:    "update_hcom": {
-230:        "/Users/a0004262/.local/bin/hcom",
-231:        "/Users/a0004262/.local/share/agent-assets/hcom/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl"
+230:        "~/.local/bin/hcom",
+231:        "~/.local/share/agent-assets/hcom/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl"
 234:        "uv tool install --force <verified-hcom-wheel>"
 
 **Deciding TOCTOU wheel inclusion**

@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a161f6-4f33-71b0-8f13-f084e1831f31
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -24,7 +24,7 @@ codex
 I’ll review the task’s execution boundaries and every threat-table row, then check the cited acceptance records and reviews. I’m applying the orchestration and Ponytail review guidance in read-only mode.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -295,7 +295,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail-review
@@ -452,7 +452,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in ~/Workspace/dotfiles
  succeeded in 5ms:
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
  M .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
@@ -765,11 +765,11 @@ exec
    121	
 
 exec
-/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"summary\",\"filePath\")}) for n in d.get(\"nodes\",[]) if any(x in str(n.get(\"filePath\",\"\")) for x in (\"trusted_exec\", \"dispatch.sh\", \"regime-counters\", \"bus-read\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"id\",\"summary\",\"filePath\")}) for n in d.get(\"nodes\",[]) if any(x in str(n.get(\"filePath\",\"\")) for x in (\"trusted_exec\", \"dispatch.sh\", \"regime-counters\", \"bus-read\"))))'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | head -65' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | head -65' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|5\\.14|C-80|D-024-79|D-024-81|T129|T133' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md .orchestration/plans/024-design-quality.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|5\\.14|C-80|D-024-79|D-024-81|T129|T133' ~/.agents/skills/agmsg-orchestration/SKILL.md .orchestration/plans/024-design-quality.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 130ms:
      1	---
      2	format: 2
@@ -838,7 +838,7 @@ exec
     65	Design 5.14 items 0–10 of `.orchestration/plans/024-design-quality.md` apply by reference; this text adds task-specific requirements without redefining that contract. Closed rows cover the named fixture assertions; host/environment/executable provenance beyond those assertions remains with the residual owners.
 
  succeeded in 249ms:
-/Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md:225:## Codex seat worklogs
+~/.agents/skills/agmsg-orchestration/SKILL.md:225:## Codex seat worklogs
 .orchestration/plans/024-design-quality.md:95:### 5.14 残余（凍結後の計測事実、D-024-29）
 .orchestration/plans/024-design-quality.md:103:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
 .orchestration/plans/024-design-quality.md:105:orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispositions、audit-pool、verdict、chain）は、同じホスト上で同じ UID の worker プロセスと共存する。2026-10-19 の C-80 審査（a05、dispositions-a02、audit-pool-a01 の 3 文、計 19 件の P1）は、どの文も同じ前提を書かず同じ穴を持つことを示した。以後、`security: true` の orchestrator 側タスク文は本節を参照で適用し、本節の各項目に対応する threat 行を持つ。文ごとに言い換えない。
@@ -1201,13 +1201,13 @@ d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 
 **Managing output size**
 exec
-/bin/zsh -lc "sed -n '225,247p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,247p' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '106,125p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '106,125p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home | head -12; rg -n 'D-024-(79|81)' .orchestration/decisions.tsv; command -v crit" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home | head -12; rg -n 'D-024-(79|81)' .orchestration/decisions.tsv; command -v crit" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in ~/Workspace/dotfiles
  succeeded in 234ms:
 
 1. **書き込み境界（前提 6、ランタイム別に正直に）** Claude worker 席は専用の設定ディレクトリ `CLAUDE_CONFIG_DIR=~/.claude-worker`（chezmoi が描画、operator が一度 login）で起動し、orchestrator の `~/.claude` と設定を共有しない。worker 設定：除外コマンド無し、Herdr socket 無し、sandbox の allowWrite は自席 worktree と agmsg store と席別キャッシュだけ、`failIfUnavailable: true`、信頼パス（anchored checkout の `.claude/worktrees/` 以外、`~/.agents`、`~/.claude*`、`~/.local`、`~/.config`）への Edit deny（公式文書：file tool の permission 検査は要求パスと symlink 解決後のパスの両方に deny を適用し、symlink そのものへの書き込みは拒否する）、sandbox の強制範囲はユーザー設定ではなく **managed settings**（`/Library/Application Support/ClaudeCode/managed-settings.json`、公式文書 "Repository settings under an admin-required sandbox"：project/local 設定は sandbox を無効化したり除外・socket を足したりできない）に置く。chezmoi は user ではこのファイルを書けないので、描画した内容を操作者が `sudo` で一度配置する（操作者手順）。worker 設定は worktree 自身の `.claude/**` と `.mcp.json` への Edit deny（`//<anchored>/.claude/worktrees/*/.claude/**`）を持つ（Bash 側は sandbox 既定の settings/hooks の denyWithinAllow）。agmsg store（全席が書く）から配送 hook が driver や plugin を source する上流の経路（storage.sh の `drivers.partition` traversal、`db/trusted-plugins` と `plugins/partition/shared.sh` による差し替え承認）は別タスク（agmsg hardening）の行で、worker 設定は `~/.agents/skills/agmsg/plugins/**` と `~/.agents/skills/agmsg/db/trusted-plugins` への書き込みを deny し（Edit deny は sandbox の deny にも合流する）、hook 側は store 由来の設定値を検証するまで残余と書く。managed settings の配置先は OS で異なる（macOS `/Library/Application Support/ClaudeCode/managed-settings.json`、Linux `/etc/claude-code/managed-settings.json`）。hook は agmsg 配送だけを、hook コマンドを `/usr/bin/env -i PATH=/usr/bin:/bin HOME=<home> …` で始めて（`BASH_ENV` などの継承環境を bash 起動前に消す；PATH 固定だけでは BASH_ENV が先に走る）絶対パスのインタプリタで呼び（上流の agmsg スクリプトは `/usr/bin/env bash` の shebang を持つので、hook 実行環境の PATH が shim を含まないことで束縛する）、各 hook に `onFailure: "block"`。公式文書：linked worktree の session は **main checkout の `.claude/settings.local.json` を読む**ので、worker 向けの hook を worktree の settings.local.json に書いても読まれず、逆に orchestrator の local hooks が worker session でも走る。したがって orchestrator 側の local hooks も guard 経由にし、worker 側の hook は worker config dir の settings に置く。Edit deny の一覧は `git ls-tree` ではなく描画時の静的一覧（manifest に列挙、`.agents/worklog/**` と `.agents/worklog/uv-cache/**` を含む）とし、`~/.agents/**` の全面 deny は agmsg store の書き込みと矛盾するので、`~/.agents/agent-config.yaml`、`~/.agents/skills/**/scripts/**`、`~/.agents/model-profiles.env` などストア以外を列挙する。公式文書で確認した事実（2026-10-19）：`Edit(path)` の deny は Write/MultiEdit/NotebookEdit にも効き、deny → ask → allow の順で最初の一致が決まる；ただし Read/Edit の deny は **Bash sandbox の設定にも合流する**（"Paths and domains from both sandbox settings and permission rules are merged into the final sandbox configuration"）ので、ユーザー設定（全席共有）に `.orchestration/**` の Edit deny を書くと orchestrator の Bash による記録書き込みも止まる。hook は起動時に固定されず、設定ファイルの編集は file watcher が即座に反映する。`sandbox.failIfUnavailable` の既定は fail-open（依存が無ければ sandbox 無しで実行）。したがって Claude 席の境界は Edit deny 規則ではなく、**ユーザーレベルの PreToolUse hook**（`~/.claude/hooks/worker-write-boundary`、chezmoi が描画、`/bin/sh` または絶対パスの `python3 -I`）で作る：cwd の realpath が `<anchored>/.claude/worktrees/` 配下の session では、Write/Edit/MultiEdit/NotebookEdit の対象が cwd の外、または `<cwd>/.claude/**`・`<cwd>/.mcp.json` のとき `permissionDecision: deny` を返す。Bash 側は sandbox の既定 `denyWithinAllow`（settings、hooks）と `allowWrite`（自席 worktree）が担う。`failIfUnavailable: true` を全席に置く。 Codex 席は sandbox（workspace-write）がツールの書き込み全部を自席の worktree と列挙パスに限る。Claude 席は Seatbelt sandbox が Bash を限るだけで、Write/Edit/MultiEdit/NotebookEdit、hook、MCP プロセスは sandbox 外で動き、permission policy（permgate の決定論ポリシー）が path で拒否しない限り anchored checkout や `~/.agents` にも書ける（2026-10-19 時点、描画済み設定にその deny は無い）。したがって前提 6 は「Codex 席は成立、Claude 席は P1-15 が描画設定に Edit の path deny を入れるまで残余」と書く。P1-15 以前に「worker は信頼ルートに書けない」と書く文は誤りで、C-80 が拒否する。P1-15 が入るまで、承認の出所は項目 8 の「コミット済み台帳」で守る。書き込みは自席の worktree（`.claude/worktrees/<name>`）、scratch、列挙されたツールキャッシュに限る。anchored checkout（`.claude/worktrees/` 以外）、`~/.agents/agent-config.yaml`、`~/.claude/hooks`、信頼ルートのバイナリ、orchestrator の証跡・スナップショット・lock は worker から書けない。render テストが描画後の deny を検証する。残余は「どの席 sandbox にも属さない同一 UID プロセス」と、Worker Playbook step 4 が sandbox 外に出す少数のコマンド（gh）。後者は D-024-17（P1-15）で絶対パスの実行体に束縛する。 The protected-path inventory a seat's Edit denies cover is enumerated from the inputs of every trusted executable, not only the executables: it includes `~/.agents/permgate-policy.yaml` (permgate rereads it for every decision), `~/.local/lib/python*/site-packages` and every other user-site or startup-hook location of the interpreters in use (`.pth`, `usercustomize.py`, `sitecustomize.py`), `~/.claude-worker`'s hook and settings files, and the rendered guard; a text that binds an executable names its inputs in the same inventory (P1-15 amendment 5 C-80, 2026-10-19). The inventory of executable configuration sources a worker start screens is the documented loading list of the installed Claude Code version, enumerated once from the documentation (settings: user, project, local and managed `settings.json`; project `.mcp.json`; the configuration directory's global state `.claude.json` with user-scoped and project-local MCP servers; plugins and skills directories (`.claude/skills/*/.claude-plugin/plugin.json`, enabled plugins); hook handlers of every documented type (`command`, `http` and any other `type` value the hooks reference lists: a handler is an executable input whether it names a command or a URL, and a worker start refuses every handler type but `command`), `apiKeyHelper`, `statusLine.command`, MCP server commands), and the launcher screens or disables every source before accepting workspace trust, refusing any executable payload it did not write; adding sources one review at a time is the anti-pattern (P1-15 a02 reviews 2ae9e2c and ebbb71b, 2026-10-19). The enumeration quotes the documentation's values (the page, its fetched_at and the listed values) in the text's premises so a reviewer can check them against the live page; naming a source by one of its fields ("hook commands" for hook handlers) is the same anti-pattern one level down (a02 review b2a186e, 2026-10-19T20:36Z; C-95).
@@ -1492,14 +1492,14 @@ home/.chezmoitemplates/chezmoiexternal.d/ubuntu.yaml.tmpl
 home/.chezmoitemplates/claude-settings-managed.json
 127:D-024-79	2026-10-22T03:58Z	Direction (operator, 2026-10-22 12:xx-13:xx JST: agmsg is being retired; stop proposing stopgaps; nothing moves): phase 1 stops accreting agmsg/herdr-specific mechanisms. The stubs dotfiles-T133-codex-network-policy-a01, dotfiles-T133-herdr-agents-eperm-a01 and dotfiles-T133-orchestrator-inbox-loop-a01 are frozen as superseded by phase 2 (dispatch_status: frozen-superseded-by-phase-2) and never authored; the slice1 send.sh amendment stays only as the route of an already-anchored text. Phase 1 continues only for the regime-neutral lanes in flight (gh-binding a02: supply-chain provenance; #454: installer) and the records. The orchestrator measures the DoD-P1 exit items it can measure now (P1-c chezmoi verify, P1-p check-regime-boundary) and resumes phase 2 C-1 (hcom-dispatch bus, draft #407) and B-1 (omp config render, draft #406) as the next dispatches, instead of new phase-1 texts.
 129:D-024-81	2026-10-22T04:40Z	Keep/stop classification of the old-regime work against the cutover (operator, 2026-10-22 13:5x JST: stop meaningless fixes of the old regime and move to the new one). Carries over, kept: gh-binding a02 (provenance of gh for the orchestrator scripts and the gate, which the new regime keeps), #454 (installer), the pre-send checker (#442, texts persist), the Checks generator (evidence form), the task-consistency checker a07 (#440, texts persist; stays held on the gh binding), chain-finish/#378 (git and gh, regime-neutral; held). Dies with the Claude Code and Codex seats (DoD3: every seat starts as hcom … omp …), stopped now: P1-15 slice 1 (worker-write-boundary: the amendment is not dispatched), the Claude/Codex seat-boundary lineages (permission-guard-gate, worker-cap-hookspath, codex-network-policy, herdr-agents-eperm, orchestrator-inbox-loop, worker-sandbox-exclusions follow-up), and every further agmsg or herdr mechanism. Cutover order from plan 023: B-1 omp config render (#406, after gh-binding a02 because both edit agent-config.yaml), C-1 hcom-dispatch bus (#407, amendment 1 re-anchored at 24d8b8d9, C-80 running, then anchor and dispatch to a009), D auth checks (its text is re-anchored without the P1-15 dependency), then X cutover and E removal; DoD-P1 items that the cutover makes moot are waived at the exit boundary (J9).
-/Users/a0004262/.local/bin/crit
+~/.local/bin/crit
 
 **Setting output limits**
 codex
 The task adds explicit executable, digest, and path checks, and blocks operational use until host protections are measured. I’m checking whether those controls cover the actual consumers—especially the history reader, counters, and record writer—and whether the named fixtures test the claimed boundaries.
 
 exec
-/bin/zsh -lc "sed -n '110,122p' .orchestration/plans/024-design-quality.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '110,122p' .orchestration/plans/024-design-quality.md; cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md" in ~/Workspace/dotfiles
  succeeded in 22ms:
 4. **検証したものを実行し、検証した内容を渡す** 検証した実行体はその realpath で実行する（再探索しない）。検証したファイル内容は信頼ルート配下のスナップショット（0600、一意名）として渡し、使用直前に sha256 を再照合する。判断に読んだ証跡は sha256 を出力に記録する。
 5. **出力と予約の同一性** 名前には 40 桁の head を使う（7 桁で衝突させない）。lock は信頼ルート配下の固定 inode に O_EXCL で作り、置換を inode 比較で検出する。物理スロット 1 つに lock 1 つ。
@@ -1559,7 +1559,7 @@ text-security:24d8b8d:7	protocol-key-mismatch
 
 **Assessing instruction and tool status**
 exec
-/bin/zsh -lc 'nl -ba scripts/orchestrator/dispatch.sh' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba scripts/orchestrator/dispatch.sh' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	#!/usr/bin/env bash
      2	# @file dispatch.sh
@@ -1915,7 +1915,7 @@ exec
    352	exit "${rc}"
 
 exec
-/bin/zsh -lc 'nl -ba scripts/regime-counters.sh | head -260; nl -ba scripts/orchestrator/bus-read.sh' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba scripts/regime-counters.sh | head -260; nl -ba scripts/orchestrator/bus-read.sh' in ~/Workspace/dotfiles
  succeeded in 4ms:
      1	#!/usr/bin/env bash
      2	# @file regime-counters.sh
@@ -2188,11 +2188,11 @@ exec
 **Analyzing protocol and record issues**
 **Examining runtime and store constraints**
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | head -125; cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | head -125; cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'def |trusted|sha256|task_file|read_text|open\\(' scripts/orchestrator/task-consistency-check.py | head -100; cat tests/unit/trusted_exec_contract.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'def |trusted|sha256|task_file|read_text|open\\(' scripts/orchestrator/task-consistency-check.py | head -100; cat tests/unit/trusted_exec_contract.py" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'audit-inherit-replan|normalised-comparison-lint-a01|seat-args|seat-liveness|seat-launch-args'; sed -n '247,260p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; crit status --json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/acceptance .orchestration/validation | rg 'audit-inherit-replan|normalised-comparison-lint-a01|seat-args|seat-liveness|seat-launch-args'; sed -n '247,260p' ~/.agents/skills/agmsg-orchestration/SKILL.md; crit status --json" in ~/Workspace/dotfiles
  succeeded in 304ms:
 39:def front(text):
 43:def git(cwd, *args):
@@ -2680,7 +2680,7 @@ for blocked work, `evidence` (path array), and `tags`.
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -2689,11 +2689,11 @@ for blocked work, `evidence` (path array), and `tags`.
 **Assessing code inspection needs**
 **Analyzing record digest constraints**
 exec
-/bin/zsh -lc "cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md; rg -n 'dispatch\\.sh|regime-counters\\.sh|bus-read\\.sh' scripts/orchestrator/*.sh scripts/agent-stop-gate.sh | head -90; ls -l /Users/a0004262/.local/bin/hcom /Users/a0004262/.local/bin/mise" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md; rg -n 'dispatch\\.sh|regime-counters\\.sh|bus-read\\.sh' scripts/orchestrator/*.sh scripts/agent-stop-gate.sh | head -90; ls -l ~/.local/bin/hcom ~/.local/bin/mise" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "cat scripts/orchestrator/task-consistency-check.py; sed -n '70,85p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; rg -n 'trusted_tools|hcom:|hcom|trusted.*root|store' home/dot_agents/agent-config.yaml | head -65" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat scripts/orchestrator/task-consistency-check.py; sed -n '70,85p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; rg -n 'trusted_tools|hcom:|hcom|trusted.*root|store' home/dot_agents/agent-config.yaml | head -65" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-security-9d13a06.md.last.md .orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-audit-9d13a06.md.last.md .orchestration/validation/dotfiles-T129-normalised-comparison-lint-a01-review-codex-r1.md; tail -35 .orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a02.md; tail -20 .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-security-9d13a06.md.last.md .orchestration/validation/dotfiles-T129-audit-inherit-replan-json-followup-a02-audit-9d13a06.md.last.md .orchestration/validation/dotfiles-T129-normalised-comparison-lint-a01-review-codex-r1.md; tail -35 .orchestration/acceptance/dotfiles-T129-audit-inherit-replan-json-followup-a02.md; tail -20 .orchestration/acceptance/dotfiles-T129-normalised-comparison-lint-a01.md' in ~/Workspace/dotfiles
  succeeded in 221ms:
 """Read-only cross-field check of a format-2 task file, before dispatch and at acceptance (plan 007 T704).
 
@@ -3162,8 +3162,8 @@ scripts/orchestrator/dispatch.sh:78:    echo "usage: dispatch.sh <team> <from> <
 scripts/orchestrator/bus-read.sh:2:# @file bus-read.sh
 scripts/orchestrator/bus-read.sh:36:#   scripts/orchestrator/bus-read.sh dotfiles-conformance dotfiles-T128-orchestrator-tools-a01
 scripts/orchestrator/bus-read.sh:40:    echo "usage: bus-read.sh <team> [<task id>]" >&2
-lrwxr-xr-x@ 1 a0004262  staff         51 Oct 20 14:02 /Users/a0004262/.local/bin/hcom -> /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom
--rwxr-xr-x@ 1 a0004262  staff  134961808 Oct 22 08:11 /Users/a0004262/.local/bin/mise
+lrwxr-xr-x@ 1 a0004262  staff         51 Oct 20 14:02 ~/.local/bin/hcom -> ~/.local/share/uv/tools/hcom/bin/hcom
+-rwxr-xr-x@ 1 a0004262  staff  134961808 Oct 22 08:11 ~/.local/bin/mise
 
 **Analyzing installation constraints and environment details**
 **Reviewing task coverage and security considerations**
@@ -3171,7 +3171,7 @@ codex
 Two concrete gaps need attention: the marker history format has no rule preventing a message body from creating extra apparent bus rows, and the required counter call has no way to receive the record digest that another constraint makes mandatory. I’m checking both against the existing parsers and the cited protocol records before finalizing findings.
 
 exec
-/bin/zsh -lc "head -5 /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom; sed -n '525,552p' home/dot_agents/agent-config.yaml; rg -n 'record.*sha|task_sha|previous_head|counter' .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md | head -12; tail -22 .orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md; tail -18 .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md; sed -n '/## Completion/,"'$p'"' .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md | head -24" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "head -5 ~/.local/share/uv/tools/hcom/bin/hcom; sed -n '525,552p' home/dot_agents/agent-config.yaml; rg -n 'record.*sha|task_sha|previous_head|counter' .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md | head -12; tail -22 .orchestration/acceptance/dotfiles-T128-seat-liveness-a01.md; tail -18 .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md; sed -n '/## Completion/,"'$p'"' .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md | head -24" in ~/Workspace/dotfiles
  succeeded in 97ms:
 ����            �	  � �        H   __PAGEZERO                                                        �  __TEXT                  ��              ��                  __text          __TEXT           
      �|�      
@@ -3299,9 +3299,9 @@ history='○ [2026-10-22T04:00:00Z] worker → orchestrator: '+body
 seen=[m.groups() for s in history.splitlines() if (m:=row.match(s))]
 print('One stored message renders into',len(seen),'accepted history rows:')
 for x in seen: print(x)
-PY" in /Users/a0004262/Workspace/dotfiles
+PY" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '"'^Project-URL|''^Home-page'"' /Users/a0004262/.local/share/uv/tools/hcom/lib/python*/site-packages/hcom-*.dist-info/METADATA; rg -n 'hcom|store|HCOM_DIR' home/dot_agents/agent-config.yaml home/dot_mise/config.toml; rg -n 'threat_table|non-path|one per' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md | head -10; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^Project-URL|''^Home-page'"' ~/.local/share/uv/tools/hcom/lib/python*/site-packages/hcom-*.dist-info/METADATA; rg -n 'hcom|store|HCOM_DIR' home/dot_agents/agent-config.yaml home/dot_mise/config.toml; rg -n 'threat_table|non-path|one per' ~/.agents/skills/agmsg-orchestration/SKILL.md | head -10; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
  exited 1 in 45ms:
 zsh:1: can't create temp file for here document: operation not permitted
 
@@ -3335,7 +3335,7 @@ history=\"○ [2026-10-22T04:00:00Z] worker → orchestrator: \"+body
 seen=[m.groups() for s in history.splitlines() if (m:=row.match(s))]
 print(\"One stored message renders into\",len(seen),\"accepted history rows:\")
 for x in seen: print(x)
-'" in /Users/a0004262/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 87ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-ZkwumNUy' (errno=Operation not permitted)
@@ -3358,7 +3358,7 @@ I'm working through how atomic replacement and message receipt behavior impact t
 web search: 
 web search: https://raw.githubusercontent.com/aannoo/hcom/v0.7.30/docs/cli.md
 exec
-/bin/zsh -lc "/bin/ls /Users/a0004262/.local/share/mise/installs/jq; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '70,90p'; /usr/bin/git diff --stat -- .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/bin/ls ~/.local/share/mise/installs/jq; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '70,90p'; /usr/bin/git diff --stat -- .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
  succeeded in 147ms:
 1
 1.8
@@ -3421,7 +3421,7 @@ fits=[m] if n==0 else [j for j in range(m) if 0<=n+j-m<n and post[:m-j]==pre[n+j
 marks=[mark for mark,(_,s,r,t) in seen[m-fits[0]:] if (s,r,t)==(\"a\",\"b\",line)]
 print(\"Retained recorder: unique alignment\",fits,\"matching marks\",marks,\"records\", \"read\" if marks[-1]==\"○\" else \"unread\")
 print(\"The first matching send remains unread.\")
-'" in /Users/a0004262/Workspace/dotfiles
+'" in ~/Workspace/dotfiles
  succeeded in 97ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-w51yDP45' (errno=Operation not permitted)
@@ -3433,7 +3433,7 @@ Retained recorder: unique alignment [2] matching marks ['●', '○'] records re
 The first matching send remains unread.
 
 exec
-/bin/zsh -lc "rg -n 'gh|hcom|store|manifest' .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md | head -16; sed -n '1,34p' .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'gh|hcom|store|manifest' .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md | head -16; sed -n '1,34p' .orchestration/tasks/dotfiles-T133-gh-binding-followup-a01.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 3:task_id: dotfiles-T133-gh-binding-followup-a01
 10:  - .orchestration/dotfiles-T133-gh-binding-followup-a01/**

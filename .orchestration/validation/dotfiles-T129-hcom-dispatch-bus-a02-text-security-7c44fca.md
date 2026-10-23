@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a1620c-b727-73c1-91d7-340a435ae72e
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -24,12 +24,12 @@ codex
 Ponytail と agmsg-orchestration の関連手順を確認し、タスク本文・threat_table・参照された証跡を読み取り専用で監査します。判断に使う対象と、ホスト上で実際に実行される対象が一致するかを重点的に確認します。
 
 exec
-/bin/zsh -lc pwd in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc pwd in ~/Workspace/dotfiles
  succeeded in 0ms:
-/Users/a0004262/Workspace/dotfiles
+~/Workspace/dotfiles
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -352,11 +352,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n 'threat.table|task-level audit|security|Codex seat worklogs' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; command -v crit; printenv PATH" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'threat.table|task-level audit|security|Codex seat worklogs' ~/.agents/skills/agmsg-orchestration/SKILL.md; command -v crit; printenv PATH" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; git rev-parse HEAD; cat .ua/meta.json' in ~/Workspace/dotfiles
  succeeded in 174ms:
      1	---
      2	format: 2
@@ -736,16 +736,16 @@ d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 181:    2. Run the task-level audit of that head in the pair or headless form of the task-level audit bullet. It exits nonzero for every verdict other than `correct`. An exit with `Audit verdict: incorrect` is not a failed step: continue to step 3 and disposition its findings. A `blocked` or missing verdict means re-running the audit.
 182:    3. Write the acceptance record, summarising the dispositions, with every audit finding dispositioned as the task-level audit bullet says: for an `incorrect` verdict the record's JSON `audit_findings`, which the gate reads through `ACCEPTANCE_EVIDENCE`.
 225:## Codex seat worklogs
-/Users/a0004262/.local/bin/crit
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/bin/crit
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 **Preparing manageable output**
 exec
-/bin/zsh -lc "rg -n -A35 '"'^### 5.14|''^## 5.14'"' .orchestration/plans/024-design-quality.md; crit status --json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A35 '"'^### 5.14|''^## 5.14'"' .orchestration/plans/024-design-quality.md; crit status --json" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '94,240p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | nl -ba -v94" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '94,240p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | nl -ba -v94" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md' in ~/Workspace/dotfiles
  succeeded in 81ms:
     94	
     95	## Deferred — stage 2 and PR E
@@ -892,7 +892,7 @@ text-security:24d8b8d:7	protocol-key-mismatch
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -900,7 +900,7 @@ text-security:24d8b8d:7	protocol-key-mismatch
 
 **Noticing token limit nearing**
 exec
-/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 # Acceptance: dotfiles-T129-hcom-dispatch-bus-a02
 
@@ -955,7 +955,7 @@ text-security:24d8b8d:7	protocol-key-mismatch
 - 2026-10-22T04:44Z: resumed from the 2026-10-18 parking: amendment 1 re-anchored the text to main d06d94fd (premises and line anchors re-verified, after: satisfied by #423, generated Checks); C-80 of 24d8b8d Verdict incorrect, five P1 and two P2 (the text predates design 5.14 items 2 and 9: env-selected BUS_HISTORY, unauthenticated HCOM_DIR store, byte comparison not bound at execution, record path containment, gh host binding; TSV history incompatible with the marker parsers; verdict= instead of status=). Reset as dotfiles-T129-hcom-dispatch-bus-a02 with brief .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md (after: gh-binding a02); author-loop next; PR #407 continues under a02.
 
 exec
-/bin/zsh -lc "sed -n '150,170p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; sed -n '68,74p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '150,170p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; sed -n '68,74p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 executable digests: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=~ TMPDIR=/tmp/claude-501 UV_CACHE_DIR=<private>/uv-cache HTTPS_PROXY=<sandbox proxy> https_proxy=<sandbox proxy> NO_PROXY=<local ranges> GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_LAZY_FETCH=1 /usr/bin/shasum -a 256 /Library/Developer/CommandLineTools/usr/bin/git /usr/bin/shasum /usr/bin/env /bin/ls /usr/bin/sed /usr/bin/readlink /usr/bin/grep /usr/bin/cut /usr/bin/tr /bin/date ~/.local/bin/mise ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh ` -> `a73bf622a2e470d5d57a4b1d5aef1e8680e67278018d4858a2f93825b7d595c7  /Library/Developer/CommandLineTools/usr/bin/git 0812595f981a26f813d98dc380af14d4af427626c9339eda29eb849ae13de1e3  /usr/bin/shasum 2b2a1145527f00e8369fda0d2ffc523b520201bb08dbaf4b0bded837f7652ce0  /usr/bin/env 13f44bfe1c4af602da4465c834dbe7b16a5441ccbd843178b36116ee23422bfb  /bin/ls bb1cb46089269d91ba83ef291364e6e7121e7b27f12037629fe8daaf5238a559  /usr/bin/sed 2dc55748b64cf63d2452300bcf2cd3fc337425e76c76f8c484212026840d5a3c  /usr/bin/readlink afc3903988afaa5be7a19d595e66a95ead29cbb5102ff4dd2e4522089871f64a  /usr/bin/grep 71d96107b74d43fa54e2e2dbdb0148bf209f38a7ab29f6962bf9cd9df7c3c0a0  /usr/bin/cut 188d384d918a49fab8263deaa423e33068c99e9a4a5cb23fb971d2ed5b6e4d16  /usr/bin/tr 931edbfcbd847f3c1ccb504325a502db313ce20db27634744a7416c3c4b812f0  /bin/date 005b32b9c22ca9cb63ff9d35c74b3abe69c433e9ca655fea288ba3dcbe7e4918  ~/.local/bin/mise 8a4258433c81106343144857750316241759d06dcf16265cf3c4864a8f2f2ad6  ~/.local/share/mise/installs/github-cli-cli/latest/bin/gh` (exit 0)
 git version: `/usr/bin/env -i PATH=/usr/bin:/bin HOME=~ TMPDIR=/tmp/claude-501 UV_CACHE_DIR=<private>/uv-cache HTTPS_PROXY=<sandbox proxy> https_proxy=<sandbox proxy> NO_PROXY=<local ranges> GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_LAZY_FETCH=1 /Library/Developer/CommandLineTools/usr/bin/git --version ` -> `git version 2.54.0 (Apple Git-157)` (exit 0)
@@ -976,7 +976,7 @@ codex
 前回レビューでは、行の偽装・送信 ID・ストア宣言の修正が確認されています。今回追加された hcom の「実行入口と wheel のハッシュ照合」が、実際に読み込むコードまで束縛するかを確認中です。Crit の既存データはなく、読み取り専用の指定に従って証跡ファイルも変更していません。
 
 exec
-/bin/zsh -lc "/usr/bin/python3 -I -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(type(d).__name__); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\", \"dispatch\", \"regime-counters\"))))'; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests | head -15; rg --files .orchestration/validation .agents/worklog/orchestrator-glue | rg '(hcom-dispatch|gh-binding|brief-hcom|checks-paste)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/python3 -I -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(type(d).__name__); print(\"\\n\".join(str({k:n.get(k) for k in (\"filePath\",\"summary\")}) for n in d.get(\"nodes\",[]) if any(s in str(n.get(\"filePath\",\"\")) for s in (\"trusted\", \"dispatch\", \"regime-counters\"))))'; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- scripts home tests | head -15; rg --files .orchestration/validation .agents/worklog/orchestrator-glue | rg '(hcom-dispatch|gh-binding|brief-hcom|checks-paste)'" in ~/Workspace/dotfiles
  succeeded in 106ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-vsXS76Un' (errno=Operation not permitted)
@@ -1084,9 +1084,9 @@ home/dot_agents/agent-config.yaml
 .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-3c1d54a.md
 
 exec
-/bin/zsh -lc "file /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom; head -20 /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom; ls -l /Users/a0004262/.local/share/uv/tools/hcom/bin/python*; sed -n '1,200p' tests/unit/trusted_exec_contract.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "file ~/.local/share/uv/tools/hcom/bin/hcom; head -20 ~/.local/share/uv/tools/hcom/bin/hcom; ls -l ~/.local/share/uv/tools/hcom/bin/python*; sed -n '1,200p' tests/unit/trusted_exec_contract.py" in ~/Workspace/dotfiles
  succeeded in 17ms:
-/Users/a0004262/.local/share/uv/tools/hcom/bin/hcom: Mach-O 64-bit executable arm64
+~/.local/share/uv/tools/hcom/bin/hcom: Mach-O 64-bit executable arm64
 ����            �	  � �        H   __PAGEZERO                                                        �  __TEXT                  ��              ��                  __text          __TEXT           
      �|�      
                �            __stubs         __TEXT          ؆�    �      ؆�             �           __stub_helper   __TEXT          ���           ���              �            __const         __TEXT           ��    Ā      ��                            __gcc_except_tab__TEXT          � �    �4     � �                            __cstring       __TEXT          DU�    P�     DU�                           __unwind_info   __TEXT          �#�    @�     �#�                            __eh_frame      __TEXT          ز�    ��     ز�              h               8  __DATA_CONST     ��     �      ��      �                 __got           __DATA_CONST     ��    X        ��               �           __mod_init_func __DATA_CONST    X��           X��            	               __const         __DATA_CONST    p��    @�     p��                               x  __DATA           @�     �       @�      �                   __la_symbol_ptr __DATA           @�    �       @�               	          __data          __DATA          �G�    XV      �G�                            __thread_vars   __DATA          H��    �      H��                           __thread_data   __DATA          ���    �       ���                           __thread_bss    __DATA          x��    �                                    __bss           __DATA          @��    4                                    __common        __DATA          X��                                            H   __LINKEDIT        �     �      ��     �                   "  �0    �� �%  ���           ��� (  ��� N        ���   (�� �     P                                               ��                             /usr/lib/dyld             �f'D@:t��6�y�h2                       �*              (  �   �@                `         Cx��   /System/Library/Frameworks/Security.framework/Versions/A/Security          h         �  � /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation      8               /usr/lib/libiconv.2.dylib          8           L   /usr/lib/libSystem.B.dylib      &      K� �R  )      ���           ��� 0�                                                                                         �C��_	��W
@@ -1107,9 +1107,9 @@ exec
  ��
 �) ��� ��a �a �) џ���T  �
 ���� T���iU��}ɛ�D�u! �  �b �� ��  T��_������@��%����v  ����%��@��@�)�� T���jU��)}ʛ4�D�! �  �b �� ��  T��_������@��%�����@�� �u
-lrwxr-xr-x@ 1 a0004262  staff  85 Oct 20 14:02 /Users/a0004262/.local/share/uv/tools/hcom/bin/python -> /Users/a0004262/.local/share/uv/python/cpython-3.10-macos-aarch64-none/bin/python3.10
-lrwxr-xr-x@ 1 a0004262  staff   6 Oct 20 14:02 /Users/a0004262/.local/share/uv/tools/hcom/bin/python3 -> python
-lrwxr-xr-x@ 1 a0004262  staff   6 Oct 20 14:02 /Users/a0004262/.local/share/uv/tools/hcom/bin/python3.10 -> python
+lrwxr-xr-x@ 1 a0004262  staff  85 Oct 20 14:02 ~/.local/share/uv/tools/hcom/bin/python -> ~/.local/share/uv/python/cpython-3.10-macos-aarch64-none/bin/python3.10
+lrwxr-xr-x@ 1 a0004262  staff   6 Oct 20 14:02 ~/.local/share/uv/tools/hcom/bin/python3 -> python
+lrwxr-xr-x@ 1 a0004262  staff   6 Oct 20 14:02 ~/.local/share/uv/tools/hcom/bin/python3.10 -> python
 """Shared probes of design-quality 5.14 item 7: one attack each in a temporary fixture, and the trusted parent."""
 
 import contextlib
@@ -1313,7 +1313,7 @@ def _directory_service(argv):
 
 **Analyzing hcom design and execution**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-d61a0f2.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-5f9caa3.md.last.md; cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-d61a0f2.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-5f9caa3.md.last.md; cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 [P1] high .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md:102 `BUS_HISTORY` selects an executable from inherited environment state without trusted-path validation; together with the PATH-resolved commands retained by row 48, an injected override or mise shim can execute code and fabricate the history used for dispatch decisions—the sanitized Checks commands do not constrain this runtime path.
 
@@ -1539,7 +1539,7 @@ after: audit-inherit-replan-json lineage on main: `/usr/bin/env -i PATH=/usr/bin
 [P2] high .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md:103 The new refusals and revise count select `verdict=revise`, but the cited acceptance records and existing protocol use `status=revise`, so ordinary revision directives bypass the required previous-head, test-selector and counters checks.
 
 exec
-/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | head -125; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | head -125; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -1731,7 +1731,7 @@ text-security:86513b2:0	correct
 
 **Analyzing hcom binding and hashing**
 exec
-/bin/zsh -lc "sed -n '69,88p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; sed -n '89,94p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; sed -n '1,160p' .agents/worklog/orchestrator-glue/checks-paste.sh; rg -n -A30 '"'^  hcom:'"' home/dot_agents/agent-config.yaml; rg --files /Users/a0004262/.local/share/uv/tools/hcom | head -20" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '69,88p' .orchestration/tasks/dotfiles-T133-gh-binding-a02.md; sed -n '89,94p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; sed -n '1,160p' .agents/worklog/orchestrator-glue/checks-paste.sh; rg -n -A30 '"'^  hcom:'"' home/dot_agents/agent-config.yaml; rg --files ~/.local/share/uv/tools/hcom | head -20" in ~/Workspace/dotfiles
  succeeded in 40ms:
 a01 rounds 3bf2a79 (3 P1, 3 P2) and 6486b79 (1 P1, 1 P2) are superseded; Items 6/7 authorize and test the refused descendant changes while retaining the other round-2 requirements.
 Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does not redefine that contract.
@@ -1766,7 +1766,7 @@ Design 5.14 items 0-10 apply by reference, particularly 2-4/8/9; this text does 
 #   Home directories print as ~ and the user name as <user>. Read-only; the caller pasts the block into the text.
 set -euo pipefail
 task=${1:?usage: checks-paste.sh <task_id>}
-repo=/Users/a0004262/Workspace/dotfiles; home=$HOME; user=$USER; cd "$repo"
+repo=~/Workspace/dotfiles; home=$HOME; user=$USER; cd "$repo"
 GIT=/Library/Developer/CommandLineTools/usr/bin/git; SHA=/usr/bin/shasum; ENV=/usr/bin/env; LS=/bin/ls; SED=/usr/bin/sed
 READLINK=/usr/bin/readlink; GREP=/usr/bin/grep; CODESIGN=/usr/bin/codesign; DATE=/bin/date; TR=/usr/bin/tr; CUT=/usr/bin/cut
 MISE=$home/.local/bin/mise; GH=$home/.local/share/mise/installs/github-cli-cli/latest/bin/gh
@@ -1866,29 +1866,29 @@ echo '```'
 557-      linux-amd64: fecd40eea356020cd605dfca6a4be6ab3c9635134ca5e28ee99e6286ab62c31d
 558-      linux-arm64: 92311ddf4862179c655087d4703e7f2e3f4b4aacb0549c22e5dae999c0fb2b6e
 559-      darwin-amd64: 1f88b739234931a583097522bad29aa30566fa3ecb3227d753bb5ec01d4c369b
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/uv_cache.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/INSTALLER
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/REQUESTED
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/sboms/hcom.cyclonedx.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/WHEEL
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/direct_url.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/licenses/LICENSE
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/RECORD
-/Users/a0004262/.local/share/uv/tools/hcom/CACHEDIR.TAG
-/Users/a0004262/.local/share/uv/tools/hcom/pyvenv.cfg
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.csh
-/Users/a0004262/.local/share/uv/tools/hcom/bin/deactivate.bat
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.nu
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.xsh
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate_this.py
-/Users/a0004262/.local/share/uv/tools/hcom/bin/pydoc.bat
-/Users/a0004262/.local/share/uv/tools/hcom/bin/hcom
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.fish
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/uv_cache.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/INSTALLER
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/REQUESTED
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/sboms/hcom.cyclonedx.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/WHEEL
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/direct_url.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/licenses/LICENSE
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/RECORD
+~/.local/share/uv/tools/hcom/CACHEDIR.TAG
+~/.local/share/uv/tools/hcom/pyvenv.cfg
+~/.local/share/uv/tools/hcom/bin/activate.csh
+~/.local/share/uv/tools/hcom/bin/deactivate.bat
+~/.local/share/uv/tools/hcom/bin/activate.nu
+~/.local/share/uv/tools/hcom/bin/activate
+~/.local/share/uv/tools/hcom/bin/activate.xsh
+~/.local/share/uv/tools/hcom/bin/activate_this.py
+~/.local/share/uv/tools/hcom/bin/pydoc.bat
+~/.local/share/uv/tools/hcom/bin/hcom
+~/.local/share/uv/tools/hcom/bin/activate.fish
 
 exec
-/bin/zsh -lc "sed -n '1,160p' scripts/orchestrator/dispatch.sh; sed -n '230,390p' scripts/orchestrator/dispatch.sh; sed -n '90,160p' scripts/regime-counters.sh" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,160p' scripts/orchestrator/dispatch.sh; sed -n '230,390p' scripts/orchestrator/dispatch.sh; sed -n '90,160p' scripts/regime-counters.sh" in ~/Workspace/dotfiles
  succeeded in 0ms:
 #!/usr/bin/env bash
 # @file dispatch.sh
@@ -2248,7 +2248,7 @@ fi
 **Analyzing wheel file provenance risks**
 **Evaluating file verification and permissions**
 exec
-/bin/zsh -lc "sed -n '1,160p' /Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA; sed -n '1,170p' tests/unit/test_hcom_dispatch.py; rg -n 'hcom|HCOM' .orchestration/dotfiles-T129-hcom-dispatch-bus-a01 home/dot_local/bin/common/executable_agmsg-dispatch | head -55" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,160p' ~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA; sed -n '1,170p' tests/unit/test_hcom_dispatch.py; rg -n 'hcom|HCOM' .orchestration/dotfiles-T129-hcom-dispatch-bus-a01 home/dot_local/bin/common/executable_agmsg-dispatch | head -55" in ~/Workspace/dotfiles
  succeeded in 39ms:
 Metadata-Version: 2.4
 Name: hcom
@@ -2414,7 +2414,7 @@ sed: tests/unit/test_hcom_dispatch.py: No such file or directory
 rg: .orchestration/dotfiles-T129-hcom-dispatch-bus-a01: No such file or directory (os error 2)
 
 exec
-/bin/zsh -lc "rg -n '(followup|same.UID|gh|store|parent|namespace)' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-86513b2.md.last.md; sed -n '200,300p' tests/unit/trusted_exec_contract.py; rg -n '(hcom_dispatch|hcom_history|hcom_counter|consumed_bytes|private_namespace)' tests/unit/test_orchestrator_tools.py tests/unit/test_regime_counters.py" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '(followup|same.UID|gh|store|parent|namespace)' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-86513b2.md.last.md; sed -n '200,300p' tests/unit/trusted_exec_contract.py; rg -n '(hcom_dispatch|hcom_history|hcom_counter|consumed_bytes|private_namespace)' tests/unit/test_orchestrator_tools.py tests/unit/test_regime_counters.py" in ~/Workspace/dotfiles
  exited 1 in 3ms:
 .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-86513b2.md.last.md:3:The stated controls require checked executable consumption, resolved-path and case-alias checks, protected configuration, fixed host/repository, isolated descendants, and sanitized Git environments. The configuration and isolation requirements match documented [gh behavior](https://cli.github.com/manual/gh_help_environment) and [Python isolation](https://docs.python.org/3/using/cmdline.html#cmdoption-I).
 .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-86513b2.md.last.md:5:Amendment 2 retains the fixture-write isolation requirements and prohibits weakening assertions. Authenticated use remains conditional on measured parent and deployment protections; this verdict does not establish those protections on the host.
@@ -2479,7 +2479,7 @@ codex
 **Reviewing tool and authentication constraints**
 **Analyzing SQLite read-only behavior and task validation**
 exec
-/bin/zsh -lc "/usr/bin/python3 -I -c 'from pathlib import Path; import hashlib,zipfile; p=Path(\".orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md\"); b=p.read_bytes(); print(\"task_sha256=\"+hashlib.sha256(b).hexdigest()); t=b.decode(); table=t.split(\"threat_table:\\n\",1)[1].split(\"premises:\",1)[0]; print(\"threat_rows=\"+str(table.count(\"  - {control:\"))); w=Path.home()/\".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl\"; z=zipfile.ZipFile(w); names=[n for n in z.namelist() if n.endswith(\"/hcom\")]; print(\"wheel_executables=\"+repr(names)); print(\"wheel_sha256=\"+hashlib.sha256(w.read_bytes()).hexdigest()); [(print(n+\" sha256=\"+hashlib.sha256(z.read(n)).hexdigest())) for n in names]; print(\"installed_entry_sha256=\"+hashlib.sha256((Path.home()/\".local/share/uv/tools/hcom/bin/hcom\").read_bytes()).hexdigest())'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/python3 -I -c 'from pathlib import Path; import hashlib,zipfile; p=Path(\".orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md\"); b=p.read_bytes(); print(\"task_sha256=\"+hashlib.sha256(b).hexdigest()); t=b.decode(); table=t.split(\"threat_table:\\n\",1)[1].split(\"premises:\",1)[0]; print(\"threat_rows=\"+str(table.count(\"  - {control:\"))); w=Path.home()/\".local/share/agent-assets/hcom/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl\"; z=zipfile.ZipFile(w); names=[n for n in z.namelist() if n.endswith(\"/hcom\")]; print(\"wheel_executables=\"+repr(names)); print(\"wheel_sha256=\"+hashlib.sha256(w.read_bytes()).hexdigest()); [(print(n+\" sha256=\"+hashlib.sha256(z.read(n)).hexdigest())) for n in names]; print(\"installed_entry_sha256=\"+hashlib.sha256((Path.home()/\".local/share/uv/tools/hcom/bin/hcom\").read_bytes()).hexdigest())'" in ~/Workspace/dotfiles
  succeeded in 135ms:
 python3: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 python3: error: couldn't create cache file '/tmp/xcrun_db-hIAt6UTg' (errno=Operation not permitted)
@@ -2493,7 +2493,7 @@ hcom-0.7.30.data/scripts/hcom sha256=7cd012d9a4d369de313ca4935cccda1ada6c8ffcd5e
 installed_entry_sha256=7cd012d9a4d369de313ca4935cccda1ada6c8ffcd5e42ffa7eaeecdff7fc580e
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '115,138p'; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | tail -6; ls -l .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '115,138p'; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | tail -6; ls -l .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md" in ~/Workspace/dotfiles
  exited 1 in 20ms:
    115	A replacement draft uses explicit --base main/--head/--title/--body-file/--draft and English text. Follow Worker Playbook step 15's ready/CI/Bot wait and one worker fix round; worker never merges. Apply normalised-comparison-lint-a01's Completion clause with advisory owner dotfiles-T129-hcom-dispatch-bus-a02-followup-a01, preserving INV-6 and surviving-P0/P1 stops.
    116	Under the allowed evidence directory write byte-identical task.md, report.md, validation.md, sandbox.md, learning.md, autoskill.md and result.txt. Every item names producer/seat: worker (Claude seat a009), orchestrator (Claude seat, sandboxed Bash), or author (Codex review-profile seat). Paste verbatim outputs/statuses, selector/finding mappings, schema/send-ID/receipt/declaration facts, agmsg-hit table, denials and limits; learning/AutoSkill record actual triage/use; cost is observed or n/a. Keep plan/todo/learn uncommitted, one active todo per owner.

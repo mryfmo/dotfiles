@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a16113-38d1-7490-9eed-b06e5cdf8c1a
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,11 +23,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 読み取り専用でタスク本文と参照先を確認し、判断した内容が実際の実行対象に結び付く設計かを検証します。agmsg-orchestration と Ponytail のレビュー手順を確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md' in ~/Workspace/dotfiles
  succeeded in 148ms:
 ---
 name: agmsg-orchestration
@@ -713,7 +713,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
    197	```
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md | sed -n '1,115p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md | sed -n '1,115p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -832,7 +832,7 @@ exec
    115	Bind anchor to validated passwd home and actual main checkout; worker roots are registered linked worktrees beneath anchor/.claude/worktrees with the same Git common directory. Declare symlink/case-alias handling and containment; foreign roots refuse before side effects for both kinds/routes.
 
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|task-level audit'"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; git status --short" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|task-level audit'"' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; git status --short" in ~/Workspace/dotfiles
  succeeded in 40ms:
 10:## Architecture
 17:## Regime activation and progress
@@ -1120,7 +1120,7 @@ Lists findings, changes no code.
 
 **Ensuring complete output and quick graphing**
 exec
-/bin/zsh -lc "sed -n '225,258p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '104,124p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .ua/meta.json; git rev-parse HEAD" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,258p' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '104,124p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .ua/meta.json; git rev-parse HEAD" in ~/Workspace/dotfiles
  succeeded in 38ms:
 ## Codex seat worklogs
 
@@ -1186,7 +1186,7 @@ Declare discard of every other S11 top-level field and the entire projects value
 7da0cdfab9de9fbea673b82379acd4e317115065
 
 exec
-/bin/zsh -lc 'git diff -- .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git diff -- .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
  succeeded in 5ms:
 diff --git a/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md b/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md
 index 108c14d2..2f0ffc7a 100644
@@ -1373,7 +1373,7 @@ text-security:49161bc:0	correct
 codex
 この slice は実行時の隔離を完成させるものではなく、宣言・レンダー・固定ルーティングの土台として記述されています。保留されたリスクを区別したうえで、参照先の所有タスクと過去の指摘を照合し、残余リスクとされた制御が実際に何を軽減するかを確認しています。
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"generate-agent-configs|herdr-agents|modify_private_settings\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -20; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts; rg --files --hidden .orchestration/validation .orchestration/dotfiles-T133-worker-write-boundary-a03 .orchestration/acceptance | rg '(c0f50fa|worker-write-boundary-slice1|worker-write-boundary-a03)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"generate-agent-configs|herdr-agents|modify_private_settings\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -20; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts; rg --files --hidden .orchestration/validation .orchestration/dotfiles-T133-worker-write-boundary-a03 .orchestration/acceptance | rg '(c0f50fa|worker-write-boundary-slice1|worker-write-boundary-a03)'" in ~/Workspace/dotfiles
  succeeded in 99ms:
 home/dot_claude/modify_private_settings.json	chezmoi modify_ script (Python despite the .json name) that merges the rendered managed Claude settings baseline with Claude-owned runtime state in ~/.claude/settings.json, replacing managed permission and SessionStart hooks in place and appending the herdr-agents --attach hook.
 home/dot_claude/modify_private_settings.json	Parses stdin text into a dict, returning None for blank, invalid, or non-object JSON so apply falls back to the baseline.
@@ -1550,7 +1550,7 @@ rg: .orchestration/dotfiles-T133-worker-write-boundary-a03: No such file or dire
 .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-49161bc.md.last.md
 
 exec
-/bin/zsh -lc 'cat .agents/worklog/orchestrator-glue/BRIEF-TEMPLATE-NOTES.md .agents/worklog/orchestrator-glue/a04-allocation-r1.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .agents/worklog/orchestrator-glue/BRIEF-TEMPLATE-NOTES.md .agents/worklog/orchestrator-glue/a04-allocation-r1.md' in ~/Workspace/dotfiles
  succeeded in 3ms:
 # Notes every review-profile brief carries (orchestrator glue, 2026-10-20)
 
@@ -1892,7 +1892,7 @@ Author at most 193 lines before an approximately seven-line Checks block; final 
 Not checked: implementation, tests, CI or live enforcement; no files written. Intermediate green conditions and caps require implementation-time verification.
 **Preferring concise responses**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-{3844d93,0b96f40,0e9bf3f,0f87501,4e8b427,e39dc8f,f4246e9}.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-{3844d93,0b96f40,0e9bf3f,0f87501,4e8b427,e39dc8f,f4246e9}.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md' in ~/Workspace/dotfiles
  succeeded in 14ms:
 Reviewed [PR #431](https://github.com/mryfmo/dotfiles/pull/431) at `c0f50fa1383416240ad28959dbc4635afa777175`. Found three gaps in the claimed startup controls.
 
@@ -1991,7 +1991,7 @@ Reviewed SHA256: `0f8750104f1b9fa28dfe470a0d31166aa740f22e7dfd83e4f1a8ea7a571611
 📝 まとめ: Read-only design review completed without additional findings; pre-dispatch Checks, prerequisite verification and ownership receipts remain required.
 
 Not checked: implementation, tests, CI or live enforcement; no files changed. Deferred execution-binding and shared-credential risks remain.
-Verdict: correct[P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md:194](/Users/a0004262/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md:194) — The prerequisite check labels its result “canonical main,” but the recorded `gh api repos/mryfmo/dotfiles/branches/main` invocation omits `--hostname github.com`; inherited `GH_HOST` can select another server, so this evidence does not establish the required repository authority. Repeat and record the host-bound check before treating prerequisites as authenticated. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
+Verdict: correct[P2] High confidence [.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md:194](~/Workspace/dotfiles/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md:194) — The prerequisite check labels its result “canonical main,” but the recorded `gh api repos/mryfmo/dotfiles/branches/main` invocation omits `--hostname github.com`; inherited `GH_HOST` can select another server, so this evidence does not establish the required repository authority. Repeat and record the host-bound check before treating prerequisites as authenticated. [GitHub CLI documentation](https://cli.github.com/manual/gh_help_environment)
 
 Reviewed all 37 threat rows and seven allowed-file entries against the cited acceptance records, reviews and owner scopes. No additional findings: there are no `closed` rows, and shim/descendant binding, inherited-environment handling, replacement races and same-user isolation are explicitly deferred without claiming runtime closure.
 
@@ -2019,7 +2019,7 @@ Not checked: implementation, tests, CI or live enforcement; no files changed. De
 Verdict: incorrectReading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -2030,7 +2030,7 @@ session id: 01a16113-38d1-7490-9eed-b06e5cdf8c1a
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -2041,11 +2041,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 読み取り専用でタスク本文と参照先を確認し、判断した内容が実際の実行対象に結び付く設計かを検証します。agmsg-orchestration と Ponytail のレビュー手順を確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md' in ~/Workspace/dotfiles
  succeeded in 148ms:
 ---
 name: agmsg-orchestration
@@ -2731,7 +2731,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
    197	```
 
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md | sed -n '1,115p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md | sed -n '1,115p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -2850,7 +2850,7 @@ exec
    115	Bind anchor to validated passwd home and actual main checkout; worker roots are registered linked worktrees beneath anchor/.claude/worktrees with the same Git common directory. Declare symlink/case-alias handling and containment; foreign roots refuse before side effects for both kinds/routes.
 
 exec
-/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|task-level audit'"' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; git status --short" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'Codex seat worklogs|"'^##|task-level audit'"' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; git status --short" in ~/Workspace/dotfiles
  succeeded in 40ms:
 10:## Architecture
 17:## Regime activation and progress
@@ -3138,7 +3138,7 @@ Lists findings, changes no code.
 
 **Ensuring complete output and quick graphing**
 exec
-/bin/zsh -lc "sed -n '225,258p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '104,124p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .ua/meta.json; git rev-parse HEAD" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '225,258p' ~/.agents/skills/agmsg-orchestration/SKILL.md; sed -n '104,124p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .ua/meta.json; git rev-parse HEAD" in ~/Workspace/dotfiles
  succeeded in 38ms:
 ## Codex seat worklogs
 
@@ -3204,7 +3204,7 @@ Declare discard of every other S11 top-level field and the entire projects value
 7da0cdfab9de9fbea673b82379acd4e317115065
 
 exec
-/bin/zsh -lc 'git diff -- .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git diff -- .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md; cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a02.md .orchestration/acceptance/dotfiles-T133-worker-write-boundary-a03.md' in ~/Workspace/dotfiles
  succeeded in 5ms:
 diff --git a/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md b/.orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md
 index 108c14d2..2f0ffc7a 100644
@@ -3391,7 +3391,7 @@ text-security:49161bc:0	correct
 codex
 この slice は実行時の隔離を完成させるものではなく、宣言・レンダー・固定ルーティングの土台として記述されています。保留されたリスクを区別したうえで、参照先の所有タスクと過去の指摘を照合し、残余リスクとされた制御が実際に何を軽減するかを確認しています。
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"generate-agent-configs|herdr-agents|modify_private_settings\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -20; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts; rg --files --hidden .orchestration/validation .orchestration/dotfiles-T133-worker-write-boundary-a03 .orchestration/acceptance | rg '(c0f50fa|worker-write-boundary-slice1|worker-write-boundary-a03)'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"generate-agent-configs|herdr-agents|modify_private_settings\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -20; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD -- home scripts; rg --files --hidden .orchestration/validation .orchestration/dotfiles-T133-worker-write-boundary-a03 .orchestration/acceptance | rg '(c0f50fa|worker-write-boundary-slice1|worker-write-boundary-a03)'" in ~/Workspace/dotfiles
  succeeded in 99ms:
 home/dot_claude/modify_private_settings.json	chezmoi modify_ script (Python despite the .json name) that merges the rendered managed Claude settings baseline with Claude-owned runtime state in ~/.claude/settings.json, replacing managed permission and SessionStart hooks in place and appending the herdr-agents --attach hook.
 home/dot_claude/modify_private_settings.json	Parses stdin text into a dict, returning None for blank, invalid, or non-object JSON so apply falls back to the baseline.
@@ -3568,7 +3568,7 @@ rg: .orchestration/dotfiles-T133-worker-write-boundary-a03: No such file or dire
 .orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-49161bc.md.last.md
 
 exec
-/bin/zsh -lc 'cat .agents/worklog/orchestrator-glue/BRIEF-TEMPLATE-NOTES.md .agents/worklog/orchestrator-glue/a04-allocation-r1.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .agents/worklog/orchestrator-glue/BRIEF-TEMPLATE-NOTES.md .agents/worklog/orchestrator-glue/a04-allocation-r1.md' in ~/Workspace/dotfiles
  succeeded in 3ms:
 # Notes every review-profile brief carries (orchestrator glue, 2026-10-20)
 
@@ -3910,10 +3910,10 @@ Author at most 193 lines before an approximately seven-line Checks block; final 
 Not checked: implementation, tests, CI or live enforcement; no files written. Intermediate green conditions and caps require implementation-time verification.
 **Preferring concise responses**
 exec
-/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-{3844d93,0b96f40,0e9bf3f,0f87501,4e8b427,e39dc8f,f4246e9}.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-security-c0f50fa.md.last.md .orchestration/validation/dotfiles-T133-worker-write-boundary-a02-local-review-c0f50fa.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-{3844d93,0b96f40,0e9bf3f,0f87501,4e8b427,e39dc8f,f4246e9}.md.last.md; cat .orchestration/validation/dotfiles-T133-worker-write-boundary-slice1-a01-text-security-401573e.md' in ~/Workspace/dotfiles
 
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md; rg -n '"'^##|''^###|''^0'"\\.|"'^1'"\\.|"'^2'"\\.|"'^3'"\\.|"'^4'"\\.|"'^5'"\\.|"'^6'"\\.|"'^7'"\\.|"'^8'"\\.|"'^9'"\\.|"'^10'"\\.|GIT_|gh |shim|residual|slice1' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md; rg -n '"'^##|''^###|''^0'"\\.|"'^1'"\\.|"'^2'"\\.|"'^3'"\\.|"'^4'"\\.|"'^5'"\\.|"'^6'"\\.|"'^7'"\\.|"'^8'"\\.|"'^9'"\\.|"'^10'"\\.|GIT_|gh |shim|residual|slice1' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 # dotfiles-T133-worker-write-boundary-slice1-a01 — acceptance record (pre-dispatch)
 
@@ -3978,7 +3978,7 @@ text-security:e39dc8f:0	correct
 
 **Avoiding log self-reference**
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md; sed -n '95,118p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-worker-write-boundary-slice1-a01.md; sed -n '95,118p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 1ms:
 # dotfiles-T133-worker-write-boundary-slice1-a01 — acceptance record (pre-dispatch)
 
@@ -4035,7 +4035,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
 
 exec
-/bin/zsh -lc 'for f in .orchestration/tasks/dotfiles-T133-{trusted-entrypoint-descendants-followup-a01,trusted-entrypoint-binding-a01,agmsg-hardening-a01,worker-write-boundary-slice2-a01,worker-write-boundary-slice3-a01,worker-write-boundary-slice4-a01,worker-write-boundary-slice5-a01,audit-pool-a02,permission-guard-gate-a05}.md; do echo "$f"; sed -n '"'1,85p' \""'$f"; done' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'for f in .orchestration/tasks/dotfiles-T133-{trusted-entrypoint-descendants-followup-a01,trusted-entrypoint-binding-a01,agmsg-hardening-a01,worker-write-boundary-slice2-a01,worker-write-boundary-slice3-a01,worker-write-boundary-slice4-a01,worker-write-boundary-slice5-a01,audit-pool-a02,permission-guard-gate-a05}.md; do echo "$f"; sed -n '"'1,85p' \""'$f"; done' in ~/Workspace/dotfiles
  succeeded in 64ms:
 .orchestration/tasks/dotfiles-T133-trusted-entrypoint-descendants-followup-a01.md
 ---
@@ -4525,7 +4525,7 @@ threat_table:
 
 **Splitting large output**
 exec
-/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-trusted-entrypoint-descendants-followup-a01.md .orchestration/tasks/dotfiles-T133-agmsg-hardening-a01.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice{2,3,4,5}-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat .orchestration/tasks/dotfiles-T133-trusted-entrypoint-descendants-followup-a01.md .orchestration/tasks/dotfiles-T133-agmsg-hardening-a01.md .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice{2,3,4,5}-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 format: 2
@@ -4750,7 +4750,7 @@ The tracked-hook activation and its ordering after stage A (slice 1 row ".claude
 ```
 
 exec
-/bin/zsh -lc "rg -n '"'^##|''^###|GIT_|PATH|shim|residual|preflight|closed|snapshot'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; rg --files --hidden .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03 | head -35; rg -n 'scope|PermissionRequest|interpreter|site|shim|residual' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | head -25" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^##|''^###|GIT_|PATH|shim|residual|preflight|closed|snapshot'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; rg --files --hidden .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03 | head -35; rg -n 'scope|PermissionRequest|interpreter|site|shim|residual' .orchestration/tasks/dotfiles-T133-trusted-entrypoint-binding-a01.md | head -25" in ~/Workspace/dotfiles
  succeeded in 22ms:
 35:    disposition: "residual: the manifest declares the static protected inputs and closed worker-start schema; render tests check their correspondence without establishing same-UID isolation or complete executable binding."
 37:    disposition: "residual: the orchestrator baseline retains guarded non-PermissionRequest hooks and the unchanged legacy PermissionRequest command; its execution binding belongs to dotfiles-T133-trusted-entrypoint-binding-a01."
@@ -4957,7 +4957,7 @@ exec
 codex
 37 行の threat_table に `closed` の主張はなく、7 件の allowed_files と各非パス制御に対応する行があります。過去の「Linux の `gh *` 除外を残す」「guard 配置前に tracked hook を切り替える」という矛盾は修正されています。今回の追記では GitHub ホストの明示も入り、残る実行先束縛のリスクが既存の保留範囲に収まるかを最終確認しています。
 exec
-/bin/zsh -lc "rg -n '"'^##|''^###'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; cat .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/runtime-blocked-pong.txt .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/raw/runtime-contract-probe.json .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/raw/runtime-blocked-preparation.json" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '"'^##|''^###'"' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; cat .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/runtime-blocked-pong.txt .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/raw/runtime-contract-probe.json .claude/worktrees/worker-e/.orchestration/dotfiles-T133-worker-write-boundary-a03/raw/runtime-blocked-preparation.json" in ~/Workspace/dotfiles
  succeeded in 6ms:
 297:## Goal and reset
 307:## History
@@ -5221,7 +5221,7 @@ AGMSG-PONG v1 task_id=dotfiles-T133-worker-write-boundary-a03 status=blocked tas
 }
 
 exec
-/bin/zsh -lc "sed -n '275,480p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '275,480p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
     sources: ["https://code.claude.com/docs/en/skills", ".orchestration/validation/dotfiles-T133-worker-write-boundary-a03-text-security-be969e3.md.last.md"]
   - claim: "Worker a010 blocked before any edit (PONG 2694, 2026-10-20T04:00:43Z): the loader persists numStartups at start and hasCompletedOnboarding at onboarding; the orchestrator reproduced the installed-loader probe below, not a live worker start."
@@ -5433,7 +5433,7 @@ These restrictions also apply to disabled plugins and shadowed sources. Do not r
 **Reviewing audit data and requirements**
 **Verifying hash and avoiding mutations**
 exec
-/bin/zsh -lc "sed -n '491,597p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; sed -n '354,384p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '491,597p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; sed -n '354,384p' .orchestration/tasks/dotfiles-T133-worker-write-boundary-a04.md; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T133-worker-write-boundary-slice1-a01.md" in ~/Workspace/dotfiles
  succeeded in 9ms:
 ## Regression fixtures
 

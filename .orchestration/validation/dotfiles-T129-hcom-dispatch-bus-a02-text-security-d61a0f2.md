@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a16204-b55c-74d1-8369-1ef8f9e154ae
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,7 +23,7 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 agmsg-orchestration と Ponytail の指示を確認し、タスク本文・threat_table・引用された証跡を読み取り専用で監査します。検証時の判断が、このホストで実際に実行される対象に結び付くかを重点的に確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: agmsg-orchestration
@@ -294,7 +294,7 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.
 
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail
@@ -350,7 +350,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 | **ultra** | Also question the request: before building, push back on any part the need does not justify. |
 
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
  M .orchestration/acceptance/dotfiles-T128-chain-glue-finish-a01.md
  M .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md
@@ -670,13 +670,13 @@ exec
 
 **Splitting outputs**
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '1,64p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md | sed -n '1,64p'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"summary\",\"filePath\")}) for n in d.get(\"nodes\",[]) if any(x in str(n.get(\"filePath\",\"\")) for x in (\"trusted_exec\",\"024-design\",\"T133\",\"T129\"))))'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "git status --short; git rev-parse HEAD; cat .ua/meta.json; python3 -c 'import json; d=json.load(open(\".ua/knowledge-graph.json\")); print(\"\\n\".join(str({k:n.get(k) for k in (\"summary\",\"filePath\")}) for n in d.get(\"nodes\",[]) if any(x in str(n.get(\"filePath\",\"\")) for x in (\"trusted_exec\",\"024-design\",\"T133\",\"T129\"))))'" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n -A 36 -B 3 'Codex seat worklogs|threat.table|task-level audit' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A 36 -B 3 'Codex seat worklogs|threat.table|task-level audit' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 138ms:
      1	---
      2	format: 2
@@ -1181,7 +1181,7 @@ d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 
 **Limiting output length**
 exec
-/bin/zsh -lc "rg -n '5\\.14|"'^### 5'"\\.15' .orchestration/plans/024-design-quality.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -15; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|"'^### 5'"\\.15' .orchestration/plans/024-design-quality.md; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -15; cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a02.md .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md" in ~/Workspace/dotfiles
  succeeded in 21ms:
 95:### 5.14 残余（凍結後の計測事実、D-024-29）
 103:## 5.14 信頼ホスト実行契約（trusted-host execution contract、D-024-18）
@@ -1246,7 +1246,7 @@ text-security:24d8b8d:7	protocol-key-mismatch
 - 2026-10-22T04:44Z: resumed from the 2026-10-18 parking: amendment 1 re-anchored the text to main d06d94fd (premises and line anchors re-verified, after: satisfied by #423, generated Checks); C-80 of 24d8b8d Verdict incorrect, five P1 and two P2 (the text predates design 5.14 items 2 and 9: env-selected BUS_HISTORY, unauthenticated HCOM_DIR store, byte comparison not bound at execution, record path containment, gh host binding; TSV history incompatible with the marker parsers; verdict= instead of status=). Reset as dotfiles-T129-hcom-dispatch-bus-a02 with brief .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md (after: gh-binding a02); author-loop next; PR #407 continues under a02.
 
 exec
-/bin/zsh -lc "cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md; sed -n '110,128p' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a01-text-security-24d8b8d.md.last.md .orchestration/validation/dotfiles-T129-hcom-dispatch-bus-a02-text-security-17775c1.md.last.md; sed -n '110,128p' ~/.agents/skills/agmsg-orchestration/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 [P1] high .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md:102 `BUS_HISTORY` selects an executable from inherited environment state without trusted-path validation; together with the PATH-resolved commands retained by row 48, an injected override or mise shim can execute code and fabricate the history used for dispatch decisions—the sanitized Checks commands do not constrain this runtime path.
 
@@ -1294,11 +1294,11 @@ RESULT reports must mark durable facts with the same CompactionDB marker contrac
 
 **Reviewing audit approach**
 exec
-/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '103,158p'; cat .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/plans/024-design-quality.md | sed -n '103,158p'; cat .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02-followup-a01.md" in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md; nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md; nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "sed -n '1,260p' tests/unit/trusted_exec_contract.py; rg -n 'threat_table|one per|non-path' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; rg --files .orchestration/validation .agents/worklog/orchestrator-glue | rg 'hcom-dispatch|gh-binding.*security|brief-hcom'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,260p' tests/unit/trusted_exec_contract.py; rg -n 'threat_table|one per|non-path' ~/.agents/skills/agmsg-orchestration/SKILL.md; rg --files .orchestration/validation .agents/worklog/orchestrator-glue | rg 'hcom-dispatch|gh-binding.*security|brief-hcom'" in ~/Workspace/dotfiles
  succeeded in 137ms:
 ---
 name: ponytail-review
@@ -1946,7 +1946,7 @@ class TrustedExecContractMixin:
 codex
 前回の3件（履歴行の偽装、送信IDの取り違え、ストア宣言の欠落）には、今回の本文で対策が追加されています。次に、送信側と読取側が同じストアに束縛されるか、記録更新のファイル同一性、T133への依存とテストの保証範囲を確認します。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02.md .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md' in ~/Workspace/dotfiles
  succeeded in 0ms:
 ---
 name: ponytail-review
@@ -2136,7 +2136,7 @@ dispatch: [2026-10-22T01:29:09Z] claude-deep-dot → claude-standard-dot-a011: A
 
 **Checking token budget and design details**
 exec
-/bin/zsh -lc "sed -n '114,120p' .orchestration/plans/024-design-quality.md; nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | sed -n '1,113p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '114,120p' .orchestration/plans/024-design-quality.md; nl -ba .orchestration/tasks/dotfiles-T133-gh-binding-a02.md | sed -n '1,113p'" in ~/Workspace/dotfiles
  succeeded in 1ms:
 8. **承認はコミット済み台帳から読む** permission の決定行（`scope=permission approved_by=user diff_sha256=…`）は anchored checkout の作業コピーではなく、コミット済みの台帳から読む。読み方は `git ls-remote origin refs/heads/main` が返す commit sha を取り、GitHub API（`gh api repos/<owner>/<repo>/contents/.orchestration/decisions.tsv?ref=<sha>`、sandbox 内）でその sha の内容を取得する。ローカルの `git show` は共有 object database が書けるため中間 tree の差し替えで偽物を返しうる（第 3 回審査の所見 2）（ローカルの ref 名 `origin/main` は経由しない。`refs/replace/` も書けるので replacement を無効にする。Codex worker は `.git/objects` と `.git/refs` に書けるので ref は差し替えられるが、sha で指した object は内容アドレスで偽造できない）。作業コピーの行は提案で、記録 PR が main にマージされて初めて承認になる（PR の承認は操作者の操作）。偽造には main へのマージが要る。 The same applies to the PR content a mechanism evaluates (the verdict, the audit precheck, the counters): the changeset is read from GitHub at the 40-hex head (`gh api repos/{owner}/{repo}/compare/<base40>...<head40>`, `…/contents/<path>?ref=<head40>`) or from a private clone whose object store no worker can write; the main checkout's shared `.git/objects` and its `origin/main` ref are not evidence sources, because Codex workers write them (a04 C-80 round 1, 2026-10-19). Evidence files are named and matched by the full 40-hex head, never by a 7-character prefix. Every `gh` invocation names the repository explicitly: `gh pr`, `gh run` and `gh issue` subcommands take `--repo mryfmo/dotfiles` or the full pull-request URL, and `gh api` (which has no `--repo` flag) takes the explicit `repos/mryfmo/dotfiles/…` endpoint path, never a `{owner}/{repo}` placeholder; a `gh api graphql` call binds the repository through fixed query variables (`owner: "mryfmo"`, `name: "dotfiles"` as constants in the script, passed with `-f`/`-F`) and uses only node ids obtained from a query bound by those variables (verdict a04 C-80 round 5, 2026-10-19): the local repository configuration selects the default repository otherwise, and a matching head sha does not bind the repository because a fork can hold the same commit (verdict a04 C-80 round 2, 2026-10-19). A mechanism whose application path runs code this contract does not yet cover (the agmsg storage layer sourced by `dispatch.sh`/`history.sh`; the integration gate until its own hardening task lands) names that task as the prerequisite of its `--apply` mode and runs shadow-only until the prerequisite is merged. The sha of canonical `main` comes from the fixed repository's API (`gh api repos/mryfmo/dotfiles/git/ref/heads/main --jq .object.sha`), never from `git ls-remote origin`, whose destination the local remote and URL-rewrite configuration control (P1-12 a04 C-80, 2026-10-19T20:01Z); the content read at that sha comes from `repos/mryfmo/dotfiles/contents/<path>?ref=<sha40>`. Every `gh api` call that decides also binds the host with `--hostname github.com` (`GH_HOST` and the hosts configuration select the API host otherwise), a subcommand binds it through the `github.com/mryfmo/dotfiles` form of `--repo`, and a test that exports a hostile `GH_HOST` shows the call still names github.com or refuses (a02 review b2a186e, 2026-10-19T20:36Z).
 9. **私設キャッシュ** orchestrator 側の実行は worker と共有するキャッシュ（`~/.cache/uv`、`~/.local/share/uv`、mise）から実行可能物を読まない。`UV_CACHE_DIR` を anchored checkout 配下（`.agents/worklog/uv-cache`、gitignored、worker 書き込み不可）に固定し、`uv run --no-config --no-project --offline --python <信頼ルートの絶対パスのインタプリタ>` で起動する（`--no-config` で uv の設定探索を止め、`--python` の絶対パスで cwd や親の `.venv` の発見を止める；敵対的な `.venv` と `uv.toml` を置いた fixture で検証）。hook は uv を使わず jq と python 標準ライブラリだけで動く。 One trusted interpreter resolver (`scripts/orchestrator/trusted-interpreter.sh`, P1-3 lineage) resolves `<abs>` from the repository's pinned declaration to a regular file under the tool manager's install root (the install root is anchored to the passwd home of the real uid, never to the HOME variable, which a caller can forge), refuses anything else, and every orchestrator-side script consumes it; no script keeps its own `command -v`, `mise which` or PATH fallback (ci-rerun.sh security review 44cb835, 2026-10-19). Shell code of other projects (the agmsg storage layer and its `drivers.partition` sourcing) is never sourced by an orchestrator-side mechanism; counters are read from the agmsg SQLite store read-only with a fixed query or from the pasted record. Every Python child of a trusted entrypoint runs with `-I` (isolated: no user site, no `PYTHON*` environment, no script directory on `sys.path`), so `uv run … python -I <script>` rather than `--script` for a script without declared dependencies; a test plants a `.pth` and a `usercustomize.py` in a fake user site and asserts they never execute (P1-15 amendment 5 C-80, 2026-10-19). A program takes `UV_CACHE_DIR` from the environment the trusted parent supplies and refuses when it is absent or not an absolute path; it never computes a default from its own root. The orchestrator's parent prefix sets the main checkout's `.agents/worklog/uv-cache`; a worker's launcher sets `<worktree>/.uv-cache` (the P1-15 worker launch value: `.agents/` is read-only in the Codex permission profile, so a root-derived `.agents/worklog/uv-cache` cannot be created by a worker; P1-12 a03, 2026-10-19T11:28Z); tests set a temporary directory.
@@ -2258,7 +2258,7 @@ exec
 
 **Inspecting record digest handling**
 exec
-/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,410p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,410p'" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	#!/usr/bin/env bash
      2	# @file dispatch.sh
@@ -2614,7 +2614,7 @@ exec
    352	exit "${rc}"
 
 exec
-/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '1,220p'; nl -ba scripts/orchestrator/bus-read.sh | sed -n '1,180p'; cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '1,220p'; nl -ba scripts/orchestrator/bus-read.sh | sed -n '1,180p'; cat .agents/worklog/orchestrator-glue/brief-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
  succeeded in 1ms:
      1	#!/usr/bin/env bash
      2	# @file regime-counters.sh
@@ -3069,7 +3069,7 @@ after: audit-inherit-replan-json lineage on main: `/usr/bin/env -i PATH=/usr/bin
 **Analyzing HCOM filesystem and authentication nuances**
 **Evaluating task consumer digest handling**
 exec
-/bin/zsh -lc "rg --files .orchestration/dotfiles-T129-hcom-dispatch-bus-a01 .orchestration/dotfiles-T133-gh-binding-a02-review-a01 .crit 2>/dev/null; rg -n 'hcom:|hcom|trusted_tools' home/dot_agents/agent-config.yaml | head -30; ls -l /Users/a0004262/.local/bin/hcom; sed -n '1,130p' scripts/orchestrator/bus-read.sh; sed -n '1,115p' home/dot_local/bin/common/executable_agmsg-dispatch" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files .orchestration/dotfiles-T129-hcom-dispatch-bus-a01 .orchestration/dotfiles-T133-gh-binding-a02-review-a01 .crit 2>/dev/null; rg -n 'hcom:|hcom|trusted_tools' home/dot_agents/agent-config.yaml | head -30; ls -l ~/.local/bin/hcom; sed -n '1,130p' scripts/orchestrator/bus-read.sh; sed -n '1,115p' home/dot_local/bin/common/executable_agmsg-dispatch" in ~/Workspace/dotfiles
  succeeded in 38ms:
 529:  hcom:
 531:    upstream: https://pypi.org/project/hcom/0.7.30/#files
@@ -3079,7 +3079,7 @@ exec
 543:      linux-arm64: https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl
 546:    install_path: ~/.local/bin/hcom
 547:    installer: scripts/update-agent-assets.sh#update_hcom
-lrwxr-xr-x@ 1 a0004262  staff  51 Oct 20 14:02 /Users/a0004262/.local/bin/hcom -> /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom
+lrwxr-xr-x@ 1 a0004262  staff  51 Oct 20 14:02 ~/.local/bin/hcom -> ~/.local/share/uv/tools/hcom/bin/hcom
 #!/usr/bin/env bash
 # @file bus-read.sh
 # @brief Read the whole agmsg team history and print every open task with its minutes of silence.
@@ -3274,7 +3274,7 @@ if wait_for_read "$deadline"; then
 
 **Analyzing Python virtualenv conflicts**
 exec
-/bin/zsh -lc "/usr/bin/head -40 /Users/a0004262/.local/share/uv/tools/hcom/bin/hcom; /bin/ls /Users/a0004262/.local/share/uv/tools/hcom/lib; sed -n '525,552p' home/dot_agents/agent-config.yaml; rg -n 'hcom|binding' .orchestration/plans/024-design-quality.md | head -15; rg --files .claude/worktrees/worker-f/.orchestration/dotfiles-T129-hcom-dispatch-bus-a01 .orchestration/dotfiles-T133-gh-binding-a02-review-a01 2>/dev/null" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/head -40 ~/.local/share/uv/tools/hcom/bin/hcom; /bin/ls ~/.local/share/uv/tools/hcom/lib; sed -n '525,552p' home/dot_agents/agent-config.yaml; rg -n 'hcom|binding' .orchestration/plans/024-design-quality.md | head -15; rg --files .claude/worktrees/worker-f/.orchestration/dotfiles-T129-hcom-dispatch-bus-a01 .orchestration/dotfiles-T133-gh-binding-a02-review-a01 2>/dev/null" in ~/Workspace/dotfiles
  exited 2 in 45ms:
 ����            �	  � �        H   __PAGEZERO                                                        �  __TEXT                  ��              ��                  __text          __TEXT           
      �|�      
@@ -3350,7 +3350,7 @@ python3.10
 
 **Locating pure Python package source**
 exec
-/bin/zsh -lc "rg --files /Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages | rg '/hcom/.*(paths|config|db|send|cli).*\\.py"'$'"' | head -35; rg --files .claude/worktrees | rg 'hcom-dispatch-bus-a01/(report|.*help|.*item).*' | head -15; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; rg -n '"'^#|Verdict:|'"\\[P[0-3]\\]' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files ~/.local/share/uv/tools/hcom/lib/python3.10/site-packages | rg '/hcom/.*(paths|config|db|send|cli).*\\.py"'$'"' | head -35; rg --files .claude/worktrees | rg 'hcom-dispatch-bus-a01/(report|.*help|.*item).*' | head -15; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md; rg -n '"'^#|Verdict:|'"\\[P[0-3]\\]' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md" in ~/Workspace/dotfiles
  succeeded in 105ms:
 d61a0f2b750afeb3afaac1a90df862f0ee0467617570543945561c0447ac06ef  .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md
 .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md:8:Verdict: correct
@@ -3361,32 +3361,32 @@ d61a0f2b750afeb3afaac1a90df862f0ee0467617570543945561c0447ac06ef  .orchestration
 
 I’m working through how tasks handle ownership stubs before anchors, noting that planned prerequisites shouldn't be flagged prematurely. I’m also examining digest validations and update constraints, spotting potential inconsistencies around record hashing and transmission that might need a minimal test to confirm.
 exec
-/bin/zsh -lc "rg --files --hidden /Users/a0004262/.local/share/uv/tools/hcom | head -35; cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md; sed -n '1,65p' .agents/worklog/orchestrator-glue/author-dotfiles-T129-hcom-dispatch-bus-a02-r2.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg --files --hidden ~/.local/share/uv/tools/hcom | head -35; cat .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-c761dc8.md.last.md .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md; sed -n '1,65p' .agents/worklog/orchestrator-glue/author-dotfiles-T129-hcom-dispatch-bus-a02-r2.md" in ~/Workspace/dotfiles
  succeeded in 14ms:
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/uv_cache.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/INSTALLER
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/REQUESTED
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/sboms/hcom.cyclonedx.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/WHEEL
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/direct_url.json
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/licenses/LICENSE
-/Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/RECORD
-/Users/a0004262/.local/share/uv/tools/hcom/.gitignore
-/Users/a0004262/.local/share/uv/tools/hcom/CACHEDIR.TAG
-/Users/a0004262/.local/share/uv/tools/hcom/pyvenv.cfg
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.csh
-/Users/a0004262/.local/share/uv/tools/hcom/bin/deactivate.bat
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.nu
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.xsh
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate_this.py
-/Users/a0004262/.local/share/uv/tools/hcom/bin/pydoc.bat
-/Users/a0004262/.local/share/uv/tools/hcom/bin/hcom
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.fish
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.ps1
-/Users/a0004262/.local/share/uv/tools/hcom/bin/activate.bat
-/Users/a0004262/.local/share/uv/tools/hcom/uv-receipt.toml
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/uv_cache.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/INSTALLER
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/REQUESTED
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/sboms/hcom.cyclonedx.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/WHEEL
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/direct_url.json
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/licenses/LICENSE
+~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/RECORD
+~/.local/share/uv/tools/hcom/.gitignore
+~/.local/share/uv/tools/hcom/CACHEDIR.TAG
+~/.local/share/uv/tools/hcom/pyvenv.cfg
+~/.local/share/uv/tools/hcom/bin/activate.csh
+~/.local/share/uv/tools/hcom/bin/deactivate.bat
+~/.local/share/uv/tools/hcom/bin/activate.nu
+~/.local/share/uv/tools/hcom/bin/activate
+~/.local/share/uv/tools/hcom/bin/activate.xsh
+~/.local/share/uv/tools/hcom/bin/activate_this.py
+~/.local/share/uv/tools/hcom/bin/pydoc.bat
+~/.local/share/uv/tools/hcom/bin/hcom
+~/.local/share/uv/tools/hcom/bin/activate.fish
+~/.local/share/uv/tools/hcom/bin/activate.ps1
+~/.local/share/uv/tools/hcom/bin/activate.bat
+~/.local/share/uv/tools/hcom/uv-receipt.toml
 No findings in the 41 threat rows. Items 6–7 address the previous descendant repository-binding and Python-isolation findings; the referenced contract covers resolved paths, replacement risks and Git environment controls.
 
 This assesses the design only. Dispatch remains blocked pending populated Checks, expanded residual ownership and measured host protections.
@@ -3475,7 +3475,7 @@ premises: []
 codex
 本文は、同一UIDの隔離を保証せず、運用開始前のホスト保護計測を必須条件にしています。その残余を踏まえ、`closed` 行が約束する検証内容と、実行時の入力・保存先の束縛に矛盾がないかを最後に照合しています。ファイル変更や実装テストは行っていません。
 exec
-/bin/zsh -lc "rg -n 'HCOM_DIR|config|hook|notify|send|\\.hcom|home|tag|receipt' /Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA | head -75; sed -n '320,360p' scripts/orchestrator/dispatch.sh; rg -n 'record|task_file|read_text|--root|resolve\\(' scripts/orchestrator/task-consistency-check.py | head -55; /usr/bin/which crit; rg --files --hidden .crit .agents/worklog/codex 2>/dev/null | head -15" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n 'HCOM_DIR|config|hook|notify|send|\\.hcom|home|tag|receipt' ~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA | head -75; sed -n '320,360p' scripts/orchestrator/dispatch.sh; rg -n 'record|task_file|read_text|--root|resolve\\(' scripts/orchestrator/task-consistency-check.py | head -55; /usr/bin/which crit; rg --files --hidden .crit .agents/worklog/codex 2>/dev/null | head -15" in ~/Workspace/dotfiles
  succeeded in 231ms:
 17:Keywords: claude,claude-code,gemini,codex,opencode,kilo,kilocode,pi,omp,oh-my-pi,antigravity,cursor,kimi,copilot,qoder,grok,grok-build,hooks,agents,cli,multi-agent,orchestration,terminal
 57:**homebrew -** macOS, Linux:
@@ -3554,11 +3554,11 @@ exit "${rc}"
 75:        cur = (front(design.read_text()).get("design_review") or {}).get("receipt")
 133:    parser.add_argument("--root", type=pathlib.Path, help="the repository (default: the first file's git toplevel)")
 139:            parser.error(f"{args.tasks[0]} is not in a git checkout; pass --root")
-/Users/a0004262/.local/bin/crit
+~/.local/bin/crit
 
 **Checking critique status requirements**
 exec
-/bin/zsh -lc "sed -n '339,370p' /Users/a0004262/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA; sed -n '1,165p' scripts/orchestrator/task-consistency-check.py; rg -n 'get_record|record|--record|sha256' tests/unit/test_regime_counters.py | head -30; rg -n 'test_.*(contract_attack|trusted_path|private_namespace|private_cache|consumed_bytes)' tests/unit/test_orchestrator_tools.py; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '339,370p' ~/.local/share/uv/tools/hcom/lib/python3.10/site-packages/hcom-0.7.30.dist-info/METADATA; sed -n '1,165p' scripts/orchestrator/task-consistency-check.py; rg -n 'get_record|record|--record|sha256' tests/unit/test_regime_counters.py | head -30; rg -n 'test_.*(contract_attack|trusted_path|private_namespace|private_cache|consumed_bytes)' tests/unit/test_orchestrator_tools.py; /usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a02.md" in ~/Workspace/dotfiles
  succeeded in 100ms:
 <details>
 <summary><strong>Config</strong></summary>

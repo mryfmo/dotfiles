@@ -42,7 +42,7 @@ Readings:
 
 ## #B1 bridge install under omp 18.11.3 (2026-10-23T00:2xZ, operator terminal, `omp install pi-claude-bridge@0.9.3 --json`)
 
-Result (pasted): `✘ Failed to install pi-claude-bridge@0.9.3: Error: Plugin pi-claude-bridge extension validation failed: /Users/a0004262/.omp/plugins/node_modules/pi-claude-bridge/src/index.ts: Failed to load extension: Export named 'formatSkillsForPrompt' not found in module 'omp-legacy-pi-bundled:@oh-my-pi/pi-coding-agent'.`
+Result (pasted): `✘ Failed to install pi-claude-bridge@0.9.3: Error: Plugin pi-claude-bridge extension validation failed: ~/.omp/plugins/node_modules/pi-claude-bridge/src/index.ts: Failed to load extension: Export named 'formatSkillsForPrompt' not found in module 'omp-legacy-pi-bundled:@oh-my-pi/pi-coding-agent'.`
 Readings: omp's plugin root is `~/.omp/plugins/` (not `~/.omp/agent/plugins/`); omp rewrote the bridge's `@earendil-works/pi-coding-agent` import to its bundled legacy shim (`omp-legacy-pi-bundled:@oh-my-pi/pi-coding-agent`) and the shim lacks `formatSkillsForPrompt`; the install rolled the package back (`plugins/package.json` dependencies `{}`, no `pi-claude-bridge` dir) but left the resolved dependency tree in `~/.omp/plugins/node_modules` (`@anthropic-ai`, `@earendil-works`, `@modelcontextprotocol`, …). STOP A7 fix round 1 = measure the full import gap against the three legacy shims (below) and patch the bridge locally.
 
 ### #B1 fix round 1 (orchestrator, 2026-10-23T00:3xZ): import gap and local patch
@@ -56,7 +56,7 @@ Result (pasted): `{"name":"pi-claude-bridge","version":"0.9.3","path":"/tmp/clau
 
 ### #B2 (operator, 2026-10-23T00:3xZ): `omp plugin list --json && omp plugin doctor`
 
-Result (pasted): list `npm: [{"name":"pi-claude-bridge","version":"0.9.3","path":"/Users/a0004262/.omp/plugins/node_modules/pi-claude-bridge","manifest":{"extensions":["./src/index.ts"],"version":"0.9.3"},"enabled":true}]`, `marketplace: []`; doctor `✔ plugins_directory: Found at /Users/a0004262/.omp/plugins`, `✔ package_manifest`, `✔ node_modules`, `✔ plugin:pi-claude-bridge: v0.9.3 …`, `Summary: 4 ok, 0 warnings, 0 errors`. Reading: the local-path install was copied into omp's plugin store at `~/.omp/plugins/node_modules/pi-claude-bridge` (the install receipt earlier named the source path).
+Result (pasted): list `npm: [{"name":"pi-claude-bridge","version":"0.9.3","path":"~/.omp/plugins/node_modules/pi-claude-bridge","manifest":{"extensions":["./src/index.ts"],"version":"0.9.3"},"enabled":true}]`, `marketplace: []`; doctor `✔ plugins_directory: Found at ~/.omp/plugins`, `✔ package_manifest`, `✔ node_modules`, `✔ plugin:pi-claude-bridge: v0.9.3 …`, `Summary: 4 ok, 0 warnings, 0 errors`. Reading: the local-path install was copied into omp's plugin store at `~/.omp/plugins/node_modules/pi-claude-bridge` (the install receipt earlier named the source path).
 
 ### #B3 (operator, 2026-10-23T00:4xZ): `omp --profile pilot-bridge models claude-bridge`
 

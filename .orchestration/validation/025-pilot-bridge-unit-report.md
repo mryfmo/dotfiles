@@ -78,7 +78,7 @@ pi-coding-agent  keyText                            index.ts             FOUND
 pi-tui           Text                               index.ts             FOUND
 ```
 
-Upstream `contentText` (`/Users/a0004262/.omp/plugins/node_modules/@earendil-works/pi-ai/dist/utils/text.js:2-9`, pi-ai 1.4.0, MIT):
+Upstream `contentText` (`~/.omp/plugins/node_modules/@earendil-works/pi-ai/dist/utils/text.js:2-9`, pi-ai 1.4.0, MIT):
 
 ```js
 export function contentText(content, separator = "\n") {
@@ -95,11 +95,11 @@ Run 30 (the scratch stub, same semantics, in `pkg-probe/src/transcript.ts`) is t
 
 ## 4. The turn: operator point reached, not crossed (ACCEPTANCE 4(ii))
 
-The host login is Keychain-only (`/Users/a0004262/.claude/.credentials.json` absent; `claude --version` = `2.1.309 (Claude Code)`), so the real turn is operator-only under STANDING 4. Run 30 under the scratch HOME stopped at `Not logged in · Please run /login`, which is the exact point. The operator commands, with `source` and `dry-run` columns, are in `.orchestration/orchestrate/regime-cutover/handouts/U1-operator-steps.md`. ACCEPTANCE 5 (bridged tool call, `PI_CODING_AGENT_DIR` env check, `pgrep -fl claude`) is conditional on (i) and is carried into the handout; `pgrep` is also unavailable inside the sandbox (`sysmond service not found`, run-20-pgrep.log).
+The host login is Keychain-only (`~/.claude/.credentials.json` absent; `claude --version` = `2.1.309 (Claude Code)`), so the real turn is operator-only under STANDING 4. Run 30 under the scratch HOME stopped at `Not logged in · Please run /login`, which is the exact point. The operator commands, with `source` and `dry-run` columns, are in `.orchestration/orchestrate/regime-cutover/handouts/U1-operator-steps.md`. ACCEPTANCE 5 (bridged tool call, `PI_CODING_AGENT_DIR` env check, `pgrep -fl claude`) is conditional on (i) and is carried into the handout; `pgrep` is also unavailable inside the sandbox (`sysmond service not found`, run-20-pgrep.log).
 
 ## 5. Shipping form for U2 (W2d)
 
-- **Directory:** the patched package as a real directory that carries its own `node_modules` beside `package.json`. Deps resolve only upward from the entry's realpath (`legacy-pi-compat.ts:1518-1534`); a bare package fails (run 21). Staging options: clone the hoisted tree (`cp -Rc /Users/a0004262/.omp/plugins/node_modules <dir>/node_modules`, 484M, no network; runs 20-30 used it) or `bun install --production` in the package dir with `registry.npmjs.org` allowed (not measured).
+- **Directory:** the patched package as a real directory that carries its own `node_modules` beside `package.json`. Deps resolve only upward from the entry's realpath (`legacy-pi-compat.ts:1518-1534`); a bare package fails (run 21). Staging options: clone the hoisted tree (`cp -Rc ~/.omp/plugins/node_modules <dir>/node_modules`, 484M, no network; runs 20-30 used it) or `bun install --production` in the package dir with `registry.npmjs.org` allowed (not measured).
 - **Manifest key:** keep `pi.extensions: ["./src/index.ts"]`; every form resolved it manifest-first (`directory-resolution.ts:5-9`; runs 20, 22, 24, 26). `omp.extensions` is accepted and preferred when both exist (`docs/extension-loading.md` "omp takes precedence over pi"), not required.
 - **Launcher line:** `-e <dir>` on the seat's omp command (runs 20, 27, 30). It is explicit, needs no plugin-store state, works for every `--profile`, and `--no-extensions` beside it is optional. The profile-store alternative is `omp --profile <name> install <dir>` once per profile, which writes a symlink and `~/.omp/profiles/<name>/plugins/omp-plugins.lock.json` (runs 25, 26). A `config.yml` `extensions:` entry is documented (`docs/extension-loading.md` "Explicitly configured paths") but was not measured.
 - **Patch v2:** add `contentText` to the compat patch (inline the eight lines above into `src/transcript.ts`, drop the import name at `transcript.ts:14`). Everything else in the inventory is FOUND. Re-run `gap-check.py` and the session-path check after any patch change.
@@ -108,7 +108,7 @@ The host login is Keychain-only (`/Users/a0004262/.claude/.credentials.json` abs
 ## 6. Deviations from the brief
 
 - `omp models` was dropped as the instrument after runs 10-17 showed it never evaluates extension modules; every form in §2 was re-measured through the session path (not in the brief's candidate list).
-- No `-p` turn with `CLAUDE_CONFIG_DIR=/Users/a0004262/.claude` was run (STANDING 4, Keychain). Run 20 carried `ANTHROPIC_API_KEY=invalid-u1-dry-run` for a key-auth dry run; it failed at load before any auth, so the key was never used and `api.anthropic.com` was never contacted (no sandbox line for it).
+- No `-p` turn with `CLAUDE_CONFIG_DIR=~/.claude` was run (STANDING 4, Keychain). Run 20 carried `ANTHROPIC_API_KEY=invalid-u1-dry-run` for a key-auth dry run; it failed at load before any auth, so the key was never used and `api.anthropic.com` was never contacted (no sandbox line for it).
 - One scratch-only edit of a copy (`pkg-probe`) to observe the next gap after `contentText`. The patch file in the repo was not changed (`git status` shows only this report and the handout).
 - Of the six upstream docs fetched to `/tmp/claude-501/u1-work/docs/`, only `extension-loading.md` was read and cited.
 - `pgrep` cannot run inside the sandbox; the process-tree row is operator-only.

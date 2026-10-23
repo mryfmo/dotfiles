@@ -1,7 +1,7 @@
 Reading additional input from stdin...
 OpenAI Codex v0.163.0
 --------
-workdir: /Users/a0004262/Workspace/dotfiles
+workdir: ~/Workspace/dotfiles
 model: gpt-6-astra
 provider: openai
 approval: never
@@ -12,7 +12,7 @@ session id: 01a161e8-f39c-7651-9fdb-2d6498947fc2
 --------
 user
 Pre-dispatch security review (read-only, security profile) of the task text .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md and its threat_table, before any implementation exists. Judge the design the text states: can the controls it names bind what actually executes on this host (mise shims first on PATH, same-user worker processes, gh outside the sandbox on Linux, symlinks and case-insensitive filesystems, inherited GIT_* environment)? Check every threat row: a closed row whose named test cannot close it, a residual row whose control does not mitigate the risk, a missing row for a file or non-path control, and any gap of the class decision-not-bound-to-execution (a decision made on text or on a validated copy while the execution resolves binaries, files or ledgers from an attacker-influenced place). Read the related acceptance records and reviews the text cites for context. Report each finding as [P0-P3] <confidence> <file:line> <one line>; findings are input for the orchestrator, who decides. End with exactly one line: Verdict: correct or Verdict: incorrect.
-warning: loading hooks from both /Users/a0004262/.codex/hooks.json and /Users/a0004262/.codex/config.toml; prefer a single representation for this layer
+warning: loading hooks from both ~/.codex/hooks.json and ~/.codex/config.toml; prefer a single representation for this layer
 hook: SessionStart
 hook: SessionStart
 hook: SessionStart Completed
@@ -23,11 +23,11 @@ codex
 🤖 I read the AGENTS.md for mryfmo/dotfiles.
 対象タスクと参照先の acceptance・review を読み、判定した内容が実際の実行に結び付くかを重点的に確認します。読み取り専用で進めます。
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.agents/skills/agmsg-orchestration/SKILL.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; nl -ba .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md' in ~/Workspace/dotfiles
  succeeded in 73ms:
 ---
 name: agmsg-orchestration
@@ -789,7 +789,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
    155	```
 
 exec
-/bin/zsh -lc "sed -n '1,98p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md | nl -ba" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '1,98p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md | nl -ba" in ~/Workspace/dotfiles
  succeeded in 0ms:
      1	---
      2	format: 2
@@ -891,7 +891,7 @@ exec
     98	
 
 exec
-/bin/zsh -lc "rg -n -A 48 'Codex seat worklogs' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md; cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n -A 48 'Codex seat worklogs' ~/.agents/skills/agmsg-orchestration/SKILL.md; cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail-review/SKILL.md" in ~/Workspace/dotfiles
  succeeded in 176ms:
 225:## Codex seat worklogs
 226-
@@ -1042,11 +1042,11 @@ Lists findings, changes no code.
 codex
 `agmsg-orchestration` の worklog 規則と `ponytail-review` を参照しています。今回は読み取り専用の指定に従い、worklog やレビュー証跡ファイルは作成しません。現時点の threat_table は全行が `residual` で、実行環境の行と、merge・履歴取得の行の制御を参照先と照合しています。
 exec
-/bin/zsh -lc 'git status --short; crit status --json; cat .ua/meta.json; git rev-parse HEAD' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'git status --short; crit status --json; cat .ua/meta.json; git rev-parse HEAD' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc 'cat /Users/a0004262/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md; nl -ba .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc 'cat ~/.codex/plugins/cache/ponytail/ponytail/5.3.2/skills/ponytail/SKILL.md; nl -ba .orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md; nl -ba .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md' in ~/Workspace/dotfiles
 exec
-/bin/zsh -lc "rg -n '5\\.14|review|acceptance|same.user|symlink|GIT_|shim|Linux|private|ledger|case.insensitive|execution|5\\.1[0-9]' .orchestration/plans/024-design-quality.md; nl -ba .orchestration/plans/023-omp-hcom-migration.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "rg -n '5\\.14|review|acceptance|same.user|symlink|GIT_|shim|Linux|private|ledger|case.insensitive|execution|5\\.1[0-9]' .orchestration/plans/024-design-quality.md; nl -ba .orchestration/plans/023-omp-hcom-migration.md" in ~/Workspace/dotfiles
  succeeded in 140ms:
 1:# Plan 024 設計 3/5: 天井・CI/Bot・追加の仕組み・品質保証・人の判断の細分化（5.8〜5.13）
 3:> 読む時機: 席数や PR 数を増やすとき（5.8）、CI/Bot の仕様を書くとき（5.9）、仕組みの採否を確かめるとき（5.10）、品質条件を確かめるとき（5.11）、人に残す判断を確かめるとき（5.13）。プログラム仕様は `024-design-programs.md`。
@@ -1659,7 +1659,7 @@ Never cut: validation at trust boundaries, error handling that prevents data los
   "daemon": {
     "running": false
   },
-  "review_file": "/Users/a0004262/.crit/reviews/c06a520c1f9b/review.json",
+  "review_file": "~/.crit/reviews/c06a520c1f9b/review.json",
   "review_file_exists": false,
   "sessions": [],
   "vcs": "git"
@@ -1674,7 +1674,7 @@ d06d94fd8eedcd0770c1c80c2b1596ec36109ef8
 
 **Limiting output size and refining file search**
 exec
-/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md | tail -45; sed -n '95,125p' .orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md; rg -n '"'^###? .*5.14|''^###? .*5.1[0-9]|same.user|GIT_|mise|gh.*sandbox|symlink|case.insensitive'"' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba .orchestration/tasks/dotfiles-T129-normalised-comparison-lint-a01.md | tail -45; sed -n '95,125p' .orchestration/acceptance/dotfiles-T128-s1-replan-gate-a01.md; rg -n '"'^###? .*5.14|''^###? .*5.1[0-9]|same.user|GIT_|mise|gh.*sandbox|symlink|case.insensitive'"' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 14ms:
     76	| R2 | shell `case <path or URL operand> in` | the same as R1 | `case "$url" in file://*) ;; esac` |
     77	| R3 | jq `==`, `!=`, `startswith(`, `endswith(`, `ltrimstr(`, `rtrimstr(` or `test(` whose operand is `.url`, `.path`, a `$name` of the token rule or a literal of the token rule | a jq `def canonical_path`, `def normalise_*` or `def normalize_*` applied to both sides | `select(.url \| endswith("/index.html"))` |
@@ -1769,7 +1769,7 @@ audit-finding: 4460d52:1 fixed:58a012da3588b0444c655bf24047c9408a29d9b7
 
 **Optimizing output truncation**
 exec
-/bin/zsh -lc "sed -n '99,117p' .orchestration/plans/024-design-quality.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "sed -n '99,117p' .orchestration/plans/024-design-quality.md" in ~/Workspace/dotfiles
  succeeded in 0ms:
 5.12 **プログラム仕様** は `024-design-programs.md` に分離（17 項目: verdict.sh、audit-pool.sh と orch-audit.sh --json、schemas、result-precheck.sh、dispositions.py、regime.yml、dispatch.sh --next、acceptance-front-matter.py、git hooks、handoff.sh、flakes、task-from-plan.py）。
 
@@ -1792,7 +1792,7 @@ orchestrator 側の仕組み（merge gate、integrate-merge、orch-gate、dispos
 7. **検証** threat_table は本節の項目 1〜10 に 1 行ずつ対応させる（参照だけでは足りない）。共通テスト補助 `tests/unit/trusted_exec_contract.py`（P1-6 で作る）を使い、仕組みごとに 4 つの red→green テストを持つ：PATH 先頭の shim が実行されない、植え付けた GIT_* と git 設定が効かない、worker ルート配下の信頼パスが拒否される、検証後に差し替えたファイルが消費側に届かない。
 
 exec
-/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,145p'; nl -ba scripts/orchestrator/dispatch.sh | sed -n '220,370p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/orchestrator/dispatch.sh | sed -n '1,145p'; nl -ba scripts/orchestrator/dispatch.sh | sed -n '220,370p'" in ~/Workspace/dotfiles
  succeeded in 3ms:
      1	#!/usr/bin/env bash
      2	# @file dispatch.sh
@@ -2075,7 +2075,7 @@ exec
 
 **Organizing local document review setup**
 exec
-/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"dispatch|regime-counters|bus-read\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -12; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -12; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg 'hcom-dispatch-bus|seat-launch-args|seat-liveness-followup|s1-replan-gate-a01-audit-4460|gh-binding-a02-review|worker-sandbox-exclusions-a02'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "jq -r '.nodes[] | select((.filePath // \"\") | test(\"dispatch|regime-counters|bus-read\")) | [.filePath,.summary] | @tsv' .ua/knowledge-graph.json | head -12; git diff --name-only 940a3a2b07adfd14140a0acff96784ef53a0a509..HEAD | head -12; rg --files .orchestration/acceptance .orchestration/validation .orchestration/tasks | rg 'hcom-dispatch-bus|seat-launch-args|seat-liveness-followup|s1-replan-gate-a01-audit-4460|gh-binding-a02-review|worker-sandbox-exclusions-a02'" in ~/Workspace/dotfiles
  succeeded in 111ms:
 home/dot_local/bin/common/executable_agmsg-dispatch	Orchestrator wake path that sends an agmsg message, wakes an idle Herdr worker pane, and polls for the read receipt with one bounded retry, never sending the message body to the terminal.
 home/dot_local/bin/common/executable_agmsg-dispatch	Polls the agmsg store for this message's read receipt until the given SECONDS value or the shared deadline.
@@ -2169,7 +2169,7 @@ tests/unit/test_agmsg_dispatch.py	Test case running agmsg-dispatch with fake scr
 codex
 Checks 欄の `env -i` は事前確認コマンドを束縛していますが、提案された dispatcher・履歴 reader の実行経路には同じ制約が書かれていません。`BUS_HISTORY` と `HCOM_DIR`、検証後に再読込する task・record が、どこまで信頼できる入力として扱われるのかを確認しています。
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md; cat .orchestration/validation/dotfiles-T128-s1-replan-gate-a01-audit-4460d52.md.last.md; cat .orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r3.md; sed -n '99,104p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T129-hcom-dispatch-bus-a01.md; cat .orchestration/validation/dotfiles-T128-s1-replan-gate-a01-audit-4460d52.md.last.md; cat .orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r3.md; sed -n '99,104p' .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md" in ~/Workspace/dotfiles
  succeeded in 26ms:
 ---
 {
@@ -2221,7 +2221,7 @@ Task-file verdict: dotfiles-T128-seat-launch-args-a01: confirm0. Facts first, pa
 
 **Summarizing primary findings**
 exec
-/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '65,190p'; nl -ba scripts/orchestrator/bus-read.sh | sed -n '40,100p'; sed -n '150,220p' scripts/orchestrator/dispatch.sh; nl -ba home/dot_local/bin/common/executable_agmsg-dispatch | sed -n '35,100p'" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "nl -ba scripts/regime-counters.sh | sed -n '65,190p'; nl -ba scripts/orchestrator/bus-read.sh | sed -n '40,100p'; sed -n '150,220p' scripts/orchestrator/dispatch.sh; nl -ba home/dot_local/bin/common/executable_agmsg-dispatch | sed -n '35,100p'" in ~/Workspace/dotfiles
  succeeded in 47ms:
     65	threshold=2
     66	team=dotfiles-conformance task="" pr="" reset_hash="" reset_source="" history_only=false list=false history_file="" github_file=""
@@ -2527,7 +2527,7 @@ if [[ ${tokens[0]} == AGMSG-TASK ]]; then
 **Reviewing security findings and classifications**
 **Distinguishing schema and contract constraints**
 exec
-/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md; sed -n '1,110p' .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md; rg -n 'Linux|shim|GIT_|sandbox|P1|Verdict' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md; command -v git gh bash uv hcom; printf '%s\\n' \""'$PATH"' in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "cat .orchestration/acceptance/dotfiles-T133-gh-binding-a02-review-a01.md; sed -n '1,110p' .orchestration/acceptance/dotfiles-T133-worker-sandbox-exclusions-a02.md; rg -n 'Linux|shim|GIT_|sandbox|P1|Verdict' .orchestration/validation/dotfiles-T133-gh-binding-a02-text-security-2adb147.md.last.md .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md; command -v git gh bash uv hcom; printf '%s\\n' \""'$PATH"' in ~/Workspace/dotfiles
  succeeded in 9ms:
 ---
 {
@@ -2675,11 +2675,11 @@ audit:232c174:404	happy-path-closing-test
 .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md:21:Not checked locally: full test suites, live Claude sandbox execution, or historical bus-message authenticity. Existing `allowUnsandboxedCommands: true` and `failIfUnavailable: false` mean empty exclusions alone do not enforce universal confinement; these behaviors remain unchanged. [Claude sandbox documentation](https://code.claude.com/docs/en/sandboxing)
 .orchestration/validation/dotfiles-T133-worker-sandbox-exclusions-a02-security-c8c712f.md.last.md:23:Verdict: correct
 /opt/homebrew/bin/git
-/Users/a0004262/.local/share/mise/shims/gh
+~/.local/share/mise/shims/gh
 /bin/bash
-/Users/a0004262/.local/share/mise/shims/uv
-/Users/a0004262/.local/bin/hcom
-/Users/a0004262/.local/share/mise/shims:/Users/a0004262/.local/bin:/Users/a0004262/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/Users/a0004262/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/a0004262/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
+~/.local/share/mise/shims/uv
+~/.local/bin/hcom
+~/.local/share/mise/shims:~/.local/bin:~/.local/bin/common:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:~/.local/share/mise/installs/npm-openai-codex/0.163.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:~/.local/share/mise/installs/node/lts/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 **Analyzing environment variable inheritance and merge impact**
 **Analyzing counters and sqlite behavior**
@@ -2693,7 +2693,7 @@ I’m sorting through potential TSV injection concerns and various protocol mism
 codex
 実行先の束縛に加え、仕様内の不一致が二つ確認できました。新しい履歴形式は TSV ですが、据え置く parser は従来の表示形式を要求します。また revise の条件は `verdict=revise` と書かれていますが、参照先の実際の通知は `status=revise` です。独立レビューでも両点が確認されました。同一 UID の非隔離という既知の残余と、今回欠けている制御は分けて報告します。
 exec
-/bin/zsh -lc "/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md; rg -n 'sha256|hash|task_file|task copy' /Users/a0004262/.agents/skills/agmsg-orchestration/SKILL.md | tail -12; cat .orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r2.md; sed -n '73,92p' .orchestration/tasks/dotfiles-T128-seat-launch-args-a01.md; rg -n '"'^## Owned|C-60|review|audit:'"' .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md" in /Users/a0004262/Workspace/dotfiles
+/bin/zsh -lc "/usr/bin/shasum -a 256 .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md; rg -n 'sha256|hash|task_file|task copy' ~/.agents/skills/agmsg-orchestration/SKILL.md | tail -12; cat .orchestration/validation/dotfiles-T128-seat-launch-args-review-a01-codex-r2.md; sed -n '73,92p' .orchestration/tasks/dotfiles-T128-seat-launch-args-a01.md; rg -n '"'^## Owned|C-60|review|audit:'"' .orchestration/acceptance/dotfiles-T128-seat-launch-args-a01.md .orchestration/acceptance/dotfiles-T128-seat-liveness-followup-a01.md" in ~/Workspace/dotfiles
  succeeded in 51ms:
 24d8b8d95aa08642f0a064334c45fa96e55aa6a38ccccad76bb21e2c7871b56c  .orchestration/tasks/dotfiles-T129-hcom-dispatch-bus-a01.md
 68:- A design review runs in paired rounds. Both reviewers, a fresh Claude context on the `review` profile and a Codex read-only run under a `codex-review` identity, get the same design hash at the same time. The orchestrator revises once per pair of results and opens no round while one is still open. The third pair is the last: on its accept the design is frozen at the hash the pair last accepted, the third pair's own, and whatever is still open at that hash becomes a residual list that is worker input; on its revise or reject nothing is frozen and the design goes back to a context other than its author, never to a fourth pair; a revision after the third pair is not made, and any later change to a hashed key is a new pair (INV-7). The review judges the invariants, threat model, trust anchors and premises for contradiction and enforceability, never implementation detail.

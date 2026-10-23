@@ -1303,7 +1303,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-SKILLS_DIRECTORY_RE = re.compile(r"^(~|/)[A-Za-z0-9._/-]*$")
+SKILLS_DIRECTORY_RE = re.compile(r"^(?:~/|/)[A-Za-z0-9._/-]+$")
 
 
 def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:

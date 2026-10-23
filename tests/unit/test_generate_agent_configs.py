@@ -1721,7 +1721,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertNotIn("OAUTH", text)
 
     def test_omp_skills_directories_must_be_home_or_absolute_paths(self) -> None:
-        for value in (None, [], "~/.agents/skills", ["skills"], ["~/.agents/skills; rm -rf"], [3]):
+        for value in (None, [], "~/.agents/skills", ["skills"], ["~"], ["~other/skills"], ["/"], ["~/x; rm -rf"], [3]):
             with self.subTest(value=value):
                 manifest = sample_manifest()
                 if value is None:

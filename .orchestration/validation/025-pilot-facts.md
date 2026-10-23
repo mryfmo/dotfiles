@@ -2,7 +2,7 @@
 
 ## #S0 official Sign in with ChatGPT probe (2026-10-23T00:01:47Z, operator's terminal via the `!` prefix, outside the agent sandbox)
 
-Command: `uv run --no-project .orchestration/validation/025-pilot-s0-siwc-probe.py --test-instructions` (the file is the probe as run; throwaway instrument, not production code).
+Command: `uv run --no-project siwc_probe.py --test-instructions` (a throwaway probe kept outside the repository: its strings match the committed-secret scan; its request shapes now live in the openai-siwc extension's tests, PR #458).
 
 Run 1 (bare uuid4 as `ext_agent_host_id`): the authorize endpoint answered `{"error":{"message":"Invalid authorize request","type":"invalid_request_error","param":"ext_agent_host_id","code":"invalid_authorize_request"}}` (pasted by the operator). Fix: `ext_agent_host_id` = `urn:uuid:<uuid4>` (the only format hint on the sign-in page is the sample credential placeholder `"urn:uuid:..."`).
 

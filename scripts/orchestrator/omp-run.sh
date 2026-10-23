@@ -65,20 +65,21 @@ orchestrator | worker | audit) ;;
 *) refuse "unknown role '${role}'; roles are orchestrator, worker and audit" ;;
 esac
 [[ ${mode} == text || ${mode} == json ]] || refuse "mode must be text or json, not '${mode}'"
-command -v omp > /dev/null || refuse 'omp not found on PATH'
+# omp and the extension paths are made absolute before the cd, so a relative PATH entry cannot pick <cwd>/bin/omp
+# from a PR head and omp loads the directories that were checked.
+omp_bin=$(command -v omp) || refuse 'omp not found on PATH'
+[[ ${omp_bin} == /* ]] || omp_bin=${PWD}/${omp_bin}
 [[ -s ${prompt_file} ]] || refuse "prompt file missing or empty: ${prompt_file}"
 policy=${HOME}/.agents/omp/policies/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay not found: ${policy}"
 ((${#exts[@]})) || exts=("${HOME}/.local/lib/omp-extensions/pi-claude-bridge" "${HOME}/.agents/omp/extensions/openai-siwc")
-for ext in "${exts[@]}"; do
-    [[ -d ${ext} ]] || refuse "extension directory not found: ${ext}"
-done
-[[ -d ${cwd} ]] || refuse "cwd not found: ${cwd}"
-
 argv=(--profile "${role}" --config "${policy}")
 for ext in "${exts[@]}"; do
+    [[ -d ${ext} ]] || refuse "extension directory not found: ${ext}"
+    [[ ${ext} == /* ]] || ext=${PWD}/${ext}
     argv+=(-e "${ext}")
 done
+[[ -d ${cwd} ]] || refuse "cwd not found: ${cwd}"
 argv+=(--no-session --max-time "${max_time}")
 [[ -z ${model} ]] || argv+=(--model "${model}")
 argv+=(--mode "${mode}" -p "$(< "${prompt_file}")")
@@ -87,7 +88,7 @@ cd "${cwd}"
 # stdout streams to the caller through fd 3 while stderr is held, so a load failure can be judged after the run.
 exec 3>&1
 status=0
-held=$(omp "${argv[@]}" 2>&1 1>&3) || status=$?
+held=$("${omp_bin}" "${argv[@]}" 2>&1 1>&3) || status=$?
 exec 3>&-
 [[ -z ${held} ]] || printf '%s\n' "${held}" >&2
 if [[ ${held} == *'Failed to load extension'* ]]; then

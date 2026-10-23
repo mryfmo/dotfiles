@@ -140,6 +140,32 @@ class OmpRunTest(unittest.TestCase):
         self.assertEqual(self.omp_calls()[0]["cwd"], str(self.root))
         self.assertEqual(run.stdout, "PONG\n")
 
+    def test_omp_is_resolved_before_the_chdir_so_a_worktree_bin_cannot_replace_it(self):
+        decoy = self.work / "bin/omp"
+        decoy.parent.mkdir()
+        decoy.write_text('#!/bin/sh\ntouch "$FAKE_OMP_CALLS/decoy"\nexit 99\n')
+        decoy.chmod(0o755)
+        run = self.run_script(
+            "--role",
+            "audit",
+            "--prompt-file",
+            str(self.prompt),
+            "--cwd",
+            str(self.work),
+            PATH=f"bin:{os.environ['PATH']}",
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.omp_calls()[0]["cwd"], str(self.work))
+        self.assertFalse((self.calls / "decoy").exists())
+
+    def test_a_relative_extension_path_is_made_absolute_before_the_chdir(self):
+        run = self.run_script(
+            "--role", "audit", "--prompt-file", str(self.prompt), "--cwd", str(self.work), "--ext", "ext-a"
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        argv = self.omp_calls()[0]["argv"]
+        self.assertEqual(argv[argv.index("-e") + 1], str(self.root / "ext-a"))
+
     def test_omp_exit_status_and_stderr_pass_through(self):
         run = self.run_script(
             "--role",

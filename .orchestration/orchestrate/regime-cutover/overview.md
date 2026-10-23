@@ -26,5 +26,8 @@
 | U9 | #469 | feat/orchestrator-seat | af35fd50 → main | landed 2026-10-23T05:57:12Z | unit-test-verified |
 | U7c | #470 | fix/hcom-seat-go | d7ea7262 → main 8e55aedd | landed 2026-10-23T06:40:24Z | unit-test-verified; live: hcom-seat started the seats at X7 relaunch and final X |
 | U6b | #471 | fix/audit-seat-reply-route | f95738b4 → main 844b047e | landed 2026-10-23T07:3xZ | unit-test-verified; live: audit VERDICT row 47 |
-| U9b | #472 | fix/stop-gate-audit-verdict | 12b27b3d (U9c) → main a3526828 | landed 2026-10-23T08:2xZ | unit-test-verified; gate rule not yet live-measured |
-| U10b | #473 | feat/pstack-skills-asset | 81a48c2a → main f0bbb5d6 | landed 2026-10-23T08:4xZ | unit-test-verified; live: 82 skills, poteto-mode hidden in both profiles |
+| U9b | #472 | fix/stop-gate-audit-verdict | 12b27b3d (U9c) → main a3526828 | landed 2026-10-23T08:40:55Z | unit-test-verified; gate rule not yet live-measured |
+| U10b | #473 | feat/pstack-skills-asset | 81a48c2a → main f0bbb5d6 | landed 2026-10-23T10:50:09Z | unit-test-verified; live: 82 skills, poteto-mode hidden in both profiles |
+| U9d | #475 | fix/audit-worktree-positioning | a4d1045f → main 4f004231 | landed 2026-10-23T12:30Z | unit-test-verified; live: the positioning step moved the audit tree before rows 122 |
+| U14b | #476 | fix/omp-overlays-no-wizard | ac7a4e0f → main 28b2855c | landed 2026-10-23T12:1xZ | unit-test-verified; live: 0 wizard lines in the three relaunched panes |
+| U6c | #477 | fix/audit-policy-name | 3809e407 (U6d) → main 994c3616 | landed 2026-10-23T13:57Z | unit-test-verified; live: audit VERDICT row 122 through hcom-reply |

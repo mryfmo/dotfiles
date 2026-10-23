@@ -113,6 +113,13 @@ class HcomSeatTest(unittest.TestCase):
         again = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 2)
+        foreign = Path(self.seats) / "worker-3"
+        foreign.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=foreign, env=self.env, check=True)
+        refused = self.seat("worker", "--name", "worker-3", "--seats-root", self.seats)
+        self.assertEqual((refused.returncode, refused.stdout), (2, ""), refused.stderr)
+        self.assertIn(str(foreign), refused.stderr)
+        self.assertEqual(len(self.calls_of("hcom")), 2)
 
     def test_each_role_gets_its_directory_and_extension_order(self):
         for role, name, directory, exts in (

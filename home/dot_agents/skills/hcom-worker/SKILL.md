@@ -1,6 +1,6 @@
 ---
 name: hcom-worker
-description: Act as the omp worker seat that hcom-seat started in a herdr pane. Use when a TASK line arrives over the hcom bus and the seat has to work in its clone, open the pull request and answer with a RESULT line through hcom-dispatch.
+description: Act as the omp worker seat that hcom-seat started in a herdr pane. Use when a TASK line arrives over the hcom bus and the seat has to work in its clone, open the pull request and answer with a RESULT line on the team thread.
 ---
 
 # hcom worker
@@ -27,14 +27,13 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 
 ## Reply
 
-When the pull request is open and CI is green, send one RESULT line to the sender through hcom-dispatch:
+When the pull request is open and CI is green, send one RESULT line on the team thread, with no target. The orchestrator that tasked you is an external sender on the bus (`hcom-dispatch` sends with `--from`), so it has no `@name` and `@<from>` would fail with hcom's "No active agent"; the thread the TASK seeded is the route back (README "Routes", seat to the orchestrator):
 
 ```bash
-scripts/orchestrator/hcom-dispatch <team> "$(hcom list self name)" <sender> - \
-    "AGMSG-RESULT v1 task_id=<id> status=ready_for_review pr=<pull request url> head=$(git rev-parse HEAD)"
+hcom send --thread <team> -- "AGMSG-RESULT v1 task_id=<id> status=ready_for_review pr=<pull request url> head=$(git rev-parse HEAD)"
 ```
 
-`<team>` and `<sender>` are the TASK row's thread and `from`; the pane argument is unused, so `-` fills it. The receipt `id=<n> at=<ts> to=<sender> kind=AGMSG-RESULT` is your proof of delivery; paste it in the report the brief asks for. hcom-dispatch refuses an identifier outside `^[a-z0-9][a-z0-9_-]{0,63}$` and an unset `HCOM_DIR`, both inherited from your launch.
+`<team>` is the TASK row's thread. The orchestrator reads the thread with `bus-history.sh`; the row that `scripts/orchestrator/bus-history.sh <team> --kind AGMSG-RESULT --limit 5` prints for your line is your proof of delivery, so paste it in the report the brief asks for. `HCOM_DIR` is inherited from your launch and never changed.
 
 ## Blocked
 

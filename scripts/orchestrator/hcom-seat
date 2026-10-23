@@ -17,7 +17,8 @@
 #   and worker and the openai-siwc for audit, plus the other one when it is
 #   present; `--ext` replaces that list. The orchestrator sits in the repository
 #   this command runs in; every other role gets the worktree `<seats-root>/<name>`,
-#   which is created detached from `origin/main` when absent and reused otherwise.
+#   which is created detached from `origin/main` when absent and reused when it is
+#   a worktree of this repository (any other directory at that path is refused).
 #   Every input is checked before anything is created or started: an unknown role,
 #   a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, an unset HCOM_DIR, hcom absent from
 #   PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout
@@ -89,6 +90,7 @@ for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
 done
 repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
+common=$(git rev-parse --path-format=absolute --git-common-dir)
 case ${role} in
 orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
@@ -105,7 +107,8 @@ if ((dry_run)); then
 fi
 if [[ ! -e ${dir} ]]; then
     git -C "${repo}" worktree add --detach "${dir}" origin/main
-elif [[ ! -d ${dir} ]]; then
-    refuse "seat directory is not a directory: ${dir}"
+elif ! [[ -d ${dir} && $(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) -ef ${common} ]]; then
+    # A stale or foreign directory at the seat path would seat omp in the wrong tree.
+    refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
 fi
 exec "${argv[@]}"

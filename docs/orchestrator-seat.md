@@ -60,7 +60,7 @@ The gate runs a repository script and `hcom` from the seat's environment and fee
 
 ## The skill
 
-`home/dot_agents/skills/hcom-orchestration/SKILL.md` (36 lines), reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7).
+`home/dot_agents/skills/hcom-orchestration/SKILL.md` (36 lines), reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7) and the audit seat's the `hcom-audit` skill (U6b).
 
 ## Doctor wiring
 

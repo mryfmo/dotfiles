@@ -23,21 +23,13 @@ bash:
       approval: deny
     - match: "*rm -rf *"
       approval: deny
-    - match: "*curl * | sh"
+    - match: "*curl *|*sh"
       approval: deny
-    - match: "*curl * | sh *"
+    - match: "*curl *|*sh *"
       approval: deny
-    - match: "*curl * | bash"
+    - match: "*wget *|*sh"
       approval: deny
-    - match: "*curl * | bash *"
-      approval: deny
-    - match: "*wget * | sh"
-      approval: deny
-    - match: "*wget * | sh *"
-      approval: deny
-    - match: "*wget * | bash"
-      approval: deny
-    - match: "*wget * | bash *"
+    - match: "*wget *|*sh *"
       approval: deny
     - match: "*gh release*"
       approval: deny
@@ -100,6 +92,8 @@ bash:
     - match: "*gh api* --field*"
       approval: deny
     - match: "*gh api* --raw-field*"
+      approval: deny
+    - match: "*gh api* --input*"
       approval: deny
     # Every other write goes through a repository script; the seat never pushes or opens PRs itself.
     - match: "*gh pr create*"

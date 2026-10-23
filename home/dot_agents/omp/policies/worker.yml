@@ -17,21 +17,13 @@ bash:
       approval: deny
     - match: "*rm -rf *"
       approval: deny
-    - match: "*curl * | sh"
+    - match: "*curl *|*sh"
       approval: deny
-    - match: "*curl * | sh *"
+    - match: "*curl *|*sh *"
       approval: deny
-    - match: "*curl * | bash"
+    - match: "*wget *|*sh"
       approval: deny
-    - match: "*curl * | bash *"
-      approval: deny
-    - match: "*wget * | sh"
-      approval: deny
-    - match: "*wget * | sh *"
-      approval: deny
-    - match: "*wget * | bash"
-      approval: deny
-    - match: "*wget * | bash *"
+    - match: "*wget *|*sh *"
       approval: deny
     - match: "*gh release*"
       approval: deny
@@ -94,6 +86,8 @@ bash:
     - match: "*gh api* --field*"
       approval: deny
     - match: "*gh api* --raw-field*"
+      approval: deny
+    - match: "*gh api* --input*"
       approval: deny
     # main is PR-only: no push whose target branch is main, in the bare or the `git -c` spelling.
     # shortcut: a push to `+main` or `refs/heads/main` passes here and stops at the GitHub ruleset; add the spelling when a seat uses it.

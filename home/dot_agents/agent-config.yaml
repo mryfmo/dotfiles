@@ -548,6 +548,19 @@ assets:
     render:
       file: scripts/lib/installer-pins.sh
       constants: {HCOM_PIN_VERSION: pin, HCOM_DARWIN_ARM64_SHA256: sha256.darwin-arm64, HCOM_DARWIN_AMD64_SHA256: sha256.darwin-amd64, HCOM_LINUX_AMD64_SHA256: sha256.linux-amd64, HCOM_LINUX_ARM64_SHA256: sha256.linux-arm64}
+  pi-claude-bridge:
+    source: https-download
+    upstream: https://registry.npmjs.org/pi-claude-bridge/-/pi-claude-bridge-0.9.3.tgz
+    pin: 0.9.3
+    verify: sha256
+    sha256: 8d582b2fee1615b64a59890e3ac0af03c1e11bd06ba1997accdb767969556d67
+    note: npm published 2026-10-13T20:24:44.978Z; integrity sha512-5OM3X6QLX7Xsv86bD+yiWvQEHdlGdXnaY9DgZg6jG4jpnKiHQ2FZKYVRFHYmDAEccDPfeFwW+NFHnkb+BUM+6Q==; shasum fe28fda31af2ad448d9792fd453bbb60cad726dd; tarball fetched 2026-10-23T01:31Z (242099 bytes), its sha1 equals the registry shasum. Installed as an omp extension directory (plan 025 decisions 30, 37, 38) after the patches under home/dot_agents/assets/pi-claude-bridge/patches apply in order, with dependencies from the committed bun.lock; the seat launcher loads it with -e; see docs/pi-claude-bridge.md.
+    reason: the npm registry serves an integrity hash from the same registry and no signature or attestation; the reviewed sha256 of the exact tarball is the check.
+    install_path: ~/.local/lib/omp-extensions/pi-claude-bridge
+    installer: scripts/update-agent-assets.sh#update_pi_claude_bridge
+    render:
+      file: scripts/update-agent-assets.sh
+      constants: {PI_CLAUDE_BRIDGE_PIN_VERSION: pin, PI_CLAUDE_BRIDGE_TARBALL_SHA256: sha256}
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit

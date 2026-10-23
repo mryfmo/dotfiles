@@ -1,0 +1,25 @@
+diff -ruN a/src/transcript.ts b/src/transcript.ts
+--- a/src/transcript.ts	1985-10-26 17:15:00
++++ b/src/transcript.ts	2026-10-23 10:46:20
+@@ -11,7 +11,6 @@
+  * puts them.
+  */
+ import {
+-	contentText,
+ 	getCurrentSystemMessage,
+ 	getCurrentTools,
+ 	type Context,
+@@ -83,4 +82,13 @@
+ /** `messages` with every prompt-state system message removed from conversation history. */
+ export function nonSystemMessages<T extends { role: string }>(messages: readonly T[]): T[] {
+ 	return messages.filter((message) => message.role !== "system");
++}
++
++// omp's legacy pi-ai shim does not export contentText; this is pi-ai 1.4.0's dist/utils/text.js:2-9 (MIT), same output.
++function contentText(content: string | readonly { type: string; text?: string }[], separator = "\n"): string {
++	if (typeof content === "string") return content;
++	return content
++		.filter((block) => block.type === "text")
++		.map((block) => block.text ?? "")
++		.join(separator);
+ }

@@ -22,6 +22,13 @@ target_agents:
 skills:
   canonical_dir: ~/.agents/skills
 
+# omp seats load skills from these roots through skills.customDirectories in
+# ~/.omp/agent/config.yml (docs/omp-skills.md). omp 18.11.3 also scans
+# ~/.agents/skills by default; the key pins that against a settings change.
+omp:
+  skills_directories:
+    - ~/.agents/skills
+
 # Model IDs and efforts live only in this map. Profiles render into Claude
 # settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
 # ~/.agents/model-profiles.env for launchers. Keep main-session models fixed

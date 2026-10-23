@@ -12,7 +12,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_omp/private_agent/modify_private_config.yml"
-MANAGED = "# Generated fixture.\nmodelRoles:\n  default: anthropic/claude-managed\n"
+MANAGED = (
+    "# Generated fixture.\n"
+    "modelRoles:\n"
+    "  default: anthropic/claude-managed\n"
+    "skills:\n"
+    "  customDirectories:\n"
+    "    - ~/.agents/skills\n"
+)
+# The real home: uv (the script's runtime) needs it, so the test cannot fake $HOME.
+HOME = os.path.expanduser("~")
+MANAGED_SKILLS = f"skills:\n  customDirectories:\n  - {HOME}/.agents/skills\n"
 
 
 class OmpConfigMergeTest(unittest.TestCase):
@@ -38,12 +48,17 @@ class OmpConfigMergeTest(unittest.TestCase):
             check=True,
         )
 
-    def test_sets_the_default_role_and_keeps_every_other_key_and_role(self) -> None:
+    def test_sets_the_managed_keys_and_keeps_every_other_key_and_role(self) -> None:
         current = (
             "symbolPreset: nerd\n"
             "modelRoles:\n"
             "  default: anthropic/claude-old\n"
             "  smol: openai-codex/gpt-5.6-luna\n"
+            "skills:\n"
+            "  ignoredSkills:\n"
+            "  - noisy\n"
+            "  customDirectories:\n"
+            "  - /old/skills\n"
             "theme:\n"
             "  dark: night\n"
             "setupVersion: 3\n"
@@ -51,14 +66,15 @@ class OmpConfigMergeTest(unittest.TestCase):
 
         result = self.merge(current)
 
-        self.assertEqual(result.stdout, current.replace("anthropic/claude-old", "anthropic/claude-managed"))
+        expected = current.replace("anthropic/claude-old", "anthropic/claude-managed")
+        self.assertEqual(result.stdout, expected.replace("/old/skills", f"{HOME}/.agents/skills"))
         self.assertEqual(result.stderr, "")
 
     def test_empty_input_yields_the_managed_mapping_only(self) -> None:
-        self.assertEqual(self.merge("").stdout, "modelRoles:\n  default: anthropic/claude-managed\n")
+        self.assertEqual(self.merge("").stdout, "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_SKILLS)
 
     def test_input_that_is_not_a_yaml_mapping_passes_through_byte_for_byte(self) -> None:
-        for current in ("modelRoles: [unclosed\n", "- a\n- b\n", "modelRoles: plain\n"):
+        for current in ("modelRoles: [unclosed\n", "- a\n- b\n", "modelRoles: plain\n", "skills: plain\n"):
             with self.subTest(current=current):
                 result = self.merge(current)
                 self.assertEqual(result.stdout, current)

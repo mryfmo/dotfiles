@@ -45,11 +45,19 @@ const MOVES: Record<string, [seat: string | null | undefined, other: string | nu
 /** Open items in bus-history.sh rows (`id<TAB>at<TAB>from<TAB>to<TAB>kind<TAB>body`, ascending by id). */
 export function openItems(tsv: string, seat: string): OpenItem[] {
 	const latest = new Map<string, OpenItem | null>();
+	const tasked = new Map<string, string>();
 	for (const line of tsv.split("\n")) {
-		const [id, , from, , kind = "", body = ""] = line.split("\t");
+		const [id, , from, to, kind = "", body = ""] = line.split("\t");
 		const taskId = /(?:^|\s)task_id=(\S+)/.exec(body)?.[1];
-		const move = MOVES[kind.replace(/^AGMSG-/, "")]?.[from === seat ? 0 : 1];
-		if (!taskId || move === undefined) continue;
+		if (!taskId) continue;
+		const name = kind.replace(/^AGMSG-/, "");
+		let move = MOVES[name]?.[from === seat ? 0 : 1];
+		if (from === seat && name === "TASK") tasked.set(taskId, to);
+		// Another seat's VERDICT answers only the still-open `-audit` TASK this seat sent to that very seat
+		// (hcom-audit SKILL). Any other VERDICT is text: a worker must not settle the seat's debt on its own unit.
+		const auditReply = taskId.endsWith("-audit") && tasked.get(taskId) === from && latest.get(taskId)?.owes === MOVES.TASK[0];
+		if (from !== seat && name === "VERDICT" && auditReply) move = null;
+		if (move === undefined) continue;
 		latest.set(taskId, move === null ? null : { taskId, owes: move, id: Number(id) });
 	}
 	return [...latest.values()].filter((item): item is OpenItem => item !== null).sort((a, b) => a.id - b.id);

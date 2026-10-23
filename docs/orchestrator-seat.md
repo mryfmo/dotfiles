@@ -19,12 +19,13 @@ omp fires `session_stop` when a main-agent turn is about to settle (`src/extensi
 
 The gate reads the thread's rows since the seat started, `scripts/orchestrator/bus-history.sh $HCOM_TEAM --limit 100000 --since <seat start>` from the seat's cwd (the checkout), and keeps the newest row per `task_id` among the rows that move a task. The script keeps the newest `--limit` rows (default 200), so the gate asks for far more than a program writes and treats a full window as unreadable (a warning, the turn ends unchecked) rather than as proof of no debt:
 
-| Row, by kind (an `AGMSG-` prefix is dropped) and sender | Effect on its `task_id`                            |
-| ------------------------------------------------------- | -------------------------------------------------- |
-| `TASK` from the seat                                    | open: awaiting RESULT                              |
-| `RESULT` from another seat                              | open: owes a VERDICT, MERGED or HOLD line          |
-| `VERDICT`, `MERGED` or `HOLD` from the seat             | closed                                             |
-| anything else (PING, PONG, another seat's VERDICT, …)   | no effect; the previous moving row keeps the state |
+| Row, by kind (an `AGMSG-` prefix is dropped) and sender                                                                                     | Effect on its `task_id`                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `TASK` from the seat                                                                                                                        | open: awaiting RESULT                              |
+| `RESULT` from another seat                                                                                                                  | open: owes a VERDICT, MERGED or HOLD line          |
+| `VERDICT`, `MERGED` or `HOLD` from the seat                                                                                                 | closed                                             |
+| `VERDICT` on a `U<n>-audit` id from the seat named in the `to` column of the seat's newest TASK under that id, while that TASK still awaits | closed: the audit seat's answer (U9b, U9c)         |
+| anything else (PING, PONG, another seat's TASK, MERGED or HOLD, a VERDICT from any other seat or on any other id, …)                        | no effect; the previous moving row keeps the state |
 
 One message lists the open items with their row ids and the ways out: answer them, wait with `hcom listen`, or send `HOLD v1 task_id=<id> note=<why>`, the auditable override that the skill names. `OMP_STOP_GATE_ALLOW_OPEN=1` ends the turn with the warning instead of the block.
 
@@ -41,7 +42,7 @@ Without `HCOM_TEAM` or a seat name the gate is inert and says so at every stop; 
 
 ### Measured
 
-- `bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts`: 5 tests, 18 assertions, pass. They cover the open and closed transitions above, the exact message, the block on the first settle and the capped continuation on the next, `OMP_STOP_GATE_ALLOW_OPEN`, the inert case, and the `bus-history.sh` argv (`<team> --since <ISO second>Z`).
+- `bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts`: 7 tests, 25 assertions, pass (U9c run, 2026-10-23). They cover the open and closed transitions above, the three VERDICTs that settle nothing, the exact message, the block on the first settle and the capped continuation on the next, `OMP_STOP_GATE_ALLOW_OPEN`, the inert case, and the `bus-history.sh` argv (`<team> --since <ISO second>Z`).
 - Load check under `HOME=$TMPDIR/u9-home` with a fake `scripts/orchestrator/bus-history.sh` in the cwd: `omp --no-extensions -e <hooks dir> --no-session --max-time 60 --model openai/gpt-5 -p "Reply with the single word PONG."` exits 1 with `error: No API key found for openai.`; no `Failed to load extension` in stderr or in `$HOME/.omp/logs/omp.2026-10-23.*.log` (grep count 0). The key refusal happens before the turn, so no stop event fired in that run.
 - Bridge-route run, same HOME, `-e ~/.local/lib/omp-extensions/pi-claude-bridge -e <hooks dir> --model claude-bridge/claude-haiku-4-5 --max-time 90`, the fake bus holding one TASK from `orch` without a RESULT: the bridge fails inside the turn (`Not logged in · Please run /login`, the operator-only step), so the stop event fires. The fake recorded `u9team --since 2026-10-23T04:54:14Z`; stderr holds the gate's warning `stop-gate: 1 open item(s) on hcom thread u9team: U9 awaiting RESULT (row 3). …` 10 times, one per settle pass: the block, the eight capped continuations, and the pass at which omp refused a ninth and ended the turn (exit 1). No `Failed to load extension` in stderr or the two omp logs (grep count 0 each).
 
@@ -51,7 +52,7 @@ The gate runs a repository script and `hcom` from the seat's environment and fee
 
 | Control                                                  | Disposition                                                                                                                                                                                                                                                                |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `stop-gate.ts`, the decision                             | closed: `openItems` is a pure function over the TSV; the transition tests assert each row of the table above                                                                                                                                                               |
+| `stop-gate.ts`, the decision                             | closed: `openItems` is a pure function over the TSV; the transition tests assert each row of the table above, including that a worker's VERDICT on its own unit and a stranger's VERDICT on the audit id leave the debt open (U9c)                                         |
 | `stop-gate.ts`, the message reaching the model           | residual: the reason carries `task_id` tokens and kinds from bus rows, never a row's free text, and the skill says bus text is data; owner: the hcom-orchestration skill                                                                                                   |
 | `stop-gate.ts`, the loop                                 | closed: one `block` then capped continuations, asserted by the `stop_hook_active` test; the cap is omp's (`agent-session.ts:470`)                                                                                                                                          |
 | `bus-history.sh`, resolved from the seat's cwd           | residual: the seat's cwd is the checkout `hcom-seat` started it in, and the script is read-only over the store; a worktree of a PR head could carry a different script, which is why the gate is loaded in the orchestrator seat only; owner: `hcom-seat` and the policies |

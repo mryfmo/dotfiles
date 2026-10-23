@@ -1,0 +1,4971 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Generated reference for shell-based dotfiles automation.">
+      
+      
+      
+      
+        <link rel="prev" href="../catalog/">
+      
+      
+        <link rel="next" href="../history/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>openai-siwc: omp provider for Sign in with ChatGPT - Dotfiles Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#openai-siwc-omp-provider-for-sign-in-with-chatgpt" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Dotfiles Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              openai-siwc: omp provider for Sign in with ChatGPT
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Dotfiles Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    openai-siwc: omp provider for Sign in with ChatGPT
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    openai-siwc: omp provider for Sign in with ChatGPT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shape
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shape">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registration record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauthcredentials-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OAuthCredentials mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#login-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Login flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-rewrite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request rewrite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synthesis-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesis decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tradeoffs-accepted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tradeoffs accepted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threat-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threat table
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-and-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions and risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next step
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    History
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Historical documents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/nix-first-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix first architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/nix-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nix migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/chezmoi-templates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/.chezmoiscripts Template Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_1" id="__nav_5_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot claude
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot claude
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_1_1" id="__nav_5_2_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Hooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_enforce-uv.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_format-edited-files.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_claude/hooks/executable_project-map-reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_claude/hooks/executable_project-map-reload.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_2" id="__nav_5_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot config
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot config
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_2_1" id="__nav_5_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alias
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Alias
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_config/alias/common/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_config/alias/common.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_3" id="__nav_5_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dot local
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dot local
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_3_1" id="__nav_5_2_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bin
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bin
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_3_1_1" id="__nav_5_2_3_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-session-staleness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_agmsg-dispatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agmsg-dispatch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdgwq
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_cdw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_chezmoi-cd
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_codex-orchestrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_codex-orchestrate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_compactiondb-install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_contextdb-codex-notify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_contextdb-codex-notify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_dev
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_fgc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_git-delete-merged-branches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_herdr-agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_permgate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_remove-agent-asset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_ua-symbol-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_ua-symbol-coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_uv-format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_1_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2_3_1_2" id="__nav_5_2_3_1_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/server/cuda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/cuda.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/server/ssh_agent.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Install
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_1" id="__nav_5_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/common/chezmoi_private/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/chezmoi_private.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/common/gh_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/gh_extensions.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/common/mise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/mise.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/common/sheldon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/sheldon.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_2" id="__nav_5_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Macos
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Macos
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_2_1" id="__nav_5_3_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arm64
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_3_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arm64
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/arm64/prepare_arm64_system.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_2_2" id="__nav_5_3_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_3_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/brew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/brew.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/command_line_tool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/command_line_tool.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/defaults/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/defaults.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/macos/common/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/macos/common/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_3" id="__nav_5_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ubuntu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ubuntu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_3_1" id="__nav_5_3_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_3_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/default_shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/docker.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/ghostty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/ghostty.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_3_2" id="__nav_5_3_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_3_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Common
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/common/apparmor_userns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/apparmor_userns.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/common/dependencies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/dependencies.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/common/ssh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/ssh.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3_3_3" id="__nav_5_3_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_3_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Server
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/server/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/server/setup_timezone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/setup_timezone.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/server/ssh_server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/ssh_server.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/install/ubuntu/server/starship/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/server/starship.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Scripts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/agent-stop-gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/agent-stop-gate.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/check-regime-boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-regime-boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/check-sleep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-sleep.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/generate-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/generate-docs.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/gh-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/gh-auth.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/regime-counters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/regime-counters.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/run_benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_benchmark.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/run_unit_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/usage-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4_13" id="__nav_5_4_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_4_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lib
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/lib/asset-manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/asset-manifest.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/lib/github-release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/github-release.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4_14" id="__nav_5_4_14_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Orchestrator
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_4_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Orchestrator
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/bus-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/bus-history.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/bus-read/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/bus-read.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/chain-integrate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/chain-integrate.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/ci-rerun/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ci-rerun.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/codex-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/codex-review.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/dispatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/dispatch.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/ff-main/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/ff-main.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/local-advisory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/local-advisory.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/local-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/local-review.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/orch-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/orch-audit.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/orch-gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/orch-gate.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/pr-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-cost.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/pre-send/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pre-send.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/replay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/replay.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/resolve-threads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/resolve-threads.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/sandbox-scan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/sandbox-scan.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/scripts/orchestrator/three-repeat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/three-repeat.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Acceptance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verification/acceptance/005/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan 005 acceptance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shape
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shape">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registration record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauthcredentials-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OAuthCredentials mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#login-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Login flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-rewrite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request rewrite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synthesis-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesis decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tradeoffs-accepted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tradeoffs accepted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threat-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threat table
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions-and-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions and risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next step
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="openai-siwc-omp-provider-for-sign-in-with-chatgpt">openai-siwc: omp provider for Sign in with ChatGPT<a class="headerlink" href="#openai-siwc-omp-provider-for-sign-in-with-chatgpt" title="Permanent link">&para;</a></h1>
+<p>Design for the omp 18.11.3 extension at <code>home/dot_agents/omp/extensions/openai-siwc/</code>. It gives the audit-side omp profiles ChatGPT plan inference through OpenAI's official Sign in with ChatGPT (SIWC) route, which omp does not ship (issue <code>can1357/oh-my-pi#13974</code>, facts §3). The package loads in omp 18.11.3 and registers the provider; it has not yet run a real login or completion (gate G2). The points that still need a real-endpoint measurement carry <code>TODO(gate G2)</code> and are listed under open questions.</p>
+<p>Sources: <code>.orchestration/validation/025-v13-facts-20261023.md</code> (facts §3, §3b, §4), <code>.orchestration/validation/025-pilot-facts.md</code> #S0, the probe <code>.orchestration/validation/025-pilot-s0-siwc-probe.py</code>, red-team row R12R-07, the installed omp source under <code>~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent</code> (paths below are relative to it), and upstream <code>docs/extensions.md</code> and <code>docs/provider-compat-reference.md</code> (main, fetched 2026-10-23).</p>
+<h2 id="problem">Problem<a class="headerlink" href="#problem" title="Permanent link">&para;</a></h2>
+<p>omp's built-in <code>openai-responses</code> transport already streams the Responses API, parses SSE, retries, and surfaces <code>response.completed</code>. The SIWC preview accepts a narrower request than omp builds. Measured against omp's real builder with a fake HTTP layer (the test <code>tests/requests.test.ts</code>), a provider named <code>openai-siwc</code> on <code>https://api.openai.com/v1</code> sends <code>prompt_cache_retention: "24h"</code>, <code>max_output_tokens</code>, and the system prompt as an <code>input</code> item with <code>role: "developer"</code>. The preview rejects all three, and it needs <code>store: false</code>, <code>stream: true</code>, and full history instead of <code>previous_response_id</code>.</p>
+<p>Login is the other gap. SIWC registers each host dynamically: the first authorize request uses <code>client_id=dynamic_agent_client</code> plus <code>ext_agent_host_id</code>, and the callback returns the issued <code>client_id</code> that every later exchange and refresh must use. pi-ai's <code>OAuthCallbackFlow</code> cannot carry that value, because its callback handler keeps only <code>code</code> and <code>state</code> (<code>node_modules/@oh-my-pi/pi-ai/src/registry/oauth/callback-server.ts:560-576</code>).</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>The operator installs the package once and logs in once per profile:</p>
+<div class="highlight"><pre><span></span><code>omp --profile audit -e ~/.agents/omp/extensions/openai-siwc
+/login openai-siwc
+/model openai-siwc/gpt-6.1-sol
+</code></pre></div>
+<p>What the extension does at load:</p>
+<div class="highlight"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">openaiSiwc</span><span class="p">(</span><span class="nx">pi</span><span class="o">:</span><span class="w"> </span><span class="kt">ExtensionAPI</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">pi</span><span class="p">.</span><span class="nx">registerProvider</span><span class="p">(</span><span class="s2">"openai-siwc"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">baseUrl</span><span class="o">:</span><span class="w"> </span><span class="s2">"https://api.openai.com/v1"</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">api</span><span class="o">:</span><span class="w"> </span><span class="s2">"openai-responses"</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">compat</span><span class="o">:</span><span class="w"> </span><span class="kt">SIWC_COMPAT</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">oauth</span><span class="o">:</span><span class="w"> </span><span class="kt">createSiwcOAuth</span><span class="p">({</span>
+<span class="w">      </span><span class="nx">agentDir</span><span class="o">:</span><span class="w"> </span><span class="kt">pi.pi.getAgentDir</span><span class="p">(),</span>
+<span class="w">      </span><span class="nx">agentName</span><span class="o">:</span><span class="w"> </span><span class="s2">"omp-dotfiles"</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}),</span>
+<span class="w">    </span><span class="nx">models</span><span class="o">:</span><span class="w"> </span><span class="kt">MODELS</span><span class="p">,</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="w">  </span><span class="nx">pi</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"before_provider_request"</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">,</span><span class="w"> </span><span class="nx">ctx</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span>
+<span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">model</span><span class="o">?</span><span class="p">.</span><span class="nx">provider</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">"openai-siwc"</span>
+<span class="w">      </span><span class="o">?</span><span class="w"> </span><span class="nx">rewriteResponsesRequest</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">payload</span><span class="p">)</span>
+<span class="w">      </span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span>
+<span class="w">  </span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="shape">Shape<a class="headerlink" href="#shape" title="Permanent link">&para;</a></h2>
+<h3 id="modules">Modules<a class="headerlink" href="#modules" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Owns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/index.ts</code></td>
+<td>The <code>registerProvider</code> call, the static model rows, and the <code>before_provider_request</code> hook.</td>
+</tr>
+<tr>
+<td><code>src/oauth.ts</code></td>
+<td>The <code>oauth</code> block: authorize URL, PKCE, loopback receiver, code exchange, refresh, scope and nonce checks.</td>
+</tr>
+<tr>
+<td><code>src/requests.ts</code></td>
+<td><code>SIWC_COMPAT</code> and <code>rewriteResponsesRequest</code>, the only place that knows the preview's request rules.</td>
+</tr>
+<tr>
+<td><code>src/store.ts</code></td>
+<td>The per-profile registration record: its path, validation, and atomic 0600 write. It is the record's single writer, called by <code>oauth.ts</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The package has no runtime dependencies. It imports omp only as types (<code>import type</code>), which Bun erases.</p>
+<h3 id="registration-record">Registration record<a class="headerlink" href="#registration-record" title="Permanent link">&para;</a></h3>
+<p>One JSON file per omp profile at <code>&lt;agentDir&gt;/openai-siwc/registration.json</code>, where <code>agentDir</code> is <code>getAgentDir()</code> and therefore follows <code>--profile</code> (pilot facts #B3):</p>
+<div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">Registration</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">hostId</span><span class="o">:</span><span class="w"> </span><span class="sb">`urn:uuid:</span><span class="si">${</span><span class="kt">string</span><span class="si">}</span><span class="sb">`</span><span class="p">;</span><span class="w"> </span><span class="c1">// uuid4; a bare uuid was refused (pilot facts #S0 run 1)</span>
+<span class="w">  </span><span class="nx">clientId?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="c1">// issued by the registration callback (prefix "oaiapp" measured)</span>
+<span class="w">  </span><span class="nx">accountId?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="c1">// from the id_token account claim, when present</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The record holds no secret. <code>clientId</code> is a public client identifier, and tokens never enter this file. Load rejects a malformed record instead of re-registering over it.</p>
+<h3 id="oauthcredentials-mapping">OAuthCredentials mapping<a class="headerlink" href="#oauthcredentials-mapping" title="Permanent link">&para;</a></h3>
+<p>Tokens live in omp's own credential store, <code>&lt;agentDir&gt;/agent.db</code>, which omp creates with directory mode 0700 and file mode 0600 (<code>node_modules/@oh-my-pi/pi-ai/src/auth/sqlite-credential-store.ts:587-594</code>).</p>
+<table>
+<thead>
+<tr>
+<th><code>OAuthCredentials</code> field</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>access</code></td>
+<td><code>access_token</code>; <code>getApiKey</code> returns it and omp sends it as the bearer.</td>
+</tr>
+<tr>
+<td><code>refresh</code></td>
+<td><code>refresh_token</code>, replaced on every refresh.</td>
+</tr>
+<tr>
+<td><code>expires</code></td>
+<td><code>now + expires_in × 1000</code>; <code>expires_in</code> measured as 3600.</td>
+</tr>
+<tr>
+<td><code>accountId</code></td>
+<td>id_token claim <code>https://api.openai.com/auth</code> → <code>chatgpt_account_id</code> (<code>TODO(gate G2)</code>).</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>id_token claim <code>email</code>.</td>
+</tr>
+<tr>
+<td>issued <code>client_id</code></td>
+<td>Not in <code>OAuthCredentials</code>, which has no field for it; kept in the registration record.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="login-flow">Login flow<a class="headerlink" href="#login-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Load the registration record. When none exists, create one with a fresh <code>urn:uuid:</code> host id and save it before opening the browser, so a retried first login reuses the same host id.</li>
+<li>Create a PKCE S256 pair, a fresh <code>state</code>, and a fresh OIDC <code>nonce</code>.</li>
+<li>Bind the loopback receiver on <code>127.0.0.1</code> (never <code>localhost</code>), port 1455 when free, otherwise a random port. The redirect URI is <code>http://127.0.0.1:&lt;port&gt;/auth/callback</code>.</li>
+<li>Build the authorize URL on <code>https://auth.openai.com/api/accounts/authorize</code> with <code>response_type=code</code>, the scopes <code>openid profile email offline_access resource.invoke chatgpt.tokens.use.direct</code>, <code>resource=https://api.openai.com/v1</code>, the PKCE challenge, <code>state</code>, <code>nonce</code>, and <code>ext_agent_host_id</code>. A first login sends <code>client_id=dynamic_agent_client</code> and <code>agent_name_hint=omp-dotfiles</code>. A later login sends the saved <code>client_id</code> and no name hint.</li>
+<li>Hand the URL to omp through <code>callbacks.onAuth</code>; omp opens the system browser.</li>
+<li>The receiver answers only <code>GET /auth/callback</code>. A callback whose <code>state</code> is not ours gets a 400 page and is ignored, because any local process can send one. A callback with our <code>state</code> and <code>error</code> ends the login. A callback with our <code>state</code> and <code>code</code> resolves it. The wait honours <code>callbacks.signal</code> and a 5-minute timeout.</li>
+<li>Save the callback's <code>client_id</code> into the record when it differs from the saved one. The server is authoritative, and saving before the exchange keeps a failed exchange from causing a second registration.</li>
+<li>Exchange the code at <code>https://auth.openai.com/api/accounts/oauth/token</code>, form-encoded, with <code>grant_type=authorization_code</code>, the issued <code>client_id</code>, <code>code</code>, <code>code_verifier</code>, the same <code>redirect_uri</code>, and the same <code>resource</code>. No client secret.</li>
+<li>Refuse the grant unless its <code>scope</code> contains <code>chatgpt.tokens.use.direct</code>. A valid ID token alone does not authorize plan usage (sign-in page, facts §4). Refuse an id_token whose <code>nonce</code> differs from ours.</li>
+</ol>
+<h3 id="refresh">Refresh<a class="headerlink" href="#refresh" title="Permanent link">&para;</a></h3>
+<p>The access token lives 1 hour; the refresh token lives 30 days and rotates on every refresh (token reference, facts §4). <code>refreshToken</code> posts <code>grant_type=refresh_token</code> with the saved <code>client_id</code>, the stored <code>refresh_token</code>, and <code>resource</code>. It returns the replacement refresh token and keeps the old one only when a response omits it. Without a saved <code>client_id</code> it fails with an instruction to run <code>/login openai-siwc</code>. When a refresh response carries <code>scope</code>, the plan scope is checked again; an absent <code>scope</code> is accepted on refresh only (<code>TODO(gate G2)</code>).</p>
+<h3 id="request-rewrite">Request rewrite<a class="headerlink" href="#request-rewrite" title="Permanent link">&para;</a></h3>
+<p>Two layers, both on omp's own transport. <code>SIWC_COMPAT</code> stops omp from building most rejected shapes. <code>rewriteResponsesRequest</code> runs on every payload through <code>before_provider_request</code>, which omp passes to the transport as <code>onPayload</code> (<code>src/sdk.ts:4345-4346</code>), and the transport calls it for the first request and for both retry paths (<code>node_modules/@oh-my-pi/pi-ai/src/providers/openai-responses.ts:852-859</code>, <code>:1008</code>, <code>:1055</code>). Line references below are in <code>node_modules/@oh-my-pi/pi-ai/src/providers/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>omp-emitted field or item</th>
+<th>Where omp emits it</th>
+<th>Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>role: "developer"</code> system items in <code>input</code></td>
+<td><code>openai-responses.ts:1640</code>, when <code>supportsDeveloperRole</code> resolves true</td>
+<td>Compat <code>supportsDeveloperRole: false</code> sends the system prompt as <code>instructions</code> (<code>:1660</code>). The rewrite folds any remaining <code>system</code> or <code>developer</code> message item into <code>instructions</code>, which also covers the Juice item (<code>:1779-1782</code>).</td>
+</tr>
+<tr>
+<td><code>prompt_cache_retention: "24h"</code></td>
+<td><code>openai-responses.ts:1663</code></td>
+<td>Compat <code>supportsLongPromptCacheRetention: false</code>; the rewrite deletes the field.</td>
+</tr>
+<tr>
+<td><code>max_output_tokens</code></td>
+<td><code>openai-responses.ts:1677</code>, <code>openai-shared.ts:4082</code></td>
+<td>The rewrite deletes it. No compat key turns it off, and <code>omitMaxOutputTokens</code> is not accepted on an extension model row.</td>
+</tr>
+<tr>
+<td><code>temperature</code>, <code>top_p</code></td>
+<td><code>openai-shared.ts:4091-4092</code>, only when sampling params are supported</td>
+<td>The rewrite deletes them.</td>
+</tr>
+<tr>
+<td><code>store</code></td>
+<td><code>openai-responses.ts:1671</code>, true only with <code>compat.storeResponses</code> (<code>:548</code>)</td>
+<td>The rewrite forces <code>store: false</code>.</td>
+</tr>
+<tr>
+<td><code>previous_response_id</code> with delta-only input</td>
+<td><code>openai-responses.ts:567</code> (<code>PI_OPENAI_STATEFUL</code>), <code>:836</code> forces <code>store: true</code></td>
+<td>Compat <code>statefulResponses: false</code> turns chaining off. <code>PI_OPENAI_STATEFUL</code> outranks compat, so the extension refuses to load when it is truthy (<code>src/index.ts</code>). The rewrite still throws on the field, but that only reports: omp's runner catches a hook throw and sends the unrewritten payload (<code>src/extensibility/extensions/runner.ts:1590-1591</code>, <code>:1627-1632</code>, <code>:2121-2131</code>).</td>
+</tr>
+<tr>
+<td><code>configuration_update</code> input items</td>
+<td>Stable-effort policy (<code>supportsConfigurationUpdate</code>, provider-compat-reference)</td>
+<td>Compat <code>supportsConfigurationUpdate: false</code>.</td>
+</tr>
+<tr>
+<td>Other preview-rejected fields</td>
+<td>Not emitted by the 18.11.3 builder for this provider</td>
+<td>The rewrite deletes <code>background</code>, <code>conversation</code>, <code>max_tool_calls</code>, <code>metadata</code>, <code>moderation</code>, <code>multi_agent</code>, <code>prompt</code>, <code>safety_identifier</code>, <code>top_logprobs</code>, <code>truncation</code>, <code>user</code> in case a hook or a later omp adds them.</td>
+</tr>
+<tr>
+<td><code>prompt_cache_key</code>, <code>include</code>, <code>reasoning</code>, <code>stream_options</code></td>
+<td>Emitted (measured in the test's captured body)</td>
+<td>Kept. The preview does not list them as rejected. <code>TODO(gate G2)</code>: confirm on the real endpoint.</td>
+</tr>
+</tbody>
+</table>
+<p><code>stream: true</code> is forced too. The rewrite copies the payload and never mutates omp's object.</p>
+<h3 id="error-mapping">Error mapping<a class="headerlink" href="#error-mapping" title="Permanent link">&para;</a></h3>
+<p>The preview reports <code>subscription_sharing_usage_limit_exceeded</code> when the plan's shared usage is spent and <code>subscription_sharing_usage_unavailable</code> when plan usage is not available to the account (models-and-inference page, facts §4). The wire status is unmeasured. The extension adds no error code of its own: omp's classifier already handles both, and <code>tests/requests.test.ts</code> proves it through omp's real transport with a fake 403 and a fake 429 body.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Fake response</th>
+<th>What omp 18.11.3 does</th>
+<th>omp hook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>subscription_sharing_usage_unavailable</code></td>
+<td>HTTP 403</td>
+<td>One request, then an <code>error</code> event naming the code. <code>AIError.retriable</code> is false, so the session does not retry the turn.</td>
+<td><code>isTransientStatus</code> excludes 403 (<code>pi-ai/src/error/retryable.ts:20-22</code>); <code>isProviderRetryableError</code> treats every 4xx but 408/429 as terminal (<code>:44-49</code>).</td>
+</tr>
+<tr>
+<td><code>subscription_sharing_usage_limit_exceeded</code></td>
+<td>HTTP 429</td>
+<td>Classified <code>Flag.UsageLimit</code> (the code matches <code>usage.?limit</code>, <code>pi-ai/src/error/rate-limit.ts:337</code>), so <code>isProviderRetryableError</code> is false (<code>retryable.ts:46</code>) and the session hands it to omp's usage-limit recovery (wait for a reset within <code>retry.maxDelayMs</code>, or rotate to a sibling credential). The transport still sends 6 requests first.</td>
+<td>none reachable, see below</td>
+</tr>
+</tbody>
+</table>
+<p>The transport retry is the gap. <code>postOpenAIStream</code> sends through <code>fetchWithRetry</code> with 6 attempts (<code>pi-ai/src/utils/openai-http.ts:33</code>, <code>:100-117</code>), which retries every 429 unless the response carries a retry hint above 60 s or a proxy concurrency marker (<code>pi-utils/src/fetch-retry.ts:375-382</code>). The only caller gate, <code>shouldRetryResponse</code>, is built from omp-internal state (<code>openai-responses.ts:903-905</code>), and the <code>fetch</code> override reaches the transport only through <code>SimpleStreamOptions.fetch</code> (<code>pi-ai/src/types.ts:716-723</code>), which the session never sets for a built-in api. A <code>before_provider_request</code> hook sees only the payload, and <code>after_provider_response</code> fires only after a 2xx (<code>openai-responses.ts:914</code>, after <code>postOpenAIStream</code> has thrown on any other status). So on the built-in <code>openai-responses</code> transport no extension hook stops those 5 resends. With omp's default backoff they take about 15 s and spend nothing, because the server refuses each one. The custom-api candidate below would own the <code>fetch</code>; it is not taken, because it renames the session's <code>model.api</code> and so silently changes every omp branch keyed on <code>"openai-responses"</code> (<code>src/utils/tool-choice.ts:17-23</code>, <code>src/tools/think.ts:31-36</code>, <code>src/session/agent-session.ts:11043</code>, <code>:11090-11094</code>, <code>src/sdk.ts:1610-1612</code>). The test pins the 6 requests, so an omp release that adds a gate fails it.</p>
+<h2 id="synthesis-decision">Synthesis decision<a class="headerlink" href="#synthesis-decision" title="Permanent link">&para;</a></h2>
+<p>The architect skill's single-runner form was used, with the arena skipped by the brief. Two whole shapes were sketched. The base is the payload-hook shape (built-in <code>openai-responses</code> transport, compat, and a <code>before_provider_request</code> rewrite). The rejected candidate registered a custom <code>api</code> with <code>streamSimple</code>, wrapping pi-ai's <code>streamSimple</code> with its own <code>fetch</code>. It would own error mapping at the HTTP layer, but built-in api ids are reserved (<code>node_modules/@oh-my-pi/pi-ai/src/api-registry.ts:65-69</code>), so it needs a new api id and must re-target each model to <code>openai-responses</code> before delegating, which ties the extension to omp's internal model shape. U3b confirmed it is the only shape that reaches the transport's 429 retry, and kept it rejected: renaming the session's <code>model.api</code> changes more omp behaviour than five refused resends cost (Error mapping above).</p>
+<h2 id="tradeoffs-accepted">Tradeoffs accepted<a class="headerlink" href="#tradeoffs-accepted" title="Permanent link">&para;</a></h2>
+<ul>
+<li>We accept depending on <code>before_provider_request</code> reaching every request in exchange for reusing omp's transport, SSE parsing, and retries unchanged. Upstream documents that transports must invoke <code>onPayload</code> and that <code>devin-agent</code> does not; <code>openai-responses</code> does.</li>
+<li>We accept a hand-written loopback receiver of about 40 lines in exchange for capturing the issued <code>client_id</code>, which <code>OAuthCallbackFlow</code> drops.</li>
+<li>We accept static model rows in exchange for no discovery call, since <code>GET /v1/models</code> returned no entries on this route.</li>
+<li>We accept one registration per profile, so three audit profiles mean three agent entries in the ChatGPT account (red-team R12R-06 proposed one shared record). The brief fixes the record per profile.</li>
+</ul>
+<h2 id="threat-table">Threat table<a class="headerlink" href="#threat-table" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Asset or boundary</th>
+<th>Threat</th>
+<th>Control</th>
+<th>Test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token store</td>
+<td>Another local user reads access or refresh tokens.</td>
+<td>Tokens stay in omp's <code>agent.db</code> (dir 0700, file 0600, <code>sqlite-credential-store.ts:587-594</code>). The extension writes no token anywhere.</td>
+<td><code>tests/oauth.test.ts</code>: tokens only in returned credentials.</td>
+</tr>
+<tr>
+<td>Registration record</td>
+<td>Tampering or a half-written file causes a re-registration.</td>
+<td>Atomic write (temp file, rename) with 0600 file and 0700 directory; strict validation on load and save.</td>
+<td><code>tests/store.test.ts</code>: modes 0600 and 0700, bare uuid refused.</td>
+</tr>
+<tr>
+<td>Loopback port</td>
+<td>Another process holds 1455 or listens on <code>::1</code>.</td>
+<td>Bind <code>127.0.0.1</code> only, as the docs require; fall back to a random port, which the docs allow.</td>
+<td><code>tests/oauth.test.ts</code> loopback test (skipped where binding is refused).</td>
+</tr>
+<tr>
+<td>Redirect validation</td>
+<td>A forged local request injects a code (login CSRF).</td>
+<td>Only <code>GET /auth/callback</code>; <code>state</code> must match; a foreign state is ignored, not fatal; the first accepted callback settles the wait; PKCE S256 binds the code to this process; id_token <code>nonce</code> must match when present.</td>
+<td><code>tests/oauth.test.ts</code>: foreign state ignored, PKCE checked by the fake.</td>
+</tr>
+<tr>
+<td>Grant scope</td>
+<td>An identity-only grant is used for inference.</td>
+<td>Login refuses a grant without <code>chatgpt.tokens.use.direct</code>.</td>
+<td><code>tests/oauth.test.ts</code>: scope refusal.</td>
+</tr>
+<tr>
+<td>Log redaction</td>
+<td>Tokens or codes reach logs or error messages.</td>
+<td>The extension logs nothing. Token errors carry only the OAuth <code>error</code> and <code>error_description</code>, capped at 200 characters; request bodies are never echoed. The callback page shows no parameters.</td>
+<td>Review only.</td>
+</tr>
+<tr>
+<td>Hosts</td>
+<td>Traffic leaves the two named hosts.</td>
+<td>Constants only: <code>auth.openai.com</code> for authorize and token, <code>api.openai.com</code> for inference. No discovery or telemetry call.</td>
+<td><code>tests/fake-auth-server.ts</code> asserts both URLs.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="open-questions-and-risks">Open questions and risks<a class="headerlink" href="#open-questions-and-risks" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Does a later sign-in with the issued <code>client_id</code> accept <code>ext_agent_host_id</code>? Default: send it, because the sign-in page marks it required. G2's second login per profile measures it.</li>
+<li>Does a refresh response carry <code>scope</code>, and does the SIWC id_token carry the Codex account claim? Defaults: accept an absent scope on refresh; leave <code>accountId</code> empty when the claim is absent.</li>
+<li>Is <code>gpt-6-astra</code> served on this route? Assumption (【仮定】): yes. It ships as a static row next to the measured <code>gpt-6.1-sol</code>, both text-only, with the limits of omp's <code>openai/&lt;id&gt;</code> catalog rows. <code>fetchDynamicModels</code> is not registered, because <code>GET /v1/models</code> returned no entries (#S0).</li>
+<li>What HTTP status carries each subscription error? Default: rely on omp's classifier, which handles a 403 and a 429 as the table above shows.</li>
+<li>Should three profiles share one registration (R12R-06)? Default: one per profile, as the brief specifies.</li>
+<li>Are <code>prompt_cache_key</code>, <code>include</code>, <code>reasoning</code> and <code>stream_options</code> accepted? Default: keep them.</li>
+</ul>
+<h2 id="next-step">Next step<a class="headerlink" href="#next-step" title="Permanent link">&para;</a></h2>
+<p>Gate G2: the operator runs <code>/login openai-siwc</code> and one <code>-p</code> turn in each audit-side profile (<code>audit</code>, <code>audit-r2</code>, <code>security</code>), as the package README lists, which answers the first four questions.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

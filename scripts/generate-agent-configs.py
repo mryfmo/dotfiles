@@ -1316,13 +1316,38 @@ def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:
     return directories
 
 
+def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
+    """Seat role -> model profile; one overlay renders per key."""
+    roles = manifest.get("omp", {}).get("roles")
+    if not isinstance(roles, dict) or not roles:
+        fail("omp.roles must be a non-empty mapping of seat role to model profile")
+    profiles = model_profiles(manifest)
+    for role, profile in roles.items():
+        if not PROFILE_NAME_RE.match(str(role)):
+            fail(f"omp.roles key is not launcher-safe: {role!r}")
+        if profile not in profiles:
+            fail(f"omp.roles.{role} must name a model profile: {profile!r}")
+    return roles
+
+
+def omp_config_yaml(model: str, directories: list[str]) -> str:
+    entries = "".join(f"    - {directory}\n" for directory in directories)
+    return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
-    directories = "".join(f"    - {directory}\n" for directory in omp_skills_directories(manifest))
-    return (
-        f"# {GENERATED_HEADER}\n"
-        f"modelRoles:\n  default: {interactive_profile(manifest)['omp']['model']}\n"
-        f"skills:\n  customDirectories:\n{directories}"
-    )
+    return omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
+
+
+def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
+    # A session expands ~ in skills.customDirectories (src/extensibility/skills.ts:471-473) but
+    # `omp skill list` resolves a non-absolute entry against cwd (src/cli/skill-list.ts:58-64),
+    # so the deployed overlay carries the absolute home through the chezmoi template.
+    directories = [
+        "{{ .chezmoi.homeDir }}" + directory[1:] if directory.startswith("~/") else directory
+        for directory in omp_skills_directories(manifest)
+    ]
+    return omp_config_yaml(model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"], directories)
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:
@@ -1385,6 +1410,8 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
+    for role in omp_roles(manifest):
+        outputs[ROOT / "home/dot_agents/omp/profiles" / f"{role}.yml.tmpl"] = render_omp_role_overlay(manifest, role)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     outputs[ROOT / "home/dot_claude/agents/project-map.md"] = render_claude_project_map_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):

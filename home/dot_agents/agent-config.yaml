@@ -28,6 +28,16 @@ skills:
 omp:
   skills_directories:
     - ~/.agents/skills
+  # Seat role -> model profile. One overlay per role renders to
+  # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
+  # modelRoles.default and skills_directories as skills.customDirectories; the
+  # seat launcher passes it as a second --config (docs/omp-skills.md).
+  roles:
+    orchestrator: deep
+    worker: standard
+    audit: audit
+    review: review
+    security: security
 
 # Model IDs and efforts live only in this map. Profiles render into Claude
 # settings, per-profile Codex config files (~/.codex/<name>.config.toml), and

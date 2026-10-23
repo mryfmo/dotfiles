@@ -1,0 +1,114 @@
+# omp seat policy for the orchestrator seat; the seat launcher passes it as
+# `--config ~/.agents/omp/policies/orchestrator.yml`. Schema: `tools.approvalMode`
+# (src/tools/settings.ts:311-318), `tools.approval` (src/tools/settings.ts:295-305)
+# and `bash.patterns` (src/exec/settings.ts:134-145) of @oh-my-pi/pi-coding-agent
+# 18.11.3. Rules are ordered and the first match wins; a `deny` matches the whole
+# command or any one segment, an `allow` must match the whole command and never a
+# compound line (src/tools/bash.ts:301-307). Approval is not containment: the seat's
+# operating-system account stays the filesystem and network boundary.
+tools:
+  approvalMode: yolo
+  approval:
+    # bash.patterns do not reach a shell started through eval.
+    eval: deny
+bash:
+  patterns:
+    # Before the allow, so the audited merge form can never carry a protection bypass.
+    - match: "*gh pr merge*--admin*"
+      approval: deny
+    # The only raw GitHub write the orchestrator keeps: the audited squash merge.
+    - match: "gh pr merge * --squash --match-head-commit *"
+      approval: allow
+    - match: "*sudo *"
+      approval: deny
+    - match: "*rm -rf *"
+      approval: deny
+    - match: "*curl * | sh"
+      approval: deny
+    - match: "*curl * | sh *"
+      approval: deny
+    - match: "*curl * | bash"
+      approval: deny
+    - match: "*curl * | bash *"
+      approval: deny
+    - match: "*wget * | sh"
+      approval: deny
+    - match: "*wget * | sh *"
+      approval: deny
+    - match: "*wget * | bash"
+      approval: deny
+    - match: "*wget * | bash *"
+      approval: deny
+    - match: "*gh release*"
+      approval: deny
+    - match: "*npm publish*"
+      approval: deny
+    - match: "*uv publish*"
+      approval: deny
+    - match: "*terraform apply*"
+      approval: deny
+    - match: "*kubectl apply*"
+      approval: deny
+    - match: "*gh pr merge*"
+      approval: deny
+    - match: "*gh pr edit*"
+      approval: deny
+    - match: "*gh pr close*"
+      approval: deny
+    - match: "*gh pr review*"
+      approval: deny
+    - match: "*gh pr update-branch*"
+      approval: deny
+    - match: "*gh issue*"
+      approval: deny
+    - match: "*gh api* -X POST*"
+      approval: deny
+    - match: "*gh api* --method POST*"
+      approval: deny
+    - match: "*gh api* -XPOST*"
+      approval: deny
+    - match: "*gh api* --method=POST*"
+      approval: deny
+    - match: "*gh api* -X PATCH*"
+      approval: deny
+    - match: "*gh api* --method PATCH*"
+      approval: deny
+    - match: "*gh api* -XPATCH*"
+      approval: deny
+    - match: "*gh api* --method=PATCH*"
+      approval: deny
+    - match: "*gh api* -X PUT*"
+      approval: deny
+    - match: "*gh api* --method PUT*"
+      approval: deny
+    - match: "*gh api* -XPUT*"
+      approval: deny
+    - match: "*gh api* --method=PUT*"
+      approval: deny
+    - match: "*gh api* -X DELETE*"
+      approval: deny
+    - match: "*gh api* --method DELETE*"
+      approval: deny
+    - match: "*gh api* -XDELETE*"
+      approval: deny
+    - match: "*gh api* --method=DELETE*"
+      approval: deny
+    - match: "*gh api* -f*"
+      approval: deny
+    - match: "*gh api* -F*"
+      approval: deny
+    - match: "*gh api* --field*"
+      approval: deny
+    - match: "*gh api* --raw-field*"
+      approval: deny
+    # Every other write goes through a repository script; the seat never pushes or opens PRs itself.
+    - match: "*gh pr create*"
+      approval: deny
+    - match: "*gh pr ready*"
+      approval: deny
+    - match: "*gh pr comment*"
+      approval: deny
+    - match: "*git * push*"
+      approval: deny
+    - match: "*git push*"
+      approval: deny

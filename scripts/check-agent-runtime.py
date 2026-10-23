@@ -265,11 +265,10 @@ def chezmoi_managed_child_names(root: Path) -> set[str]:
         return set()
     if result.returncode != 0:
         return set()
-    root = normalized_path(root)
     return {
-        normalized_path(Path(line)).name
+        Path(line).name
         for line in result.stdout.splitlines()
-        if line.strip() and normalized_path(Path(line)).parent == root
+        if line.strip() and os.path.realpath(os.path.dirname(line)) == os.path.realpath(root)
     }
 
 

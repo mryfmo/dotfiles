@@ -1,0 +1,192 @@
+"""Exercise scripts/orchestrator/omp-run.sh against the fake `omp` under tests/fixtures/omp-run/.
+
+The fake records argv, cwd and HOME and replays `stream.jsonl`, whose event names follow the `--mode json`
+stream measured on 2026-10-23 (pilot facts #G1-3). Every run uses a scratch HOME, never the real one.
+"""
+
+import json
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "scripts/orchestrator/omp-run.sh"
+FIXTURES = ROOT / "tests/fixtures/omp-run"
+PROMPT = "Review the head of PR 1.\n"
+
+
+class OmpRunTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.home = self.root / "home"
+        self.policies = self.home / ".agents/omp/policies"
+        self.policies.mkdir(parents=True)
+        for role in ("orchestrator", "worker", "audit"):
+            (self.policies / f"{role}.yml").write_text("tools:\n  approvalMode: yolo\n")
+        self.default_exts = [
+            self.home / ".local/lib/omp-extensions/pi-claude-bridge",
+            self.home / ".agents/omp/extensions/openai-siwc",
+        ]
+        self.exts = [self.root / "ext-a", self.root / "ext-b"]
+        for ext in self.default_exts + self.exts:
+            ext.mkdir(parents=True)
+        self.prompt = self.root / "prompt.md"
+        self.prompt.write_text(PROMPT)
+        self.work = self.root / "work"
+        self.work.mkdir()
+        self.calls = self.root / "calls"
+        self.calls.mkdir()
+        bindir = self.root / "bin"
+        bindir.mkdir()
+        (bindir / "omp").symlink_to(FIXTURES / "fake-omp.py")
+        self.env = {
+            "PATH": f"{bindir}:{os.environ['PATH']}",
+            "HOME": str(self.home),
+            "FAKE_OMP_CALLS": str(self.calls),
+        }
+
+    def run_script(self, *args, **overrides):
+        return subprocess.run(
+            [str(SCRIPT), *args],
+            capture_output=True,
+            text=True,
+            env={**self.env, **overrides},
+            cwd=self.root,
+            timeout=60,
+        )
+
+    def omp_calls(self):
+        path = self.calls / "argv"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def test_the_audit_argv_is_composed_field_by_field_and_the_json_stream_passes_through(self):
+        run = self.run_script(
+            "--role",
+            "audit",
+            "--prompt-file",
+            str(self.prompt),
+            "--cwd",
+            str(self.work),
+            "--model",
+            "claude-bridge/claude-haiku-4-5",
+            "--mode",
+            "json",
+            "--max-time",
+            "30",
+            "--ext",
+            str(self.exts[0]),
+            "--ext",
+            str(self.exts[1]),
+        )
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            self.omp_calls(),
+            [
+                {
+                    "argv": [
+                        "--profile",
+                        "audit",
+                        "--config",
+                        f"{self.home}/.agents/omp/policies/audit.yml",
+                        "-e",
+                        str(self.exts[0]),
+                        "-e",
+                        str(self.exts[1]),
+                        "--no-session",
+                        "--max-time",
+                        "30",
+                        "--model",
+                        "claude-bridge/claude-haiku-4-5",
+                        "--mode",
+                        "json",
+                        "-p",
+                        PROMPT.rstrip("\n"),
+                    ],
+                    "cwd": str(self.work),
+                    "home": str(self.home),
+                }
+            ],
+        )
+        self.assertEqual(run.stdout, (FIXTURES / "stream.jsonl").read_text())
+        self.assertEqual(run.stderr, "")
+
+    def test_text_mode_the_timeout_and_the_two_extension_directories_are_the_defaults(self):
+        run = self.run_script("--role", "worker", "--prompt-file", str(self.prompt))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            self.omp_calls()[0]["argv"],
+            [
+                "--profile",
+                "worker",
+                "--config",
+                f"{self.home}/.agents/omp/policies/worker.yml",
+                "-e",
+                str(self.default_exts[0]),
+                "-e",
+                str(self.default_exts[1]),
+                "--no-session",
+                "--max-time",
+                "600",
+                "--mode",
+                "text",
+                "-p",
+                PROMPT.rstrip("\n"),
+            ],
+        )
+        self.assertEqual(self.omp_calls()[0]["cwd"], str(self.root))
+        self.assertEqual(run.stdout, "PONG\n")
+
+    def test_omp_exit_status_and_stderr_pass_through(self):
+        run = self.run_script(
+            "--role",
+            "orchestrator",
+            "--prompt-file",
+            str(self.prompt),
+            FAKE_OMP_EXIT="3",
+            FAKE_OMP_STDERR="Deadline exceeded",
+        )
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (3, "PONG\n", "Deadline exceeded\n"))
+
+    def test_a_failed_extension_load_is_a_refusal_naming_the_path(self):
+        path = "/stage/pi-claude-bridge/src/index.ts"
+        run = self.run_script(
+            "--role",
+            "audit",
+            "--prompt-file",
+            str(self.prompt),
+            FAKE_OMP_STDERR=f"Failed to load extension {path}: Export named 'contentText' not found",
+        )
+        self.assertEqual((run.returncode, run.stdout), (2, "PONG\n"))
+        self.assertIn(f"omp-run: an extension failed to load: {path}:", run.stderr)
+        self.assertEqual(len(self.omp_calls()), 1)
+
+    def test_missing_inputs_are_refused_before_omp_runs(self):
+        bare_home = self.root / "bare-home"
+        bare_home.mkdir()
+        good = ["--role", "audit", "--prompt-file", str(self.prompt)]
+        cases = {
+            "usage": ([], {}, "usage:"),
+            "dangling option": ([*good, "--mode"], {}, "usage:"),
+            "unknown role": (["--role", "reviewer", "--prompt-file", str(self.prompt)], {}, "reviewer"),
+            "unknown mode": ([*good, "--mode", "rpc"], {}, "rpc"),
+            "missing prompt": (["--role", "audit", "--prompt-file", str(self.root / "absent.md")], {}, "absent.md"),
+            "empty prompt": (["--role", "audit", "--prompt-file", os.devnull], {}, os.devnull),
+            "missing overlay": (good, {"HOME": str(bare_home)}, f"{bare_home}/.agents/omp/policies/audit.yml"),
+            "missing extension": ([*good, "--ext", str(self.root / "nowhere")], {}, str(self.root / "nowhere")),
+            "missing cwd": ([*good, "--cwd", str(self.root / "gone")], {}, str(self.root / "gone")),
+            "omp absent": (good, {"PATH": "/usr/bin:/bin"}, "omp not found"),
+        }
+        for name, (args, env, needle) in cases.items():
+            with self.subTest(name):
+                run = self.run_script(*args, **env)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(needle, run.stderr)
+        self.assertEqual(self.omp_calls(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,48 @@
+# omp seat tool policies
+
+One omp settings overlay per seat role. chezmoi applies them to `~/.agents/omp/policies/<role>.yml`, and the seat launcher passes the role's file as `--config ~/.agents/omp/policies/<role>.yml` when it starts omp. On the pi-claude-bridge route the child Claude Code runs with `tools: []`, so these overlays are the only tool gate for a Claude-routed seat.
+
+| File               | Seat         | Mode         | Tool denies                                                 | Bash rules                                                                                                                                                                                                |
+| ------------------ | ------------ | ------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `orchestrator.yml` | orchestrator | `yolo`       | `eval`                                                      | denies `gh pr merge … --admin`, allows the audited `gh pr merge <n> --squash --match-head-commit <sha>`, then the common denies, then `gh pr create`, `gh pr ready`, `gh pr comment` and every `git push` |
+| `worker.yml`       | worker       | `yolo`       | `eval`                                                      | the common denies, then every push whose target branch is `main`                                                                                                                                          |
+| `audit.yml`        | audit        | `always-ask` | `edit`, `write`, `ast_edit`, `eval`, `task`, `manage_skill` | the common denies, then read-only `git` and `gh` allows (`status`, `diff`, `log`, `show`, `rev-parse`, `ls-files`, `pr view`, `pr diff`, `pr checks`, `run view`, `api repos/…`), then a catch-all deny   |
+
+The common denies are the same list in every file: `sudo`, `rm -rf`, `curl` or `wget` piped (with any spacing) into a shell whose name ends in `sh`, `gh release`, `npm publish`, `uv publish`, `terraform apply`, `kubectl apply`, `gh pr merge`/`edit`/`close`/`review`/`update-branch`, `gh issue`, and `gh api` with a `POST`/`PATCH`/`PUT`/`DELETE` method or a request body (`-f`, `-F`, `--field`, `--raw-field`, `--input`). `tests/unit/test_omp_seat_policy.py` fails when the three copies drift.
+
+## Mechanism (omp 18.11.3, `@oh-my-pi/pi-coding-agent`)
+
+- `tools.approvalMode` (`src/tools/settings.ts:311-318`) is `always-ask`, `write` or `yolo`. A mode auto-approves up to a tier (`src/tools/approval.ts:124-128`); `bash`, `eval` and `task` declare `exec`, so `write` does not cover them, and a headless run stops such a call with `requires approval but no interactive UI available` instead of allowing it. That is why the two writing seats run in `yolo` with explicit denies, and the audit seat in `always-ask` with explicit allows.
+- `tools.approval.<tool>: allow | deny | prompt` (`src/tools/settings.ts:295-305`) is honoured in every mode; a user `deny` is absolute (`src/tools/approval.ts:249-257`).
+- `bash.patterns` (`src/exec/settings.ts:134-145`) is an ordered list of `{match, approval}` rules over the `bash` tool's command. `*` is the only wildcard; whitespace runs collapse to one space before matching and nothing else is normalised (`src/tools/bash.ts:239-249`). The first matching rule wins. A `deny` matches the whole command or any one segment split on `;`, `&&`, `||`, `|`, `&`, parentheses and newlines; an `allow` must match the whole command and never a line with shell control characters (`src/tools/bash.ts:281-314`). A matched deny is absolute even in `yolo`; a matched allow runs at the `write` tier (`src/tools/bash.ts:533-540, 578`).
+- `--config <file>` loads a strict per-process overlay: a missing file (`Config overlay not found`), invalid YAML or a top-level list (`Config overlay must be a YAML mapping`) is a hard error at start, so a seat never starts without its policy (`docs/settings.md`, "One-shot overlays").
+
+## Threat table
+
+| Control                              | Disposition                                                                                                                                                                                                                                                           |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `orchestrator.yml`                   | closed: `test_omp_seat_policy.py` `test_the_orchestrator_allow_follows_the_admin_deny` and the orchestrator rows of `test_the_decision_table_holds_for_every_role`                                                                                                    |
+| `worker.yml`                         | closed: `test_the_worker_has_no_allow_and_the_audit_ends_in_a_catch_all_deny` and the worker rows of the decision table                                                                                                                                               |
+| `audit.yml`                          | closed: the same two tests, audit rows                                                                                                                                                                                                                                |
+| `README.md`                          | residual: prose; owner: this directory                                                                                                                                                                                                                                |
+| `tests/unit/test_omp_seat_policy.py` | residual: reads the three files, never `~/.omp`; the evaluator mirrors omp's matcher, so a divergence shows up only in a live seat; owner: the first seat pilot                                                                                                       |
+| approval is not containment          | residual: an allowed program keeps the seat's filesystem, network and subprocess access; the operating-system account and the worktree stay the boundary (`docs/settings.md`, "Bash command approval patterns")                                                       |
+| a shell started through `eval`       | closed: every file sets `tools.approval.eval: deny`; asserted by `test_the_overlays_fit_the_schema`                                                                                                                                                                   |
+| a headless seat meets a prompt       | residual: the files use `allow` and `deny` only, asserted by `test_the_overlays_fit_the_schema`; the audit seat's unlisted write and exec tools still prompt by design and fail headless                                                                              |
+| a missing or partial overlay         | closed: `--config` is strict (above); the launcher passes the file, so a seat cannot start without it                                                                                                                                                                 |
+| writes outside the worker's clone    | residual: omp 18.11.3 has no per-path write rule, so the worktree and account are the boundary; add a path rule when omp ships one                                                                                                                                    |
+| a push to `main` in another spelling | residual: the rules cover `git push … main`, `… HEAD:main`, `… <branch>:main` and the `git -c … push` form; `+main` and `refs/heads/main` stop at the GitHub ruleset that makes `main` PR-only. A commit message holding both `push` and `main` is refused; reword it |
+
+## Verify
+
+```bash
+uv run python -m unittest tests.unit.test_omp_seat_policy -v
+```
+
+Dry-run a file against the installed omp without touching the real `~/.omp`:
+
+```bash
+HOME="$TMPDIR/omp-home" omp models ls --config home/dot_agents/omp/policies/worker.yml --json > /dev/null
+```
+
+A read-back of the parsed values uses the same scratch HOME: copy the file to `$TMPDIR/omp-home/.omp/agent/config.yml`, then `omp config get bash.patterns --json`.

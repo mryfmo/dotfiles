@@ -1344,8 +1344,7 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     # `omp skill list` resolves a non-absolute entry against cwd (src/cli/skill-list.ts:58-64),
     # so the deployed overlay carries the absolute home through the chezmoi template.
     directories = [
-        "{{ .chezmoi.homeDir }}" + directory[1:] if directory.startswith("~/") else directory
-        for directory in omp_skills_directories(manifest)
+        re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", directory) for directory in omp_skills_directories(manifest)
     ]
     return omp_config_yaml(model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"], directories)
 

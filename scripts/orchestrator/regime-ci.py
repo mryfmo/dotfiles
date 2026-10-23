@@ -10,7 +10,9 @@ the copy is unverifiable, a warning until REGIME_REQUIRE_DISPATCHED=1 makes it a
 are the pull request's own claims. It prints one `regime-ci: <t>: <rule>: <detail>` line per violation and
 `regime-ci: warning: ...` lines, and exits 1 on any violation, 2 when git cannot list the diff, else 0 after
 `regime-ci: ok <n> task(s)`. A diff without a task copy passes as `no target (records-only)` only when every changed path
-is under `.orchestration/`; no branch name grants anything.
+is under `.orchestration/`, or as `no target (program unit U<n>, D-024-131)` when the pull request body (`PR_BODY`, the
+event payload's `pull_request.body`) carries its own line `Program-Unit: regime-cutover/U<n>`: operator decision
+D-024-131 runs the regime-cutover program without task copies. No branch name grants anything.
 """
 
 import argparse
@@ -34,6 +36,7 @@ CHECKER = "scripts/orchestrator/task-consistency-check.py"
 CHECKER_RUN = ["uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I", CHECKER]
 RUNS = (CHECKER, "scripts/orchestrator/regime-ci.py", ".github/workflows/regime.yml")
 TOKEN_LIKE = re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}")
+PROGRAM_UNIT = re.compile(r"^Program-Unit: regime-cutover/(U[0-9]+)$", re.MULTILINE)  # D-024-131, its own line
 
 
 class GitError(Exception):
@@ -254,6 +257,9 @@ def main(argv=None):
         stray = [p for p in changed if not p.startswith(".orchestration/")]  # lint-comparisons: allow git-listed repository-relative paths against the literal .orchestration/ prefix  # fmt: skip
         if not stray:  # content alone decides: a branch name is the pull request's own claim
             print("regime-ci: no target (records-only)")
+            return 0
+        if unit := PROGRAM_UNIT.search(os.environ.get("PR_BODY", "").replace("\r\n", "\n")):  # github.com edits add CR
+            print(f"regime-ci: no target (program unit {unit.group(1)}, D-024-131)")
             return 0
         print(
             f"regime-ci: no target: {len(stray)} changed path(s) outside .orchestration/ and no task copy, first {stray[0]}"

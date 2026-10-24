@@ -125,8 +125,11 @@ PROFILE_AGENT_KEYS = {
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
 # Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
-# (D-024-129/130); anthropic and openai-codex stay expressible as fallback routes.
-OMP_MODEL_RE = re.compile(r"^(openai-codex|openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+# (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
+# fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
+OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+OMP_RETIRED_ROUTES = ("openai-codex",)
+OMP_ACCEPTED_ROUTES = "claude-bridge, openai-siwc or anthropic"
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 RUNTIME_PREFIXES = (
     "hooks.state",
@@ -156,10 +159,15 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
             for key in keys + tuple(key for key in optional if key in mapping):
                 value = mapping.get(key)
                 if agent == "omp":
+                    route = value.split("/", 1)[0] if isinstance(value, str) else None
+                    if route in OMP_RETIRED_ROUTES:
+                        fail(
+                            f"model profile {name}.omp.model names the retired {route} route; use {OMP_ACCEPTED_ROUTES}"
+                        )
                     if not isinstance(value, str) or not OMP_MODEL_RE.fullmatch(value):
                         fail(
                             f"model profile {name}.omp.model must be <provider>/<id> "
-                            "with provider claude-bridge, openai-siwc, anthropic or openai-codex"
+                            f"with provider {OMP_ACCEPTED_ROUTES}"
                         )
                 elif not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")

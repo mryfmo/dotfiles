@@ -53,7 +53,7 @@ class OmpConfigMergeTest(unittest.TestCase):
             "symbolPreset: nerd\n"
             "modelRoles:\n"
             "  default: anthropic/claude-old\n"
-            "  smol: openai-codex/gpt-5.6-luna\n"
+            "  smol: openai-siwc/gpt-5.6-luna\n"
             "skills:\n"
             "  ignoredSkills:\n"
             "  - noisy\n"

@@ -63,7 +63,7 @@ def sample_manifest() -> dict:
             "express": {
                 "claude": {"model": "haiku", "effort": "low"},
                 "codex": {"model": "gpt-5.6-luna", "model_reasoning_effort": "low"},
-                "omp": {"model": "openai-codex/gpt-5.6-luna"},
+                "omp": {"model": "openai-siwc/gpt-5.6-luna"},
             },
             "standard": {
                 "claude": {"model": "sonnet", "effort": "high"},
@@ -677,7 +677,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
             },
-            "omp": {"model": "openai-codex/gpt-6-astra"},
+            "omp": {"model": "openai-siwc/gpt-6-astra"},
         }
         outputs = self.module.expected_outputs(manifest)
         security_profile = self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
@@ -943,7 +943,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_mode": "read-only",
             },
-            "omp": {"model": "openai-codex/gpt-6-astra"},
+            "omp": {"model": "openai-siwc/gpt-6-astra"},
         }
         outputs = self.module.expected_outputs(manifest)
         self.module.write_outputs(outputs)
@@ -1732,7 +1732,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_model_profiles_require_an_omp_model_from_the_provider_allowlist(self) -> None:
         refused = (
             "model profile standard.omp.model must be <provider>/<id> "
-            "with provider claude-bridge, openai-siwc, anthropic or openai-codex"
+            "with provider claude-bridge, openai-siwc or anthropic"
+        )
+        retired = (
+            "model profile standard.omp.model names the retired openai-codex route; "
+            "use claude-bridge, openai-siwc or anthropic"
         )
         for value, message in (
             (None, "model profile standard is missing omp"),
@@ -1740,6 +1744,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ("openai/gpt-x", refused),
             ("anthropic/claude x", refused),
             ("anthropic/claude-x\n", refused),
+            ("openai-codex/gpt-x", retired),
         ):
             with self.subTest(value=value):
                 manifest = sample_manifest()
@@ -1752,7 +1757,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.module.model_profiles(manifest)
                 self.assertIn(message, stderr.getvalue())
 
-        for value in ("claude-bridge/claude-x", "openai-siwc/gpt-x", "anthropic/claude-x", "openai-codex/gpt-x"):
+        for value in ("claude-bridge/claude-x", "openai-siwc/gpt-x", "anthropic/claude-x"):
             with self.subTest(value=value):
                 manifest = sample_manifest()
                 manifest["model_profiles"]["standard"]["omp"]["model"] = value
@@ -1773,7 +1778,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         text = self.module.expected_outputs(manifest)[path]
         self.assertEqual(
             text,
-            header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills + "    - /srv/skills\n",
+            header + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n" + skills + "    - /srv/skills\n",
         )
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)
@@ -1807,7 +1812,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             overlays["worker.yml.tmpl"], header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + wizard
         )
         self.assertEqual(
-            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-codex/gpt-5.6-luna\n" + skills + wizard
+            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n" + skills + wizard
         )
         self.assertEqual(
             execute_chezmoi_template(overlays["worker.yml.tmpl"], self.temp_dir),

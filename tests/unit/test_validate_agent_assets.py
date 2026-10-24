@@ -386,12 +386,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.module.validate_agent_manifest()
 
-    def test_agent_manifest_accepts_the_four_omp_providers_and_rejects_others(self) -> None:
+    def test_agent_manifest_accepts_the_three_omp_providers_and_rejects_others(self) -> None:
         accepted = (
             "claude-bridge/claude-model",
             "openai-siwc/gpt-model",
             "anthropic/claude-model",
-            "openai-codex/gpt-model",
         )
         for value in accepted:
             with self.subTest(value=value):
@@ -409,6 +408,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
                 self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
+
+    def test_agent_manifest_refuses_the_retired_openai_codex_route_by_name(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["audit"]["omp"]["model"] = "openai-codex/gpt-model"
+        stderr = io.StringIO()
+
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+
+        self.assertIn(
+            "model profile audit.omp.model names the retired openai-codex route; "
+            "use claude-bridge, openai-siwc or anthropic: 'openai-codex/gpt-model'",
+            stderr.getvalue(),
+        )
 
     def test_agent_manifest_requires_fable_advisor_on_the_standard_profile(self) -> None:
         for advisor in (None, "opus"):

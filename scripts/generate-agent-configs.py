@@ -172,42 +172,6 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
     return profiles
 
 
-WORKER_KINDS = ("codex", "claude")
-
-
-def worker_kind(manifest: dict[str, Any]) -> str:
-    kind = manifest.get("worker_kind", "codex")
-    if kind not in WORKER_KINDS:
-        fail(f"worker_kind must be one of {WORKER_KINDS}: {kind!r}")
-    return kind
-
-
-def orchestrator_kind(manifest: dict[str, Any]) -> str:
-    kind = manifest.get("orchestrator_kind", "claude")
-    if kind not in WORKER_KINDS:
-        fail(f"orchestrator_kind must be one of {WORKER_KINDS}: {kind!r}")
-    return kind
-
-
-def worker_profile(manifest: dict[str, Any]) -> str | None:
-    name = manifest.get("worker_profile")
-    if name is not None and name not in model_profiles(manifest):
-        fail(f"worker_profile must name a model profile: {name!r}")
-    return name
-
-
-WORKER_WORKTREE = re.compile(r"\.claude/worktrees/[A-Za-z0-9._-]+")
-
-
-def worker_worktree(manifest: dict[str, Any]) -> str | None:
-    path = manifest.get("worker_worktree")
-    if path is not None and (
-        not isinstance(path, str) or not WORKER_WORKTREE.fullmatch(path) or path.rsplit("/", 1)[1] in {".", ".."}
-    ):
-        fail(f"worker_worktree must be a relative path under .claude/worktrees/: {path!r}")
-    return path
-
-
 def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     profiles = model_profiles(manifest)
     name = manifest.get("interactive_profile")
@@ -1352,13 +1316,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         "# Shell fragment sourced by agent launchers (herdr-agents).",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
-        f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
-        f'HERDR_AGENTS_ORCHESTRATOR_KIND="{orchestrator_kind(manifest)}"',
     ]
-    if (profile_name := worker_profile(manifest)) is not None:
-        lines.append(f'HERDR_AGENTS_WORKER_PROFILE="{profile_name}"')
-    if (worktree := worker_worktree(manifest)) is not None:
-        lines.append(f'HERDR_AGENTS_WORKER_WORKTREE="{worktree}"')
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()
         claude = profile["claude"]

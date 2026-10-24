@@ -1660,95 +1660,22 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertNotIn("_CONFIG_DIR=", env)
         self.assertNotIn("GH_", env)
 
-    def test_model_profiles_env_renders_worker_kind(self) -> None:
-        manifest = sample_manifest()
-        manifest["worker_kind"] = "claude"
-
-        env = self.module.render_model_profiles_env(manifest)
-
-        self.assertIn('HERDR_AGENTS_WORKER_KIND="claude"', env)
-
-    def test_worker_kind_defaults_to_codex(self) -> None:
-        env = self.module.render_model_profiles_env(sample_manifest())
-
-        self.assertIn('HERDR_AGENTS_WORKER_KIND="codex"', env)
-
-    def test_unknown_worker_kind_fails(self) -> None:
-        manifest = sample_manifest()
-        manifest["worker_kind"] = "banana"
-
-        with self.assertRaises(SystemExit):
-            self.module.render_model_profiles_env(manifest)
-
-    def test_orchestrator_kind_defaults_to_claude(self) -> None:
-        env = self.module.render_model_profiles_env(sample_manifest())
-
-        self.assertIn('HERDR_AGENTS_ORCHESTRATOR_KIND="claude"', env)
-
-    def test_model_profiles_env_renders_orchestrator_kind(self) -> None:
-        manifest = sample_manifest()
-        manifest["orchestrator_kind"] = "codex"
-
-        env = self.module.render_model_profiles_env(manifest)
-
-        self.assertIn('HERDR_AGENTS_ORCHESTRATOR_KIND="codex"', env)
-        self.assertEqual("codex", self.module.orchestrator_kind(manifest))
-
-    def test_unknown_orchestrator_kind_fails(self) -> None:
-        manifest = sample_manifest()
-        manifest["orchestrator_kind"] = "banana"
-        stderr = io.StringIO()
-
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.render_model_profiles_env(manifest)
-        self.assertIn("orchestrator_kind must be one of", stderr.getvalue())
-
-    def test_model_profiles_env_renders_worker_profile(self) -> None:
-        manifest = sample_manifest()
-        manifest["worker_profile"] = "express"
-
-        env = self.module.render_model_profiles_env(manifest)
-
-        self.assertIn('HERDR_AGENTS_WORKER_PROFILE="express"', env)
-
-    def test_absent_worker_profile_renders_no_env_line(self) -> None:
-        env = self.module.render_model_profiles_env(sample_manifest())
-
-        self.assertNotIn("HERDR_AGENTS_WORKER_PROFILE", env)
-
-    def test_model_profiles_env_renders_worker_worktree(self) -> None:
-        manifest = sample_manifest()
-        manifest["worker_worktree"] = ".claude/worktrees/worker-c"
-
-        env = self.module.render_model_profiles_env(manifest)
-
-        self.assertIn('HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"', env)
-
-    def test_absent_worker_worktree_renders_no_env_line(self) -> None:
-        env = self.module.render_model_profiles_env(sample_manifest())
-
-        self.assertNotIn("HERDR_AGENTS_WORKER_WORKTREE", env)
-
-    def test_worker_worktree_outside_claude_worktrees_fails(self) -> None:
-        for path in (
-            "worker-c",
-            "/abs/.claude/worktrees/x",
-            ".claude/worktrees/..",
-            ".claude/worktrees/a/b",
-            ".claude/worktrees/$(x)",
+    def test_the_herdr_agents_worker_era_keys_are_gone(self) -> None:
+        # U40: nothing reads worker_kind, orchestrator_kind, worker_profile, worker_worktree or worker_cap since
+        # U26 removed herdr-agents' worker modes, so the manifest drops them and the launch fragment names none.
+        keys = ("worker_kind", "orchestrator_kind", "worker_profile", "worker_worktree", "worker_cap")
+        # The keys were top-level; read as text, as make unit-test has no PyYAML.
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        for key in keys:
+            with self.subTest(key=key):
+                self.assertIsNone(re.search(rf"^{re.escape(key)}:", text, re.MULTILINE))
+        stale = sample_manifest() | {key: "x" for key in keys}
+        for env in (
+            self.module.render_model_profiles_env(sample_manifest()),
+            self.module.render_model_profiles_env(stale),
+            (ROOT / "home/dot_agents/model-profiles.env").read_text(),
         ):
-            with self.subTest(path=path):
-                manifest = sample_manifest()
-                manifest["worker_worktree"] = path
-                with self.assertRaises(SystemExit):
-                    self.module.render_model_profiles_env(manifest)
-
-    def test_unknown_worker_profile_fails(self) -> None:
-        manifest = sample_manifest()
-        manifest["worker_profile"] = "missing"
-
-        with self.assertRaises(SystemExit):
-            self.module.render_model_profiles_env(manifest)
+            self.assertNotIn("HERDR_AGENTS_", env)
 
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()

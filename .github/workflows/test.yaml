@@ -276,6 +276,10 @@ jobs:
           for tests in home/dot_agents/omp/hooks/tests home/dot_agents/omp/extensions/openai-siwc/tests; do
             "${bun_bin}" test "./${tests}"
           done
+          # Installing bun also gave mise a bun shim, which this job's global config does not resolve ("bun is not
+          # a valid shim"); the Python tests that run stop-gate.ts under bun where bun is found (test_hcom_seat.py,
+          # U33c) get the real binary first on PATH instead, so in this cell they run that half too.
+          printf '%s\n' "${bun_bin_dir}" >> "${GITHUB_PATH}"
 
       - name: Smoke-test statusline tools without network
         if: ${{ steps.decide.outputs.should_test == 'true' }}

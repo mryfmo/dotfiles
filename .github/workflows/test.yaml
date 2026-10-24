@@ -358,7 +358,29 @@ jobs:
             command -v zsh > /dev/null 2>&1 || brew install zsh
           fi
 
+          # One test module per process, as many at a time as the runner has CPUs, with one combined summary that
+          # fails when any module fails (scripts/ci/unittest-shards.py); UNIT_TEST_JOBS=1 is the serial run (U39).
           make unit-test
+
+      - name: U39 measurement of the two sharding mechanisms (temporary, removed before review)
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        run: |
+          set +e
+          cpus="$(getconf _NPROCESSORS_ONLN)"
+          echo "cpus=${cpus}"
+          start=$(date +%s)
+          uv run --with pytest --with pytest-xdist pytest -n auto -p no:cacheprovider -q tests/unit > "${RUNNER_TEMP}/xdist.log" 2>&1
+          xdist_status=$?
+          xdist_wall=$(( $(date +%s) - start ))
+          start=$(date +%s)
+          uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs "$(( cpus * 2 ))" > "${RUNNER_TEMP}/shards2x.log" 2>&1
+          shards_status=$?
+          shards_wall=$(( $(date +%s) - start ))
+          echo "::group::xdist tail"; tail -40 "${RUNNER_TEMP}/xdist.log"; echo "::endgroup::"
+          echo "::group::shards 2x tail"; tail -12 "${RUNNER_TEMP}/shards2x.log"; echo "::endgroup::"
+          grep -E '^(FAILED|ERROR) ' "${RUNNER_TEMP}/xdist.log" | sort > "${RUNNER_TEMP}/xdist-failed.txt"
+          echo "xdist failing ids: $(wc -l < "${RUNNER_TEMP}/xdist-failed.txt")"; cat "${RUNNER_TEMP}/xdist-failed.txt"
+          echo "U39-MEASURE os=${OS} system=${SYSTEM} cpus=${cpus} xdist_wall=${xdist_wall}s xdist_status=${xdist_status} shards_2x_wall=${shards_wall}s shards_2x_status=${shards_status}"
 
       - name: Prepare public dotfiles fixture
         if: ${{ steps.decide.outputs.should_test == 'true' }}

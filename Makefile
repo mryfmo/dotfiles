@@ -186,9 +186,17 @@ format:
 	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
 	git ls-files -z '*.md' | xargs -0 prettier --check
 
+# UNIT_TEST_JOBS=1 is the serial run; any other count runs one test module per process, that many at a time
+# (0, the default, is the CPU count), with one combined summary (scripts/ci/unittest-shards.py).
+UNIT_TEST_JOBS ?= 0
+
 .PHONY: unit-test
 unit-test:
+ifeq ($(UNIT_TEST_JOBS),1)
 	uv run python -m unittest discover -s tests/unit -v
+else
+	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS)
+endif
 
 # The index form fails inside the Claude sandbox even while the uv cache holds PyYAML, so a probe picks the cache first.
 UV_PYYAML = $(if $(shell uv run --offline --with pyyaml python -c 'import yaml' 2> /dev/null && echo y),uv run --offline --with pyyaml,uv run --with pyyaml)

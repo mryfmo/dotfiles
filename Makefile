@@ -186,8 +186,10 @@ format:
 	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
 	git ls-files -z '*.md' | xargs -0 prettier --check
 
-# UNIT_TEST_JOBS=1 is the serial run; any other count runs one test module per process, that many at a time
-# (0, the default, is the CPU count), with one combined summary (scripts/ci/unittest-shards.py).
+# UNIT_TEST_JOBS=1 is the serial run; any other count runs the test modules in parallel shards, that many at a time
+# (0, the default, is the CPU count), with one combined summary (scripts/ci/unittest-shards.py). Tests that run
+# `uv run --offline --with pyyaml` against the real uv cache (test_pre_send.py) found PyYAML there only because an
+# earlier module of the serial order had fetched it; the shards keep no such order, so the cache gets it first.
 UNIT_TEST_JOBS ?= 0
 
 .PHONY: unit-test
@@ -195,6 +197,7 @@ unit-test:
 ifeq ($(UNIT_TEST_JOBS),1)
 	uv run python -m unittest discover -s tests/unit -v
 else
+	$(UV_PYYAML) python -c 'import yaml'
 	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS)
 endif
 

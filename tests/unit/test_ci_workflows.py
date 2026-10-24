@@ -267,8 +267,11 @@ class MakeUnitTestTest(unittest.TestCase):
         self.assertEqual(self.make("UNIT_TEST_JOBS=1"), "uv run python -m unittest discover -s tests/unit -v\n")
 
     def test_the_default_runs_the_shards_on_every_cpu(self) -> None:
-        self.assertEqual(self.make(), "uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs 0\n")
-        self.assertIn("--jobs 3\n", self.make("UNIT_TEST_JOBS=3"))
+        warm, run = self.make().splitlines()
+        # PyYAML enters the uv cache before any shard starts (offline first, as UV_PYYAML probes).
+        self.assertRegex(warm, r"^uv run (--offline )?--with pyyaml python -c 'import yaml'$")
+        self.assertEqual(run, "uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs 0")
+        self.assertTrue(self.make("UNIT_TEST_JOBS=3").endswith("--jobs 3\n"))
 
 
 class RenderOnlySubtreesTest(unittest.TestCase):

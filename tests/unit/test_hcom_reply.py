@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REPLY = ROOT / "home/dot_local/bin/common/executable_hcom-reply"
 FIXTURES = ROOT / "tests/fixtures/hcom"
-VERDICT = "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64"
+VERDICT = "VERDICT v1 task_id=U11-audit verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64"
 
 
 class HcomReplyTest(unittest.TestCase):
@@ -56,11 +56,11 @@ class HcomReplyTest(unittest.TestCase):
         )
 
     def test_words_after_the_separator_are_one_line_and_a_flag_there_is_text(self):
-        sent = self.reply("regime", "--", "--name", "soma", "AGMSG-PONG", "v1", "task_id=U11-audit")
+        sent = self.reply("regime", "--", "--name", "soma", "PONG", "v1", "task_id=U11-audit")
         self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertEqual(
             self.hcom_calls()[-1],
-            ["send", "--thread", "regime", "--name", "audit-tuba", "--", "--name soma AGMSG-PONG v1 task_id=U11-audit"],
+            ["send", "--thread", "regime", "--name", "audit-tuba", "--", "--name soma PONG v1 task_id=U11-audit"],
         )
 
     def test_no_identity_refuses_before_any_send(self):

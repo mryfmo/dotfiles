@@ -2678,6 +2678,8 @@ class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
         seen = linux_glob_patterns(self.doctor(control, "control"))
         if os_name != "linux" or seen is None:
             self.assertIsNone(managed, "no glob warning off Linux, or none at all once Claude Code stops emitting it")
+            if os_name == "linux":
+                self.skipTest("this Claude Code prints no Linux glob warning even for the control; nothing to hold")
             return
         self.assertIsNotNone(managed, "the .env pair keeps its glob, so Linux doctor still warns about it")
         self.assertEqual(seen[0], managed[0] + 2, f"the control adds the two key globs: {seen} against {managed}")

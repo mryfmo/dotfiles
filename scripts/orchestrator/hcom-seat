@@ -221,6 +221,8 @@ if ((dry_run)); then
     echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
     exit 0
 fi
+# U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file).
+"${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 if [[ ! -e ${dir} ]]; then
     # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a
     # genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.

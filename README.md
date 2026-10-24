@@ -83,6 +83,41 @@ locale that `mosh-server` needs comes from `install/ubuntu/common/setup_locale.s
 A host that runs its own firewall (for example ufw) must allow that UDP range on
 its Tailscale interface.
 
+### Log in on a remote host
+
+An omp seat on the Ubuntu host, reached from the laptop through
+`herdr --remote <ssh-target>`, needs that host's own Claude and ChatGPT logins.
+A login is per host: each host signs in once, keeps its own tokens and refreshes
+them itself. Nothing copies a token between hosts. The browser for the consent
+click is the laptop's. The design and the threat table are in
+[docs/remote-host-logins.md](docs/remote-host-logins.md); the steps:
+
+1. On the laptop, add `Tag seat-host` to the Ubuntu host's entry in
+   `~/.ssh/conf.d/`. The managed `~/.ssh/config` then forwards
+   `127.0.0.1:1455` to that host (the ChatGPT sign-in callback) and
+   `127.0.0.1:1456` back to the laptop (the URL opener). This applies to every
+   SSH session to it, `herdr --remote` included.
+2. On the laptop, load the URL opener once:
+   `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist`.
+   It opens only https sign-in URLs on `auth.openai.com`, `claude.com`,
+   `claude.ai`, `console.anthropic.com` and `platform.claude.com`, and logs its
+   start and each decision to `~/.local/state/hcom/url-opener.log`.
+3. On the Ubuntu host, in your own terminal, run
+   `seat-login-preflight <profile>` for each seat profile (orchestrator,
+   worker, audit, review, security) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. The
+   Claude sign-in shows a code in the laptop tab; paste it at the terminal
+   prompt. If that flow fails, run `claude setup-token` on the laptop and store
+   the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
+   host; the login shells export it as `CLAUDE_CODE_OAUTH_TOKEN`.
+4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
+   from presence and mtimes only.
+5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
+   It also checks that the seat can use the login: a ChatGPT login stored in
+   the profile's `agent.db`, and `CLAUDE_CODE_OAUTH_TOKEN` in the shell when
+   the token file is the only Claude login (open a new login shell after
+   writing it). A seat never runs a login: without one, it refuses and names
+   the command.
+
 ### Private credentials and keys
 
 This public repository intentionally does not store machine-specific secrets such as SSH private keys, GnuPG secret keyrings, or VPN credentials. Private state belongs in the separate `mryfmo/dotfiles-private` chezmoi source or should be generated on the target machine.

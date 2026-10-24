@@ -426,7 +426,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
 
 
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
-    """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots.
+    """Render the Claude sandbox; allowWrite reuses the Codex writable roots.
 
     `filesystem.denyRead` and `credentials` render the same on every OS: the Linux sandbox enforces `denyRead` globs
     and credential denies but drops the glob forms of Read/Edit permission rules (regime-cutover U17).

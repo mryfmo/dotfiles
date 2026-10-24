@@ -29,12 +29,6 @@ type = "shell"
 command = 'zed "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
 description = "open active pane in Zed"
 
-[[keys.command]]
-key = "prefix+alt+a"
-type = "shell"
-command = 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
-description = "open Claude Code and Codex workspace"
-
 # herdr-file-viewer: prefix+f opens the plugin as a session-modal popup
 [[keys.command]]
 key = "prefix+f"

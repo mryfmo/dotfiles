@@ -152,7 +152,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(self.merge(managed, current), current)
 
     def test_current_session_start_order_is_preserved(self) -> None:
-        """Order is preserved; a stale bare herdr-agents command still migrates."""
+        """Order is preserved; a stale herdr-agents --attach hook leaves, as the managed attach hook did (U26)."""
         state_hook = {
             "matcher": "*",
             "hooks": [
@@ -191,14 +191,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         output = self.merge(managed, current)
 
         session_hooks = json.loads(output)["hooks"]["SessionStart"]
-        commands = [h["command"] for e in session_hooks for h in e["hooks"]]
-        self.assertEqual(len(session_hooks), 2)
-        self.assertTrue(
-            commands[0].startswith(str(self.home_dir))
-            and commands[0].endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
-            f"attach hook must migrate to an absolute path, got {commands[0]!r}",
-        )
-        self.assertEqual(session_hooks[1], state_hook)
+        self.assertEqual(session_hooks, [state_hook])
 
     def test_managed_permgate_replaces_stale_current_ccgate_hook(self) -> None:
         managed_hook = {
@@ -317,11 +310,11 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         )
 
         commands = [h["command"] for e in json.loads(output)["hooks"]["SessionStart"] for h in e["hooks"]]
+        self.assertEqual(len(commands), 1, f"the stale attach hook leaves (U26), got {commands}")
         self.assertTrue(
             commands[0].endswith("herdr-agent-state.sh' session"),
             f"state hook must stay first, got {commands}",
         )
-        self.assertIn("herdr-agents --attach", commands[1])
         self.assertNotIn("/Users/someone-else", json.dumps(commands))
 
     def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
@@ -596,7 +589,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         merged = json.loads(after)
         self.assertEqual(merged["permissions"]["allow"], managed["permissions"]["allow"])
         self.assertNotIn("scripts/orchestrator/", json.dumps(merged["permissions"]))
-        self.assertTrue(all("~/.local/bin/common/" in rule for rule in merged["permissions"]["allow"][1:-1]))
+        self.assertTrue(all("~/.local/bin/common/" in rule for rule in merged["permissions"]["allow"][:-1]))
         self.assertEqual((merged["operatorOnly"], merged["enabledPlugins"]), ({"kept": True}, {"crit@crit": True}))
         self.assertEqual(self.merge(managed, after), after)
 

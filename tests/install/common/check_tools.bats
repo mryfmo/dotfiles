@@ -109,34 +109,6 @@ function setup() {
     [[ "${output}" == *"optional warning: crit --version failed"* ]]
 }
 
-@test "[common] check_agmsg reports the installed version against the pin" {
-    local skill_dir="${BATS_TEST_TMPDIR}/.agents/skills/agmsg"
-    mkdir -p "${skill_dir}"
-    local pin
-    pin="$(awk -F'"' '/^AGMSG_PIN_VERSION=/ { print $2; exit }' scripts/update-agent-assets.sh)"
-    printf '%s\n' "${pin}" > "${skill_dir}/VERSION"
-
-    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_agmsg"
-    [ "${status}" -eq 0 ]
-    [[ "${output}" == *"found:   agmsg ->"*"matches pin"* ]]
-}
-
-@test "[common] check_agmsg warns when the installed version does not match the pin" {
-    local skill_dir="${BATS_TEST_TMPDIR}/.agents/skills/agmsg"
-    mkdir -p "${skill_dir}"
-    printf '0.0.0\n' > "${skill_dir}/VERSION"
-
-    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_agmsg"
-    [ "${status}" -eq 0 ]
-    [[ "${output}" == *"optional warning: agmsg version 0.0.0 does not match the pinned"* ]]
-}
-
-@test "[common] check_agmsg is not applicable and not a failure when absent" {
-    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; check_agmsg"
-    [ "${status}" -eq 0 ]
-    [[ "${output}" == *"not applicable: agmsg (not installed)"* ]]
-}
-
 # check_seat_logins (regime-cutover U37): a fake HOME with two seat profiles; `security` is faked so the
 # macOS Keychain branch never sees the real login of the host running the test.
 function seat_login_home() {

@@ -376,6 +376,9 @@ main
         held["python"] = "python = "
         held["uv"] = "uv = "
         held["http:gcloud"] = '[tools."http:gcloud"]'
+        # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
+        held["npm:ccusage"] = '"npm:ccusage" = '
+        held["npm:ccstatusline"] = '"npm:ccstatusline" = '
         # The exact blocc pin avoids the sandbox's blocked version-registry query.
         held["github:shuntaka9576/blocc"] = '"github:shuntaka9576/blocc" = '
         self.assertEqual("0.6.0", config["tools"]["github:shuntaka9576/blocc"]["version"])

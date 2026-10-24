@@ -83,12 +83,13 @@ function teardown() {
     local calls="${BATS_TEST_TMPDIR}/snap_calls"
     run env SNAP_RETRY_DELAY=0 /bin/bash -c '
         source "$1"
+        calls_file=$2
         sudo() {
             "$@"
         }
         snap() {
-            echo "snap $*" >> "$2"
-            [ "$(wc -l < "$2")" -ge 3 ]
+            echo "snap $*" >> "${calls_file}"
+            [ "$(wc -l < "${calls_file}")" -ge 3 ]
         }
         install_chromium
     ' _ "${SCRIPT_PATH}" "${calls}"
@@ -100,11 +101,12 @@ function teardown() {
     local calls="${BATS_TEST_TMPDIR}/snap_calls"
     run env SNAP_RETRY_DELAY=0 /bin/bash -c '
         source "$1"
+        calls_file=$2
         sudo() {
             "$@"
         }
         snap() {
-            echo "snap $*" >> "$2"
+            echo "snap $*" >> "${calls_file}"
             return 1
         }
         install_chromium

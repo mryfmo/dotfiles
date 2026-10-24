@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import load_manifest_fixture
+from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture
 
 sys.dont_write_bytecode = True
 
@@ -275,6 +275,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ]
             )
         )
+
+    def write_levers(self, *names: str) -> Path:
+        """Executable stand-ins for the scripts the managed allow rules name, under the temp ROOT."""
+        levers = self.temp_dir / "scripts/orchestrator"
+        levers.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (levers / name).write_text("#!/usr/bin/env bash\n")
+            (levers / name).chmod(0o755)
+        return levers
 
     def write_repo_claude_settings(self, command: str) -> None:
         (self.temp_dir / ".claude").mkdir(parents=True, exist_ok=True)
@@ -1107,6 +1116,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
             (
@@ -1178,10 +1188,36 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
 
-    def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
-        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}):
+    def test_claude_permissions_allow_accepts_only_the_fixed_rules_and_executable_levers(self) -> None:
+        levers = self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "python3")
+        (levers / "notes.md").write_text("prose\n")
+        (levers / "py").symlink_to(levers / "python3")
+        for permissions in ({}, {"allow": []}, {"allow": MANAGED_ALLOW}):
             with self.subTest(accepts=permissions):
                 self.module.validate_claude_permissions_allow(permissions, "permissions")
+        rejected = {
+            "Bash(*)": "not a fixed rule",
+            "Bash(hcom *)": "not a fixed rule",
+            "Bash(hcom list:*)": "not a fixed rule",
+            "Bash(git worktree remove *)": "not a fixed rule",
+            "Bash(python *)": "not a fixed rule",
+            "Bash(scripts/orchestrator/hcom-seat:*)": "not a fixed rule",
+            "Bash(scripts/orchestrator/hcom-seat)": "not a fixed rule",
+            f"Bash({self.temp_dir}/scripts/orchestrator/hcom-seat *)": "not a fixed rule",
+            "Bash(scripts/orchestrator/../validate-agent-assets.py *)": "not a fixed rule",
+            "Bash(scripts/orchestrator/missing *)": "not an executable file",
+            "Bash(scripts/orchestrator/notes.md *)": "not an executable file",
+            "Bash(scripts/orchestrator/python3 *)": "names an interpreter",
+            "Bash(scripts/orchestrator/py *)": "names an interpreter",
+        }
+        for rule, message in rejected.items():
+            with (
+                self.subTest(rejects=rule),
+                contextlib.redirect_stderr(io.StringIO()) as stderr,
+                self.assertRaises(SystemExit),
+            ):
+                self.module.validate_claude_permissions_allow({"allow": [*MANAGED_ALLOW, rule]}, "permissions")
+            self.assertIn(message, stderr.getvalue())
         for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
             with (
                 self.subTest(rejects=allow),

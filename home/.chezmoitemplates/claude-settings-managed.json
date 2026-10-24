@@ -7,7 +7,6 @@
   "plansDirectory": "./.agents/worklog/claude",
   "permissions": {
     "allow": [
-      "Bash(agmsg-dispatch:*)",
       "Bash(~/.local/bin/common/hcom-seat *)",
       "Bash(~/.local/bin/common/hcom-dispatch *)",
       "Bash(~/.local/bin/common/bus-history.sh *)",
@@ -76,10 +75,6 @@
   "excludedCommands": [],
   "filesystem": {
     "allowWrite": [
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
       "~/.cache/uv",
       "~/.local/state/mise",
       "~/.local/share/uv",
@@ -127,10 +122,6 @@
   "excludedCommands": [],
   "filesystem": {
     "allowWrite": [
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-      "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
       "~/.cache/uv",
       "~/.local/state/mise",
       "~/.local/share/uv",

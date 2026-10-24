@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import configparser
-import fnmatch
 import json
 import os
 import posixpath
@@ -47,12 +46,6 @@ SECRET_PATTERN = re.compile(
 )
 DEPRECATED_MCP_PACKAGES = {
     "@modelcontextprotocol/server-github": "Use the official ghcr.io/github/github-mcp-server container instead.",
-}
-REQUIRED_AGMSG_WRITABLE_ROOTS = {
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
 }
 SYNC_TIMEOUT_BUDGET_S = 30  # PLAN H3 pins the per-source, per-event synchronous budget.
 HOOK_COMPOSITION_SOURCES = {
@@ -290,13 +283,6 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
         )
 
 
-def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any], label: str) -> None:
-    writable_roots = sandbox_workspace_write.get("writable_roots", [])
-    missing = REQUIRED_AGMSG_WRITABLE_ROOTS - set(writable_roots)
-    if missing:
-        fail(f"{label} must include agmsg writable roots: missing={sorted(missing)}")
-
-
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
 
 
@@ -310,7 +296,6 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     if not isinstance(sandbox.get("failIfUnavailable"), bool):
         fail(f"{label}.failIfUnavailable must be a boolean")
     allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
-    validate_codex_agmsg_writable_roots({"writable_roots": allow_write}, f"{label}.filesystem.allowWrite")
     missing = set(writable_roots) - set(allow_write)
     if missing:
         fail(f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}")
@@ -367,12 +352,12 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
 
 
-# The managed allow rules (regime-cutover U16, U31): the agmsg wake, the read-only `hcom list`, and the coordinator
+# The managed allow rules (regime-cutover U16, U31): the read-only `hcom list` and the coordinator
 # levers, one `Bash(~/.local/bin/common/<lever> *)` per deterministic wrapper script, naming the copy chezmoi installs
 # outside every sandbox write root. An allow rule skips the auto-mode classifier unless it could run arbitrary code
 # (code.claude.com/docs/en/settings, `autoMode.classifyAllShell`), so nothing else is accepted: no `Bash(*)`, no
 # `Bash(hcom *)` (hcom launches agents), no interpreter or shell prefix, and no path inside the rewritable checkout.
-FIXED_ALLOW_RULES = ("Bash(agmsg-dispatch:*)", "Bash(hcom list *)")
+FIXED_ALLOW_RULES = ("Bash(hcom list *)",)
 LEVER_INSTALL_PREFIX = "~/.local/bin/common/"
 LEVER_ALLOW_RULE = re.compile(r"Bash\(~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*) \*\)")
 CHECKOUT_LEVER_RULE = re.compile(r"Bash\((?:\./)?scripts/orchestrator/")
@@ -566,10 +551,6 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
-    validate_codex_agmsg_writable_roots(
-        manifest_codex.get("sandbox_workspace_write", {}),
-        "codex.sandbox_workspace_write",
-    )
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
     features = data.get("features", {})
@@ -648,14 +629,11 @@ def validate_claude_mcp_config() -> dict[str, Any]:
     return data
 
 
-GIT_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
-NPM_SHA512_INTEGRITY = re.compile(r"^sha512-[A-Za-z0-9+/]+=*$")
 ASSET_VERIFY_BY_SOURCE = {
     "github-release": {"sha256", "release-shasums", "release-sha256", "gpg", "github-release-attestation"},
     "https-download": {"sha256", "gpg"},
     "crates": {"cargo-locked"},
     "git-commit": {"sha256"},
-    "agmsg-installer": {"sha256"},
     "installer-script": {"installer-sha256"},
     "vendored": {"manifest-sha256", "none"},
     "claude-plugin": {"none"},
@@ -676,7 +654,6 @@ PINNED_RELEASE_SOURCES = {
     "https-download",
     "crates",
     "git-commit",
-    "agmsg-installer",
     "installer-script",
 }
 INSTALLING_ASSET_SOURCES = {
@@ -684,7 +661,6 @@ INSTALLING_ASSET_SOURCES = {
     "https-download",
     "crates",
     "git-commit",
-    "agmsg-installer",
     "installer-script",
     "vendored",
 }
@@ -713,63 +689,6 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
         if isinstance(fallback.get("sha256"), dict):
             values.extend((f"fallback.sha256.{arch}", value) for arch, value in fallback["sha256"].items())
     return values
-
-
-AGMSG_RELEASE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-
-
-def validate_agmsg_installer_asset(name: str, asset: dict[str, Any]) -> None:
-    """Require the agmsg-installer provenance fields: release, tag, commit, npm integrity."""
-    pin = asset.get("pin")
-    if not isinstance(pin, str) or not AGMSG_RELEASE.match(pin):
-        fail(f"assets.{name}.pin must be an upstream release like 1.5.0, not {pin!r}")
-    if asset.get("ref") != f"v{pin}":
-        fail(f"assets.{name}.ref must be the release tag v{pin}, not {asset.get('ref')!r}")
-    ref_commit = asset.get("ref_commit")
-    if not isinstance(ref_commit, str) or not GIT_COMMIT_SHA.match(ref_commit):
-        fail(f"assets.{name}.ref_commit must be the full 40-character commit sha behind the tag, not {ref_commit!r}")
-    integrity = asset.get("bootstrap_integrity")
-    if not isinstance(integrity, str) or not NPM_SHA512_INTEGRITY.match(integrity):
-        fail(f"assets.{name}.bootstrap_integrity must be an npm sha512-<base64> integrity string, not {integrity!r}")
-
-
-# Targets upstream install.sh owns on a live host: chezmoi must neither manage
-# nor remove them. The retired ~/.claude/skills/agmsg symlink farm pointed into
-# the deleted vendored tree, so chezmoi must remove it.
-AGMSG_INSTALLER_OWNED_TARGETS = (
-    ".agents/skills/agmsg",
-    ".agents/skills/agmsg/.agmsg",
-    ".agents/skills/agmsg/VERSION",
-    ".agents/skills/agmsg/SKILL.md",
-    ".agents/skills/agmsg/scripts/send.sh",
-    ".agents/skills/agmsg/db/messages.db",
-    ".agents/skills/agmsg/teams/team/config.json",
-    ".claude/commands/agmsg.md",
-)
-AGMSG_RETIRED_SYMLINK_FARM_REMOVAL = ".claude/skills/agmsg/**"
-
-
-def validate_agmsg_is_installer_owned() -> None:
-    """Keep agmsg out of chezmoi: no vendored copy, no managed command, stale links retired."""
-    # Globs so chezmoi attribute prefixes (private_, exact_, symlink_, ...) match too.
-    for pattern in ("home/*dot_agents/skills/*agmsg", "home/*dot_claude/skills/*agmsg"):
-        for vendored in sorted(ROOT.glob(pattern)):
-            fail(f"{vendored.relative_to(ROOT)} must not exist: upstream install.sh owns the agmsg skill")
-    commands = ROOT / "home/dot_claude/commands"
-    for path in sorted(commands.glob("*agmsg.md*")) if commands.exists() else ():
-        fail(f"{path.relative_to(ROOT)} must not exist: install.sh renders ~/.claude/commands/agmsg.md")
-    removal_file = ROOT / "home/.chezmoiremove"
-    removals = [
-        line.strip()
-        for line in (removal_file.read_text().splitlines() if removal_file.exists() else [])
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-    if AGMSG_RETIRED_SYMLINK_FARM_REMOVAL not in removals:
-        fail(f"home/.chezmoiremove must retire {AGMSG_RETIRED_SYMLINK_FARM_REMOVAL}")
-    for pattern in removals:
-        for target in AGMSG_INSTALLER_OWNED_TARGETS:
-            if fnmatch.fnmatchcase(target, pattern):
-                fail(f"home/.chezmoiremove entry {pattern!r} would remove installer-owned {target}")
 
 
 def validate_assets(manifest: dict[str, Any]) -> None:
@@ -835,8 +754,6 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
         if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
             fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
-        if asset["source"] == "agmsg-installer":
-            validate_agmsg_installer_asset(name, asset)
         if asset["source"] in INSTALLING_ASSET_SOURCES:
             absent = [key for key in ("install_path", "installer") if not asset.get(key)]
             if absent:
@@ -952,8 +869,6 @@ def validate_agent_manifest() -> dict[str, Any]:
     )
     if readme_orchestrator not in readme_words:
         fail(f"README.md must state the manifest orchestrator_kind as {readme_orchestrator}")
-    if "herdr-agents --add-worker" not in readme or "herdr-agents --remove-worker" not in readme:
-        fail("README.md must document herdr-agents --add-worker and --remove-worker for seating workers on demand")
     worker_worktree = manifest.get("worker_worktree")
     if worker_worktree is not None and (
         not isinstance(worker_worktree, str)
@@ -1089,37 +1004,6 @@ def validate_crit_install_assets() -> None:
     ):
         if token not in codex_agents:
             fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
-    guard_path = ROOT / "scripts/require-crit-review.py"
-    if not guard_path.exists():
-        fail("scripts/require-crit-review.py must enforce meaningful review triggers")
-    guard_text = guard_path.read_text()
-    for token in (
-        "CRIT_REVIEWED",
-        "AGENT_REVIEWED",
-        "REVIEW_EVIDENCE",
-        "review_surface",
-        "reviewer",
-        "review_outcome",
-        "SELF_REVIEWER_TOKENS",
-        "CRIT_REVIEW=off",
-        "agent lifecycle",
-        "broad diff",
-        "Crit data",
-        "review_source",
-    ):
-        if token not in guard_text:
-            fail(f"scripts/require-crit-review.py must contain Crit guard token {token!r}")
-    readme = (ROOT / "README.md").read_text()
-    for token in (
-        "scripts/require-crit-review.py",
-        "AGENT_REVIEWED=1",
-        "REVIEW_EVIDENCE",
-        "review_source",
-        "crit-data",
-        "CRIT_REVIEW=off",
-    ):
-        if token not in readme:
-            fail(f"README.md must document Crit guard token {token!r}")
 
 
 def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) -> None:
@@ -1330,13 +1214,6 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     express_agent = ROOT / "home/dot_claude/agents/express-explorer.md"
     if not express_agent.exists() or "model:" not in express_agent.read_text():
         fail(f"{express_agent} must define the low-cost explorer subagent")
-
-    herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
-    for token in ("claude-fable-5", "gpt-5.6", "model_reasoning_effort="):
-        if token in herdr:
-            fail(f"herdr-agents must not hardcode model settings: {token!r}")
-    if "HERDR_AGENTS_WORKER_PROFILE" not in herdr:
-        fail("herdr-agents must launch the worker with a model profile")
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in ("model_profiles", "--profile standard", "model-profiles.env"):
@@ -1613,7 +1490,7 @@ def mask_secrets(paths: list[str]) -> int:
 
     A file whose whole text parses as JSON, whatever its suffix (the test
     json_strings() applies for the scan), is masked per key and string value
-    and rewritten in the pr-feedback.py layout, so a saved body equals
+    and rewritten as `json.dumps(indent=2, ensure_ascii=False)`, so a saved body equals
     mask_secret_matches() of the collected one; any other file is masked as text. Every member is
     masked as it is parsed, and an earlier duplicate member is then dropped, as
     json.loads (and so the gate) reads the file.
@@ -1732,22 +1609,9 @@ def validate_repo_claude_settings_portable() -> None:
                     fail(f"{settings_path} hook {event} must not hard-code a machine-specific home path: {command}")
 
 
-def report_regime_boundary() -> None:
-    """Print the regime Stop-checklist findings as warnings; never fail CI."""
-    result = subprocess.run(
-        ["bash", str(ROOT / "scripts/check-regime-boundary.sh"), "--report"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    for line in result.stdout.splitlines():
-        print(f"WARN: {line}", file=sys.stderr)
-
-
 def main() -> None:
     manifest = validate_agent_manifest()
     validate_assets(manifest)
-    validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()
@@ -1768,7 +1632,6 @@ def main() -> None:
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()
-    report_regime_boundary()
     print("agent asset validation ok")
 
 

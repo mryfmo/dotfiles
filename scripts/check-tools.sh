@@ -261,33 +261,6 @@ function check_gh_extensions() {
 }
 
 #
-# @description Report the installed agmsg skill's version against the pinned
-#   manifest version. Installed by update_agmsg in
-#   scripts/update-agent-assets.sh from the pinned upstream commit; not
-#   required, so a missing install is not a failure.
-#
-function check_agmsg() {
-    local target="${HOME%/}/.agents/skills/agmsg"
-    local script_dir pin installed
-
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    pin="$(awk -F'"' '/^AGMSG_PIN_VERSION=/ { print $2; exit }' "${script_dir}/update-agent-assets.sh" 2> /dev/null || true)"
-
-    if [ ! -f "${target}/VERSION" ]; then
-        printf 'not applicable: agmsg (not installed)\n'
-        return 0
-    fi
-
-    installed="$(cat "${target}/VERSION")"
-    if [ "${installed}" = "${pin:-unknown}" ]; then
-        printf 'found:   agmsg -> %s (version %s, matches pin)\n' "${target}" "${installed}"
-    else
-        printf 'found:   agmsg -> %s (version %s, pin %s)\n' "${target}" "${installed}" "${pin:-unknown}"
-        warn_optional "agmsg version ${installed} does not match the pinned ${pin:-unknown}; run make update"
-    fi
-}
-
-#
 # @description Report the Linux prerequisites of the Claude Code Bash sandbox:
 #   bwrap and socat on PATH. check_apparmor_userns covers the user-namespace
 #   side, so this check has no sysctl or profile logic.
@@ -352,9 +325,6 @@ function main() {
 
     section "GitHub CLI extensions"
     check_gh_extensions
-
-    section "agmsg"
-    check_agmsg
 
     printf '\nTool check summary: required failures: %d; optional warnings: %d\n' \
         "${required_failures}" "${optional_warnings}"

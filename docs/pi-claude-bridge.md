@@ -52,12 +52,13 @@ with `scripts/update-agent-assets.sh update_pi_claude_bridge`.
 Each patch is a plain `diff -ruN a b` between consecutive stages of the
 upstream `package/` tree, so a reviewer can re-derive it.
 
-| Patch                                | Why                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `01-omp-shim-exports.patch`          | omp's legacy `pi-coding-agent` shim does not export `formatSkillsForPrompt`, so `src/skills.ts` carries Pi's implementation (MIT, same output). The shim does export `keyHint` and `buildSessionContext` (`gap-check.ts` lists both as FOUND), so upstream's calls to them stay.                                                                                                |
-| `02-content-text.patch`              | The `pi-ai` shim does not export `contentText`; `src/transcript.ts` carries pi-ai 1.4.0's eight-line implementation (MIT). Without it omp logs `Failed to load extension ... Export named 'contentText' not found`.                                                                                                                                                             |
-| `03-no-bash-timeout-injection.patch` | Decision 38: the bridge added `timeout: 120` to every bash tool call it handed to Pi (`mapToolArgs` in `src/index.ts`; seen on the wire as `{"command":...,"timeout":120}`). omp's bash tool keeps its own timeout handling.                                                                                                                                                    |
-| `04-setting-sources-none.patch`      | The provider `query()` passes `settingSources: []`, so the child Claude Code loads no user, project or local `settings.json`: the host's hooks, plugins and permission rules do not run inside bridge turns. The claude.ai login is not a setting and still applies. Measured 2026-10-23: with the default, the child's thinking cited the host's superpowers system reminders. |
+| Patch                                | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `01-omp-shim-exports.patch`          | omp's legacy `pi-coding-agent` shim does not export `formatSkillsForPrompt`, so `src/skills.ts` carries Pi's implementation (MIT, same output). The shim does export `keyHint` and `buildSessionContext` (`gap-check.ts` lists both as FOUND), so upstream's calls to them stay.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `02-content-text.patch`              | The `pi-ai` shim does not export `contentText`; `src/transcript.ts` carries pi-ai 1.4.0's eight-line implementation (MIT). Without it omp logs `Failed to load extension ... Export named 'contentText' not found`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `03-no-bash-timeout-injection.patch` | Decision 38: the bridge added `timeout: 120` to every bash tool call it handed to Pi (`mapToolArgs` in `src/index.ts`; seen on the wire as `{"command":...,"timeout":120}`). omp's bash tool keeps its own timeout handling.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `04-setting-sources-none.patch`      | The provider `query()` passes `settingSources: []`, so the child Claude Code loads no user, project or local `settings.json`: the host's hooks, plugins and permission rules do not run inside bridge turns. The claude.ai login is not a setting and still applies. Measured 2026-10-23: with the default, the child's thinking cited the host's superpowers system reminders.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `05-register-on-reactivation.patch`  | omp builds a Task subagent by calling the extension factory again on the same module instance (one `moduleInstanceId` in the bridge debug log), clears the bridge's provider registrations from the model registry the parent shares, and keeps only the registrations queued during that call. Upstream deferred a second activation to a `session_start` check through `ctx.modelRegistry.getProvider()`, which omp's registry lacks (omp logs `Extension error ... getProvider is not a function`), so `claude-bridge` vanished for both sessions. The bridge now registers at load when the active stream function is this instance's own; re-registering the same function replaces nothing. A second module instance (another copy of the bridge) keeps upstream's deferral. |
 
 Upstream kept the default `settingSources` so that Bedrock and Vertex users
 keep `env` and `apiKeyHelper` from `settings.json` (comment above
@@ -122,7 +123,8 @@ logged-in host spends one short model turn. The function is callable from
 
 ## Subagents
 
-An omp Task subagent on the claude-bridge route breaks the seat that spawned it. Measured on
+An omp Task subagent on the claude-bridge route broke the seat that spawned it before
+`05-register-on-reactivation.patch`. Measured on
 2026-10-24 at about 06:03Z: the orchestrator seat spawned a Task subagent (an inventory scout), the
 subagent failed with `No API key for provider: claude-bridge`, and from then on every hcom delivery into
 that seat failed with `Extension sendUserMessage failed`, so the seat was dead to the loop; the two worker
@@ -131,8 +133,27 @@ seats on the same route and the host login were unaffected. So every seat policy
 U36), and the seats do their reading with their own tools. omp refuses the call before the tool runs:
 `tests/unit/test_omp_seat_policy.py` `OmpTaskDenyLiveTest` drives the installed omp against a local fake
 model that asks for a `task` call and gets back `Tool "task" is blocked by user policy. To allow: remove
-"tools.approval.task: deny" from config.` for each role. Revisit the deny when the bridge supports
-subagents.
+"tools.approval.task: deny" from config.` for each role.
+
+Measured on 2026-10-24 at about 22:10Z (omp 18.11.3, macOS) with
+`omp --no-session -e <tree> --model claude-bridge/claude-fable-5-1 --mode json --max-time 240 -p "Use the task tool exactly once to spawn one subagent whose whole job is to reply with the single word PONG, then reply with what it returned."`:
+
+- patches 01-04: the subagent resolved `claude-bridge/claude-fable-5-1` and failed after 44 ms with
+  `No API key found for claude-bridge.`; the parent's next turn ended `"stopReason":"error"`,
+  `"errorMessage":"No API key for provider: claude-bridge"`, exit 1;
+- patches 01-05: the subagent answered `PONG` on `claude-bridge/claude-fable-5-1`, the parent's final turn
+  ended `"stopReason":"stop"`, exit 0;
+- patches 01-05 with `task.agentIdleTtlMs: 3000` in a `--config` overlay and a prompt that spawns one
+  subagent, runs `sleep 15` and spawns a second: the first subagent was parked (disposed) mid-run, which
+  runs the bridge's `session_shutdown` handler (`clearing ACTIVE_STREAM_SIMPLE_KEY` in the debug log); the
+  second subagent registered again, both answered, and the run ended `stop`, exit 0;
+- patches 01-05, one plain `Reply with the single word PONG.` turn: `PONG`, `stop`; the same directory given
+  twice (`-e <tree> -e <tree>/`, or `-e <tree>` plus a `--config` overlay listing it under `extensions:`)
+  runs the bridge's factory once.
+
+These are print-mode runs. The seat failure ran through hcom delivery into an interactive seat, which
+these runs do not cover, so the seat policies keep the deny until a seat measurement shows a Task
+subagent and the next hcom delivery both succeed.
 
 ## Fallbacks
 

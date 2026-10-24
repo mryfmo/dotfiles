@@ -14,6 +14,21 @@ Plan 025 W2b (C-1). The omp seats talk over one private hcom store per program, 
 
 `<to>` is the seat's exact hcom name, so a seat hcom does not know fails with hcom's own `Error: No active agent for @<to>` (exit 1, stderr). hcom accepts any thread name for a mention send and `hcom start` sets no tag (`src/commands/start.rs:486`), so the team of a seat is not checked here; a malformed team is refused by the grammar `^[a-z0-9][a-z0-9_-]{0,63}$`. The pane argument is accepted and unused: hcom delivers to a bound seat itself. The audit seat sends its reply through `hcom-reply <team> -- '<line>'` (`home/dot_local/bin/common/executable_hcom-reply`, on PATH as `~/.local/bin/common/hcom-reply`), which runs `hcom send --thread <team> --name <self> -- <line>` with `<self>` from `hcom list self name`, because `audit.yml` denies `hcom send` in every form (U6d).
 
+### Line kinds
+
+A bus line's first word is its kind, and the levers treat it as an opaque word (`bus-history.sh --kind` matches it exactly):
+
+| Kind      | Sent by                            | Carries                                                                           |
+| --------- | ---------------------------------- | --------------------------------------------------------------------------------- |
+| `TASK`    | the orchestrator                   | `task_id`, `brief=` (a worker) or `head=` and `brief=` (the audit seat)           |
+| `RESULT`  | a worker seat                      | `task_id`, `status=`, `pr=`, `head=`                                              |
+| `VERDICT` | the audit seat or the orchestrator | `task_id`, `verdict=` (`correct`, `incorrect` or `blocked`), `head=`, `findings=` |
+| `PONG`    | any seat                           | `task_id`, `status=` (below) and a one-sentence `note=`                           |
+| `MERGED`  | the orchestrator                   | `task_id`, `sha=` of the merge commit                                             |
+| `HOLD`    | the orchestrator                   | `task_id`, `note=` why the task waits                                             |
+
+The kinds carry no prefix (U35). A seat that still writes the retired `AGMSG-` prefix (`AGMSG-TASK`, ...) is read the same by the stop gate, which strips it before it looks the kind up; `bus-history.sh --kind` treats the two spellings as different words. Two `PONG` statuses belong to the audit loop: the audit seat's `status=measure-request` (`measure=<entry> expect=<one line>`, a runtime claim it may not run itself, sent before its VERDICT) and the orchestrator's answer, `status=measured` (`measure=<entry> note=<pasted line>`) or `status=measure-refused`. `<entry>` is one name of a closed menu (`validate-agent-assets`, `render-check`, `unit-test`, `shellcheck`, `unittest:<module>`), and the orchestrator runs only that entry's fixed command, in a `git archive` copy of the head and never in a seat worktree; a bus line never carries a command it runs (the `hcom-orchestration` skill, step 4). Like every `PONG`, `status=findings` and `status=question` included, none of them moves a task in the stop gate.
+
 ### Receipt and history
 
 `hcom-dispatch` prints one line, `id=<event id> at=<hcom ts> to=<to> kind=<first word>`, read back from the bus by exact id, so the row exists before the receipt does. `bus-history.sh` prints `id<TAB>at<TAB>from<TAB>to<TAB>kind<TAB>body`, ascending by id; `to` is hcom's `delivered_to` joined with commas (`-` when empty, as for a seat's thread reply) and `body` escapes backslash, tab, CR and LF as `\\`, `\t`, `\r` and `\n`, so a row is one line of five tabs.

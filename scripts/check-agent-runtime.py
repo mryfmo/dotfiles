@@ -153,7 +153,8 @@ def chezmoi_drift_warnings() -> list[str]:
     """Classify managed-target drift without changing the destination state."""
     try:
         status_result = subprocess.run(
-            ["chezmoi", "--no-pager", "status"],
+            # run_ scripts are listed on every status because they run on every apply; they are not drift.
+            ["chezmoi", "--no-pager", "status", "--exclude=scripts"],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -165,22 +166,32 @@ def chezmoi_drift_warnings() -> list[str]:
         detail = status_result.stderr.strip() or f"exit {status_result.returncode}"
         return [f"WARN: unable to inspect chezmoi drift: {detail}"]
 
-    warnings: list[str] = []
+    entries: list[tuple[str, str]] = []
     for line in status_result.stdout.splitlines():
         if len(line) < 4:
             continue
-        status, target = line[:2], line[3:]
+        entries.append((line[:2], line[3:]))
+    if not entries:
+        return []
+
+    # One diff for the whole destination: each chezmoi invocation loads the full
+    # source state, so a per-target diff takes hours on hosts with thousands of entries.
+    diff_result = subprocess.run(
+        ["chezmoi", "--no-pager", "diff", "--exclude=scripts"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    diff_blocks = split_chezmoi_diff(diff_result.stdout) if diff_result.returncode == 0 else {}
+
+    warnings: list[str] = []
+    for status, target in entries:
         target_path = Path(target)
-        if not target_path.is_absolute():
-            target_path = HOME / target_path
-        diff_result = subprocess.run(
-            ["chezmoi", "--no-pager", "diff", "--", str(target_path)],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        if diff_result.returncode == 0 and MODE_ONLY_DIFF.fullmatch(diff_result.stdout):
+        if target_path.is_absolute():
+            target_path = target_path.relative_to(HOME) if target_path.is_relative_to(HOME) else target_path
+        block = diff_blocks.get(target_path.as_posix())
+        if block is not None and MODE_ONLY_DIFF.fullmatch(block):
             hint = "permission divergence (mode-only)"
         elif status == " M":
             hint = "unapplied source update"
@@ -190,6 +201,26 @@ def chezmoi_drift_warnings() -> list[str]:
             hint = "managed target drift"
         warnings.append(f"WARN: chezmoi drift {status} {target}: {hint}")
     return warnings
+
+
+def split_chezmoi_diff(output: str) -> dict[str, str]:
+    """Split `chezmoi diff` output into per-target blocks keyed by destination-relative path."""
+    blocks: dict[str, str] = {}
+    current: str | None = None
+    lines: list[str] = []
+    for line in output.splitlines(keepends=True):
+        if line.startswith("diff --git a/"):  # lint-comparisons: allow a diff header prefix, not a path
+            if current is not None:
+                blocks[current] = "".join(lines)
+            # chezmoi never renames, so the header is `a/<path> b/<path>` with equal halves.
+            paths = line[len("diff --git ") :].rstrip("\n")
+            current = paths[2 : (len(paths) - 1) // 2]
+            lines = []
+        if current is not None:
+            lines.append(line)
+    if current is not None:
+        blocks[current] = "".join(lines)
+    return blocks
 
 
 def expected_claude_skill_targets() -> dict[Path, str]:

@@ -1778,17 +1778,38 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(
             self.module.expected_outputs(manifest)[path],
-            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills,
+            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "extensions: []\n",
         )
         manifest["interactive_profile"] = "express"
         manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
+        manifest["omp"]["extensions"] = ["~/.agents/omp/extensions/openai-siwc", "/srv/omp-ext"]
         text = self.module.expected_outputs(manifest)[path]
         self.assertEqual(
             text,
-            header + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n" + skills + "    - /srv/skills\n",
+            header
+            + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n"
+            + skills
+            + "    - /srv/skills\n"
+            + "extensions:\n  - ~/.agents/omp/extensions/openai-siwc\n  - /srv/omp-ext\n",
         )
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)
+
+    def test_omp_extensions_must_be_a_list_of_home_or_absolute_paths(self) -> None:
+        for value, message in (
+            ("~/ext", "omp.extensions must be a list of extension directories"),
+            ({"claude-bridge": "~/ext"}, "omp.extensions must be a list of extension directories"),
+            (["ext"], "omp.extensions entries must be ~/ or absolute paths: 'ext'"),
+            (["~/x; rm -rf"], "omp.extensions entries must be ~/ or absolute paths"),
+            ([3], "omp.extensions entries must be ~/ or absolute paths: 3"),
+        ):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                manifest["omp"]["extensions"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_omp_config(manifest)
+                self.assertIn(message, stderr.getvalue())
 
     def test_omp_skills_directories_must_be_home_or_absolute_paths(self) -> None:
         for value in (None, [], "~/.agents/skills", ["skills"], ["~"], ["~other/skills"], ["/"], ["~/x; rm -rf"], [3]):

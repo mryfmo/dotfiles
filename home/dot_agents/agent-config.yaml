@@ -25,6 +25,13 @@ skills:
 omp:
   skills_directories:
     - ~/.agents/skills
+  # Extension directories a plain `omp` launch loads, rendered as the top-level `extensions`
+  # key of ~/.omp/agent/config.yml. omp skips a default model whose provider is not registered
+  # and starts on another one, so validate-agent-assets.py refuses an interactive_profile omp model
+  # whose extension provider is missing here. Seats use named profiles, which never read that
+  # file; hcom-seat passes their extensions with -e (docs/pi-claude-bridge.md).
+  extensions:
+    - ~/.local/lib/omp-extensions/pi-claude-bridge
   # omp providers each seat overlay switches off as disabledProviders (regime-cutover U22).
   # agent-plugins reads the Claude Code marketplace registry, where pstack is installed as
   # a plugin too: its copy of the skills ~/.agents/skills already lists is refused with one

@@ -863,6 +863,31 @@ def validate_assets(manifest: dict[str, Any]) -> None:
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
 OMP_RETIRED_ROUTES = ("openai-codex",)
+# omp model providers an extension registers, by the directory that registers them; a provider missing here
+# is omp-builtin (anthropic).
+OMP_EXTENSION_PROVIDERS = {
+    "claude-bridge": "~/.local/lib/omp-extensions/pi-claude-bridge",
+    "openai-siwc": "~/.agents/omp/extensions/openai-siwc",
+}
+
+
+def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, Any]) -> None:
+    """A plain omp launch reaches the interactive model's provider only through omp.extensions.
+
+    omp 18.11.3 findInitialModel (src/config/model-resolver.ts:2391-2407) skips a `modelRoles.default` whose
+    provider no loaded extension registered and silently starts on another authenticated provider, or ends with
+    `No default model selected.`.
+    """
+    model = manifest["model_profiles"][manifest["interactive_profile"]]["omp"]["model"]
+    provider = model.split("/", 1)[0]
+    needed = OMP_EXTENSION_PROVIDERS.get(provider)
+    omp = manifest.get("omp")
+    extensions = omp.get("extensions", []) if isinstance(omp, dict) else []
+    if needed is not None and (not isinstance(extensions, list) or needed not in extensions):
+        fail(
+            f"{manifest_path} interactive_profile omp model {model} needs {needed} in omp.extensions; "
+            f"a plain omp launch skips a default model whose provider {provider} is not registered"
+        )
 
 
 def validate_agent_manifest() -> dict[str, Any]:
@@ -931,6 +956,7 @@ def validate_agent_manifest() -> dict[str, Any]:
             )
         if not isinstance(omp_model, str) or not OMP_MODEL_RE.fullmatch(omp_model):
             fail(f"{manifest_path} model profile {name}.omp.model must match {OMP_MODEL_RE.pattern}: {omp_model!r}")
+    validate_omp_interactive_provider(manifest_path, manifest)
     if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):
         fail(f"{manifest_path} must keep model settings in model_profiles only")
     for name, server in manifest.get("mcp_servers", {}).items():

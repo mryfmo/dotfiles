@@ -53,7 +53,7 @@ Current-target tables outside the generated baseline are also preserved so local
 
 ## omp runtime state
 
-omp writes its own keys into `~/.omp/agent/config.yml`, so the file is managed through `home/dot_omp/private_agent/modify_private_config.yml`; the `private_` attributes keep `~/.omp/agent` at 0700 and the file at 0600, because the directory also holds omp's auth databases. The script sets `modelRoles.default` from the generated `home/.chezmoitemplates/omp-config-managed.yml` and keeps every other key and role. Its merge runs under `uv run --no-project --with pyyaml`, so the system `python3` needs no PyYAML; without `uv` it leaves the file unchanged and warns on stderr.
+omp writes its own keys into `~/.omp/agent/config.yml`, so the file is managed through `home/dot_omp/private_agent/modify_private_config.yml`; the `private_` attributes keep `~/.omp/agent` at 0700 and the file at 0600, because the directory also holds omp's auth databases. The script sets `modelRoles.default`, `skills.customDirectories` and `extensions` from the generated `home/.chezmoitemplates/omp-config-managed.yml` (a leading `~` expanded) and keeps every other key and role. `extensions` loads the pi-claude-bridge on a plain `omp` launch, because the default route `claude-bridge/...` exists only while that extension is loaded; a hand-added entry in the live file is replaced on the next apply. Its merge runs under `uv run --no-project --with pyyaml`, so the system `python3` needs no PyYAML; without `uv` it leaves the file unchanged and warns on stderr.
 
 ## Commands
 

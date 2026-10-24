@@ -1,10 +1,11 @@
 #!/bin/sh
 # @file home/dot_omp/private_agent/modify_private_config.yml
-# @brief Carry the managed omp model role and skill roots into ~/.omp/agent/config.yml.
+# @brief Carry the managed omp model role, skill roots and extensions into ~/.omp/agent/config.yml.
 # @description
-#   chezmoi passes the live config on stdin. The merge sets modelRoles.default
-#   and skills.customDirectories from home/.chezmoitemplates/omp-config-managed.yml
-#   (a leading ~ expanded to $HOME, see docs/omp-skills.md) and keeps every other
+#   chezmoi passes the live config on stdin. The merge sets modelRoles.default,
+#   skills.customDirectories and extensions from
+#   home/.chezmoitemplates/omp-config-managed.yml (a leading ~ expanded to
+#   $HOME, see docs/omp-skills.md) and keeps every other
 #   key and role omp wrote. It runs under `uv run --with pyyaml`, so the system
 #   python3 needs no PyYAML. Without uv, or when the live file is not a YAML
 #   mapping, it prints its input unchanged with one warning on stderr and
@@ -51,6 +52,8 @@ def main():
         return keep(current, "skills is not a mapping")
     # `omp skill list` resolves a non-absolute entry against cwd before omp expands ~ (src/cli/skill-list.ts:58-64).
     data["skills"]["customDirectories"] = [os.path.expanduser(d) for d in managed["skills"]["customDirectories"]]
+    # A plain launch registers the default model's extension provider only through this list (docs/pi-claude-bridge.md).
+    data["extensions"] = [os.path.expanduser(d) for d in managed["extensions"]]
     sys.stdout.write(yaml.safe_dump(data, sort_keys=False))
     return 0
 

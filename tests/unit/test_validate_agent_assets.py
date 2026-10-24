@@ -374,6 +374,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "skills": {"canonical_dir": "~/.agents/skills"},
             "model_profiles": profiles,
             "interactive_profile": "deep",
+            "omp": {"extensions": ["~/.local/lib/omp-extensions/pi-claude-bridge"]},
             "claude": {},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
             "mcp_servers": {},
@@ -408,6 +409,43 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
                 self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
+
+    def test_agent_manifest_requires_the_extension_that_registers_the_interactive_omp_provider(self) -> None:
+        bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"
+        siwc = "~/.agents/omp/extensions/openai-siwc"
+        for model, omp, needed in (
+            ("claude-bridge/claude-model", {"extensions": []}, bridge),
+            ("claude-bridge/claude-model", {"extensions": [siwc]}, bridge),
+            ("claude-bridge/claude-model", None, bridge),
+            ("openai-siwc/gpt-model", {"extensions": [bridge]}, siwc),
+        ):
+            with self.subTest(model=model, omp=omp):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["deep"]["omp"]["model"] = model
+                if omp is None:
+                    del manifest["omp"]
+                else:
+                    manifest["omp"] = omp
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(
+                    f"interactive_profile omp model {model} needs {needed} in omp.extensions", stderr.getvalue()
+                )
+        for model, extensions in (
+            ("claude-bridge/claude-model", [bridge]),
+            ("openai-siwc/gpt-model", [siwc]),
+            ("anthropic/claude-model", []),
+        ):
+            with self.subTest(model=model, extensions=extensions):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["deep"]["omp"]["model"] = model
+                manifest["omp"] = {"extensions": extensions}
+                self.module.validate_agent_manifest()
+        # Only the interactive profile reaches a plain launch; a seat profile's route needs no entry here.
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["audit"]["omp"]["model"] = "openai-siwc/gpt-model"
+        self.module.validate_agent_manifest()
 
     def test_agent_manifest_refuses_the_retired_openai_codex_route_by_name(self) -> None:
         manifest = self.write_valid_agent_manifest()

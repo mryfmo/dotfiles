@@ -143,7 +143,7 @@ class ShellCheckTargetBehaviourTest(unittest.TestCase):
             ("masked-return.sh", "In masked-return.sh line 2:"),
             (
                 "masked-dirname.sh",
-                "masked-dirname.sh:2: a $(dirname) or $(basename) inside another command substitution",
+                "masked-dirname.sh:2: a command substitution inside another one loses its status",
             ),
         ):
             for installer, masked in ((finding, "clean.sh"), ("clean.sh", finding)):

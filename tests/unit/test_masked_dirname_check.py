@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the supplemental check for a dirname or basename substitution that ShellCheck's SC2312 exempts."""
+"""Exercise the supplemental check for a command substitution nested inside another, the shape SC2312 lets through."""
 
 from __future__ import annotations
 
@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
 
 # scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect the audit seat found.
+MESSAGE = (
+    "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
+)
+
 U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || exit 2\n'
 
 
@@ -42,8 +46,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
 
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertEqual(
-            f"{lever}:3: a $(dirname) or $(basename) inside another command substitution loses its status;"
-            " capture it first or split the path in the shell\n",
+            f"{lever}:3: {MESSAGE}\n",
             result.stdout,
         )
 
@@ -53,7 +56,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         result = self.run_check(lever)
 
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertIn(f"{lever}:2: a $(dirname) or $(basename)", result.stdout)
+        self.assertIn(f"{lever}:2: {MESSAGE}", result.stdout)
 
     def test_a_dirname_of_a_plain_variable_and_text_that_only_mentions_it_pass(self) -> None:
         clean = self.script(
@@ -78,7 +81,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         result = self.run_check(clean, lever)
 
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertEqual(1, result.stdout.count(":2: a $(dirname)"))
+        self.assertEqual(1, result.stdout.count(f":2: {MESSAGE}"))
         self.assertIn(str(lever), result.stdout)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads a mode-000 file")
@@ -101,7 +104,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
                 self.assertIn("refused", result.stderr)
 
-    def test_a_substitution_split_across_lines_is_reported_where_the_dirname_opens(self) -> None:
+    def test_a_substitution_split_across_lines_is_reported_where_the_inner_one_opens(self) -> None:
         shapes = {
             "continued": 'dir=$(cd \\\n    "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)\n',
             "multiline": 'dir=$(\n    cd "$(dirname "$0")" && pwd -P\n)\n',
@@ -114,7 +117,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 result = self.run_check(lever)
 
                 self.assertEqual(1, result.returncode, result.stderr)
-                self.assertTrue(result.stdout.startswith(f"{lever}:3: a $(dirname) or $(basename)"), result.stdout)
+                self.assertTrue(result.stdout.startswith(f"{lever}:3: {MESSAGE}"), result.stdout)
                 self.assertEqual(1, result.stdout.count("\n"), result.stdout)
 
     def test_an_unquoted_heredoc_body_is_read_as_expanded_text(self) -> None:
@@ -127,7 +130,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 result = self.run_check(path)
 
                 self.assertEqual(1, result.returncode, result.stderr)
-                self.assertIn(f"{path}:3: a $(dirname) or $(basename)", result.stdout)
+                self.assertIn(f"{path}:3: {MESSAGE}", result.stdout)
 
     def test_a_quoted_heredoc_body_and_a_multiline_single_quote_are_literal(self) -> None:
         clean = self.script(
@@ -154,13 +157,13 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         result = self.run_check(lever)
 
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertIn(f"{lever}:6: a $(dirname) or $(basename)", result.stdout)
+        self.assertIn(f"{lever}:6: {MESSAGE}", result.stdout)
 
-    def test_an_inner_opener_split_from_its_dirname_or_basename_is_reported_where_the_command_starts(self) -> None:
+    def test_an_inner_opener_split_from_its_command_is_reported_where_the_inner_one_opens(self) -> None:
         shapes = {
-            "newline": ('dir=$(cd "$(\n    dirname "$0")" && pwd -P)\n', 3),
-            "continuation": ('name=$(printf %s "$( \\\n    basename "$0")")\n', 3),
-            "blank line": ('dir=$(cd "$(\n\n  dirname -- "$0")")\n', 4),
+            "newline": ('dir=$(cd "$(\n    dirname "$0")" && pwd -P)\n', 2),
+            "continuation": ('name=$(printf %s "$( \\\n    basename "$0")")\n', 2),
+            "blank line": ('dir=$(cd "$(\n\n  dirname -- "$0")")\n', 2),
             "same-line blank": ('dir=$(cd "$( dirname "$0")")\n', 2),
         }
         for name, (body, line) in shapes.items():
@@ -170,11 +173,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 result = self.run_check(lever)
 
                 self.assertEqual(1, result.returncode, result.stderr)
-                self.assertEqual(
-                    f"{lever}:{line}: a $(dirname) or $(basename) inside another command substitution loses its"
-                    " status; capture it first or split the path in the shell\n",
-                    result.stdout,
-                )
+                self.assertEqual(f"{lever}:{line}: {MESSAGE}\n", result.stdout)
 
     def test_every_quoted_delimiter_form_ends_its_heredoc_and_the_scan_resumes(self) -> None:
         # Each body is literal (a nested dirname and an apostrophe that must not count), and the U31 shape after
@@ -197,22 +196,37 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         result = self.run_check(lever)
 
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertEqual([f"{lever}:{n}" for n in expected], [x.split(": a ")[0] for x in result.stdout.splitlines()])
+        self.assertEqual([f"{lever}:{n}" for n in expected], [x.removesuffix(f": {MESSAGE}") for x in result.stdout.splitlines()])
 
-    def test_a_comment_or_a_split_command_word_inside_the_inner_substitution_is_reported(self) -> None:
-        # Round-2 audit shapes a lexical scan missed: a comment between `$(` and its command word, a command word
-        # split by a line continuation; and quoting, a `case` pattern's `)` and backquotes the parser resolves.
+    def test_the_command_name_is_irrelevant(self) -> None:
+        # Spellings bash resolves at run time, a command word that is an expansion, and a command that is neither
+        # dirname nor basename: each nested substitution is reported at the line where it opens.
         shapes = {
-            "comment": ('dir=$(cd "$(\n    # Locate this script.\n    dirname "$0")" && pwd -P)\n', 4),
-            "continued word": ('dir=$(cd "$(dir\\\nname "$0")" && pwd -P)\n', 2),
-            "escaped word": ('dir=$(cd "$(\\dirname "$0")")\n', 2),
-            "quoted word": ('name=$(printf %s "$("basename" "$0")")\n', 2),
-            "ansi-c word": ("dir=$(cd \"$($'dirname' \"$0\")\")\n", 2),
-            "ansi-c escaped word": ("dir=$(cd \"$($'dir\\x6eame' \"$0\")\")\n", 2),
             "ansi-c wrapped octal word": ("dir=$(cd \"$($'\\544irname' \"$0\")\")\n", 2),
-            "locale-quoted word": ('dir=$(cd "$($"dirname" "$0")")\n', 2),
             "command prefix": ('dir=$(cd "$(command -p dirname "$0")")\n', 2),
-            "exec prefix": ('dir=$(cd "$(exec basename "$0")")\n', 2),
+            "exec prefix": ('dir=$(cd "$(exec -a x dirname "$0")")\n', 2),
+            "absolute path": ('dir=$(cd "$(/usr/bin/dirname "$0")")\n', 2),
+            "expansion word": ('dir=$(cd "$("${tool}" "$0")")\n', 2),
+            "other command": ('x=$(echo "$(printf %s x)")\n', 2),
+            "inner on a later line": ('x=$(echo \\\n  "$(printf %s x)")\n', 3),
+        }
+        for name, (body, line) in shapes.items():
+            with self.subTest(shape=name):
+                lever = self.script(name.replace(" ", "-"), body)
+
+                result = self.run_check(lever)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(f"{lever}:{line}: {MESSAGE}\n", result.stdout)
+
+    def test_a_comment_a_split_word_a_case_pattern_or_backquotes_inside_the_outer_substitution_are_reported(
+        self,
+    ) -> None:
+        # Round-2 audit shapes a lexical scan missed: a comment between `$(` and its command word, a command word
+        # split by a line continuation, a `case` pattern's `)` and backquotes the parser resolves.
+        shapes = {
+            "comment": ('dir=$(cd "$(\n    # Locate this script.\n    dirname "$0")" && pwd -P)\n', 2),
+            "continued word": ('dir=$(cd "$(dir\\\nname "$0")" && pwd -P)\n', 2),
             "case pattern": ('x=$(case $y in\n  a) echo "$(dirname "$y")" ;;\nesac)\n', 3),
             "backquotes": ('x=$(cd "`dirname "$0"`")\n', 2),
         }
@@ -223,18 +237,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 result = self.run_check(lever)
 
                 self.assertEqual(1, result.returncode, result.stderr)
-                self.assertEqual(
-                    f"{lever}:{line}: a $(dirname) or $(basename) inside another command substitution loses its"
-                    " status; capture it first or split the path in the shell\n",
-                    result.stdout,
-                )
-
-    def test_a_command_word_with_an_expansion_is_not_a_literal_dirname(self) -> None:
-        clean = self.script("clean", 'dir=$(cd "$("${tool}" "$0")")\ndir=$(cd "$(dirname$x "$0")")\n')
-
-        result = self.run_check(clean)
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(f"{lever}:{line}: {MESSAGE}\n", result.stdout)
 
     def test_a_file_shfmt_cannot_parse_refuses_the_list(self) -> None:
         bodies = {

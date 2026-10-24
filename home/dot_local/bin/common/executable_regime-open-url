@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""regime-open-url: hand a sign-in URL from a seat host to the laptop's browser (regime-cutover U37).
+
+On the seat host (Ubuntu), the SSH session from the laptop carries `RemoteForward 127.0.0.1:1456
+127.0.0.1:1456` (the `Match tagged seat-host` block of `~/.ssh/config`), so `127.0.0.1:1456` here is the
+laptop's `regime-url-opener`, which opens only allow-listed sign-in hosts. Claude Code calls it as
+`BROWSER`; omp's `openPath` calls `xdg-open`, which `seat-login-preflight` points here for the login
+only. The URL is posted as the body of `POST /open` with `X-Regime-Open: 1`; the URL is never logged here.
+
+Exit 0 when the laptop opened it; 1 with the reason on stderr otherwise, and the caller has already shown
+the URL, so the operator can open it by hand.
+
+Usage: regime-open-url <url>
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import urllib.error
+import urllib.request
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 1 or not argv[0]:
+        print("usage: regime-open-url <url>", file=sys.stderr)
+        return 2
+    url = argv[0]
+    port = os.environ.get("REGIME_URL_OPENER_PORT", "1456")
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/open",
+        data=url.encode("utf-8"),
+        method="POST",
+        headers={"X-Regime-Open": "1", "Content-Type": "text/plain; charset=utf-8"},
+    )
+    # A proxy setting must never carry the loopback request off this host.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(request, timeout=10) as response:
+            response.read()
+    except urllib.error.HTTPError as error:
+        reason = error.read().decode("utf-8", "replace").strip() or error.reason
+        print(
+            f"regime-open-url: the laptop opener refused the URL ({error.code}: {reason}); open the URL shown above yourself",
+            file=sys.stderr,
+        )
+        return 1
+    except (urllib.error.URLError, OSError) as error:
+        reason = getattr(error, "reason", error)
+        print(
+            f"regime-open-url: no laptop opener on 127.0.0.1:{port} ({reason}); connect with the `seat-host` SSH entry "
+            "and run regime-url-opener on the laptop, or open the URL shown above yourself",
+            file=sys.stderr,
+        )
+        return 1
+    print("regime-open-url: opened the sign-in URL in the laptop browser", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

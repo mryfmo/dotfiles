@@ -127,8 +127,9 @@ PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
 # Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
+OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+# The same routes as a set, for omp.disabled_providers; a test keeps it equal to OMP_MODEL_RE's alternation.
 OMP_MODEL_ROUTES = ("openai-siwc", "anthropic", "claude-bridge")
-OMP_MODEL_RE = re.compile(rf"^({'|'.join(OMP_MODEL_ROUTES)})/[A-Za-z0-9._-]+$")
 OMP_RETIRED_ROUTES = ("openai-codex",)
 OMP_ACCEPTED_ROUTES = "claude-bridge, openai-siwc or anthropic"
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")

@@ -1853,6 +1853,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     self.module.expected_outputs(manifest)
                 self.assertIn(message, stderr.getvalue())
 
+    def test_the_model_route_set_is_the_route_regex_alternation(self) -> None:
+        alternation = re.fullmatch(r"\^\(([a-z|-]+)\)/.*", self.module.OMP_MODEL_RE.pattern)
+
+        self.assertIsNotNone(alternation, self.module.OMP_MODEL_RE.pattern)
+        self.assertEqual(sorted(alternation.group(1).split("|")), sorted(self.module.OMP_MODEL_ROUTES))
+
     def test_omp_roles_must_map_launcher_safe_roles_to_model_profiles(self) -> None:
         for value in (None, {}, "worker", ["worker"], {"worker": "nope"}, {"Worker-1": "standard"}, {"worker": 3}):
             with self.subTest(value=value):

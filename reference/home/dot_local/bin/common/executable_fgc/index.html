@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4296,10 +4379,16 @@
 
 <span class="c1"># @description Checkout a branch selected from the local branch list.</span>
 <span class="k">function</span><span class="w"> </span>fgc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>for-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(refname:short)'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>branches<span class="w"> </span>branch
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">branches</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>for-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(refname:short)'</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Cannot list the local branches."</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">branch</span><span class="o">=</span><span class="k">$(</span>fzf<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$branches</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="s2">"</span><span class="nv">$branch</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>fgc
 <span class="k">fi</span>
 </code></pre></div>

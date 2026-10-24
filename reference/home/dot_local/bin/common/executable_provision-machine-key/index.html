@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4285,6 +4368,7 @@
 <li><code>ensure_machine_ssh_key</code></li>
 <li><code>main</code></li>
 <li><code>print_registration_instructions</code></li>
+<li><code>short_hostname</code></li>
 <li><code>ssh_key_email</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -4305,9 +4389,17 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">.pub"</span>
 
+<span class="c1"># @description Print the short host name, or fail naming the read when neither form works.</span>
+<span class="k">function</span><span class="w"> </span>short_hostname<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>hostname<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'provision-machine-key: cannot read the host name for the SSH key comment\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Return the email address used as the SSH key comment.</span>
 <span class="k">function</span><span class="w"> </span>ssh_key_email<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>configured_email
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>configured_email<span class="w"> </span>host
 <span class="w">    </span><span class="nv">configured_email</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>--get<span class="w"> </span>user.email<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">configured_email</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4315,11 +4407,14 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s@%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">host</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>short_hostname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s@%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">host</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Generate the machine SSH key through ssh-keygen when it does not already exist.</span>
 <span class="k">function</span><span class="w"> </span>ensure_machine_ssh_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>email<span class="w"> </span>host
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Machine SSH key already exists: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4328,8 +4423,10 @@
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh"</span>
 <span class="w">    </span>chmod<span class="w"> </span><span class="m">0700</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh"</span>
 
+<span class="w">    </span><span class="nv">email</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>ssh_key_email<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">host</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>short_hostname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Generating machine SSH key: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>ssh_key_email<span class="k">)</span><span class="s2"> (</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">)"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">email</span><span class="si">}</span><span class="s2"> (</span><span class="si">${</span><span class="nv">host</span><span class="si">}</span><span class="s2">)"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-N<span class="w"> </span><span class="s2">""</span>
 <span class="w">    </span>chmod<span class="w"> </span><span class="m">0600</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span>chmod<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>

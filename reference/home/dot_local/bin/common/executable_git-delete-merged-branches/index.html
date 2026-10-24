@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4302,15 +4385,18 @@
 <span class="o">}</span>
 
 <span class="c1"># @description Detect the default branch name from the `origin` remote.</span>
+<span class="c1"># @exitcode 1 When `git remote show origin` fails or names no HEAD branch.</span>
 <span class="k">function</span><span class="w"> </span>get_default_branch<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>default_branch
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>remote_info<span class="w"> </span>default_branch
 
-<span class="w">    </span><span class="nv">default_branch</span><span class="o">=</span><span class="k">$(</span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>git<span class="w"> </span>remote<span class="w"> </span>show<span class="w"> </span>origin<span class="k">)</span>
-<span class="w">    </span><span class="nv">default_branch</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'/HEAD branch/s/.*: //p'</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">remote_info</span><span class="o">=</span><span class="k">$(</span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>git<span class="w"> </span>remote<span class="w"> </span>show<span class="w"> </span>origin<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">default_branch</span><span class="o">=</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'/HEAD branch/s/.*: //p'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remote_info</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Delete local branches whose content is already on the default branch.</span>
+<span class="c1"># @exitcode 1 When the default branch, the branch list or a branch's squash check cannot be read; nothing more is deleted.</span>
 <span class="k">function</span><span class="w"> </span>git-delete-merged-branches<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># delete all git branches which have been "squash and merge" via GitHub</span>
 <span class="w">    </span><span class="c1"># ref. https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github</span>
@@ -4319,19 +4405,34 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>default_branch
-<span class="w">    </span><span class="nv">default_branch</span><span class="o">=</span><span class="k">$(</span>get_default_branch<span class="k">)</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>default_branch<span class="w"> </span>branches<span class="w"> </span>branch<span class="w"> </span>merge_base<span class="w"> </span>tree<span class="w"> </span>squashed<span class="w"> </span>cherry
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">default_branch</span><span class="o">=</span><span class="k">$(</span>get_default_branch<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"git-delete-merged-branches: cannot read the HEAD branch of origin; nothing deleted"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span>-q<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>git<span class="w"> </span>for-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span><span class="s2">"--format=%(refname:short)"</span><span class="w"> </span><span class="p">|</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>branch<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="nv">merge_base</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>merge-base<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">                </span><span class="o">[[</span><span class="w"> </span><span class="k">$(</span>git<span class="w"> </span>cherry<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>commit-tree<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span><span class="s2">"</span><span class="nv">$branch</span><span class="s2">^{tree}"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">merge_base</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-m<span class="w"> </span>_<span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"-"</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">                </span>git<span class="w"> </span>branch<span class="w"> </span>-D<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">done</span>
+<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span>-q<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">branches</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>for-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span><span class="s2">"--format=%(refname:short)"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"git-delete-merged-branches: cannot list the local branches; nothing deleted"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>branch<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="c1"># No common ancestor: the branch was never forked from the default branch.</span>
+<span class="w">        </span><span class="nv">merge_base</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>merge-base<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">^{tree}"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>!<span class="w"> </span><span class="nv">squashed</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>commit-tree<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">merge_base</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-m<span class="w"> </span>_<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>!<span class="w"> </span><span class="nv">cherry</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>cherry<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">default_branch</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">squashed</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"git-delete-merged-branches: cannot check whether </span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2"> was squash-merged; stopping"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">cherry</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"-"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>git<span class="w"> </span>branch<span class="w"> </span>-D<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">branches</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>git-delete-merged-branches
 <span class="k">fi</span>
 </code></pre></div>

@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4630,9 +4713,10 @@ peer_name<span class="o">()</span><span class="w"> </span><span class="o">{</spa
 <span class="c1"># @arg $1 string Role (its profile has the same name).</span>
 <span class="c1"># @arg $2 string Route.</span>
 login<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">role</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">route</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">role</span><span class="o">=</span><span class="nv">$1</span><span class="w"> </span><span class="nv">route</span><span class="o">=</span><span class="nv">$2</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>peer
 <span class="w">    </span><span class="nv">scratch</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/seat-login.XXXXXX"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"cannot create a scratch directory"</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>peer_name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nv">peer</span><span class="o">=</span><span class="k">$(</span>peer_name<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>die<span class="w"> </span><span class="s2">"cannot name the host whose browser opens the sign-in"</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">peer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">route</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>openai-siwc<span class="o">)</span>
 <span class="w">        </span><span class="c1"># The CLI login loads extensions from settings only, so a one-command overlay names it.</span>

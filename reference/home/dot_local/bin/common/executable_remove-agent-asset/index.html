@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4425,7 +4508,8 @@
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/hooks/herdr-agent-state.sh"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/herdr-agent-state.sh"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/hcom"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are normalize_action_path forms</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
@@ -4530,10 +4614,11 @@
 <span class="c1"># @arg $1 path Recorded path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>is_plugin_config_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>candidate
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>candidate<span class="w"> </span>settings_path<span class="w"> </span>config_path
 <span class="w">    </span><span class="nv">candidate</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span>
+<span class="w">    </span><span class="nv">settings_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">config_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>normalize_action_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_ASSET_ROOT</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">candidate</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are normalize_action_path forms</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4722,7 +4807,12 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: unknown manifest step: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">STEP</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Known steps: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.steps | keys | join(", ")'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MANIFEST_PATH</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>known_steps
+<span class="w">        </span><span class="nv">known_steps</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.steps | keys | join(", ")'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MANIFEST_PATH</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span>fail<span class="w"> </span><span class="s2">"cannot list the steps of </span><span class="si">${</span><span class="nv">MANIFEST_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Known steps: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">known_steps</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">'</span>
@@ -4734,13 +4824,21 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>value
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>value<span class="w"> </span>values
+<span class="w">    </span><span class="nv">values</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.paths[]'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>fail<span class="w"> </span><span class="s2">"cannot read the recorded paths of manifest entry: </span><span class="si">${</span><span class="nv">STEP</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>value<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">RECORDED_PATHS</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.paths[]'</span><span class="o">)</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">RECORDED_PATHS</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">values</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">values</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.commands[]'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>fail<span class="w"> </span><span class="s2">"cannot read the recorded commands of manifest entry: </span><span class="si">${</span><span class="nv">STEP</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>value<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">RECORDED_COMMANDS</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ENTRY</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.commands[]'</span><span class="o">)</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">RECORDED_COMMANDS</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">values</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

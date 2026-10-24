@@ -3763,7 +3763,7 @@
   <span class="md-ellipsis">
     
   
-    Lib
+    Ci
   
 
     
@@ -3776,6 +3776,89 @@
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9_4_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ci
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../scripts/ci/masked-dirname-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/ci/masked-dirname-check.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3892,10 +3975,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_4_12" >
         
           
-          <label class="md-nav__link" for="__nav_9_4_11" id="__nav_9_4_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_9_4_12" id="__nav_9_4_12_label" tabindex="0">
             
   
   
@@ -3913,8 +3996,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_4_11">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_9_4_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4340,7 +4423,7 @@
 <span class="c1">#   other pre-push hook is left alone.</span>
 <span class="c1"># @arg $1 workdir Repository path.</span>
 <span class="k">function</span><span class="w"> </span>remove_retired_pre_push_stub<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>common_dir<span class="w"> </span>hook
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>common_dir<span class="w"> </span>hook<span class="w"> </span>blob<span class="w"> </span>header
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">stub_blob</span><span class="o">=</span>af94a0b55e08a02423f72f3d4f713a4a804d905e
 
 <span class="w">    </span><span class="nv">common_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4348,10 +4431,20 @@
 <span class="w">    </span><span class="c1"># The installer never wrote outside the common git dir (a core.hooksPath</span>
 <span class="w">    </span><span class="c1"># elsewhere was left alone), so a hook there is not ours to remove.</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span>/*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>hash-object<span class="w"> </span>--no-filters<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stub_blob</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">blob</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>hash-object<span class="w"> </span>--no-filters<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot hash %s, so whether it is the retired main-push guard stub is unknown; nothing removed\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">blob</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stub_blob</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">/orch-push-main.log"</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: removed the retired main-push guard stub at %s; the GitHub ruleset on main is the boundary.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>2p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"# herdr-agents main-push guard:"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">header</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>2p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot read %s, so whether it is an edited main-push guard stub is unknown\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">header</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"# herdr-agents main-push guard:"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: %s is an edited copy of the retired main-push guard stub; leaving it unchanged. Remove it by hand: without the guard mode it may refuse every push to main.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
@@ -4419,11 +4512,16 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>real_workdir<span class="w"> </span>real_home
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">real_workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="nv">real_home</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot resolve %s or the home directory to a physical path; nothing retired from it\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">real_workdir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">real_home</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg retire for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span>remove_retired_pre_push_stub<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span>remove_retired_pre_push_stub<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">real_workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
@@ -4431,7 +4529,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">claude_hooks_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/.claude/settings.local.json"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">teams_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/teams"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">acted</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>rows<span class="w"> </span>team<span class="w"> </span>name<span class="w"> </span>rule<span class="w"> </span>hooks<span class="w"> </span>guard
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">acted</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>rows<span class="w"> </span>team<span class="w"> </span>name<span class="w"> </span>rule<span class="w"> </span>rules<span class="w"> </span>hooks<span class="w"> </span>guard
 
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="p">%/*</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># The command substitution runs in a subshell, so a read error exits it and</span>
@@ -4450,9 +4548,13 @@
 <span class="w">                </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">            </span><span class="k">fi</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: removed the agmsg hooks from %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">rules</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.permissions.allow[]? | select(contains("agmsg/scripts/"))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot read the allow rules of %s after delivery.sh set off\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="k">fi</span>
 <span class="w">            </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>rule<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">                </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">            </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.permissions.allow[]? | select(contains("agmsg/scripts/"))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
+<span class="w">            </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rules</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">report_skips</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--report-skips<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
@@ -4523,7 +4625,7 @@
 <span class="c1"># @exitcode 1 When every registration is DIR or a clone of this repository.</span>
 <span class="c1"># @exitcode 2 When the member's registrations cannot be read.</span>
 <span class="k">function</span><span class="w"> </span>agmsg_member_other_project<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">config</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="nv">$4</span><span class="s2">"</span><span class="w"> </span>rows<span class="w"> </span>row<span class="w"> </span>other
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">config</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="nv">$4</span><span class="s2">"</span><span class="w"> </span>rows<span class="w"> </span>row<span class="w"> </span>other<span class="w"> </span>other_identity
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">registrations</span><span class="o">=()</span>
 
@@ -4544,7 +4646,10 @@
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="c1"># The same directory (by device and inode), whatever path spells it.</span>
 <span class="w">            </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nv">other_identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">                </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">other_identity</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4568,7 +4673,9 @@
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>config<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="s2">"</span>/*/config.json<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="c1"># The glob ends in /config.json, so the team is the directory above it.</span>
+<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="p">%/config.json</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span>--arg<span class="w"> </span>team<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.agents // {} | to_entries[] | .value</span>
 <span class="s1">            | (if (.registrations | type) == "array" then .registrations else [{type: .type, project: .project}] end)[]</span>
 <span class="s1">            | select(.type == "claude-code" and (.project | type) == "string" and .project != "") | {project, team: $team}'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4594,7 +4701,10 @@
 <span class="w">    </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>config<span class="w"> </span>--get<span class="w"> </span>remote.origin.url<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">""</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="c1"># https://host/owner/repo(.git) and git@host:owner/repo(.git) -&gt; host/owner/repo</span>
-<span class="w">    </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-E<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[a-z+]+://([^@/]*@)?##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[^@/]*@([^:/]+):#\1/#'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#/+$##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#\.git$##'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'[:upper:]'</span><span class="w"> </span><span class="s1">'[:lower:]'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-E<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[a-z+]+://([^@/]*@)?##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[^@/]*@([^:/]+):#\1/#'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#/+$##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#\.git$##'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'[:upper:]'</span><span class="w"> </span><span class="s1">'[:lower:]'</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot normalize the origin URL of %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s| %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
@@ -4609,16 +4719,20 @@
 <span class="c1"># @arg $1 clone Absolute path of the clone this runs in.</span>
 <span class="c1"># @exitcode 1 As retire_agmsg, or when a team config cannot be read.</span>
 <span class="k">function</span><span class="w"> </span>retire_registered_agmsg_projects<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">clone</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>registrations<span class="w"> </span>row<span class="w"> </span>project<span class="w"> </span>team<span class="w"> </span>identity
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">clone</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>registrations<span class="w"> </span>grouped<span class="w"> </span>row<span class="w"> </span>project<span class="w"> </span>project_identity<span class="w"> </span>team<span class="w"> </span>identity
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">rows</span><span class="o">=()</span>
 
 <span class="w">    </span><span class="nv">registrations</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>registered_agmsg_projects<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="c1"># One visit per project, its teams joined; collected first so no command</span>
 <span class="w">    </span><span class="c1"># below reads the list as its stdin.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">grouped</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-sc<span class="w"> </span><span class="s1">'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">registrations</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot group the registered agmsg projects by project\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>row<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-sc<span class="w"> </span><span class="s1">'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">registrations</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">grouped</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">rows</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.project'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.teams'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
@@ -4632,7 +4746,11 @@
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="c1"># The same directory (by device and inode), whatever path spells it.</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">project_identity</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">project_identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">project_identity</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: registered project %s (team %s) is not a clone of this repository; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
@@ -4667,10 +4785,16 @@
 require_command<span class="w"> </span>jq
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">here</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot resolve the current directory to a physical path\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">else</span>
 <span class="w">    </span>require_command<span class="w"> </span>git
-<span class="w">    </span>retire_registered_agmsg_projects<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span>retire_registered_agmsg_projects<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">here</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">fi</span>
 <span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 </code></pre></div>

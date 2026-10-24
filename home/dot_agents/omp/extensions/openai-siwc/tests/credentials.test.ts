@@ -79,5 +79,5 @@ test("the command prints the count and never the stored data", () => {
 
 test("a bad profile name or usage exits 2", () => {
 	expect(run("../x").exitCode).toBe(2);
-	expect(Bun.spawnSync(["bun", SCRIPT]).exitCode).toBe(2);
+	expect(Bun.spawnSync([process.execPath, SCRIPT]).exitCode).toBe(2);
 });

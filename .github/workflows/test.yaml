@@ -265,11 +265,14 @@ jobs:
           # (OMP_PACKAGE_DIR). update_omp installs it as hosts get it: the pinned tarball, its sha256 checked, then
           # npm, here into a scratch HOME. It skips without npm, so the package file is checked afterwards. It then
           # runs `omp --version`, and omp's entry point is `#!/usr/bin/env bun`, so bun is on its PATH as on a host.
+          # Its download directory comes from mktemp under TMPDIR, else /tmp, so TMPDIR is a scratch directory too:
+          # the install writes under RUNNER_TEMP only (npm's cache and mise's reshim follow the scratch HOME).
           omp_home="${RUNNER_TEMP}/omp-home"
-          mkdir -p "${omp_home}"
+          omp_tmp="${RUNNER_TEMP}/omp-tmp"
+          mkdir -p "${omp_home}" "${omp_tmp}"
           node_bin_dir="$(mise -C "${RUNNER_TEMP}/statusline-mise" where node)/bin"
           bun_bin_dir="$(dirname "${bun_bin}")"
-          HOME="${omp_home}" PATH="${node_bin_dir}:${bun_bin_dir}:${PATH}" \
+          HOME="${omp_home}" TMPDIR="${omp_tmp}" PATH="${node_bin_dir}:${bun_bin_dir}:${PATH}" \
             bash -c 'source ./scripts/update-agent-assets.sh && update_omp'
           export OMP_PACKAGE_DIR="${omp_home}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
           test -f "${OMP_PACKAGE_DIR}/package.json"

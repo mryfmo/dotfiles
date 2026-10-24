@@ -18,12 +18,17 @@ TEST = ROOT / ".github/workflows/test.yaml"
 # The render-only subtrees of home/ and the targets chezmoi gives them; the bootstrap must neither execute nor read
 # any of these targets, or a change there needs the full bootstrap again.
 RENDER_ONLY = {
+    # Per skill, not the whole of .agents/skills: the installers own agmsg, crit*, understand* and poteto-mode there.
     "dot_agents/skills": [".agents/skills/{skill}"],
     "dot_agents/omp/policies": [".agents/omp/policies"],
     "dot_claude/rules": [".claude/rules"],
     "dot_config/claude/rules": [".config/claude/rules"],
-    "dot_local/bin": [".local/bin/common", ".local/bin/server"],
+    # Not dot_local/bin itself: a file there renders to ~/.local/bin/<name>, where the installers run mise and omp.
+    "dot_local/bin/common": [".local/bin/common"],
+    "dot_local/bin/server": [".local/bin/server"],
 }
+# chezmoi source-name attributes, stripped to reach a target name (the ones this tree uses and their neighbours).
+ATTRIBUTES = ("private_", "readonly_", "executable_", "exact_", "empty_", "symlink_", "literal_")
 # What setup.sh runs on a host: itself, the installers, the libraries and the chezmoi scripts that include them.
 BOOTSTRAP_READERS = (
     "setup.sh",
@@ -35,9 +40,25 @@ BOOTSTRAP_READERS = (
 )
 
 
+def target_of(source: str) -> str:
+    """The target path chezmoi gives a source path relative to home/: attributes stripped, dot_ to a dot, .tmpl off."""
+    parts = []
+    for part in source.split("/"):
+        while part.startswith(ATTRIBUTES):
+            part = part[next(len(a) for a in ATTRIBUTES if part.startswith(a)) :]
+        part = "." + part[4:] if part.startswith("dot_") else part
+        parts.append(part.removesuffix(".tmpl"))
+    return "/".join(parts)
+
+
+def skill_names() -> list[str]:
+    """The target name of every entry directly in home/dot_agents/skills, a directory or a file."""
+    return sorted(target_of(path.name) for path in (ROOT / "home/dot_agents/skills").iterdir())
+
+
 def render_only_reads(files: list[Path]) -> list[str]:
     """Each `file: target` where a bootstrap reader names a render-only source path or the target chezmoi gives it."""
-    skills = sorted(path.name for path in (ROOT / "home/dot_agents/skills").iterdir() if path.is_dir())
+    skills = skill_names()
     needles = [f"home/{subtree}" for subtree in RENDER_ONLY] + [f'"{subtree}' for subtree in RENDER_ONLY]
     for targets in RENDER_ONLY.values():
         for target in targets:
@@ -312,6 +333,59 @@ class TypeScriptTestsStepTest(unittest.TestCase):
             with self.subTest(weakening=weakening):
                 self.assertNotIn(weakening, step)
 
+    def run_install_block(self, step: str) -> tuple[Path, Path, list[str]]:
+        """Run the step's omp install lines, from omp_home= to the update_omp call, against stubs.
+
+        The stub curl records where update_omp downloads and then fails, so nothing is fetched; the outer TMPDIR
+        points elsewhere, so a step that does not set its own TMPDIR downloads there.
+        """
+        lines = step.splitlines()
+        first = next(i for i, line in enumerate(lines) if line.strip().startswith('omp_home="'))
+        last = next(i for i, line in enumerate(lines) if "update_omp'" in line)
+        block = "\n".join(line.strip() for line in lines[first : last + 1])
+        holder = tempfile.TemporaryDirectory()
+        self.addCleanup(holder.cleanup)
+        temp = Path(holder.name)
+        runner_temp, outer_tmp, stubs, node = (
+            temp / "runner-temp",
+            temp / "outer-tmp",
+            temp / "stubs",
+            temp / "node/bin",
+        )
+        for directory in (runner_temp, outer_tmp, stubs, node):
+            directory.mkdir(parents=True)
+        log = temp / "curl.log"
+        (stubs / "mise").write_text(f'#!/bin/sh\necho "{node.parent}"\n')
+        (stubs / "npm").write_text("#!/bin/sh\nexit 0\n")
+        (stubs / "bun").write_text("#!/bin/sh\nexit 0\n")
+        (stubs / "curl").write_text(
+            f'#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && echo "$2" >> "{log}"; shift; done\nexit 22\n'
+        )
+        for stub in stubs.iterdir():
+            stub.chmod(0o755)
+        script = f'set -euo pipefail\nbun_bin="{stubs}/bun"\n{block}\n'
+        env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}", "RUNNER_TEMP": str(runner_temp)}
+        env["TMPDIR"] = str(outer_tmp)
+        subprocess.run(["bash", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        downloads = log.read_text().split() if log.exists() else []
+        return runner_temp, outer_tmp, downloads
+
+    def test_the_omp_install_downloads_under_runner_temp(self) -> None:
+        # Audit F2 of fed47ef6: update_omp's download directory comes from mktemp under TMPDIR, else /tmp.
+        runner_temp, outer_tmp, downloads = self.run_install_block(self.step())
+        self.assertEqual(1, len(downloads), downloads)
+        self.assertTrue(Path(downloads[0]).is_relative_to(runner_temp / "omp-tmp"), downloads)
+        self.assertEqual([], list(outer_tmp.iterdir()))
+
+    def test_the_containment_check_sees_a_step_without_its_own_tmpdir(self) -> None:
+        # The instrument shows the failure it detects: the same step without TMPDIR= downloads under the outer one.
+        step = self.step().replace(' TMPDIR="${omp_tmp}"', "", 1)
+        self.assertNotIn('TMPDIR="${omp_tmp}"', step)
+        runner_temp, outer_tmp, downloads = self.run_install_block(step)
+        self.assertEqual(1, len(downloads), downloads)
+        self.assertTrue(Path(downloads[0]).is_relative_to(outer_tmp), downloads)
+        self.assertFalse(Path(downloads[0]).is_relative_to(runner_temp))
+
     def test_each_directory_holds_bun_tests(self) -> None:
         # bun fails a filter without test files; this says which directory moved before CI does.
         for directory in self.DIRECTORIES:
@@ -324,6 +398,29 @@ class RenderOnlySubtreesTest(unittest.TestCase):
         allowed = re.search(r"paths_match -qv '\^home/\(([^)]+)\)/'", REMOTE.read_text())
         self.assertIsNotNone(allowed)
         self.assertEqual(set(allowed.group(1).split("|")), set(RENDER_ONLY))
+
+    def test_each_allowed_subtree_is_scanned_at_the_whole_of_its_target(self) -> None:
+        # Audit F1 of fed47ef6: dot_local/bin was allowed while only .local/bin/common and .local/bin/server were
+        # scanned, so a new home/dot_local/bin/executable_mise would skip the bootstrap unscanned. Every allowed
+        # subtree's own target is scanned, or for the skills every entry under it.
+        for subtree, targets in RENDER_ONLY.items():
+            with self.subTest(subtree=subtree):
+                whole = target_of(subtree)
+                if targets == [f"{whole}/{{skill}}"]:
+                    self.assertTrue(skill_names())
+                else:
+                    self.assertEqual(targets, [whole])
+
+    def test_target_of_follows_chezmoi_source_names(self) -> None:
+        cases = {
+            "dot_local/bin/common": ".local/bin/common",
+            "dot_local/bin/executable_mise": ".local/bin/mise",
+            "dot_claude/rules/symlink_regime.md.tmpl": ".claude/rules/regime.md",
+            "private_dot_ssh/private_executable_x": ".ssh/x",
+        }
+        for source, target in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(target_of(source), target)
 
     def test_the_bootstrap_neither_executes_nor_reads_a_render_only_target(self) -> None:
         files = [

@@ -82,7 +82,10 @@ jobs:
           # special file (.chezmoi*) or script (run_*); under home/, every path
           # but the render-only subtrees that no installer executes or reads,
           # whose apply the chezmoi-apply job checks on every diff (U39):
-          # managed skills, omp seat policies, Claude rules and the levers.
+          # managed skills, omp seat policies, Claude rules and the levers in
+          # dot_local/bin/common/ and dot_local/bin/server/. A file directly in
+          # dot_local/bin/ is not one: it renders to ~/.local/bin/<name>, where
+          # the installers run mise, omp and the other tools they install.
           changed="${RUNNER_TEMP}/changed-paths"
           home_paths="${RUNNER_TEMP}/changed-home-paths"
           git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
@@ -100,7 +103,7 @@ jobs:
           paths_match '^home/' "${changed}" > "${home_paths}" || true
           if [ ! -s "${changed}" ] ||
             paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
-            paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin)/' "${home_paths}"; then
+            paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"

@@ -401,6 +401,7 @@ class DecisionTest(unittest.TestCase):
             "claude-rule": ([("home/dot_claude/rules/symlink_x.md.tmpl", "x\n")], "false"),
             "config-claude-rule": ([("home/dot_config/claude/rules/x.md", "x\n")], "false"),
             "lever": ([("home/dot_local/bin/common/executable_x", "x\n")], "false"),
+            "server-lever": ([("home/dot_local/bin/server/x.sh", "x\n")], "false"),
             "render-only-and-python": (
                 [("home/dot_agents/skills/x/SKILL.md", "x\n"), ("scripts/x.py", "x\n")],
                 "false",
@@ -411,6 +412,16 @@ class DecisionTest(unittest.TestCase):
             "omp-extension": ([("home/dot_agents/omp/extensions/x.ts", "x\n")], "true"),
             "local-share": ([("home/dot_local/share/x", "x\n")], "true"),
             "subtree-prefix": ([("home/dot_agents/skills-extra/x", "x\n")], "true"),
+            # Audit F1 of fed47ef6: a file directly in dot_local/bin renders to ~/.local/bin/<name>, which the
+            # installers execute (install/common/gh_extensions.sh MISE_BIN, update_omp), so it bootstraps.
+            "root-bin-mise": ([("home/dot_local/bin/executable_mise", "x\n")], "true"),
+            "root-bin-omp": ([("home/dot_local/bin/executable_omp", "x\n")], "true"),
+            "other-bin-subtree": ([("home/dot_local/bin/client/x.sh", "x\n")], "true"),
+            "lever-prefix": ([("home/dot_local/bin/common-extra/x", "x\n")], "true"),
+            "lever-and-root-bin": (
+                [("home/dot_local/bin/common/executable_x", "x\n"), ("home/dot_local/bin/executable_mise", "x\n")],
+                "true",
+            ),
             "render-only-and-home": ([("home/dot_agents/skills/x/SKILL.md", "x\n"), ("home/dot_zshrc", "x\n")], "true"),
             "render-only-and-install": (
                 [("home/dot_local/bin/common/executable_x", "x\n"), ("tests/install/x", "x\n")],

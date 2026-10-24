@@ -10,7 +10,7 @@
 #   where the command word starts; capture the path first or split it in the shell (`${path%/*}`,
 #   `${path##*/}`). The parser resolves what a lexical scan got wrong: heredoc delimiters, comments
 #   and line continuations inside a substitution, `case` patterns. The command word is read after
-#   quote removal (`\dirname`, `"dirname"`, `'dirname'`, `dir\`+newline+`name`); a word with any
+#   quote removal (`\dirname`, `"dirname"`, `'dirname'`, `$'dir\x6eame'`, `dir\`+newline+`name`); a word with any
 #   expansion in it is not a literal name and is not reported. A heredoc body whose delimiter has
 #   any quoted or escaped part is literal and skipped, as bash reads it (shfmt expands the body of
 #   a partly quoted delimiter such as `<<'E'OF`).
@@ -62,6 +62,24 @@ MESSAGE = (
 )
 
 
+# bash's $'…' escapes (bash(1) QUOTING); shfmt keeps the raw text in SglQuoted.Value.
+ANSI_C = re.compile(r"\\(?:([abeEfnrtv\\'\"?])|([0-7]{1,3})|x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|U([0-9A-Fa-f]{1,8})|c(.))", re.DOTALL)
+ANSI_C_SIMPLE = {"a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v"}
+
+
+def ansi_c(value):
+    def decode(match):
+        simple, octal, hex2, hex4, hex8, control = match.groups()
+        if simple:
+            return ANSI_C_SIMPLE.get(simple, simple)
+        if control:
+            return chr(ord(control) & 0x1F)
+        number = octal or hex2 or hex4 or hex8
+        return chr(int(number, 8 if octal else 16))
+
+    return ANSI_C.sub(decode, value)
+
+
 def literal(word):
     """The word after quote removal, or None when any part of it expands."""
     text = []
@@ -69,8 +87,8 @@ def literal(word):
         kind = part.get("Type")
         if kind == "Lit":
             text.append(re.sub(r"\\(.)", r"\1", part["Value"], flags=re.DOTALL))
-        elif kind == "SglQuoted" and not part.get("Dollar"):
-            text.append(part["Value"])
+        elif kind == "SglQuoted":
+            text.append(ansi_c(part["Value"]) if part.get("Dollar") else part["Value"])
         elif kind == "DblQuoted" and not part.get("Dollar"):
             for inner in part.get("Parts") or []:
                 if inner.get("Type") != "Lit":

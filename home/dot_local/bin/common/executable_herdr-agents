@@ -1390,10 +1390,38 @@ function remove_retired_pre_push_stub() {
 }
 
 # @description Report whether a Claude Code settings file carries an agmsg hook.
+#   jq -e exits 1 only for a false result; any other failure (an unreadable,
+#   empty or malformed file) is an inspection error, never "no hooks".
 # @arg $1 path Settings file.
 # @exitcode 0 When any hook command contains `agmsg/scripts/`.
-function has_agmsg_hooks() {
-    [[ -f $1 ]] && jq -e 'any(.hooks[]?[]?.hooks[]?; (.command // "") | contains("agmsg/scripts/"))' "$1" > /dev/null 2>&1
+# @exitcode 1 When the file is absent or carries no agmsg hook.
+# @exitcode 2 When the file exists but cannot be read as JSON.
+function agmsg_hook_state() {
+    local status=0
+
+    [[ -e $1 || -L $1 ]] || return 1
+    jq -e 'any(.hooks[]?[]?.hooks[]?; (.command // "") | contains("agmsg/scripts/"))' "$1" > /dev/null 2>&1 || status=$?
+    ((status <= 1)) || return 2
+    return "${status}"
+}
+
+# @description Print the agmsg hook state of a settings file, or exit 1 naming
+#   it when it cannot be inspected.
+# @arg $1 path Settings file.
+# @arg $2 string When the check runs: `before` or `after` delivery.sh set off.
+# @stdout `present` or `absent`.
+function agmsg_hooks_or_fail() {
+    local status=0
+
+    agmsg_hook_state "$1" || status=$?
+    case "${status}" in
+    0) printf 'present\n' ;;
+    1) printf 'absent\n' ;;
+    *)
+        printf 'herdr-agents: cannot read %s as JSON %s delivery.sh set off; agmsg hooks unknown, nothing retired from it\n' "$1" "$2" >&2
+        exit 1
+        ;;
+    esac
 }
 
 # @description Skip $HOME or turn the checkout's agmsg wiring off: remove the
@@ -1404,7 +1432,8 @@ function has_agmsg_hooks() {
 #   never touches permissions, so an agmsg allow rule it leaves is reported,
 #   never edited here.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
-# @exitcode 1 When an agmsg hook survives `set off`, identities.sh fails, or leave.sh fails.
+# @exitcode 1 When the settings file cannot be read as JSON, an agmsg hook
+#   survives `set off`, identities.sh fails, or leave.sh fails.
 function retire_agmsg() {
     local workdir="$1"
 
@@ -1418,16 +1447,20 @@ function retire_agmsg() {
     local delivery="${scripts}/delivery.sh"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
-    local acted=false rows team name rule
+    local acted=false rows team name rule hooks
 
     mkdir -p "${log_file%/*}"
-    if has_agmsg_hooks "${claude_hooks_file}"; then
+    # The command substitution runs in a subshell, so a read error exits it and
+    # is turned into this function's exit here.
+    hooks="$(agmsg_hooks_or_fail "${claude_hooks_file}" before)" || exit 1
+    if [[ ${hooks} == present ]]; then
         acted=true
         if [[ ! -f ${delivery} ]]; then
             printf 'agmsg delivery script not found; skipping hook removal: %s\n' "${delivery}" >&2
         else
             "${delivery}" set off claude-code "${workdir}" >> "${log_file}" 2>&1 || true
-            if has_agmsg_hooks "${claude_hooks_file}"; then
+            hooks="$(agmsg_hooks_or_fail "${claude_hooks_file}" after)" || exit 1
+            if [[ ${hooks} == present ]]; then
                 printf 'herdr-agents: agmsg hooks remain in %s after delivery.sh set off claude-code %s (log: %s)\n' \
                     "${claude_hooks_file}" "${workdir}" "${log_file}" >&2
                 exit 1

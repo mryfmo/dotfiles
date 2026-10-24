@@ -1003,6 +1003,38 @@ fi
         # The identity stays until its hooks are gone.
         self.assertFalse(any(c.startswith("leave ") for c in self.calls_path.read_text().splitlines()))
 
+    def test_retire_agmsg_fails_naming_a_settings_file_it_cannot_read_before_set_off(self) -> None:
+        self.install_agmsg_retire_fakes()
+        settings = self.workdir.resolve() / ".claude/settings.local.json"
+        for name, content in (("malformed", '{"hooks": {'), ("empty", "")):
+            with self.subTest(settings=name):
+                settings.write_text(content)
+                self.calls_path.unlink(missing_ok=True)
+
+                result = self.run_agmsg_retire_helper()
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(f"cannot read {settings} as JSON before delivery.sh set off", result.stderr)
+                self.assertEqual(result.stdout, "")
+                calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+                self.assertFalse(any(c.startswith(("delivery ", "leave ")) for c in calls), calls)
+
+    def test_retire_agmsg_fails_naming_a_settings_file_set_off_left_unreadable(self) -> None:
+        scripts = self.install_agmsg_retire_fakes()
+        settings = self.workdir.resolve() / ".claude/settings.local.json"
+        (scripts / "delivery.sh").write_text(
+            f"#!/usr/bin/env bash\nprintf 'delivery %s\\n' \"$*\" >> {self.calls_path}\nprintf '{{\"hooks\": ' > {settings}\n"
+        )
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"cannot read {settings} as JSON after delivery.sh set off", result.stderr)
+        self.assertNotIn("agmsg retired", result.stdout)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"delivery set off claude-code {self.workdir.resolve()}", calls)
+        self.assertFalse(any(c.startswith("leave ") for c in calls), calls)
+
     def test_retire_agmsg_reports_a_missing_delivery_script_and_still_leaves(self) -> None:
         scripts = self.install_agmsg_retire_fakes()
         (scripts / "delivery.sh").unlink()

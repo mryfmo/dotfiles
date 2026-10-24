@@ -99,20 +99,22 @@ test("an older sender's AGMSG- prefix is ignored: one prefixed row per kind move
 	expect(openItems(tsv(plain.map((line, index) => (index % 2 ? prefixed[index] : line))), "orch")).toEqual(expected);
 });
 
-test("a measure-request, its measured answer and a status=question PONG move nothing (U35)", () => {
+test("a measure-request, its measured or measure-refused answer and a status=question PONG move nothing (U35)", () => {
 	const audit = [
 		row(3, "orch", "TASK v1 task_id=t7-audit head=abc brief=b.md", "audit"),
-		row(4, "audit", "PONG v1 task_id=t7-audit status=measure-request note=bun-test expect=pass"),
-		row(5, "orch", "PONG v1 task_id=t7-audit status=measured note=pass"),
-		row(6, "worker", "PONG v1 task_id=t7 status=question note=scope"),
-		row(7, "peer", "AGMSG-PONG v1 task_id=t7-audit status=question note=x"),
+		row(4, "audit", "PONG v1 task_id=t7-audit status=measure-request measure=unit-test expect=OK"),
+		row(5, "orch", "PONG v1 task_id=t7-audit status=measured measure=unit-test note=OK"),
+		row(6, "audit", "PONG v1 task_id=t7-audit status=measure-request measure=curl expect=x"),
+		row(7, "orch", "PONG v1 task_id=t7-audit status=measure-refused note=menu"),
+		row(8, "worker", "PONG v1 task_id=t7 status=question note=scope"),
+		row(9, "peer", "AGMSG-PONG v1 task_id=t7-audit status=question note=x"),
 	];
 	const awaiting = [{ taskId: "t7-audit", owes: "awaiting RESULT", id: 3 }];
 	expect(openItems(tsv(audit), "orch")).toEqual(awaiting);
 	expect(openItems(tsv(audit), "audit")).toEqual([]);
 	expect(openItems(tsv(audit), "worker")).toEqual([]);
 	// The audit seat's VERDICT after the measurement closes the item.
-	const closed = [...audit, row(8, "audit", "VERDICT v1 task_id=t7-audit verdict=correct head=abc")];
+	const closed = [...audit, row(10, "audit", "VERDICT v1 task_id=t7-audit verdict=correct head=abc")];
 	expect(openItems(tsv(closed), "orch")).toEqual([]);
 });
 

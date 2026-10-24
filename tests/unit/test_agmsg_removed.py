@@ -14,7 +14,14 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REMOVALS = (".agents/skills/agmsg/**", ".claude/commands/agmsg.md", ".claude/skills/agmsg/**")
+REMOVALS = (
+    ".agents/skills/agmsg/**",
+    ".claude/commands/agmsg.md",
+    ".claude/skills/agmsg/**",
+    # The deleted skill's deployed copies: ~/.agents/skills is not exact, so only these entries remove them (U27b F1).
+    ".agents/skills/agmsg-orchestration",
+    ".claude/skills/agmsg-orchestration",
+)
 RETIRED = re.compile(
     r"agmsg|codex-orchestrate|pr-feedback|crit-review|regime-counters|acceptance record", re.IGNORECASE
 )
@@ -60,6 +67,7 @@ class AgmsgRemovedTest(unittest.TestCase):
             files = {
                 ".agents/skills/agmsg/db/messages.db": "db",
                 ".agents/skills/agmsg/scripts/send.sh": "s",
+                ".agents/skills/agmsg-orchestration/SKILL.md": "retired",
                 ".agents/skills/other/SKILL.md": "kept",
                 ".claude/commands/agmsg.md": "c",
                 ".claude/commands/keep.md": "kept",
@@ -67,6 +75,11 @@ class AgmsgRemovedTest(unittest.TestCase):
             for rel, text in files.items():
                 (home / rel).parent.mkdir(parents=True, exist_ok=True)
                 (home / rel).write_text(text)
+            # The Claude side links each shared skill into ~/.agents/skills, as chezmoi deploys it.
+            for name in ("agmsg-orchestration", "other"):
+                link = home / ".claude/skills" / name / "SKILL.md"
+                link.parent.mkdir(parents=True)
+                link.symlink_to(Path("../../../.agents/skills") / name / "SKILL.md")
             config = base / "chezmoi.toml"
             config.write_text("")
             run = subprocess.run(
@@ -83,8 +96,16 @@ class AgmsgRemovedTest(unittest.TestCase):
             )
             self.assertEqual(0, run.returncode, run.stderr)
             left = sorted(str(p.relative_to(home)) for p in home.rglob("*") if p.is_file())
-            self.assertEqual([".agents/skills/other/SKILL.md", ".claude/commands/keep.md"], left)
-            self.assertFalse((home / ".agents/skills/agmsg").exists(), "the tree's directory itself is removed")
+            self.assertEqual(
+                [".agents/skills/other/SKILL.md", ".claude/commands/keep.md", ".claude/skills/other/SKILL.md"], left
+            )
+            for gone in (
+                ".agents/skills/agmsg",
+                ".agents/skills/agmsg-orchestration",
+                ".claude/skills/agmsg-orchestration",
+            ):
+                self.assertFalse((home / gone).exists(), f"{gone}: the directory itself is removed")
+                self.assertFalse((home / gone).is_symlink(), gone)
 
 
 if __name__ == "__main__":

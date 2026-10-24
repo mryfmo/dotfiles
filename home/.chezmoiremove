@@ -5,6 +5,8 @@
 .claude/skills/agmsg/**
 .agents/skills/agmsg/**
 .claude/commands/agmsg.md
+.agents/skills/agmsg-orchestration
+.claude/skills/agmsg-orchestration
 .config/alias/client.sh
 .config/alias/server.sh
 .config/tango.yml

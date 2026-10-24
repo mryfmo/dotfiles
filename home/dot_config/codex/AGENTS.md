@@ -38,7 +38,7 @@
 - 全 item に disposition を付けてください。`fixed:<commit>`(その commit で根本原因を修正)か `not-applicable:<理由>` のどちらかです。stopgap・抑制・「後で」は disposition として認めません。`failure` と `warning` の annotation を未処分のまま残さず、`failure` を `not-applicable` にする場合は 20 文字以上の具体的な理由が必要です。
 - disposition の要約は PR のコメントに書いてください。merge は orchestrator が `hcom-orchestration` SKILL の手順(head sha の verdict 行、CI green)で行います。
 - 新しい push の後は取得をやり直してください。disposition は記入した時点の head commit にだけ有効です。
-- boundary PR(`.orchestration` のファイルだけを変更)の扱いも同じ step 10 にあります。
+- boundary PR(`.orchestration` のファイルだけを変更)も同じ `hcom-orchestration` SKILL の手順で merge します。CI の `regime` check は records-only の差分として通します。
 
 ## モデル選択
 

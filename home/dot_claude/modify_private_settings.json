@@ -37,6 +37,26 @@ def is_retired_managed_default(key: str, value: Any) -> bool:
     return type(value) is type(default) and value == default
 
 
+def retired_managed_env() -> dict[str, str]:
+    """The `env` entries the template set before regime-cutover U33, with the values it rendered.
+
+    U16 put the dotfiles bus into every Claude session (`HCOM_DIR=<home>/.local/state/hcom-regime`,
+    `HCOM_TEAM=regime`); U33 derives the store and team per repository instead. An installed value still equal to
+    the old one came from the template and is dropped; a different value is an operator override and stays.
+    """
+    return {"HCOM_DIR": f"{home_dir()}/.local/state/hcom-regime", "HCOM_TEAM": "regime"}
+
+
+def merge_env(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    retired = retired_managed_env()
+    kept = {
+        name: value
+        for name, value in current.items()
+        if name in managed or name not in retired or value != retired[name]  # lint-comparisons: allow an env value, not a path identity
+    }
+    return kept | managed
+
+
 def managed_post_tool_use_paths() -> set[str]:
     return {
         path
@@ -189,7 +209,7 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
             ):
                 merged[key] = merge_hooks(managed_value, value)
             elif key == "env" and isinstance(value, dict) and isinstance(managed_value, dict):
-                merged[key] = value | managed_value
+                merged[key] = merge_env(managed_value, value)
             else:
                 merged[key] = managed_value
         elif not is_retired_managed_default(key, value):

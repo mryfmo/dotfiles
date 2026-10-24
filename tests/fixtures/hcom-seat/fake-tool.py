@@ -6,7 +6,9 @@ Every call appends `{"argv": [...], "cwd": ..., "env": {HCOM_*}}` as one JSON li
 does inside an AI tool, `src/commands/launch.rs:48` at v0.7.30) and its herdr terminal preset (`herdr tab create
 --label <tag>`, then `herdr pane run <pane> ...`): the omp tool-args after `--` run in `--dir` with HCOM_LAUNCHED=1
 and HCOM_TAG set, the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581`
-at v0.7.30), HCOM_DIR inherited. `herdr pane run` executes the command it is given. `omp` records and exits 0.
+at v0.7.30), HCOM_DIR inherited and HCOM_TEAM dropped, as the real hcom drops it (the U33 pilot's pane showed
+HCOM_TEAM unset after hcom-seat exported it). `herdr pane run` executes the command it is given. `omp` records and
+exits 0.
 """
 
 import json
@@ -29,7 +31,8 @@ if tool == "hcom" and argv[:1] == ["omp"] and "--" in argv:
     option = {flags[i]: flags[i + 1] for i in range(0, len(flags), 2)}
     if option.get("--terminal") != "herdr":
         sys.exit(f"fake-hcom: terminal preset {option.get('--terminal')} is not played here")
-    env = {**os.environ, "HCOM_LAUNCHED": "1", "HCOM_TAG": option["--tag"]}
+    env = {key: value for key, value in os.environ.items() if key != "HCOM_TEAM"}
+    env.update({"HCOM_LAUNCHED": "1", "HCOM_TAG": option["--tag"]})
     pane = subprocess.run(
         ["herdr", "tab", "create", "--label", option["--tag"]], capture_output=True, text=True, check=False
     )

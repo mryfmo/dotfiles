@@ -21,25 +21,36 @@
 #   owns the approval mode (U6). Both are required. The extensions default to the
 #   directory the role's model route needs, the pi-claude-bridge for orchestrator
 #   and worker and the openai-siwc for audit, plus the other one when it is
-#   present; `--ext` replaces that list. Every directory, a default or `--ext`,
-#   must resolve to an entry of `claude.levers.extensions` in the manifest the
-#   self-check reads (regime-cutover U31), else the launch is refused. The
+#   present; `--ext` replaces that list. The stop gate's directory
+#   `~/.agents/omp/hooks` is loaded on every launch, whatever `--ext` says, and the
+#   launch line ends with `--hcom-team <HCOM_TEAM>`: hcom passes HCOM_DIR into the
+#   pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the
+#   team this launch was given, an explicit one included (regime-cutover U33c; omp
+#   refuses the flag when no loaded extension registers it, so a launch without the
+#   gate fails instead of running unguarded). Every directory, a default, `--ext` or
+#   the gate's, must resolve to an entry of `claude.levers.extensions` in the manifest
+#   the self-check reads (regime-cutover U31), else the launch is refused. The
 #   orchestrator sits in the repository
 #   this command runs in; every other role gets the worktree `<seats-root>/<name>`,
-#   which is created detached from `origin/main` when absent and reused when it is
-#   a worktree of this repository (any other directory at that path is refused).
+#   which is created detached from `origin/main` (HEAD in a repository without it)
+#   when absent and reused when it is a worktree of this repository (any other
+#   directory at that path is refused). HCOM_DIR, HCOM_TEAM and the seats root come
+#   from the environment or `--seats-root` when set, else from the checkout through
+#   the sourced regime-env helper (regime-cutover U33: `~/.local/state/hcom/<slug>`,
+#   `<slug>`, `~/.local/state/omp-seats/<slug>`), and are exported to the seat.
 #   Every input is checked before anything is created or started: an unknown role,
-#   a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, an unset HCOM_DIR, hcom absent from
+#   a name or team outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a store regime-env refuses, hcom absent from
 #   PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout
-#   is exit 2 with the reason. `--dry-run` prints the launch line and creates and
-#   starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
+#   is exit 2 with the reason. `--dry-run` prints the launch line, and the derived
+#   environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:
 #   0 ready, 1 launch failed, 2 still launching or blocked on user attention).
 # @arg $1 string Role: orchestrator, worker or audit.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role).
-# @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats).
+# @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats/<slug>, regime-env).
 # @option --ext <dir> Extension directory in claude.levers.extensions, repeatable; replaces the role's default list.
 # @option --dry-run Print the launch line and exit 0 without creating a worktree or starting hcom.
-# @env HCOM_DIR The program's private hcom store (required: without it hcom would use ~/.hcom).
+# @env HCOM_DIR The program's private hcom store (default: ~/.local/state/hcom/<slug>, regime-env).
+# @env HCOM_TEAM The team thread (default: the repository slug, regime-env); passed to the seat as --hcom-team.
 # @stdout The launch line with --dry-run, else hcom's output.
 # @exitcode 0 Dry run printed, or hcom reports the seat ready.
 # @exitcode 2 A refusal, before anything is created or started.
@@ -53,6 +64,7 @@ set -euo pipefail
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -67,6 +79,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -112,7 +126,7 @@ refuse() {
 (($# >= 1)) || refuse "${usage}"
 role=$1
 shift
-name=${role} seats_root=${HOME}/.local/state/omp-seats dry_run=0 user_exts=()
+name=${role} seats_root='' dry_run=0 user_exts=()
 while (($#)); do
     case $1 in
     --dry-run) dry_run=1 ;;
@@ -132,6 +146,7 @@ done
 
 bridge=${HOME}/.local/lib/omp-extensions/pi-claude-bridge
 siwc=${HOME}/.agents/omp/extensions/openai-siwc
+gate=${HOME}/.agents/omp/hooks
 # One row per role: the extension its model route needs first, the optional one second.
 case ${role} in
 orchestrator | worker) exts=("${bridge}" "${siwc}") ;;
@@ -139,8 +154,14 @@ audit) exts=("${siwc}" "${bridge}") ;;
 *) refuse "unknown role '${role}'; expected orchestrator, worker or audit" ;;
 esac
 [[ ${name} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "name '${name}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
-[[ -n ${HCOM_DIR:-} ]] || refuse 'HCOM_DIR is unset; export the program'\''s private hcom store first'
+# HCOM_DIR, HCOM_TEAM and the seats root come from the environment when set, else from this checkout (regime-env,
+# regime-cutover U33). hcom passes HCOM_DIR into the seat but not HCOM_TEAM, so the team rides --hcom-team below.
+[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+regime_env hcom-seat || exit 2
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
+[[ ${HCOM_TEAM:-} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "team '${HCOM_TEAM:-}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
 policy=${HOME}/.agents/omp/policies/${role}.yml
 profile=${HOME}/.agents/omp/profiles/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
@@ -150,6 +171,8 @@ if ((${#user_exts[@]})); then
 elif [[ ! -d ${exts[1]} ]]; then
     exts=("${exts[0]}")
 fi
+# The stop gate rides every launch, after the route's extensions; --ext never drops it (U33c).
+exts+=("${gate}")
 # The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so the
 # installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list.
 allowed=$(awk '
@@ -179,7 +202,9 @@ for ext in "${exts[@]}"; do
 done
 exts=("${checked[@]}")
 repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
-common=$(git rev-parse --path-format=absolute --git-common-dir)
+common=$(git rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of ${repo}"
+seats_root=${seats_root:-${REGIME_SEATS_ROOT:-}}
+[[ -n ${seats_root} ]] || refuse 'no seats root: pass --seats-root or run inside a checkout'
 case ${role} in
 orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
@@ -189,16 +214,31 @@ argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile
 for ext in "${exts[@]}"; do
     argv+=(-e "${ext}")
 done
+argv+=(--hcom-team "${HCOM_TEAM}")
 if ((dry_run)); then
     printf '%q ' "${argv[@]}"
     echo
+    echo "hcom-seat: environment HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM:-}" >&2
     exit 0
 fi
 # U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file).
 "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 if [[ ! -e ${dir} ]]; then
-    git -C "${repo}" worktree add --detach "${dir}" origin/main
-elif ! [[ -d ${dir} && $(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) -ef ${common} ]]; then
+    # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a
+    # genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.
+    origin_main=$(git -C "${repo}" for-each-ref --format='%(objecttype)' refs/remotes/origin/main 2>&1) ||
+        refuse "cannot inspect refs/remotes/origin/main in ${repo}: ${origin_main}"
+    case ${origin_main} in
+    commit) base=origin/main ;;
+    '')
+        base=HEAD
+        echo "hcom-seat: origin/main is absent in ${repo}; the seat worktree starts at HEAD" >&2
+        ;;
+    *) refuse "refs/remotes/origin/main in ${repo} does not resolve to a commit: ${origin_main}" ;;
+    esac
+    git -C "${repo}" worktree add --detach "${dir}" "${base}"
+elif ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
+    ! [[ -d ${dir} && ${seat_common} -ef ${common} ]]; then
     # A stale or foreign directory at the seat path would seat omp in the wrong tree.
     refuse "seat directory exists and is not a worktree of ${repo}: ${dir}"
 fi

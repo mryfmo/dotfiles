@@ -1484,6 +1484,27 @@ then regenerate. `pin: unknown` marks a component with no recorded upstream
 version, and plugin pins record the installed versions, which `make update`
 does not enforce yet.
 
+### Run a program in another repository
+
+The hcom regime runs in any git repository on this host, not only in this one. The levers are on `PATH` under `~/.local/bin/common` (U31), and the program's hcom store, team and seat worktrees are derived from the repository you run them in (regime-cutover U33; `scripts/orchestrator/README.md`, "regime-init and regime-env"). In a repository whose main checkout is `.../<name>`, the slug is `<name>` lower-cased, with every character outside `[a-z0-9_-]` replaced by `-`, at most 40 characters. The store is `~/.local/state/hcom/<slug>`, the team thread is `<slug>`, and the seat worktrees are `~/.local/state/omp-seats/<slug>/<seat>`.
+
+1. On the host, once: `make update` in this repository. It installs the levers, the `~/.agents/regime/` templates, the omp policies, profiles and skills.
+2. In the other repository's checkout: `regime-init <program> --write-agents`. It creates `.orchestration/orchestrate/<program>/`, holding `preferences.md` (the standing orders) and empty `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md`. It writes `~/.local/state/hcom/<slug>/origin`, and it appends the audit section to `AGENTS.md` unless one is there. A second run changes nothing.
+3. Review the AGENTS.md audit section it wrote, and add the program's own rules below it. Commit the store and `AGENTS.md` like any other change.
+4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, `hcom-seat audit`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker and audit seats get worktrees under `~/.local/state/omp-seats/<slug>/`.
+5. Kick off the program: `hcom-dispatch <slug> operator orchestrator-<word> - "AGMSG-TASK v1 task_id=O1 brief=<absolute path of the program brief>"`.
+
+A seat inherits `HCOM_DIR` and `HCOM_TEAM` from its launch, and an explicit value wins over the derivation, so from inside a seat (the orchestrator seat, say) run another repository's `regime-init`, `hcom-seat` and `hcom-dispatch` as `env -u HCOM_DIR -u HCOM_TEAM <command>`; otherwise its seats join the inheriting seat's store and team. What stays per host: the logins (the Claude Code login the bridge seat uses, `/login openai-siwc` in the audit-side omp profiles), the omp profiles and policies, and the levers themselves. A second checkout with the same basename is refused by `regime-init` and the levers; set `HCOM_DIR` and `HCOM_TEAM` explicitly for it.
+
+The dotfiles program moves once, at deployment, by the orchestrator seat, which records it in `decisions.tsv`. Its seats were launched with an explicit `HCOM_DIR=~/.local/state/hcom-regime HCOM_TEAM=regime`, which still wins over the derivation, so nothing changes until the move. The move, with every dotfiles seat stopped:
+
+- `mv ~/.local/state/hcom-regime ~/.local/state/hcom/dotfiles`;
+- `regime-init regime-cutover` in the checkout, which keeps the existing records and writes the store origin;
+- one `git -C ~/Workspace/dotfiles worktree move ~/.local/state/omp-seats/<seat> ~/.local/state/omp-seats/dotfiles/<seat>` per seat worktree;
+- relaunching the seats with `hcom-seat` without the two variables.
+
+Their rows then continue on the `dotfiles` team. hcom does not pass `HCOM_TEAM` into a seat, so `hcom-seat` passes the team it was given as `--hcom-team <team>` to the stop gate, which every launch loads from `~/.agents/omp/hooks` (U33c; before it no seat loaded the gate). Until the move a relaunch with the explicit pair still gets `--hcom-team regime`, and seats started before U33c have no gate until they are relaunched. So close anything still open on the `regime` thread with a `HOLD` line before the move.
+
 ### 💡 Develop the Setup Scripts
 
 The setup scripts are stored as shellscripts in an appropriate location under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.

@@ -120,6 +120,20 @@ directory to keep the session out of the real `~/.omp`; under the real HOME a
 logged-in host spends one short model turn. The function is callable from
 `make doctor` once the Makefile wires it (follow-up).
 
+## Subagents
+
+An omp Task subagent on the claude-bridge route breaks the seat that spawned it. Measured on
+2026-10-24 at about 06:03Z: the orchestrator seat spawned a Task subagent (an inventory scout), the
+subagent failed with `No API key for provider: claude-bridge`, and from then on every hcom delivery into
+that seat failed with `Extension sendUserMessage failed`, so the seat was dead to the loop; the two worker
+seats on the same route and the host login were unaffected. So every seat policy denies the `task` tool
+(`tools.approval.task: deny` in `home/dot_agents/omp/policies/{orchestrator,worker,audit}.yml`, U34 in
+U36), and the seats do their reading with their own tools. omp refuses the call before the tool runs:
+`tests/unit/test_omp_seat_policy.py` `OmpTaskDenyLiveTest` drives the installed omp against a local fake
+model that asks for a `task` call and gets back `Tool "task" is blocked by user policy. To allow: remove
+"tools.approval.task: deny" from config.` for each role. Revisit the deny when the bridge supports
+subagents.
+
 ## Fallbacks
 
 - `anthropic/<model>` with `ANTHROPIC_API_KEY` is omp's built-in provider and

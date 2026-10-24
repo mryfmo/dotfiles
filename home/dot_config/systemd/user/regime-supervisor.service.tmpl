@@ -1,0 +1,10 @@
+# regime-cutover U36: one supervisor pass (regime-start --supervise), started by regime-supervisor.timer; it
+# relaunches a registered program's orchestrator seat after it died, unless it was stopped on purpose. The macOS
+# twin is ~/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist.
+[Unit]
+Description=Relaunch the regime orchestrator seats that died
+
+[Service]
+Type=oneshot
+ExecStart={{ .chezmoi.homeDir }}/.local/bin/common/regime-start --supervise
+Environment=PATH={{ .chezmoi.homeDir }}/.local/bin/common:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin

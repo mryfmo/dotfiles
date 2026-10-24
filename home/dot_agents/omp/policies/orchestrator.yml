@@ -11,6 +11,11 @@ tools:
   approval:
     # bash.patterns do not reach a shell started through eval.
     eval: deny
+    # No omp subagents (U34, U36): on 2026-10-24 at about 06:03Z the orchestrator seat spawned a Task subagent
+    # on the claude-bridge route, the subagent failed with `No API key for provider: claude-bridge`, and from
+    # then on every hcom delivery into the seat failed (`Extension sendUserMessage failed`), so the seat was
+    # dead to the loop. A seat does its reading with its own tools.
+    task: deny
 bash:
   patterns:
     # Before the allow, so the audited merge form can never carry a protection bypass.

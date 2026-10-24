@@ -588,6 +588,61 @@ Sandbox denials appear in the blocked command's result, naming the path or
 host; run `/sandbox` and open the Config tab to see the effective write paths,
 domains, and protected paths.
 
+### Start here: the omp seats
+
+The coordinator is one omp seat, the orchestrator, and you talk to it in its
+herdr pane. It starts the worker and audit seats itself, relaunches a seat that
+died, and runs the program loop (the `hcom-orchestration` skill). A Claude Code
+session is optional and not part of the loop.
+
+1. `make update` on the host. It installs the levers under
+   `~/.local/bin/common`, the seat policies and the skills.
+2. In the repository checkout, run `regime-start [<program>]`, for example
+   `regime-start regime-cutover` here. It starts the orchestrator seat through
+   `hcom-seat orchestrator`, or reports the one already alive, and prints its
+   name and the pane to type into (`orchestrator`). This repository keeps the
+   store `~/.local/state/hcom-regime` and the team `regime` until the one-time
+   move below; any other repository runs `regime-init` first ("Run a program in
+   another repository").
+3. Type your instruction into the `orchestrator` pane in plain words, for
+   example the path of a kickoff brief in the program store. The seat reads the
+   store, launches the missing seats (step 0 of its skill) and dispatches the
+   units.
+4. Read progress on the bus with `bus-history.sh <team> --limit 20` from the
+   checkout (in this repository until the move:
+   `HCOM_DIR=~/.local/state/hcom-regime bus-history.sh regime --limit 20`), or in
+   a seat's pane (`hcom term <name> --clean`).
+5. Stop with `regime-stop` in the checkout: it ends the supervision and stops
+   the orchestrator; `regime-stop --all` also stops the workers and the audit
+   seat. Their worktrees and branches stay, and `regime-start` starts again.
+
+The supervisor keeps the orchestrator alive. It ships disabled, and enabling it
+is a host-wide choice that persists across logins and reboots until you
+disable it:
+
+- macOS, enable:
+  `launchctl enable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, then
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist`
+  to start it now. The plist carries `Disabled`, so launchd skips it at login
+  until `launchctl enable` records the override, which launchd keeps across
+  logins and boots.
+- macOS, disable:
+  `launchctl bootout gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, then
+  `launchctl disable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, so it
+  does not come back at the next login.
+- Linux, enable:
+  `systemctl --user daemon-reload && systemctl --user enable --now regime-supervisor.timer`.
+  `make update` installs the unit files and never enables them.
+- Linux, disable: `systemctl --user disable --now regime-supervisor.timer`.
+
+It runs `regime-start --supervise` at login and every 60 seconds. A checkout
+that `regime-start` registered and whose orchestrator died (a crash or a herdr
+restart) gets a new one, at most once per backoff window (60 seconds, doubling
+to 30 minutes after each failed launch); one stopped with `regime-stop` or
+`hcom kill` is left stopped. `regime-start`, `regime-stop` and the pass take one
+lock, so a stop never races a relaunch. Each decision is a line in
+`<store>/supervisor.log` (`docs/orchestrator-seat.md`, "The supervisor").
+
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt, and `herdr` is the real Herdr CLI: it

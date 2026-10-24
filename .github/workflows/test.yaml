@@ -250,6 +250,21 @@ jobs:
           "${claude_bin}" --version
           printf 'CLAUDE_DOCTOR_BIN=%s\n' "${claude_bin}" >> "${GITHUB_ENV}"
 
+      - name: Run the omp TypeScript tests
+        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && matrix.system == 'client' }}
+        run: |
+          set -euo pipefail
+          # The stop gate and the openai-siwc extension are TypeScript that omp loads; until this step their bun
+          # tests ran only on worker seats (U39 addendum 2). bun is the version mise resolves from the copied config
+          # and its minimum_release_age, as hosts get it (no literal here). One run per directory: bun exits 1 when
+          # a filter matches no test file, so a moved or emptied directory fails the step instead of passing it.
+          mise -C "${RUNNER_TEMP}/statusline-mise" install bun
+          bun_bin="$(mise -C "${RUNNER_TEMP}/statusline-mise" which bun)"
+          "${bun_bin}" --version
+          for tests in home/dot_agents/omp/hooks/tests home/dot_agents/omp/extensions/openai-siwc/tests; do
+            "${bun_bin}" test "./${tests}"
+          done
+
       - name: Smoke-test statusline tools without network
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |

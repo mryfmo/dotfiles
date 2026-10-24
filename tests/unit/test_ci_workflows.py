@@ -284,6 +284,34 @@ class MakeUnitTestTest(unittest.TestCase):
         self.assertNotIn("U39 measurement", TEST.read_text())
 
 
+class TypeScriptTestsStepTest(unittest.TestCase):
+    # U39 addendum 2: the bun tests of the stop gate and the openai-siwc extension run in CI.
+    DIRECTORIES = ("home/dot_agents/omp/hooks/tests", "home/dot_agents/omp/extensions/openai-siwc/tests")
+
+    def step(self) -> str:
+        return (
+            TEST.read_text().split("      - name: Run the omp TypeScript tests\n", 1)[1].split("\n      - name: ", 1)[0]
+        )
+
+    def test_the_ubuntu_client_cell_runs_bun_over_each_directory(self) -> None:
+        step = self.step()
+        gate = "steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && matrix.system == 'client'"
+        self.assertIn(f"if: ${{{{ {gate} }}}}\n", step)
+        self.assertIn("set -euo pipefail\n", step)
+        self.assertIn('mise -C "${RUNNER_TEMP}/statusline-mise" install bun\n', step)
+        self.assertIn(f"for tests in {' '.join(self.DIRECTORIES)}; do\n", step)
+        self.assertIn('"${bun_bin}" test "./${tests}"\n', step)
+        for weakening in ("continue-on-error", "|| true", "set +e"):
+            with self.subTest(weakening=weakening):
+                self.assertNotIn(weakening, step)
+
+    def test_each_directory_holds_bun_tests(self) -> None:
+        # bun fails a filter without test files; this says which directory moved before CI does.
+        for directory in self.DIRECTORIES:
+            with self.subTest(directory=directory):
+                self.assertTrue(sorted((ROOT / directory).glob("*.test.ts")), directory)
+
+
 class RenderOnlySubtreesTest(unittest.TestCase):
     def test_the_bootstrap_decision_allows_exactly_the_render_only_subtrees(self) -> None:
         allowed = re.search(r"paths_match -qv '\^home/\(([^)]+)\)/'", REMOTE.read_text())

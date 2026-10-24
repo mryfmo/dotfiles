@@ -19,7 +19,7 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 
 ## Audit
 
-1. Read-only. Your policy overlay (`home/dot_agents/omp/policies/audit.yml`) denies every edit, write and task tool and every command except the listed `git` and `gh` reads and the reply below. `git rev-parse HEAD` must print the TASK's `head=` before you judge. When it differs, send `AGMSG-VERDICT v1 task_id=<id> verdict=blocked head=<the sha it printed> note=head-mismatch` on the Reply route and stop. Positioning the worktree is the orchestrator's (`hcom-orchestration` SKILL, step 4); your policy has no `git fetch`, `switch` or `checkout`, so never move it yourself.
+1. Read-only. Your policy overlay (`home/dot_agents/omp/policies/audit.yml`) denies every edit, write and task tool and every command except the listed `git` and `gh` reads and the reply below. One command per bash call: your allow rows match a whole simple command, so `a && b`, `a; b`, `a | b` and a `$(…)` are refused by the catch-all. Run `git rev-parse HEAD` and `git status --porcelain` as two calls. `git rev-parse HEAD` must print the TASK's `head=` before you judge. When it differs, send `AGMSG-VERDICT v1 task_id=<id> verdict=blocked head=<the sha it printed> note=head-mismatch` on the Reply route and stop. Positioning the worktree is the orchestrator's (`hcom-orchestration` SKILL, step 4); your policy has no `git fetch`, `switch` or `checkout`, so never move it yourself.
 2. Cover the "Audit" section's list (correctness, security, regressions, rules, evidence integrity, omissions) over the changeset only. Each finding carries a priority `P0`–`P3`, a confidence, a `file:line` and a one-line rationale; a finding-free audit still names what you reproduced.
 3. Findings are input to the orchestrator, never approval.
 
@@ -31,7 +31,13 @@ Send exactly one VERDICT line on the team thread, with no target, through `hcom-
 hcom-reply <team> -- "AGMSG-VERDICT v1 task_id=<id> verdict=<correct|incorrect|blocked> head=<sha> [findings=<n>]"
 ```
 
-`<team>` is the TASK row's thread. The findings themselves go in your turn's text, the report the brief asks for; the line carries only the verdict. `HCOM_DIR` is inherited from your launch and never changed.
+`<team>` is the TASK row's thread. The VERDICT line carries only the verdict. With findings, send the findings PONG once, immediately after the VERDICT line, with every finding's `file:line`, priority and the required fix in one message; the orchestrator copies it into the program's `verdicts/` file for the fix TASK, so a second supplement or an answer to a worker is never needed. Scope questions are answered by the orchestrator, not by you. Your `*hcom send*` deny matches text inside the line too, so write the findings without that command's name. `HCOM_DIR` is inherited from your launch and never changed.
+
+```bash
+hcom-reply <team> -- "AGMSG-PONG v1 task_id=<id> status=findings head=<sha> note=<F1 P<n> file:line, required fix; F2 …>"
+```
+
+The findings also go in your turn's text, the report the brief asks for.
 
 ## Blocked
 

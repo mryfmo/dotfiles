@@ -4540,6 +4540,7 @@
 <li><code>agent_name_for_workspace</code></li>
 <li><code>agmsg_hook_state</code></li>
 <li><code>agmsg_hooks_or_fail</code></li>
+<li><code>agmsg_member_other_project</code></li>
 <li><code>audit_pane_id</code></li>
 <li><code>audit_tab_ids</code></li>
 <li><code>check_worker_linkage</code></li>
@@ -4568,10 +4569,12 @@
 <li><code>print_plain_start_summary</code></li>
 <li><code>print_regime_directive</code></li>
 <li><code>print_stale_seats</code></li>
+<li><code>registered_agmsg_projects</code></li>
 <li><code>remove_retired_pre_push_stub</code></li>
 <li><code>remove_shadowing_node_global</code></li>
 <li><code>rename_pane_unless_seat_named</code></li>
 <li><code>repo_worktree_path</code></li>
+<li><code>repository_identity</code></li>
 <li><code>require_command</code></li>
 <li><code>resolve_audit_codex_args</code></li>
 <li><code>resolve_orchestrator_kind</code></li>
@@ -4579,6 +4582,7 @@
 <li><code>resolve_worker_profile</code></li>
 <li><code>resolve_worker_worktree</code></li>
 <li><code>retire_agmsg</code></li>
+<li><code>retire_registered_agmsg_projects</code></li>
 <li><code>seat_pane_state</code></li>
 <li><code>seat_record_path</code></li>
 <li><code>single_managed_workspace</code></li>
@@ -4634,7 +4638,7 @@
 <span class="c1">#   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --restart-worker Retired: exits 2 naming --remove-worker then --add-worker.</span>
-<span class="c1"># @option --retire-agmsg Remove the checkout's agmsg hooks and leave its agmsg teams without changing Herdr panes.</span>
+<span class="c1"># @option --retire-agmsg Remove agmsg hooks and leave agmsg teams without changing Herdr panes: in DIR, or without DIR in every registered clone of this repository and then the current directory.</span>
 <span class="c1"># @option --bootstrap-agmsg Retired: exits 2 naming --retire-agmsg.</span>
 <span class="c1"># @option --audit &lt;sha&gt; Run the read-only `codex &lt;audit profile args&gt; exec` auditor for &lt;sha&gt; in the workspace's audit tab.</span>
 <span class="c1"># @option --out &lt;path&gt; Audit evidence path, relative to DIR. Defaults to</span>
@@ -4721,7 +4725,11 @@
 <span class="s">every agmsg hook from DIR/.claude/settings.local.json with delivery.sh set off,</span>
 <span class="s">makes each claude-code agmsg identity registered at DIR leave its team, and</span>
 <span class="s">prints one line per action, or `agmsg already retired for DIR` when there was</span>
-<span class="s">nothing to do. It also removes the pre-push stub that earlier versions wrote</span>
+<span class="s">nothing to do. Without DIR it first visits every project the agmsg team store</span>
+<span class="s">registers whose root commits and origin owner/repo match the current</span>
+<span class="s">directory's, retiring each the same way, then retires the current directory; a</span>
+<span class="s">registered project of another repository is printed as skipped with its team</span>
+<span class="s">and path and left untouched. It also removes the pre-push stub that earlier versions wrote</span>
 <span class="s">for the retired main-push guard (any other pre-push hook is left alone); the</span>
 <span class="s">GitHub ruleset on main is the boundary. --bootstrap-agmsg is retired: it exits</span>
 <span class="s">2 and names --retire-agmsg.</span>
@@ -6027,23 +6035,40 @@
 <span class="c1">#   Prints one line per action, or one `agmsg already retired` line. delivery.sh</span>
 <span class="c1">#   never touches permissions, so an agmsg allow rule it leaves is reported,</span>
 <span class="c1">#   never edited here.</span>
-<span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
+<span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration; a</span>
+<span class="c1">#   registered path whose directory is gone skips the $HOME and pre-push steps.</span>
+<span class="c1"># @arg $2 string Optional `--registered &lt;identity&gt;`, the no-DIR form: before a</span>
+<span class="c1">#   leave.sh call, keep a membership whose member is also registered at a</span>
+<span class="c1">#   project that is not a clone of this repository (repository_identity equal</span>
+<span class="c1">#   to &lt;identity&gt;), since leave.sh drops the whole member (leave.sh:85-93)</span>
+<span class="c1">#   while join.sh appends one registration per project (join.sh:211-228).</span>
+<span class="c1"># @arg $4 string Optional `--report-skips` after `--registered &lt;identity&gt;`:</span>
+<span class="c1">#   print a line when DIR has no agmsg hook (each registered project visited).</span>
 <span class="c1"># @exitcode 1 When the settings file cannot be read as JSON, an agmsg hook</span>
 <span class="c1">#   survives `set off`, identities.sh fails, or leave.sh fails.</span>
 <span class="k">function</span><span class="w"> </span>retire_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">registered</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="nv">identity</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">report_skips</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>other
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg retire for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--registered<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">registered</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">3</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">report_skips</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">4</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>remove_retired_pre_push_stub<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg retire for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>remove_retired_pre_push_stub<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">delivery</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/delivery.sh"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">claude_hooks_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/.claude/settings.local.json"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">acted</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>rows<span class="w"> </span>team<span class="w"> </span>name<span class="w"> </span>rule<span class="w"> </span>hooks
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">teams_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/teams"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">acted</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>rows<span class="w"> </span>team<span class="w"> </span>name<span class="w"> </span>rule<span class="w"> </span>hooks<span class="w"> </span>guard
 
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="p">%/*</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># The command substitution runs in a subshell, so a read error exits it and</span>
@@ -6066,6 +6091,9 @@
 <span class="w">                </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.permissions.allow[]? | select(contains("agmsg/scripts/"))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">report_skips</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--report-skips<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: no agmsg hook in %s (missing or none); hook removal skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="c1"># A failed or missing lookup is not "no identity": never claim retired then.</span>
@@ -6082,6 +6110,26 @@
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>team<span class="w"> </span>name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 <span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">team</span><span class="si">}</span>/config.json<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: team %s of %s no longer exists; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">registered</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">guard</span><span class="o">=</span><span class="m">0</span>
+<span class="w">            </span><span class="nv">other</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>agmsg_member_other_project<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">/config.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">guard</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">guard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">            </span><span class="m">0</span><span class="o">)</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: %s in team %s is also registered at %s; membership kept\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="k">continue</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">            </span>*<span class="o">)</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot read the registrations of %s in %s, so what leave.sh would remove is unknown; nothing left (log: %s)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                    </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">/config.json"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">                </span><span class="p">;;</span>
+<span class="w">            </span><span class="k">esac</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/leave.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg leave script not found; skipping team leave for %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/leave.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">continue</span>
@@ -6094,6 +6142,141 @@
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">acted</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg already retired for %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the first registration of a team member, of any agmsg</span>
+<span class="c1">#   type, that lies outside this repository, since leave.sh removes the whole</span>
+<span class="c1">#   member whatever the type (leave.sh:85-93) and join.sh keeps one registration</span>
+<span class="c1">#   per type/project pair (join.sh:211-228). Outside means a directory other</span>
+<span class="c1">#   than DIR whose repository_identity differs from &lt;identity&gt;, or a project</span>
+<span class="c1">#   that cannot be checked (absent, not a string, gone, or holding a newline).</span>
+<span class="c1">#   The registrations are read from the team config as JSON, so a tab in a path</span>
+<span class="c1">#   survives, and the read is checked: a failure is never "nothing outside".</span>
+<span class="c1"># @arg $1 path Team config.json.</span>
+<span class="c1"># @arg $2 string Member name.</span>
+<span class="c1"># @arg $3 path DIR, the project being retired.</span>
+<span class="c1"># @arg $4 string This repository's identity (empty when it has none).</span>
+<span class="c1"># @exitcode 0 When such a registration exists (its project printed on stdout).</span>
+<span class="c1"># @exitcode 1 When every registration is DIR or a clone of this repository.</span>
+<span class="c1"># @exitcode 2 When the member's registrations cannot be read.</span>
+<span class="k">function</span><span class="w"> </span>agmsg_member_other_project<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">config</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span><span class="w"> </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="nv">$4</span><span class="s2">"</span><span class="w"> </span>rows<span class="w"> </span>row<span class="w"> </span>other
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">registrations</span><span class="o">=()</span>
+
+<span class="w">    </span><span class="c1"># An absent member is a read failure: identities.sh just named it here.</span>
+<span class="w">    </span><span class="nv">rows</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-c<span class="w"> </span>--arg<span class="w"> </span>n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.agents[$n] // error("member \($n) is not in the team config")</span>
+<span class="s1">        | if (.registrations | type) == "array" then .registrations[] else {type, project} end</span>
+<span class="s1">        | {type: (.type // null), project: (.project // null)}'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>row<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">registrations</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">registrations</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">registrations</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">other</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'if (.project | type) == "string" then .project else "" end'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># No project to check: what leave.sh would drop is not provably ours.</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># The same directory (by device and inode), whatever path spells it.</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">other</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1"># @description List every claude-code registration the local agmsg team store</span>
+<span class="c1">#   holds as one compact JSON object per line, `{"project":…,"team":…}`. JSON</span>
+<span class="c1">#   keeps a path lossless: agmsg accepts a tab in a path (delivery.sh:12-17),</span>
+<span class="c1">#   and jq -c escapes it, and a newline, inside the line. It reads each</span>
+<span class="c1">#   teams/&lt;team&gt;/config.json with the schema identities.sh reads</span>
+<span class="c1">#   (identities.sh:31-58, team.sh:265-285: `.agents.&lt;name&gt;.registrations[]`,</span>
+<span class="c1">#   or the legacy `.type`/`.project` pair); the team name is the config's</span>
+<span class="c1">#   directory, as leave.sh resolves it. team.sh is not used: it probes delivery</span>
+<span class="c1">#   state and panes per member.</span>
+<span class="c1"># @exitcode 1 When a team config exists but cannot be read as JSON.</span>
+<span class="k">function</span><span class="w"> </span>registered_agmsg_projects<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">teams_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/teams"</span><span class="w"> </span>config<span class="w"> </span>team
+
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>config<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">teams_dir</span><span class="si">}</span><span class="s2">"</span>/*/config.json<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span>--arg<span class="w"> </span>team<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.agents // {} | to_entries[] | .value</span>
+<span class="s1">            | (if (.registrations | type) == "array" then .registrations else [{type: .type, project: .project}] end)[]</span>
+<span class="s1">            | select(.type == "claude-code" and (.project | type) == "string" and .project != "") | {project, team: $team}'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot read %s as JSON, so its registered agmsg projects are unknown\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">config</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print a checkout's repository identity on one line: its root</span>
+<span class="c1">#   commits and the host/owner/repo its origin fetch URL names, so two clones</span>
+<span class="c1">#   match whatever their URL spelling (https or ssh, with or without .git) and a</span>
+<span class="c1">#   fork, which shares the root but not the remote, does not (D-024-147).</span>
+<span class="c1">#   Prints nothing for a checkout without commits or an origin.</span>
+<span class="c1">#   shortcut: a shallow clone reports its shallow boundary, not the root, so it</span>
+<span class="c1">#   counts as another repository; upgrade to an explicit project list if a</span>
+<span class="c1">#   shallow agmsg project appears.</span>
+<span class="c1"># @arg $1 dir Directory.</span>
+<span class="k">function</span><span class="w"> </span>repository_identity<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>roots<span class="w"> </span>url
+
+<span class="w">    </span><span class="nv">roots</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>rev-list<span class="w"> </span>--max-parents<span class="o">=</span><span class="m">0</span><span class="w"> </span>HEAD<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">' '</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">roots</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>config<span class="w"> </span>--get<span class="w"> </span>remote.origin.url<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># https://host/owner/repo(.git) and git@host:owner/repo(.git) -&gt; host/owner/repo</span>
+<span class="w">    </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-E<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[a-z+]+://([^@/]*@)?##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#^[^@/]*@([^:/]+):#\1/#'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#/+$##'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s#\.git$##'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'[:upper:]'</span><span class="w"> </span><span class="s1">'[:lower:]'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s| %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">roots</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Retire agmsg in every project the team store registers that is</span>
+<span class="c1">#   a clone of the repository in DIR (repository_identity, D-024-147), then in DIR</span>
+<span class="c1">#   itself. A registered project of another repository, one whose directory is</span>
+<span class="c1">#   gone, or one whose path holds a newline (agmsg refuses those,</span>
+<span class="c1">#   delivery.sh:12-17) is reported with its team and left alone: no delivery.sh</span>
+<span class="c1">#   or leave.sh call. A member also registered at a project outside this</span>
+<span class="c1">#   repository keeps its membership (retire_agmsg --registered). Paths travel as</span>
+<span class="c1">#   JSON from the store to each call, never cut at a tab.</span>
+<span class="c1"># @arg $1 clone Absolute path of the clone this runs in.</span>
+<span class="c1"># @exitcode 1 As retire_agmsg, or when a team config cannot be read.</span>
+<span class="k">function</span><span class="w"> </span>retire_registered_agmsg_projects<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">clone</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>registrations<span class="w"> </span>row<span class="w"> </span>project<span class="w"> </span>team<span class="w"> </span>identity
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">rows</span><span class="o">=()</span>
+
+<span class="w">    </span><span class="nv">registrations</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>registered_agmsg_projects<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># One visit per project, its teams joined; collected first so no command</span>
+<span class="w">    </span><span class="c1"># below reads the list as its stdin.</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>row<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">rows</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-sc<span class="w"> </span><span class="s1">'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">registrations</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">rows</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">project</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.project'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">team</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.teams'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">row</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: registered project %q (team %s) holds a newline; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: registered project %s (team %s) is gone; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="c1"># The same directory (by device and inode), whatever path spells it.</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>repository_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: registered project %s (team %s) is not a clone of this repository; skipped\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retire: registered project %s (team %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">project</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--registered<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--report-skips
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">clone</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--registered<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Return the first pane id without an attached agent.</span>
@@ -6374,10 +6557,13 @@
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">retire_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>require_command<span class="w"> </span>jq
-<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">$PWD</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">        </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>require_command<span class="w"> </span>git
+<span class="w">        </span>retire_registered_agmsg_projects<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 

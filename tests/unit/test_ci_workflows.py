@@ -301,6 +301,13 @@ class TypeScriptTestsStepTest(unittest.TestCase):
         self.assertIn('mise -C "${RUNNER_TEMP}/statusline-mise" install bun\n', step)
         self.assertIn(f"for tests in {' '.join(self.DIRECTORIES)}; do\n", step)
         self.assertIn('"${bun_bin}" test "./${tests}"\n', step)
+        # requests.test.ts imports the installed omp: the repository's own pinned, checksum-verified installer puts
+        # it in a scratch HOME, and a missing package fails the step before bun runs.
+        self.assertIn("bash -c 'source ./scripts/update-agent-assets.sh && update_omp'\n", step)
+        self.assertIn('HOME="${omp_home}"', step)
+        install = step.index("update_omp")
+        self.assertLess(install, step.index('test -f "${OMP_PACKAGE_DIR}/package.json"\n'))
+        self.assertLess(step.index('test -f "${OMP_PACKAGE_DIR}/package.json"\n'), step.index("for tests in"))
         for weakening in ("continue-on-error", "|| true", "set +e"):
             with self.subTest(weakening=weakening):
                 self.assertNotIn(weakening, step)

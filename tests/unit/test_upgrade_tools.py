@@ -108,5 +108,27 @@ class UpgradeUvToolsTest(unittest.TestCase):
                 self.assertEqual(pin, result.stdout.strip())
 
 
+class PlatformPredicateTest(unittest.TestCase):
+    def test_a_failed_uname_exits_the_script_instead_of_reading_as_another_os(self):
+        for predicate, os_name in (("is_macos", "macOS"), ("is_linux", "Linux")):
+            with self.subTest(predicate=predicate):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; uname() {{ return 1; }}; if ! {predicate}; then echo "other OS"; fi',
+                        "bash",
+                        str(UPGRADER),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(f"uname failed; cannot tell whether this host is {os_name}\n", result.stderr)
+                self.assertNotIn("other OS", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

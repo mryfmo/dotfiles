@@ -9,7 +9,9 @@
 
 set -Eeuo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# dirname is captured on its own line: inside the cd its status would be lost.
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+repo_root="$(cd "${script_dir}/.." && pwd)" || exit 1
 usage_dir="${repo_root}/.agents/worklog/claude/usage"
 snapshot_date="$(date +%Y%m%d)"
 snapshot_path="${usage_dir}/${snapshot_date}.json"

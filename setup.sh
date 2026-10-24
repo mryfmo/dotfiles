@@ -173,9 +173,13 @@ function github_release_tag() {
 #   older system gh earlier on PATH (Ubuntu's apt gh predates 2.93.0) never hides it.
 #
 function github_attestation_ready() {
-    local PATH="${HOME}/.local/share/mise/shims:${PATH}" version
+    local PATH="${HOME}/.local/share/mise/shims:${PATH}" version version_output
     command -v gh > /dev/null 2>&1 || return 1
-    version="$(github_dotcom_gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
+    if ! version_output="$(github_dotcom_gh --version 2> /dev/null)"; then
+        printf 'gh --version failed, so gh is not used for attestations.\n' >&2
+        return 1
+    fi
+    read -r _ _ version _ <<< "${version_output}"
     # Only a stable X.Y.Z counts: a prerelease such as 2.93.0-rc.1 sorts below the 2.93.0 fix.
     if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
         ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
@@ -225,7 +229,7 @@ function github_release_attestation() {
 # @exitcode 2 No gh 2.93.0 or newer is authenticated to github.com, so nothing was downloaded.
 #
 function github_release_verified_sha256() (
-    local actual base="https://github.com/$1/releases/download/$2" dir expected
+    local actual base="https://github.com/$1/releases/download/$2" dir expected sum
     github_attestation_ready || return 2
     dir="$(mktemp -d "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
     trap 'rm -rf "${dir}"' EXIT
@@ -233,10 +237,17 @@ function github_release_verified_sha256() (
     curl -fsSL "${base}/$4" -o "${dir}/$4" || return 1
     expected="$(awk -v name="$3" '$2 == name { print $1; exit }' "${dir}/$4")"
     if command -v sha256sum > /dev/null 2>&1; then
-        actual="$(sha256sum "${dir}/$3" | awk '{ print $1 }')"
+        sum="$(sha256sum "${dir}/$3")" || {
+            printf 'sha256sum could not hash %s\n' "$3" >&2
+            return 1
+        }
     else
-        actual="$(shasum -a 256 "${dir}/$3" | awk '{ print $1 }')"
+        sum="$(shasum -a 256 "${dir}/$3")" || {
+            printf 'shasum -a 256 could not hash %s\n' "$3" >&2
+            return 1
+        }
     fi
+    actual="${sum%% *}"
     if [ -z "${expected}" ] || [ "${actual}" != "${expected}" ]; then
         printf 'Checksum mismatch for %s\n' "$3" >&2
         return 1

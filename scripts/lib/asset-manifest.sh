@@ -4,38 +4,51 @@
 # @brief Record installed agent assets in a private atomic JSON manifest.
 
 #
-# @description Return the installed version of a Claude Code plugin.
+# @description Return the installed version of a Claude Code plugin, or `unknown` when the plugin
+#   list cannot be read or does not name it: the manifest records what it could not read as such.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 #
 function manifest_claude_plugin_version() {
     local plugin_id="$1"
-    local version
+    local listing version
 
-    version="$(claude plugin list --json 2> /dev/null | jq -er --arg id "${plugin_id}" 'first(.[] | select(.id == $id) | .version)' 2> /dev/null)" || version="unknown"
-    printf '%s\n' "${version}"
+    if listing="$(claude plugin list --json 2> /dev/null)" &&
+        version="$(jq -er --arg id "${plugin_id}" 'first(.[] | select(.id == $id) | .version)' <<< "${listing}" 2> /dev/null)"; then
+        printf '%s\n' "${version}"
+    else
+        printf 'unknown\n'
+    fi
 }
 
 #
-# @description Return the installed version of a Codex plugin.
+# @description Return the installed version of a Codex plugin, or `unknown` when the plugin list
+#   cannot be read or does not name it.
 # @arg $1 string Fully qualified Codex plugin ID.
 #
 function manifest_codex_plugin_version() {
     local plugin_id="$1"
-    local version
+    local listing version
 
-    version="$(codex plugin list --json 2> /dev/null | jq -er --arg id "${plugin_id}" 'first(.installed[] | select(.pluginId == $id) | .version)' 2> /dev/null)" || version="unknown"
-    printf '%s\n' "${version}"
+    if listing="$(codex plugin list --json 2> /dev/null)" &&
+        version="$(jq -er --arg id "${plugin_id}" 'first(.installed[] | select(.pluginId == $id) | .version)' <<< "${listing}" 2> /dev/null)"; then
+        printf '%s\n' "${version}"
+    else
+        printf 'unknown\n'
+    fi
 }
 
 #
-# @description Return the installed Homebrew formula version.
+# @description Return the installed Homebrew formula version, or `unknown` when brew cannot list it
+#   (a formula that is not installed makes `brew list --versions` fail).
 # @arg $1 string Homebrew formula name.
 #
 function manifest_brew_formula_version() {
     local formula="$1"
-    local version
+    local listing version=""
 
-    version="$(brew list --versions "${formula}" 2> /dev/null | awk -v formula="${formula}" '$1 == formula { print $2; exit }')"
+    if listing="$(brew list --versions "${formula}" 2> /dev/null)"; then
+        version="$(awk -v formula="${formula}" '$1 == formula { print $2; exit }' <<< "${listing}")" || version=""
+    fi
     printf '%s\n' "${version:-unknown}"
 }
 

@@ -1141,35 +1141,9 @@ fi
             "fork-team": {"claude-fork": "fork"},
         }
         for team, members in roster.items():
-            (teams / team).mkdir(parents=True)
-            agents = {
-                name: {"registrations": [{"type": "claude-code", "project": str(projects[key])}]}
-                for name, key in members.items()
-            }
-            (teams / team / "config.json").write_text(json.dumps({"name": team, "agents": agents}))
+            self.write_agmsg_team(team, {name: [projects[key]] for name, key in members.items()})
         for key in ("workspace", "fork", "reports"):
-            settings = projects[key] / ".claude/settings.local.json"
-            settings.parent.mkdir()
-            settings.write_text(
-                json.dumps(
-                    {
-                        "permissions": {"allow": ["Bash(git status:*)"]},
-                        "hooks": {
-                            "SessionStart": [
-                                {
-                                    "matcher": "",
-                                    "hooks": [
-                                        {
-                                            "type": "command",
-                                            "command": f"'{scripts}/session-start.sh' 'claude-code' '{projects[key]}'",
-                                        }
-                                    ],
-                                }
-                            ]
-                        },
-                    }
-                )
-            )
+            self.write_agmsg_session_hook(projects[key])
         for name, body in {
             "identities.sh": f"""printf 'identities %s\\n' "$*" >> {self.calls_path}
 for c in {teams}/*/config.json; do
@@ -1189,6 +1163,33 @@ jq 'del(.hooks)' "$f" > "$f.new" && mv "$f.new" "$f"
             (scripts / name).write_text("#!/usr/bin/env bash\n" + body)
             (scripts / name).chmod(0o755)
         return projects
+
+    def write_agmsg_team(self, team: str, members: dict[str, list[Path]]) -> Path:
+        """A scratch team config whose members carry one claude-code registration per project."""
+        config = self.home_dir / ".agents/skills/agmsg/teams" / team / "config.json"
+        config.parent.mkdir(parents=True)
+        agents = {
+            name: {"registrations": [{"type": "claude-code", "project": str(p)} for p in paths]}
+            for name, paths in members.items()
+        }
+        config.write_text(json.dumps({"name": team, "agents": agents}))
+        return config
+
+    def write_agmsg_session_hook(self, project: Path) -> Path:
+        """A settings.local.json carrying one agmsg SessionStart hook for `project`."""
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        settings = project / ".claude/settings.local.json"
+        settings.parent.mkdir(exist_ok=True)
+        command = f"'{scripts}/session-start.sh' 'claude-code' '{project}'"
+        settings.write_text(
+            json.dumps(
+                {
+                    "permissions": {"allow": ["Bash(git status:*)"]},
+                    "hooks": {"SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": command}]}]},
+                }
+            )
+        )
+        return settings
 
     def run_registered_retire(self) -> subprocess.CompletedProcess[str]:
         """`herdr-agents --retire-agmsg` without DIR, from the clone, as `make agmsg-retire` runs it."""
@@ -1287,6 +1288,55 @@ jq 'del(.hooks)' "$f" > "$f.new" && mv "$f.new" "$f"
         )
         self.assertFalse(any(c.startswith("leave ") for c in self.calls_path.read_text().splitlines()))
         self.assertTrue((scripts / "leave.sh").exists())
+
+    def test_retire_agmsg_without_dir_keeps_a_membership_also_registered_outside_this_repository(self) -> None:
+        p = self.write_registered_agmsg_store()
+        # join.sh appends a registration per project to one member; leave.sh would drop all of them.
+        mixed = self.write_agmsg_team("mixed-ops", {"claude-mixed": [p["workspace"], p["reports"]]})
+        # A member registered only at clones of this repository still leaves.
+        clones = self.write_agmsg_team("clone-ops", {"claude-two-clones": [p["bare"], p["workspace"]]})
+        before = mixed.read_bytes()
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"agmsg retire: claude-mixed in team mixed-ops is also registered at {p['reports']}; membership kept\n",
+            result.stdout,
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertNotIn("leave mixed-ops claude-mixed", calls)
+        self.assertEqual(mixed.read_bytes(), before)
+        # The clone's hooks still go, and its single-repository members still leave.
+        self.assertIn(f"delivery set off claude-code {p['workspace']}", calls)
+        self.assertNotIn("hooks", json.loads((p["workspace"] / ".claude/settings.local.json").read_text()))
+        self.assertEqual([c for c in calls if c.startswith("leave clone-ops")], ["leave clone-ops claude-two-clones"])
+        self.assertFalse(clones.exists())
+        self.assertIn("leave dotfiles-conformance claude-deep-dot", calls)
+
+    def test_retire_agmsg_without_dir_carries_a_tab_in_a_registered_path(self) -> None:
+        p = self.write_registered_agmsg_store()
+        # The registered clone's path is its unregistered neighbour's path plus a tab and a suffix.
+        prefix = self.git_checkout(self.temp_dir / "tabbed", "https://github.com/mryfmo/dotfiles", clone_of=p["clone"])
+        tabbed = self.git_checkout(
+            self.temp_dir / "tabbed\tsuffix", "https://github.com/mryfmo/dotfiles", clone_of=p["clone"]
+        )
+        self.write_agmsg_team("tab-ops", {"claude-tab": [tabbed]})
+        self.write_agmsg_session_hook(tabbed)
+        prefix_settings = self.write_agmsg_session_hook(prefix)
+        before = prefix_settings.read_bytes()
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"agmsg retire: registered project {tabbed} (team tab-ops)\n", result.stdout)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"delivery set off claude-code {tabbed}", calls)
+        self.assertIn("leave tab-ops claude-tab", calls)
+        self.assertNotIn("hooks", json.loads((tabbed / ".claude/settings.local.json").read_text()))
+        self.assertFalse(any(c == f"delivery set off claude-code {prefix}" for c in calls), calls)
+        self.assertNotIn(f"registered project {prefix} ", result.stdout)
+        self.assertEqual(prefix_settings.read_bytes(), before)
 
     RETIRED_STUB = (
         "#!/usr/bin/env bash\n"

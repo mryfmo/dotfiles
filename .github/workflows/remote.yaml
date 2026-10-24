@@ -35,6 +35,8 @@ jobs:
             system: client
 
     runs-on: ${{ matrix.os }}
+    # Over twice the normal maximum of 13.6 min: a stalled apt mirror cancels the job instead of running it for hours.
+    timeout-minutes: 30
     env:
       CI: true
       SYSTEM: ${{ matrix.system }}
@@ -87,6 +89,24 @@ jobs:
       - name: Skip the bootstrap when no bootstrap path changed
         if: ${{ steps.decide.outputs.should_run != 'true' }}
         run: echo "No path the bootstrap reads changed; the job reports success without bootstrapping."
+
+      - name: Drop the Azure apt mirror from the runner image
+        if: ${{ steps.decide.outputs.should_run == 'true' && runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mirrors=/etc/apt/apt-mirrors.txt
+          if [ ! -e "${mirrors}" ]; then
+            echo 'apt-mirrors.txt absent; nothing to change'
+            exit 0
+          fi
+          echo "${mirrors} before:"
+          cat "${mirrors}"
+          # actions/runner-images#14823: a trickling Azure mirror never trips apt's 15 s timeout, so apt never fails over.
+          sudo sed -i '/azure\.archive\.ubuntu\.com/d' "${mirrors}"
+          echo "${mirrors} after:"
+          cat "${mirrors}"
+          grep -q 'priority:' "${mirrors}" || { echo "no apt mirror left in ${mirrors}" >&2; exit 1; }
 
       - name: Bootstrap the checked-out public source
         if: ${{ steps.decide.outputs.should_run == 'true' }}

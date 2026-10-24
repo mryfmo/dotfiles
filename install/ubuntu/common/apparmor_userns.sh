@@ -36,11 +36,20 @@ function profile_source() {
 }
 
 #
-# @description Print why the profile is not needed, or nothing when it is.
+# @description Print why the profile is not needed, or nothing when it is. A host without the
+#   sysctl has no restriction; a sysctl that exists but cannot be read decides nothing.
 # @stdout One skip reason line, or nothing.
+# @exitcode 1 The restriction sysctl exists but cannot be read.
 #
 function skip_reason() {
-    if [ "$(cat "${RESTRICT_SYSCTL}" 2> /dev/null)" != "1" ]; then
+    local restrict=""
+    if [ -e "${RESTRICT_SYSCTL}" ]; then
+        restrict="$(cat "${RESTRICT_SYSCTL}")" || {
+            printf 'cannot read %s; the bwrap AppArmor userns profile was not changed.\n' "${RESTRICT_SYSCTL}" >&2
+            return 1
+        }
+    fi
+    if [ "${restrict}" != "1" ]; then
         printf 'AppArmor unprivileged userns restriction is not enabled\n'
     elif ! command -v apparmor_parser > /dev/null 2>&1; then
         printf 'apparmor_parser is not installed\n'
@@ -72,7 +81,7 @@ function install_profile() {
 #
 function main() {
     local reason
-    reason="$(skip_reason)"
+    reason="$(skip_reason)" || return 1
     if [ -n "${reason}" ]; then
         printf 'Skipping bwrap AppArmor userns profile: %s.\n' "${reason}"
         return 0

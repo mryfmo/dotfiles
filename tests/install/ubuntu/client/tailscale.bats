@@ -52,3 +52,26 @@ function teardown() {
     [ "$(grep -c '^tee /usr/share/keyrings/tailscale-archive-keyring.gpg$' "${calls_path}")" -eq 2 ]
     [ "$(grep -c '^tee /etc/apt/sources.list.d/tailscale.list$' "${calls_path}")" -eq 2 ]
 }
+
+@test "[ubuntu-client] setup_repository writes no keyring or sources entry when dpkg cannot be read" {
+    local calls_path="${BATS_TEST_TMPDIR}/tailscale-dpkg-calls.txt"
+
+    run env CALLS_PATH="${calls_path}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        curl() { printf "tailscale signing material\n"; }
+        dpkg() { return 1; }
+        lsb_release() { printf "noble\n"; }
+        sudo() {
+            printf "%s\n" "$*" >> "${CALLS_PATH}"
+            if [ "$1" = "tee" ]; then
+                cat > /dev/null
+            fi
+        }
+
+        setup_repository
+    '
+
+    [ "${status}" -eq 1 ]
+    [ "${output}" = "dpkg --print-architecture failed; the Tailscale repository was not configured" ]
+    [ ! -e "${calls_path}" ]
+}

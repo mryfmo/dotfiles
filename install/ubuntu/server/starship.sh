@@ -24,11 +24,16 @@ readonly STARSHIP_AARCH64_SHA256="dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c3
 
 # @description Print the Starship Linux artifact name and its reviewed sha256 for the current architecture.
 function starship_artifact() {
-    case "$(uname -m)" in
+    local machine
+    machine="$(uname -m)" || {
+        printf 'uname -m failed; no Starship artifact was chosen.\n' >&2
+        return 1
+    }
+    case "${machine}" in
     x86_64) printf 'starship-x86_64-unknown-linux-musl.tar.gz %s\n' "${STARSHIP_X86_64_SHA256}" ;;
     aarch64 | arm64) printf 'starship-aarch64-unknown-linux-musl.tar.gz %s\n' "${STARSHIP_AARCH64_SHA256}" ;;
     *)
-        printf 'Unsupported Starship architecture: %s\n' "$(uname -m)" >&2
+        printf 'Unsupported Starship architecture: %s\n' "${machine}" >&2
         return 1
         ;;
     esac

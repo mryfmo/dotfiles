@@ -22,8 +22,13 @@ readonly GH_EXTENSIONS=(
 # @description Activate `mise` so `gh` can resolve the expected toolchain.
 #
 function activate_mise() {
+    local activation
     if [ -x "${MISE_BIN}" ]; then
-        eval "$("${MISE_BIN}" activate bash)"
+        activation="$("${MISE_BIN}" activate bash)" || {
+            printf '%s activate bash failed; gh extensions were not installed.\n' "${MISE_BIN}" >&2
+            return 1
+        }
+        eval "${activation}"
     fi
 }
 

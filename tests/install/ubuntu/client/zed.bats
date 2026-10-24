@@ -198,3 +198,25 @@ function install_fake_zed() {
     [ "$(grep -n 'include' "${ZED_TEMPLATE}" | cut -d: -f1 | head -1)" -lt "$(grep -n 'zed.sh' "${ZED_TEMPLATE}" | cut -d: -f1)" ]
     grep -q 'include "../scripts/lib/github-release.sh"' "${ZED_TEMPLATE}"
 }
+
+@test "[ubuntu-client] zed_artifact names uname when it cannot read the architecture" {
+    run bash -c "${ZED_FAKES}"'
+        uname() { return 1; }
+        zed_artifact
+    '
+    [ "${status}" -eq 1 ]
+    [ "${output}" = "uname -m failed; no Zed artifact was chosen." ]
+}
+
+@test "[ubuntu-client] main installs nothing when sort -V cannot order the versions" {
+    install_fake_zed 1.0.0
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "${ZED_FAKES}"'
+        sort() { return 2; }
+        main
+    '
+    [ "${status}" -eq 1 ]
+    grep -qF -- "sort -V could not order Zed 1.0.0 and v1.22.0; nothing was installed." <<< "${output}"
+    [ ! -e "${BATS_TEST_TMPDIR}/calls.log" ]
+    "${BATS_TEST_TMPDIR}/.local/bin/zed" | grep -q 'Zed 1.0.0'
+}

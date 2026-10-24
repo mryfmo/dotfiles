@@ -73,3 +73,12 @@ function teardown() {
     grep -qx old-starship "${BIN_DIR}/starship"
     grep -qx sibling "${BIN_DIR}/must-survive"
 }
+
+@test "[ubuntu-server] starship_artifact names uname when it cannot read the architecture" {
+    function uname() { return 1; }
+
+    run starship_artifact
+
+    [ "${status}" -eq 1 ]
+    [ "${output}" = "uname -m failed; no Starship artifact was chosen." ]
+}

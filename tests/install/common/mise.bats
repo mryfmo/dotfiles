@@ -131,3 +131,48 @@ unset install" ]
     run verify_mise_archive "${archive}" "${manifest}" "other.tar.gz"
     [ "${status}" -ne 0 ]
 }
+
+@test "[common] mise archive check names sha256sum when it cannot hash the archive" {
+    local archive="${BATS_TEST_TMPDIR}/mise.tar.gz"
+    local manifest="${BATS_TEST_TMPDIR}/SHASUMS256.txt"
+    printf 'artifact' > "${archive}"
+    printf '%s  ./mise.tar.gz\n' "$(printf artifact | shasum -a 256 | awk '{print $1}')" > "${manifest}"
+    function sha256sum() { return 1; }
+
+    run verify_mise_archive "${archive}" "${manifest}" "mise.tar.gz"
+
+    [ "${status}" -ne 0 ]
+    [ "${output}" = "sha256sum could not hash ${archive}" ]
+}
+
+@test "[common] mise release key check refuses when the clock cannot be read" {
+    function curl() { : > "${4}"; }
+    function gpg() {
+        printf 'pub:-:255:22:ABCDEF:1:4102444800::::\n'
+        printf 'fpr:::::::::%s:\n' "${MISE_GPG_FINGERPRINT}"
+    }
+    function date() { return 1; }
+    function gpgv() { touch "${BATS_TEST_TMPDIR}/gpgv-ran"; }
+
+    run verify_mise_shasums_signature "${BATS_TEST_TMPDIR}/SHASUMS256.asc" "${BATS_TEST_TMPDIR}"
+
+    [ "${status}" -eq 1 ]
+    grep -qF -- "date +%s failed; the mise release key expiry was not checked." <<< "${output}"
+    [ ! -e "${BATS_TEST_TMPDIR}/gpgv-ran" ]
+}
+
+@test "[common] mise fallback refuses an artifact with no reviewed sha256" {
+    function mise_gpg_ready() { return 1; }
+    function github_attestation_ready() { return 1; }
+    function mise_installed_version() { :; }
+    function curl() { : > "${4}"; }
+    function verify_mise_archive() { return 0; }
+    function mise_fallback_sha256() { return 1; }
+    function uname() { [ "$1" = -s ] && printf 'Linux\n' || printf 'x86_64\n'; }
+
+    run _install_mise_binary
+
+    [ "${status}" -eq 1 ]
+    grep -qF -- "mise_fallback_sha256 has no reviewed sha256 for mise-${MISE_FALLBACK_VERSION}-linux-x64.tar.gz; nothing was installed." <<< "${output}"
+    [ ! -e "${MISE_INSTALL_PATH}" ]
+}

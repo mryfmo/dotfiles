@@ -306,12 +306,16 @@ function sha256_file() {
 # @arg $1 path File to verify.
 # @arg $2 expected Expected lowercase digest.
 function verify_sha256() {
-    local path="$1" expected="${2:-}"
+    local path="$1" expected="${2:-}" actual
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${path}" >&2
         return 1
     }
-    [ "$(sha256_file "${path}")" = "${expected}" ] || {
+    actual="$(sha256_file "${path}")" || {
+        printf 'sha256_file could not hash %s\n' "${path}" >&2
+        return 1
+    }
+    [ "${actual}" = "${expected}" ] || {
         printf 'Checksum mismatch for %s\n' "${path}" >&2
         return 1
     }
@@ -389,6 +393,7 @@ function keepalive_sudo() {
 }
 
 function initialize_os_macos() {
+    local brew_env
     local brew_prefix
     local installer
     local installer_sha256
@@ -440,7 +445,11 @@ function initialize_os_macos() {
         exit 1
     fi
 
-    eval "$("${brew_prefix}/bin/brew" shellenv)"
+    if ! brew_env="$("${brew_prefix}/bin/brew" shellenv)"; then
+        echo "${brew_prefix}/bin/brew shellenv failed; cannot continue bootstrap." >&2
+        exit 1
+    fi
+    eval "${brew_env}"
 }
 
 function initialize_os_linux() {
@@ -474,7 +483,10 @@ function run_chezmoi() {
     local fallback_sha256
     local fallback=""
     local local_drift=false
+    local machine
     local no_tty_option
+    local os_type
+    local source_path
     local stage
     local status_line
     local status_output
@@ -495,7 +507,15 @@ function run_chezmoi() {
     fi
     chezmoi_version="${chezmoi_tag#v}"
     base_url="https://github.com/${CHEZMOI_RELEASE_REPO}/releases/download/${chezmoi_tag}"
-    case "$(get_os_type)/$(uname -m)" in
+    os_type="$(get_os_type)" || {
+        printf 'get_os_type (uname) failed; chezmoi was not installed.\n' >&2
+        return 1
+    }
+    machine="$(uname -m)" || {
+        printf 'uname -m failed; chezmoi was not installed.\n' >&2
+        return 1
+    }
+    case "${os_type}/${machine}" in
     Darwin/x86_64)
         artifact="chezmoi_${chezmoi_version}_darwin_amd64.tar.gz"
         fallback_sha256="${CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256}"
@@ -513,7 +533,7 @@ function run_chezmoi() {
         fallback_sha256="${CHEZMOI_FALLBACK_LINUX_ARM64_SHA256}"
         ;;
     *)
-        printf 'Unsupported chezmoi platform: %s/%s\n' "$(get_os_type)" "$(uname -m)" >&2
+        printf 'Unsupported chezmoi platform: %s/%s\n' "${os_type}" "${machine}" >&2
         return 1
         ;;
     esac
@@ -567,7 +587,11 @@ function run_chezmoi() {
     # Therefore, it is currnetly difficult to decrypt the files encrypted with `age` in this workflow.
     # I decided to temporarily remove the encrypted target files from chezmoi's control.
     if is_ci_or_not_tty; then
-        find "$(${chezmoi_cmd} source-path)" -type f -name "encrypted_*" -exec rm -fv {} +
+        if ! source_path="$("${chezmoi_cmd}" source-path)"; then
+            echo "chezmoi source-path failed; no destination targets were changed." >&2
+            return 1
+        fi
+        find "${source_path}" -type f -name "encrypted_*" -exec rm -fv {} +
     fi
 
     # Add to PATH for installing the necessary binary files under `$HOME/.local/bin`.

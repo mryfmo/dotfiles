@@ -20,8 +20,12 @@ readonly TAILSCALE_SOURCES_LIST="/etc/apt/sources.list.d/tailscale.list"
 # @description Configure Tailscale's official apt repository and signing key.
 #
 function setup_repository() {
-    local codename
+    local arch codename
     codename="$(lsb_release -cs)"
+    arch="$(dpkg --print-architecture)" || {
+        echo "dpkg --print-architecture failed; the Tailscale repository was not configured" >&2
+        return 1
+    }
 
     sudo mkdir -p /usr/share/keyrings
     # Tailscale publishes this key pre-dearmored (raw binary), unlike Docker's
@@ -29,7 +33,7 @@ function setup_repository() {
     curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${codename}.noarmor.gpg" | sudo tee "${TAILSCALE_KEYRING}" > /dev/null
 
     echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=${TAILSCALE_KEYRING}] https://pkgs.tailscale.com/stable/ubuntu ${codename} main" |
+        "deb [arch=${arch} signed-by=${TAILSCALE_KEYRING}] https://pkgs.tailscale.com/stable/ubuntu ${codename} main" |
         sudo tee "${TAILSCALE_SOURCES_LIST}" > /dev/null
 }
 

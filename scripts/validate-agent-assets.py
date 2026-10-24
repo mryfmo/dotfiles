@@ -807,8 +807,10 @@ def validate_assets(manifest: dict[str, Any]) -> None:
 
 
 # omp model roles: Claude seats through pi-claude-bridge, OpenAI seats through openai-siwc
-# (D-024-129/130); anthropic and openai-codex stay expressible as fallback routes.
-OMP_MODEL_RE = re.compile(r"^(openai-codex|openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+# (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
+# fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
+OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+OMP_RETIRED_ROUTES = ("openai-codex",)
 
 
 def validate_agent_manifest() -> dict[str, Any]:
@@ -869,6 +871,12 @@ def validate_agent_manifest() -> dict[str, Any]:
                     fail(f"{manifest_path} model profile {name}.{agent}.{key} is required")
         omp = profile.get("omp")
         omp_model = omp.get("model") if isinstance(omp, dict) else None
+        route = omp_model.split("/", 1)[0] if isinstance(omp_model, str) else None
+        if route in OMP_RETIRED_ROUTES:
+            fail(
+                f"{manifest_path} model profile {name}.omp.model names the retired {route} route; "
+                f"use claude-bridge, openai-siwc or anthropic: {omp_model!r}"
+            )
         if not isinstance(omp_model, str) or not OMP_MODEL_RE.fullmatch(omp_model):
             fail(f"{manifest_path} model profile {name}.omp.model must match {OMP_MODEL_RE.pattern}: {omp_model!r}")
     if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):

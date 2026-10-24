@@ -439,6 +439,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plain-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plain launch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-login" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4798,6 +4809,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#plain-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plain launch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#operator-login" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4937,6 +4959,10 @@ upstream <code>package/</code> tree, so a reviewer can re-derive it.</p>
 <td><code>04-setting-sources-none.patch</code></td>
 <td>The provider <code>query()</code> passes <code>settingSources: []</code>, so the child Claude Code loads no user, project or local <code>settings.json</code>: the host's hooks, plugins and permission rules do not run inside bridge turns. The claude.ai login is not a setting and still applies. Measured 2026-10-23: with the default, the child's thinking cited the host's superpowers system reminders.</td>
 </tr>
+<tr>
+<td><code>05-register-on-reactivation.patch</code></td>
+<td>omp builds a Task subagent by calling the extension factory again on the same module instance (one <code>moduleInstanceId</code> in the bridge debug log), clears the bridge's provider registrations from the model registry the parent shares, and keeps only the registrations queued during that call. Upstream deferred a second activation to a <code>session_start</code> check through <code>ctx.modelRegistry.getProvider()</code>, which omp's registry lacks (omp logs <code>Extension error ... getProvider is not a function</code>), so <code>claude-bridge</code> vanished for both sessions. The bridge now registers at load when the active stream function is this instance's own; re-registering the same function replaces nothing. A second module instance (another copy of the bridge) keeps upstream's deferral.</td>
+</tr>
 </tbody>
 </table>
 <p>Upstream kept the default <code>settingSources</code> so that Bedrock and Vertex users
@@ -4953,6 +4979,29 @@ and still load the host's plugins; one option on the query is smaller.</p>
 names <code>./src/index.ts</code>) and resolves dependencies upward from the entry's real
 path, which is why the install directory carries its own <code>node_modules</code>.
 <code>--no-extensions</code> beside <code>-e</code> is optional and keeps other extensions out.</p>
+<h2 id="plain-launch">Plain launch<a class="headerlink" href="#plain-launch" title="Permanent link">&para;</a></h2>
+<p>A plain <code>omp</code> (default profile, no <code>-e</code>) loads the bridge through the top-level <code>extensions</code> key of
+<code>~/.omp/agent/config.yml</code> (omp 18.11.3 <code>src/extensibility/settings.ts:10</code>, joined with the <code>-e</code>
+paths in <code>src/sdk.ts:1076</code>). The manifest lists the directory under <code>omp.extensions</code>,
+<code>scripts/generate-agent-configs.py</code> renders it into <code>home/.chezmoitemplates/omp-config-managed.yml</code>,
+and <code>home/dot_omp/private_agent/modify_private_config.yml</code> writes it with <code>~</code> expanded. Without it,
+<code>findInitialModel</code> (<code>src/config/model-resolver.ts:2391-2407</code>) does not find the <code>modelRoles.default</code>
+<code>claude-bridge/claude-fable-5-1</code> and silently starts on another authenticated provider
+(<code>anthropic/claude-opus-5-5</code> on the macOS host) or exits with <code>No default model selected.</code> (the
+Ubuntu host). <code>scripts/validate-agent-assets.py</code> refuses an <code>interactive_profile</code> whose omp provider
+comes from an extension that <code>omp.extensions</code> does not list.</p>
+<ul>
+<li>Measured 2026-10-25 on macOS: with an overlay holding only that <code>extensions</code> entry,
+  <code>omp --no-session --mode json -p "Reply with the single word PONG."</code> answers <code>PONG</code> on provider
+  <code>claude-bridge</code>, model <code>claude-fable-5-1</code>, stopReason <code>stop</code>.</li>
+<li>The same directory passed again with <code>-e</code> loads once: <code>discoverExtensionPaths</code> keys each entry file
+  on its resolved path (<code>src/extensibility/extensions/loader.ts:572-659</code>); measured, the same answer
+  and no new warning.</li>
+<li>Seats are unaffected: <code>--profile &lt;role&gt;</code> reads <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code>, never this
+  file (pi-utils <code>src/dirs.ts:119-121</code>). Measured under a scratch <code>HOME</code> whose <code>config.yml</code> lists the
+  bridge, the default profile reaches it (<code>Not logged in</code>) and <code>--profile probe</code> reports
+  <code>Model "claude-bridge/claude-fable-5-1" not found</code>. The seat launcher keeps passing <code>-e</code>.</li>
+</ul>
 <h2 id="operator-login">Operator login<a class="headerlink" href="#operator-login" title="Permanent link">&para;</a></h2>
 <p>The child Claude Code uses the host's claude.ai login: the Keychain on macOS,
 <code>~/.claude/.credentials.json</code> (mode 0600) on Linux (Claude Code authentication
@@ -4987,7 +5036,8 @@ directory to keep the session out of the real <code>~/.omp</code>; under the rea
 logged-in host spends one short model turn. The function is callable from
 <code>make doctor</code> once the Makefile wires it (follow-up).</p>
 <h2 id="subagents">Subagents<a class="headerlink" href="#subagents" title="Permanent link">&para;</a></h2>
-<p>An omp Task subagent on the claude-bridge route breaks the seat that spawned it. Measured on
+<p>An omp Task subagent on the claude-bridge route broke the seat that spawned it before
+<code>05-register-on-reactivation.patch</code>. Measured on
 2026-10-24 at about 06:03Z: the orchestrator seat spawned a Task subagent (an inventory scout), the
 subagent failed with <code>No API key for provider: claude-bridge</code>, and from then on every hcom delivery into
 that seat failed with <code>Extension sendUserMessage failed</code>, so the seat was dead to the loop; the two worker
@@ -4996,8 +5046,32 @@ seats on the same route and the host login were unaffected. So every seat policy
 U36), and the seats do their reading with their own tools. omp refuses the call before the tool runs:
 <code>tests/unit/test_omp_seat_policy.py</code> <code>OmpTaskDenyLiveTest</code> drives the installed omp against a local fake
 model that asks for a <code>task</code> call and gets back <code>Tool "task" is blocked by user policy. To allow: remove
-"tools.approval.task: deny" from config.</code> for each role. Revisit the deny when the bridge supports
-subagents.</p>
+"tools.approval.task: deny" from config.</code> for each role.</p>
+<p>Measured on 2026-10-24 at about 22:10Z (omp 18.11.3, macOS) with
+<code>omp --no-session -e &lt;tree&gt; --model claude-bridge/claude-fable-5-1 --mode json --max-time 240 -p "Use the task tool exactly once to spawn one subagent whose whole job is to reply with the single word PONG, then reply with what it returned."</code>:</p>
+<ul>
+<li>patches 01-04: the subagent resolved <code>claude-bridge/claude-fable-5-1</code> and failed after 44 ms with
+  <code>No API key found for claude-bridge.</code>; the parent's next turn ended <code>"stopReason":"error"</code>,
+  <code>"errorMessage":"No API key for provider: claude-bridge"</code>, exit 1;</li>
+<li>patches 01-05: the subagent answered <code>PONG</code> on <code>claude-bridge/claude-fable-5-1</code>, the parent's final turn
+  ended <code>"stopReason":"stop"</code>, exit 0;</li>
+<li>patches 01-05 with <code>task.agentIdleTtlMs: 3000</code> in a <code>--config</code> overlay and a prompt that spawns one
+  subagent, runs <code>sleep 15</code> and spawns a second: the first subagent was parked (disposed) mid-run, which
+  runs the bridge's <code>session_shutdown</code> handler (<code>clearing ACTIVE_STREAM_SIMPLE_KEY</code> in the debug log); the
+  second subagent registered again, both answered, and the run ended <code>stop</code>, exit 0;</li>
+<li>patches 01-05, one plain <code>Reply with the single word PONG.</code> turn: <code>PONG</code>, <code>stop</code>; the same directory given
+  twice (<code>-e &lt;tree&gt; -e &lt;tree&gt;/</code>, or <code>-e &lt;tree&gt;</code> plus a <code>--config</code> overlay listing it under <code>extensions:</code>)
+  runs the bridge's factory once.</li>
+</ul>
+<p>These are print-mode runs. The seat failure ran through hcom delivery into an interactive seat, which
+these runs do not cover, so the seat policies keep the deny until a seat measurement shows a Task
+subagent and the next hcom delivery both succeed.</p>
+<p>The plain launch (above) loads the bridge through <code>extensions</code> instead of <code>-e</code> and hit the same
+failure before patch 05: measured 2026-10-25 on macOS with patches 01-04, a plain print-mode session
+asked to spawn one Task subagent saw the subagent fail in 74 ms with
+<code>No API key found for claude-bridge.</code> and its own next turn end with
+<code>No API key for provider: claude-bridge</code> (exit 1). A plain session has no <code>task</code> deny, so the
+plain-launch <code>extensions</code> key depends on patch 05 being installed (<code>make update</code> installs both).</p>
 <h2 id="fallbacks">Fallbacks<a class="headerlink" href="#fallbacks" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>anthropic/&lt;model&gt;</code> with <code>ANTHROPIC_API_KEY</code> is omp's built-in provider and

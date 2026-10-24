@@ -10,7 +10,10 @@
 set -Eeuo pipefail
 
 # dirname is captured on its own line: inside the cd its status would be lost.
-script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
+    echo "usage-snapshot: dirname failed on ${BASH_SOURCE[0]}; the repository root is unknown" >&2
+    exit 1
+}
 repo_root="$(cd "${script_dir}/.." && pwd)" || exit 1
 usage_dir="${repo_root}/.agents/worklog/claude/usage"
 snapshot_date="$(date +%Y%m%d)"

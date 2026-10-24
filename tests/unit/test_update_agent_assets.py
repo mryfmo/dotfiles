@@ -448,6 +448,27 @@ class ProducerFailureTest(unittest.TestCase):
             check=False,
         )
 
+    def test_a_failed_dirname_stops_the_updater_before_any_step(self):
+        # A failed dirname used to resolve the source root to /, which then failed as "not found" without naming it.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            stub = home / "bin/dirname"
+            stub.parent.mkdir()
+            stub.write_text("#!/usr/bin/env bash\nexit 1\n")
+            stub.chmod(0o755)
+            env = {k: v for k, v in os.environ.items() if k != "DOTFILES_SOURCE_DIR"}
+            result = subprocess.run(
+                ["bash", "-c", 'source "$1"; echo sourced', "bash", str(UPDATER)],
+                env=env | {"HOME": str(home), "PATH": f"{stub.parent}:/usr/bin:/bin"},
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(f"dirname failed on {UPDATER}; the dotfiles source root is unknown.\n", result.stderr)
+            self.assertNotIn("sourced", result.stdout)
+
     def test_a_failed_uname_stops_every_platform_step_before_a_download(self):
         for step in ("ensure_crit_cli", "update_terminal_code", "update_terminal_browser", "update_hcom"):
             with self.subTest(step=step), tempfile.TemporaryDirectory() as directory:

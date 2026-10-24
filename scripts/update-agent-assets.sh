@@ -25,7 +25,10 @@ function resolve_dotfiles_source_dir() {
     fi
 
     # dirname is captured on its own line: inside the cd its status would be lost.
-    script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || return 1
+    script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
+        printf 'dirname failed on %s; the dotfiles source root is unknown.\n' "${BASH_SOURCE[0]}" >&2
+        return 1
+    }
     candidate="$(cd "${script_dir}/.." && pwd)" || return 1
     if [[ -d "${candidate}/vendor/compactiondb" ]]; then
         printf '%s\n' "${candidate}"

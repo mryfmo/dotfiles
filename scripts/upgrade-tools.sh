@@ -18,7 +18,10 @@
 set -Eeuo pipefail
 
 # dirname is captured on its own line: inside the cd its status would be lost.
-script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
+    echo "upgrade-tools: dirname failed on ${BASH_SOURCE[0]}; the repository root is unknown" >&2
+    exit 1
+}
 repo_root="$(cd "${script_dir}/.." && pwd)" || exit 1
 # chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME
 # says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git

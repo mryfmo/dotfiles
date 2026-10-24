@@ -504,5 +504,7 @@ class ProducerFailureTest(unittest.TestCase):
                 DOTFILES_SOURCE_DIR=str(source),
             )
             self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-            self.assertIn(f"Cannot read the CompactionDB version from {source}/vendor/compactiondb/CHANGELOG.md.", result.stderr)
+            self.assertIn(
+                f"Cannot read the CompactionDB version from {source}/vendor/compactiondb/CHANGELOG.md.", result.stderr
+            )
             self.assertFalse((home / "calls").exists())

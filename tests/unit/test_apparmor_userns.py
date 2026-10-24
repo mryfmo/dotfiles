@@ -238,7 +238,9 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.fake("codex")
         result = self.run_doctor(self.unreadable_sysctl_env())
 
-        self.assertIn(f"required failed: cannot read {self.sysctl}; the AppArmor userns restriction is unknown", result.stderr)
+        self.assertIn(
+            f"required failed: cannot read {self.sysctl}; the AppArmor userns restriction is unknown", result.stderr
+        )
         self.assertNotIn("not applicable", result.stdout)
         self.assertIn("req=1 opt=0", result.stdout)
 

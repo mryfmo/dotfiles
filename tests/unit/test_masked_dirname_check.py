@@ -116,8 +116,8 @@ class MaskedDirnameCheckTest(unittest.TestCase):
 
     def test_an_unquoted_heredoc_body_is_read_as_expanded_text(self) -> None:
         # The apostrophe is plain text in the body; a line scan read it as an open single quote.
-        lever = self.script("lever", "cat <<EOF\nit's $(cd \"$(dirname \"$0\")\" && pwd)\nEOF\n")
-        tabbed = self.script("tabbed", "\tcat <<-END\n\tsee $(cd \"$(dirname \"$0\")\")\n\tEND\n")
+        lever = self.script("lever", 'cat <<EOF\nit\'s $(cd "$(dirname "$0")" && pwd)\nEOF\n')
+        tabbed = self.script("tabbed", '\tcat <<-END\n\tsee $(cd "$(dirname "$0")")\n\tEND\n')
 
         for path in (lever, tabbed):
             with self.subTest(path=path.name):
@@ -129,9 +129,9 @@ class MaskedDirnameCheckTest(unittest.TestCase):
     def test_a_quoted_heredoc_body_and_a_multiline_single_quote_are_literal(self) -> None:
         clean = self.script(
             "clean",
-            "cat <<'EOF'\ndir=$(cd \"$(dirname \"$0\")\")\nEOF\n"
+            'cat <<\'EOF\'\ndir=$(cd "$(dirname "$0")")\nEOF\n'
             'cat <<"END"\n$(cd "$(dirname x)")\nEND\n'
-            "cat <<\\STOP\n$(cd \"$(basename x)\")\nSTOP\n"
+            'cat <<\\STOP\n$(cd "$(basename x)")\nSTOP\n'
             "printf '%s\\n' 'line one\n$(cd \"$(dirname x)\")\n'\n"
             'read -r a <<< "$(cat)"\n'
             "x=$((1 << 2))\n",
@@ -145,9 +145,7 @@ class MaskedDirnameCheckTest(unittest.TestCase):
     def test_the_scan_resumes_after_a_heredoc_and_a_here_string(self) -> None:
         lever = self.script(
             "lever",
-            "cat <<'EOF'\nit's literal\nEOF\n"
-            'while read -r x; do :; done <<< "${list}"\n'
-            + U31_SHAPE,
+            "cat <<'EOF'\nit's literal\nEOF\nwhile read -r x; do :; done <<< \"${list}\"\n" + U31_SHAPE,
         )
 
         result = self.run_check(lever)

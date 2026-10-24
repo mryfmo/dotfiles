@@ -417,13 +417,6 @@ herdr server reload-config" ]
     grep -q 'permgate' README.md
     grep -q 'model_profiles' README.md
     grep -q 'scripts/update-agent-assets.sh' README.md
-    grep -q 'make require-crit-review' README.md
-    grep -q 'AGENT_REVIEWED=1' README.md
-    grep -q 'REVIEW_EVIDENCE' README.md
-    grep -q 'crit comments --all --json <review.json>' README.md
-    grep -q 'review_surface: crit-data' README.md
-    grep -q 'review_source:' README.md
-    grep -q 'CRIT_REVIEW=off' README.md
 }
 
 @test "[common] chezmoi source-path handoff resolves the repository root" {

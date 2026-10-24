@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import load_manifest_fixture
+from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture
 
 sys.dont_write_bytecode = True
 
@@ -94,6 +94,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def write_levers(self, *names: str) -> Path:
+        """Executable shebang scripts under the temp ROOT, standing in for the levers the allow rules name."""
+        levers = self.temp_dir / "scripts/orchestrator"
+        levers.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (levers / name).write_text("#!/usr/bin/env bash\nexit 0\n")
+            (levers / name).chmod(0o755)
+        return levers
 
     def test_home_paths_normalise_to_tilde_and_repository_paths_stay(self) -> None:
         with mock.patch.dict(os.environ, {"HOME": "/srv/operator"}):
@@ -1106,6 +1115,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
@@ -1179,9 +1189,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
 
     def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
-        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}):
-            with self.subTest(accepts=permissions):
-                self.module.validate_claude_permissions_allow(permissions, "permissions")
         for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
             with (
                 self.subTest(rejects=allow),
@@ -1190,6 +1197,57 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ):
                 self.module.validate_claude_permissions_allow({"allow": allow}, "permissions")
             self.assertIn("permissions.allow must be a list", stderr.getvalue())
+
+    def test_claude_permissions_allow_accepts_the_fixed_rules_and_the_executable_levers(self) -> None:
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}, {"allow": MANAGED_ALLOW}):
+            with self.subTest(accepts=permissions):
+                self.module.validate_claude_permissions_allow(permissions, "permissions")
+
+    def test_claude_permissions_allow_refuses_every_other_rule(self) -> None:
+        levers = self.write_levers("hcom-seat", "python3", "node.js")
+        (levers / "notes.md").write_text("#!/usr/bin/env bash\n")
+        (levers / "binary").write_bytes(b"\xcf\xfa\xed\xfe")
+        (levers / "binary").chmod(0o755)
+        (levers / "link").symlink_to(levers / "hcom-seat")
+        (levers / "dir").mkdir()
+        cases = {
+            "Bash(*)": "is not Bash\\(agmsg-dispatch",
+            "Bash": "is not Bash\\(agmsg-dispatch",
+            "Bash(hcom *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(hcom list)": "is not Bash\\(agmsg-dispatch",
+            "Bash(git worktree remove *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(git *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(python3 *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(bash scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(./scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(/repo/scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(scripts/orchestrator/hcom-seat)": "is not Bash\\(agmsg-dispatch",
+            "Bash(scripts/orchestrator/hcom-seat:*)": "is not Bash\\(agmsg-dispatch",
+            "Bash(scripts/orchestrator/../../bin/sh *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(scripts/orchestrator/*)": "is not Bash\\(agmsg-dispatch",
+            "Read(**)": "is not Bash\\(agmsg-dispatch",
+            "Bash(scripts/orchestrator/absent *)": "absent is not a regular file",
+            "Bash(scripts/orchestrator/dir *)": "dir is not a regular file",
+            "Bash(scripts/orchestrator/link *)": "link is not a regular file",
+            "Bash(scripts/orchestrator/notes.md *)": "notes.md is not executable",
+            "Bash(scripts/orchestrator/python3 *)": "python3 is named as an interpreter",
+            "Bash(scripts/orchestrator/node.js *)": "node.js is named as an interpreter",
+            "Bash(scripts/orchestrator/binary *)": "binary is not a script with a shebang line",
+        }
+        for rule, message in cases.items():
+            with self.subTest(rejects=rule):
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_permissions_allow(
+                        {"allow": ["Bash(agmsg-dispatch:*)", rule]}, "permissions"
+                    )
+                self.assertRegex(stderr.getvalue(), message)
+
+    def test_the_managed_allow_rules_name_the_real_levers(self) -> None:
+        self.module.ROOT = ROOT
+        settings = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(MANAGED_ALLOW, settings["claude"]["permissions"]["allow"])
+        self.module.validate_claude_permissions_allow(settings["claude"]["permissions"], "manifest permissions")
 
     def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
         sandbox = self.valid_claude_sandbox()

@@ -36,6 +36,8 @@ GIT_WRAPPER = """#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ["FAKE_GIT_CALLS"], "a", encoding="utf-8") as calls:
     calls.write(json.dumps(sys.argv[1:]) + "\\n")
+if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in " ".join(sys.argv[1:]):
+    sys.exit("fake-git: failing as asked")
 os.execv(os.environ["REAL_GIT"], ["git", *sys.argv[1:]])
 """
 
@@ -216,6 +218,32 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertIn("nothing removed", rows[-1][1])
         self.assertEqual(self.remaining(), sorted(expected))
         self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
+    def test_a_newline_in_a_path_cannot_forge_a_landed_record(self):
+        """A path `a<LF>worktree <victim>` must not lend its landed head to the victim (audit row 679, U16c)."""
+        victim, victim_head = self.add_tree("victim")
+        forged = self.trees / f"a\nworktree {victim}"
+        self.git("worktree", "add", "--detach", str(forged), "origin/main")
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        rows = self.rows(result.stdout)
+        self.assertIn(["error", str(forged).replace("\n", "\\n")], [row[:2] for row in rows])
+        self.assertIn("path contains a newline", {row[3] for row in rows if row[0] == "error"})
+        victim_rows = [row for row in rows if row[1] == str(victim)]
+        self.assertEqual([row[0] for row in victim_rows], ["keep"], "the victim is listed once, from its own record")
+        self.assertIn("nothing removed", rows[-1][1])
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=victim), victim_head)
+        self.assertTrue(forged.is_dir())
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv or "prune" in argv], [])
+
+    def test_a_failing_worktree_listing_exits_1_and_removes_nothing(self):
+        expected = self.build_states()
+        result = self.run_gc("--apply", FAKE_GIT_FAIL="worktree list")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("git worktree list failed", result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(self.remaining(), sorted(expected))
 
     def test_a_path_outside_claude_worktrees_is_refused(self):
         expected = self.build_states()

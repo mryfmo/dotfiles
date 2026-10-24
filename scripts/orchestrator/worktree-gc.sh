@@ -14,8 +14,11 @@
 #   --json number --limit 1`), or, detached, its head is the head commit of a
 #   merged pull request (`gh pr list --state merged --search <sha> --json
 #   number,headRefOid`, then `headRefOid == <sha>`). A locked or missing worktree
-#   is kept. Each candidate prints one row `<verdict>\t<path>\t<ref>\t<reason>`,
-#   verdict `gc` (qualifies), `keep` or `error`, then one `summary` row. Nothing
+#   is kept. The listing is read field by field on its NUL separators, so a path
+#   cannot forge a record; a candidate whose path contains a newline is an
+#   `error` row. Each candidate prints one row `<verdict>\t<path>\t<ref>\t<reason>`
+#   (a newline in the path printed as `\n`), verdict `gc` (qualifies), `keep` or
+#   `error`, then one `summary` row. Nothing
 #   is removed without `--apply`; with it each qualifying path is removed with
 #   `git worktree remove <path>`, never forced, so git itself still refuses a
 #   tree that changed since the check, then `git worktree prune` runs, and each
@@ -30,7 +33,7 @@
 # @env WORKTREE_GC_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One TSV row per candidate, the removal rows with --apply, then `summary`.
 # @exitcode 0 Listed (and removed with --apply), including when nothing qualifies.
-# @exitcode 1 A git or gh query failed, or a removal failed.
+# @exitcode 1 A git or gh query failed, a path holds a newline, or a removal failed.
 # @exitcode 2 Usage error, not in a git checkout, or a path outside .claude/worktrees/.
 # @example
 #   scripts/orchestrator/worktree-gc.sh
@@ -97,7 +100,7 @@ for path in "${paths[@]+"${paths[@]}"}"; do
     selected+=("${resolved}")
 done
 
-# Candidates as parallel arrays: path, head, branch (empty when detached), state (`locked`, `missing` or empty).
+# Candidates as parallel arrays: path, head, branch (empty when detached), state (`locked`, `missing`, `newline` or empty).
 cand_path=() cand_head=() cand_branch=() cand_state=()
 record() {
     [[ -n ${wt_path} ]] || return 0
@@ -109,22 +112,30 @@ record() {
         for item in "${selected[@]}"; do [[ ${item} == "${resolved}" ]] && wanted=1; done
         [[ -n ${wanted} ]] || return 0
     fi
-    cand_path+=("${resolved}") cand_head+=("${wt_head}") cand_branch+=("${wt_branch}") cand_state+=("${wt_state}")
+    cand_path+=("${resolved}") cand_head+=("${wt_head}") cand_branch+=("${wt_branch}")
+    if [[ ${wt_path} == *$'\n'* ]]; then cand_state+=(newline); else cand_state+=("${wt_state}"); fi # lint-comparisons: allow a newline-content test, not a path comparison
 }
-listing=$(git -C "${toplevel}" worktree list --porcelain -z | tr '\0' '\n') || exit 1
+# The producer writes to a file, not a pipe or a process substitution, so its exit status is checked; the NUL-separated
+# fields are read as they are (`read -d ''`), never turned into lines, so a newline inside a path stays in its field.
+listing=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
+trap 'rm -f "${listing}"' EXIT
+git -C "${toplevel}" worktree list --porcelain -z > "${listing}" || {
+    echo 'worktree-gc: git worktree list failed' >&2
+    exit 1
+}
 wt_path='' wt_head='' wt_branch='' wt_state=''
-while IFS= read -r line; do
-    case ${line} in
+while IFS= read -r -d '' field; do
+    case ${field} in
     'worktree '*)
         record
-        wt_path=${line#worktree } wt_head='' wt_branch='' wt_state=''
+        wt_path=${field#worktree } wt_head='' wt_branch='' wt_state=''
         ;;
-    'HEAD '*) wt_head=${line#HEAD } ;;
-    'branch refs/heads/'*) wt_branch=${line#branch refs/heads/} ;;
+    'HEAD '*) wt_head=${field#HEAD } ;;
+    'branch refs/heads/'*) wt_branch=${field#branch refs/heads/} ;;
     locked | 'locked '*) wt_state=locked ;;
     prunable | 'prunable '*) [[ -n ${wt_state} ]] || wt_state=missing ;;
     esac
-done <<< "${listing}"
+done < "${listing}"
 record
 
 for path in "${selected[@]+"${selected[@]}"}"; do
@@ -140,10 +151,14 @@ done
 # @arg $1 path The worktree.
 # @arg $2 string Its head sha.
 # @arg $3 string Its branch, empty when detached.
-# @arg $4 string Its state: `locked`, `missing` or empty.
+# @arg $4 string Its state: `locked`, `missing`, `newline` or empty.
 classify() {
     local path=$1 head=$2 branch=$3 state=$4 status prs number
     verdict=keep
+    if [[ ${state} == newline ]]; then
+        verdict=error reason='path contains a newline'
+        return
+    fi
     if [[ ${state} == locked ]]; then
         reason='locked'
         return
@@ -196,7 +211,8 @@ classify() {
 gc=() errors=0 kept=0
 for ((i = 0; i < ${#cand_path[@]}; i++)); do
     classify "${cand_path[i]}" "${cand_head[i]}" "${cand_branch[i]}" "${cand_state[i]}"
-    printf '%s\t%s\t%s\t%s\n' "${verdict}" "${cand_path[i]}" "${cand_branch[i]:-(detached ${cand_head[i]:0:12})}" "${reason}"
+    shown=${cand_path[i]//$'\n'/\\n}
+    printf '%s\t%s\t%s\t%s\n' "${verdict}" "${shown}" "${cand_branch[i]:-(detached ${cand_head[i]:0:12})}" "${reason}"
     case ${verdict} in
     gc) gc+=("${cand_path[i]}") ;;
     error) errors=$((errors + 1)) ;;

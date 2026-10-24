@@ -153,6 +153,9 @@ allowed=$(awk '
     list { list = 0 }
 ' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
 [[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
+# The launch passes the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a
+# symlink the caller controls could be swapped between this check and omp resolving `-e`.
+checked=()
 for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
     real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
@@ -162,10 +165,12 @@ for ext in "${exts[@]}"; do
         # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
         [[ -d ${entry} ]] || continue
         entry_real=$(cd "${entry}" && pwd -P) || continue
-        if [[ ${entry_real} == "${real}" ]]; then listed=1; fi # lint-comparisons: allow both sides are pwd -P forms
+        if [[ ${entry_real} == "${real}" ]]; then listed=${entry_real}; fi # lint-comparisons: allow both sides are pwd -P forms
     done <<< "${allowed}"
     [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
+    checked+=("${listed}")
 done
+exts=("${checked[@]}")
 repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
 common=$(git rev-parse --path-format=absolute --git-common-dir)
 case ${role} in

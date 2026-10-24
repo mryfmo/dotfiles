@@ -32,7 +32,7 @@ class HcomSeatTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        root = Path(self.temp.name)
+        root = Path(self.temp.name).resolve()  # physical, so the canonical extension paths hcom-seat passes compare
         self.home = root / "home"
         self.policies = self.home / ".agents/omp/policies"
         self.profiles = self.home / ".agents/omp/profiles"
@@ -160,8 +160,18 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertIn("is not in the allow-list (claude.levers.extensions)", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
         self.assertFalse(Path(self.seats).exists())
-        run = self.seat("worker", "--ext", str(self.home / "link-to-bridge"), "--dry-run")
+        link = self.home / "link-to-bridge"
+        run = self.seat("worker", "--seats-root", self.seats, "--ext", str(link), "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
+        # The launch carries the canonical allow-list path, so swapping the symlink after the check changes nothing.
+        self.assertEqual(
+            shlex.split(run.stdout), self.launch_line("worker", "worker", f"{self.seats}/worker", self.bridge)
+        )
+        self.assertNotIn(str(link), run.stdout)
+        link.unlink()
+        link.symlink_to(mine)
+        self.assertEqual(self.seat("worker", "--seats-root", self.seats, "--ext", str(link)).returncode, 2)
+        self.assertEqual(self.calls_of("hcom"), [])
 
     def test_an_unreadable_or_missing_allow_list_is_a_refusal(self):
         """A failed read of the allow-list refuses the launch instead of reading as an empty list (preferences 21)."""

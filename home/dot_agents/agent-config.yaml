@@ -331,7 +331,7 @@ claude:
   # ~/.agents/agent-config.yaml for the installed copy.
   levers:
     sha256:
-      hcom-seat: 0ed27b7606510633b94da5ea9232436de5820210b9b4d7fd6ee61f766bc3f6a8
+      hcom-seat: 8f40133996d05deb833943ecf2081e77aa08044cd2e0517c836448159da65357
       hcom-dispatch: fe9046371135cb370e8d263b4fec16af1ea1709ef273851dabc0e116e7c0bd1e
       bus-history.sh: bfeb19d724f310980a28a0495934cee75771057a8dcab24e85211f318f27e26a
       worktree-gc.sh: a1770295240464adbfffd286ea289db1581075b5a0b8d48d3d4ae5e6bcf41d44

@@ -11,14 +11,21 @@ evaluator when it exposes one.
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICIES = ROOT / "home/dot_agents/omp/policies"
 ROLES = ("orchestrator", "worker", "audit")
+FAKE_LLM = ROOT / "tests/fixtures/omp-seat-policy/fake-llm.py"
+OMP = shutil.which("omp")
+BLOCKED = 'Tool "task" is blocked by user policy'
 
 # Tier each tool declares for a plain target (file:line in pi-coding-agent 18.11.3 src/).
 TOOL_TIER = {
@@ -123,7 +130,8 @@ TABLE = {
             "allow",
         ),
         ("edit", None, "allow"),
-        ("task", None, "allow"),
+        # U34/U36: a Task subagent on the claude-bridge route killed the orchestrator seat (2026-10-24 06:03Z).
+        ("task", None, "deny"),
     ],
     "worker": [
         *EVERY_SEAT,
@@ -146,7 +154,7 @@ TABLE = {
         ("bash", "uv run --no-project -m pytest tests/unit/test_omp_seat_policy.py -q", "allow"),
         ("edit", None, "allow"),
         ("write", None, "allow"),
-        ("task", None, "allow"),
+        ("task", None, "deny"),
     ],
     "audit": [
         *EVERY_SEAT,
@@ -349,6 +357,12 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 with self.subTest(role=role, tool=tool, command=command):
                     self.assertEqual(decide(self.policies[role], tool, command), expected)
 
+    def test_no_seat_may_spawn_an_omp_subagent(self):
+        """U34/U36: every role denies the `task` tool by name, so no seat runs a subagent on its route."""
+        for role, policy in self.policies.items():
+            with self.subTest(role=role):
+                self.assertEqual(policy["tools"]["approval"]["task"], "deny")
+
     def test_the_mirror_matches_the_documented_examples(self):
         deny = {"match": "rm -rf *", "approval": "deny"}
         self.assertTrue(rule_matches("cd /tmp && rm -rf build", deny), "settings.md: a deny matches a segment")
@@ -357,6 +371,61 @@ class OmpSeatPolicyTest(unittest.TestCase):
         self.assertFalse(rule_matches("cmp a b && rm -f a", allow), "settings.md: an allow never rides a chain")
         self.assertTrue(rule_matches("rm  -f\ta", allow), "settings.md: whitespace runs collapse")
         self.assertTrue(pattern_regex("*a.b*").match("xa.by") and not pattern_regex("*a.b*").match("xaxby"))
+
+
+@unittest.skipUnless(OMP, "omp is not installed")
+class OmpTaskDenyLiveTest(unittest.TestCase):
+    """The installed omp itself, under a scratch HOME: the overlay reads back `task: deny`, and a model turn that
+    asks for a `task` call gets omp's policy refusal as the tool result (U36 ACCEPTANCE 2, U34)."""
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp(prefix="omp-task-deny-")).resolve()
+        self.addCleanup(shutil.rmtree, self.temp, True)
+
+    def omp_env(self, home, **extra):
+        return {"HOME": str(home), "PATH": os.environ["PATH"], "TMPDIR": str(self.temp), **extra}
+
+    def test_the_overlay_reads_back_task_deny(self):
+        home = self.temp / "home"
+        home.mkdir()
+        for role in ROLES:
+            with self.subTest(role=role):
+                read = subprocess.run(
+                    [OMP, "config", "get", "tools.approval"], cwd=self.temp, capture_output=True, text=True,
+                    env=self.omp_env(home, PI_CONFIG_FILES=str(POLICIES / f"{role}.yml")), timeout=120, check=False,
+                )  # fmt: skip
+                self.assertEqual(read.returncode, 0, read.stderr)
+                self.assertEqual(json.loads(read.stdout)["task"], "deny")
+
+    def test_a_task_call_is_refused_by_policy(self):
+        for role in ROLES:
+            with self.subTest(role=role):
+                run = self.temp / role
+                (run / "home/.omp/agent").mkdir(parents=True)
+                (run / "cwd").mkdir()
+                server = subprocess.Popen(
+                    [sys.executable, "-I", str(FAKE_LLM), "0", str(run)], stdout=subprocess.PIPE, text=True
+                )
+                self.addCleanup(server.wait, 10)
+                self.addCleanup(server.terminate)
+                port = server.stdout.readline().split()[1]
+                (run / "home/.omp/agent/models.yml").write_text(
+                    "providers:\n  fake:\n"
+                    f"    baseUrl: http://127.0.0.1:{port}/v1\n"
+                    "    apiKey: dummy-not-a-key\n    api: openai-completions\n    models:\n      - id: fake-model\n"
+                )
+                turn = subprocess.run(
+                    [OMP, "--config", str(POLICIES / f"{role}.yml"), "--no-extensions", "--no-session", "--no-lsp",
+                     "--model", "fake/fake-model", "-p", "scout the files"],
+                    cwd=run / "cwd", env=self.omp_env(run / "home"), capture_output=True, text=True, timeout=180,
+                    check=False,
+                )  # fmt: skip
+                self.assertEqual(turn.returncode, 0, turn.stdout + turn.stderr)
+                second = json.loads((run / "req-1.json").read_text())
+                results = [message["content"] for message in second["messages"] if message.get("role") == "tool"]
+                self.assertEqual(len(results), 1, second["messages"])
+                text = results[0] if isinstance(results[0], str) else json.dumps(results[0])
+                self.assertIn(BLOCKED, text)
 
 
 if __name__ == "__main__":

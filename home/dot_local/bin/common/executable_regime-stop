@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# @file regime-stop
+# @brief Stop a program's orchestrator seat on purpose and end its supervision.
+# @description
+#   Regime-cutover U36. Run in the repository checkout. It is `regime-start --stop` (the regime-start beside this
+#   file), so it takes the same host lock as regime-start and its supervisor pass and never interleaves with a
+#   relaunch. Under that lock it reads this checkout's own registration (`~/.local/state/regime-supervisor/
+#   <slug>-<hash of the toplevel>.conf`, which must name this toplevel), removes it, then runs
+#   `hcom kill <name> --go` for every alive seat tagged `orchestrator` in the registered store (with `--all`, for
+#   every alive seat in that store), and logs each step in `<store>/supervisor.log`. Without a registration it uses
+#   the store regime-start would choose (an explicit HCOM_DIR and HCOM_TEAM, the dotfiles pre-move pair, else
+#   regime-env), and a store whose `origin` names another checkout is refused. A seat's worktree and branch stay; a
+#   later `regime-start` starts the program again.
+# @option --all Also stop the workers and the audit seat of the store.
+# @stdout One line per seat stopped, or that none was alive.
+# @exitcode 0 Stopped, or nothing was alive.
+# @exitcode 1 An hcom kill failed (the registration is already removed).
+# @exitcode 2 A refusal, before anything is changed.
+# @example
+#   regime-stop
+set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+[[ -x ${LEVER_DIR}/regime-start ]] || {
+    echo "regime-stop: regime-start is not beside this script: ${LEVER_DIR}/regime-start" >&2
+    exit 2
+}
+exec "${LEVER_DIR}/regime-start" --stop "$@"

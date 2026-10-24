@@ -853,23 +853,10 @@ def validate_agent_manifest() -> dict[str, Any]:
             )
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
-    worker_kind = manifest.get("worker_kind")
-    if worker_kind not in {"codex", "claude"}:
-        fail(f"{manifest_path} worker_kind must be codex or claude: {worker_kind!r}")
-    orchestrator_kind = manifest.get("orchestrator_kind")
-    if orchestrator_kind not in {"claude", "codex"}:
-        fail(f"{manifest_path} orchestrator_kind must be claude or codex: {orchestrator_kind!r}")
-    worker_worktree = manifest.get("worker_worktree")
-    if worker_worktree is not None and (
-        not isinstance(worker_worktree, str)
-        or not re.fullmatch(r"\.claude/worktrees/[A-Za-z0-9._-]+", worker_worktree)
-        or worker_worktree.rsplit("/", 1)[1] in {".", ".."}
-    ):
-        fail(f"{manifest_path} worker_worktree must be a relative path under .claude/worktrees/: {worker_worktree!r}")
-    worker_profile = manifest.get("worker_profile")
-    if worker_profile is not None and worker_profile not in profiles:
-        fail(f"{manifest_path} worker_profile must name a defined model profile: {worker_profile!r}")
-    # Operator pin (2026-09-27): worker claude launches carry --advisor fable.
+    # Operator pin (2026-09-27): worker claude launches carry --advisor fable. The pin read its profile from the
+    # manifest's worker_profile, standard, until U40 removed that key with the herdr-agents worker era; it stays
+    # on the profile it checked.
+    worker_profile = "standard"
     if profiles.get(worker_profile, {}).get("claude", {}).get("advisor") != "fable":
         fail(f"{manifest_path} worker profile {worker_profile!r} must set claude.advisor: fable (operator pin)")
     for name, profile in profiles.items():
@@ -1194,7 +1181,6 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     env_text = env_path.read_text()
     for token in (
         "MODEL_PROFILE_INTERACTIVE",
-        "HERDR_AGENTS_ORCHESTRATOR_KIND",
         "MODEL_PROFILE_STANDARD_CODEX_ARGS",
         "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS",
     ):

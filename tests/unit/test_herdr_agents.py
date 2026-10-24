@@ -347,7 +347,6 @@ fi
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
-        env.pop("HERDR_AGENTS_WORKER_KIND", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(

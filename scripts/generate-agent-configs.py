@@ -128,6 +128,8 @@ PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
+# The same routes as a set, for omp.disabled_providers; a test keeps it equal to OMP_MODEL_RE's alternation.
+OMP_MODEL_ROUTES = ("openai-siwc", "anthropic", "claude-bridge")
 OMP_RETIRED_ROUTES = ("openai-codex",)
 OMP_ACCEPTED_ROUTES = "claude-bridge, openai-siwc or anthropic"
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
@@ -1349,6 +1351,26 @@ def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:
     return directories
 
 
+OMP_PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
+
+
+def omp_disabled_providers(manifest: dict[str, Any]) -> list[str]:
+    """omp providers the seat overlays switch off as `disabledProviders`; none when the key is absent.
+
+    omp 18.11.3 reads one `disabledProviders` set for discovery providers (src/capability/index.ts:306-308)
+    and for model providers (src/main.ts:1627), so a model route here would turn a seat's model off.
+    """
+    providers = manifest.get("omp", {}).get("disabled_providers", [])
+    if not isinstance(providers, list):
+        fail("omp.disabled_providers must be a list of omp provider ids")
+    for provider in providers:
+        if not isinstance(provider, str) or not OMP_PROVIDER_ID_RE.fullmatch(provider):
+            fail(f"omp.disabled_providers entries must be omp provider ids: {provider!r}")
+        if provider in OMP_MODEL_ROUTES:
+            fail(f"omp.disabled_providers must not name the model route {provider}; disabledProviders turns it off")
+    return providers
+
+
 def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
     """Seat role -> model profile; one overlay renders per key."""
     roles = manifest.get("omp", {}).get("roles")
@@ -1380,10 +1402,14 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
         re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", directory) for directory in omp_skills_directories(manifest)
     ]
     model = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"]
+    overlay = omp_config_yaml(model, directories)
+    disabled = "".join(f"  - {provider}\n" for provider in omp_disabled_providers(manifest))
+    if disabled:
+        overlay += f"disabledProviders:\n{disabled}"
     # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:668-677) would open the
     # first-run wizard over the pane: startup.setupWizard=false empties the scene list (pi-tui
     # src/setup/wizard.ts:52) and setupVersion=2 (CURRENT_SETUP_VERSION) skips the gate's wizard import.
-    return omp_config_yaml(model, directories) + "setupVersion: 2\nstartup:\n  setupWizard: false\n"
+    return overlay + "setupVersion: 2\nstartup:\n  setupWizard: false\n"
 
 
 def render_claude_express_agent(manifest: dict[str, Any]) -> str:

@@ -1,0 +1,8 @@
+# The revise round of 2026-10-19T05:34:59Z (AGMSG-ACCEPTANCE status=revise round=2), as the message contract asks.
+# The reset's own record (reset_of, the a02 head b8998de1) is in report.md and validation.md §1 to §11.
+reset_of: dotfiles-T133-verdict-audit-pool-a02
+previous_head: 513e5d0532ec3c21484ab215ef77fea440329749
+reason: "the security review of the update-branch head 513e5d05: two P1 (a caller-supplied VERDICT_BIN and PATH bypassed env -i; the condition-4 import could execute cached bytecode from scripts/__pycache__) and one P2 (17 predecessor artifacts in the PR tree)"
+checks:
+  - tests/unit/test_verdict.py::VerdictTest::test_verdict_ignores_caller_bin_and_path_overrides
+  - tests/unit/test_verdict.py::VerdictTest::test_verdict_never_imports_cached_bytecode

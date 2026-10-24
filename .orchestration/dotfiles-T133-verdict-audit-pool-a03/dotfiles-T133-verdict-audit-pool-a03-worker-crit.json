@@ -1,0 +1,37 @@
+[
+ {
+  "id": "r1-p2-checker-rules-untested",
+  "scope": "file",
+  "path": "tests/unit/test_verdict.py",
+  "body": "Round 1 (b8998de1..8f22dd9d), Verdict: correct; P2 high: the split moved the schema checker into verdict.sh but left its rejecting cases in the deleted test_audit_pool.py; eight one-rule mutants of the checker (date-time, additionalProperties, required, the \\Z anchoring, minimum/maximum, enum, type, maxLength) and a --validate that exits 0 survived, so an audit with a P0 of status 'open' would pass under an enum-less checker and condition 7 would accept. Fixed in 8b0b5bb4: test_verdict_validate_refuses_each_rule_the_moved_schema_checker_holds runs verdict.sh --validate on a valid audit and one violation per rule (date-only, naive, 2026-02-30, extra key, missing key, a head with a trailing newline, a non-integer, line 0, a boolean line, an unknown class, a status outside the enum, a 401-character rationale); validation 6a shows each of ten mutants killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-cap-declaration-range",
+  "scope": "file",
+  "path": "scripts/orchestrator/verdict.sh",
+  "body": "Round 1, P3 medium: last-declaration-wins ignores the range a cap names, and ' N under tests/' is not tied to an 'at most' sentence; the reviewer's scan of 562 task files finds 3 where first and last differ (a02's 550, intended; T129-anthropic-auth-route-check-followup-a01's 250, plausibly intended; the T129 audit-inherit re-plan's 60/120 for 741e242..HEAD, stricter than intended). Not changed: item 7 prescribes the last applicable declaration in text order, and the one regression errs strict (revise, never a false accept). Residual for the orchestrator's disposition; PR 410's own Check sentence parses to 300/400 under both parsers.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-usage-validate",
+  "scope": "file",
+  "path": "scripts/orchestrator/verdict.sh",
+  "body": "Round 1, P3 high: the usage line omitted --validate although the header documents it. Fixed in 8b0b5bb4 (the usage line names --validate <schema> <json>).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-hour-24",
+  "scope": "file",
+  "path": "scripts/orchestrator/verdict.sh",
+  "body": "Round 1, P3 high, pre-existing: the checker accepts 2026-10-18T24:00:00Z through fromisoformat, which RFC 3339 forbids; b8998de1's orch-audit.sh checker behaves the same, and item 2 retains the existing stdlib checking behaviour. Not changed here; residual for the orchestrator's disposition.",
+  "resolved": true
+ },
+ {
+  "id": "r1-note-predecessor-records",
+  "scope": "review",
+  "path": "",
+  "body": "Round 1 note, not a finding of this changeset: the cumulative diff still carries the a01 and a02 record directories (17 files) outside allowed_files, which condition 5 would flag for PR 410; the task gives their removal from the cumulative diff to the orchestrator as reset bookkeeping, so the worker leaves them.",
+  "resolved": true
+ }
+]

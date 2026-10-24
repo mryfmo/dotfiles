@@ -354,10 +354,49 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
 
 
+# The managed allow rules (regime-cutover U16): the agmsg wake, the read-only `hcom list`, and the coordinator levers,
+# one `Bash(scripts/orchestrator/<lever> *)` per deterministic wrapper script. An allow rule skips the auto-mode
+# classifier unless it could run arbitrary code (code.claude.com/docs/en/settings, `autoMode.classifyAllShell`), so
+# nothing else is accepted: no `Bash(*)`, no `Bash(hcom *)` (hcom launches agents), no interpreter or shell prefix.
+FIXED_ALLOW_RULES = ("Bash(agmsg-dispatch:*)", "Bash(hcom list *)")
+LEVER_ALLOW_RULE = re.compile(r"Bash\(scripts/orchestrator/([A-Za-z0-9][A-Za-z0-9_.-]*) \*\)")
+INTERPRETERS = frozenset(
+    {"sh", "bash", "zsh", "dash", "ksh", "fish", "env", "xargs", "osascript", "python", "python3", "perl", "ruby"}
+    | {"node", "bun", "deno", "uv", "uvx", "npx"}
+)
+
+
+def lever_refusal(name: str) -> str | None:
+    """Return why `scripts/orchestrator/<name>` cannot carry an allow rule, or None when it can."""
+    path = ROOT / "scripts/orchestrator" / name
+    if path.is_symlink() or not path.is_file():
+        return "is not a regular file"
+    if not os.access(path, os.X_OK):
+        return "is not executable"
+    if name in INTERPRETERS or Path(name).stem in INTERPRETERS:
+        return "is named as an interpreter"
+    with path.open("rb") as script:
+        if script.read(2) != b"#!":
+            return "is not a script with a shebang line"
+    return None
+
+
 def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
     allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
     if not isinstance(allow, list) or not all(isinstance(rule, str) and rule.strip() for rule in allow):
         fail(f"{label}.allow must be a list of non-empty permission rules")
+    for rule in allow:
+        if rule in FIXED_ALLOW_RULES:
+            continue
+        lever = LEVER_ALLOW_RULE.fullmatch(rule)
+        if not lever:
+            fail(
+                f"{label}.allow rule {rule!r} is not {' or '.join(FIXED_ALLOW_RULES)} "
+                "or Bash(scripts/orchestrator/<lever> *)"
+            )
+        reason = lever_refusal(lever.group(1))
+        if reason:
+            fail(f"{label}.allow rule {rule!r}: scripts/orchestrator/{lever.group(1)} {reason}")
 
 
 def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:

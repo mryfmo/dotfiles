@@ -198,6 +198,17 @@ def execute_chezmoi_template(text: str, temp_dir: Path, os_name: str = "darwin")
     return result.stdout
 
 
+# The managed allow rules: the agmsg wake and the coordinator levers (regime-cutover U16).
+MANAGED_ALLOW = [
+    "Bash(agmsg-dispatch:*)",
+    "Bash(scripts/orchestrator/hcom-seat *)",
+    "Bash(scripts/orchestrator/hcom-dispatch *)",
+    "Bash(scripts/orchestrator/bus-history.sh *)",
+    "Bash(scripts/orchestrator/worktree-gc.sh *)",
+    "Bash(hcom list *)",
+]
+
+
 def load_manifest_fixture(temp_dir: Path) -> dict:
     text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
     return render_claude_template("{{ fromYaml " + json.dumps(text) + " | toJson }}", temp_dir)
@@ -751,7 +762,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     path.replace("{{ .chezmoi.homeDir }}", "/render-home")
                     for path in manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
                 ]
-                extras = ["~/.cache/uv", "~/.local/state/mise", "~/.local/share/uv"]
+                extras = [
+                    "~/.cache/uv",
+                    "~/.local/state/mise",
+                    "~/.local/share/uv",
+                    "~/.local/state/hcom-regime",
+                    "~/.local/state/omp-seats",
+                ]
                 self.assertEqual(
                     roots + extras + (["~/Library/Caches/mise"] if os_name == "darwin" else []),
                     sandbox["filesystem"]["allowWrite"],
@@ -780,6 +797,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "DO_NOT_TRACK": "1",
                         "CHECKPOINT_DISABLE": "1",
                         "AWS_EC2_METADATA_DISABLED": "true",
+                        "HCOM_DIR": "/render-home/.local/state/hcom-regime",
+                        "HCOM_TEAM": "regime",
                     },
                     settings["env"],
                 )
@@ -792,7 +811,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [],
             settings["sandbox"]["excludedCommands"],
         )
-        self.assertEqual(["Bash(agmsg-dispatch:*)"], settings["permissions"]["allow"])
+        self.assertEqual(MANAGED_ALLOW, settings["permissions"]["allow"])
 
     def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
@@ -1502,8 +1521,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
         self.assertEqual([], claude["sandbox"]["excludedCommands"])
-        self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
+        self.assertEqual(MANAGED_ALLOW, claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
+        self.assertEqual("/render-home/.local/state/hcom-regime", claude["env"]["HCOM_DIR"])
+        self.assertEqual("regime", claude["env"]["HCOM_TEAM"])
+        self.assertIn("~/.local/state/hcom-regime", claude["sandbox"]["filesystem"]["allowWrite"])
+        self.assertIn("~/.local/state/omp-seats", claude["sandbox"]["filesystem"]["allowWrite"])
         manifest = load_manifest_fixture(self.temp_dir)
         self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(

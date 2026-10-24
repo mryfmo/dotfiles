@@ -179,40 +179,78 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertIn(profile, modified_sources)
 
-    def test_chezmoi_drift_warnings_classify_status_and_mode_only(self) -> None:
+    def test_chezmoi_drift_warnings_classify_targets_from_one_diff(self) -> None:
         status = mock.Mock(
             returncode=0,
-            stdout=(" M .agents/agent-config.yaml\nMM .zshrc\nMM .codex/deep.config.toml\n"),
+            stdout=(
+                " M .agents/agent-config.yaml\n"
+                "MM .zshrc\n"
+                "MM .codex/deep.config.toml\n"
+                " M .agents/skills\n"
+                " M .local/share/my file\n"
+                " R .chezmoiscripts/macos/04-install-aws-cli.sh\n"
+            ),
             stderr="",
         )
-        content_diff = mock.Mock(
-            returncode=0,
-            stdout="diff --git a/.zshrc b/.zshrc\n@@ -1 +1 @@\n-old\n+new\n",
-            stderr="",
-        )
-        mode_diff = mock.Mock(
+        diff = mock.Mock(
             returncode=0,
             stdout=(
-                "diff --git a/.codex/deep.config.toml b/.codex/deep.config.toml\nold mode 100600\nnew mode 100644\n"
+                "diff --git a/.agents/agent-config.yaml b/.agents/agent-config.yaml\n"
+                "old mode 100644\nnew mode 100600\n"
+                "--- a/.agents/agent-config.yaml\n+++ b/.agents/agent-config.yaml\n"
+                "@@ -1 +1 @@\n-old\n+new\n"
+                "diff --git a/.zshrc b/.zshrc\n@@ -1 +1 @@\n-old\n+new\n"
+                "diff --git a/.codex/deep.config.toml b/.codex/deep.config.toml\n"
+                "old mode 100600\nnew mode 100644\n"
+                "diff --git a/.agents/skills b/.agents/skills\nold mode 40775\nnew mode 40755\n"
+                "diff --git a/.local/share/my file b/.local/share/my file\nold mode 40775\nnew mode 40755\n"
             ),
             stderr="",
         )
 
-        with mock.patch.object(
-            self.module.subprocess,
-            "run",
-            side_effect=[status, content_diff, content_diff, mode_diff],
-        ):
+        with mock.patch.object(self.module.subprocess, "run", side_effect=[status, diff]) as run:
             warnings = self.module.chezmoi_drift_warnings()
 
+        self.assertEqual(2, run.call_count)
         self.assertEqual(
             [
                 "WARN: chezmoi drift  M .agents/agent-config.yaml: unapplied source update",
                 "WARN: chezmoi drift MM .zshrc: two-sided drift",
                 "WARN: chezmoi drift MM .codex/deep.config.toml: permission divergence (mode-only)",
+                "WARN: chezmoi drift  M .agents/skills: permission divergence (mode-only)",
+                "WARN: chezmoi drift  M .local/share/my file: permission divergence (mode-only)",
+                "WARN: chezmoi drift  R .chezmoiscripts/macos/04-install-aws-cli.sh: managed target drift",
             ],
             warnings,
         )
+
+    def test_chezmoi_drift_diff_failure_falls_back_to_status_hints(self) -> None:
+        status = mock.Mock(returncode=0, stdout=" M .agents/skills\nMM .zshrc\n", stderr="")
+        diff = mock.Mock(
+            returncode=1,
+            stdout="diff --git a/.agents/skills b/.agents/skills\nold mode 40775\nnew mode 40755\n",
+            stderr="diff failed\n",
+        )
+
+        with mock.patch.object(self.module.subprocess, "run", side_effect=[status, diff]):
+            warnings = self.module.chezmoi_drift_warnings()
+
+        self.assertEqual(
+            [
+                "WARN: chezmoi drift  M .agents/skills: unapplied source update",
+                "WARN: chezmoi drift MM .zshrc: two-sided drift",
+            ],
+            warnings,
+        )
+
+    def test_chezmoi_drift_clean_status_skips_diff(self) -> None:
+        status = mock.Mock(returncode=0, stdout="", stderr="")
+
+        with mock.patch.object(self.module.subprocess, "run", return_value=status) as run:
+            warnings = self.module.chezmoi_drift_warnings()
+
+        self.assertEqual([], warnings)
+        self.assertEqual(1, run.call_count)
 
     def test_chezmoi_drift_status_failure_is_warning(self) -> None:
         result = mock.Mock(returncode=1, stdout="", stderr="status failed\n")

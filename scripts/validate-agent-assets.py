@@ -367,12 +367,15 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
 
 
-# The managed allow rules (regime-cutover U16): the agmsg wake, the read-only `hcom list`, and the coordinator levers,
-# one `Bash(scripts/orchestrator/<lever> *)` per deterministic wrapper script. An allow rule skips the auto-mode
-# classifier unless it could run arbitrary code (code.claude.com/docs/en/settings, `autoMode.classifyAllShell`), so
-# nothing else is accepted: no `Bash(*)`, no `Bash(hcom *)` (hcom launches agents), no interpreter or shell prefix.
+# The managed allow rules (regime-cutover U16, U31): the agmsg wake, the read-only `hcom list`, and the coordinator
+# levers, one `Bash(~/.local/bin/common/<lever> *)` per deterministic wrapper script, naming the copy chezmoi installs
+# outside every sandbox write root. An allow rule skips the auto-mode classifier unless it could run arbitrary code
+# (code.claude.com/docs/en/settings, `autoMode.classifyAllShell`), so nothing else is accepted: no `Bash(*)`, no
+# `Bash(hcom *)` (hcom launches agents), no interpreter or shell prefix, and no path inside the rewritable checkout.
 FIXED_ALLOW_RULES = ("Bash(agmsg-dispatch:*)", "Bash(hcom list *)")
-LEVER_ALLOW_RULE = re.compile(r"Bash\(scripts/orchestrator/([A-Za-z0-9][A-Za-z0-9_.-]*) \*\)")
+LEVER_INSTALL_PREFIX = "~/.local/bin/common/"
+LEVER_ALLOW_RULE = re.compile(r"Bash\(~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*) \*\)")
+CHECKOUT_LEVER_RULE = re.compile(r"Bash\((?:\./)?scripts/orchestrator/")
 INTERPRETERS = frozenset(
     {"sh", "bash", "zsh", "dash", "ksh", "fish", "env", "xargs", "osascript", "python", "python3", "perl", "ruby"}
     | {"node", "bun", "deno", "uv", "uvx", "npx"}
@@ -380,7 +383,11 @@ INTERPRETERS = frozenset(
 
 
 def lever_refusal(name: str) -> str | None:
-    """Return why `scripts/orchestrator/<name>` cannot carry an allow rule, or None when it can."""
+    """Return why `<name>` cannot carry an allow rule, or None when it can.
+
+    The source `scripts/orchestrator/<name>` must be a regular executable shebang script not named as an interpreter,
+    and `home/dot_local/bin/common/executable_<name>`, the copy chezmoi installs, must hold the same bytes.
+    """
     path = ROOT / "scripts/orchestrator" / name
     if path.is_symlink() or not path.is_file():
         return "is not a regular file"
@@ -391,25 +398,35 @@ def lever_refusal(name: str) -> str | None:
     with path.open("rb") as script:
         if script.read(2) != b"#!":
             return "is not a script with a shebang line"
+    installed = ROOT / "home/dot_local/bin/common" / f"executable_{name}"
+    if not installed.is_file() or installed.read_bytes() != path.read_bytes():
+        return f"has no byte-identical installed copy {installed.relative_to(ROOT)} (run the generator)"
     return None
 
 
-def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
+def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iterable[str] | None = None) -> None:
     allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
     if not isinstance(allow, list) or not all(isinstance(rule, str) and rule.strip() for rule in allow):
         fail(f"{label}.allow must be a list of non-empty permission rules")
     for rule in allow:
         if rule in FIXED_ALLOW_RULES:
             continue
+        if CHECKOUT_LEVER_RULE.match(rule):
+            fail(
+                f"{label}.allow rule {rule!r} names a lever inside the rewritable checkout; "
+                f"name the installed copy, Bash({LEVER_INSTALL_PREFIX}<lever> *) (regime-cutover U31)"
+            )
         lever = LEVER_ALLOW_RULE.fullmatch(rule)
         if not lever:
             fail(
                 f"{label}.allow rule {rule!r} is not {' or '.join(FIXED_ALLOW_RULES)} "
-                "or Bash(scripts/orchestrator/<lever> *)"
+                f"or Bash({LEVER_INSTALL_PREFIX}<lever> *)"
             )
         reason = lever_refusal(lever.group(1))
         if reason:
             fail(f"{label}.allow rule {rule!r}: scripts/orchestrator/{lever.group(1)} {reason}")
+        if pinned is not None and lever.group(1) not in pinned:
+            fail(f"{label}.allow rule {rule!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
@@ -451,7 +468,8 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
         fail(f"{settings_path} still references the legacy type checker")
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
-    validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
+    pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
+    validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} {os_name} permissions", pinned)
     validate_claude_permissions_deny(settings.get("permissions"), f"{settings_path} permissions")
     validate_claude_sandbox(
         settings.get("sandbox"),

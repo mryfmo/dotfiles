@@ -8,10 +8,10 @@
   "permissions": {
     "allow": [
       "Bash(agmsg-dispatch:*)",
-      "Bash(scripts/orchestrator/hcom-seat *)",
-      "Bash(scripts/orchestrator/hcom-dispatch *)",
-      "Bash(scripts/orchestrator/bus-history.sh *)",
-      "Bash(scripts/orchestrator/worktree-gc.sh *)",
+      "Bash(~/.local/bin/common/hcom-seat *)",
+      "Bash(~/.local/bin/common/hcom-dispatch *)",
+      "Bash(~/.local/bin/common/bus-history.sh *)",
+      "Bash(~/.local/bin/common/worktree-gc.sh *)",
       "Bash(hcom list *)"
     ],
     "deny": [

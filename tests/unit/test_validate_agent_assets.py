@@ -96,12 +96,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def write_levers(self, *names: str) -> Path:
-        """Executable shebang scripts under the temp ROOT, standing in for the levers the allow rules name."""
+        """Executable shebang scripts under the temp ROOT, standing in for the levers the allow rules name, each with
+        the byte-identical installed copy the generator renders under home/dot_local/bin/common."""
         levers = self.temp_dir / "scripts/orchestrator"
+        installed = self.temp_dir / "home/dot_local/bin/common"
         levers.mkdir(parents=True, exist_ok=True)
+        installed.mkdir(parents=True, exist_ok=True)
         for name in names:
             (levers / name).write_text("#!/usr/bin/env bash\nexit 0\n")
             (levers / name).chmod(0o755)
+            (installed / f"executable_{name}").write_text("#!/usr/bin/env bash\nexit 0\n")
         return levers
 
     def test_home_paths_normalise_to_tilde_and_repository_paths_stay(self) -> None:
@@ -1162,9 +1166,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertRegex(stderr.getvalue(), message)
 
         template = generator.render_claude_settings(manifest)
-        darwin, linux = template.split("{{ else }}", 1)
+        prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
         linux = linux.replace('"allowedDomains": [', '"allowedDomains": ["cafe.github.com",', 1)
-        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", darwin + "{{ else }}" + linux)
+        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", prefix + "{{ else }}" + linux)
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_claude_settings(manifest)
@@ -1207,14 +1211,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}, {"allow": MANAGED_ALLOW}):
             with self.subTest(accepts=permissions):
                 self.module.validate_claude_permissions_allow(permissions, "permissions")
+        pinned = {
+            "hcom-seat": "0" * 64,
+            "hcom-dispatch": "0" * 64,
+            "bus-history.sh": "0" * 64,
+            "worktree-gc.sh": "0" * 64,
+        }
+        self.module.validate_claude_permissions_allow({"allow": MANAGED_ALLOW}, "permissions", pinned)
 
     def test_claude_permissions_allow_refuses_every_other_rule(self) -> None:
-        levers = self.write_levers("hcom-seat", "python3", "node.js")
+        levers = self.write_levers("hcom-seat", "python3", "node.js", "drifted")
+        (self.temp_dir / "home/dot_local/bin/common/executable_drifted").write_text("#!/usr/bin/env bash\nexit 1\n")
         (levers / "notes.md").write_text("#!/usr/bin/env bash\n")
         (levers / "binary").write_bytes(b"\xcf\xfa\xed\xfe")
         (levers / "binary").chmod(0o755)
         (levers / "link").symlink_to(levers / "hcom-seat")
         (levers / "dir").mkdir()
+        (levers / "uninstalled").write_text("#!/usr/bin/env bash\n")
+        (levers / "uninstalled").chmod(0o755)
+        installed = "Bash(~/.local/bin/common/{} *)".format
         cases = {
             "Bash(*)": "is not Bash\\(agmsg-dispatch",
             "Bash": "is not Bash\\(agmsg-dispatch",
@@ -1223,21 +1238,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "Bash(git worktree remove *)": "is not Bash\\(agmsg-dispatch",
             "Bash(git *)": "is not Bash\\(agmsg-dispatch",
             "Bash(python3 *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(bash scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(./scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(/repo/scripts/orchestrator/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(scripts/orchestrator/hcom-seat)": "is not Bash\\(agmsg-dispatch",
-            "Bash(scripts/orchestrator/hcom-seat:*)": "is not Bash\\(agmsg-dispatch",
-            "Bash(scripts/orchestrator/../../bin/sh *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(scripts/orchestrator/*)": "is not Bash\\(agmsg-dispatch",
+            "Bash(bash ~/.local/bin/common/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(/Users/x/.local/bin/common/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(~/.local/bin/common/hcom-seat)": "is not Bash\\(agmsg-dispatch",
+            "Bash(~/.local/bin/common/hcom-seat:*)": "is not Bash\\(agmsg-dispatch",
+            "Bash(~/.local/bin/common/../../bin/sh *)": "is not Bash\\(agmsg-dispatch",
+            "Bash(~/.local/bin/common/*)": "is not Bash\\(agmsg-dispatch",
             "Read(**)": "is not Bash\\(agmsg-dispatch",
-            "Bash(scripts/orchestrator/absent *)": "absent is not a regular file",
-            "Bash(scripts/orchestrator/dir *)": "dir is not a regular file",
-            "Bash(scripts/orchestrator/link *)": "link is not a regular file",
-            "Bash(scripts/orchestrator/notes.md *)": "notes.md is not executable",
-            "Bash(scripts/orchestrator/python3 *)": "python3 is named as an interpreter",
-            "Bash(scripts/orchestrator/node.js *)": "node.js is named as an interpreter",
-            "Bash(scripts/orchestrator/binary *)": "binary is not a script with a shebang line",
+            "Bash(scripts/orchestrator/hcom-seat *)": "names a lever inside the rewritable checkout",
+            "Bash(./scripts/orchestrator/hcom-seat *)": "names a lever inside the rewritable checkout",
+            "Bash(scripts/orchestrator/hcom-seat:*)": "names a lever inside the rewritable checkout",
+            installed("absent"): "absent is not a regular file",
+            installed("dir"): "dir is not a regular file",
+            installed("link"): "link is not a regular file",
+            installed("notes.md"): "notes.md is not executable",
+            installed("python3"): "python3 is named as an interpreter",
+            installed("node.js"): "node.js is named as an interpreter",
+            installed("binary"): "binary is not a script with a shebang line",
+            installed("uninstalled"): "has no byte-identical installed copy",
+            installed("drifted"): "has no byte-identical installed copy",
         }
         for rule, message in cases.items():
             with self.subTest(rejects=rule):
@@ -1246,12 +1265,41 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         {"allow": ["Bash(agmsg-dispatch:*)", rule]}, "permissions"
                     )
                 self.assertRegex(stderr.getvalue(), message)
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_permissions_allow({"allow": [installed("hcom-seat")]}, "permissions", {})
+        self.assertIn("no claude.levers.sha256 pin for hcom-seat", stderr.getvalue())
 
-    def test_the_managed_allow_rules_name_the_real_levers(self) -> None:
+    def test_the_managed_allow_rules_name_the_installed_levers_on_every_os(self) -> None:
+        """The rules name ~/.local/bin/common on darwin and linux; a checkout-path rule fails either (U31)."""
         self.module.ROOT = ROOT
-        settings = load_manifest_fixture(self.temp_dir)
-        self.assertEqual(MANAGED_ALLOW, settings["claude"]["permissions"]["allow"])
-        self.module.validate_claude_permissions_allow(settings["claude"]["permissions"], "manifest permissions")
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(MANAGED_ALLOW, manifest["claude"]["permissions"]["allow"])
+        self.assertNotIn("darwin_allow", manifest["claude"]["permissions"])
+        pinned = manifest["claude"]["levers"]["sha256"]
+        self.module.validate_claude_permissions_allow(manifest["claude"]["permissions"], "manifest permissions", pinned)
+
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        self.module.ROOT = self.temp_dir
+        self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        checkout = copy.deepcopy(manifest)
+        checkout["claude"]["permissions"]["allow"][1] = "Bash(scripts/orchestrator/hcom-seat *)"
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os=os_name):
+                self.write_text_file(
+                    "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(checkout)
+                )
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_settings(checkout, os_name)
+                self.assertIn("names a lever inside the rewritable checkout", stderr.getvalue())
+                self.write_text_file(
+                    "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(manifest)
+                )
+                self.module.validate_claude_settings(manifest, os_name)
 
     def test_claude_sandbox_requires_the_ssh_credential_deny_and_home_or_absolute_deny_read(self) -> None:
         cases = {

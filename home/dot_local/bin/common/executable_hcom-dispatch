@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# @file hcom-dispatch
+# @brief Send one protocol line from one seat to another over hcom and print a durable receipt.
+# @description
+#   Plan 025 W2b (C-1). Keeps agmsg-dispatch's argument form so every caller keeps
+#   its call: the words after the pane are joined with spaces into one line, which
+#   reaches hcom as one argument after `--` (`hcom send --help`: "Everything after
+#   -- is the message"). The send is
+#   `hcom send @<to> --thread <team> --from <from> --json -- <line>` (hcom 0.7.30):
+#   `@<to>` is the seat's exact hcom name (send --help "Target matching"; a name
+#   hcom does not know fails with its "No active agent" error), `--thread <team>`
+#   seeds the team thread the seat answers in with `hcom send --thread <team> --
+#   <line>` and no target (src/commands/send.rs:300 refuses a thread without
+#   members, so the TASK carries the mention), `--from <from>` is the external
+#   sender identity (send.rs:96; the row's `from`, send.rs:403) and `--json` prints
+#   `{"delivered_to": [...], "event_id": N}` on stdout (send.rs:1135). hcom's own
+#   error stays on stderr and its exit status is passed through. The event id is
+#   then read back with `hcom events --type message --thread <team> --sql "id = N"
+#   --full` (src/commands/events.rs:45 sql, :39 full), so the receipt names a row
+#   the bus holds, the one bus-history.sh prints:
+#   `id=<N> at=<hcom ts> to=<to> kind=<first word of the line>`.
+#   The pane argument is accepted and unused: hcom delivers to a bound seat itself
+#   (`hcom list --help`: "[OMP] hcom-launched, automatic delivery"), so there is no
+#   wake. The store is `$HCOM_DIR/hcom.db` (`hcom start --help`: "Prefix all hcom
+#   commands with: HCOM_DIR=..."); an unset HCOM_DIR or an absent store is refused
+#   before any hcom call, because hcom creates a store on first use and the seats'
+#   launch owns that.
+# @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).
+# @arg $2 string Sender seat, same grammar.
+# @arg $3 string Recipient seat, its exact hcom name, same grammar.
+# @arg $4 string Pane or seat label, accepted for agmsg-dispatch's form, unused.
+# @arg $@ string Message words, joined with spaces into one line.
+# @env HCOM_DIR The private hcom store directory (required).
+# @stdout One receipt line `id=<event id> at=<ts> to=<to> kind=<kind>`.
+# @exitcode 0 Sent and found in the bus.
+# @exitcode 1 Usage, grammar, empty line, store absent, or the sent id was not found.
+# @exitcode * hcom's own status when the send fails (its error on stderr).
+# @example
+#   HCOM_DIR=/path/to/.hcom hcom-dispatch dotfiles orch u5team-nemo w1:p2 'AGMSG-TASK v1 task_id=T1 ...'
+set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+(($# >= 5)) || {
+    echo 'usage: hcom-dispatch <team> <from> <to> <pane> <line...>' >&2
+    exit 1
+}
+team=$1 from=$2 to=$3
+shift 4
+line=$*
+for identifier in "${team}" "${from}" "${to}"; do
+    [[ ${identifier} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || {
+        echo "hcom-dispatch: identifier '${identifier}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$" >&2
+        exit 1
+    }
+done
+[[ -n ${line} ]] || {
+    echo 'hcom-dispatch: empty line' >&2
+    exit 1
+}
+[[ -n ${HCOM_DIR:-} && -f ${HCOM_DIR:-}/hcom.db ]] || {
+    echo "hcom-dispatch: store absent: \${HCOM_DIR}/hcom.db (HCOM_DIR=${HCOM_DIR:-unset})" >&2
+    exit 1
+}
+
+receipt=$(hcom send "@${to}" --thread "${team}" --from "${from}" --json -- "${line}")
+id=$(jq -r '.event_id' <<< "${receipt}" 2> /dev/null) || id=
+[[ ${id} =~ ^[0-9]+$ ]] || {
+    echo "hcom-dispatch: no event_id in the hcom receipt: ${receipt}" >&2
+    exit 1
+}
+row=$(hcom events --type message --thread "${team}" --sql "id = ${id}" --full)
+[[ -n ${row} ]] || {
+    echo "hcom-dispatch: sent event ${id} was not found in thread ${team}" >&2
+    exit 1
+}
+jq -r --arg to "${to}" '
+  def kind_of: [splits("[ \t]+") | select(. != "")][0] // "-";
+  "id=\(.id) at=\(.ts) to=\($to) kind=\(.data.text | kind_of)"' <<< "${row}"

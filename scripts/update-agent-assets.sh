@@ -77,10 +77,10 @@ PI_CLAUDE_BRIDGE_TARBALL_SHA256="8d582b2fee1615b64a59890e3ac0af03c1e11bd06ba1997
 PI_CLAUDE_BRIDGE_ASSET_DIR="${DOTFILES_REPO_SOURCE_DIR}/home/dot_agents/assets/pi-claude-bridge"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
-HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/f5/ed/5e951b0e6fcadef1a2598e82b969b3eaa387a3e202f8987102d0e84cddfc/hcom-0.7.30-py3-none-macosx_11_0_arm64.whl"
-HCOM_DARWIN_AMD64_URL="https://files.pythonhosted.org/packages/ba/c3/04dd3c68d87620fa347372b5e9450c3bb3518aa096abdf08169e6d2ce37f/hcom-0.7.30-py3-none-macosx_10_12_x86_64.whl"
-HCOM_LINUX_AMD64_URL="https://files.pythonhosted.org/packages/21/fb/0a48f19a1c39b4ff59412f1fe34130c14acbc55da69097018d729191c6d2/hcom-0.7.30-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-HCOM_LINUX_ARM64_URL="https://files.pythonhosted.org/packages/f0/23/e746ce90643a1286ed3c6410c66eaae7134fbd2267d002814e6a932a2b60/hcom-0.7.30-py3-none-manylinux_2_28_aarch64.whl"
+HCOM_DARWIN_ARM64_URL="https://files.pythonhosted.org/packages/05/92/12d18a45357ef2a9765342203d5031b08dcd67bc988814428c10b46f6a3d/hcom-0.7.31-py3-none-macosx_11_0_arm64.whl"
+HCOM_DARWIN_AMD64_URL="https://files.pythonhosted.org/packages/5b/bb/ca9ae354c9e2ded1f028ae663ee8d43e3e61c87fcd9b3d0df034d5f7aa5e/hcom-0.7.31-py3-none-macosx_10_12_x86_64.whl"
+HCOM_LINUX_AMD64_URL="https://files.pythonhosted.org/packages/1d/de/02ef910a9f6776363c9042cdff965a772a09f9678289c30c320b1e976d6c/hcom-0.7.31-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+HCOM_LINUX_ARM64_URL="https://files.pythonhosted.org/packages/c3/53/27da25db38b9f079f4998d98b274ba50bf7da96b8b3904c5c24c7ab82504/hcom-0.7.31-py3-none-manylinux_2_28_aarch64.whl"
 readonly OMP_TARBALL_URL="https://registry.npmjs.org/@oh-my-pi/pi-coding-agent/-/pi-coding-agent-${OMP_PIN_VERSION}.tgz"
 readonly PI_CLAUDE_BRIDGE_TARBALL_URL="https://registry.npmjs.org/pi-claude-bridge/-/pi-claude-bridge-${PI_CLAUDE_BRIDGE_PIN_VERSION}.tgz"
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"

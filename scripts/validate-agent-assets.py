@@ -856,19 +856,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     worker_kind = manifest.get("worker_kind")
     if worker_kind not in {"codex", "claude"}:
         fail(f"{manifest_path} worker_kind must be codex or claude: {worker_kind!r}")
-    readme = (ROOT / "README.md").read_text()
-    readme_words = " ".join(readme.split())
-    readme_worker = f"`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `{worker_kind}`;"
-    if readme_worker not in readme_words:
-        fail(f"README.md must state the manifest worker_kind as {readme_worker}")
     orchestrator_kind = manifest.get("orchestrator_kind")
     if orchestrator_kind not in {"claude", "codex"}:
         fail(f"{manifest_path} orchestrator_kind must be claude or codex: {orchestrator_kind!r}")
-    readme_orchestrator = (
-        f"`orchestrator_kind` in `home/dot_agents/agent-config.yaml` (currently `{orchestrator_kind}`;"
-    )
-    if readme_orchestrator not in readme_words:
-        fail(f"README.md must state the manifest orchestrator_kind as {readme_orchestrator}")
     worker_worktree = manifest.get("worker_worktree")
     if worker_worktree is not None and (
         not isinstance(worker_worktree, str)

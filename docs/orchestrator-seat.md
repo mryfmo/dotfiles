@@ -117,4 +117,4 @@ says `no stop record` because the first parser read the wrong form of `hcom list
 
 ## AGENTS.md
 
-The Agent Review Evidence section and the Audit intro now point at the program store, the `hcom-orchestration` skill and `omp-run.sh --role audit`. The Code Review Rules subsection "Orchestration records and trust-boundary code" still names the agmsg task vocabulary: `tests/unit/test_agmsg_orchestration_docs.py` pins it whole against `tests/fixtures/regime/code-review-orchestration.md` and by token, and both files are outside this unit's SCOPE. The same test pins the gate sentence of the last Agent Review Evidence bullet, kept there as the retired gate's description. Retiring that test and its fixtures is a records unit of its own.
+The Agent Review Evidence section and the Audit intro now point at the program store, the `hcom-orchestration` skill and `omp-run.sh --role audit`. The test that pinned the old task vocabulary there and its fixtures were retired with the rules (U32).

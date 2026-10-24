@@ -40,7 +40,7 @@
 - Review evidence for a unit is its verdict row in the program store's `ledger.tsv` (`.orchestration/orchestrate/regime-cutover/`), written for the exact head sha, plus the verifier's file under `verdicts/` when one was written; the loop that produces them is `home/dot_agents/skills/hcom-orchestration/SKILL.md`.
 - Agent evidence must contain at least one resolved record. For a finding-free review, the verdict row still names what was reproduced.
 - When the verifier seat is unavailable, a fresh-context review of the same head is recorded in the same row shape; the row names who judged and from what, since this evidence is process evidence, not reviewer authentication.
-- Before merging a pull request, follow the hcom-orchestration SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then `gh pr merge --squash --match-head-commit <head sha>`. The retired agmsg gate (`make require-crit-review`) ran the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE`, `AUDIT_EVIDENCE` and `ACCEPTANCE_EVIDENCE` (the record's `audit_findings` disposition an `incorrect` verdict).
+- Before merging a pull request, follow the hcom-orchestration SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then `gh pr merge --squash --match-head-commit <head sha>`.
 
 ## Audit
 

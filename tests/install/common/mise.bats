@@ -131,3 +131,31 @@ unset install" ]
     run verify_mise_archive "${archive}" "${manifest}" "other.tar.gz"
     [ "${status}" -ne 0 ]
 }
+
+# install_mise moves its verified binary to MISE_INSTALL_PATH (install/common/mise.sh), so that path is its
+# install set; setup points it into the case's HOME.
+@test "[common] uninstall_mise removes the binary install_mise writes and nothing beside it" {
+    touch "${MISE_INSTALL_PATH}" "${HOME}/.local/bin/must-survive"
+
+    run uninstall_mise
+
+    [ "${status}" -eq 0 ]
+    [ ! -e "${MISE_INSTALL_PATH}" ]
+    [ -e "${HOME}/.local/bin/must-survive" ]
+}
+
+@test "[common] the uninstall_mise check catches an uninstaller that removes another path" {
+    local mutant="${BATS_TEST_TMPDIR}/mise.sh"
+    sed 's|^    rm "${MISE_INSTALL_PATH}"$|    rm -f "${MISE_INSTALL_PATH}.old"|' "${SCRIPT_PATH}" > "${mutant}"
+    if cmp -s "${SCRIPT_PATH}" "${mutant}"; then
+        false
+    fi
+    touch "${MISE_INSTALL_PATH}"
+
+    # The copy sits outside the checkout, so github-release.sh comes first, as the chezmoi script includes it.
+    run bash -c 'source "$1"; source "$2"; uninstall_mise' _ ./scripts/lib/github-release.sh "${mutant}"
+
+    # The mutant left the binary, which the check above refuses.
+    [ "${status}" -eq 0 ]
+    [ -e "${MISE_INSTALL_PATH}" ]
+}

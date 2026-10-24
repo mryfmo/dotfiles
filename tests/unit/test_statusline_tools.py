@@ -33,9 +33,11 @@ class StatuslineToolsTest(unittest.TestCase):
         ccstatusline = json.loads(render(CLAUDE_SETTINGS.read_text()))["statusLine"]["command"]
         return ccusage, ccstatusline
 
-    def test_mise_config_declares_the_statusline_tools_behind_the_cooldown(self) -> None:
+    def test_mise_config_holds_the_statusline_tools_at_exact_versions(self) -> None:
+        # U42: ccusage 20.0.38 reached `latest` when its cooldown expired and broke --version on every runner, so
+        # both tools the CI smoke runs are held; a drift back to "latest" or a range fails here.
         config = tomllib.loads(MISE_CONFIG.read_text())
-        self.assertEqual({tool: "latest" for tool in EXPECTED_TOOLS}, EXPECTED_TOOLS)
+        self.assertEqual({"npm:ccusage": "20.0.37", "npm:ccstatusline": "2.2.32"}, EXPECTED_TOOLS)
         self.assertEqual("72h", config["settings"]["minimum_release_age"])
 
     def test_generated_commands_are_direct_and_static(self) -> None:
@@ -104,6 +106,9 @@ class StatuslineToolsTest(unittest.TestCase):
         ):
             self.assertIn(token, workflow)
         self.assertLess(workflow.index(node_install), workflow.index(tools_install))
+        # A failing smoke names the pins to bump, on both platforms.
+        self.assertIn("bump the exact pins in home/dot_mise/config.toml", workflow)
+        self.assertEqual(2, workflow.count('"${smoke[@]}" || smoke_failed'))
         # The versions come from the copied config; the workflow carries no literal.
         for literal in ("ccstatusline@", "ccusage@"):
             self.assertNotIn(literal, workflow)

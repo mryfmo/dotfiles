@@ -2,10 +2,10 @@
 """A fake `hcom` for tests/unit/test_regime_start.py (U36), keeping its seats in the JSON file `$FAKE_HCOM_STATE`.
 
 `list --format TPL` prints one line per alive seat with `{name}`, `{base_name}`, `{tag}`, `{status}` filled in;
-`list --stopped <base>` prints hcom's stopped listing for that base name, newest first; `kill <name> --go` stops
+`list --stopped <base>` prints hcom's named stop block for that base name, the newest event `(latest)`; `kill <name> --go` stops
 an alive seat with hcom's `killed by:cli` record; `omp --tag T ... --go -- ...` records the launch and, unless
 FAKE_LAUNCH_FAILS=1 (exit 1) or FAKE_LAUNCH_SILENT=1 (exit 0, no seat), adds a listening seat `T-<word>`.
-FAKE_LIST_FAILS=1 makes every `list` exit 1. Every call is appended to the state's `calls` with HCOM_DIR and
+FAKE_LIST_FAILS=1 makes every `list` exit 1; FAKE_STOPPED_GARBLED=1 prints a stop block without events. Every call is appended to the state's `calls` with HCOM_DIR and
 HCOM_TEAM.
 """
 
@@ -29,11 +29,19 @@ if argv[:1] == ["list"]:
     save()
     if os.environ.get("FAKE_LIST_FAILS") == "1":
         sys.exit("fake-hcom: list failed")
-    if argv[1:2] == ["--stopped"]:
-        print("Stopped agents (last 20):\n")
-        for record in reversed(state["stopped"]):
-            if len(argv) < 3 or record["base"] == argv[2]:
-                print(f"  {record['base']} (omp tag:{record['tag']}) 1m ago  [{record['reason']}]  /x")
+    if argv[1:2] == ["--stopped"] and len(argv) == 3:
+        # hcom 0.7.30's named form (measured 2026-10-24): a detail block, then the events newest first.
+        events = [record for record in reversed(state["stopped"]) if record["base"] == argv[2]]
+        if os.environ.get("FAKE_STOPPED_GARBLED") == "1":
+            print(f"Stopped: {argv[2]}")
+            sys.exit(0)
+        if not events:
+            print(f"No stopped agent named {argv[2]}")
+            sys.exit(0)
+        print(f"Stopped: {argv[2]}\n  Tool:       omp\n  Tag:        {events[0]['tag']}\n")
+        print(f"  Stop history ({len(events)} events):")
+        for index, record in enumerate(events):
+            print(f"    1m ago  [{record['reason']}]" + (" (latest)" if index == 0 else ""))
         sys.exit(0)
     template = argv[argv.index("--format") + 1]
     for seat in state["alive"]:

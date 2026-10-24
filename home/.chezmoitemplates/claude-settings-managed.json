@@ -19,9 +19,9 @@
     "deny": [
       "Bash(sudo:*)",
       "Bash(rm -rf:*)",
+      "Read(.env)",
       "Read(.env.*)",
-      "Read(id_rsa*)",
-      "Read(id_ed25519*)",
+      "Read(~/.ssh/**)",
       "Edit(.env*)",
       "Bash(curl * | sh)",
       "Bash(wget * | sh)",
@@ -88,6 +88,18 @@
       "~/.local/state/hcom-regime",
       "~/.local/state/omp-seats",
       "~/Library/Caches/mise"
+    ],
+    "denyRead": [
+      "~/**/.env",
+      "~/**/.env.*"
+    ]
+  },
+  "credentials": {
+    "files": [
+      {
+        "path": "~/.ssh",
+        "mode": "deny"
+      }
     ]
   },
   "network": {
@@ -126,6 +138,18 @@
       "~/.local/share/uv",
       "~/.local/state/hcom-regime",
       "~/.local/state/omp-seats"
+    ],
+    "denyRead": [
+      "~/**/.env",
+      "~/**/.env.*"
+    ]
+  },
+  "credentials": {
+    "files": [
+      {
+        "path": "~/.ssh",
+        "mode": "deny"
+      }
     ]
   },
   "network": {

@@ -238,6 +238,18 @@ jobs:
           mise -C "${RUNNER_TEMP}/statusline-mise" install npm:ccstatusline npm:ccusage
           mise -C "${RUNNER_TEMP}/statusline-mise" install ruff npm:prettier
 
+      - name: Install Claude Code for the Linux doctor check
+        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' }}
+        run: |
+          set -euo pipefail
+          # The version mise resolves from the copied config and its minimum_release_age, as hosts get it (no
+          # literal here). tests/unit/test_generate_agent_configs.py ClaudeDoctorLinuxGlobTest runs `claude doctor`
+          # on the rendered settings and fails when CLAUDE_DOCTOR_BIN is set but not executable (regime-cutover U17).
+          mise -C "${RUNNER_TEMP}/statusline-mise" install npm:@anthropic-ai/claude-code
+          claude_bin="$(mise -C "${RUNNER_TEMP}/statusline-mise" which claude)"
+          "${claude_bin}" --version
+          printf 'CLAUDE_DOCTOR_BIN=%s\n' "${claude_bin}" >> "${GITHUB_ENV}"
+
       - name: Smoke-test statusline tools without network
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |

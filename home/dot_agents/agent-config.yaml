@@ -242,12 +242,22 @@ claude:
       - Bash(scripts/orchestrator/bus-history.sh *)
       - Bash(scripts/orchestrator/worktree-gc.sh *)
       - Bash(hcom list *)
+    # Secret files are guarded at two layers (regime-cutover U17). These
+    # Read/Edit rules guard Claude's own file tools and the file commands it
+    # recognises in Bash; they "don't apply to … arbitrary subprocesses"
+    # (code.claude.com/docs/en/permissions). `sandbox.credentials` and
+    # `sandbox.filesystem.denyRead` below guard every sandboxed subprocess.
+    # The Linux sandbox ignores a Read/Edit rule whose last segment is a glob,
+    # so validate-agent-assets.py refuses one except the `.env` pair. The pair
+    # keeps its glob because the Read tool must refuse `.env.local` and the like
+    # in every project, which only a glob expresses; for sandboxed subprocesses
+    # on Linux the `denyRead` entries `~/**/.env` and `~/**/.env.*` cover it.
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)
+      - Read(.env)
       - Read(.env.*)
-      - Read(id_rsa*)
-      - Read(id_ed25519*)
+      - Read(~/.ssh/**)
       - Edit(.env*)
       - Bash(curl * | sh)
       - Bash(wget * | sh)
@@ -338,6 +348,25 @@ claude:
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:
         - ~/Library/Caches/mise
+      # Rendered as sandbox.filesystem.denyRead on every OS: the sandbox's
+      # default read policy "still allows reading credential files" and the
+      # Linux sandbox drops the glob Read rules above, while `denyRead` globs
+      # are enforced there (code.claude.com/docs/en/sandboxing; U17).
+      deny_read:
+        - ~/**/.env
+        - ~/**/.env.*
+    # Rendered as sandbox.credentials: a `deny` entry denies reads inside the
+    # sandbox like denyRead; the SSH keys and config stay unreadable to
+    # sandboxed commands (git pushes from sessions go over HTTPS; U17).
+    # Both sandbox denies hold for sandboxed runs only: an unsandboxed retry
+    # after the auto-mode classifier keeps only the tool-layer rules, which miss
+    # arbitrary Python or Node reads (ask rule for the retry: D-024-148 follow-up).
+    # denyRead is home-anchored, so managed hosts keep project checkouts under
+    # $HOME (deployment restriction, D-024-148) until the root form is measured.
+    credentials:
+      files:
+        - path: ~/.ssh
+          mode: deny
     network:
       allowedDomains:
         - github.com

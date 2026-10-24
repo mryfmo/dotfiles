@@ -500,6 +500,36 @@ commands, while deny rules and content-scoped ask rules such as
 `Bash(git push:*)` still apply. A command that fails under the sandbox can
 still be retried unsandboxed through the normal permission prompt.
 
+Secret files are guarded at two layers. The `Read(...)` and `Edit(...)` rules
+in `permissions.deny` (`Read(.env)`, `Read(.env.*)`, `Edit(.env*)`,
+`Read(~/.ssh/**)`, `Read(secrets/**)`, `Read(config/credentials.json)`) guard
+Claude's own file tools and the file commands it recognises in Bash, and do
+not reach arbitrary subprocesses. Three sandbox keys guard every sandboxed
+subprocess: `sandbox.credentials.files` denies `~/.ssh`,
+`sandbox.filesystem.denyRead` denies `~/**/.env` and `~/**/.env.*`, and
+`sandbox.filesystem.allowWrite` bounds writes as above. Sandboxed `ssh` and
+`scp` therefore cannot read `~/.ssh` (its keys or its config); Claude sessions
+push over HTTPS, and `chezmoi apply` and `make update` run outside the
+sandbox. On Linux `claude doctor` still names `Read(.env.*)` and `Edit(.env*)`
+under "Glob patterns in sandbox permission rules are not fully supported on
+Linux": they are tool-layer rules the Linux sandbox ignores, and `denyRead`
+covers them for subprocesses there; `validate-agent-assets.py` refuses any
+other Read/Edit rule that ends in a glob, and CI's ubuntu-24.04 leg runs
+`claude doctor` on the rendered settings to hold that list. The sandbox layer
+covers sandboxed runs only: under auto mode with `allowUnsandboxedCommands`
+`true`, a command that fails in the sandbox may be retried outside it after the
+classifier, where only the tool-layer Read/Edit rules apply, and those do not
+reach arbitrary Python or Node reads; an `ask` rule for that retry is the
+recorded follow-up (D-024-148), decided with the operator. `denyRead` is
+home-anchored: a project checkout outside `$HOME` (for example
+`/srv/project/.env.local`) is covered by the tool-layer rules only, whose glob
+forms the Linux sandbox ignores, so on managed hosts project checkouts live
+under `$HOME` (a deployment restriction, D-024-148) until the root-anchored
+form is measured on the Linux host. Sources:
+[permissions](https://code.claude.com/docs/en/permissions),
+[sandboxing](https://code.claude.com/docs/en/sandboxing),
+[settings](https://code.claude.com/docs/en/settings).
+
 On Ubuntu, `make update` installs `bubblewrap` and `socat`. On Ubuntu 24.04
 and later, the user-namespace restriction is handled by the `bwrap-userns`
 AppArmor profile described in "Agent review and permission assets" above; no

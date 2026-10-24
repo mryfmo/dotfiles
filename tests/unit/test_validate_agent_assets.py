@@ -1098,7 +1098,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "enabled": True,
             "failIfUnavailable": False,
             "autoAllowBashIfSandboxed": True,
-            "filesystem": {"allowWrite": list(self.required_agmsg_writable_roots)},
+            "filesystem": {
+                "allowWrite": list(self.required_agmsg_writable_roots),
+                "denyRead": ["~/**/.env", "~/**/.env.*"],
+            },
+            "credentials": {"files": [{"path": "~/.ssh", "mode": "deny"}]},
             "network": {
                 "allowedDomains": ["github.com", "api.github.com"],
                 "allowUnixSockets": ["~/.config/herdr/herdr.sock", "/run/user/1000/x.sock"],
@@ -1248,6 +1252,66 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         settings = load_manifest_fixture(self.temp_dir)
         self.assertEqual(MANAGED_ALLOW, settings["claude"]["permissions"]["allow"])
         self.module.validate_claude_permissions_allow(settings["claude"]["permissions"], "manifest permissions")
+
+    def test_claude_sandbox_requires_the_ssh_credential_deny_and_home_or_absolute_deny_read(self) -> None:
+        cases = {
+            "no credentials": (lambda sandbox: sandbox.pop("credentials"), "credentials.files must contain"),
+            "ssh allowed": (
+                lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.ssh", "mode": "allow"}]),
+                "credentials.files must contain",
+            ),
+            "other directory only": (
+                lambda sandbox: sandbox["credentials"].update(files=[{"path": "~/.gnupg", "mode": "deny"}]),
+                "credentials.files must contain",
+            ),
+            "no denyRead": (lambda sandbox: sandbox["filesystem"].pop("denyRead"), "denyRead must be a non-empty"),
+            "empty denyRead": (
+                lambda sandbox: sandbox["filesystem"].update(denyRead=[]),
+                "denyRead must be a non-empty",
+            ),
+            "relative denyRead": (
+                lambda sandbox: sandbox["filesystem"]["denyRead"].append("**/.env"),
+                "globs are allowed here, unlike allowWrite",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox()
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                self.assertIn(message, stderr.getvalue())
+        sandbox = self.valid_claude_sandbox()
+        sandbox["filesystem"]["denyRead"].append("/srv/secrets/**")
+        self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+
+    def test_claude_deny_rules_refuse_a_glob_last_segment_except_the_env_pair(self) -> None:
+        accepted = [
+            "Bash(sudo:*)",
+            "Bash(curl * | sh)",
+            "Read(.env)",
+            "Read(.env.*)",
+            "Edit(.env*)",
+            "Read(~/.ssh/**)",
+            "Read(secrets/**)",
+            "Read(config/credentials.json)",
+        ]
+        self.module.validate_claude_permissions_deny({"deny": accepted}, "permissions")
+        for rule in (
+            "Read(id_rsa*)",
+            "Read(id_ed25519*)",
+            "Read(~/.ssh/id_*)",
+            "Edit(.env.*)",
+            "Read(.env*)",
+            "Read(secret?.json)",
+            "Edit(config/[ab].json)",
+            "Read(secrets/*.pem/**)",
+        ):
+            with self.subTest(rejects=rule):
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_permissions_deny({"deny": [*accepted, rule]}, "permissions")
+                self.assertIn("which the Linux sandbox ignores", stderr.getvalue())
+                self.assertIn("covered for subprocesses by sandbox.filesystem.denyRead", stderr.getvalue())
 
     def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
         sandbox = self.valid_claude_sandbox()

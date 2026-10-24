@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- regime-cutover U37: opens a remote seat host's sign-in URL in this laptop's browser
+     (regime-url-opener, 127.0.0.1:1456; docs/remote-host-logins.md). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mryfmo.dotfiles.url-opener</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-I</string>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/common/regime-url-opener</string>
+        <string>--port</string>
+        <string>1456</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/hcom/url-opener.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/.local/state/hcom/url-opener.launchd.log</string>
+</dict>
+</plist>

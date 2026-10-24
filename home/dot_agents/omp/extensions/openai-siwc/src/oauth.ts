@@ -175,17 +175,49 @@ export function createCallbackReceiver(expectedState: string): {
 	return { handle, result: settled.promise };
 }
 
+/** Pins the callback port, so an SSH forward of that port reaches this listener (docs/remote-host-logins.md). */
+export const CALLBACK_PORT_ENV = "OPENAI_SIWC_CALLBACK_PORT";
+
+/** The pinned port, or undefined when the variable is unset or empty; anything else but 1-65535 throws. */
+export function pinnedCallbackPort(env: Record<string, string | undefined> = process.env): number | undefined {
+	const raw = env[CALLBACK_PORT_ENV];
+	if (raw === undefined || raw === "") return undefined;
+	const port = /^[0-9]{1,5}$/.test(raw) ? Number(raw) : Number.NaN;
+	if (!Number.isInteger(port) || port < 1 || port > 65535) {
+		throw new Error(`openai-siwc: ${CALLBACK_PORT_ENV}=${JSON.stringify(raw)} is not a port number from 1 to 65535`);
+	}
+	return port;
+}
+
 /**
- * Binds 127.0.0.1 only (the docs forbid `localhost`), on 1455 when free, else on a random port;
- * the docs allow a different port on later sign-ins and the registration itself.
+ * Binds 127.0.0.1 only (the docs forbid `localhost`). With OPENAI_SIWC_CALLBACK_PORT set it binds
+ * exactly that port and fails when it is taken, since a forward of that port would otherwise carry
+ * the callback to some other listener; unset, it takes 1455 when free, else a random port (the docs
+ * allow a different port on later sign-ins and the registration itself).
  */
-export function listenLoopback(handle: (request: Request) => Response, preferredPort = PREFERRED_PORT): Loopback {
+export function listenLoopback(
+	handle: (request: Request) => Response,
+	preferredPort = PREFERRED_PORT,
+	env: Record<string, string | undefined> = process.env,
+): Loopback {
 	const serve = (port: number) => Bun.serve({ hostname: "127.0.0.1", port, reusePort: false, fetch: handle });
+	const pinned = pinnedCallbackPort(env);
 	let server: ReturnType<typeof serve>;
-	try {
-		server = serve(preferredPort);
-	} catch {
-		server = serve(0);
+	if (pinned !== undefined) {
+		try {
+			server = serve(pinned);
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code ?? (error as Error).message;
+			throw new Error(
+				`openai-siwc: cannot listen on 127.0.0.1:${pinned} (${code}), the port ${CALLBACK_PORT_ENV} pins; free it or unset the variable`,
+			);
+		}
+	} else {
+		try {
+			server = serve(preferredPort);
+		} catch {
+			server = serve(0);
+		}
 	}
 	return { redirectUri: `http://127.0.0.1:${server.port}${CALLBACK_PATH}`, close: () => void server.stop(true) };
 }

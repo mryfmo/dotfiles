@@ -310,6 +310,39 @@ function check_claude_sandbox() {
 }
 
 #
+# @description Report each omp seat profile's login on this host through
+#   `scripts/orchestrator/seat-login-preflight --check` (regime-cutover U37):
+#   presence and mtimes only, never a token. An absent login is an optional
+#   warning, since a login is per host and the operator's step; an unreadable
+#   login record is a required failure, never read as absent.
+#
+function check_seat_logins() {
+    local lever="${BASH_SOURCE[0]%/*}/orchestrator/seat-login-preflight"
+    local output line status=0
+
+    if [ ! -x "${lever}" ]; then
+        warn_optional "seat login check skipped: ${lever} is missing"
+        return 0
+    fi
+    output="$("${lever}" --check 2>&1)" || status=$?
+    while IFS= read -r line; do
+        case "${line}" in
+        '') ;;
+        'not applicable:'*) printf '%s\n' "${line}" ;;
+        *': unreadable'*) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
+        *': absent'* | *': no route'* | *': not a seat login route'*)
+            warn_optional "seat login ${line} (log in on this host: seat-login-preflight <role>, docs/remote-host-logins.md)"
+            ;;
+        *) printf 'found:   seat login %s\n' "${line}" ;;
+        esac
+    done <<< "${output}"
+    if [ "${status}" -ne 0 ]; then
+        printf 'required failed: seat-login-preflight --check exited %d\n' "${status}" >&2
+        ((required_failures += 1))
+    fi
+}
+
+#
 # @description Run the read-only dotfiles health checks.
 #
 function main() {
@@ -337,6 +370,9 @@ function main() {
     section "Agent tools"
     check_omp
     check_hcom
+
+    section "Seat logins"
+    check_seat_logins
 
     section "Zed"
     check_zed

@@ -136,3 +136,75 @@ function setup() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"not applicable: agmsg (not installed)"* ]]
 }
+
+# check_seat_logins (regime-cutover U37): a fake HOME with two seat profiles; `security` is faked so the
+# macOS Keychain branch never sees the real login of the host running the test.
+function seat_login_home() {
+    local home="${BATS_TEST_TMPDIR}/seat"
+    mkdir -p "${home}/.agents/omp/profiles" "${BATS_TEST_TMPDIR}/fakebin"
+    printf 'modelRoles:\n  default: openai-siwc/gpt-6-astra\n' > "${home}/.agents/omp/profiles/audit.yml"
+    printf 'modelRoles:\n  default: claude-bridge/claude-fable-5-1\n' > "${home}/.agents/omp/profiles/orchestrator.yml"
+    printf '#!/bin/sh\nexit %s\n' "${1:-44}" > "${BATS_TEST_TMPDIR}/fakebin/security"
+    chmod +x "${BATS_TEST_TMPDIR}/fakebin/security"
+    printf '%s\n' "${home}"
+}
+
+@test "[common] check_seat_logins reports registered and present logins from presence and mtimes" {
+    local home
+    home="$(seat_login_home)"
+    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc" "${home}/.claude"
+    printf '{"hostId":"urn:uuid:11111111-1111-4111-8111-111111111111","clientId":"oaiapp_fake"}\n' \
+        > "${home}/.omp/profiles/audit/agent/openai-siwc/registration.json"
+    printf 'not a database\n' > "${home}/.omp/profiles/audit/agent/agent.db"
+    printf '{}\n' > "${home}/.claude/.credentials.json"
+    chmod 600 "${home}/.claude/.credentials.json"
+
+    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   seat login audit openai-siwc: registered (host urn:uuid:11111111-1111-4111-8111-111111111111, client oaiapp_fake), agent.db mtime 20"* ]]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (credentials file 600, mtime 20"* ]]
+    [[ "${output}" == *"failures=0 warnings=0"* ]]
+}
+
+@test "[common] check_seat_logins warns for an absent login without failing" {
+    local home
+    home="$(seat_login_home)"
+
+    run env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CONFIG_DIR HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; echo \"failures=\${required_failures} warnings=\${optional_warnings}\""
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"optional warning: seat login audit openai-siwc: absent (no ${home}/.omp/profiles/audit/agent/openai-siwc/registration.json)"* ]]
+    [[ "${output}" == *"optional warning: seat login orchestrator claude-bridge: absent"* ]]
+    [[ "${output}" == *"failures=0 warnings=2"* ]]
+}
+
+@test "[common] check_seat_logins counts an exported token as the Claude login and never prints it" {
+    local home
+    home="$(seat_login_home)"
+
+    run env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN=fake-token-value HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   seat login orchestrator claude-bridge: login present (env token)"* ]]
+    [[ "${output}" != *"fake-token-value"* ]]
+}
+
+@test "[common] check_seat_logins fails on an unreadable SIWC record instead of calling it absent" {
+    local home
+    home="$(seat_login_home)"
+    mkdir -p "${home}/.omp/profiles/audit/agent/openai-siwc"
+    printf '{ not json\n' > "${home}/.omp/profiles/audit/agent/openai-siwc/registration.json"
+
+    run env -u CLAUDE_CODE_OAUTH_TOKEN HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; [ \"\${required_failures}\" -eq 1 ]"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: seat login audit openai-siwc: unreadable (${home}/.omp/profiles/audit/agent/openai-siwc/registration.json)"* ]]
+    [[ "${output}" != *"audit openai-siwc: absent"* ]]
+}
+
+@test "[common] check_seat_logins is not applicable without seat profiles" {
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; check_seat_logins; [ \"\${optional_warnings}\" -eq 0 ]"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"not applicable: no omp seat profiles under ${BATS_TEST_TMPDIR}/empty/.agents/omp/profiles"* ]]
+}

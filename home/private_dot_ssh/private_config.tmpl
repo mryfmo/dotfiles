@@ -1,0 +1,18 @@
+Host *
+  IgnoreUnknown UseKeychain,AddKeysToAgent
+  UseKeychain yes
+  AddKeysToAgent yes
+
+Include conf.d/*.conf
+Include ~/.ssh/work.d/config
+{{ if eq .chezmoi.os "darwin" -}}
+
+# Seat logins on a remote host (regime-cutover U37, docs/remote-host-logins.md). A host entry in
+# conf.d carries `Tag seat-host`; this laptop is its SSH client, so only macOS renders the block.
+# LocalForward carries the SIWC loopback callback (OPENAI_SIWC_CALLBACK_PORT=1455) to the seat host's
+# listener; RemoteForward lets the seat host's regime-open-url reach regime-url-opener here. Both ends
+# are loopback. A second session to the same host only warns that a port is taken.
+Match tagged seat-host
+  LocalForward 1455 127.0.0.1:1455
+  RemoteForward 127.0.0.1:1456 127.0.0.1:1456
+{{ end -}}

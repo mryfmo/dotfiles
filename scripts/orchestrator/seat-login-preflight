@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+# @file seat-login-preflight
+# @brief Report each omp seat profile's login on this host, and before a seat starts on a remote host, get its route logged in.
+# @description
+#   regime-cutover U37 (docs/remote-host-logins.md). A seat's model route is the provider of
+#   `modelRoles.default` in its deployed overlay `~/.agents/omp/profiles/<profile>.yml`: `openai-siwc`
+#   (SIWC, the audit side) or `claude-bridge` (the Claude Code child). A login is per host, so a seat on
+#   the Ubuntu host reached through `herdr --remote` needs that host's own login, and the browser for it
+#   is on the laptop.
+#
+#   `--check [<profile>...]` prints one line per profile (all overlays when none is named) from presence
+#   and mtimes only, never a token: SIWC is `registration.json` (host id and issued client id, which carry
+#   no token) plus the mtime of the profile's `agent.db`, which holds the tokens and is never opened here;
+#   Claude is the `CLAUDE_CODE_OAUTH_TOKEN` variable or its token file, the credentials file, or the macOS
+#   Keychain item (attributes only). A record that exists but cannot be read is reported as unreadable,
+#   never as absent, and makes the exit status 1.
+#
+#   `<role>` (orchestrator, worker or audit; `hcom-seat` calls it before it creates or starts anything)
+#   does nothing on a local host. On a remote host (`SSH_CONNECTION` set) a present login passes. An absent
+#   one is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):
+#   SIWC through `omp --profile <role> login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which the
+#   `seat-host` SSH entry forwards back from the laptop, and `xdg-open`/`open` pointed at `regime-open-url`
+#   for that command only; Claude through `claude auth login` with `BROWSER=regime-open-url`, whose
+#   callback port is random, so the browser shows a code the operator pastes into the pane. The consent
+#   click and that paste are the human steps. Anywhere else (a seat, a script) it prints the command and
+#   refuses, since a login is the operator's step (standing order 4).
+# @arg $1 string `--check`, or the role.
+# @arg $@ string With `--check`: profile names (default: every deployed overlay).
+# @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
+# @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
+# @stdout With `--check`: one line per profile.
+# @stderr The role mode's report and refusals.
+# @exitcode 0 Checked, or the role's route is logged in (or the host is local).
+# @exitcode 1 A record is unreadable, or a login ran and the route is still not logged in.
+# @exitcode 2 A usage error, or a remote seat without a login outside the operator's terminal.
+# @example
+#   seat-login-preflight --check
+#   seat-login-preflight audit
+set -euo pipefail
+
+profiles_dir=${HOME}/.agents/omp/profiles
+siwc_ext=${HOME}/.agents/omp/extensions/openai-siwc
+token_file=${HOME}/.config/claude-code/oauth-token
+callback_port=1455
+# The login's scratch overlay and opener shims, removed on every exit.
+scratch=""
+trap '[[ -z ${scratch} ]] || rm -rf -- "${scratch}"' EXIT
+
+die() {
+    printf 'seat-login-preflight: %s\n' "$*" >&2
+    exit "${2:-2}"
+}
+
+# @description Print a file's mtime in UTC; GNU and BSD `date -r <file>` agree on this form.
+# @arg $1 path File.
+stamp() {
+    date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ
+}
+
+# @description Print a file's permission bits in octal.
+# @arg $1 path File.
+mode_of() {
+    if [[ $(uname -s) == Darwin ]]; then stat -f %Lp "$1"; else stat -c %a "$1"; fi
+}
+
+# @description Print the provider of a profile's `modelRoles.default` (openai-siwc, claude-bridge, ...).
+# @arg $1 string Profile name.
+# @exitcode 3 The overlay is absent or names no default model.
+route_of() {
+    local overlay=${profiles_dir}/$1.yml model
+    [[ -f ${overlay} ]] || return 3
+    model=$(awk '/^modelRoles:/ { in_roles = 1; next } /^[^ ]/ { in_roles = 0 } in_roles && $1 == "default:" { print $2; exit }' "${overlay}") || return 3
+    [[ ${model} == */* ]] || return 3
+    printf '%s\n' "${model%%/*}"
+}
+
+# @description Print the SIWC login line of a profile.
+# @arg $1 string Profile name.
+# @exitcode 0 Registered with an issued client and an agent.db. 1 Absent. 2 Unreadable.
+siwc_state() {
+    local agent=${HOME}/.omp/profiles/$1/agent reg fields host client db
+    reg=${agent}/openai-siwc/registration.json
+    db=${agent}/agent.db
+    if [[ ! -e ${reg} ]]; then
+        printf 'absent (no %s)\n' "${reg}"
+        return 1
+    fi
+    if ! fields=$(jq -er '[.hostId, (.clientId // "")] | @tsv' "${reg}" 2> /dev/null); then
+        printf 'unreadable (%s)\n' "${reg}"
+        return 2
+    fi
+    IFS=$'\t' read -r host client <<< "${fields}"
+    if [[ -z ${client} ]]; then
+        printf 'absent (registration started, no issued client yet: host %s)\n' "${host}"
+        return 1
+    fi
+    if [[ ! -f ${db} ]]; then
+        printf 'absent (registered: host %s, client %s; no %s)\n' "${host}" "${client}" "${db}"
+        return 1
+    fi
+    printf 'registered (host %s, client %s), agent.db mtime %s\n' "${host}" "${client}" "$(stamp "${db}")"
+}
+
+# @description Print the Claude Code login line of this host (the bridge child uses the host login).
+# @exitcode 0 Present. 1 Absent.
+claude_state() {
+    local credentials=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/.credentials.json
+    if [[ -n ${CLAUDE_CODE_OAUTH_TOKEN:-} ]]; then
+        printf 'login present (env token)\n'
+    elif [[ -s ${token_file} ]]; then
+        printf 'login present (token file %s, mtime %s; a new login shell exports it)\n' "$(mode_of "${token_file}")" "$(stamp "${token_file}")"
+    elif [[ -f ${credentials} ]]; then
+        printf 'login present (credentials file %s, mtime %s)\n' "$(mode_of "${credentials}")" "$(stamp "${credentials}")"
+    elif [[ $(uname -s) == Darwin ]] && security find-generic-password -s 'Claude Code-credentials' > /dev/null 2>&1; then
+        printf 'login present (Keychain item)\n'
+    else
+        printf 'absent\n'
+        return 1
+    fi
+}
+
+# @description Print `<profile> <route>: <state>` for one profile.
+# @arg $1 string Profile name.
+# @exitcode 0 Logged in. 1 Absent or the route is not a seat route. 2 Unreadable.
+profile_line() {
+    local route state status=0
+    route=$(route_of "$1") || {
+        printf '%s: no route (overlay %s absent or without modelRoles.default)\n' "$1" "${profiles_dir}/$1.yml"
+        return 1
+    }
+    case ${route} in
+    openai-siwc) state=$(siwc_state "$1") || status=$? ;;
+    claude-bridge) state=$(claude_state) || status=$? ;;
+    *) state="not a seat login route" status=1 ;;
+    esac
+    printf '%s %s: %s\n' "$1" "${route}" "${state}"
+    return "${status}"
+}
+
+# @description `--check`: one line per profile, exit 1 when any record is unreadable.
+check() {
+    local profile overlay failed=0 status
+    local -a profiles=("$@")
+    if ((${#profiles[@]} == 0)); then
+        for overlay in "${profiles_dir}"/*.yml; do
+            [[ -f ${overlay} ]] && profiles+=("$(basename "${overlay}" .yml)")
+        done
+    fi
+    if ((${#profiles[@]} == 0)); then
+        printf 'not applicable: no omp seat profiles under %s\n' "${profiles_dir}"
+        return 0
+    fi
+    for profile in "${profiles[@]}"; do
+        status=0
+        profile_line "${profile}" || status=$?
+        ((status == 2)) && failed=1
+    done
+    return "${failed}"
+}
+
+# @description Name the laptop this SSH session comes from, from the tailnet when it knows the address.
+peer_name() {
+    local client=${SSH_CONNECTION%% *} name=""
+    if command -v tailscale > /dev/null 2>&1; then
+        name=$(tailscale status --json 2> /dev/null | jq -r --arg ip "${client}" \
+            'first(.Peer[]? | select(any(.TailscaleIPs[]?; . == $ip)) | .DNSName) // empty' 2> /dev/null) || name=""
+    fi
+    printf '%s\n' "${name:-${client}}"
+}
+
+# @description Run the role's login in the operator's terminal, then report whether it took.
+# @arg $1 string Role (its profile has the same name).
+# @arg $2 string Route.
+login() {
+    local role=$1 route=$2 status=0
+    scratch=$(mktemp -d "${TMPDIR:-/tmp}/seat-login.XXXXXX") || die "cannot create a scratch directory" 1
+    printf 'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n' "${role}" "${route}" "$(peer_name)" >&2
+    case ${route} in
+    openai-siwc)
+        # The CLI login loads extensions from settings only, so a one-command overlay names it.
+        printf 'extensions:\n  - %s\n' "${siwc_ext}" > "${scratch}/siwc.yml"
+        for opener in xdg-open open; do
+            printf '#!/bin/sh\nexec regime-open-url "$@"\n' > "${scratch}/${opener}"
+            chmod 700 "${scratch}/${opener}"
+        done
+        PATH="${scratch}:${PATH}" PI_CONFIG_FILES="${scratch}/siwc.yml" OPENAI_SIWC_CALLBACK_PORT=${callback_port} \
+            omp --profile "${role}" login openai-siwc || status=$?
+        ;;
+    claude-bridge)
+        printf 'seat-login-preflight: when the browser shows a code, paste it at the prompt below\n' >&2
+        BROWSER=regime-open-url claude auth login || status=$?
+        ;;
+    esac
+    ((status == 0)) || die "the ${route} login exited ${status}" 1
+}
+
+if (($# == 0)); then
+    die 'usage: seat-login-preflight --check [<profile>...] | seat-login-preflight <orchestrator|worker|audit>'
+fi
+if [[ $1 == --check ]]; then
+    shift
+    check "$@"
+    exit $?
+fi
+(($# == 1)) || die 'usage: seat-login-preflight <orchestrator|worker|audit>'
+role=$1
+case ${role} in
+orchestrator | worker | audit) ;;
+*) die "unknown role '${role}'; expected orchestrator, worker or audit" ;;
+esac
+# A local host keeps its own browser and login; nothing new happens there.
+[[ -n ${SSH_CONNECTION:-} ]] || exit 0
+
+status=0
+line=$(profile_line "${role}") || status=$?
+case ${status} in
+0)
+    printf 'seat-login-preflight: %s\n' "${line}" >&2
+    exit 0
+    ;;
+2) die "${line}; fix or move the record aside before a seat starts" 1 ;;
+esac
+route=$(route_of "${role}") || die "${line}" 1
+case ${route} in
+openai-siwc | claude-bridge) ;;
+*) die "${line}" 1 ;;
+esac
+if [[ ! -t 0 || ! -t 1 || -n ${HCOM_LAUNCHED:-} ]]; then
+    die "${line}; a login is the operator's step: run \`seat-login-preflight ${role}\` in your own terminal on this host, then start the seat again"
+fi
+login "${role}" "${route}"
+status=0
+line=$(profile_line "${role}") || status=$?
+((status == 0)) || die "${line} after the login" 1
+printf 'seat-login-preflight: %s\n' "${line}" >&2

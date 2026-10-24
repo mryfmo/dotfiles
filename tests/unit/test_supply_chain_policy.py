@@ -423,7 +423,7 @@ main
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
-        self.assertIn("\t$(MAKE) agmsg-bootstrap", tree)
+        self.assertIn("\t$(MAKE) agmsg-retire", tree)
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:

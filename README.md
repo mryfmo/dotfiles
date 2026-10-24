@@ -256,7 +256,12 @@ cannot be read or is unknown, it prints
 protocol mismatch after updating Herdr prints instructions to stop and restart
 the server (or recreate the Ghostty session), then continues successfully; run
 `herdr server reload-config` manually after restarting. Finally,
-`make agmsg-bootstrap` converges repository-scoped agent message delivery hooks.
+`make agmsg-retire` turns the retired agmsg regime off for this checkout (E1
+of plan 025): it removes the agmsg hooks from `.claude/settings.local.json`
+and makes the checkout's agmsg identity leave its team, printing one
+`agmsg retired: …` line per action, or `agmsg already retired for <dir>` when
+nothing is left. It replaces the agmsg bootstrap, which put those hooks back
+on every run.
 
 Weekly model-usage measurement is informational and never changes
 `model_profiles`. Capture or report usage manually with:
@@ -521,6 +526,12 @@ host; run `/sandbox` and open the Config tab to see the effective write paths,
 domains, and protected paths.
 
 ### agmsg
+
+The agmsg regime is retired: the omp seats talk over the hcom bus
+([scripts/orchestrator/README.md](scripts/orchestrator/README.md), "hcom bus"),
+and `make update` removes this checkout's agmsg hooks and identity (see
+Lifecycle). The installer, tooling and history below stay until their own
+removal lands.
 
 agmsg is installed by its upstream installer at a pinned release, never
 vendored. `assets.agmsg` in `home/dot_agents/agent-config.yaml` records the
@@ -856,8 +867,8 @@ arguments take effect.
 
 Attach mode, run by the SessionStart hook in the orchestrator's Herdr pane,
 renames the current Claude pane `claude-orchestrator` (unless self-naming
-already labeled it), claims the orchestrator seat, prints the directive and
-bootstraps agmsg; it never starts, restarts or repairs a worker. Full mode
+already labeled it), claims the orchestrator seat and prints the directive; it
+never starts, restarts or repairs a worker. Full mode
 (`herdr-agents [DIR]`) creates the orchestrator pane or heals it: a healthy
 existing workspace is only focused, and an exited orchestrator is restarted in
 an agentless pane, or in a new pane split from one that is neither the `audit`
@@ -907,7 +918,7 @@ with `herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
 When `HERDR_AGENTS_ORCHESTRATOR_KIND` (manifest `orchestrator_kind`, default
 `claude`) is `codex`, full mode and `--attach` exit 2 with
 `herdr-agents: orchestrator_kind=codex: use codex-orchestrate` before touching
-Herdr, while the worker, audit and bootstrap modes keep working.
+Herdr, while the worker, audit and retire modes keep working.
 `herdr-agents --directive` prints the `agmsg-orchestration:` directive line for
 a regime repository, and nothing elsewhere, without a Herdr server, so a Codex
 orchestrator's first turn can carry it.

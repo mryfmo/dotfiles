@@ -188,7 +188,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 "MM .codex/deep.config.toml\n"
                 " M .agents/skills\n"
                 " M .local/share/my file\n"
-                " R .chezmoiscripts/macos/04-install-aws-cli.sh\n"
+                " A .config/new-target\n"
             ),
             stderr="",
         )
@@ -211,7 +211,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         with mock.patch.object(self.module.subprocess, "run", side_effect=[status, diff]) as run:
             warnings = self.module.chezmoi_drift_warnings()
 
-        self.assertEqual(2, run.call_count)
+        self.assertEqual(
+            [
+                ["chezmoi", "--no-pager", "status", "--exclude=scripts"],
+                ["chezmoi", "--no-pager", "diff", "--exclude=scripts"],
+            ],
+            [call.args[0] for call in run.call_args_list],
+        )
         self.assertEqual(
             [
                 "WARN: chezmoi drift  M .agents/agent-config.yaml: unapplied source update",
@@ -219,7 +225,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 "WARN: chezmoi drift MM .codex/deep.config.toml: permission divergence (mode-only)",
                 "WARN: chezmoi drift  M .agents/skills: permission divergence (mode-only)",
                 "WARN: chezmoi drift  M .local/share/my file: permission divergence (mode-only)",
-                "WARN: chezmoi drift  R .chezmoiscripts/macos/04-install-aws-cli.sh: managed target drift",
+                "WARN: chezmoi drift  A .config/new-target: managed target drift",
             ],
             warnings,
         )

@@ -153,7 +153,8 @@ def chezmoi_drift_warnings() -> list[str]:
     """Classify managed-target drift without changing the destination state."""
     try:
         status_result = subprocess.run(
-            ["chezmoi", "--no-pager", "status"],
+            # run_ scripts are listed on every status because they run on every apply; they are not drift.
+            ["chezmoi", "--no-pager", "status", "--exclude=scripts"],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -176,7 +177,7 @@ def chezmoi_drift_warnings() -> list[str]:
     # One diff for the whole destination: each chezmoi invocation loads the full
     # source state, so a per-target diff takes hours on hosts with thousands of entries.
     diff_result = subprocess.run(
-        ["chezmoi", "--no-pager", "diff"],
+        ["chezmoi", "--no-pager", "diff", "--exclude=scripts"],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

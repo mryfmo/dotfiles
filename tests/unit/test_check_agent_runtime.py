@@ -19,6 +19,32 @@ CHECKER = ROOT / "scripts/check-agent-runtime.py"
 
 
 class CheckAgentRuntimeTest(unittest.TestCase):
+    def test_runtime_check_compares_the_deployed_gh_merge_gate_hook_with_the_source(self) -> None:
+        self.write_source("dot_claude/hooks/executable_gh-merge-gate.sh", "hook\n")
+        with mock.patch.multiple(
+            self.module,
+            HOME=self.target_root,
+            SOURCE_ROOT=self.source_root,
+            same_text=lambda *a, **kw: True,
+            same_modified=lambda *a, **kw: True,
+            compare_shared_skills=list,
+            compare_claude_skills=list,
+            manifest_asset_findings=list,
+            orphaned_asset_warnings=list,
+            chezmoi_drift_warnings=list,
+            gh_login_findings=list,
+        ):
+            self.module.same_text = lambda a, b, **kw: (
+                a.name == "executable_gh-merge-gate.sh" and b.exists() and a.read_text() == b.read_text()
+            )
+            self.assertTrue(any("gh-merge-gate" in line for line in self.module.check()))
+            target = self.write_target(".claude/hooks/gh-merge-gate.sh", "hook\n", executable=True)
+            self.assertFalse(any("gh-merge-gate" in line for line in self.module.check()))
+            target.chmod(0o644)
+            self.assertTrue(any("gh-merge-gate" in line and "not executable" in line for line in self.module.check()))
+            target.write_text("changed\n")
+            self.assertTrue(any("gh-merge-gate" in line and "differs" in line for line in self.module.check()))
+
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="check-agent-runtime-test-"))
         self.source_root = self.temp_dir / "source"

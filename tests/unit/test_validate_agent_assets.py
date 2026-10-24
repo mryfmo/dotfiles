@@ -82,6 +82,59 @@ statusMessage = "Closing session"
 
 
 class ValidateAgentAssetsTest(unittest.TestCase):
+    def test_gate_validator_requires_every_retained_ask_rule_and_the_exact_synchronous_hook_entry(self) -> None:
+        import copy
+
+        asks = [f"Bash(gh pr {verb}:*)" for verb in ("comment", "review", "close", "edit")] + ["Bash(gh issue:*)"]
+        asks += [
+            f"Bash(gh api {flag}:*)"
+            for method in ("POST", "PATCH", "PUT", "DELETE")
+            for flag in (f"-X {method}", f"--method {method}", f"-X{method}", f"--method={method}")
+        ]
+        asks += [
+            f"Bash(gh api {flag})"
+            for flag in ("-f:*", "-F:*", "--raw-field:*", "--field:*", "-f*", "-F*", "--raw-field=*", "--field=*")
+        ]
+        good = {
+            "permissions": {"ask": asks},
+            "hooks": {
+                "PreToolUse": [
+                    {"matcher": "Bash", "hooks": [{"type": "command", "command": "~/.claude/hooks/gh-merge-gate.sh"}]}
+                ]
+            },
+        }
+        self.module.validate_claude_gh_merge_gate(good, "fixture")
+        bad = []
+        for rule in asks:
+            value = copy.deepcopy(good)
+            value["permissions"]["ask"].remove(rule)
+            bad.append(value)
+        for command, asynchronous in (
+            ("echo ~/.claude/hooks/gh-merge-gate.sh", False),
+            ("~/.claude/hooks/gh-merge-gate.sh", True),
+        ):
+            value = copy.deepcopy(good)
+            value["hooks"]["PreToolUse"][0]["hooks"][0].update(command=command, **{"async": asynchronous})
+            bad.append(value)
+        value = copy.deepcopy(good)
+        value["hooks"]["PreToolUse"] *= 2
+        bad.append(value)
+        for value in bad:
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.module.validate_claude_gh_merge_gate(value, "fixture")
+        if self.module.yaml is not None:
+            path = self.temp_dir / "anchor.yaml"
+            path.write_text("orchestrator_checkout: ~/Workspace/dotfiles\n")
+            self.module.validate_orchestrator_checkout(path)
+            for suffix in (
+                "orchestrator_checkout: ~/other\n",
+                '"orchestrator_checkout": ~/other\n',
+                '"orchestrator_\\u0063heckout": ~/other\n',
+            ):
+                path.write_text("orchestrator_checkout: ~/Workspace/dotfiles\n" + suffix)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_orchestrator_checkout(path)
+
     def setUp(self) -> None:
         self.module = load_validator()
         self.old_root = self.module.ROOT

@@ -433,3 +433,76 @@ class UpdateAgentAssetsTest(unittest.TestCase):
             for shadow_version in ("pin", "0.0.0"):
                 with self.subTest(tool=tool, shadow_version=shadow_version):
                     self.exercise_update(tool, shadow_version=shadow_version)
+
+
+class ProducerFailureTest(unittest.TestCase):
+    """A producer whose read fails stops its step with a message naming it, before anything is downloaded."""
+
+    def run_updater(self, body, home, **env):
+        return subprocess.run(
+            ["bash", "-c", 'source "$1"; ' + body, "bash", str(UPDATER)],
+            env=os.environ | {"HOME": str(home), "CALLS": str(home / "calls")} | env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
+    def test_a_failed_uname_stops_every_platform_step_before_a_download(self):
+        for step in ("ensure_crit_cli", "update_terminal_code", "update_terminal_browser", "update_hcom"):
+            with self.subTest(step=step), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                result = self.run_updater(
+                    'uname() { return 1; }; curl() { echo curl >> "$CALLS"; }; has_command() { return 0; }; ' + step,
+                    home,
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual("uname -s failed; the platform is unknown.\n", result.stderr)
+                self.assertNotIn("unsupported platform", result.stdout)
+                self.assertFalse((home / "calls").exists())
+
+    def test_update_omp_moves_nothing_and_installs_nothing_when_the_package_path_cannot_be_normalised(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            entry = home / ".local/bin/omp"
+            entry.parent.mkdir(parents=True)
+            entry.write_text("#!/bin/sh\nexit 1\n")
+            entry.chmod(0o755)
+            payload = "reproduced tarball bytes; no real package\n"
+            digest = hashlib.sha256(payload.encode()).hexdigest()
+            result = self.run_updater(
+                f"OMP_TARBALL_SHA256={digest}; has_command() {{ return 0; }}; "
+                'curl() { printf %s "$PAYLOAD" > "${@: -1}"; }; '
+                'npm() { echo "npm $*" >> "$CALLS"; }; '
+                'normalize_node_path() { [ "$#" -eq 2 ] && printf "%s\\n" "$1" || return 1; }; '
+                "update_omp",
+                home,
+                PAYLOAD=payload,
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertTrue(entry.is_file())
+            self.assertFalse((home / ".local/share/agent-assets/omp/omp.previous").exists())
+            self.assertFalse((home / "calls").exists())
+
+    def test_the_bridge_inputs_are_refused_when_a_patch_cannot_be_hashed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_updater("shasum() { return 1; }; pi_claude_bridge_inputs", Path(directory))
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertRegex(
+                result.stderr, r"^shasum -a 256 could not hash \S+; the pi-claude-bridge inputs are unknown\n$"
+            )
+
+    def test_update_compactiondb_records_no_step_when_its_changelog_cannot_be_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, source = Path(directory) / "home", Path(directory) / "source"
+            (source / "vendor/compactiondb").mkdir(parents=True)
+            (source / "scripts").symlink_to(ROOT / "scripts")
+            home.mkdir()
+            result = self.run_updater(
+                'rsync() { :; }; manifest_record() { echo "manifest_record $*" >> "$CALLS"; }; update_compactiondb',
+                home,
+                DOTFILES_SOURCE_DIR=str(source),
+            )
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn(f"Cannot read the CompactionDB version from {source}/vendor/compactiondb/CHANGELOG.md.", result.stderr)
+            self.assertFalse((home / "calls").exists())

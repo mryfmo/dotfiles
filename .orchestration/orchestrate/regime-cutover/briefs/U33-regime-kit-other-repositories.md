@@ -1,0 +1,39 @@
+# U33 The regime runs in any repository on the host (the multi-project kit) — brief
+
+GOAL
+A second project on this host runs the hcom regime with nothing but `make update` and three commands in its own checkout: `regime-init <program>` (the store skeleton and the AGENTS.md sections), `hcom-seat <role>` (seats whose store, team and worktrees are derived from that repository), and `hcom-dispatch` for the kickoff. Nothing in the loop refers to the dotfiles checkout any more: the levers are on PATH (U31 part 2), the hcom store and team are per repository, the seat worktrees are per repository, the stop gate finds `bus-history.sh` on PATH, and the three skills name the levers by bare name. The dotfiles program itself keeps working through the same derivation (its slug is `dotfiles`).
+
+SCOPE
+One branch `feat/regime-kit-other-repositories` from `origin/main` after U31 lands (shared files: the levers, the skills, the Claude settings). May write: `scripts/orchestrator/hcom-seat`, `hcom-dispatch`, `bus-history.sh` (the derivation; U31 deploys them, this unit changes their defaults), a new `scripts/orchestrator/regime-init`, `home/dot_agents/omp/hooks/stop-gate.ts` and its tests, `home/dot_agents/skills/hcom-orchestration/SKILL.md`, `hcom-worker/SKILL.md`, `hcom-audit/SKILL.md`, `home/dot_agents/agent-config.yaml` (remove the `claude.env` `HCOM_DIR`/`HCOM_TEAM` lines U16 added; the deploy entries for the new lever and the templates), the rendered template, `scripts/generate-agent-configs.py` only if the env removal needs it, `scripts/validate-agent-assets.py` (the lever allow-list gains `regime-init`), new `home/dot_agents/regime/` templates (`preferences.md`, `AGENTS-audit-section.md`, empty `units.tsv`/`ledger.tsv`/`decisions.tsv`/`gates.md` with headers), `scripts/orchestrator/README.md`, `README.md` (one section "Run a program in another repository"), `docs/orchestrator-seat.md` (the environment table), tests for all of it. Nothing else.
+
+CONTEXT (measured 2026-10-24T06:0xZ)
+- Today only `hcom-reply` and `compactiondb-install` of the regime are on PATH (`~/.local/bin/common/`). `hcom-seat:98` requires a git checkout and seats worktrees of that repository under a global `~/.local/state/omp-seats/<name>`; a second repository would seat its worker in a dotfiles worktree. `stop-gate.ts:101` runs `join(ctx.cwd, "scripts/orchestrator/bus-history.sh")`, so in another repository the gate fails (a visible warning, the turn ends unchecked). The three skills say `scripts/orchestrator/hcom-seat`, `scripts/orchestrator/hcom-dispatch`, `bus-history.sh` by checkout path. U16 put `HCOM_DIR=~/.local/state/hcom-regime` and `HCOM_TEAM=regime` into every Claude session's env, which binds every project to the dotfiles store: that was the coordinator's design error, corrected here.
+- `hcom-dispatch` and `bus-history.sh` refuse without `HCOM_DIR` because `hcom events` creates a store on first use (README "hcom bus"); the derivation below keeps that guarantee by deriving the same path the seats were launched with, and by refusing when the derived store does not exist yet unless the caller is `hcom-seat`.
+- U31 part 2 deploys the levers to `~/.local/bin/common/` with a self-check against a manifest sha256 and allow-lists `hcom-seat --ext`; U31 part 1 renders the lever allow rules per OS. Read its PR before writing.
+
+DESIGN (the data shape first)
+- `repo_slug`: the basename of `git rev-parse --show-toplevel`, lower-cased, `[^a-z0-9_-]` replaced by `-`, at most 40 chars (hcom's team grammar `^[a-z0-9][a-z0-9_-]{0,63}$` and the tag grammar must both accept it). Collisions (two checkouts with the same basename) are refused by `regime-init` when `~/.local/state/hcom/<slug>/origin` names another toplevel; the file is written at init.
+- Derived defaults, explicit environment or flag always winning: `HCOM_TEAM=<slug>`, `HCOM_DIR=~/.local/state/hcom/<slug>`, seats root `~/.local/state/omp-seats/<slug>/`, program store `<toplevel>/.orchestration/orchestrate/<program>/`.
+- `hcom-seat` exports the derived `HCOM_DIR` and `HCOM_TEAM` into the launch environment so the seats and the stop gate inherit them; `hcom-dispatch` and `bus-history.sh` derive the same values when the environment lacks them; the stop gate reads `HCOM_TEAM` from its environment as today and runs `bus-history.sh` from PATH (`~/.local/bin/common/bus-history.sh`), never from the cwd.
+- `regime-init <program> [--force]`: refuses outside a git checkout; creates the store directory with the templates (preferences.md with the host-independent lines of the dotfiles file, the four TSV/MD files with their header rows), writes `~/.local/state/hcom/<slug>/origin`, prints the AGENTS.md sections to append (or appends them when `AGENTS.md` lacks an "## Audit" heading and the caller passes `--write-agents`), and prints the three next commands. Idempotent: a second run changes nothing and says so.
+
+ACCEPTANCE
+1. The derivation implemented once (a small sourced helper `~/.local/bin/common/regime-env` or an equivalent the three levers share), with tests: slug sanitising, env precedence, the collision refusal, the missing-store refusal for `hcom-dispatch`/`bus-history.sh`.
+2. `hcom-seat` seats under the per-repository root and exports the derived env; the dotfiles seats stay reachable (`~/.local/state/omp-seats/dotfiles/<name>`); the README says how the existing seats are moved once (a one-line `git worktree move` per seat, run by the orchestrator seat at deployment, recorded in decisions.tsv).
+3. `stop-gate.ts` runs `bus-history.sh` from PATH; its tests assert the resolved path and the unchanged rule table; the README:173 residual row "bus-history.sh resolved from the seat's cwd" becomes `closed:` with the test selector.
+4. The three skills name the levers by bare name; `docs/orchestrator-seat.md`'s environment table says where each variable now comes from.
+5. The manifest drops the two env lines; the rendered template has no `HCOM_DIR`/`HCOM_TEAM`; the validator allow-list gains `regime-init`; `make render-check`, `make validate-agent-assets`, `make unit-test` green; CI green.
+6. Pilot in a second repository on this host (a scratch repository under `$TMPDIR` with one commit and no remote is enough for the round trip; name it `kit-pilot`): `regime-init pilot` → the store exists and `origin` is written; `hcom-seat worker --dry-run` prints `--dir ~/.local/state/omp-seats/kit-pilot/worker` and a tag under the `kit-pilot` team; the coordinator or the orchestrator seat then launches that worker for real, sends one TASK (`brief=none`, "print your toplevel and your HCOM_TEAM"), and the RESULT names the pilot repository and `kit-pilot`; paste the rows; stop that seat afterwards (`hcom kill <name> --go`). The dotfiles seats must be unaffected (their rows continue on the `dotfiles` team after the move of item 2).
+7. README section "Run a program in another repository": the five steps (`make update` on the host; `regime-init <program> --write-agents` in the checkout; the AGENTS.md sections; `hcom-seat orchestrator|worker|audit`; the kickoff `hcom-dispatch <slug> operator orchestrator-<word> - "AGMSG-TASK v1 task_id=O1 brief=<absolute path>"`), what each creates, and what stays per host (logins). PR body `Program-Unit: regime-cutover/U33`, threat table (derivation inputs from the filesystem; the gate's PATH resolution; `regime-init --write-agents`), the footer; audit seat.
+
+TIMEBOX
+4 hours.
+
+FORBIDDEN
+No change to the omp policies' deny rows; no new allow rule beyond `regime-init`; no edits outside SCOPE; no merge, rebase, force-push, PR close; never move or stop the dotfiles seats inside this unit (the orchestrator seat does the one-time move at deployment).
+
+REPORT
+Per STANDING 12 plus the threat table and the RESULT line.
+
+STANDING
+`~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (lines 20 and 21).

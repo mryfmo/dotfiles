@@ -74,8 +74,10 @@ def ansi_c(value):
             return ANSI_C_SIMPLE.get(simple, simple)
         if control:
             return chr(ord(control) & 0x1F)
-        number = octal or hex2 or hex4 or hex8
-        return chr(int(number, 8 if octal else 16))
+        if octal or hex2:
+            # bash stores one byte, so `\544` wraps to `\144` (d); bash 3.2 and 5.2 both print dirname for $'\544irname'.
+            return chr(int(octal or hex2, 8 if octal else 16) & 0xFF)
+        return chr(int(hex4 or hex8, 16))
 
     return ANSI_C.sub(decode, value)
 
@@ -89,7 +91,8 @@ def literal(word):
             text.append(re.sub(r"\\(.)", r"\1", part["Value"], flags=re.DOTALL))
         elif kind == "SglQuoted":
             text.append(ansi_c(part["Value"]) if part.get("Dollar") else part["Value"])
-        elif kind == "DblQuoted" and not part.get("Dollar"):
+        elif kind == "DblQuoted":
+            # $"…" is "…" unless a message catalog translates it, which no lint run has.
             for inner in part.get("Parts") or []:
                 if inner.get("Type") != "Lit":
                     return None
@@ -121,7 +124,14 @@ def walk(node, depth):
     if kind == "CmdSubst":
         depth += 1
     elif kind == "CallExpr" and depth >= 2 and node.get("Args"):
-        word = node["Args"][0]
+        words = node["Args"]
+        # `command` and `exec` run the next word as the command and ShellCheck's SC2312 exempts dirname behind
+        # them too (`env` and `time` it flags itself); their options come first (`command -p dirname`).
+        while len(words) > 1 and literal(words[0]) in ("command", "exec"):
+            words = words[1:]
+            while len(words) > 1 and (literal(words[0]) or "").startswith("-"):
+                words = words[1:]
+        word = words[0]
         if literal(word) in ("dirname", "basename"):
             findings.append((word["Pos"]["Line"], word["Pos"]["Col"]))
     elif node.get("Hdoc") and quoted(node["Word"]):

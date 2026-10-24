@@ -209,6 +209,10 @@ class MaskedDirnameCheckTest(unittest.TestCase):
             "quoted word": ('name=$(printf %s "$("basename" "$0")")\n', 2),
             "ansi-c word": ("dir=$(cd \"$($'dirname' \"$0\")\")\n", 2),
             "ansi-c escaped word": ("dir=$(cd \"$($'dir\\x6eame' \"$0\")\")\n", 2),
+            "ansi-c wrapped octal word": ("dir=$(cd \"$($'\\544irname' \"$0\")\")\n", 2),
+            "locale-quoted word": ('dir=$(cd "$($"dirname" "$0")")\n', 2),
+            "command prefix": ('dir=$(cd "$(command -p dirname "$0")")\n', 2),
+            "exec prefix": ('dir=$(cd "$(exec basename "$0")")\n', 2),
             "case pattern": ('x=$(case $y in\n  a) echo "$(dirname "$y")" ;;\nesac)\n', 3),
             "backquotes": ('x=$(cd "`dirname "$0"`")\n', 2),
         }

@@ -14,9 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
 
 # scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect the audit seat found.
-MESSAGE = (
-    "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
-)
+MESSAGE = "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
 
 U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || exit 2\n'
 
@@ -196,13 +194,15 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         result = self.run_check(lever)
 
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertEqual([f"{lever}:{n}" for n in expected], [x.removesuffix(f": {MESSAGE}") for x in result.stdout.splitlines()])
+        self.assertEqual(
+            [f"{lever}:{n}" for n in expected], [x.removesuffix(f": {MESSAGE}") for x in result.stdout.splitlines()]
+        )
 
     def test_the_command_name_is_irrelevant(self) -> None:
         # Spellings bash resolves at run time, a command word that is an expansion, and a command that is neither
         # dirname nor basename: each nested substitution is reported at the line where it opens.
         shapes = {
-            "ansi-c wrapped octal word": ("dir=$(cd \"$($'\\544irname' \"$0\")\")\n", 2),
+            "ansi-c wrapped octal word": ('dir=$(cd "$($\'\\544irname\' "$0")")\n', 2),
             "command prefix": ('dir=$(cd "$(command -p dirname "$0")")\n', 2),
             "exec prefix": ('dir=$(cd "$(exec -a x dirname "$0")")\n', 2),
             "absolute path": ('dir=$(cd "$(/usr/bin/dirname "$0")")\n', 2),

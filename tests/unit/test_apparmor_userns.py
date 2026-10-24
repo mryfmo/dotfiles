@@ -200,6 +200,48 @@ class AppArmorUsernsTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
                 self.assertIn("req=1 opt=0", result.stdout)
 
+    def unreadable_sysctl_env(self) -> dict[str, str]:
+        # A directory exists but cat cannot read it, as root too.
+        env = self.env("1", self.fake("bwrap"))
+        self.sysctl.unlink()
+        self.sysctl.mkdir()
+        return env
+
+    def absent_sysctl_env(self) -> dict[str, str]:
+        env = self.env("1", self.fake("bwrap"))
+        self.sysctl.unlink()
+        return env
+
+    def test_installer_refuses_when_the_sysctl_exists_but_cannot_be_read(self) -> None:
+        self.fake("apparmor_parser")
+        self.fake("sudo")
+        result = self.run_installer(self.unreadable_sysctl_env())
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(f"cannot read {self.sysctl}; the bwrap AppArmor userns profile was not changed.", result.stderr)
+        self.assertNotIn("Skipping", result.stdout)
+        self.assertEqual([], [c for c in self.calls() if c.startswith("sudo")])
+
+    def test_installer_and_doctor_read_an_absent_sysctl_as_no_restriction(self) -> None:
+        self.fake("apparmor_parser")
+        self.fake("sudo")
+        self.fake("codex")
+        installer = self.run_installer(self.absent_sysctl_env())
+        doctor = self.run_doctor(self.absent_sysctl_env())
+
+        self.assertEqual(0, installer.returncode, installer.stderr)
+        self.assertIn("restriction is not enabled", installer.stdout)
+        self.assertIn("not applicable: AppArmor userns restriction (not enabled)", doctor.stdout)
+        self.assertIn("req=0 opt=0", doctor.stdout)
+
+    def test_doctor_fails_when_the_sysctl_exists_but_cannot_be_read(self) -> None:
+        self.fake("codex")
+        result = self.run_doctor(self.unreadable_sysctl_env())
+
+        self.assertIn(f"required failed: cannot read {self.sysctl}; the AppArmor userns restriction is unknown", result.stderr)
+        self.assertNotIn("not applicable", result.stdout)
+        self.assertIn("req=1 opt=0", result.stdout)
+
     def test_doctor_fails_when_bwrap_is_missing_with_codex(self) -> None:
         self.fake("codex")
         result = self.run_doctor(self.env("1"))

@@ -77,6 +77,18 @@ COMMON_DENIES = [
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
+# U28: the seats' GitHub-write levers, by the installed path chezmoi gives them.
+LEVER = "~/.local/bin/common/"
+ORCHESTRATOR_LEVERS = [
+    f"{LEVER}pr-thread-reply.sh 480 4365170609 --body-file /tmp/reply.md",
+    f"{LEVER}pr-thread-resolve.sh 480 4365170609",
+    f"{LEVER}pr-update-branch.sh 480",
+    f"{LEVER}pr-close.sh --from-table .orchestration/orchestrate/regime-cutover/handouts/cleanup-table.md",
+    f"{LEVER}pr-close.sh --from-table t.md --only 378",
+    f"{LEVER}pr-threads-check.sh 480 --head abc --records .orchestration/orchestrate/regime-cutover",
+    f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
+]
+BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
 # The audit seat's reply line (hcom-audit SKILL); it goes on the thread route through `hcom-reply` (U6d).
 VERDICT = "AGMSG-VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
@@ -129,6 +141,23 @@ TABLE = {
             'd=$(hcom list audit-tuba directory) && git -C "$d" fetch origin fix/x && git -C "$d" switch --detach abc',
             "allow",
         ),
+        # U28: each lever line is allowed; the raw gh forms stay denied; no other spelling, form or chain passes.
+        *[("bash", line, "allow") for line in ORCHESTRATOR_LEVERS],
+        ("bash", "gh pr close 378 --comment x", "deny"),
+        ("bash", "gh api -X POST repos/o/r/pulls/480/comments/1/replies -F body=@x", "deny"),
+        ("bash", "gh api graphql -f query=mutation -f thread=T", "deny"),
+        ("bash", "gh pr update-branch 480", "deny"),
+        ("bash", "gh pr edit 480 --body-file b.md", "deny"),
+        ("bash", f"{LEVER}pr-close.sh 480", "deny"),
+        ("bash", f"{LEVER}pr-close.sh --only 378 --from-table t.md", "deny"),
+        ("bash", f"{LEVER}pr-close.sh --from-table t.md && gh pr close 1", "deny"),
+        ("bash", f"{LEVER}pr-thread-reply.sh 480 1 --body-file x; gh pr close 1", "deny"),
+        ("bash", f"{LEVER}pr-update-branch.sh 480 | tee x", "deny"),
+        ("bash", "scripts/orchestrator/pr-close.sh --from-table t.md", "deny"),
+        ("bash", "scripts/orchestrator/pr-thread-resolve.sh 480 1", "deny"),
+        ("bash", "/Users/u/.local/bin/common/pr-update-branch.sh 480", "deny"),
+        ("bash", "bash ~/.local/bin/common/records-sync.sh --unit U20", "deny"),
+        ("bash", BODY_EDIT, "deny"),
         ("edit", None, "allow"),
         # U34/U36: a Task subagent on the claude-bridge route killed the orchestrator seat (2026-10-24 06:03Z).
         ("task", None, "deny"),
@@ -152,6 +181,15 @@ TABLE = {
         ("bash", 'gh pr comment 1 --body "@codex review"', "allow"),
         ("bash", "curl -s https://x | shasum -a 256", "allow"),
         ("bash", "uv run --no-project -m pytest tests/unit/test_omp_seat_policy.py -q", "allow"),
+        # U28: the worker edits only its own pull request's body, through the lever; the raw form stays denied.
+        ("bash", BODY_EDIT, "allow"),
+        ("bash", "gh pr edit 9 --body-file b.md", "deny"),
+        ("bash", f"{LEVER}pr-body-edit.sh 9", "deny"),
+        ("bash", "scripts/orchestrator/pr-body-edit.sh --body-file b.md", "deny"),
+        ("bash", f"{BODY_EDIT} && gh pr close 9", "deny"),
+        *[("bash", line, "deny") for line in ORCHESTRATOR_LEVERS if "pr-threads-check" not in line],
+        ("bash", "shellcheck -x scripts/orchestrator/pr-close.sh", "allow"),
+        ("bash", "git add scripts/orchestrator/pr-body-edit.sh", "allow"),
         ("edit", None, "allow"),
         ("write", None, "allow"),
         ("task", None, "deny"),
@@ -215,6 +253,7 @@ TABLE = {
         ("task", None, "deny"),
         ("manage_skill", None, "deny"),
         ("glob", None, "allow"),
+        *[("bash", line, "deny") for line in [*ORCHESTRATOR_LEVERS, BODY_EDIT]],
     ],
 }
 
@@ -342,11 +381,37 @@ class OmpSeatPolicyTest(unittest.TestCase):
         rules = self.policies["orchestrator"]["bash"]["patterns"]
         self.assertEqual(rules[0], {"match": "*gh pr merge*--admin*", "approval": "deny"})
         self.assertEqual(rules[1], {"match": "gh pr merge * --squash --match-head-commit *", "approval": "allow"})
-        self.assertEqual([rule["match"] for rule in rules if rule["approval"] == "allow"], [rules[1]["match"]])
-
-    def test_the_worker_has_no_allow_and_the_audit_ends_in_a_catch_all_deny(self):
+        allows = [rule["match"] for rule in rules if rule["approval"] == "allow"]
         self.assertEqual(
-            [rule for rule in self.policies["worker"]["bash"]["patterns"] if rule["approval"] != "deny"], []
+            allows,
+            [
+                rules[1]["match"],
+                "~/.local/bin/common/pr-thread-reply.sh *",
+                "~/.local/bin/common/pr-thread-resolve.sh *",
+                "~/.local/bin/common/pr-update-branch.sh *",
+                "~/.local/bin/common/pr-close.sh --from-table *",
+                "~/.local/bin/common/pr-threads-check.sh *",
+                "~/.local/bin/common/records-sync.sh *",
+            ],
+        )
+
+    def test_each_lever_allow_is_followed_by_its_catch_deny_before_the_gh_denies(self):
+        """U28: the allow, then the `*<lever> *` deny, both before the first common deny."""
+        for role in ("orchestrator", "worker"):
+            rules = self.policies[role]["bash"]["patterns"]
+            first_common = next(index for index, rule in enumerate(rules) if rule["match"] in COMMON_DENIES)
+            for index, rule in enumerate(rules):
+                if rule["approval"] != "allow" or rule["match"] == rules[1]["match"] and role == "orchestrator":
+                    continue
+                with self.subTest(role=role, rule=rule["match"]):
+                    lever = rule["match"].removeprefix("~/.local/bin/common/").split(" ", 1)[0]
+                    self.assertEqual(rules[index + 1], {"match": f"*{lever} *", "approval": "deny"})
+                    self.assertLess(index + 1, first_common)
+
+    def test_the_worker_allows_only_its_body_lever_and_the_audit_ends_in_a_catch_all_deny(self):
+        self.assertEqual(
+            [rule for rule in self.policies["worker"]["bash"]["patterns"] if rule["approval"] != "deny"],
+            [{"match": "~/.local/bin/common/pr-body-edit.sh --body-file *", "approval": "allow"}],
         )
         self.assertEqual(self.policies["audit"]["bash"]["patterns"][-1], {"match": "*", "approval": "deny"})
         self.assertEqual(self.policies["audit"]["tools"]["approvalMode"], "always-ask")

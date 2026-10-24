@@ -24,7 +24,8 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 2. Make the change inside SCOPE with the tests the brief asks for. Commit in English with the footer the brief gives.
 3. Push your branch only: `git push origin <branch>`. Your policy overlay denies a push whose target is `main`, and the GitHub ruleset would refuse it anyway.
 4. `gh pr create --title "<type>(<scope>): <subject>" --body-file <file>`, English title and body, with the brief's `Program-Unit:` line and footer in the body.
-5. `gh pr checks <n> --watch`; fix a red check at its root cause and push again.
+5. `gh pr checks <n> --watch`; fix a red check at its root cause and push again. A bot finding you refute rather than fix gets a top-level `gh pr comment <n> --body-file <file>` whose first line is `refuted: <doc URL or file:line>`; the orchestrator carries it into the review thread.
+6. Body. Edit your pull request's body only with `~/.local/bin/common/pr-body-edit.sh --body-file <file>`, run alone from your clone on the pull request's branch (the file under `$TMPDIR` or your clone): it keeps the one `Program-Unit:` line on the same plain unit id and every `## ` section and the footer of the current body. Never `gh pr edit`.
 
 ## Reply
 

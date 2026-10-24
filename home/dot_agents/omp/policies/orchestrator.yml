@@ -24,6 +24,37 @@ bash:
     # The only raw GitHub write the orchestrator keeps: the audited squash merge.
     - match: "gh pr merge * --squash --match-head-commit *"
       approval: allow
+    # The seat's GitHub-write levers (U28, scripts/orchestrator/README.md "Seat levers for GitHub writes"): each runs
+    # alone, as one simple command, by the read-only copy chezmoi installs, and checks its own arguments before any
+    # `gh` call. The deny after each allow catches every other spelling of that lever with arguments (the checkout
+    # path, an expanded HOME, a missing `--from-table`) and the lever chained to anything, before the gh denies below.
+    - match: "~/.local/bin/common/pr-thread-reply.sh *"
+      approval: allow
+    - match: "*pr-thread-reply.sh *"
+      approval: deny
+    - match: "~/.local/bin/common/pr-thread-resolve.sh *"
+      approval: allow
+    - match: "*pr-thread-resolve.sh *"
+      approval: deny
+    - match: "~/.local/bin/common/pr-update-branch.sh *"
+      approval: allow
+    - match: "*pr-update-branch.sh *"
+      approval: deny
+    - match: "~/.local/bin/common/pr-close.sh --from-table *"
+      approval: allow
+    - match: "*pr-close.sh *"
+      approval: deny
+    - match: "~/.local/bin/common/pr-threads-check.sh *"
+      approval: allow
+    - match: "*pr-threads-check.sh *"
+      approval: deny
+    - match: "~/.local/bin/common/records-sync.sh *"
+      approval: allow
+    - match: "*records-sync.sh *"
+      approval: deny
+    # The worker's lever: the orchestrator edits no pull-request body.
+    - match: "*pr-body-edit.sh *"
+      approval: deny
     - match: "*sudo *"
       approval: deny
     - match: "*rm -rf *"

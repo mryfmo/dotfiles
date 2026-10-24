@@ -932,6 +932,9 @@ fi
             f": > {scripts / 'claude-identities-output.txt'}\n"
         )
         (scripts / "leave.sh").chmod(0o755)
+        team = self.home_dir / ".agents/skills/agmsg/teams/dotfiles-conformance"
+        team.mkdir(parents=True)
+        (team / "config.json").write_text('{"name": "dotfiles-conformance", "agents": {}}')
         settings.parent.mkdir(exist_ok=True)
         hooks = {
             event: [
@@ -1086,6 +1089,204 @@ fi
             result.stderr, "herdr-agents: --bootstrap-agmsg is retired; run herdr-agents --retire-agmsg [DIR]\n"
         )
         self.assertFalse(self.calls_path.exists())
+
+    def git_checkout(self, path: Path, origin: str | None, *, clone_of: Path | None = None) -> Path:
+        """A checkout with one commit (or a clone of `clone_of`) and the given origin URL."""
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
+        if clone_of is not None:
+            subprocess.run([*git, "clone", "-q", str(clone_of), str(path)], check=True, capture_output=True)
+            subprocess.run([*git, "-C", str(path), "remote", "remove", "origin"], check=True, capture_output=True)
+        else:
+            path.mkdir(exist_ok=True)
+            subprocess.run([*git, "init", "-q", str(path)], check=True, capture_output=True)
+            subprocess.run(
+                [*git, "-C", str(path), "commit", "-q", "--allow-empty", "-m", "init"], check=True, capture_output=True
+            )
+        if origin is not None:
+            subprocess.run([*git, "-C", str(path), "remote", "add", "origin", origin], check=True, capture_output=True)
+        return path.resolve()
+
+    def write_registered_agmsg_store(self) -> dict[str, Path]:
+        """A scratch team store registering five projects, with store-backed agmsg fakes.
+
+        identities.sh reads the store as the real one does; leave.sh drops the member and
+        removes a team left empty; delivery.sh strips the agmsg hooks of the project it names.
+        """
+        clone = self.git_checkout(self.workdir, "https://github.com/mryfmo/dotfiles.git")
+        projects = {
+            "clone": clone,
+            # Same repository under another URL spelling: retired.
+            "workspace": self.git_checkout(
+                self.temp_dir / "workspace", "git@github.com:MryFmo/dotfiles", clone_of=clone
+            ),
+            "bare": self.git_checkout(self.temp_dir / "bare", "https://github.com/mryfmo/dotfiles/", clone_of=clone),
+            # Same root, other owner: skipped.
+            "fork": self.git_checkout(self.temp_dir / "fork", "https://github.com/someone/dotfiles", clone_of=clone),
+            # Another repository (the reports-daily-ops case): skipped.
+            "reports": self.git_checkout(self.temp_dir / "reports", None),
+            "gone": self.temp_dir.resolve() / "gone",
+        }
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True)
+        teams = self.home_dir / ".agents/skills/agmsg/teams"
+        roster = {
+            "dotfiles-conformance": {
+                "claude-deep-dot": "workspace",
+                "claude-bare-dot": "bare",
+                "claude-gone-dot": "gone",
+            },
+            # A team shared with another repository keeps its other member.
+            "shared-ops": {"claude-shared-dot": "workspace", "claude-shared-reports": "reports"},
+            "reports-daily-ops": {"claude-deep-reports": "reports"},
+            "fork-team": {"claude-fork": "fork"},
+        }
+        for team, members in roster.items():
+            (teams / team).mkdir(parents=True)
+            agents = {
+                name: {"registrations": [{"type": "claude-code", "project": str(projects[key])}]}
+                for name, key in members.items()
+            }
+            (teams / team / "config.json").write_text(json.dumps({"name": team, "agents": agents}))
+        for key in ("workspace", "fork", "reports"):
+            settings = projects[key] / ".claude/settings.local.json"
+            settings.parent.mkdir()
+            settings.write_text(
+                json.dumps(
+                    {
+                        "permissions": {"allow": ["Bash(git status:*)"]},
+                        "hooks": {
+                            "SessionStart": [
+                                {
+                                    "matcher": "",
+                                    "hooks": [
+                                        {
+                                            "type": "command",
+                                            "command": f"'{scripts}/session-start.sh' 'claude-code' '{projects[key]}'",
+                                        }
+                                    ],
+                                }
+                            ]
+                        },
+                    }
+                )
+            )
+        for name, body in {
+            "identities.sh": f"""printf 'identities %s\\n' "$*" >> {self.calls_path}
+for c in {teams}/*/config.json; do
+    jq -r --arg p "$1" --arg t "$2" '.name as $n | .agents | to_entries[] | select(any(.value.registrations[]; .project == $p and .type == $t)) | "\\($n)\\t\\(.key)"' "$c"
+done
+""",
+            "leave.sh": f"""printf 'leave %s\\n' "$*" >> {self.calls_path}
+c={teams}/$1/config.json
+jq --arg n "$2" 'del(.agents[$n])' "$c" > "$c.new" && mv "$c.new" "$c"
+[[ "$(jq '.agents | length' "$c")" != 0 ]] || rm -r {teams}/"$1"
+""",
+            "delivery.sh": f"""printf 'delivery %s\\n' "$*" >> {self.calls_path}
+f="$4/.claude/settings.local.json"
+jq 'del(.hooks)' "$f" > "$f.new" && mv "$f.new" "$f"
+""",
+        }.items():
+            (scripts / name).write_text("#!/usr/bin/env bash\n" + body)
+            (scripts / name).chmod(0o755)
+        return projects
+
+    def run_registered_retire(self) -> subprocess.CompletedProcess[str]:
+        """`herdr-agents --retire-agmsg` without DIR, from the clone, as `make agmsg-retire` runs it."""
+        env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+        return subprocess.run(
+            ["bash", str(SCRIPT), "--retire-agmsg"],
+            cwd=self.workdir,
+            env=env,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+    def test_retire_agmsg_without_dir_retires_only_the_registered_clones_of_this_repository(self) -> None:
+        p = self.write_registered_agmsg_store()
+        teams = self.home_dir / ".agents/skills/agmsg/teams"
+        untouched = {
+            path: path.read_bytes()
+            for path in (
+                p["fork"] / ".claude/settings.local.json",
+                p["reports"] / ".claude/settings.local.json",
+                teams / "reports-daily-ops/config.json",
+                teams / "fork-team/config.json",
+            )
+        }
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [c for c in self.calls_path.read_text().splitlines() if c.startswith(("delivery ", "leave "))]
+        self.assertEqual(
+            calls,
+            [
+                "leave dotfiles-conformance claude-bare-dot",
+                f"delivery set off claude-code {p['workspace']}",
+                "leave dotfiles-conformance claude-deep-dot",
+                "leave shared-ops claude-shared-dot",
+            ],
+        )
+        self.assertEqual(
+            result.stdout,
+            f"agmsg retire: registered project {p['bare']} (team dotfiles-conformance)\n"
+            f"agmsg retire: no agmsg hook in {p['bare']}/.claude/settings.local.json (missing or none); hook removal skipped\n"
+            "agmsg retired: claude-bare-dot left team dotfiles-conformance\n"
+            f"agmsg retire: registered project {p['fork']} (team fork-team) is not a clone of this repository; skipped\n"
+            f"agmsg retire: registered project {p['gone']} (team dotfiles-conformance) is gone; skipped\n"
+            f"agmsg retire: registered project {p['reports']} (team reports-daily-ops,shared-ops) is not a clone of this repository; skipped\n"
+            f"agmsg retire: registered project {p['workspace']} (team dotfiles-conformance,shared-ops)\n"
+            f"agmsg retired: removed the agmsg hooks from {p['workspace']}/.claude/settings.local.json\n"
+            "agmsg retired: claude-deep-dot left team dotfiles-conformance\n"
+            "agmsg retired: claude-shared-dot left team shared-ops\n"
+            f"agmsg already retired for {p['clone']}\n",
+        )
+        self.assertNotIn("hooks", json.loads((p["workspace"] / ".claude/settings.local.json").read_text()))
+        for path, content in untouched.items():
+            self.assertEqual(path.read_bytes(), content, path)
+        self.assertEqual(
+            set(json.loads((teams / "shared-ops/config.json").read_text())["agents"]), {"claude-shared-reports"}
+        )
+
+        self.calls_path.unlink()
+        again = self.run_registered_retire()
+
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertFalse(
+            any(c.startswith(("delivery ", "leave ")) for c in self.calls_path.read_text().splitlines()),
+            self.calls_path.read_text(),
+        )
+        self.assertTrue(again.stdout.endswith(f"agmsg already retired for {p['clone']}\n"), again.stdout)
+        self.assertNotIn("agmsg retired:", again.stdout)
+
+    def test_retire_agmsg_without_dir_fails_when_a_registered_clone_keeps_a_hook(self) -> None:
+        p = self.write_registered_agmsg_store()
+        (self.home_dir / ".agents/skills/agmsg/scripts/delivery.sh").write_text(
+            f"#!/usr/bin/env bash\nprintf 'delivery %s\\n' \"$*\" >> {self.calls_path}\n"
+        )
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"agmsg hooks remain in {p['workspace']}/.claude/settings.local.json", result.stderr)
+        self.assertNotIn("leave dotfiles-conformance claude-deep-dot", self.calls_path.read_text())
+
+    def test_retire_agmsg_skips_an_identity_whose_team_is_gone(self) -> None:
+        scripts = self.install_agmsg_retire_fakes()
+        (self.workdir / ".claude/settings.local.json").write_text("{}")
+        shutil.rmtree(self.home_dir / ".agents/skills/agmsg/teams/dotfiles-conformance")
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            result.stdout, "agmsg retire: team dotfiles-conformance of claude-orchestrator no longer exists; skipped\n"
+        )
+        self.assertFalse(any(c.startswith("leave ") for c in self.calls_path.read_text().splitlines()))
+        self.assertTrue((scripts / "leave.sh").exists())
 
     RETIRED_STUB = (
         "#!/usr/bin/env bash\n"

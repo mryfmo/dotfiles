@@ -159,10 +159,11 @@ usage-report:
 	uv run python scripts/usage-report.py
 
 .PHONY: agmsg-retire
-# The agmsg regime is retired (E1 of plan 025): remove its hooks and identity from this checkout.
+# The agmsg regime is retired (E1 of plan 025): remove its hooks and identities from every
+# registered clone of this repository, then from this one (D-024-145, D-024-147).
 agmsg-retire:
 	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \
-		bash home/dot_local/bin/common/executable_herdr-agents --retire-agmsg "$(CURDIR)"; \
+		cd "$(CURDIR)" && bash home/dot_local/bin/common/executable_herdr-agents --retire-agmsg; \
 	else \
 		echo "Herdr agents source helper not found; skipping agmsg retire."; \
 	fi

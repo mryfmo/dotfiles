@@ -141,7 +141,7 @@ while (($#)); do
     *) refuse "${usage}" ;;
     esac
 done
-[[ ${base} == origin/main ]] || refuse "--base accepts only origin/main: ${base}"
+[[ ${base} == origin/main ]] || refuse "--base accepts only origin/main: ${base}" # lint-comparisons: allow a git ref name, not a path
 [[ -z ${unit} || ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 
@@ -173,11 +173,11 @@ listed=$(printf '%s\n%s\n' "${changed}" "${untracked}" | sort -u) || fail 'canno
 files=()
 while IFS= read -r path; do
     [[ -n ${path} ]] || continue
-    case ${path} in
+    case ${path} in # lint-comparisons: allow a repository-relative path as git prints it, refused unless under the store
     .orchestration/*) ;;
     *) refuse "a path of the copy set is outside .orchestration/: ${path}" ;;
     esac
-    [[ ${path} != *..* ]] || refuse "a path of the copy set holds '..': ${path}"
+    [[ ${path} != *..* ]] || refuse "a path of the copy set holds '..': ${path}" # lint-comparisons: allow refuses a raw git path that holds ..
     [[ ! -L ${path} ]] || refuse "a path of the copy set is a symlink: ${path}"
     [[ ! -e ${path} || -f ${path} ]] || refuse "a path of the copy set is not a regular file: ${path}"
     files+=("${path}")
@@ -218,7 +218,7 @@ git -C "${tree}" add -A -- .orchestration || fail 'git add failed'
 staged=$(git -C "${tree}" diff --cached --name-only -z | tr '\0' '\n') || fail 'git diff --cached failed'
 [[ -n ${staged} ]] || refuse 'the copies equal origin/main; nothing to sync'
 while IFS= read -r path; do
-    [[ ${path} == .orchestration/* ]] || refuse "a staged path is outside .orchestration/: ${path}"
+    [[ ${path} == .orchestration/* ]] || refuse "a staged path is outside .orchestration/: ${path}" # lint-comparisons: allow a repository-relative path as git prints it
 done <<< "${staged}"
 count=$(printf '%s\n' "${staged}" | wc -l) || fail 'wc failed'
 count=${count//[[:space:]]/}

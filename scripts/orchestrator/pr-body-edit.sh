@@ -113,7 +113,7 @@ gh_bounded() {
 body_file_check() {
     local file=$1 dir root size
     [[ -f ${file} && ! -L ${file} ]] || refuse "the body file is not a regular file: ${file}"
-    case ${file} in
+    case ${file} in # lint-comparisons: allow splits the argument at its last slash; the real path is compared below
     */*) dir=${file%/*} ;;
     *) dir=. ;;
     esac

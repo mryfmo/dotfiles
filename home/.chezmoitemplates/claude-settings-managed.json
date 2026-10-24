@@ -12,6 +12,7 @@
       "Bash(~/.local/bin/common/hcom-dispatch *)",
       "Bash(~/.local/bin/common/bus-history.sh *)",
       "Bash(~/.local/bin/common/worktree-gc.sh *)",
+      "Bash(~/.local/bin/common/regime-init *)",
       "Bash(hcom list *)"
     ],
     "deny": [
@@ -170,9 +171,7 @@
     "GH_TELEMETRY": "false",
     "DO_NOT_TRACK": "1",
     "CHECKPOINT_DISABLE": "1",
-    "AWS_EC2_METADATA_DISABLED": "true",
-    "HCOM_DIR": "{{ .chezmoi.homeDir }}/.local/state/hcom-regime",
-    "HCOM_TEAM": "regime"
+    "AWS_EC2_METADATA_DISABLED": "true"
   },
   "hooks": {
     "PreToolUse": [

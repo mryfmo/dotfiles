@@ -14,9 +14,12 @@
  * Environment: HCOM_DIR (the bus store, read by bus-history.sh), HCOM_TEAM (the thread the seat's
  * TASK lines name), HCOM_NAME or `hcom list self name` (the seat's own hcom name),
  * OMP_STOP_GATE_ALLOW_OPEN=1 (end the turn anyway, with the warning). Without a team or a name the
- * gate is inert and says so once per stop.
+ * gate is inert and says so once per stop. bus-history.sh is the copy chezmoi installs read-only at
+ * `$HOME/.local/bin/common/bus-history.sh` (regime-cutover U31, U33), never a script from the seat's cwd,
+ * so a worktree of a pull request cannot answer the gate with its own rows.
  */
 import { spawnSync } from "node:child_process";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 
@@ -31,10 +34,15 @@ const TRUTHY = new Set(["1", "y", "Y", "true", "TRUE", "yes", "YES", "on", "ON"]
 // thread's window. Ask for far more than a program writes, and never trust a window that is full.
 export const HISTORY_LIMIT = 100_000;
 
+/** The installed bus-history.sh, resolved from HOME when the gate is registered (never from the cwd). */
+export function busHistoryPath(home = process.env.HOME ?? homedir()): string {
+	return join(home, ".local/bin/common/bus-history.sh");
+}
+
 // Per kind (its AGMSG- prefix dropped), what a row from the seat / from another seat does to its
 // task: a string opens it with that debt, null closes it, undefined leaves it alone. The newest
 // moving row per task_id decides, so a HOLD or MERGED after a RESULT closes it and a new TASK reopens it.
-const MOVES: Record<string, [seat: string | null | undefined, other: string | null | undefined]> = {
+export const MOVES: Record<string, [seat: string | null | undefined, other: string | null | undefined]> = {
 	TASK: ["awaiting RESULT", undefined],
 	RESULT: [undefined, "owes a VERDICT, MERGED or HOLD line"],
 	VERDICT: [null, undefined],
@@ -91,6 +99,7 @@ export default function stopGate(pi: ExtensionAPI): void {
 	const allowOpen = TRUTHY.has(process.env.OMP_STOP_GATE_ALLOW_OPEN ?? "");
 	const since = new Date().toISOString().replace(/\.\d+Z$/, "Z");
 	let seat = process.env.HCOM_NAME ?? "";
+	const busHistory = busHistoryPath();
 	pi.on("session_stop", (event, ctx) => {
 		seat ||= run("hcom", ["list", "self", "name"]).out.trim();
 		if (!team || !seat) {
@@ -98,7 +107,7 @@ export default function stopGate(pi: ExtensionAPI): void {
 			return;
 		}
 		const args = [team, "--limit", String(HISTORY_LIMIT), "--since", since];
-		const history = run(join(ctx.cwd, "scripts/orchestrator/bus-history.sh"), args, ctx.cwd);
+		const history = run(busHistory, args, ctx.cwd);
 		if (history.error !== undefined) {
 			warn(ctx, `stop-gate: bus unread (${history.error}); the turn ends unchecked.`);
 			return;

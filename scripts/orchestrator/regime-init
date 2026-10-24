@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# @file regime-init
+# @brief Prepare a repository on this host for the hcom regime: the program store, the store origin, the AGENTS.md audit section.
+# @description
+#   Regime-cutover U33, a coordinator lever pre-authorized by `Bash(~/.local/bin/common/regime-init *)`. Run it
+#   in the git checkout of the repository. It derives the repository slug, hcom store and team through the
+#   sourced regime-env helper, then creates `<toplevel>/.orchestration/orchestrate/<program>/` with the
+#   templates from `~/.agents/regime/` (preferences.md, units.tsv, ledger.tsv, decisions.tsv, gates.md),
+#   writes `~/.local/state/hcom/<slug>/origin` with the toplevel, and prints the AGENTS.md audit section, or
+#   appends it with `--write-agents` when AGENTS.md has no `## Audit` heading. It is idempotent: an existing
+#   file equal to its template is left alone, one that differs is kept unless `--force` replaces it, and a
+#   second run says that nothing changed. It never writes through a symlink, and it refuses outside a git
+#   checkout and when the derived store's origin names another checkout with the same slug.
+# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`), the store directory under .orchestration/orchestrate.
+# @option --force Replace store files that differ from their template.
+# @option --write-agents Append the audit section to AGENTS.md when it has no `## Audit` heading.
+# @stdout One row per file (`created`, `unchanged`, `kept`, `replaced`, `appended`), the section when not written, the next commands.
+# @exitcode 0 Done, including when nothing changed.
+# @exitcode 2 A refusal, before or instead of the write it names.
+# @example
+#   regime-init pilot --write-agents
+set -euo pipefail
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+usage='usage: regime-init <program> [--force] [--write-agents]'
+refuse() {
+    echo "regime-init: $*" >&2
+    exit 2
+}
+(($# >= 1)) || refuse "${usage}"
+program=$1
+shift
+force=0 write_agents=0
+while (($#)); do
+    case $1 in
+    --force) force=1 ;;
+    --write-agents) write_agents=1 ;;
+    *) refuse "${usage}" ;;
+    esac
+    shift
+done
+[[ ${program} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || refuse "program '${program}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"
+
+[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+checkout=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run regime-init inside the git checkout of the repository'
+checkout=$(cd "${checkout}" && pwd -P) || refuse "cannot resolve ${checkout}"
+regime_env regime-init || exit 2
+templates=${LEVER_MANIFEST%/*}/regime
+[[ -d ${templates} ]] || refuse "templates absent: ${templates}"
+store=${checkout}/.orchestration/orchestrate/${program}
+origin=${HCOM_DIR}/origin
+
+# Nothing is written through a symlink: the store, each file and AGENTS.md are refused when one stands there.
+for path in "${checkout}/.orchestration" "${checkout}/.orchestration/orchestrate" "${store}" "${checkout}/AGENTS.md"; do
+    [[ ! -L ${path} ]] || refuse "refused: ${path} is a symlink"
+done
+
+changed=0
+# @description Copy one template into the store: create it when absent, keep it when equal, replace it only
+#   with --force; print one row `<created|unchanged|kept|replaced>\t<path>`.
+# @arg $1 string The template file name.
+place() {
+    local source=${templates}/$1 target=${store}/$1
+    [[ -f ${source} ]] || refuse "template absent: ${source}"
+    [[ ! -L ${target} ]] || refuse "refused: ${target} is a symlink"
+    if [[ ! -e ${target} ]]; then
+        cp "${source}" "${target}" || refuse "cannot write ${target}"
+        printf 'created\t%s\n' "${target}"
+        changed=1
+        return
+    fi
+    local same=0
+    cmp -s "${source}" "${target}" || same=$?
+    ((same <= 1)) || refuse "cannot compare ${target} with ${source}"
+    if ((same == 0)); then
+        printf 'unchanged\t%s\n' "${target}"
+    elif ((force)); then
+        cp "${source}" "${target}" || refuse "cannot write ${target}"
+        printf 'replaced\t%s\n' "${target}"
+        changed=1
+    else
+        printf 'kept\t%s\t(differs from the template; --force replaces it)\n' "${target}"
+    fi
+}
+
+mkdir -p "${store}" || refuse "cannot create ${store}"
+for file in preferences.md units.tsv ledger.tsv decisions.tsv gates.md; do
+    place "${file}"
+done
+
+# The origin file binds the derived store to this checkout, so a second checkout with the same slug is refused.
+if [[ -e ${origin} ]]; then
+    printf 'unchanged\t%s\n' "${origin}"
+else
+    mkdir -p "${HCOM_DIR}" || refuse "cannot create ${HCOM_DIR}"
+    printf '%s\n' "${REGIME_TOPLEVEL}" > "${origin}" || refuse "cannot write ${origin}"
+    printf 'created\t%s\n' "${origin}"
+    changed=1
+fi
+
+section=${templates}/AGENTS-audit-section.md
+[[ -f ${section} ]] || refuse "template absent: ${section}"
+agents=${checkout}/AGENTS.md
+if ((write_agents)); then
+    has_audit=1
+    if [[ -e ${agents} ]]; then
+        has_audit=0
+        grep -q '^## Audit$' "${agents}" || has_audit=$?
+        ((has_audit <= 1)) || refuse "cannot read ${agents}"
+    fi
+    if ((has_audit == 0)); then
+        printf 'unchanged\t%s\t(it has an "## Audit" section)\n' "${agents}"
+    else
+        if [[ -s ${agents} ]]; then printf '\n' >> "${agents}" || refuse "cannot write ${agents}"; fi
+        cat "${section}" >> "${agents}" || refuse "cannot write ${agents}"
+        printf 'appended\t%s\n' "${agents}"
+        changed=1
+    fi
+else
+    printf '\nAppend to %s (or rerun with --write-agents):\n\n' "${agents}"
+    cat "${section}" || refuse "cannot read ${section}"
+fi
+
+((changed)) || echo 'regime-init: nothing changed; the program store, origin and AGENTS.md were already in place'
+cat << EOF
+
+Next, in ${checkout}:
+  hcom-seat orchestrator; hcom-seat worker; hcom-seat audit
+  hcom list -v
+  hcom-dispatch ${HCOM_TEAM} operator orchestrator-<word> - "AGMSG-TASK v1 task_id=O1 brief=<absolute path of the program brief>"
+EOF

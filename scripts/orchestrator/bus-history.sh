@@ -17,7 +17,7 @@
 # @option --limit <n> Newest rows to read (default 200, a positive integer).
 # @option --since <ts> Only rows after this time, hcom's `--after` (`YYYY-MM-DD[THH:MM:SS[Z]]`).
 # @option --kind <kind> Only rows of this kind, the first word of the line (e.g. AGMSG-RESULT).
-# @env HCOM_DIR The private hcom store directory (required).
+# @env HCOM_DIR The private hcom store directory; default: the store derived from the checkout (regime-env).
 # @stdout TSV rows `id<TAB>at<TAB>from<TAB>to<TAB>kind<TAB>body`, possibly none.
 # @exitcode 0 Printed.
 # @exitcode 1 Usage error, store absent, or hcom failed (its error on stderr).
@@ -30,6 +30,7 @@ set -euo pipefail
 #   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
 lever_self_check() {
     local src dir self name pin digest home
     # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
@@ -44,6 +45,8 @@ lever_self_check() {
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
     name=${self##*/}
     home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
     if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
@@ -112,6 +115,15 @@ done
     echo 'bus-history: --limit must be a positive integer' >&2
     exit 1
 }
+# The store is HCOM_DIR when set, else the one derived from this checkout (regime-env, regime-cutover U33); a
+# derived store that does not exist yet is refused like an explicit one, because `hcom events` would create it.
+[[ -r ${LEVER_DIR}/regime-env ]] || {
+    echo "bus-history: refused: regime-env unreadable beside this script: ${LEVER_DIR}/regime-env" >&2
+    exit 1
+}
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+regime_env bus-history || exit 1
 [[ -n ${HCOM_DIR:-} && -f ${HCOM_DIR:-}/hcom.db ]] || {
     echo "bus-history: store absent: \${HCOM_DIR}/hcom.db (HCOM_DIR=${HCOM_DIR:-unset})" >&2
     exit 1

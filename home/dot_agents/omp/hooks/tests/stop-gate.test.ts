@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import stopGate, { gateMessage, HISTORY_LIMIT, openItems } from "../stop-gate";
+import stopGate, { busHistoryPath, gateMessage, HISTORY_LIMIT, MOVES, openItems } from "../stop-gate";
 
 // One bus-history.sh row: id, at, from, to (the delivered seat; `-` for a thread reply), kind (first word), body.
 const row = (id: number, from: string, text: string, to = "-"): string =>
@@ -60,19 +60,27 @@ test("the message lists every item with its row and both ways out", () => {
 type StopResult = { decision?: "block"; continue?: boolean; reason?: string } | undefined;
 type Handler = (event: { type: "session_stop"; stop_hook_active: boolean }, ctx: unknown) => StopResult;
 
-/** A scratch repository whose bus-history.sh records its argv and prints `rows`, or a window full of open TASKs. */
+/**
+ * A scratch seat: HOME holds the installed bus-history.sh fake, which records its argv and prints `rows` (or a window
+ * full of open TASKs); the cwd holds a decoy `scripts/orchestrator/bus-history.sh` that marks itself if anything runs it.
+ */
 function seat(rows: string[], env: Record<string, string | undefined>, full = false) {
 	const cwd = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "stop-gate-"));
+	const home = join(cwd, "home");
+	mkdirSync(join(home, ".local/bin/common"), { recursive: true });
 	mkdirSync(join(cwd, "scripts/orchestrator"), { recursive: true });
 	writeFileSync(join(cwd, "rows.tsv"), tsv(rows));
-	const fake = join(cwd, "scripts/orchestrator/bus-history.sh");
+	const fake = busHistoryPath(home);
 	const body = full
 		? `seq 1 "$3" | awk '{ print $1 "\\t2026-10-23T05:00:00+00:00\\torch\\t-\\tTASK\\tTASK v1 task_id=t" $1 }'`
 		: `cat "${cwd}/rows.tsv"`;
 	writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" > "${cwd}/argv"\n${body}\n`);
 	chmodSync(fake, 0o755);
+	const decoy = join(cwd, "scripts/orchestrator/bus-history.sh");
+	writeFileSync(decoy, `#!/bin/sh\ntouch "${cwd}/decoy-ran"\nprintf '1\\t2026-10-23T05:00:00+00:00\\tx\\t-\\tTASK\\tTASK v1 task_id=decoy\\n'\n`);
+	chmodSync(decoy, 0o755);
 	const saved: Record<string, string | undefined> = {};
-	for (const [key, value] of Object.entries({ HCOM_TEAM: "u9team", HCOM_NAME: "orch", OMP_STOP_GATE_ALLOW_OPEN: undefined, ...env })) {
+	for (const [key, value] of Object.entries({ HOME: home, HCOM_TEAM: "u9team", HCOM_NAME: "orch", OMP_STOP_GATE_ALLOW_OPEN: undefined, ...env })) {
 		saved[key] = process.env[key];
 		if (value === undefined) delete process.env[key];
 		else process.env[key] = value;
@@ -86,7 +94,7 @@ function seat(rows: string[], env: Record<string, string | undefined>, full = fa
 	const warnings: string[] = [];
 	const ctx = { cwd, hasUI: true, ui: { notify: (message: string, type?: string) => warnings.push(`${type}: ${message}`) } };
 	const stop = (stop_hook_active = false) => handlers.get("session_stop")!({ type: "session_stop", stop_hook_active }, ctx);
-	return { cwd, warnings, stop };
+	return { cwd, home, warnings, stop };
 }
 
 test("open items block the first settle and ride the capped continuation afterwards", () => {
@@ -120,4 +128,21 @@ test("all answered allows silently; OMP_STOP_GATE_ALLOW_OPEN allows with the war
 	const inert = seat(ROWS, { HCOM_TEAM: undefined });
 	expect(inert.stop()).toBeUndefined();
 	expect(inert.warnings).toEqual(["warning: stop-gate: inert, HCOM_TEAM is unset; the turn ends unchecked."]);
+});
+
+test("bus-history.sh is the installed copy under HOME, never the one in the seat's cwd (U33)", () => {
+	expect(busHistoryPath("/h")).toBe("/h/.local/bin/common/bus-history.sh");
+	const { cwd, warnings, stop } = seat(ROWS, {});
+	expect(stop()?.decision).toBe("block");
+	expect(existsSync(join(cwd, "argv"))).toBe(true);
+	expect(existsSync(join(cwd, "decoy-ran"))).toBe(false);
+	expect(warnings[0]).not.toContain("decoy");
+	// The rule table U33 leaves unchanged.
+	expect(MOVES).toEqual({
+		TASK: ["awaiting RESULT", undefined],
+		RESULT: [undefined, "owes a VERDICT, MERGED or HOLD line"],
+		VERDICT: [null, undefined],
+		MERGED: [null, undefined],
+		HOLD: [null, undefined],
+	});
 });

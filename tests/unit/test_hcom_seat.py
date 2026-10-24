@@ -197,6 +197,7 @@ class HcomSeatTest(unittest.TestCase):
         (checkout / "scripts/orchestrator").mkdir(parents=True)
         (checkout / "home/dot_agents").mkdir(parents=True)
         shutil.copy2(SEAT, checkout / "scripts/orchestrator/hcom-seat")
+        shutil.copy2(SEAT.parent / "regime-env", checkout / "scripts/orchestrator/regime-env")
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         listed = "    extensions:\n      - ~/.local/lib/omp-extensions/pi-claude-bridge\n      - ~/.agents/omp/extensions/openai-siwc\n"
         self.assertIn(listed, manifest)
@@ -213,6 +214,42 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn("no extension allow-list (claude.levers.extensions)", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
 
+    def test_the_store_team_and_seats_root_are_derived_from_the_checkout(self):
+        """Without HCOM_DIR, HCOM_TEAM or --seats-root, hcom-seat derives them from the repository (U33)."""
+        derived = {"HCOM_DIR": str(self.home / ".local/state/hcom/repo"), "HCOM_TEAM": "repo"}
+        clone = str(self.home / ".local/state/omp-seats/repo/worker")
+        run = self.seat("worker", "--dry-run", HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(shlex.split(run.stdout), self.launch_line("worker", "worker", clone, self.bridge, self.siwc))
+        self.assertIn(f"environment HCOM_DIR={derived['HCOM_DIR']} HCOM_TEAM=repo", run.stderr)
+
+        run = self.seat("worker", HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (launch,) = self.calls_of("hcom")
+        self.assertEqual(
+            {key: launch["env"].get(key) for key in derived}, derived, "the seat inherits the derived pair"
+        )
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=clone), self.head)
+
+        run = self.seat("worker", "--dry-run", HCOM_DIR=str(self.store), HCOM_TEAM="explicit")
+        self.assertIn(f"environment HCOM_DIR={self.store} HCOM_TEAM=explicit", run.stderr)
+
+    def test_a_repository_without_origin_main_seats_at_head(self):
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("origin/main is absent", run.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD", cwd=f"{self.seats}/worker"), self.head)
+
+    def test_a_derived_store_owned_by_another_checkout_is_refused(self):
+        store = self.home / ".local/state/hcom/repo"
+        store.mkdir(parents=True)
+        (store / "origin").write_text("/elsewhere/repo\n")
+        run = self.seat("worker", "--dry-run", HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("belongs to /elsewhere/repo", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+
     def test_refusals_exit_2_before_anything_is_created_or_started(self):
         (self.policies / "audit.yml").unlink()
         (self.profiles / "orchestrator.yml").unlink()
@@ -224,7 +261,7 @@ class HcomSeatTest(unittest.TestCase):
             ("bad name", ["worker", "--name", "Worker/1"], {}, None),
             ("missing value", ["worker", "--name"], {}, None),
             ("unknown flag", ["worker", "--pane", "w1"], {}, None),
-            ("HCOM_DIR unset", ["worker"], {"HCOM_DIR": None}, None),
+            ("HCOM_DIR unset outside a checkout", ["worker"], {"HCOM_DIR": None}, outside),
             ("hcom absent", ["worker"], {"PATH": "/usr/bin:/bin"}, None),
             ("policy overlay absent", ["audit"], {}, None),
             ("profile overlay absent", ["orchestrator"], {}, None),

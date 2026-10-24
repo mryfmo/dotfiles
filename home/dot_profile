@@ -1,3 +1,12 @@
+# @file home/dot_profile
+# @brief Configure the login environment for sh and bash login shells (`~/.profile`).
+# @description
+#   A server keeps bash as its login shell, so this is the file every server
+#   login reads. Claude Code's updater stays blocked so mise remains the only
+#   version channel: DISABLE_UPDATES blocks manual `claude update` and `claude
+#   install`, DISABLE_AUTOUPDATER the background check (code.claude.com/docs/en/env-vars).
+export DISABLE_AUTOUPDATER=1
+export DISABLE_UPDATES=1
 export PATH="$PATH:$HOME/.local/bin"
 eval "$(mise activate bash --shims)"
 

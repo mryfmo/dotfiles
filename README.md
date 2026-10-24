@@ -202,6 +202,23 @@ policy where they can: an asset takes the newest release when its publisher
 verifies it independently of the release page, and the others keep a reviewed
 pin (see Asset manifest below).
 
+**Claude Code version.** The mise entry `"npm:@anthropic-ai/claude-code"` in
+`home/dot_mise/config.toml` is the only version channel for Claude Code, and
+`make update` moves it like every other tool. Claude Code's own updater is
+blocked in the login environment: `home/dot_zshenv` (every zsh, which the
+server's `bashrc` execs into) and `home/dot_profile` (the server's bash login
+shell) export `DISABLE_UPDATES=1`, which "block[s] all updates including manual
+`claude update` and `claude install`", and `DISABLE_AUTOUPDATER=1`, which stops
+the background check ([env vars](https://code.claude.com/docs/en/env-vars)).
+The managed template names no release channel, and on `chezmoi apply` the
+settings merge (`home/dot_claude/modify_private_settings.json`) drops
+`autoUpdates: false` and `autoUpdatesChannel: "stable"` from an installed
+`~/.claude/settings.json`, the values the template used to set. A different
+value there is an operator override and stays. `claude update` is therefore not
+a supported command here; it prints `Updates are disabled by your
+administrator`. To hold Claude Code at one release, pin an exact version in the
+mise entry instead of `latest` (see Holding a tool back below).
+
 **Holding a tool back** uses the manager's own feature:
 
 - mise: an exact version in `home/dot_mise/config.toml` with a one-line reason

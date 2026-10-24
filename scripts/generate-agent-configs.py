@@ -444,8 +444,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "effortLevel": profile_claude["effort"],
         **({"advisorModel": profile_claude["advisor"]} if "advisor" in profile_claude else {}),
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
-        "autoUpdates": claude["autoUpdates"],
-        "autoUpdatesChannel": claude["autoUpdatesChannel"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {
             **({"allow": claude["permissions"]["allow"]} if "allow" in claude["permissions"] else {}),

@@ -7,12 +7,15 @@ scratch git repository; the store is an explicit scratch directory unless a test
 seat or reads the real `~/.local/state`.
 """
 
+import fcntl
 import hashlib
 import json
 import os
 import plistlib
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -26,6 +29,8 @@ PLIST = ROOT / "home/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.
 SERVICE = ROOT / "home/dot_config/systemd/user/regime-supervisor.service.tmpl"
 TIMER = ROOT / "home/dot_config/systemd/user/regime-supervisor.timer.tmpl"
 CHEZMOI = shutil.which("chezmoi")
+# A process that takes the kernel lock on argv[1], says so, and keeps it until it is killed.
+HOLDER = "import fcntl, sys, time; h = open(sys.argv[1], 'a'); fcntl.flock(h, fcntl.LOCK_EX); print('held', flush=True); time.sleep(120)"
 GIT_IDENTITY = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
     "GIT_CONFIG_NOSYSTEM": "1",
@@ -74,6 +79,7 @@ class RegimeStartTest(unittest.TestCase):
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.registry = self.home / ".local/state/regime-supervisor"
         self.conf = self.conf_of(self.repo)
+        self.lock = self.registry / "supervisor.lock"
 
     def conf_of(self, toplevel, slug="pilot"):
         """The checkout's registration: `<slug>-<first 12 hex of sha256(toplevel)>.conf` (U36 F3)."""
@@ -84,6 +90,43 @@ class RegimeStartTest(unittest.TestCase):
         self.git("init", "-q", cwd=path)
         self.git("commit", "-q", "--allow-empty", "-m", "init", cwd=path)
         return path
+
+    def lock_is_free(self):
+        """Whether the kernel lock can be taken right now (this test process tries, then lets it go)."""
+        with open(self.lock, "a") as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return False
+            fcntl.flock(handle, fcntl.LOCK_UN)
+            return True
+
+    def paused_pass(self, new_session=False):
+        """A supervisor pass whose launch is paused inside the fake hcom; returns (process, release file)."""
+        pause = self.temp / f"release-{len(list(self.temp.glob('release-*')))}"
+        process = subprocess.Popen(
+            [str(START), "--supervise"], cwd=self.temp, env={**self.env, "FAKE_LAUNCH_PAUSE": str(pause)},
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=new_session,
+        )  # fmt: skip
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        started = Path(f"{pause}.started")
+        for _ in range(300):
+            if started.exists():
+                break
+            time.sleep(0.1)
+        self.assertTrue(started.exists(), "the pass reached its launch")
+        return process, pause
+
+    def background(self, lever, *args, **extra):
+        process = subprocess.Popen(
+            [str(lever), *args], cwd=self.repo, env={**self.env, **extra}, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )  # fmt: skip
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        return process
+
+    def assert_no_hcom_call_held_the_lock(self):
+        self.assertEqual([call["argv"][:2] for call in self.hcom()["calls"] if call["fd9"]], [])
 
     def kills(self):
         return [call for call in self.hcom()["calls"] if call["argv"][:1] == ["kill"]]
@@ -342,28 +385,26 @@ class RegimeStartTest(unittest.TestCase):
         self.assertIn(f"the store {self.store} belongs to {other}", skipped.stderr)
         self.assertEqual(len(self.launches()), launches)
 
-    def test_stop_waits_for_a_relaunch_in_flight_and_wins(self):
-        """U36 F2: start, stop and the pass share one lock, so a stop during a paused relaunch runs after it."""
+    def test_stop_waits_for_a_relaunch_in_flight_however_old_the_lock_looks(self):
+        """U36 F2: a live owner keeps the lock: aged by a day, and after other processes tried and exited, stop
+        still waits for the paused relaunch, then stops the seat it launched; nothing survives."""
         self.assertEqual(self.run_lever(START).returncode, 0)
+        inode = self.lock.stat().st_ino
         self.crash()
-        pause = self.temp / "release"
-        supervise = subprocess.Popen(
-            [str(START), "--supervise"], cwd=self.temp, env={**self.env, "FAKE_LAUNCH_PAUSE": str(pause)},
-            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )  # fmt: skip
-        self.addCleanup(supervise.kill)
-        started = Path(f"{pause}.started")
-        for _ in range(300):
-            if started.exists():
-                break
-            time.sleep(0.1)
-        self.assertTrue(started.exists(), "the pass reached its launch")
-        stop = subprocess.Popen(
-            [str(STOP)], cwd=self.repo, env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        self.addCleanup(stop.kill)
-        time.sleep(1.5)
+        supervise, pause = self.paused_pass()
+        day_old = time.time() - 24 * 3600
+        os.utime(self.lock, (day_old, day_old))
+        # Non-owners try and exit while the pass holds the lock; their exits release nothing.
+        skipped = self.run_lever(START, "--supervise", cwd=self.temp)
+        self.assertEqual(skipped.returncode, 0)
+        self.assertIn(f"pid {supervise.pid} holds {self.lock}; this pass skips", skipped.stderr)
+        refused = self.run_lever(START, REGIME_LOCK_WAIT_SECONDS="1")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn(f"pid {supervise.pid} still holds {self.lock} after 1 s; nothing changed", refused.stderr)
+        stop = self.background(STOP)
+        time.sleep(2)
         self.assertIsNone(stop.poll(), "regime-stop waits for the lock the paused pass holds")
+        self.assertFalse(self.lock_is_free())
         pause.touch()
         self.assertEqual(supervise.wait(60), 0, supervise.communicate()[1])
         out, err = stop.communicate(timeout=60)
@@ -371,27 +412,93 @@ class RegimeStartTest(unittest.TestCase):
         self.assertEqual(out, "regime-stop: stopped orchestrator-zulu\n", "the stop sees and stops the relaunched seat")
         self.assertFalse(self.conf.exists(), "the pass's rewrite does not survive the stop")
         self.assertEqual(self.hcom()["alive"], [])
+        self.assertTrue(self.lock_is_free())
+        self.assertEqual(self.lock.stat().st_ino, inode, "the lock file is never removed or replaced")
         self.assertEqual(self.run_lever(START, "--supervise", cwd=self.temp).returncode, 0)
         self.assertEqual(len(self.launches()), 2, "nothing relaunched after the stop")
+        self.assert_no_hcom_call_held_the_lock()
 
-    def test_a_lock_held_too_long_refuses_start_and_stop_and_a_pass_skips(self):
+    def test_killing_the_supervising_shell_keeps_the_lock_while_its_launch_runs(self):
+        """The subshell that runs a launch keeps the lock until the launch returns, so killing regime-start itself
+        cannot let a stop in ahead of a launch still in flight."""
+        self.assertEqual(self.run_lever(START).returncode, 0)
+        self.crash()
+        supervise, pause = self.paused_pass()
+        os.kill(supervise.pid, signal.SIGKILL)
+        supervise.wait(10)
+        stop = self.background(STOP)
+        time.sleep(2)
+        self.assertIsNone(stop.poll(), "the launch still in flight holds the lock")
+        self.assertFalse(self.lock_is_free())
+        pause.touch()
+        out, err = stop.communicate(timeout=60)
+        self.assertEqual(stop.returncode, 0, err)
+        self.assertEqual(out, "regime-stop: stopped orchestrator-zulu\n")
+        self.assertEqual(self.hcom()["alive"], [])
+        self.assertFalse(self.conf.exists())
+        self.assertTrue(self.lock_is_free())
+
+    def test_a_dead_owner_releases_the_lock_at_once(self):
+        """The kernel drops the lock with its last holder: a killed holder, or a pass killed with its whole launch,
+        never blocks the next start or stop, and no launch continues outside the lock."""
+        holder = subprocess.Popen(
+            [sys.executable, "-I", "-c", HOLDER, str(self.lock)],
+            stdout=subprocess.PIPE, text=True,
+        )  # fmt: skip
+        self.addCleanup(lambda: holder.poll() is None and holder.kill())
+        self.registry.mkdir(parents=True, exist_ok=True)
+        self.assertEqual(holder.stdout.readline(), "held\n")
+        self.assertEqual(self.run_lever(START, REGIME_LOCK_WAIT_SECONDS="1").returncode, 2)
+        holder.kill()
+        holder.wait(10)
+        started = self.run_lever(START, REGIME_LOCK_WAIT_SECONDS="0")
+        self.assertEqual(started.returncode, 0, started.stderr)
+        self.crash()
+        supervise, _pause = self.paused_pass(new_session=True)
+        os.killpg(supervise.pid, signal.SIGKILL)
+        supervise.wait(10)
+        stop = self.run_lever(STOP, REGIME_LOCK_WAIT_SECONDS="2")
+        self.assertEqual(stop.returncode, 0, stop.stderr)
+        self.assertEqual(stop.stdout, "regime-stop: no seat to stop in " + str(self.store) + "; supervision ended\n")
+        self.assertEqual(self.hcom()["alive"], [], "the killed launch never added a seat")
+        self.assertFalse(self.conf.exists())
+        self.assertTrue(self.lock_is_free())
+
+    def test_a_detached_seat_never_holds_the_lock(self):
+        """hcom-seat and every hcom call get descriptor 9 closed, so a long-lived process the launch leaves behind
+        does not keep the lock: right after regime-start returns, regime-stop takes it without waiting."""
+        linger = self.temp / "linger.pid"
+        started = self.run_lever(START, FAKE_LAUNCH_LINGER=str(linger))
+        self.assertEqual(started.returncode, 0, started.stderr)
+        pid = int(linger.read_text())
+        self.addCleanup(lambda: subprocess.run(["kill", str(pid)], check=False, capture_output=True))
+        os.kill(pid, 0)  # the detached process is alive
+        self.assertTrue(self.lock_is_free())
+        stop = self.run_lever(STOP, REGIME_LOCK_WAIT_SECONDS="0")
+        self.assertEqual(stop.returncode, 0, stop.stderr)
+        self.assertEqual(stop.stdout, "regime-stop: stopped orchestrator-rafa\n")
+        self.assert_no_hcom_call_held_the_lock()
+
+    def test_a_lock_held_by_another_process_refuses_start_and_stop_and_a_pass_skips(self):
         self.registry.mkdir(parents=True)
-        (self.registry / ".lock").mkdir()
-        for lever in (START, STOP):
-            with self.subTest(lever=lever.name):
-                run = self.run_lever(lever, REGIME_LOCK_WAIT_SECONDS="1")
-                self.assertEqual(run.returncode, 2)
-                self.assertIn("holds", run.stderr)
-                self.assertIn("nothing changed", run.stderr)
-        run = self.run_lever(START, "--supervise", cwd=self.temp)
-        self.assertEqual(run.returncode, 0)
-        self.assertEqual(self.launches(), [])
-        self.assertTrue((self.registry / ".lock").is_dir(), "a fresh lock is never broken")
-        old = time.time() - 11 * 60
-        os.utime(self.registry / ".lock", (old, old))
-        run = self.run_lever(START)
+        with open(self.lock, "a") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            handle.truncate(0)
+            handle.write(f"{os.getpid()}\n")
+            handle.flush()
+            for lever in (START, STOP):
+                with self.subTest(lever=lever.name):
+                    run = self.run_lever(lever, REGIME_LOCK_WAIT_SECONDS="1")
+                    self.assertEqual(run.returncode, 2)
+                    self.assertIn(f"pid {os.getpid()} still holds {self.lock} after 1 s; nothing changed", run.stderr)
+            run = self.run_lever(START, "--supervise", cwd=self.temp)
+            self.assertEqual(run.returncode, 0)
+            self.assertEqual(self.launches(), [])
+            fcntl.flock(handle, fcntl.LOCK_UN)
+        run = self.run_lever(START, REGIME_LOCK_WAIT_SECONDS="0")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertFalse((self.registry / ".lock").exists(), "a lock older than ten minutes is cleared, then released")
+        self.assertTrue(self.lock.is_file())
+        self.assertTrue(self.lock_is_free(), "released when regime-start exits")
 
     def test_the_backoff_saturates_and_the_counter_is_bounded(self):
         """U36 F5: the delay is computed by saturated doubling, never by a shift that overflows."""

@@ -78,9 +78,15 @@ README, "Start here: the omp seats"). The pass relaunches a registered orchestra
 newest stop event hcom recorded for the last seat (`hcom list --stopped <base name>`, the `(latest)` line) is
 `killed by:cli`, an `hcom kill`, which ends the supervision like `regime-stop` does. A failed launch waits 60 seconds,
 doubling by saturation to 30 minutes, and the failure counter stops at 9999. `regime-start`, the pass and `regime-stop`
-(which is `regime-start --stop`) take one host lock, `~/.local/state/regime-supervisor/.lock`: start and stop wait for
-it, a pass that finds it held skips, and a lock left for ten minutes by a process that died is cleared. So a stop that
-arrives during a relaunch runs after it and stops the seat it launched. A registration must hold each of its eight
+(which is `regime-start --stop`) take one host lock: the kernel's `flock(2)` on
+`~/.local/state/regime-supervisor/supervisor.lock`, held through a descriptor the script keeps open (perl takes it,
+because macOS ships no `flock` command). Start and stop wait for it, and a pass that finds it held skips. The kernel
+releases it only when its last holder exits or dies, so it is never taken over by age or by a pid, no other process can
+release it, and the file is never removed. A launch runs in subshells that keep the descriptor until the launch and its
+wait return, so killing `regime-start` cannot let a stop in while a launch is in flight; hcom-seat and every hcom call
+get the descriptor closed, so a seat never holds the lock after its launch (measured on this host on 2026-10-24: after
+`regime-start` returned, `lsof` showed no process with the lock open, the seat included, and `regime-stop` took it at
+once). So a stop that arrives during a relaunch runs after it and stops the seat it launched. A registration must hold each of its eight
 keys exactly once (`toplevel`, `hcom_dir`, `hcom_team`, `program`, `seat`, `base`, `fails`, `next`), its seat must be
 `orchestrator-<base>`, its file name must be the one its own toplevel derives, and a store with an `origin` file must
 name that toplevel; one that breaks any of these is skipped and logged and never launched, rewritten or stopped from.

@@ -26,8 +26,8 @@
 #   decision is a line in `<store>/supervisor.log`.
 #
 #   `--stop [--all]` is regime-stop (the lever beside this file runs it). Start, stop and the supervisor pass take
-#   one host lock, `~/.local/state/regime-supervisor/.lock`, so a stop never interleaves with a relaunch: start and
-#   stop wait for it, a pass that finds it held skips. A registration is
+#   one host lock, the kernel's flock on `~/.local/state/regime-supervisor/supervisor.lock` (take_lock), so a stop
+#   never interleaves with a relaunch: start and stop wait for it, a pass that finds it held skips. A registration is
 #   `~/.local/state/regime-supervisor/<slug>-<first 12 hex of sha256(toplevel)>.conf`, one per checkout, with every
 #   key exactly once (toplevel, hcom_dir, hcom_team, program, seat, base, fails, next); a registration that breaks
 #   that, names another toplevel, or whose store's `origin` names another checkout is never launched, replaced or
@@ -105,7 +105,8 @@ lever_self_check
 usage='usage: regime-start [<program>] | regime-start --supervise | regime-start --stop [--all]'
 me=regime-start
 registry=${HOME}/.local/state/regime-supervisor
-lock=${registry}/.lock
+lock=${registry}/supervisor.lock
+lock_holder=''
 name_grammar='^[a-z0-9][a-z0-9_-]{0,63}$'
 wait_seconds=${REGIME_START_WAIT_SECONDS:-120}
 [[ ${wait_seconds} =~ ^[0-9]{1,4}$ ]] || wait_seconds=120
@@ -118,22 +119,54 @@ refuse() {
 }
 
 # @description Take the host's one regime lock, which regime-start, its supervisor pass and regime-stop share, so a
-#   stop never interleaves with a launch (U36 F2). mkdir is atomic; a lock not refreshed for ten minutes belongs to a
-#   process that died and is cleared once. Released on exit.
+#   stop never interleaves with a launch (U36 F2). The lock is the kernel's flock(2) on the file `lock`, held through
+#   descriptor 9 of this process: perl (on both hosts; macOS ships no flock command) takes it on that inherited
+#   descriptor and exits, and the lock stays with the open file, which this process keeps, and the subshell that runs
+#   a launch keeps until the launch returns. Every hcom call and hcom-seat get the descriptor closed, so no seat or
+#   hcom process ever holds it. The kernel releases it when the last holder exits or dies, so nothing is ever
+#   recovered by age or pid, no other process can release it, and the file itself is never removed. The holder
+#   writes its pid into the file, for messages only. A lock file replaced after it was opened (another inode at the
+#   path) is opened again, at most three times.
 # @arg $1 string `wait` (up to REGIME_LOCK_WAIT_SECONDS, default 300) or `try` (once).
+# @set lock_holder The pid the current holder wrote, when the lock is held.
 # @exitcode 1 The lock is held by another process.
 take_lock() {
-    local waited=0
-    mkdir -p "${registry}"
-    while ! mkdir "${lock}" 2> /dev/null; do
-        if [[ -n $(find "${lock}" -maxdepth 0 -mmin +10 2> /dev/null) ]] && rmdir "${lock}" 2> /dev/null; then
-            continue
-        fi
-        [[ $1 == wait ]] && ((waited < lock_wait)) || return 1
-        sleep 1
-        waited=$((waited + 1))
+    local seconds=0 status attempt=0
+    [[ $1 == wait ]] && seconds=${lock_wait}
+    mkdir -p "${registry}" || refuse "cannot create ${registry}"
+    while ((attempt < 3)); do
+        attempt=$((attempt + 1))
+        [[ ! -L ${lock} ]] || refuse "${lock} is a symlink; nothing changed"
+        exec 9>> "${lock}" || refuse "cannot open ${lock}; nothing changed"
+        status=0
+        perl -MFcntl=:flock -e '
+            my ($wait, $owner, $path) = @ARGV;
+            open(my $fh, ">>&=", 9) or exit 3;
+            for my $try (0 .. $wait) {
+                if (flock($fh, LOCK_EX | LOCK_NB)) {
+                    my @held = stat($fh);
+                    my @named = stat($path);
+                    exit 4 unless @named && $named[0] == $held[0] && $named[1] == $held[1];
+                    truncate($fh, 0) or exit 3;
+                    syswrite($fh, "$owner\n") or exit 3;
+                    exit 0;
+                }
+                sleep 1 if $try < $wait;
+            }
+            exit 1;' "${seconds}" "$$" "${lock}" || status=$?
+        case ${status} in
+        0) return 0 ;;
+        1)
+            lock_holder=$(cat "${lock}" 2> /dev/null) || lock_holder=''
+            [[ ${lock_holder} =~ ^[0-9]+$ ]] || lock_holder=unknown
+            exec 9>&-
+            return 1
+            ;;
+        4) exec 9>&- ;;
+        *) refuse "cannot take the flock on ${lock} (perl exited ${status}); nothing changed" ;;
+        esac
     done
-    trap 'rmdir "${lock}" 2> /dev/null || true' EXIT
+    refuse "${lock} was replaced while it was being locked, three times; nothing changed"
 }
 
 # @description Print the registration file of a checkout: `<slug>-<first 12 hex of sha256(toplevel)>.conf`, so two
@@ -241,7 +274,7 @@ log_line() {
 # @exitcode 1 hcom could not be read (a failed read is never "no seat").
 alive_orchestrators() {
     local listing name base tag status
-    listing=$(hcom list --format '{name} {base_name} {tag} {status}') || return 1
+    listing=$(hcom list --format '{name} {base_name} {tag} {status}' 9>&-) || return 1
     while read -r name base tag status; do
         [[ ${tag} == orchestrator ]] || continue
         case ${status} in
@@ -256,9 +289,17 @@ alive_orchestrators() {
 # @exitcode 1 hcom-seat failed, or no seat was alive within the wait.
 launch_orchestrator() {
     local top=$1 status=0 waited=0 alive=''
-    # A launch can take minutes; the lock's mtime says it is still held by a live process.
-    touch "${lock}" 2> /dev/null || true
-    (cd "${top}" && "${LEVER_DIR}/hcom-seat" orchestrator) >&2 || status=$?
+    # Killing regime-start cannot release the lock while a launch runs (U36 F2): both callers run this function in a
+    # command-substitution subshell, which keeps descriptor 9 until the launch and its wait return, and the subshell
+    # below keeps it until hcom-seat returns, so the hold does not depend on the caller (the command after hcom-seat
+    # keeps bash from exec-ing it in place of that subshell). hcom-seat, and the hcom and seat processes it starts,
+    # get the descriptor closed, so a detached seat never holds the lock after the launch.
+    (
+        cd "${top}" || exit 1
+        "${LEVER_DIR}/hcom-seat" orchestrator 9>&-
+        launched=$?
+        exit "${launched}"
+    ) >&2 || status=$?
     # hcom's status 2 is "still launching": wait for the seat like a ready one.
     if ((status != 0 && status != 2)); then
         echo "regime-start: hcom-seat orchestrator exited ${status}" >&2
@@ -327,7 +368,7 @@ command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 if [[ ${mode} == supervise ]]; then
     # A pass that finds the lock held skips: the next one comes in 60 s.
     if ! take_lock try; then
-        echo "regime-start: another regime-start or regime-stop holds ${lock}" >&2
+        echo "regime-start: pid ${lock_holder} holds ${lock}; this pass skips" >&2
         exit 0
     fi
     now=$(date +%s)
@@ -356,7 +397,7 @@ if [[ ${mode} == supervise ]]; then
             fi
             continue
         fi
-        if ! stopped=$(hcom list --stopped "${base}"); then
+        if ! stopped=$(hcom list --stopped "${base}" 9>&-); then
             log_line "${store}" "hcom list --stopped ${base} failed; nothing launched"
             continue
         fi
@@ -417,7 +458,7 @@ slug=$(regime_slug "${top}") || refuse "cannot derive a repository slug from ${t
 conf=$(registration_path "${top}" "${slug}") || refuse "cannot hash the toplevel ${top}"
 
 if [[ ${mode} == stop ]]; then
-    take_lock wait || refuse "another regime-start or regime-stop holds ${lock} after ${lock_wait} s; nothing changed"
+    take_lock wait || refuse "pid ${lock_holder} still holds ${lock} after ${lock_wait} s; nothing changed"
     if [[ -e ${conf} ]]; then
         # The registered store wins: it is the one the supervisor would relaunch into.
         read_registration "${conf}"
@@ -429,7 +470,7 @@ if [[ ${mode} == stop ]]; then
     else
         choose_store
     fi
-    listing=$(hcom list --format '{name} {tag} {status}') || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed); nothing changed"
+    listing=$(hcom list --format '{name} {tag} {status}' 9>&-) || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed); nothing changed"
     rm -f "${conf}"
     log_line "${HCOM_DIR}" "regime-stop: supervision of ${top} ended"
     failed=0 stopped=0
@@ -437,7 +478,7 @@ if [[ ${mode} == stop ]]; then
         [[ -n ${name} ]] || continue
         case ${status} in active | listening | blocked) ;; *) continue ;; esac
         ((all)) || [[ ${tag} == orchestrator ]] || continue
-        if hcom kill "${name}" --go > /dev/null; then
+        if hcom kill "${name}" --go > /dev/null 9>&-; then
             echo "regime-stop: stopped ${name}"
             log_line "${HCOM_DIR}" "regime-stop: stopped ${name}"
             stopped=$((stopped + 1))
@@ -458,7 +499,7 @@ if [[ -n ${program} ]]; then
     store_dir=${top}/.orchestration/orchestrate/${program}
     [[ -d ${store_dir} ]] || refuse "no program store ${store_dir}; run regime-init ${program} first"
 fi
-take_lock wait || refuse "another regime-start or regime-stop holds ${lock} after ${lock_wait} s; nothing changed"
+take_lock wait || refuse "pid ${lock_holder} still holds ${lock} after ${lock_wait} s; nothing changed"
 # This checkout's own registration is replaced only for the same store and team (U36 F3).
 if [[ -e ${conf} ]]; then
     read_registration "${conf}"

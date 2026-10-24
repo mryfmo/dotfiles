@@ -6,12 +6,15 @@
 an alive seat with hcom's `killed by:cli` record; `omp --tag T ... --go -- ...` records the launch and, unless
 FAKE_LAUNCH_FAILS=1 (exit 1) or FAKE_LAUNCH_SILENT=1 (exit 0, no seat), adds a listening seat `T-<word>`.
 FAKE_LIST_FAILS=1 makes every `list` exit 1; FAKE_STOPPED_GARBLED=1 prints a stop block without events; FAKE_LAUNCH_PAUSE=<path> makes a launch touch
-`<path>.started` and wait for `<path>` before it adds the seat. Every call is appended to the state's `calls` with HCOM_DIR and
+`<path>.started` and wait for `<path>` before it adds the seat; FAKE_LAUNCH_LINGER=<path> leaves a detached
+`sleep 120` with every inherited descriptor and writes its pid to `<path>`. Every call records whether descriptor 9
+was open. Every call is appended to the state's `calls` with HCOM_DIR and
 HCOM_TEAM.
 """
 
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -21,7 +24,18 @@ state_path = Path(os.environ["FAKE_HCOM_STATE"])
 state = json.loads(state_path.read_text()) if state_path.exists() else {"alive": [], "stopped": [], "calls": []}
 argv = sys.argv[1:]
 store = os.environ.get("HCOM_DIR")
-state["calls"].append({"argv": argv, "HCOM_DIR": store, "HCOM_TEAM": os.environ.get("HCOM_TEAM")})
+
+
+def fd_open(fd):
+    try:
+        os.fstat(fd)
+    except OSError:
+        return False
+    return True
+
+
+# fd9: whether this process got the lock descriptor (regime-start must close it for every hcom call, U36 F2).
+state["calls"].append({"argv": argv, "HCOM_DIR": store, "HCOM_TEAM": os.environ.get("HCOM_TEAM"), "fd9": fd_open(9)})
 # Like the real hcom, every store has its own seats; a seat without a store belongs to the current one.
 mine = [seat for seat in state["alive"] if seat.get("store", store) == store]
 
@@ -78,6 +92,15 @@ if argv[:1] == ["omp"] and "--go" in argv:
     if os.environ.get("FAKE_LAUNCH_FAILS") == "1":
         save()
         sys.exit("fake-hcom: launch failed")
+    linger = os.environ.get("FAKE_LAUNCH_LINGER")
+    if linger:
+        # A detached long-lived process, like the seat a real launch leaves behind, with every inherited descriptor
+        # kept (close_fds=False), so it would hold the lock if regime-start passed it on. Its pid goes to <linger>.
+        child = subprocess.Popen(
+            ["sleep", "120"], close_fds=False, start_new_session=True,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )  # fmt: skip
+        Path(linger).write_text(f"{child.pid}\n")
     if os.environ.get("FAKE_LAUNCH_SILENT") != "1":
         used = {seat["base"] for seat in state["alive"] + state["stopped"]}
         word = next(word for word in WORDS if word not in used)

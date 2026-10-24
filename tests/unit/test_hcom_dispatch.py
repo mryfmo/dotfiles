@@ -40,6 +40,8 @@ class HcomDispatchTest(unittest.TestCase):
             **os.environ,
             "PATH": f"{bindir}:{os.environ['PATH']}",
             "HCOM_DIR": str(self.store),
+            # A scratch HOME: an empty HCOM_DIR makes the scripts derive a store under HOME (regime-env, U33).
+            "HOME": str(self.root),
             "FAKE_HCOM_CALLS": str(self.calls),
             "FAKE_HCOM_AGENTS": "nemo,bigboss",
         }
@@ -104,7 +106,8 @@ class HcomDispatchTest(unittest.TestCase):
                 with self.subTest(script=script.name, store=store):
                     run = self.run_script(script, *args, HCOM_DIR=store)
                     self.assertEqual((run.returncode, run.stdout), (1, ""))
-                    self.assertIn("store absent", run.stderr)
+                    # An empty HCOM_DIR derives this checkout's store, unbound here, so the binding refusal comes first.
+                    self.assertRegex(run.stderr, "store absent" if store else "has no origin file binding it")
         self.assertEqual(self.hcom_calls(), [])
 
     def test_a_sent_id_the_bus_does_not_hold_is_refused(self):

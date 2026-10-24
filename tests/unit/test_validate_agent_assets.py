@@ -1006,7 +1006,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
-        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
@@ -1090,7 +1090,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.assertIn("permissions.allow must be a list", stderr.getvalue())
 
     def test_claude_permissions_allow_accepts_the_fixed_rules_and_the_executable_levers(self) -> None:
-        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
         for permissions in ({}, {"allow": []}, {"allow": ["Bash(hcom list *)"]}, {"allow": MANAGED_ALLOW}):
             with self.subTest(accepts=permissions):
                 self.module.validate_claude_permissions_allow(permissions, "permissions")
@@ -1099,6 +1099,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "hcom-dispatch": "0" * 64,
             "bus-history.sh": "0" * 64,
             "worktree-gc.sh": "0" * 64,
+            "regime-init": "0" * 64,
         }
         self.module.validate_claude_permissions_allow({"allow": MANAGED_ALLOW}, "permissions", pinned)
 
@@ -1166,7 +1167,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         spec.loader.exec_module(generator)
         self.module.ROOT = self.temp_dir
         self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
-        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
         checkout = copy.deepcopy(manifest)
         checkout["claude"]["permissions"]["allow"][1] = "Bash(scripts/orchestrator/hcom-seat *)"
         for os_name in ("darwin", "linux"):

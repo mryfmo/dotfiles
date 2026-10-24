@@ -593,6 +593,38 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual((merged["operatorOnly"], merged["enabledPlugins"]), ({"kept": True}, {"crit@crit": True}))
         self.assertEqual(self.merge(managed, after), after)
 
+    def test_the_retired_session_bus_env_leaves_installed_settings(self) -> None:
+        """U16's HCOM_DIR/HCOM_TEAM go while they hold the old managed values; overrides stay (regime-cutover U33b)."""
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        self.assertNotIn("HCOM_DIR", managed["env"], "the current template sets no session-wide bus")
+        installed = json.loads(self.merge(managed, ""))
+        installed["env"] |= {
+            "HCOM_DIR": f"{self.home_dir}/.local/state/hcom-regime",
+            "HCOM_TEAM": "regime",
+            "OPERATOR_VAR": "kept",
+        }
+        installed["operatorOnly"] = {"kept": True}
+
+        after = self.merge(managed, json.dumps(installed))
+        merged = json.loads(after)
+        self.assertNotIn("HCOM_DIR", merged["env"])
+        self.assertNotIn("HCOM_TEAM", merged["env"])
+        self.assertEqual(merged["env"]["OPERATOR_VAR"], "kept")
+        self.assertEqual({k: v for k, v in merged["env"].items() if k != "OPERATOR_VAR"}, managed["env"])
+        self.assertEqual(merged["operatorOnly"], {"kept": True})
+        self.assertEqual(self.merge(managed, after), after)
+
+    def test_a_session_bus_env_the_operator_set_differently_is_kept(self) -> None:
+        managed = {"env": {"DO_NOT_TRACK": "1"}}
+        for name, value in (("HCOM_DIR", "/elsewhere/store"), ("HCOM_TEAM", "mine")):
+            with self.subTest(name=name):
+                output = json.loads(self.merge(managed, json.dumps({"env": {name: value}})))
+                self.assertEqual(output["env"], {name: value, "DO_NOT_TRACK": "1"})
+        output = json.loads(self.merge({"env": {"HCOM_TEAM": "managed"}}, json.dumps({"env": {"HCOM_TEAM": "regime"}})))
+        self.assertEqual(output["env"], {"HCOM_TEAM": "managed"}, "a key the template manages again still wins")
+
     def test_an_update_value_the_operator_set_differently_is_kept(self) -> None:
         for key, value in (("autoUpdatesChannel", "latest"), ("autoUpdates", True), ("autoUpdates", 0)):
             with self.subTest(key=key, value=value):

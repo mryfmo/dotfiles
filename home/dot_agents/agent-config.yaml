@@ -240,6 +240,7 @@ claude:
       - Bash(~/.local/bin/common/hcom-dispatch *)
       - Bash(~/.local/bin/common/bus-history.sh *)
       - Bash(~/.local/bin/common/worktree-gc.sh *)
+      - Bash(~/.local/bin/common/regime-init *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
     # Read/Edit rules guard Claude's own file tools and the file commands it
@@ -306,31 +307,31 @@ claude:
     DO_NOT_TRACK: "1"
     CHECKPOINT_DISABLE: "1"
     AWS_EC2_METADATA_DISABLED: "true"
-    # The regime's hcom bus for every Claude session (regime-cutover U16 brief
-    # F8-coordinator-levers-preauthorized; docs/orchestrator-seat.md "The seat's
-    # environment"). "An allow rule won't match past an assignment of any other
-    # variable" (code.claude.com/docs/en/permissions, "Wrappers"), so the levers
-    # take the store and the team from here. Claude Code reads it at start.
-    HCOM_DIR: "{{ .chezmoi.homeDir }}/.local/state/hcom-regime"
-    HCOM_TEAM: regime
   # The coordinator's levers, installed read-only (regime-cutover U31). The
   # generator renders home/dot_local/bin/common/executable_<name> from
   # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
   # ~/.local/bin/common/<name>, outside every sandbox write root, like
   # hcom-reply) and refreshes the pins below; each lever refuses to run (exit 2)
   # when its own sha256 differs from its line here, read from the deployed
-  # ~/.agents/agent-config.yaml for the installed copy.
+  # ~/.agents/agent-config.yaml for the installed copy. regime-env is the
+  # helper the levers source for the per-repository derivation (U33): pinned
+  # and self-checked like a lever, but sourced, never run, so no allow rule;
+  # regime-init reads its templates from ~/.agents/regime beside this manifest.
   levers:
     sha256:
-      hcom-seat: c0704ccb5b58dca45be8d0e2848aef8aefa8958f0b788234b1191c975dfa22f5
-      hcom-dispatch: a8b7561ee89ef92b7980b2398db3d34ed77f8ffccc98f350c023d705727b9329
-      bus-history.sh: 878d66a1c3495777d6d8e8395334430e8dc91678074213d353e29dcbc0667154
+      hcom-seat: 54d130e0759b4ed790e3a8c88cfd25b99dcea2f26d33887a532fe1a51b998392
+      hcom-dispatch: 2ca967ac1185f41709b38c85ff7a691ab6bb70c5ba609710450d5d53670e1c28
+      bus-history.sh: 0764d879658a82ccefe2b8272ba8cfaf7391dcdd89c9a955ac7e462fa59a9aa4
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
+      regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      regime-init: 1364b631df108279fe473e8f2840ed2164c8f65096019dea8711bba003f0b4ad
     # The only extension directories `hcom-seat` loads, by default or through
-    # `--ext`: the pi-claude-bridge and the openai-siwc extension.
+    # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
+    # gate's directory, which every launch loads (regime-cutover U33c).
     extensions:
       - ~/.local/lib/omp-extensions/pi-claude-bridge
       - ~/.agents/omp/extensions/openai-siwc
+      - ~/.agents/omp/hooks
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from
@@ -359,8 +360,10 @@ claude:
         - ~/.cache/uv
         - ~/.local/state/mise
         - ~/.local/share/uv
-        # The hcom bus store: hcom secures the directory on every open, `hcom list` too (U16).
+        # The dotfiles program's hcom store until its one-time move (U16; README "Run a program in another repository").
         - ~/.local/state/hcom-regime
+        # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
+        - ~/.local/state/hcom
         # The omp seat worktrees, positioned by the orchestrator (hcom-orchestration step 4; U16).
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:

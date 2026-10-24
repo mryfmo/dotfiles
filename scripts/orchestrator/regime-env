@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# @file regime-env
+# @brief The per-repository regime derivation the levers source: repository slug, hcom store, team, seat root.
+# @description
+#   Regime-cutover U33. Sourced by `hcom-seat`, `hcom-dispatch`, `bus-history.sh` and `regime-init` from the
+#   directory they run from (`LEVER_DIR`), never run on its own. It checks its own sha256 against its
+#   `claude.levers.sha256.regime-env` pin first, like every lever, so a rewritten helper stops the caller.
+#   Defaults, an explicit environment always winning: `HCOM_TEAM=<slug>`, `HCOM_DIR=~/.local/state/hcom/<slug>`,
+#   seats root `~/.local/state/omp-seats/<slug>`, where `<slug>` is the checkout's basename lower-cased with
+#   every character outside `[a-z0-9_-]` replaced by `-`, at most 40 characters. A derived store's `origin`
+#   file, written by `regime-init`, must name this checkout, so two checkouts with one basename cannot share a
+#   store unnoticed.
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    # shellcheck disable=SC2034 # read by the levers that source regime-env from this directory
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+# @description Print the physical toplevel of the repository's main checkout: the parent of the git common
+#   directory, so every linked worktree of a repository (a seat worktree, `.claude/worktrees/*`) derives the
+#   same slug as the checkout it was added from; a repository whose git directory is elsewhere falls back to
+#   its own toplevel.
+# @stdout The toplevel, `pwd -P` form.
+# @exitcode 0 Inside a checkout.
+# @exitcode 1 Outside a checkout, or the toplevel cannot be resolved.
+regime_toplevel() {
+    local common top
+    common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 1
+    if [[ ${common##*/} == .git ]]; then
+        top=${common%/*}
+    else
+        top=$(git rev-parse --show-toplevel 2> /dev/null) || return 1
+    fi
+    [[ -n ${top} ]] || return 1
+    (cd "${top}" && pwd -P)
+}
+
+# @description Print the repository slug of a toplevel: its basename lower-cased, every character outside
+#   `[a-z0-9_-]` replaced by `-`, at most 40 characters, so hcom's team and tag grammar accept it.
+# @arg $1 path The toplevel.
+# @stdout The slug.
+# @exitcode 0 A usable slug.
+# @exitcode 1 The slug does not start with `[a-z0-9]`, or the lower-casing failed.
+regime_slug() {
+    local base slug
+    base=${1%/}
+    base=${base##*/}
+    slug=$(printf '%s' "${base}" | LC_ALL=C tr '[:upper:]' '[:lower:]') || return 1
+    slug=${slug//[^a-z0-9_-]/-}
+    slug=${slug:0:40}
+    [[ ${slug} =~ ^[a-z0-9][a-z0-9_-]{0,39}$ ]] || return 1
+    printf '%s\n' "${slug}"
+}
+
+# @description Derive the regime environment of the checkout the working directory is in; an explicit value
+#   always wins. A derived store is bound to its checkout by its `origin` file, which only `regime-init` writes:
+#   every other caller requires it to exist and name this toplevel, so a second checkout with the same slug
+#   cannot open or create the store. No part of a derived store path may be a symlink (`~/.local/state/hcom`,
+#   the store, `origin`), so nothing reads or writes through one. A refusal prints its reason prefixed with the
+#   caller's name and returns 1.
+# @arg $1 string The caller's name, for messages.
+# @option --unbound-ok The caller is `regime-init`: a derived store without its `origin` file is allowed.
+# @set REGIME_TOPLEVEL The physical toplevel, empty when HCOM_DIR is explicit and the cwd is outside a checkout.
+# @set REGIME_SLUG The repository slug (empty with REGIME_TOPLEVEL).
+# @set REGIME_ORIGIN The derived store's origin file, empty when HCOM_DIR is explicit.
+# @set HCOM_TEAM `<slug>` unless set (exported).
+# @set HCOM_DIR `~/.local/state/hcom/<slug>` unless set (exported).
+# @set REGIME_SEATS_ROOT `~/.local/state/omp-seats/<slug>` unless set.
+# @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a symlink in the derived store path; a
+#   derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another toplevel.
+regime_env() {
+    local who=$1 unbound_ok=${2:-} recorded part
+    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
+    if ! REGIME_TOPLEVEL=$(regime_toplevel); then
+        REGIME_TOPLEVEL=''
+        if [[ -n ${HCOM_DIR:-} ]]; then
+            export HCOM_DIR
+            [[ -z ${HCOM_TEAM:-} ]] || export HCOM_TEAM
+            return 0
+        fi
+        echo "${who}: not inside a git checkout and HCOM_DIR is unset, so no hcom store can be derived" >&2
+        return 1
+    fi
+    REGIME_SLUG=$(regime_slug "${REGIME_TOPLEVEL}") || {
+        echo "${who}: cannot derive a repository slug from ${REGIME_TOPLEVEL} (it must start with [a-z0-9])" >&2
+        return 1
+    }
+    : "${HCOM_TEAM:=${REGIME_SLUG}}"
+    : "${REGIME_SEATS_ROOT:=${HOME}/.local/state/omp-seats/${REGIME_SLUG}}"
+    if [[ -z ${HCOM_DIR:-} ]]; then
+        HCOM_DIR=${HOME}/.local/state/hcom/${REGIME_SLUG}
+        REGIME_ORIGIN=${HCOM_DIR}/origin
+        for part in "${HOME}/.local/state/hcom" "${HCOM_DIR}" "${REGIME_ORIGIN}"; do
+            if [[ -L ${part} ]]; then
+                echo "${who}: refused: ${part} is a symlink; a derived hcom store is a plain directory" >&2
+                return 1
+            fi
+        done
+        if [[ -e ${REGIME_ORIGIN} ]]; then
+            recorded=$(cat "${REGIME_ORIGIN}") || {
+                echo "${who}: cannot read ${REGIME_ORIGIN}" >&2
+                return 1
+            }
+            if [[ ${recorded} != "${REGIME_TOPLEVEL}" ]]; then # lint-comparisons: allow both are pwd -P forms written by regime-init
+                echo "${who}: refused: the store ${HCOM_DIR} belongs to ${recorded}, not ${REGIME_TOPLEVEL} (same slug ${REGIME_SLUG}); set HCOM_DIR and HCOM_TEAM explicitly" >&2
+                return 1
+            fi
+        elif [[ ${unbound_ok} != --unbound-ok ]]; then
+            echo "${who}: refused: the derived store ${HCOM_DIR} has no origin file binding it to ${REGIME_TOPLEVEL}; run regime-init <program> in the checkout first" >&2
+            return 1
+        fi
+    fi
+    export HCOM_DIR HCOM_TEAM
+}

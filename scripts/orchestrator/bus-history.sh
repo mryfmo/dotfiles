@@ -16,13 +16,13 @@
 # @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).
 # @option --limit <n> Newest rows to read (default 200, a positive integer).
 # @option --since <ts> Only rows after this time, hcom's `--after` (`YYYY-MM-DD[THH:MM:SS[Z]]`).
-# @option --kind <kind> Only rows of this kind, the first word of the line (e.g. AGMSG-RESULT).
+# @option --kind <kind> Only rows of this kind, the first word of the line (e.g. RESULT).
 # @env HCOM_DIR The private hcom store directory; default: the store derived from the checkout (regime-env).
 # @stdout TSV rows `id<TAB>at<TAB>from<TAB>to<TAB>kind<TAB>body`, possibly none.
 # @exitcode 0 Printed.
 # @exitcode 1 Usage error, store absent, or hcom failed (its error on stderr).
 # @example
-#   HCOM_DIR=/path/to/.hcom scripts/orchestrator/bus-history.sh dotfiles --limit 50 --kind AGMSG-RESULT
+#   HCOM_DIR=/path/to/.hcom scripts/orchestrator/bus-history.sh dotfiles --limit 50 --kind RESULT
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):

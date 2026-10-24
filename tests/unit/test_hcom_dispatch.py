@@ -1,7 +1,7 @@
 """Exercise hcom-dispatch and bus-history.sh.
 
 The fake `hcom` under tests/fixtures/hcom/ speaks the `send --json` and `events` dialect captured from hcom 0.7.30 on
-2026-10-23 (events-u5team.jsonl holds three captured rows). When a real `hcom` is on PATH, one test also runs both
+2026-10-23 (events-u5team.jsonl holds three captured rows, then the same kinds without the retired prefix). When a real `hcom` is on PATH, one test also runs both
 scripts against a private store under a scratch HOME (`HCOM_DIR`), never the real store.
 """
 
@@ -19,8 +19,8 @@ DISPATCH = ROOT / "scripts/orchestrator/hcom-dispatch"
 HISTORY = ROOT / "scripts/orchestrator/bus-history.sh"
 FIXTURES = ROOT / "tests/fixtures/hcom"
 RECEIPT = re.compile(r"^id=(\d+) at=(\S+) to=(\S+) kind=(\S+)\n$")
-LINE = 'AGMSG-TASK v1 task_id=T1 tab\there quo"te'
-ESCAPED_LINE = 'AGMSG-TASK v1 task_id=T1 tab\\there quo"te'
+LINE = 'TASK v1 task_id=T1 tab\there quo"te'
+ESCAPED_LINE = 'TASK v1 task_id=T1 tab\\there quo"te'
 
 
 class HcomDispatchTest(unittest.TestCase):
@@ -61,7 +61,7 @@ class HcomDispatchTest(unittest.TestCase):
         receipt = RECEIPT.match(sent.stdout)
         self.assertIsNotNone(receipt, sent.stdout)
         event_id, at, to, kind = receipt.groups()
-        self.assertEqual((to, kind), ("nemo", "AGMSG-TASK"))
+        self.assertEqual((to, kind), ("nemo", "TASK"))
         self.assertEqual(
             self.hcom_calls(),
             [
@@ -71,12 +71,12 @@ class HcomDispatchTest(unittest.TestCase):
         )
         history = self.run_script(HISTORY, "u5team", "--limit", "10")
         self.assertEqual(history.returncode, 0, history.stderr)
-        self.assertEqual(history.stdout, f"{event_id}\t{at}\torch\tnemo\tAGMSG-TASK\t{ESCAPED_LINE}\n")
+        self.assertEqual(history.stdout, f"{event_id}\t{at}\torch\tnemo\tTASK\t{ESCAPED_LINE}\n")
 
     def test_words_are_joined_and_a_leading_dash_reaches_hcom_unparsed(self):
-        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", "-x", "AGMSG-PING", "v1", "task_id=T1")
+        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", "-x", "PING", "v1", "task_id=T1")
         self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(self.hcom_calls()[0][-2:], ["--", "-x AGMSG-PING v1 task_id=T1"])
+        self.assertEqual(self.hcom_calls()[0][-2:], ["--", "-x PING v1 task_id=T1"])
         self.assertTrue(sent.stdout.endswith(" to=nemo kind=-x\n"), sent.stdout)
 
     def test_an_unknown_seat_is_refused_by_hcom_and_nothing_is_read(self):
@@ -126,6 +126,10 @@ class HcomDispatchTest(unittest.TestCase):
                 'AGMSG-TASK v1 task_id=t1 tab\\tin quo"te',
                 "4\t2026-10-23T01:20:24.968790+00:00\tu5team-aud\tnemo\tAGMSG-PING\tAGMSG-PING v1 task_id=t1",
                 "6\t2026-10-23T01:20:25.025634+00:00\tnemo\t-\tAGMSG-RESULT\tAGMSG-RESULT v1 task_id=t1 status=done",
+                # U35: the same kinds without the retired prefix, after the captured rows.
+                "7\t2026-10-24T09:00:00.100000+00:00\tu5team-orch\tnemo\tTASK\tTASK v1 task_id=t2 brief=b.md",
+                "8\t2026-10-24T09:00:00.200000+00:00\tu5team-aud\tnemo\tPING\tPING v1 task_id=t2",
+                "9\t2026-10-24T09:00:00.300000+00:00\tnemo\t-\tRESULT\tRESULT v1 task_id=t2 status=done",
             ],
         )
         self.assertEqual(
@@ -135,15 +139,18 @@ class HcomDispatchTest(unittest.TestCase):
     def test_history_filters_by_kind_limit_and_since_and_refuses_bad_options(self):
         shutil.copy(FIXTURES / "events-u5team.jsonl", self.store / "events.jsonl")
         since = "2026-10-23T01:20:24"
-        by_kind = self.run_script(HISTORY, "u5team", "--kind", "AGMSG-PING", "--limit", "2", "--since", since)
+        # The kind is an opaque first word: the retired prefix names another kind (U35).
+        prefixed = self.run_script(HISTORY, "u5team", "--kind", "AGMSG-PING")
+        self.assertEqual([row.split("\t")[0] for row in prefixed.stdout.splitlines()], ["4"])
+        by_kind = self.run_script(HISTORY, "u5team", "--kind", "PING", "--limit", "2", "--since", since)
         self.assertEqual(by_kind.returncode, 0, by_kind.stderr)
-        self.assertEqual([row.split("\t")[0] for row in by_kind.stdout.splitlines()], ["4"])
+        self.assertEqual([row.split("\t")[0] for row in by_kind.stdout.splitlines()], ["8"])
         self.assertEqual(self.hcom_calls()[-1][-4:], ["--last", "2", "--after", since])
         for args in (("u5team", "--limit", "0"), ("u5team", "--limit"), ("u5team", "--bogus", "1"), ("Team",), ()):
             with self.subTest(args=args):
                 run = self.run_script(HISTORY, *args)
                 self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
-        self.assertEqual(len(self.hcom_calls()), 1)
+        self.assertEqual(len(self.hcom_calls()), 2, "the two reads above; a refusal calls nothing")
 
     @unittest.skipUnless(shutil.which("hcom"), "a real hcom is not on PATH")
     def test_a_real_hcom_round_trip_stays_inside_a_private_store(self):
@@ -161,16 +168,14 @@ class HcomDispatchTest(unittest.TestCase):
         sent = self.run_script(DISPATCH, "u5team", "orch", seat, "w1:p2", LINE, env=env)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         event_id, at, to, kind = RECEIPT.match(sent.stdout).groups()
-        self.assertEqual((to, kind), (seat, "AGMSG-TASK"))
-        reply = hcom(
-            "send", "--name", seat, "--thread", "u5team", "--json", "--", "AGMSG-RESULT v1 task_id=T1 status=done"
-        )
+        self.assertEqual((to, kind), (seat, "TASK"))
+        reply = hcom("send", "--name", seat, "--thread", "u5team", "--json", "--", "RESULT v1 task_id=T1 status=done")
         self.assertEqual(reply.returncode, 0, reply.stderr)
         history = self.run_script(HISTORY, "u5team", "--limit", "10", env=env)
         self.assertEqual(history.returncode, 0, history.stderr)
         rows = [row.split("\t") for row in history.stdout.splitlines()]
-        self.assertEqual(rows[0], [event_id, at, "orch", seat, "AGMSG-TASK", ESCAPED_LINE])
-        self.assertEqual(rows[1][2:], [seat, "-", "AGMSG-RESULT", "AGMSG-RESULT v1 task_id=T1 status=done"])
+        self.assertEqual(rows[0], [event_id, at, "orch", seat, "TASK", ESCAPED_LINE])
+        self.assertEqual(rows[1][2:], [seat, "-", "RESULT", "RESULT v1 task_id=T1 status=done"])
         self.assertEqual(len(rows), 2)
         refused = self.run_script(DISPATCH, "u5team", "orch", "nobody", "w1:p2", LINE, env=env)
         self.assertEqual((refused.returncode, refused.stdout), (1, ""))

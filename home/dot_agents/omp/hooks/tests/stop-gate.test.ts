@@ -9,13 +9,13 @@ const row = (id: number, from: string, text: string, to = "-"): string =>
 	[id, "2026-10-23T05:00:00+00:00", from, to, text.split(" ")[0], text].join("\t");
 
 const ROWS = [
-	row(3, "orch", "AGMSG-TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
+	row(3, "orch", "TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
 	row(4, "orch", "TASK v1 task_id=t2 brief=briefs/U14.md", "worker"),
-	row(5, "orch", "AGMSG-PING v1 task_id=t1"),
-	row(6, "worker", "AGMSG-RESULT v1 task_id=t1 status=ready_for_review pr=https://example/pull/1 head=abc"),
+	row(5, "orch", "PING v1 task_id=t1"),
+	row(6, "worker", "RESULT v1 task_id=t1 status=ready_for_review pr=https://example/pull/1 head=abc"),
 	row(7, "worker", "RESULT v1 task_id=t2 status=ready_for_review pr=https://example/pull/2 head=def"),
 	row(8, "orch", "TASK v1 task_id=t2-audit head=def brief=briefs/U14.md", "audit"),
-	row(9, "audit", "AGMSG-VERDICT v1 task_id=t2-audit verdict=correct head=def findings=0"),
+	row(9, "audit", "VERDICT v1 task_id=t2-audit verdict=correct head=def findings=0"),
 	row(10, "orch", "MERGED v1 task_id=t2 sha=0123456"),
 	row(11, "orch", "TASK v1 task_id=t3 brief=briefs/U11.md", "worker"),
 	row(12, "orch", "PONG v1 status=idle"),
@@ -45,17 +45,17 @@ test("another seat's VERDICT settles nothing else: not a worker's on its own uni
 		{ taskId: "t2-audit", owes: "awaiting RESULT", id: 8 },
 	];
 	expect(openItems(tsv([...open, row(13, "worker", "VERDICT v1 task_id=t2 verdict=correct head=def")]), "orch")).toEqual(still);
-	expect(openItems(tsv([...open, row(13, "worker", "AGMSG-VERDICT v1 task_id=t2-audit verdict=correct head=def")]), "orch")).toEqual(still);
+	expect(openItems(tsv([...open, row(13, "worker", "VERDICT v1 task_id=t2-audit verdict=correct head=def")]), "orch")).toEqual(still);
 	expect(openItems(tsv([...open, row(13, "audit", "VERDICT v1 task_id=t9-audit verdict=correct head=def")]), "orch")).toEqual(still);
 });
 
 test("a peer's RESULT on its own unit opens nothing for a seat that did not task it (U33c: every seat loads the gate)", () => {
 	// The worker's view of the shared thread: its own TASK from orch, a peer's RESULT, the peer's audit traffic.
 	const thread = [
-		row(3, "orch", "AGMSG-TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
-		row(4, "orch", "AGMSG-TASK v1 task_id=t5 brief=briefs/U5.md", "peer"),
-		row(5, "peer", "AGMSG-RESULT v1 task_id=t5 status=ready_for_review pr=https://example/pull/5 head=aaa"),
-		row(6, "orch", "AGMSG-TASK v1 task_id=t5-audit head=aaa", "audit"),
+		row(3, "orch", "TASK v1 task_id=t1 brief=briefs/U9.md", "worker"),
+		row(4, "orch", "TASK v1 task_id=t5 brief=briefs/U5.md", "peer"),
+		row(5, "peer", "RESULT v1 task_id=t5 status=ready_for_review pr=https://example/pull/5 head=aaa"),
+		row(6, "orch", "TASK v1 task_id=t5-audit head=aaa", "audit"),
 	];
 	expect(openItems(tsv(thread), "worker")).toEqual([]);
 	expect(openItems(tsv(thread), "audit")).toEqual([]);
@@ -67,6 +67,53 @@ test("a peer's RESULT on its own unit opens nothing for a seat that did not task
 	]);
 	const listed = [row(3, "orch", "TASK v1 task_id=t7", "peer,worker"), row(4, "worker", "RESULT v1 task_id=t7 status=done")];
 	expect(openItems(tsv(listed), "orch")).toEqual([{ taskId: "t7", owes: "owes a VERDICT, MERGED or HOLD line", id: 4 }]);
+});
+
+test("an older sender's AGMSG- prefix is ignored: one prefixed row per kind moves its task like the plain row (U35)", () => {
+	const plain = [
+		row(3, "orch", "TASK v1 task_id=t1", "worker"),
+		row(4, "worker", "RESULT v1 task_id=t1 status=ready_for_review head=abc"),
+		row(5, "orch", "TASK v1 task_id=t2", "worker"),
+		row(6, "orch", "TASK v1 task_id=t2-audit head=def", "audit"),
+		row(7, "audit", "VERDICT v1 task_id=t2-audit verdict=correct head=def"),
+		row(8, "orch", "TASK v1 task_id=t3", "worker"),
+		row(9, "orch", "MERGED v1 task_id=t3 sha=0123456"),
+		row(10, "orch", "TASK v1 task_id=t4", "worker"),
+		row(11, "orch", "HOLD v1 task_id=t4 note=waiting"),
+		row(12, "orch", "TASK v1 task_id=t5", "worker"),
+		row(13, "worker", "RESULT v1 task_id=t5 status=ready_for_review head=fed"),
+		row(14, "orch", "VERDICT v1 task_id=t5 verdict=correct"),
+	];
+	const prefixed = plain.map(line => {
+		const cells = line.split("\t");
+		return [...cells.slice(0, 4), `AGMSG-${cells[4]}`, `AGMSG-${cells[5]}`].join("\t");
+	});
+	expect(prefixed.every(line => line.split("\t")[4].startsWith("AGMSG-"))).toBe(true);
+	const expected = [
+		{ taskId: "t1", owes: "owes a VERDICT, MERGED or HOLD line", id: 4 },
+		{ taskId: "t2", owes: "awaiting RESULT", id: 5 },
+	];
+	expect(openItems(tsv(plain), "orch")).toEqual(expected);
+	expect(openItems(tsv(prefixed), "orch")).toEqual(expected);
+	// A mix of old and new senders on one thread reads the same.
+	expect(openItems(tsv(plain.map((line, index) => (index % 2 ? prefixed[index] : line))), "orch")).toEqual(expected);
+});
+
+test("a measure-request, its measured answer and a status=question PONG move nothing (U35)", () => {
+	const audit = [
+		row(3, "orch", "TASK v1 task_id=t7-audit head=abc brief=b.md", "audit"),
+		row(4, "audit", "PONG v1 task_id=t7-audit status=measure-request note=bun-test expect=pass"),
+		row(5, "orch", "PONG v1 task_id=t7-audit status=measured note=pass"),
+		row(6, "worker", "PONG v1 task_id=t7 status=question note=scope"),
+		row(7, "peer", "AGMSG-PONG v1 task_id=t7-audit status=question note=x"),
+	];
+	const awaiting = [{ taskId: "t7-audit", owes: "awaiting RESULT", id: 3 }];
+	expect(openItems(tsv(audit), "orch")).toEqual(awaiting);
+	expect(openItems(tsv(audit), "audit")).toEqual([]);
+	expect(openItems(tsv(audit), "worker")).toEqual([]);
+	// The audit seat's VERDICT after the measurement closes the item.
+	const closed = [...audit, row(8, "audit", "VERDICT v1 task_id=t7-audit verdict=correct head=abc")];
+	expect(openItems(tsv(closed), "orch")).toEqual([]);
 });
 
 test("the message lists every item with its row and both ways out", () => {

@@ -185,7 +185,7 @@ class RegimeEnvTest(unittest.TestCase):
         self.bind()
         for script, args in (
             ("bus-history.sh", ["kit-pilot"]),
-            ("hcom-dispatch", ["kit-pilot", "operator", "worker", "-", "AGMSG-PING v1 task_id=x"]),
+            ("hcom-dispatch", ["kit-pilot", "operator", "worker", "-", "PING v1 task_id=x"]),
         ):
             with self.subTest(script=script):
                 run = subprocess.run(

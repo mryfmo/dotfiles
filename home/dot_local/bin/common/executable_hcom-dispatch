@@ -36,7 +36,7 @@
 # @exitcode 1 Usage, grammar, empty line, store absent, or the sent id was not found.
 # @exitcode * hcom's own status when the send fails (its error on stderr).
 # @example
-#   HCOM_DIR=/path/to/.hcom hcom-dispatch dotfiles orch u5team-nemo w1:p2 'AGMSG-TASK v1 task_id=T1 ...'
+#   HCOM_DIR=/path/to/.hcom hcom-dispatch dotfiles orch u5team-nemo w1:p2 'TASK v1 task_id=T1 ...'
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):

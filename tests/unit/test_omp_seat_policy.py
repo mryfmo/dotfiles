@@ -78,7 +78,7 @@ COMMON_DENIES = [
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
 # The audit seat's reply line (hcom-audit SKILL); it goes on the thread route through `hcom-reply` (U6d).
-VERDICT = "AGMSG-VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
+VERDICT = "VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
     ("bash", "XDG_CACHE_HOME=x gh pr merge 1", "deny"),
     ("bash", "gh pr merge 1 --admin --squash --match-head-commit abc", "deny"),
@@ -180,12 +180,12 @@ TABLE = {
         # `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form included.
         ("bash", f"hcom-reply regime -- '{VERDICT}'", "allow"),
         ("bash", f'hcom-reply regime -- "{VERDICT} findings=0"', "allow"),
-        ("bash", "hcom-reply regime -- 'AGMSG-PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
+        ("bash", "hcom-reply regime -- 'PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
         ("bash", f"hcom-reply regime -- '{VERDICT}' | tee x", "deny"),
         ("bash", f"hcom-reply regime -- '{VERDICT}'; rm x", "deny"),
         (
             "bash",
-            'hcom-reply regime -- "AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
+            'hcom-reply regime -- "VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
             "deny",
         ),
         # An env prefix or a path is not the allowed form.
@@ -197,7 +197,7 @@ TABLE = {
         # The line the audit seat typed on 2026-10-23 (hcom's prompt demands `--name <its name>`).
         (
             "bash",
-            "hcom send --thread regime --intent ack --name tuba -- 'AGMSG-VERDICT v1 task_id=U11-audit-2 verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'",
+            "hcom send --thread regime --intent ack --name tuba -- 'VERDICT v1 task_id=U11-audit-2 verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'",
             "deny",
         ),
         # D-024-136: a caller-chosen `--name worker-soma` is recorded with sender `soma` (bus row 84) and
@@ -362,6 +362,22 @@ class OmpSeatPolicyTest(unittest.TestCase):
         for role, policy in self.policies.items():
             with self.subTest(role=role):
                 self.assertEqual(policy["tools"]["approval"]["task"], "deny")
+
+    def test_a_bus_line_kind_with_or_without_the_retired_prefix_decides_the_same(self):
+        """U35: the rows match on the command, not the line text, so the line kinds' spelling changes no decision."""
+        kinds = ("TASK", "RESULT", "VERDICT", "PONG", "MERGED", "HOLD", "PING")
+        checked = 0
+        for role, rows in TABLE.items():
+            for tool, command, expected in rows:
+                if tool != "bash" or not any(f"{kind} v1" in command for kind in kinds):
+                    continue
+                old = command
+                for kind in kinds:
+                    old = old.replace(f"{kind} v1", f"AGMSG-{kind} v1")
+                with self.subTest(role=role, command=command):
+                    self.assertEqual(decide(self.policies[role], tool, old), expected)
+                    checked += 1
+        self.assertGreaterEqual(checked, 4)
 
     def test_the_mirror_matches_the_documented_examples(self):
         deny = {"match": "rm -rf *", "approval": "deny"}

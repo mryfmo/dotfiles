@@ -57,7 +57,7 @@ export function chooseTeam(flag: unknown, env: string | undefined): { team: stri
 	return { team };
 }
 
-// Per kind (its AGMSG- prefix dropped), what a row from the seat / from another seat does to its
+// Per kind (an older sender's `AGMSG-` prefix is ignored), what a row from the seat / from another seat does to its
 // task: a string opens it with that debt, null closes it, undefined leaves it alone. The newest
 // moving row per task_id decides, so a HOLD or MERGED after a RESULT closes it and a new TASK reopens it.
 export const MOVES: Record<string, [seat: string | null | undefined, other: string | null | undefined]> = {
@@ -78,6 +78,7 @@ export function openItems(tsv: string, seat: string): OpenItem[] {
 		const [id, , from, to, kind = "", body = ""] = line.split("\t");
 		const taskId = /(?:^|\s)task_id=(\S+)/.exec(body)?.[1];
 		if (!taskId) continue;
+		// An older sender's `AGMSG-` prefix is ignored, so a seat still sending it keeps closing items (U35).
 		const name = kind.replace(/^AGMSG-/, "");
 		let move = MOVES[name]?.[from === seat ? 0 : 1];
 		if (from === seat && name === "TASK") tasked.set(taskId, to);

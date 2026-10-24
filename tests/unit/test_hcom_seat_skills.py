@@ -1,4 +1,4 @@
-"""Pin the hcom seat skills' text hygiene sentences (U30): what a seat may type in one bash call, what a bus
+"""Pin the hcom seat skills' text hygiene sentences (U30) and their line kinds (U35): what a seat may type in one bash call, what a bus
 line carries, and who hands the audit findings to the worker."""
 
 import re
@@ -55,8 +55,9 @@ SELF_CHECK = (
     "- (c) destructive scope: every destructive step is scoped to exactly what the brief authorizes and refuses the rest.",
     "- (d) migration: a migration changes the installed state through the real path, not only the generated baseline.",
     (
-        "- (e) local runs: `make unit-test` and the asset validators ran locally (omp seats have no sandbox) and "
-        "their summary lines are pasted."
+        "- (e) local runs: the unit's own tests, `make validate-agent-assets`, `make render-check` and the lints over "
+        "the changed files ran locally (omp seats have no sandbox) and their summary lines are pasted; the full suite "
+        "is CI's evidence, read from the CI job log (`preferences.md` standing order 23)."
     ),
 )
 SELF_CHECK_HELD = "the orchestrator holds a RESULT without the pasted self-check"
@@ -72,6 +73,26 @@ MERGE_ERROR = (
     "else; `MERGED` means the merge happened and its `mergeCommit` is the sha to record, so never run the merge "
     "command twice for one head; the ledger row names the commit that carries the diff (verify with "
     "`git diff <parent> <sha> --stat` non-empty)."
+)
+
+
+# U35: the line kinds without the retired prefix, the audit seat's measure request, and a question left to the
+# orchestrator (ADDENDUM 2026-10-24T09:0xZ).
+KINDS = ("TASK", "RESULT", "VERDICT", "PONG", "MERGED", "HOLD")
+RETIRED_PREFIX = "a leading `AGMSG` on that word, the retired agmsg prefix an older sender may still write, is ignored"
+MEASURE_REQUEST = (
+    "A runtime claim you cannot check from the diff and the CI logs is one `PONG v1 task_id=U<n>-audit "
+    "status=measure-request note=<one command> expect=<one line>`, sent before the VERDICT; never run it yourself; "
+    "the VERDICT follows the orchestrator's `status=measured` answer or your own static judgment when none arrives "
+    "in 10 minutes."
+)
+MEASURED = (
+    "a `measure-request` is run in a `git archive` copy of the head (never in a seat worktree), and the pasted "
+    "output goes back as `PONG v1 task_id=U<n>-audit status=measured note=<pasted line>`"
+)
+QUESTION_NOT_YOURS = (
+    "A `status=question` row from another seat is addressed to the orchestrator; never answer it, not even to say "
+    "you cannot."
 )
 
 
@@ -127,6 +148,36 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(MERGE_ERROR, merge)
         # The re-read comes before the MERGED line is sent.
         self.assertLess(merge.index(MERGE_ERROR), merge.index("Then `MERGED v1"))
+
+    def test_the_skills_name_the_line_kinds_without_the_retired_prefix(self):
+        for skill in (AUDIT, WORKER, ORCHESTRATION):
+            with self.subTest(skill=skill.parent.name):
+                self.assertEqual(skill.read_text().count("AGMSG-"), 0)
+        for skill in (AUDIT, WORKER):
+            with self.subTest(receive=skill.parent.name):
+                receive = step(skill.read_text(), "Receive", 1)
+                self.assertIn("Its first word is the kind, `TASK v1 task_id=<id> ...`", receive)
+                self.assertIn(RETIRED_PREFIX, receive)
+        self.assertIn('hcom send --thread <team> -- "RESULT v1 task_id=<id>', section(WORKER.read_text(), "Reply"))
+        reply = section(AUDIT.read_text(), "Reply")
+        self.assertIn('hcom-reply <team> -- "VERDICT v1 task_id=<id>', reply)
+        self.assertIn('hcom-reply <team> -- "PONG v1 task_id=<id> status=findings', reply)
+        loop = section(ORCHESTRATION.read_text(), "The loop")
+        self.assertIn(
+            '- "TASK v1 task_id=U<n> brief=<path> branch=<branch>"', step(ORCHESTRATION.read_text(), "The loop", 2)
+        )
+        self.assertIn('- "TASK v1 task_id=U<n>-audit head=<sha> brief=<path>"', loop)
+
+    def test_the_audit_seat_asks_for_a_measurement_and_the_orchestrator_runs_it(self):
+        reply = section(AUDIT.read_text(), "Reply")
+        self.assertIn(MEASURE_REQUEST, reply)
+        # The request comes before the VERDICT, in the text as on the bus.
+        self.assertLess(reply.index(MEASURE_REQUEST), reply.index('hcom-reply <team> -- "VERDICT'))
+        self.assertIn(MEASURED, step(ORCHESTRATION.read_text(), "The loop", 4))
+
+    def test_a_question_from_another_seat_is_left_to_the_orchestrator(self):
+        self.assertIn(QUESTION_NOT_YOURS, step(WORKER.read_text(), "Receive", 5))
+        self.assertIn(QUESTION_NOT_YOURS, step(AUDIT.read_text(), "Audit", 4))
 
     def test_the_policies_readme_records_the_measured_cases(self):
         text = section(POLICIES.read_text(), "Text that policies see")

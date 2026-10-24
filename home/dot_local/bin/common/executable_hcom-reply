@@ -32,7 +32,7 @@
 # @exitcode 2 Refused before any send: HCOM_DIR unset or its store absent, a team outside the grammar, no `--` as the second word, an empty line, or no hcom identity.
 # @exitcode * hcom's own status when the send fails (its error on stderr).
 # @example
-#   hcom-reply regime -- 'AGMSG-VERDICT v1 task_id=U11-audit verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'
+#   hcom-reply regime -- 'VERDICT v1 task_id=U11-audit verdict=correct head=3153f9ce6722b4356d1c2738bf5b9cb4dac9bd64'
 set -euo pipefail
 
 usage='usage: hcom-reply <team> -- <line words...>'

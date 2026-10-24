@@ -49,9 +49,10 @@ def render_only_reads(files: list[Path]) -> list[str]:
     return found
 
 
-def shards(start: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def shards(start: Path, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SHARDS), "--start", str(start), *args],
+        cwd=cwd,
         capture_output=True,
         text=True,
         check=False,
@@ -99,8 +100,10 @@ class UnittestShardsTest(unittest.TestCase):
             )
             result = shards(start, "--jobs", "2")
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("4 tests in 2 modules", result.stdout)
-            self.assertRegex(result.stdout, r"\nRan 4 tests in [0-9.]+s \(2 modules, 2 jobs\)\nOK \(skipped=1\)\n\Z")
+            self.assertIn("4 tests in 2 modules, 2 shards", result.stdout)
+            self.assertRegex(
+                result.stdout, r"\nRan 4 tests in [0-9.]+s \(2 modules, 2 shards, 2 jobs\)\nOK \(skipped=1\)\n\Z"
+            )
             # Each module's own verbose unittest output is printed, so a failure reads as it does in the serial run.
             self.assertIn("test_one (test_a.A", result.stdout)
 
@@ -110,7 +113,7 @@ class UnittestShardsTest(unittest.TestCase):
             start = suite(temp, {"test_a.py": PASSING, "test_f.py": failing})
             result = shards(start, "--jobs", "2")
             self.assertEqual(result.returncode, 1)
-            self.assertIn("FAILED module test_f.py: exit 1, FAILED", result.stdout)
+            self.assertIn("FAILED shard test_f.py: exit 1, FAILED", result.stdout)
             self.assertTrue(result.stdout.rstrip().endswith("FAILED (failures=1, skipped=1)"), result.stdout)
 
     def test_a_module_that_does_not_import_fails_the_run(self) -> None:
@@ -118,7 +121,7 @@ class UnittestShardsTest(unittest.TestCase):
             start = suite(temp, {"test_a.py": PASSING, "test_broken.py": "import no_such_module_u39\n"})
             result = shards(start)
             self.assertEqual(result.returncode, 1)
-            self.assertIn("FAILED module test_broken.py", result.stdout)
+            self.assertIn("FAILED shard test_broken.py", result.stdout)
 
     def test_a_module_that_dies_without_a_summary_fails_the_run(self) -> None:
         # A shard that exits 0 before unittest prints its summary must not read as a pass.
@@ -127,7 +130,7 @@ class UnittestShardsTest(unittest.TestCase):
             start = suite(temp, {"test_a.py": PASSING, "test_d.py": dying})
             result = shards(start)
             self.assertEqual(result.returncode, 1)
-            self.assertIn("FAILED module test_d.py: exit 0, no unittest summary", result.stdout)
+            self.assertIn("FAILED shard test_d.py: exit 0, no unittest summary", result.stdout)
 
     def test_a_module_that_runs_fewer_tests_than_discovery_found_fails_the_run(self) -> None:
         # The parent counts with discovery; a shard whose own run sees fewer tests (here: a module that drops a
@@ -164,7 +167,7 @@ class UnittestShardsTest(unittest.TestCase):
             (package / "test_a.py").write_text("import unittest\n" + textwrap.dedent(PASSING))
             result = shards(start)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("6 tests in 1 modules", result.stdout)
+            self.assertIn("6 tests in 1 modules, 1 shards", result.stdout)
             self.assertIn("\nRan 6 tests in ", result.stdout)
 
     def test_per_file_discovery_that_misses_tests_of_the_whole_fails_before_any_shard_runs(self) -> None:
@@ -185,6 +188,58 @@ class UnittestShardsTest(unittest.TestCase):
             self.assertIn("per-file discovery found 3 tests, one discovery of test*.py 4", result.stderr)
             self.assertNotIn("=====", result.stdout)
 
+    def test_discovery_imports_from_the_working_directory_like_python_m_unittest(self) -> None:
+        # test_validate_agent_assets.py imports tests.unit.test_generate_agent_configs: the parent's count must
+        # import it as `python -m unittest` does, or the count check fails a passing suite.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            unit = root / "tests/unit"
+            unit.mkdir(parents=True)
+            (unit / "helper_values.py").write_text("VALUE = 1\n")
+            (unit / "test_imports.py").write_text(
+                "import unittest\n\nfrom tests.unit.helper_values import VALUE\n\n"
+                "class I(unittest.TestCase):\n    def test_i(self):\n        self.assertEqual(VALUE, 1)\n\n"
+                "    def test_j(self):\n        self.assertEqual(VALUE, 1)\n"
+            )
+            result = shards(Path("tests/unit"), cwd=root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            # A failed import counts as one test, so two tests tell it from a pass.
+            self.assertIn("2 tests in 1 modules, 1 shards", result.stdout)
+
+    def test_a_big_module_runs_as_several_shards_that_select_exactly_its_tests(self) -> None:
+        # test_a is a prefix of test_ab: a substring -k pattern would run it twice and fail the count.
+        with tempfile.TemporaryDirectory() as temp:
+            big = "class S(unittest.TestCase):\n" + "".join(
+                f"    def test_{name}(self):\n        pass\n" for name in ("a", "ab", "abc", "b", "c")
+            )
+            start = suite(temp, {"test_big.py": big, "test_small.py": PASSING})
+            result = shards(start, "--split", "2")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("8 tests in 2 modules, 5 shards", result.stdout)
+            for index in (1, 2, 3):
+                self.assertIn(f"===== test_big.py[{index}/3]: ", result.stdout)
+            self.assertEqual(1, result.stdout.count("test_ab (test_big.S"))
+            self.assertIn("(2 modules, 5 shards, ", result.stdout)
+
+    def test_a_failure_in_a_split_module_names_its_shard(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            big = "class S(unittest.TestCase):\n" + "".join(
+                f"    def test_{index}(self):\n        self.assertNotEqual({index}, 3)\n" for index in range(4)
+            )
+            start = suite(temp, {"test_big.py": big})
+            result = shards(start, "--split", "2")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("FAILED shard test_big.py[2/2]: exit 1, FAILED", result.stdout)
+            self.assertNotIn("FAILED shard test_big.py[1/2]", result.stdout)
+
+    def test_a_module_with_load_tests_is_not_split(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            loaded = "def load_tests(loader, tests, pattern):\n    return tests\n\n" + PASSING
+            start = suite(temp, {"test_loaded.py": loaded})
+            result = shards(start, "--split", "1")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("3 tests in 1 modules, 1 shards", result.stdout)
+
     def test_an_empty_start_directory_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             start = suite(temp, {})
@@ -195,9 +250,17 @@ class UnittestShardsTest(unittest.TestCase):
 
 class MakeUnitTestTest(unittest.TestCase):
     def make(self, *args: str) -> str:
-        env = {key: value for key, value in os.environ.items() if key not in {"UNIT_TEST_JOBS", "MAKEFLAGS"}}
+        # A make that runs this suite passes MAKELEVEL and MAKEFLAGS down; GNU make then prints "Entering directory".
+        env = {
+            key: value for key, value in os.environ.items() if key not in {"UNIT_TEST_JOBS", "MAKEFLAGS", "MAKELEVEL"}
+        }
         return subprocess.run(
-            ["make", "-n", "unit-test", *args], cwd=ROOT, env=env, capture_output=True, text=True, check=True
+            ["make", "--no-print-directory", "-n", "unit-test", *args],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
 
     def test_the_serial_form_is_the_unchanged_discover_command(self) -> None:

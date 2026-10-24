@@ -209,7 +209,7 @@ def split_chezmoi_diff(output: str) -> dict[str, str]:
     current: str | None = None
     lines: list[str] = []
     for line in output.splitlines(keepends=True):
-        if line.startswith("diff --git a/"):
+        if line.startswith("diff --git a/"):  # lint-comparisons: allow a diff header prefix, not a path
             if current is not None:
                 blocks[current] = "".join(lines)
             # chezmoi never renames, so the header is `a/<path> b/<path>` with equal halves.

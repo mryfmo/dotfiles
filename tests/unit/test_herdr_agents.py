@@ -580,8 +580,8 @@ fi
             stderr=subprocess.PIPE,
         )
 
-    def run_agmsg_bootstrap_helper(
-        self, *, extra_env: dict[str, str] | None = None
+    def run_agmsg_retire_helper(
+        self, *mode: str, extra_env: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
@@ -590,7 +590,7 @@ fi
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), "--bootstrap-agmsg", str(self.workdir)],
+            ["bash", str(SCRIPT), *(mode or ("--retire-agmsg",)), str(self.workdir)],
             cwd=ROOT,
             env=env,
             check=False,
@@ -641,7 +641,7 @@ fi
         self.assertFalse(self.calls_path.exists())
 
     def test_codex_orchestrator_kind_keeps_the_non_seating_modes(self) -> None:
-        result = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"})
+        result = self.run_agmsg_retire_helper(extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("orchestrator_kind", result.stderr)
 
@@ -882,7 +882,7 @@ fi
         self.assertEqual(result.stdout, "")
         self.assertFalse(self.calls_path.exists())  # no herdr or agmsg call
 
-    def test_attach_bootstraps_agmsg_without_starting_a_worker(self) -> None:
+    def test_attach_sets_no_agmsg_delivery_and_starts_no_worker(self) -> None:
         self.install_agmsg_fakes()
         self.write_workspace_state(
             "w-attach",
@@ -893,8 +893,9 @@ fi
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn(f"delivery set both claude-code {self.workdir.resolve()}", calls)
-        self.assertNotIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
+        # The agmsg regime is retired: no mode reinstalls the hooks make update removed.
+        self.assertFalse(any(call.startswith(("delivery ", "doctor ")) for call in calls), calls)
+        self.assertFalse((self.workdir / ".claude/settings.local.json").exists())
         self.assertFalse(any(call.startswith(("pane split", "agent start")) for call in calls), calls)
         self.assertIn("Herdr agents workspace: w-attach", result.stdout)
 
@@ -918,159 +919,122 @@ fi
         self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
         self.assertIn(f"identities {self.workdir.resolve()} claude-code", calls)
 
-    def test_full_mode_skips_agmsg_bootstrap_for_home(self) -> None:
-        self.install_agmsg_fakes()
+    def install_agmsg_retire_fakes(self, *, strip_hooks: bool = True) -> Path:
+        """agmsg fakes for --retire-agmsg: `set off` strips the hooks, leave drops the identity."""
+        scripts = self.install_agmsg_fakes()
+        settings = self.workdir / ".claude/settings.local.json"
+        strip = f"jq 'del(.hooks)' {settings} > {settings}.new && mv {settings}.new {settings}\n" if strip_hooks else ""
+        (scripts / "delivery.sh").write_text(
+            f"#!/usr/bin/env bash\nprintf 'delivery %s\\n' \"$*\" >> {self.calls_path}\n{strip}"
+        )
+        (scripts / "leave.sh").write_text(
+            f"#!/usr/bin/env bash\nprintf 'leave %s\\n' \"$*\" >> {self.calls_path}\n"
+            f": > {scripts / 'claude-identities-output.txt'}\n"
+        )
+        (scripts / "leave.sh").chmod(0o755)
+        settings.parent.mkdir(exist_ok=True)
+        hooks = {
+            event: [
+                {
+                    "matcher": "",
+                    "hooks": [{"type": "command", "command": f"'{scripts}/{hook}' 'claude-code' '{self.workdir}'"}],
+                }
+            ]
+            for event, hook in (
+                ("SessionStart", "session-start.sh"),
+                ("SessionEnd", "session-end.sh"),
+                ("Stop", "check-inbox.sh"),
+            )
+        }
+        settings.write_text(
+            json.dumps(
+                {
+                    "permissions": {
+                        "allow": ["Bash(git status:*)", f"Bash({scripts}/inbox.sh dotfiles-conformance *)"]
+                    },
+                    "hooks": hooks,
+                }
+            )
+        )
+        return scripts
+
+    def test_retire_agmsg_removes_the_hooks_then_leaves_and_a_second_run_does_nothing(self) -> None:
+        scripts = self.install_agmsg_retire_fakes()
+        settings = self.workdir.resolve() / ".claude/settings.local.json"
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            [c for c in self.calls_path.read_text().splitlines() if c.startswith(("delivery ", "leave "))],
+            [
+                f"delivery set off claude-code {self.workdir.resolve()}",
+                "leave dotfiles-conformance claude-orchestrator",
+            ],
+        )
+        self.assertEqual(
+            result.stdout,
+            f"agmsg retired: removed the agmsg hooks from {settings}\n"
+            f"agmsg retired: {settings} keeps the allow rule Bash({scripts}/inbox.sh dotfiles-conformance *)"
+            " (delivery.sh set off leaves permissions alone)\n"
+            "agmsg retired: claude-orchestrator left team dotfiles-conformance\n",
+        )
+        self.assertNotIn("hooks", json.loads(settings.read_text()))
+
+        self.calls_path.unlink()
+        again = self.run_agmsg_retire_helper()
+
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(again.stdout, f"agmsg already retired for {self.workdir.resolve()}\n")
+        self.assertFalse(
+            any(c.startswith(("delivery ", "leave ")) for c in self.calls_path.read_text().splitlines()),
+            self.calls_path.read_text(),
+        )
+
+    def test_retire_agmsg_fails_when_a_hook_survives_set_off(self) -> None:
+        self.install_agmsg_retire_fakes(strip_hooks=False)
+        settings = self.workdir.resolve() / ".claude/settings.local.json"
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"agmsg hooks remain in {settings} after delivery.sh set off claude-code", result.stderr)
+        self.assertNotIn("agmsg retired", result.stdout)
+        # The identity stays until its hooks are gone.
+        self.assertFalse(any(c.startswith("leave ") for c in self.calls_path.read_text().splitlines()))
+
+    def test_retire_agmsg_reports_a_missing_delivery_script_and_still_leaves(self) -> None:
+        scripts = self.install_agmsg_retire_fakes()
+        (scripts / "delivery.sh").unlink()
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"agmsg delivery script not found; skipping hook removal: {scripts}/delivery.sh", result.stderr)
+        self.assertEqual(result.stdout, "agmsg retired: claude-orchestrator left team dotfiles-conformance\n")
+
+    def test_retire_agmsg_refuses_home_without_agmsg_calls(self) -> None:
+        self.install_agmsg_retire_fakes()
         self.workdir = self.home_dir
 
-        result = self.run_helper()
+        result = self.run_agmsg_retire_helper()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
+        self.assertIn("Skipping agmsg retire for $HOME", result.stderr)
+        self.assertEqual(result.stdout, "")
         calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
-        self.assertFalse(any(call.startswith(("delivery ", "identities ")) for call in calls))
+        self.assertFalse(any(call.startswith(("delivery ", "identities ", "leave ")) for call in calls), calls)
 
-    def test_attach_reports_agmsg_skip_when_not_installed(self) -> None:
-        self.write_workspace_state(
-            "w-attach",
-            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
-        )
+    def test_bootstrap_agmsg_is_retired(self) -> None:
+        self.install_agmsg_retire_fakes()
 
-        result = self.run_attach_helper(in_herdr=True)
+        result = self.run_agmsg_retire_helper("--bootstrap-agmsg")
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("agmsg delivery script not found; skipping bootstrap", result.stderr)
-
-    def test_attach_ignores_agmsg_bootstrap_failure(self) -> None:
-        self.install_agmsg_fakes(delivery_exit=42, identities_output="")
-        self.write_workspace_state(
-            "w-attach",
-            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
-        )
-
-        result = self.run_attach_helper(in_herdr=True)
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_bootstrap_only_skips_all_delivery_when_both_hooks_exist(self) -> None:
-        scripts = self.install_agmsg_fakes()
-        self.write_agmsg_turn_hook(scripts)
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertFalse(any(call.startswith("delivery ") for call in calls))
-        # The main checkout only carries the orchestrator: no codex identity check.
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertEqual(
-            [call for call in calls if call.startswith("identities ")],
-            [f"identities {self.workdir.resolve()} claude-code"],
+            result.stderr, "herdr-agents: --bootstrap-agmsg is retired; run herdr-agents --retire-agmsg [DIR]\n"
         )
-
-    def test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing(
-        self,
-    ) -> None:
-        scripts = self.install_agmsg_fakes()
-        self.write_agmsg_turn_hook(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertEqual(
-            [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
-        )
-        self.assertIn("next Claude Code session", result.stderr)
-
-    def test_bootstrap_only_never_sets_codex_delivery_in_the_main_checkout(self) -> None:
-        self.install_agmsg_fakes()
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        # Workers are seated in linked worktrees, each with its own hooks.
-        self.assertEqual(
-            [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
-        )
-        self.assertNotIn("/hooks", result.stderr)
-
-    def test_bootstrap_only_creates_missing_herdr_log_directory(self) -> None:
-        self.install_agmsg_fakes()
-        shutil.rmtree(self.home_dir / ".config/herdr")
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertTrue((self.home_dir / ".config/herdr").is_dir())
-
-    def test_bootstrap_only_warns_for_missing_claude_identity_without_joining(
-        self,
-    ) -> None:
-        scripts = self.install_agmsg_fakes(claude_identities_output="")
-        self.write_agmsg_turn_hook(scripts)
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("No agmsg Claude Code identity", result.stderr)
-        self.assertIn(
-            f"run: AGMSG_RESOLVE_PROJECT=0 {scripts}/join.sh <team> <agent-name> claude-code",
-            result.stderr,
-        )
-        self.assertFalse(any(call.startswith("join ") for call in self.calls_path.read_text().splitlines()))
-
-    def test_bootstrap_accepts_same_identity_in_multiple_teams(self) -> None:
-        scripts = self.install_agmsg_fakes(
-            identities_output="team-a\tcodex-worker\nteam-b\tcodex-worker",
-            claude_identities_output="team-a\tclaude-deep-dot\nteam-b\tclaude-deep-dot",
-        )
-        self.write_agmsg_turn_hook(scripts)
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertNotIn("Multiple agmsg", result.stderr)
-        self.assertNotIn("No agmsg", result.stderr)
-
-    def test_bootstrap_only_warns_for_multiple_claude_identities(self) -> None:
-        scripts = self.install_agmsg_fakes(
-            claude_identities_output=("dotfiles-conformance\tclaude-a\ndotfiles-conformance\tclaude-b")
-        )
-        self.write_agmsg_turn_hook(scripts)
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Multiple agmsg Claude Code identities", result.stderr)
-        self.assertFalse(any(call.startswith("join ") for call in self.calls_path.read_text().splitlines()))
-
-    def test_bootstrap_only_does_not_call_herdr_or_agents(self) -> None:
-        scripts = self.install_agmsg_fakes()
-        self.write_agmsg_turn_hook(scripts)
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertFalse(any(call.startswith(("workspace ", "pane ", "agent ")) for call in calls))
-
-    def test_bootstrap_only_skips_home_without_agmsg_calls(self) -> None:
-        self.install_agmsg_fakes()
-        self.workdir = self.home_dir
-
-        result = self.run_agmsg_bootstrap_helper()
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
-        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
-        self.assertFalse(any(call.startswith(("delivery ", "identities ")) for call in calls))
+        self.assertFalse(self.calls_path.exists())
 
     RETIRED_STUB = (
         "#!/usr/bin/env bash\n"
@@ -1091,7 +1055,7 @@ fi
     )
 
     def init_git_workdir(self, hooks_path: str | None = None) -> Path:
-        """Make the bootstrap workdir a git main checkout; returns its pre-push hook path."""
+        """Make the retire workdir a git main checkout; returns its pre-push hook path."""
         result = subprocess.run(
             ["git", "init", "-q", "-b", "main", str(self.workdir)], check=False, text=True, capture_output=True
         )
@@ -1104,7 +1068,7 @@ fi
         hooks.mkdir(parents=True, exist_ok=True)
         return hooks / "pre-push"
 
-    def test_bootstrap_removes_its_retired_pre_push_stub(self) -> None:
+    def test_retire_removes_the_retired_pre_push_stub(self) -> None:
         self.install_agmsg_fakes()
         for hooks_path in (None, ".git/custom-hooks"):
             with self.subTest(hooks_path=hooks_path):
@@ -1115,14 +1079,14 @@ fi
                 log = self.workdir / ".git/orch-push-main.log"
                 log.write_text("2026-10-02T00:00:00Z refused refs/heads/main:refs/heads/main\n")
 
-                result = self.run_agmsg_bootstrap_helper()
+                result = self.run_agmsg_retire_helper()
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(hook.exists())
                 self.assertFalse(log.exists())
                 self.assertIn(f"removed the retired main-push guard stub at {hook.resolve()}", result.stderr)
 
-    def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
+    def test_retire_leaves_a_foreign_pre_push_hook_alone(self) -> None:
         self.install_agmsg_fakes()
         edited = self.RETIRED_STUB.replace('exit "${status}"\n', './scripts/local-checks.sh\nexit "${status}"\n')
         self.assertNotEqual(edited, self.RETIRED_STUB)
@@ -1143,7 +1107,7 @@ fi
                 log = self.workdir / ".git/orch-push-main.log"
                 log.write_text("kept\n")
 
-                result = self.run_agmsg_bootstrap_helper()
+                result = self.run_agmsg_retire_helper()
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(hook.read_bytes(), content.encode())
@@ -1153,7 +1117,7 @@ fi
                     f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
                 )
 
-    def test_make_update_includes_agmsg_bootstrap_and_upgrade_is_gone(self) -> None:
+    def test_make_update_retires_agmsg_and_upgrade_is_gone(self) -> None:
         result = subprocess.run(
             ["make", "-n", "-f", str(MAKEFILE), "update"],
             cwd=ROOT,
@@ -1163,7 +1127,8 @@ fi
             stderr=subprocess.PIPE,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("make agmsg-bootstrap", result.stdout)
+        self.assertIn("make agmsg-retire", result.stdout)
+        self.assertNotIn("agmsg-bootstrap", result.stdout)
 
         upgrade = subprocess.run(
             ["make", "-n", "-f", str(MAKEFILE), "upgrade"],
@@ -1768,19 +1733,6 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_bootstrap_with_claude_worker_leaves_codex_hooks_alone(self) -> None:
-        scripts = self.install_agmsg_fakes(identities_output="")
-        self.write_agmsg_claude_hooks(scripts)
-
-        result = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse((self.workdir / ".codex/hooks.json").exists())
-        self.assertNotIn("No agmsg Codex identity", result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertNotIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
-        self.assertFalse(any(call.endswith(" codex") for call in calls), calls)
-
     def test_pane_creation_propagates_explicit_fpath(self) -> None:
         result = self.run_helper(extra_env={"FPATH": "/safe/zsh/functions"})
 
@@ -1912,18 +1864,6 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
             (scripts / name).write_text("#!/usr/bin/env bash\n" + body)
             (scripts / name).chmod(0o755)
         return worktree
-
-    def test_bootstrap_adds_claude_worker_merge_denials(self) -> None:
-        worktree = self.write_worktree_seat()
-        subprocess.run(
-            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
-            check=True,
-            capture_output=True,
-        )
-        result = self.run_helper("--bootstrap-agmsg")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        settings = json.loads((worktree / ".claude/settings.local.json").read_text())
-        self.assertEqual(settings["permissions"]["deny"], CLAUDE_WORKER_MERGE_DENY)
 
     def test_add_worker_defaults_to_the_manifest_worktree_and_refuses_a_non_worktree_path(self) -> None:
         worktree = self.write_worktree_seat()
@@ -4656,14 +4596,13 @@ esac
         )
         self.assertIn("workspace focus w-old", calls)
 
-    def test_attach_completes_bootstrap_on_a_self_named_pair(self) -> None:
+    def test_attach_completes_on_a_self_named_pair(self) -> None:
         self.write_self_named_pair()
 
         result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("refusing repair", result.stderr)
-        self.assertTrue(any(c.startswith("doctor ") for c in self.calls()), self.calls())
         self.assertIn("Herdr agents workspace: w-old", result.stdout)
 
     def test_worker_seat_label_comes_from_the_worker_worktree_registration(self) -> None:

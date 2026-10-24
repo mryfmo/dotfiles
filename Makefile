@@ -121,7 +121,7 @@ update-tree:
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Herdr server unreachable; skipping config reload." >&2 ;; \
 	esac
-	$(MAKE) agmsg-bootstrap
+	$(MAKE) agmsg-retire
 
 .PHONY: apply
 apply: update
@@ -158,12 +158,13 @@ usage-snapshot:
 usage-report:
 	uv run python scripts/usage-report.py
 
-.PHONY: agmsg-bootstrap
-agmsg-bootstrap:
+.PHONY: agmsg-retire
+# The agmsg regime is retired (E1 of plan 025): remove its hooks and identity from this checkout.
+agmsg-retire:
 	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \
-		bash home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg "$(CURDIR)"; \
+		bash home/dot_local/bin/common/executable_herdr-agents --retire-agmsg "$(CURDIR)"; \
 	else \
-		echo "Herdr agents source helper not found; skipping agmsg bootstrap."; \
+		echo "Herdr agents source helper not found; skipping agmsg retire."; \
 	fi
 
 .PHONY: watch

@@ -26,9 +26,10 @@
 #   it, claim the orchestrator's agmsg seat outside the sandbox under the
 #   composite `<session_id>.<claude pid>` instance id (`seat_claim=` line),
 #   followed in a regime repository by the `agmsg-orchestration:` directive
-#   line. agmsg bootstrap also removes the pre-push stub that earlier versions
-#   wrote for the retired main-push guard; the GitHub ruleset on `main` is the
-#   boundary.
+#   line. Retire mode (--retire-agmsg, run by `make update`) turns the
+#   checkout's agmsg wiring off and also removes the pre-push stub that earlier
+#   versions wrote for the retired main-push guard; the GitHub ruleset on
+#   `main` is the boundary.
 #   A codex worker (an --add-worker seat) is launched with
 #   `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`,
 #   so it never prompts and out-of-sandbox actions fail instead of escalating.
@@ -37,7 +38,8 @@
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Retired: exits 2 naming --remove-worker then --add-worker.
-# @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
+# @option --retire-agmsg Remove the checkout's agmsg hooks and leave its agmsg teams without changing Herdr panes.
+# @option --bootstrap-agmsg Retired: exits 2 naming --retire-agmsg.
 # @option --audit <sha> Run the read-only `codex <audit profile args> exec` auditor for <sha> in the workspace's audit tab.
 # @option --out <path> Audit evidence path, relative to DIR. Defaults to
 #   `.orchestration/validation/audit-<sha>.md`.
@@ -76,7 +78,7 @@
 # @example
 #   herdr-agents --add-worker .claude/worktrees/worker-c --kind claude
 # @example
-#   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles
+#   herdr-agents --retire-agmsg ~/Workspace/dotfiles
 # @example
 #   herdr-agents --audit 926d9f1 --out .orchestration/validation/T31-audit.md ~/Workspace/dotfiles
 
@@ -87,7 +89,7 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-agents [DIR]
        herdr-agents --attach
-       herdr-agents --bootstrap-agmsg [DIR]
+       herdr-agents --retire-agmsg [DIR]
        herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]
        herdr-agents --add-worker [<worktree>] [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
        herdr-agents --remove-worker <worktree> [--force] [--stale] [DIR]
@@ -119,9 +121,14 @@ orchestrator identity is looked up as the kind's agmsg type, claude-code or
 codex), and nothing otherwise; it needs no Herdr server.
 --restart-worker is retired: it exits 2 and names --remove-worker followed by
 --add-worker, which apply new worker launch arguments.
-Bootstrap mode only configures missing repo-scoped agmsg hooks and removes the
-pre-push stub that earlier versions wrote for the retired main-push guard (any
-other pre-push hook is left alone); the GitHub ruleset on main is the boundary.
+Retire mode turns the agmsg regime off for DIR (E1 of plan 025): it removes
+every agmsg hook from DIR/.claude/settings.local.json with delivery.sh set off,
+makes each claude-code agmsg identity registered at DIR leave its team, and
+prints one line per action, or `agmsg already retired for DIR` when there was
+nothing to do. It also removes the pre-push stub that earlier versions wrote
+for the retired main-push guard (any other pre-push hook is left alone); the
+GitHub ruleset on main is the boundary. --bootstrap-agmsg is retired: it exits
+2 and names --retire-agmsg.
 Audit mode runs the read-only Codex audit of <sha> in the existing managed
 workspace's audit tab (created once, then reused and left open), tees it to
 PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
@@ -306,8 +313,7 @@ function ensure_worker_identity() {
         return 0
     fi
     seated="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${worktree}" "${agent_type}" 2> /dev/null | sort -u)" || seated=""
-    # One name in several teams is one seat (distinct names decide, as in
-    # distinct_agmsg_identity_count).
+    # One name in several teams is one seat (distinct names decide).
     if [[ "$(cut -f 2 <<< "${seated}" | sort -u | grep -c .)" -gt 1 ]]; then
         printf 'herdr-agents: several agmsg %s identities are registered at %s (%s); refusing to pick one.\n' "${agent_type}" "${worktree}" "$(cut -f 2 <<< "${seated}" | sort -u | tr '\n' ' ' | sed 's/ $//')" >&2
         exit 2
@@ -1226,7 +1232,7 @@ function load_seat_labels() {
 
     seat_orchestrator_labels='[]'
     seat_worker_labels='[]'
-    # $HOME is never an agmsg project (see bootstrap_agmsg).
+    # $HOME is never an agmsg project (see retire_agmsg).
     [[ "$(cd -- "$1" && pwd -P)" != "$(cd -- "${HOME}" && pwd -P)" ]] || return 0
     [[ -x ${scripts}/identities.sh ]] || return 0
     if common="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
@@ -1355,24 +1361,6 @@ function worker_agmsg_type() {
     esac
 }
 
-# @description Count the distinct agmsg identity names registered for a path and type.
-#   identities.sh is an exact (spelling-normalized only) lookup of the given
-#   path, so this counts registrations at DIR itself, never ones under a nested
-#   or sibling worktree. Upstream project resolution (#92: SessionStart marker,
-#   nearest registered ancestor, git common dir) lives in join.sh, whoami.sh,
-#   actas-claim.sh, reset.sh, and watch.sh instead; every worker pane this file
-#   creates exports AGMSG_RESOLVE_PROJECT=0 so those calls keep the worker's own
-#   path instead of resolving to the orchestrator's main checkout.
-# @arg $1 workdir Repository path used for repo-scoped agmsg registration.
-# @arg $2 string agmsg agent type.
-function distinct_agmsg_identity_count() {
-    local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh"
-    local count
-
-    count="$("${identities}" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c .)" || true
-    printf '%s\n' "${count:-0}"
-}
-
 # @description Remove the pre-push stub that earlier `--bootstrap-agmsg` runs
 #   wrote for the retired main-push guard, and its decision log. The GitHub
 #   ruleset on `main` is the boundary now, and with the guard mode gone the
@@ -1401,80 +1389,74 @@ function remove_retired_pre_push_stub() {
     fi
 }
 
-# @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks,
-#   after removing the retired main-push guard stub (remove_retired_pre_push_stub).
+# @description Report whether a Claude Code settings file carries an agmsg hook.
+# @arg $1 path Settings file.
+# @exitcode 0 When any hook command contains `agmsg/scripts/`.
+function has_agmsg_hooks() {
+    [[ -f $1 ]] && jq -e 'any(.hooks[]?[]?.hooks[]?; (.command // "") | contains("agmsg/scripts/"))' "$1" > /dev/null 2>&1
+}
+
+# @description Skip $HOME or turn the checkout's agmsg wiring off: remove the
+#   agmsg hooks from DIR/.claude/settings.local.json with `delivery.sh set off`
+#   and make every claude-code identity registered at DIR leave its team, after
+#   removing the retired main-push guard stub (remove_retired_pre_push_stub).
+#   Prints one line per action, or one `agmsg already retired` line. delivery.sh
+#   never touches permissions, so an agmsg allow rule it leaves is reported,
+#   never edited here.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
-function bootstrap_agmsg() {
+# @exitcode 1 When an agmsg hook survives `set off` or leave.sh fails.
+function retire_agmsg() {
     local workdir="$1"
 
     if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
-        printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
+        printf "Skipping agmsg retire for \$HOME; use a repository directory instead.\n" >&2
         return 0
     fi
     remove_retired_pre_push_stub "$(cd -- "${workdir}" && pwd -P)"
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
-    local doctor="${scripts}/doctor.sh"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
-    local agent_type
-    local agent_label
-    local agent_types=(claude-code)
+    local acted=false rows team name rule
 
-    # Workers are seated in linked worktrees with their own hooks there, so
-    # the main checkout only carries the orchestrator's claude-code identity.
-    if [[ ! -f ${delivery} ]]; then
-        printf 'agmsg delivery script not found; skipping bootstrap: %s\n' "${delivery}" >&2
-        return 0
-    fi
     mkdir -p "${log_file%/*}"
-    if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
-        'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
-        "${claude_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
-            printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
+    if has_agmsg_hooks "${claude_hooks_file}"; then
+        acted=true
+        if [[ ! -f ${delivery} ]]; then
+            printf 'agmsg delivery script not found; skipping hook removal: %s\n' "${delivery}" >&2
+        else
+            "${delivery}" set off claude-code "${workdir}" >> "${log_file}" 2>&1 || true
+            if has_agmsg_hooks "${claude_hooks_file}"; then
+                printf 'herdr-agents: agmsg hooks remain in %s after delivery.sh set off claude-code %s (log: %s)\n' \
+                    "${claude_hooks_file}" "${workdir}" "${log_file}" >&2
+                exit 1
+            fi
+            printf 'agmsg retired: removed the agmsg hooks from %s\n' "${claude_hooks_file}"
+            while IFS= read -r rule; do
+                [[ -z ${rule} ]] || printf 'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n' "${claude_hooks_file}" "${rule}"
+            done < <(jq -r '.permissions.allow[]? | select(contains("agmsg/scripts/"))' "${claude_hooks_file}" 2> /dev/null)
         fi
     fi
 
-    if [[ ! -x ${doctor} ]]; then
-        printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2
-        return 0
-    fi
-    for agent_type in "${agent_types[@]}"; do
-        local doctor_output doctor_status has_registration=true
-        local count
-
-        if [[ ${agent_type} == codex ]]; then
-            agent_label=Codex
-        else
-            agent_label="Claude Code"
+    rows=""
+    [[ ! -x ${scripts}/identities.sh ]] ||
+        rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null | sort -u)" || rows=""
+    while IFS=$'\t' read -r team name; do
+        [[ -n ${team} && -n ${name} ]] || continue
+        acted=true
+        if [[ ! -x ${scripts}/leave.sh ]]; then
+            printf 'agmsg leave script not found; skipping team leave for %s: %s\n' "${name}" "${scripts}/leave.sh" >&2
+            continue
         fi
-
-        # doctor.sh reports general per-project health (registered, warnings);
-        # it does not treat multiple registrations for one type as a problem,
-        # so the ambiguity check below stays on the counting helper.
-        if doctor_output="$("${doctor}" --project "${workdir}" --type "${agent_type}" 2>&1)"; then
-            :
-        else
-            doctor_status=$?
-            if ((doctor_status == 2)) && [[ ${doctor_output} == *"no registrations match this scope"* ]]; then
-                has_registration=false
-                printf 'No agmsg %s identity for %s; run: AGMSG_RESOLVE_PROJECT=0 %s/join.sh <team> <agent-name> %s "%s"\n' \
-                    "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
-            else
-                printf '%s\n' "${doctor_output}" >> "${log_file}"
-            fi
+        if ! "${scripts}/leave.sh" "${team}" "${name}" >> "${log_file}" 2>&1; then
+            printf 'herdr-agents: leave.sh %s %s failed (log: %s)\n' "${team}" "${name}" "${log_file}" >&2
+            exit 1
         fi
+        printf 'agmsg retired: %s left team %s\n' "${name}" "${team}"
+    done <<< "${rows}"
 
-        if [[ ${has_registration} == true ]]; then
-            count="$(distinct_agmsg_identity_count "${workdir}" "${agent_type}")"
-            if ((count > 1)); then
-                printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
-                    "${agent_label}" "${workdir}" >&2
-            fi
-        fi
-    done
+    [[ ${acted} == true ]] || printf 'agmsg already retired for %s\n' "${workdir}"
 }
 
 # @description Return the first pane id without an attached agent.
@@ -1587,6 +1569,12 @@ if [[ ${1:-} == "--restart-worker" ]]; then
     exit 2
 fi
 
+# The agmsg regime is retired (E1 of plan 025): make update retires it instead.
+if [[ ${1:-} == "--bootstrap-agmsg" ]]; then
+    printf 'herdr-agents: --bootstrap-agmsg is retired; run herdr-agents --retire-agmsg [DIR]\n' >&2
+    exit 2
+fi
+
 # The orchestrator's agmsg identity type: the leader the worker modes name,
 # link and despawn under, and the identity --directive looks up.
 orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
@@ -1608,7 +1596,7 @@ fi
 # touching Herdr when the manifest names Codex. The manifest worker's own
 # SessionStart --attach keeps its quiet exit below.
 case "${1:-}" in
---bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
+--retire-agmsg | --add-worker | --remove-worker | --audit) ;;
 *)
     if [[ ${orchestrator_kind} == codex ]] && ! { [[ ${1:-} == --attach ]] && is_manifest_worker_seat "$(pwd -P)"; }; then
         printf 'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n' >&2
@@ -1618,7 +1606,7 @@ case "${1:-}" in
 esac
 
 attach_mode=false
-bootstrap_mode=false
+retire_mode=false
 audit_mode=false
 audit_out=""
 audit_timeout=1800
@@ -1665,8 +1653,8 @@ if [[ ${1:-} == "--attach" ]]; then
         claim_seat_and_print_directive "$(pwd -P)" "${HERDR_PANE_ID}"
         exit 0
     fi
-elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
-    bootstrap_mode=true
+elif [[ ${1:-} == "--retire-agmsg" ]]; then
+    retire_mode=true
     shift
 elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
     if [[ $1 == "--add-worker" ]]; then
@@ -1747,21 +1735,12 @@ if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then
     exit 2
 fi
 
-if [[ ${bootstrap_mode} == true ]]; then
+if [[ ${retire_mode} == true ]]; then
     require_command jq
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
-    worker_worktree="$(resolve_worker_worktree)"
-    bootstrap_agmsg "${workdir}"
-    # Hooks only: an existing worker worktree gets its delivery hook; seating
-    # (worktree creation, identity) stays with the pane-managing modes.
-    if [[ -n ${worker_worktree} && -d ${workdir}/${worker_worktree} ]]; then
-        seat_dir="$(cd -- "${workdir}/${worker_worktree}" && pwd -P)"
-        seat_kind="$(resolve_worker_kind)"
-        ensure_worker_delivery "${seat_kind}" "${seat_dir}"
-        ensure_worker_merge_denials "${seat_kind}" "${seat_dir}"
-    fi
+    retire_agmsg "${workdir}"
     exit 0
 fi
 
@@ -2227,7 +2206,6 @@ if [[ ${attach_mode} == true ]]; then
         rename_pane_unless_seat_named "${claude_pane_id}" claude-orchestrator
     fi
     claim_seat_and_print_directive "${workdir}" "${claude_pane_id}"
-    bootstrap_agmsg "${workdir}"
 
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
     exit 0
@@ -2257,7 +2235,6 @@ if [[ -n ${existing_workspace_id} ]]; then
         fi
         start_claude_in_pane "${claude_pane_id}" "${workspace_id}" "${claude_pane_is_new}"
     fi
-    bootstrap_agmsg "${workdir}"
 
     herdr workspace focus "${workspace_id}"
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
@@ -2283,7 +2260,6 @@ if [[ -z ${root_pane_id} ]]; then
 fi
 
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
-bootstrap_agmsg "${workdir}"
 
 if command -v zed > /dev/null 2>&1; then
     zed "${workdir}" > /dev/null 2>&1 &

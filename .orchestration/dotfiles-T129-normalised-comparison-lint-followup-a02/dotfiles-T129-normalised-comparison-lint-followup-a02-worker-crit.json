@@ -1,0 +1,65 @@
+[
+ {
+  "id": "r1-p1-jq-mask-lits-shrink",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1 (51ba5801..607d4485), Verdict: incorrect; P1 high: jq_mask replaced two slots of its literal view with one character for every ordinary string character, so later string literals moved and LITERAL read the wrong window (a missed R3 and a false one). Fixed in 5b6c5a8a: an escape steps two characters, any other one, in both views; fixture s2.sh (the reviewer's missed-hit form), red at 607d4485 (validation 4b), and the mutant restoring the old assignment is killed (5a).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-if-end-operand",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P2 high: if and end were turned into separators, so an if...end expression used as an operand (select(if .a then .url else .path end == $p)) lost its R3. Fixed in 5b6c5a8a: if and end bound like parentheses, then/elif/else/and/or as separators; fixture l2.sh, red at 607d4485, mutant killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-pgrep-mixed-quotes",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P2 high: the pgrep regex missed mixed-quote pattern words (x\"$name\") and flagged an escaped \\$. Fixed in 5b6c5a8a: pgrep and grep -E take their whole shell word (WORD) and expands() decides whether the shell expands a $name in it (outside single quotes, after no backslash); fixtures p2.sh and g2.sh, red at 607d4485, mutants killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-marker-past-closing-quote",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P2 high: comment() read physical lines alone, so a shell comment past the closing quote of a multi-line jq program was not seen and such a program could not be marked. Fixed in 5b6c5a8a: the R3 check also reads the shell comment after the program's closing quote and a jq comment on the hit line; fixture k2.sh, red at 607d4485, mutant killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-continuation-marker",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P2 medium-high: a continued statement is reported at its first line but its comment can only sit on its last, so a newly found hit could never be marked. Fixed in 5b6c5a8a: a marker on any line of the statement accepts it; fixture c2.sh, red at 607d4485, mutant killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p2-multiline-double-quoted-program",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P2 medium: a double-quoted program across lines was skipped as an unclosed quote. Fixed in 5b6c5a8a: a \"...\" program may span lines, and a stray closing quote is one closed nowhere later on its line with text after it (as in \"$(command -v jq)\"); fixture j2.sh, red at 607d4485, mutant killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-fixed",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3, fixed in 5b6c5a8a with fixtures red at 607d4485: no program after a shell separator (j3.sh); an escaped backslash continues nothing, an odd run of trailing backslashes does (c3.sh); a join's separator must be a constant (r2.py); \"^\\\\$name\" and '^'\"$name\"'$' expand (g2.sh). The R3 marker-in-string mutant the reviewer found surviving is now caught by k3.sh.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-residual",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3, residual: a double-quoted program that starts with an expansion (\"${pre}select(...)\") is still read as an expansion word and skipped, the skip the re-plan chose; '|'.join(sorted(map(re.escape, xs))) and set comprehensions are refused although escaped (the conservative direction). The double-quoted unescape mutant survives because detection holds without it.",
+  "resolved": true
+ },
+ {
+  "id": "r1-note-tree",
+  "scope": "review",
+  "path": "",
+  "body": "Round 1 note: the reviewer's --all comparison on the tracked tree agrees with validation 8: one false positive removed (executable_herdr-agents:758, its row dropped), three hits baselined (mise.sh:45 R2, brew.sh:82 and :91 R1; by meaning a platform pair and tap names, consistent with the rule's literal-/ heuristic), three true positives left as warnings in files open tasks name (check-regime-boundary.sh:125, chain-integrate.sh:93 and :106). With the round's fixes the tree output is unchanged.",
+  "resolved": true
+ }
+]

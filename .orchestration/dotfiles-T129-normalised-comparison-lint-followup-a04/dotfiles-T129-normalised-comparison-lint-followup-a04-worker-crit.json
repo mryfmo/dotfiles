@@ -1,0 +1,65 @@
+[
+ {
+  "id": "r1-p2-jq-line-from-decoded-text",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1 (b24d3136..c929569b), Verdict: incorrect; P2 high: program() advanced its line on decoded newlines, so a $'...\\n...' jq program put R3 on a later line (an IndexError past the last line, or a hit accepted by an unrelated statement's marker), and an unquoted word continued by backslash-newline (one Lit whose Value drops it) counted short. Fixed in d74204e6: chars() decodes each literal part from its source (a Lit's source keeps the backslash-newlines its Value drops; a $'\\n' adds no line; a split backslash-newline's trailing backslash is dropped). Fixtures an.sh, uc.sh (red at e520a7fe) in test_jq_hit_lines_follow_the_source_through_escapes_and_continuations; mutants R1a, R1b, R1c killed (validation section 5).",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-continued-statement-scope",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3 high: the innermost statement dropped continued-statement marker coverage ([[ ]] \\ then && ... # marker; case ... \\ then in ... # marker) and narrowed normaliser scope (cd -P ... && [[ ]], x=$(realpath ...) && [[ ]], re=$(escape_regex ...); grep -E). Fixed in d74204e6: a statement's lines are its whole &&, || or | chain's (stmts()), a normaliser counts in the code (comments blanked) of those physical lines, and a case statement runs to its `in`. Fixtures ch.sh to ch5.sh in test_a_chained_or_continued_statement_is_one_statement_for_markers_and_normalisers; mutants R2a, R2b, R2c, M19 killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-extglob-literal",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3 high: static() dropped ExtGlob parts, so [[ $x == @(/a|/b) ]] lost its R1. Fixed in d74204e6: an extglob's pattern is literal text. Fixture eg.sh; mutant R3 killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-json-not-an-ast",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3 medium: JSON that is not a shfmt AST ({}, null, []) gave zero hits. Fixed in d74204e6: anything but a dict whose Type is File refuses with `shfmt gave no JSON AST`; the parse-failure test answers not-json, {}, null and a Word node; the fake mise answers a File node. Mutants M12, M12b killed. Residual: PATH's shfmt version is printed (the job-log probe), not enforced, as amendment 1 specifies PATH first.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-recursion",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3 high: nodes() recursed, so about 250 chained commands raised RecursionError. Fixed in d74204e6: nodes() and stmts() walk iteratively, and a RecursionError from json.loads refuses as no JSON AST. Fixture lc.sh (300 chained commands); mutant R5 (the recursive walk) killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-heredoc-substitution",
+  "scope": "file",
+  "path": "tests/unit/test_lint_comparisons.py",
+  "body": "Round 1, P3 medium (design question): the Hdoc skip only drops statements and comments inside $(...) in unquoted heredoc bodies, which bash executes; hq.sh's reasoned marker hid a data-as-code reader. Decision: the task's Design text says heredoc bodies are excluded from shell-rule and marker scanning, so the exclusion stays (a limit recorded in report.md); hq.sh and hu.sh now carry no reasoned marker, and hu.sh adds a comment inside a heredoc substitution, so mutants M5 (statements) and M5b (comments) are killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-test-gaps",
+  "scope": "file",
+  "path": "tests/unit/test_lint_comparisons.py",
+  "body": "Round 1, P3 high: two mutants survived the module: no double-quote unescaping, and the mise form before PATH's shfmt. Fixed in d74204e6: fixture dq.sh (a jq string holding an escaped backslash) and a PATH-first phase in the fallback test; mutants R1d and M14b killed.",
+  "resolved": true
+ },
+ {
+  "id": "r1-p3-length-expansion",
+  "scope": "file",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, P3 low: [[ ${#path} == 0 ]] was a new false positive. Fixed in d74204e6: a ParamExp with Length is no path-named variable, as on b24d3136. Fixture ln.sh; mutant R8 killed. An empty '' (shfmt omits its Value) found by the tree test while fixing is fixture e0.sh, mutant R4.",
+  "resolved": true
+ },
+ {
+  "id": "r1-chezmoi-deviation",
+  "scope": "review",
+  "path": "scripts/lint-comparisons.py",
+  "body": "Round 1, the reviewer judged sound the one deviation from amendment 1's literal text: a lone {{ include }} / {{ template }} line is the no-op `:` rather than spaces, since two tracked templates wrap only includes in a subshell. includeTemplate was added to the lone-action form (fixture t.sh.tmpl, mutant M16b). Limits recorded: a piped `| include` and a lone include in a case-item position. The deviation is for the orchestrator to accept or amend (report.md).",
+  "resolved": true
+ }
+]

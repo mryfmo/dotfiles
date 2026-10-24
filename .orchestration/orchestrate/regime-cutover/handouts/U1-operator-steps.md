@@ -1,5 +1,7 @@
 # U1 operator steps (pilot-bridge)
 
+**Obsolete (U44, 2026-10-24): do not run rows 1 to 4.** They were the pilot of the bridge route under the `pilot-bridge` profile. U2 landed the bridge as an asset (#461, live-verified by the operator's install and PONG), and the route now runs in the seat profiles: `~/.agents/omp/profiles/worker.yml:3 default: claude-bridge/claude-opus-5-5`, `orchestrator.yml:3 default: claude-bridge/claude-fable-5-1`. The worker nova's transcript holds 1203 `claude-bridge/claude-opus-5-5` turns, 1072 of them ending in `toolUse` (rows 1 and 2's evidence, measured by U44, overview.md "Done predicate, measured"). The leftover profile `~/.omp/profiles/pilot-bridge` is a row in `cleanup-table.md` (U44 additions).
+
 Preconditions, prepared by U2 before any row runs: patch v2 (`contentText`) applied, the package directory `<BRIDGE_DIR>` carries its own `node_modules` (report §5). Nothing here was run by U1; the host Claude login is Keychain-only, so each row needs the operator's session (STANDING 4). Every omp call below is under the real HOME on purpose, so the SDK child finds the host login; expect `~/.claude/settings.json` hooks to fire inside bridge turns (facts v13 §2b; bridge README "Hooks can skip themselves when PI_CODING_AGENT is set").
 
 | # | command (operator terminal, outside the agent sandbox) | expected | source | dry-run |

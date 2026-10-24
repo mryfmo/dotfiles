@@ -322,6 +322,20 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     ]
     if invalid:
         fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
+    deny_read = sandbox.get("filesystem", {}).get("denyRead")
+    if (
+        not isinstance(deny_read, list)
+        or not deny_read
+        or not all(isinstance(path, str) and path.startswith(("/", "~/")) for path in deny_read)
+    ):
+        fail(
+            f"{label}.filesystem.denyRead must be a non-empty list of absolute or ~/ paths "
+            f"(globs are allowed here, unlike allowWrite): {deny_read!r}"
+        )
+    credentials = sandbox.get("credentials", {})
+    files = credentials.get("files") if isinstance(credentials, dict) else None
+    if not isinstance(files, list) or {"path": "~/.ssh", "mode": "deny"} not in files:
+        fail(f"{label}.credentials.files must contain the ~/.ssh deny entry: {files!r}")
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")
@@ -399,6 +413,27 @@ def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
             fail(f"{label}.allow rule {rule!r}: scripts/orchestrator/{lever.group(1)} {reason}")
 
 
+# The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
+# in Edit/Read rules will be ignored"); a trailing `/**` is the directory form and is enforced. Only the `.env` pair
+# keeps its glob, because `sandbox.filesystem.denyRead` covers it for subprocesses (regime-cutover U17).
+GLOB_DENY_RULES = ("Read(.env.*)", "Edit(.env*)")
+FILE_RULE = re.compile(r"(Read|Edit)\((.+)\)")
+
+
+def validate_claude_permissions_deny(permissions: Any, label: str) -> None:
+    deny = permissions.get("deny", []) if isinstance(permissions, dict) else []
+    for rule in deny:
+        match = FILE_RULE.fullmatch(rule) if isinstance(rule, str) else None
+        if not match or rule in GLOB_DENY_RULES:
+            continue
+        path = match.group(2).removesuffix("/**")
+        if any(char in path.rsplit("/", 1)[-1] for char in "*?["):
+            fail(
+                f"{label}.deny rule {rule!r} ends in a glob segment, which the Linux sandbox ignores; only "
+                f"{' and '.join(GLOB_DENY_RULES)} keep a glob, covered for subprocesses by sandbox.filesystem.denyRead"
+            )
+
+
 def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path, os_name))
@@ -418,6 +453,7 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
     validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
+    validate_claude_permissions_deny(settings.get("permissions"), f"{settings_path} permissions")
     validate_claude_sandbox(
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),

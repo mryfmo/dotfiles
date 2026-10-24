@@ -384,8 +384,13 @@ def render_codex(manifest: dict[str, Any]) -> str:
 
 
 def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> dict[str, Any]:
-    """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots."""
+    """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots.
+
+    `filesystem.denyRead` and `credentials` render the same on every OS: the Linux sandbox enforces `denyRead` globs
+    and credential denies but drops the glob forms of Read/Edit permission rules (regime-cutover U17).
+    """
     sandbox = manifest["claude"]["sandbox"]
+    filesystem = sandbox.get("filesystem", {})
     network = dict(sandbox["network"])
     if os_name != "darwin":
         network.pop("allowMachLookup", None)
@@ -399,10 +404,16 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
         "filesystem": {
             "allowWrite": [
                 *manifest["codex"]["sandbox_workspace_write"]["writable_roots"],
-                *sandbox.get("filesystem", {}).get("extra_allow_write", []),
-                *(sandbox.get("filesystem", {}).get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
-            ]
+                *filesystem.get("extra_allow_write", []),
+                *(filesystem.get("darwin_extra_allow_write", []) if os_name == "darwin" else []),
+            ],
+            **({"denyRead": list(filesystem["deny_read"])} if "deny_read" in filesystem else {}),
         },
+        **(
+            {"credentials": {"files": [dict(entry) for entry in sandbox["credentials"]["files"]]}}
+            if "credentials" in sandbox
+            else {}
+        ),
         "network": network,
     }
 

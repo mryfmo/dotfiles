@@ -26,6 +26,11 @@ GENERATOR = ROOT / "scripts/generate-agent-configs.py"
 CHEZMOI = shutil.which("chezmoi") or str(Path.home() / ".local/share/mise/installs/chezmoi/latest/chezmoi")
 NODE = shutil.which("node") or str(Path.home() / ".local/share/mise/installs/node/latest/bin/node")
 JQ = shutil.which("jq") or str(Path.home() / ".local/share/mise/installs/jq/latest/jq")
+# `claude doctor` for the Linux glob check (regime-cutover U17): CI's ubuntu-24.04 leg installs Claude Code through
+# mise and exports CLAUDE_DOCTOR_BIN; elsewhere the test runs when `claude` is on PATH and skips otherwise.
+CLAUDE_DOCTOR_BIN = os.environ.get("CLAUDE_DOCTOR_BIN") or shutil.which("claude")
+LINUX_GLOB_WARNING = "Glob patterns in sandbox permission rules are not fully supported on Linux"
+LINUX_GLOB_FOUND = re.compile(r"Found (\d+) pattern\(s\): (.+?)(?: \((\d+) more\))?\. On Linux")
 # The same fixture as test_codex_config_merge: a profile table whose multiline strings hold header-like lines, with and without a trailing comment.
 MULTILINE_PROFILE = (
     "[agents.reviewer]\n"
@@ -803,6 +808,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     settings["env"],
                 )
                 self.assertFalse(sandbox["network"].get("allowAllUnixSockets", False))
+                self.assertEqual({"files": [{"path": "~/.ssh", "mode": "deny"}]}, sandbox["credentials"])
+                self.assertEqual(["~/**/.env", "~/**/.env.*"], sandbox["filesystem"]["denyRead"])
+                deny = settings["permissions"]["deny"]
+                self.assertIn("Read(.env)", deny)
+                self.assertIn("Read(~/.ssh/**)", deny)
+                self.assertNotIn("Read(id_rsa*)", deny)
+                self.assertNotIn("Read(id_ed25519*)", deny)
 
     def test_linux_sandbox_confines_the_top_level_herdr_agents_invocation(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
@@ -2566,6 +2578,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
 
         self.assertIn("- Edit(.env*)", manifest)
+        self.assertIn("- Read(.env)\n", manifest)
+        self.assertNotIn("- Read(id_rsa*)", manifest)
         self.assertNotIn("- Write(.env*)", manifest)
 
     def test_manifest_keeps_model_ids_only_in_profiles(self) -> None:
@@ -2576,6 +2590,98 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for line in manifest.splitlines():
             if line.startswith(("  model:", "  effortLevel:", "  model_reasoning_effort:")):
                 self.fail(f"model settings must live in model_profiles only: {line.strip()}")
+
+
+def linux_glob_patterns(output: str) -> tuple[int, list[str]] | None:
+    """The count and the named patterns of doctor's Linux glob warning, or None when it prints none."""
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if LINUX_GLOB_WARNING in line:
+            found = LINUX_GLOB_FOUND.search(" ".join(lines[index : index + 4]))
+            if found is None:
+                raise ValueError(f"the glob warning is not in the measured form:\n{output}")
+            return int(found.group(1)), found.group(2).split(", ")
+    return None
+
+
+class LinuxGlobWarningParserTest(unittest.TestCase):
+    def test_the_parser_reads_the_measured_doctor_form(self) -> None:
+        # The operator's paste from a Linux host, Claude Code 2.1.309, 2026-10-24 (brief F2 context 1).
+        measured = (
+            "Warning: Glob patterns in sandbox permission rules are not fully supported on Linux\n"
+            "Fix: Found 4 pattern(s): Read(.env.*), Read(id_rsa*), Read(id_ed25519*) (1 more). "
+            "On Linux, glob patterns in Edit/Read rules will be ignored.\n"
+        )
+        self.assertEqual(linux_glob_patterns(measured), (4, ["Read(.env.*)", "Read(id_rsa*)", "Read(id_ed25519*)"]))
+        pair = measured.replace(
+            "4 pattern(s): Read(.env.*), Read(id_rsa*), Read(id_ed25519*) (1 more)",
+            "2 pattern(s): Read(.env.*), Edit(.env*)",
+        )
+        self.assertEqual(linux_glob_patterns(pair), (2, ["Read(.env.*)", "Edit(.env*)"]))
+        self.assertIsNone(linux_glob_patterns("Claude Code doctor\n1 warning found\n"))
+        with self.assertRaises(ValueError):
+            linux_glob_patterns(measured.replace("Found 4 pattern(s)", "Found four patterns"))
+
+
+class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
+    """`claude doctor` names exactly the `.env` glob pair on Linux, and nothing on macOS (regime-cutover U17).
+
+    The rendered settings load from a scratch CLAUDE_CONFIG_DIR under a scratch HOME, never the real ~/.claude. A
+    control copy with `Read(id_rsa*)` and `Read(id_ed25519*)` added back shows that the instrument sees the warning it
+    checks; should a later Claude Code stop emitting the warning, both runs carry none and the test passes.
+    """
+
+    def setUp(self) -> None:
+        if os.environ.get("CLAUDE_DOCTOR_BIN") and not os.access(os.environ["CLAUDE_DOCTOR_BIN"], os.X_OK):
+            self.fail(f"CLAUDE_DOCTOR_BIN is not executable: {os.environ['CLAUDE_DOCTOR_BIN']}")
+        if not CLAUDE_DOCTOR_BIN:
+            self.skipTest("claude is not on PATH (CI installs it on the ubuntu-24.04 leg)")
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="claude-doctor-test-"))
+        self.addCleanup(shutil.rmtree, self.temp_dir)
+
+    def doctor(self, settings: dict, name: str) -> str:
+        config, home = self.temp_dir / name / "config", self.temp_dir / name / "home"
+        config.mkdir(parents=True)
+        home.mkdir(parents=True)
+        (config / "settings.json").write_text(json.dumps(settings))
+        env = {
+            "PATH": os.environ["PATH"],
+            "HOME": str(home),
+            "CLAUDE_CONFIG_DIR": str(config),
+            "NO_COLOR": "1",
+            "TERM": "dumb",
+            "DISABLE_AUTOUPDATER": "1",
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+        }
+        result = subprocess.run(
+            [CLAUDE_DOCTOR_BIN, "doctor"],
+            cwd=home,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertNotIn("Invalid settings", output, "the rendered settings must load without a schema error")
+        return output
+
+    def test_doctor_names_only_the_env_glob_pair_on_linux(self) -> None:
+        os_name = "linux" if sys.platform.startswith("linux") else "darwin"
+        template = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        settings = json.loads(execute_chezmoi_template(template, self.temp_dir, os_name))
+        control = json.loads(json.dumps(settings))
+        control["permissions"]["deny"] += ["Read(id_rsa*)", "Read(id_ed25519*)"]
+        managed = linux_glob_patterns(self.doctor(settings, "managed"))
+        seen = linux_glob_patterns(self.doctor(control, "control"))
+        if os_name != "linux" or seen is None:
+            self.assertIsNone(managed, "no glob warning off Linux, or none at all once Claude Code stops emitting it")
+            return
+        self.assertIsNotNone(managed, "the .env pair keeps its glob, so Linux doctor still warns about it")
+        self.assertEqual(seen[0], managed[0] + 2, f"the control adds the two key globs: {seen} against {managed}")
+        self.assertEqual((managed[0], sorted(managed[1])), (2, sorted(["Read(.env.*)", "Edit(.env*)"])))
 
 
 if __name__ == "__main__":

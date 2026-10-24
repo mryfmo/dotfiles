@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# @file regime-start
+# @brief Start a program's orchestrator seat, or, as the supervisor's pass, relaunch every registered one that died.
+# @description
+#   Regime-cutover U36: the operator starts one omp seat and talks to it; that seat starts the others (the
+#   hcom-orchestration skill's step 0). Run `regime-start [<program>]` in the repository checkout. The store and
+#   team are an explicit HCOM_DIR and HCOM_TEAM when set; else, for the dotfiles program before its one-time store
+#   move (slug `dotfiles`, no `~/.local/state/hcom/dotfiles/origin`, and `~/.local/state/hcom-regime/hcom.db`
+#   present), the pre-move pair `~/.local/state/hcom-regime` and `regime`, because a seat's environment carries
+#   no HCOM_TEAM and the slug would name another thread (decisions 2026-10-24T10:19:06Z); else the sourced
+#   regime-env derives both (U33). An explicit store must already exist. When a seat tagged `orchestrator` is
+#   alive in the store (hcom status active, listening or blocked) it is reported, not duplicated; otherwise
+#   `hcom-seat orchestrator` (the copy beside this file) launches it from the checkout, and the command waits up
+#   to 120 s for it to be alive. Either way the program is registered for the supervisor in
+#   `~/.local/state/regime-supervisor/<slug>.conf` (toplevel, store, team, program, last seat name), and the
+#   command prints the seat's name and where to type.
+#
+#   `--supervise` is one supervisor pass, run every 60 s by the launchd agent
+#   `com.mryfmo.dotfiles.regime-supervisor` (macOS) or the `regime-supervisor.timer` user unit (Linux). For each
+#   registration with no orchestrator alive in its store it reads hcom's newest stop record of the last seat
+#   (`hcom list --stopped <base name>`): `killed by:cli`, an operator's `hcom kill`, ends the supervision (the
+#   registration is removed); anything else (a crash, a herdr restart, no record) is relaunched like the
+#   interactive form, at most once per backoff window (60 s doubling to 30 minutes after each failed launch,
+#   reset by a seat seen alive). Every decision is a line in `<store>/supervisor.log`. A registration that does
+#   not parse, or an hcom read that fails, is logged and launches nothing. `regime-stop` ends a supervision on
+#   purpose.
+# @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`) whose store `.orchestration/orchestrate/<program>/` must exist; optional.
+# @option --supervise One supervisor pass over every registration; no other argument.
+# @env HCOM_DIR The hcom store (default: as described above).
+# @env HCOM_TEAM The team (default: as described above).
+# @stdout The seat's name and where to type (interactive form).
+# @exitcode 0 The orchestrator is alive, or the pass ran.
+# @exitcode 1 The launch failed or the seat did not come alive within 120 s.
+# @exitcode 2 A refusal, before anything is started.
+# @example
+#   regime-start regime-cutover
+set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+# @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    LEVER_DIR=${dir}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
+
+usage='usage: regime-start [<program>] | regime-start --supervise'
+registry=${HOME}/.local/state/regime-supervisor
+name_grammar='^[a-z0-9][a-z0-9_-]{0,63}$'
+wait_seconds=${REGIME_START_WAIT_SECONDS:-120}
+[[ ${wait_seconds} =~ ^[0-9]+$ ]] || wait_seconds=120
+
+refuse() {
+    echo "regime-start: $*" >&2
+    exit 2
+}
+
+# @description Append one timestamped line to the store's supervisor log; a log that cannot be written is said on stderr.
+# @arg $1 path The hcom store.
+# @arg $@ string The line.
+log_line() {
+    local store=$1 stamp
+    shift
+    stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ) || stamp=unknown-time
+    printf '%s %s\n' "${stamp}" "$*" >> "${store}/supervisor.log" 2> /dev/null ||
+        echo "regime-start: cannot write ${store}/supervisor.log: $*" >&2
+}
+
+# @description Print `<name> <base name>` of every alive seat tagged orchestrator in the store HCOM_DIR names.
+# @exitcode 1 hcom could not be read (a failed read is never "no seat").
+alive_orchestrators() {
+    local listing name base tag status
+    listing=$(hcom list --format '{name} {base_name} {tag} {status}') || return 1
+    while read -r name base tag status; do
+        [[ ${tag} == orchestrator ]] || continue
+        case ${status} in
+        active | listening | blocked) printf '%s %s\n' "${name}" "${base}" ;;
+        esac
+    done <<< "${listing}"
+}
+
+# @description Launch the orchestrator seat from the checkout and wait for it to be alive.
+# @arg $1 path The checkout's toplevel.
+# @stdout `<name> <base name>` of the seat that came alive.
+# @exitcode 1 hcom-seat failed, or no seat was alive within the wait.
+launch_orchestrator() {
+    local top=$1 status=0 waited=0 alive=''
+    (cd "${top}" && "${LEVER_DIR}/hcom-seat" orchestrator) >&2 || status=$?
+    # hcom's status 2 is "still launching": wait for the seat like a ready one.
+    if ((status != 0 && status != 2)); then
+        echo "regime-start: hcom-seat orchestrator exited ${status}" >&2
+        return 1
+    fi
+    while ((waited <= wait_seconds)); do
+        if alive=$(alive_orchestrators) && [[ -n ${alive} ]]; then
+            printf '%s\n' "${alive%%$'\n'*}"
+            return 0
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    echo "regime-start: no orchestrator seat alive in ${HCOM_DIR} after ${wait_seconds} s" >&2
+    return 1
+}
+
+# @description Write a registration atomically (a temporary file, then a rename).
+# @arg $1 path The registration file.
+# @arg $@ string `key=value` lines.
+write_registration() {
+    local file=$1 temp
+    shift
+    mkdir -p "${registry}"
+    temp=$(mktemp "${file}.XXXXXX")
+    printf '%s\n' "$@" > "${temp}"
+    mv -f "${temp}" "${file}"
+}
+
+if [[ ${1:-} == --supervise ]]; then
+    (($# == 1)) || refuse "${usage}"
+    supervise=1
+else
+    (($# <= 1)) || refuse "${usage}"
+    supervise=0
+fi
+command -v hcom > /dev/null || refuse 'hcom not found on PATH'
+[[ -x ${LEVER_DIR}/hcom-seat ]] || refuse "hcom-seat is not beside this script: ${LEVER_DIR}/hcom-seat"
+
+if ((supervise)); then
+    # One pass at a time: a manual pass and the timer's must not both launch. mkdir is atomic; a lock older than
+    # ten minutes is a pass that died, so it is cleared once.
+    mkdir -p "${registry}"
+    lock=${registry}/.lock
+    if ! mkdir "${lock}" 2> /dev/null; then
+        if [[ -n $(find "${lock}" -maxdepth 0 -mmin +10 2> /dev/null) ]] && rmdir "${lock}" && mkdir "${lock}" 2> /dev/null; then
+            :
+        else
+            echo "regime-start: another supervisor pass holds ${lock}" >&2
+            exit 0
+        fi
+    fi
+    trap 'rmdir "${lock}" 2> /dev/null || true' EXIT
+    now=$(date +%s)
+    for conf in "${registry}"/*.conf; do
+        [[ -f ${conf} ]] || continue
+        top='' store='' team='' program='' seat='' base='' fails=0 next=0 bad='' newest=''
+        while IFS= read -r line; do
+            case ${line} in
+            toplevel=/*) top=${line#toplevel=} ;;
+            hcom_dir=/*) store=${line#hcom_dir=} ;;
+            hcom_team=*) team=${line#hcom_team=} ;;
+            program=*) program=${line#program=} ;;
+            seat=*) seat=${line#seat=} ;;
+            base=*) base=${line#base=} ;;
+            fails=*) fails=${line#fails=} ;;
+            next=*) next=${line#next=} ;;
+            *) bad="unknown line '${line}'" ;;
+            esac
+        done < "${conf}" || bad='unreadable'
+        [[ ${team} =~ ${name_grammar} && -d ${top} && -d ${store} && ${fails} =~ ^[0-9]+$ && ${next} =~ ^[0-9]+$ ]] || bad=${bad:-'incomplete or invalid fields'}
+        for value in "${program}" "${seat}" "${base}"; do
+            [[ -z ${value} || ${value} =~ ${name_grammar} ]] || bad='a name outside the grammar'
+        done
+        if [[ -n ${bad} ]]; then
+            echo "regime-start: skipped ${conf}: ${bad}" >&2
+            [[ -d ${store} ]] && log_line "${store}" "skipped ${conf}: ${bad}; nothing launched"
+            continue
+        fi
+        export HCOM_DIR=${store} HCOM_TEAM=${team}
+        if ! alive=$(alive_orchestrators); then
+            log_line "${store}" "hcom list failed; nothing launched"
+            continue
+        fi
+        if [[ -n ${alive} ]]; then
+            read -r seat base <<< "${alive%%$'\n'*}"
+            if [[ ${fails} != 0 ]] || ! grep -qx "seat=${seat}" "${conf}"; then
+                write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" fails=0 next=0
+            fi
+            continue
+        fi
+        if [[ -n ${base} ]]; then
+            if ! stopped=$(hcom list --stopped "${base}"); then
+                log_line "${store}" "hcom list --stopped ${base} failed; nothing launched"
+                continue
+            fi
+            newest=$(grep -m1 -E "^ +${base} \(" <<< "${stopped}" || true)
+            if [[ ${newest} == *"[killed by:cli]"* ]]; then
+                log_line "${store}" "${seat} was stopped with hcom kill; supervision of ${top} ends (registration removed)"
+                rm -f "${conf}"
+                continue
+            fi
+        fi
+        if ((now < next)); then
+            continue
+        fi
+        log_line "${store}" "no orchestrator alive (last seat ${seat:-none}: ${newest:-no stop record}); relaunching from ${top}"
+        if alive=$(launch_orchestrator "${top}" 2>> "${store}/supervisor.log"); then
+            read -r seat base <<< "${alive}"
+            log_line "${store}" "relaunched ${seat}"
+            write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" fails=0 next=0
+        else
+            fails=$((fails + 1))
+            delay=$((60 << (fails - 1)))
+            ((delay <= 1800)) || delay=1800
+            log_line "${store}" "relaunch failed (${fails} in a row); next attempt in ${delay} s"
+            write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" "fails=${fails}" "next=$((now + delay))"
+        fi
+    done
+    exit 0
+fi
+
+program=${1:-}
+[[ -z ${program} || ${program} =~ ${name_grammar} ]] || refuse "program '${program}' is outside ${name_grammar}"
+[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
+top=$(regime_toplevel) || refuse 'run regime-start inside the repository checkout'
+slug=$(regime_slug "${top}") || refuse "cannot derive a repository slug from ${top}"
+legacy=${HOME}/.local/state/hcom-regime
+if [[ -z ${HCOM_DIR:-} && -z ${HCOM_TEAM:-} && ${slug} == dotfiles && ! -e ${HOME}/.local/state/hcom/dotfiles/origin && -f ${legacy}/hcom.db ]]; then
+    # The dotfiles program before its one-time store move (README "Run a program in another repository").
+    export HCOM_DIR=${legacy} HCOM_TEAM=regime
+    echo "regime-start: the dotfiles program has not moved its store yet; using HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM}" >&2
+fi
+regime_env regime-start || exit 2
+[[ -d ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} does not exist; run regime-init <program> first or set an existing store"
+[[ ${HCOM_TEAM} =~ ${name_grammar} ]] || refuse "team '${HCOM_TEAM}' is outside ${name_grammar}"
+store_dir=''
+if [[ -n ${program} ]]; then
+    store_dir=${top}/.orchestration/orchestrate/${program}
+    [[ -d ${store_dir} ]] || refuse "no program store ${store_dir}; run regime-init ${program} first"
+fi
+conf=${registry}/${slug}.conf
+
+alive=$(alive_orchestrators) || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed)"
+if [[ -n ${alive} ]]; then
+    read -r seat base <<< "${alive%%$'\n'*}"
+    state="is already alive"
+    log_line "${HCOM_DIR}" "regime-start found ${seat} alive; registered for the supervisor"
+else
+    alive=$(launch_orchestrator "${top}") || {
+        log_line "${HCOM_DIR}" "regime-start could not launch the orchestrator from ${top}"
+        exit 1
+    }
+    read -r seat base <<< "${alive}"
+    state="is listening"
+    log_line "${HCOM_DIR}" "regime-start launched ${seat} from ${top}"
+fi
+write_registration "${conf}" "toplevel=${top}" "hcom_dir=${HCOM_DIR}" "hcom_team=${HCOM_TEAM}" "program=${program}" "seat=${seat}" "base=${base}" fails=0 next=0
+# shellcheck disable=SC2016 # the backticks are text: the pane's name, set off for the reader
+printf '%s %s on team %s. Type your instruction in the pane `orchestrator`; the store is %s.\n' \
+    "${seat}" "${state}" "${HCOM_TEAM}" "${store_dir:-${HCOM_DIR}}"

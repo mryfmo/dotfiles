@@ -218,6 +218,8 @@ LEVERS = (
     "hcom-seat",
     "regime-env",
     "regime-init",
+    "regime-start",
+    "regime-stop",
     "seat-login-preflight",
     "worktree-gc.sh",
 )

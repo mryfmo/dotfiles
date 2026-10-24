@@ -22,6 +22,8 @@ LEVERS = (
     "regime-env",
     "regime-init",
     "seat-login-preflight",
+    "regime-start",
+    "regime-stop",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 

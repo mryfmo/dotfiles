@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- regime-cutover U36: one supervisor pass (regime-start supervise) at login and every 60 s, which relaunches a
+     registered program's orchestrator seat after it died, unless it was stopped on purpose. The Linux twin is
+     ~/.config/systemd/user/regime-supervisor.{service,timer}; test_regime_start keeps both on the same command,
+     interval and PATH. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mryfmo.dotfiles.regime-supervisor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/common/regime-start</string>
+        <string>--supervise</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/common:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <!-- launchd opens these before the program runs; the pass writes its own lines to <store>/supervisor.log. -->
+    <key>StandardOutPath</key>
+    <string>/dev/null</string>
+    <key>StandardErrorPath</key>
+    <string>/dev/null</string>
+</dict>
+</plist>

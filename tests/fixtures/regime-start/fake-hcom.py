@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""A fake `hcom` for tests/unit/test_regime_start.py (U36), keeping its seats in the JSON file `$FAKE_HCOM_STATE`.
+
+`list --format TPL` prints one line per alive seat with `{name}`, `{base_name}`, `{tag}`, `{status}` filled in;
+`list --stopped <base>` prints hcom's stopped listing for that base name, newest first; `kill <name> --go` stops
+an alive seat with hcom's `killed by:cli` record; `omp --tag T ... --go -- ...` records the launch and, unless
+FAKE_LAUNCH_FAILS=1 (exit 1) or FAKE_LAUNCH_SILENT=1 (exit 0, no seat), adds a listening seat `T-<word>`.
+FAKE_LIST_FAILS=1 makes every `list` exit 1. Every call is appended to the state's `calls` with HCOM_DIR and
+HCOM_TEAM.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+WORDS = ["rafa", "zulu", "mira", "tobi", "kale", "suna"]
+state_path = Path(os.environ["FAKE_HCOM_STATE"])
+state = json.loads(state_path.read_text()) if state_path.exists() else {"alive": [], "stopped": [], "calls": []}
+argv = sys.argv[1:]
+state["calls"].append({"argv": argv, "HCOM_DIR": os.environ.get("HCOM_DIR"), "HCOM_TEAM": os.environ.get("HCOM_TEAM")})
+
+
+def save():
+    state_path.write_text(json.dumps(state))
+
+
+if argv[:1] == ["list"]:
+    save()
+    if os.environ.get("FAKE_LIST_FAILS") == "1":
+        sys.exit("fake-hcom: list failed")
+    if argv[1:2] == ["--stopped"]:
+        print("Stopped agents (last 20):\n")
+        for record in reversed(state["stopped"]):
+            if len(argv) < 3 or record["base"] == argv[2]:
+                print(f"  {record['base']} (omp tag:{record['tag']}) 1m ago  [{record['reason']}]  /x")
+        sys.exit(0)
+    template = argv[argv.index("--format") + 1]
+    for seat in state["alive"]:
+        print(template.format(name=seat["name"], base_name=seat["base"], tag=seat["tag"], status=seat["status"]))
+    sys.exit(0)
+if argv[:1] == ["kill"]:
+    seat = next((seat for seat in state["alive"] if seat["name"] == argv[1]), None)
+    if seat is None:
+        save()
+        sys.exit(f"fake-hcom: no seat {argv[1]}")
+    state["alive"].remove(seat)
+    state["stopped"] += [{**seat, "reason": "exit:shutdown by:session"}, {**seat, "reason": "killed by:cli"}]
+    save()
+    sys.exit(0)
+if argv[:1] == ["omp"] and "--go" in argv:
+    tag = argv[argv.index("--tag") + 1]
+    if os.environ.get("FAKE_LAUNCH_FAILS") == "1":
+        save()
+        sys.exit("fake-hcom: launch failed")
+    if os.environ.get("FAKE_LAUNCH_SILENT") != "1":
+        used = {seat["base"] for seat in state["alive"] + state["stopped"]}
+        word = next(word for word in WORDS if word not in used)
+        state["alive"].append({"name": f"{tag}-{word}", "base": word, "tag": tag, "status": "listening"})
+    save()
+    sys.exit(0)
+save()
+sys.exit(f"fake-hcom: unhandled {argv}")

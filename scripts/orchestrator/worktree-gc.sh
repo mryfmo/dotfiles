@@ -129,7 +129,7 @@ record
 
 for path in "${selected[@]+"${selected[@]}"}"; do
     found=''
-    for item in "${cand_path[@]+"${cand_path[@]}"}"; do [[ ${item} == "${path}" ]] && found=1; done
+    for item in "${cand_path[@]+"${cand_path[@]}"}"; do [[ ${item} == "${path}" ]] && found=1; done # lint-comparisons: allow both operands are pwd -P forms from physical()
     [[ -n ${found} ]] || {
         echo "worktree-gc: refused: ${path} is not a worktree of ${toplevel}" >&2
         exit 2

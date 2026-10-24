@@ -402,7 +402,8 @@ if [[ ${mode} == supervise ]]; then
             continue
         fi
         # The named form ends with `Stop history (<n> events):` and one `<age>  [<reason> by:<who>]` line per event,
-        # the newest marked `(latest)` (hcom 0.7.30, measured). A stop record that cannot be read is no license.
+        # the newest marked `(latest)` (hcom 0.7.30 and 0.7.31, measured; 0.7.31 on 2026-10-24, U22b). A stop record
+        # that cannot be read is no license.
         newest=$(grep -m1 -E '\[[^]]+\] \(latest\)$' <<< "${stopped}" || true)
         newest=${newest#"${newest%%[![:space:]]*}"}
         if [[ -z ${newest} ]]; then

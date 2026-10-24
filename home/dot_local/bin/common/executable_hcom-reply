@@ -11,7 +11,7 @@
 #   `hcom send` in every form and allows only `hcom-reply <team> -- <line>`.
 #   The identity is `hcom list self name`, which hcom resolves from the launch
 #   environment of a seat it started; from a plain shell it fails with
-#   `Cannot use 'self' without identity` (hcom 0.7.30, measured 2026-10-23) and
+#   `Cannot use 'self' without identity` (hcom 0.7.30 and 0.7.31, measured 2026-10-23 and 2026-10-24) and
 #   this script refuses. The only word before `--` is the team, so no `--name`,
 #   `--from` or `-b` ever comes from the caller; the words after `--` are joined
 #   with spaces into one line, which reaches hcom as one argument after `--`

@@ -6,7 +6,8 @@
 #   its call: the words after the pane are joined with spaces into one line, which
 #   reaches hcom as one argument after `--` (`hcom send --help`: "Everything after
 #   -- is the message"). The send is
-#   `hcom send @<to> --thread <team> --from <from> --json -- <line>` (hcom 0.7.30):
+#   `hcom send @<to> --thread <team> --from <from> --json -- <line>` (hcom 0.7.30 and 0.7.31,
+#   measured 2026-10-23 and 2026-10-24; the send.rs and events.rs lines are at v0.7.30):
 #   `@<to>` is the seat's exact hcom name (send --help "Target matching"; a name
 #   hcom does not know fails with its "No active agent" error), `--thread <team>`
 #   seeds the team thread the seat answers in with `hcom send --thread <team> --

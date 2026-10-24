@@ -2,7 +2,7 @@
 
 The fakes (tests/fixtures/hcom-seat/fake-tool.py under the three names) record argv; the fake hcom plays the herdr
 terminal preset so the test sees what omp receives. HOME is a scratch directory holding the three policy overlays and
-the two extension directories; the cwd is a scratch git repository with an `origin/main` ref; `HCOM_DIR` is
+the three extension directories (the two routes and the stop gate's); the cwd is a scratch git repository with an `origin/main` ref; `HCOM_DIR` is
 `$TMPDIR/u7-hcom`. Nothing touches the real `~/.hcom`, `~/.agents` or a herdr pane.
 """
 
@@ -18,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SEAT = ROOT / "scripts/orchestrator/hcom-seat"
 FAKE = ROOT / "tests/fixtures/hcom-seat/fake-tool.py"
+GATE_DRIVER = ROOT / "home/dot_agents/omp/hooks/tests/launch-driver.ts"
+BUN = shutil.which("bun")
 GIT_IDENTITY = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
     "GIT_CONFIG_NOSYSTEM": "1",
@@ -43,8 +45,10 @@ class HcomSeatTest(unittest.TestCase):
             (self.profiles / f"{role}.yml").write_text("modelRoles: {}\n")
         self.bridge = self.home / ".local/lib/omp-extensions/pi-claude-bridge"
         self.siwc = self.home / ".agents/omp/extensions/openai-siwc"
+        self.gate = self.home / ".agents/omp/hooks"
         self.bridge.mkdir(parents=True)
         self.siwc.mkdir(parents=True)
+        self.gate.mkdir(parents=True)
         bindir = root / "bin"
         bindir.mkdir()
         for tool in ("hcom", "herdr", "omp"):
@@ -64,6 +68,8 @@ class HcomSeatTest(unittest.TestCase):
             "HCOM_DIR": str(self.store),
             "FAKE_CALLS": str(self.calls),
         }
+        # The checkout's slug (`repo`) is the team unless a test sets one, whatever the caller's session holds.
+        self.env.pop("HCOM_TEAM", None)
         self.git("init", "-q")
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.git("update-ref", "refs/remotes/origin/main", "HEAD")
@@ -86,11 +92,12 @@ class HcomSeatTest(unittest.TestCase):
         path = self.calls / tool
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
-    def launch_line(self, role, name, directory, *exts):
+    def launch_line(self, role, name, directory, *exts, team="repo"):
+        """The launch hcom-seat builds: the route's extensions, then the stop gate's directory and the team flag."""
         return [
             "hcom", "omp", "--tag", name, "--dir", directory, "--terminal", "herdr", "--go", "--",
             "--profile", role, "--config", str(self.policies / f"{role}.yml"), "--config", str(self.profiles / f"{role}.yml"),
-            *(flag for ext in exts for flag in ("-e", str(ext))),
+            *(flag for ext in (*exts, self.gate) for flag in ("-e", str(ext))), "--hcom-team", team,
         ]  # fmt: skip
 
     def test_the_worker_launch_reaches_omp_in_a_worktree_of_origin_main(self):
@@ -109,6 +116,7 @@ class HcomSeatTest(unittest.TestCase):
             {key: omp["env"][key] for key in ("HCOM_LAUNCHED", "HCOM_TAG", "HCOM_DIR")},
             {"HCOM_LAUNCHED": "1", "HCOM_TAG": "worker", "HCOM_DIR": str(self.store)},
         )
+        self.assertNotIn("HCOM_TEAM", omp["env"], "hcom does not pass HCOM_TEAM into the pane; --hcom-team carries it")
         self.assertEqual(self.calls_of("herdr")[0]["argv"], ["tab", "create", "--label", "worker"])
         again = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual(again.returncode, 0, again.stderr)
@@ -199,7 +207,10 @@ class HcomSeatTest(unittest.TestCase):
         shutil.copy2(SEAT, checkout / "scripts/orchestrator/hcom-seat")
         shutil.copy2(SEAT.parent / "regime-env", checkout / "scripts/orchestrator/regime-env")
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
-        listed = "    extensions:\n      - ~/.local/lib/omp-extensions/pi-claude-bridge\n      - ~/.agents/omp/extensions/openai-siwc\n"
+        listed = (
+            "    extensions:\n      - ~/.local/lib/omp-extensions/pi-claude-bridge\n"
+            "      - ~/.agents/omp/extensions/openai-siwc\n      - ~/.agents/omp/hooks\n"
+        )
         self.assertIn(listed, manifest)
         (checkout / "home/dot_agents/agent-config.yaml").write_text(manifest.replace(listed, ""))
         run = subprocess.run(
@@ -238,6 +249,54 @@ class HcomSeatTest(unittest.TestCase):
 
         run = self.seat("worker", "--dry-run", HCOM_DIR=str(self.store), HCOM_TEAM="explicit")
         self.assertIn(f"environment HCOM_DIR={self.store} HCOM_TEAM=explicit", run.stderr)
+        self.assertEqual(shlex.split(run.stdout)[-2:], ["--hcom-team", "explicit"], "an explicit team rides the flag")
+
+    def test_the_team_crosses_the_launch_boundary_as_a_flag_and_the_gate_blocks_on_it(self):
+        """An explicit team whose name is not the slug survives hcom dropping HCOM_TEAM, and the gate reads it (U33c).
+
+        The launcher half runs everywhere; the gate half runs the real stop-gate.ts under bun, as omp runs it in
+        the pane, with the argv and the environment the fake hcom handed to omp.
+        """
+        run = self.seat("orchestrator", HCOM_TEAM="custom")  # HCOM_DIR is explicit; the checkout's slug is `repo`
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (omp,) = self.calls_of("omp")
+        self.assertNotIn("HCOM_TEAM", omp["env"])
+        self.assertEqual(omp["argv"][-4:], ["-e", str(self.gate), "--hcom-team", "custom"])
+        if BUN is None:
+            self.skipTest("bun is not installed, so the gate half cannot run here")
+        bus = self.home / ".local/bin/common/bus-history.sh"
+        bus.parent.mkdir(parents=True)
+        # One outstanding TASK the orchestrator sent, on thread `custom` only; the slug's thread is empty.
+        bus.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$1" >> "$HOME/bus-calls"\n[ "$1" = custom ] || exit 0\n'
+            'printf "7\\t2026-10-24T09:00:00+00:00\\torchestrator\\tworker\\tAGMSG-TASK\\tAGMSG-TASK v1 task_id=c1\\n"\n'
+        )
+        bus.chmod(0o755)
+        # The seat's own name last: omp["env"] carries every HCOM_* the caller's session held.
+        env = {**omp["env"], "PATH": os.environ["PATH"], "HOME": str(self.home), "HCOM_NAME": "orchestrator"}
+
+        def gate(argv):
+            ran = subprocess.run(
+                [BUN, str(GATE_DRIVER), json.dumps(argv)], cwd=omp["cwd"], env=env, capture_output=True, text=True,
+                timeout=60, check=False,
+            )  # fmt: skip
+            self.assertEqual(ran.returncode, 0, ran.stderr)
+            return json.loads(ran.stdout)
+
+        blocked = gate(omp["argv"])
+        self.assertEqual(blocked["team"], "custom", "the gate exports the team into the seat")
+        self.assertEqual(blocked["result"]["decision"], "block")
+        self.assertIn("on hcom thread custom: c1 awaiting RESULT (row 7)", blocked["result"]["reason"])
+        # Without the flag the same environment has no team, and the gate never guesses the checkout's slug.
+        unflagged = gate(omp["argv"][:-2])
+        self.assertIsNone(unflagged["result"])
+        self.assertEqual(
+            unflagged["warnings"],
+            [
+                "stop-gate: inert, no team (launched without --hcom-team and HCOM_TEAM is unset); the turn ends unchecked."
+            ],
+        )
+        self.assertEqual((self.home / "bus-calls").read_text(), "custom\n")
 
     def test_a_repository_without_origin_main_seats_at_head(self):
         self.git("update-ref", "-d", "refs/remotes/origin/main")
@@ -292,6 +351,7 @@ class HcomSeatTest(unittest.TestCase):
             ("unknown role", ["reviewer"], {}, None),
             ("no role", [], {}, None),
             ("bad name", ["worker", "--name", "Worker/1"], {}, None),
+            ("bad team", ["worker"], {"HCOM_TEAM": "Bad Team"}, None),
             ("missing value", ["worker", "--name"], {}, None),
             ("unknown flag", ["worker", "--pane", "w1"], {}, None),
             ("HCOM_DIR unset outside a checkout", ["worker"], {"HCOM_DIR": None}, outside),
@@ -309,6 +369,11 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(str(self.bridge), run.stderr)
+        self.bridge.mkdir(parents=True)
+        shutil.rmtree(self.gate)
+        run = self.seat("worker", "--seats-root", self.seats, "--ext", str(self.bridge))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"extension directory absent: {self.gate}", run.stderr, "--ext never drops the gate")
         self.assertEqual([self.calls_of(tool) for tool in ("hcom", "herdr", "omp")], [[], [], []])
         self.assertFalse(Path(self.seats).exists())
 

@@ -1468,7 +1468,7 @@ The dotfiles program moves once, at deployment, by the orchestrator seat, which 
 - one `git -C ~/Workspace/dotfiles worktree move ~/.local/state/omp-seats/<seat> ~/.local/state/omp-seats/dotfiles/<seat>` per seat worktree;
 - relaunching the seats with `hcom-seat` without the two variables.
 
-Their rows then continue on the `dotfiles` team, and the seats' stop gate reads that thread, deriving the team from the checkout because hcom does not pass `HCOM_TEAM` into a seat. So close anything still open on the `regime` thread with a `HOLD` line before the move.
+Their rows then continue on the `dotfiles` team. hcom does not pass `HCOM_TEAM` into a seat, so `hcom-seat` passes the team it was given as `--hcom-team <team>` to the stop gate, which every launch loads from `~/.agents/omp/hooks` (U33c; before it no seat loaded the gate). Until the move a relaunch with the explicit pair still gets `--hcom-team regime`, and seats started before U33c have no gate until they are relaunched. So close anything still open on the `regime` thread with a `HOLD` line before the move.
 
 ### 💡 Develop the Setup Scripts
 

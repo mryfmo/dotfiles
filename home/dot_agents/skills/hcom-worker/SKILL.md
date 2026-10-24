@@ -42,7 +42,7 @@ When the pull request is open and CI is green, send one RESULT line on the team 
 hcom send --thread <team> -- "AGMSG-RESULT v1 task_id=<id> status=ready_for_review pr=<pull request url> head=$(git rev-parse HEAD)"
 ```
 
-`<team>` is the TASK row's thread, the `[thread:<team>]` prefix of the delivery; it is the team even when `HCOM_TEAM` is unset in your environment, which is normal, because hcom does not pass `HCOM_TEAM` into the pane it launches (U33). `hcom` is on `PATH` in every seat, since hcom launched it, so the reply is that `hcom send` command run in your shell, also for a `brief=none` TASK. The orchestrator reads the thread with `bus-history.sh`; the row that `bus-history.sh <team> --kind AGMSG-RESULT --limit 5` prints for your line is your proof of delivery, so paste it in the report the brief asks for. `HCOM_DIR` is inherited from your launch and never changed.
+`<team>` is the TASK row's thread, the `[thread:<team>]` prefix of the delivery; it is the team whatever `HCOM_TEAM` says in your environment (hcom does not pass it into the pane; the stop gate exports the team `hcom-seat` launched you on, U33c). `hcom` is on `PATH` in every seat, since hcom launched it, so the reply is that `hcom send` command run in your shell, also for a `brief=none` TASK. The orchestrator reads the thread with `bus-history.sh`; the row that `bus-history.sh <team> --kind AGMSG-RESULT --limit 5` prints for your line is your proof of delivery, so paste it in the report the brief asks for. `HCOM_DIR` is inherited from your launch and never changed.
 
 ## Blocked
 

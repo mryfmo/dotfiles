@@ -28,8 +28,11 @@ BUS_LINE = (
 HAND_OFF = (
     "After a VERDICT with findings, copy the audit seat's `status=findings` PONG text into "
     "`verdicts/U<n>-<head>.md` before you send the fix TASK, and name that file in the TASK "
-    "(`brief=<verdicts path>` or `findings=<path>`); the worker reads the findings from that file only"
+    "(`brief=<verdicts path>` or `findings=<path>`) by its absolute path in your checkout"
 )
+# The findings file is uncommitted in the orchestrator's checkout, so the worker's worktree lacks it (PR #487
+# review 4366101582); the worker reads it by absolute path, never from its clone.
+WORKER_READS = "an absolute path under the program's `verdicts/` in the orchestrator's checkout"
 WORKER_WAITS = (
     "A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK, never question the "
     "audit seat on the bus."
@@ -67,7 +70,9 @@ class HcomSeatSkillsTest(unittest.TestCase):
     def test_the_orchestrator_hands_the_findings_to_the_worker_in_a_file(self):
         text = ORCHESTRATION.read_text()
         self.assertIn(HAND_OFF, step(text, "The loop", 4))
-        self.assertIn(WORKER_WAITS, step(WORKER.read_text(), "Receive", 4))
+        worker = step(WORKER.read_text(), "Receive", 4)
+        self.assertIn(WORKER_WAITS, worker)
+        self.assertIn(WORKER_READS, worker)
         reply = section(AUDIT.read_text(), "Reply")
         self.assertIn(FINDINGS_ONCE, reply)
         self.assertIn("Scope questions are answered by the orchestrator, not by you.", reply)

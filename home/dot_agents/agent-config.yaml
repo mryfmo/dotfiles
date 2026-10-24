@@ -328,12 +328,12 @@ claude:
   # regime-init reads its templates from ~/.agents/regime beside this manifest.
   levers:
     sha256:
-      hcom-seat: ab9100e0dbf3ac5be1654047ce756ddf142a8c5a7ce0d344b4bfa2320375fbf4
+      hcom-seat: ee2b21e59c6741520562723de256f680a3d945089d23ca6708fe7e419a3b754a
       hcom-dispatch: 2ca967ac1185f41709b38c85ff7a691ab6bb70c5ba609710450d5d53670e1c28
       bus-history.sh: 0764d879658a82ccefe2b8272ba8cfaf7391dcdd89c9a955ac7e462fa59a9aa4
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
-      regime-env: 5cb8f67a51d029782c081601b1929737a79a3fa743655ffe96557cfbe581f8df
-      regime-init: 5180419ade3a04b1f716c6d87418eefa667302ec90d332d57be4c33596c2886c
+      regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      regime-init: 1364b631df108279fe473e8f2840ed2164c8f65096019dea8711bba003f0b4ad
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge and the openai-siwc extension.
     extensions:
@@ -367,8 +367,10 @@ claude:
         - ~/.cache/uv
         - ~/.local/state/mise
         - ~/.local/share/uv
-        # The hcom bus store: hcom secures the directory on every open, `hcom list` too (U16).
+        # The dotfiles program's hcom store until its one-time move (U16; README "Run a program in another repository").
         - ~/.local/state/hcom-regime
+        # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
+        - ~/.local/state/hcom
         # The omp seat worktrees, positioned by the orchestrator (hcom-orchestration step 4; U16).
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:

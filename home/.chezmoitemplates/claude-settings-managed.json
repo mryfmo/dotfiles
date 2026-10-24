@@ -85,6 +85,7 @@
       "~/.local/state/mise",
       "~/.local/share/uv",
       "~/.local/state/hcom-regime",
+      "~/.local/state/hcom",
       "~/.local/state/omp-seats",
       "~/Library/Caches/mise"
     ],
@@ -136,6 +137,7 @@
       "~/.local/state/mise",
       "~/.local/share/uv",
       "~/.local/state/hcom-regime",
+      "~/.local/state/hcom",
       "~/.local/state/omp-seats"
     ],
     "denyRead": [

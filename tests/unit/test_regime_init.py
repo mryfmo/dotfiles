@@ -70,6 +70,35 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(set(self.rows(again.stdout).values()), {"unchanged"})
         self.assertIn("nothing changed", again.stdout)
 
+    def test_an_inherited_store_and_team_are_named_and_the_hint_is_always_printed(self):
+        """From a seat, HCOM_DIR and HCOM_TEAM are inherited and win; regime-init says so (orchestrator pilot, U33b)."""
+        plain = self.init("pilot")
+        self.assertIn("env -u HCOM_DIR -u HCOM_TEAM <command>", plain.stdout)
+        self.assertNotIn("note: this shell set", plain.stderr)
+        seat_store = self.root / "seat-store"
+        inherited = self.init("pilot", env={**self.env, "HCOM_DIR": str(seat_store), "HCOM_TEAM": "regime"})
+        self.assertEqual(inherited.returncode, 0, inherited.stderr)
+        self.assertIn(f"note: this shell set HCOM_DIR={seat_store} HCOM_TEAM=regime", inherited.stderr)
+        self.assertIn("env -u HCOM_DIR -u HCOM_TEAM regime-init pilot", inherited.stderr)
+
+    def test_the_printed_listing_names_the_store_in_effect(self):
+        """The printed `hcom list` line carries HCOM_DIR, quoted, so a fresh shell lists this store (audit U33 F2)."""
+        fake = self.root / "fake"
+        fake.mkdir()
+        (fake / "hcom").write_text('#!/bin/sh\nprintf "%s\\n" "$HCOM_DIR" > "$0.dir"\n')
+        (fake / "hcom").chmod(0o755)
+        for label, extra, store in (
+            ("derived", {}, self.home / ".local/state/hcom/kit-pilot"),
+            ("explicit, with a space", {"HCOM_DIR": str(self.root / "seat store")}, self.root / "seat store"),
+        ):
+            with self.subTest(label):
+                run = self.init("pilot", env={**self.env, **extra})
+                self.assertEqual(run.returncode, 0, run.stderr)
+                (line,) = [row.strip() for row in run.stdout.splitlines() if row.strip().endswith("hcom list -v")]
+                self.assertTrue(line.startswith("HCOM_DIR="), line)
+                subprocess.run(["bash", "-c", line], env={"PATH": f"{fake}:{self.env['PATH']}"}, check=True)
+                self.assertEqual((fake / "hcom.dir").read_text(), f"{store}\n")
+
     def test_a_changed_store_file_is_kept_unless_forced(self):
         self.init("pilot")
         (self.store / "units.tsv").write_text("local edit\n")
@@ -120,6 +149,32 @@ class RegimeInitTest(unittest.TestCase):
         self.assertEqual(run.returncode, 2, run.stdout)
         self.assertIn("is a symlink", run.stderr)
         self.assertEqual(list(target.iterdir()), [], "nothing written through the symlink")
+
+    def test_a_symlinked_store_or_origin_refuses_before_anything_is_written(self):
+        """A symlinked derived store, or a dangling origin symlink, writes neither the binding nor the store files
+        (Codex 4366521828)."""
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        state = self.home / ".local/state/hcom"
+        state.mkdir(parents=True)
+        (state / "kit-pilot").symlink_to(elsewhere)
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("is a symlink", run.stderr)
+        (state / "kit-pilot").unlink()
+        (state / "kit-pilot").mkdir()
+        (state / "kit-pilot/origin").symlink_to(elsewhere / "origin")
+        run = self.init("pilot")
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("is a symlink", run.stderr)
+        self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through either symlink")
+        self.assertFalse((self.repo / ".orchestration").exists(), "no store file before the binding is safe")
+        explicit = self.root / "explicit-store"
+        explicit.symlink_to(elsewhere)
+        run = self.init("pilot", env={**self.env, "HCOM_DIR": str(explicit)})
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("is a symlink", run.stderr)
+        self.assertFalse((self.repo / ".orchestration").exists())
 
     def test_a_failing_comparison_or_agents_read_refuses_instead_of_writing(self):
         """cmp and grep exit 2 on a read error; neither is read as "differs" or "no section" (preferences 21)."""

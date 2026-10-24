@@ -12,7 +12,8 @@
  * reason}` instead, which the cap of 8 bounds (agent-session.ts:470).
  *
  * Environment: HCOM_DIR (the bus store, read by bus-history.sh), HCOM_TEAM (the thread the seat's
- * TASK lines name), HCOM_NAME or `hcom list self name` (the seat's own hcom name),
+ * TASK lines name; when unset, derived from the seat's checkout through the installed regime-env, because hcom
+ * does not pass it into the pane, U33), HCOM_NAME or `hcom list self name` (the seat's own hcom name),
  * OMP_STOP_GATE_ALLOW_OPEN=1 (end the turn anyway, with the warning). Without a team or a name the
  * gate is inert and says so once per stop. bus-history.sh is the copy chezmoi installs read-only at
  * `$HOME/.local/bin/common/bus-history.sh` (regime-cutover U31, U33), never a script from the seat's cwd,
@@ -37,6 +38,26 @@ export const HISTORY_LIMIT = 100_000;
 /** The installed bus-history.sh, resolved from HOME when the gate is registered (never from the cwd). */
 export function busHistoryPath(home = process.env.HOME ?? homedir()): string {
 	return join(home, ".local/bin/common/bus-history.sh");
+}
+
+/** The installed regime-env helper, the one derivation of a repository's team (regime-cutover U33). */
+export function regimeEnvPath(home = process.env.HOME ?? homedir()): string {
+	return join(home, ".local/bin/common/regime-env");
+}
+
+/**
+ * The team of the seat's repository when HCOM_TEAM is not in the environment: hcom does not pass HCOM_TEAM into
+ * the pane it launches (measured in the U33 pilot), so the seat derives it from its checkout like every lever.
+ */
+export function deriveTeam(helper: string, cwd: string): { team: string; error?: string } {
+	const result = spawnSync("bash", ["-c", '. "$1" && regime_env stop-gate && printf "%s" "${HCOM_TEAM:-}"', "stop-gate", helper], {
+		cwd,
+		encoding: "utf8",
+		timeout: 20_000,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	if (result.status === 0 && result.stdout !== "") return { team: result.stdout };
+	return { team: "", error: (result.stderr || result.error?.message || `exit ${result.status}`).trim() };
 }
 
 // Per kind (its AGMSG- prefix dropped), what a row from the seat / from another seat does to its
@@ -95,15 +116,23 @@ function warn(ctx: Ctx, message: string): void {
 }
 
 export default function stopGate(pi: ExtensionAPI): void {
-	const team = process.env.HCOM_TEAM ?? "";
+	let team = process.env.HCOM_TEAM ?? "";
+	let teamError = "";
 	const allowOpen = TRUTHY.has(process.env.OMP_STOP_GATE_ALLOW_OPEN ?? "");
 	const since = new Date().toISOString().replace(/\.\d+Z$/, "Z");
 	let seat = process.env.HCOM_NAME ?? "";
 	const busHistory = busHistoryPath();
+	const regimeEnv = regimeEnvPath();
 	pi.on("session_stop", (event, ctx) => {
 		seat ||= run("hcom", ["list", "self", "name"]).out.trim();
+		if (!team && !teamError) {
+			const derived = deriveTeam(regimeEnv, ctx.cwd);
+			team = derived.team;
+			teamError = derived.error ?? "";
+		}
 		if (!team || !seat) {
-			warn(ctx, `stop-gate: inert, ${team ? "the seat has no hcom name" : "HCOM_TEAM is unset"}; the turn ends unchecked.`);
+			const why = team ? "the seat has no hcom name" : `HCOM_TEAM is unset and cannot be derived (${teamError})`;
+			warn(ctx, `stop-gate: inert, ${why}; the turn ends unchecked.`);
 			return;
 		}
 		const args = [team, "--limit", String(HISTORY_LIMIT), "--since", since];

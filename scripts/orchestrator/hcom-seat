@@ -211,12 +211,18 @@ if ((dry_run)); then
     exit 0
 fi
 if [[ ! -e ${dir} ]]; then
-    # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main.
-    base=origin/main
-    if ! git -C "${repo}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/null; then
+    # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a
+    # genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.
+    origin_main=$(git -C "${repo}" for-each-ref --format='%(objecttype)' refs/remotes/origin/main 2>&1) ||
+        refuse "cannot inspect refs/remotes/origin/main in ${repo}: ${origin_main}"
+    case ${origin_main} in
+    commit) base=origin/main ;;
+    '')
         base=HEAD
         echo "hcom-seat: origin/main is absent in ${repo}; the seat worktree starts at HEAD" >&2
-    fi
+        ;;
+    *) refuse "refs/remotes/origin/main in ${repo} does not resolve to a commit: ${origin_main}" ;;
+    esac
     git -C "${repo}" worktree add --detach "${dir}" "${base}"
 elif ! seat_common=$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) ||
     ! [[ -d ${dir} && ${seat_common} -ef ${common} ]]; then

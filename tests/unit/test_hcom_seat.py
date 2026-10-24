@@ -217,6 +217,11 @@ class HcomSeatTest(unittest.TestCase):
     def test_the_store_team_and_seats_root_are_derived_from_the_checkout(self):
         """Without HCOM_DIR, HCOM_TEAM or --seats-root, hcom-seat derives them from the repository (U33)."""
         derived = {"HCOM_DIR": str(self.home / ".local/state/hcom/repo"), "HCOM_TEAM": "repo"}
+        run = self.seat("worker", "--dry-run", HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("has no origin file binding it", run.stderr, "only regime-init binds a derived store")
+        Path(derived["HCOM_DIR"]).mkdir(parents=True)
+        (Path(derived["HCOM_DIR"]) / "origin").write_text(f"{self.repo}\n")
         clone = str(self.home / ".local/state/omp-seats/repo/worker")
         run = self.seat("worker", "--dry-run", HCOM_DIR=None, HCOM_TEAM=None)
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -240,6 +245,34 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("origin/main is absent", run.stderr)
         self.assertEqual(self.git("rev-parse", "HEAD", cwd=f"{self.seats}/worker"), self.head)
+
+    def test_a_broken_or_unreadable_origin_main_is_refused_not_replaced_by_head(self):
+        """Only an absent origin/main seats at HEAD; a broken ref, a non-commit or a failed git refuses (audit U33 F1)."""
+        ref = Path(self.git("rev-parse", "--git-path", "refs/remotes/origin/main"))
+        ref = ref if ref.is_absolute() else self.repo / ref
+        tree = self.git("rev-parse", "HEAD^{tree}")
+        for label, content, message in (
+            ("broken ref", "garbage\n", "does not resolve to a commit"),
+            ("tree object", f"{tree}\n", "does not resolve to a commit: tree"),
+        ):
+            with self.subTest(label):
+                ref.write_text(content)
+                run = self.seat("worker", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(message, run.stderr)
+        self.git("update-ref", "refs/remotes/origin/main", self.head)
+        wrapper = Path(self.temp.name) / "failing-git"
+        wrapper.mkdir()
+        real_git = shutil.which("git")
+        (wrapper / "git").write_text(
+            f'#!/bin/sh\ncase " $* " in *" for-each-ref "*) echo "fatal: injected" >&2; exit 128 ;; esac\nexec "{real_git}" "$@"\n'
+        )
+        (wrapper / "git").chmod(0o755)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{wrapper}:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("cannot inspect refs/remotes/origin/main", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats).exists())
 
     def test_a_derived_store_owned_by_another_checkout_is_refused(self):
         store = self.home / ".local/state/hcom/repo"

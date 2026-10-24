@@ -74,7 +74,54 @@ class RegimeEnvTest(unittest.TestCase):
             with self.subTest(refused=path):
                 self.assertEqual(self.bash(f'regime_slug "{path}"').returncode, 1)
 
+    def bind(self):
+        store = self.home / ".local/state/hcom/kit-pilot"
+        store.mkdir(parents=True, exist_ok=True)
+        (store / "origin").write_text(f"{self.repo}\n")
+        return store
+
+    def test_a_derived_store_needs_its_origin_except_for_regime_init(self):
+        """Only regime-init (--unbound-ok) may use a derived store before its origin binds it (Codex 4366521824)."""
+        run = self.bash("regime_env test")
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("has no origin file binding it", run.stderr)
+        self.assertEqual(self.bash("regime_env test --unbound-ok").returncode, 0)
+
+    @staticmethod
+    def clear(path):
+        """Remove a scratch path that is a symlink or a directory."""
+        if path.is_symlink():
+            path.unlink()
+        elif path.exists():
+            shutil.rmtree(path)
+
+    def test_a_symlink_in_the_derived_store_path_is_refused(self):
+        """~/.local/state/hcom, the store and origin must be plain (Codex 4366521828), for regime-init too."""
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        state = self.home / ".local/state"
+        state.mkdir(parents=True)
+        for label, make in (
+            ("parent", lambda: (state / "hcom").symlink_to(elsewhere)),
+            ("store", lambda: ((state / "hcom").mkdir(), (state / "hcom/kit-pilot").symlink_to(elsewhere))),
+            (
+                "origin",
+                lambda: (
+                    (state / "hcom/kit-pilot").mkdir(parents=True),
+                    (state / "hcom/kit-pilot/origin").symlink_to(elsewhere / "o"),
+                ),
+            ),
+        ):
+            with self.subTest(symlink=label):
+                make()
+                run = self.bash("regime_env test --unbound-ok")
+                self.assertEqual(run.returncode, 1, run.stderr)
+                self.assertIn("is a symlink", run.stderr)
+                self.clear(state / "hcom")
+        self.assertEqual(list(elsewhere.iterdir()), [], "nothing written through a symlink")
+
     def test_defaults_derive_from_the_main_checkout_and_explicit_values_win(self):
+        self.bind()
         run = self.bash(f"regime_env test; {PROBE}")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(
@@ -135,6 +182,7 @@ class RegimeEnvTest(unittest.TestCase):
 
     def test_dispatch_and_history_refuse_a_derived_store_that_does_not_exist(self):
         """The derived store is refused like an explicit one until a seat launch creates hcom.db (README "hcom bus")."""
+        self.bind()
         for script, args in (
             ("bus-history.sh", ["kit-pilot"]),
             ("hcom-dispatch", ["kit-pilot", "operator", "worker", "-", "AGMSG-PING v1 task_id=x"]),
@@ -154,7 +202,7 @@ class RegimeEnvTest(unittest.TestCase):
                     f"store absent: ${{HCOM_DIR}}/hcom.db (HCOM_DIR={self.home}/.local/state/hcom/kit-pilot)",
                     run.stderr,
                 )
-                self.assertFalse((self.home / ".local/state/hcom").exists(), "nothing created")
+                self.assertFalse((self.home / ".local/state/hcom/kit-pilot/hcom.db").exists(), "nothing created")
 
 
 if __name__ == "__main__":

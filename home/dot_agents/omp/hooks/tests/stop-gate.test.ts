@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import stopGate, { busHistoryPath, gateMessage, HISTORY_LIMIT, MOVES, openItems } from "../stop-gate";
+import stopGate, { busHistoryPath, gateMessage, HISTORY_LIMIT, MOVES, openItems, regimeEnvPath } from "../stop-gate";
 
 // One bus-history.sh row: id, at, from, to (the delivered seat; `-` for a thread reply), kind (first word), body.
 const row = (id: number, from: string, text: string, to = "-"): string =>
@@ -127,7 +127,9 @@ test("all answered allows silently; OMP_STOP_GATE_ALLOW_OPEN allows with the war
 
 	const inert = seat(ROWS, { HCOM_TEAM: undefined });
 	expect(inert.stop()).toBeUndefined();
-	expect(inert.warnings).toEqual(["warning: stop-gate: inert, HCOM_TEAM is unset; the turn ends unchecked."]);
+	expect(inert.warnings).toHaveLength(1);
+	expect(inert.warnings[0]).toStartWith("warning: stop-gate: inert, HCOM_TEAM is unset and cannot be derived (");
+	expect(inert.warnings[0]).toEndWith("); the turn ends unchecked.");
 });
 
 test("bus-history.sh is the installed copy under HOME, never the one in the seat's cwd (U33)", () => {
@@ -145,4 +147,13 @@ test("bus-history.sh is the installed copy under HOME, never the one in the seat
 		MERGED: [null, undefined],
 		HOLD: [null, undefined],
 	});
+});
+
+test("without HCOM_TEAM the seat derives its team through the installed regime-env (U33b, pilot F3)", () => {
+	const derived = seat(ROWS, { HCOM_TEAM: undefined });
+	const helper = regimeEnvPath(derived.home);
+	expect(helper).toBe(join(derived.home, ".local/bin/common/regime-env"));
+	writeFileSync(helper, "regime_env() { HCOM_TEAM=kitteam; }\n");
+	expect(derived.stop()?.decision).toBe("block");
+	expect(readFileSync(join(derived.cwd, "argv"), "utf8")).toStartWith("kitteam --limit 100000 --since ");
 });

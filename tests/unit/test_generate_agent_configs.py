@@ -774,6 +774,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     "~/.local/state/mise",
                     "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
+                    "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
                 ]
                 self.assertEqual(

@@ -101,11 +101,16 @@ done
 . "${LEVER_DIR}/regime-env"
 checkout=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run regime-init inside the git checkout of the repository'
 checkout=$(cd "${checkout}" && pwd -P) || refuse "cannot resolve ${checkout}"
-regime_env regime-init || exit 2
+# A seat inherits HCOM_DIR and HCOM_TEAM from its launch, and an explicit value wins over the derivation.
+inherited=''
+[[ -z ${HCOM_DIR:-} && -z ${HCOM_TEAM:-} ]] || inherited="HCOM_DIR=${HCOM_DIR:-} HCOM_TEAM=${HCOM_TEAM:-}"
+regime_env regime-init --unbound-ok || exit 2
 templates=${LEVER_MANIFEST%/*}/regime
 [[ -d ${templates} ]] || refuse "templates absent: ${templates}"
 store=${checkout}/.orchestration/orchestrate/${program}
-origin=${HCOM_DIR}/origin
+origin=${REGIME_ORIGIN:-${HCOM_DIR}/origin}
+# Checked before anything is written: an explicit HCOM_DIR gets the same no-symlink rule as a derived one.
+[[ ! -L ${HCOM_DIR} && ! -L ${origin} ]] || refuse "refused: ${HCOM_DIR} or ${origin} is a symlink"
 
 # Nothing is written through a symlink: the store, each file and AGENTS.md are refused when one stands there.
 for path in "${checkout}/.orchestration" "${checkout}/.orchestration/orchestrate" "${store}" "${checkout}/AGENTS.md"; do
@@ -179,10 +184,17 @@ else
 fi
 
 ((changed)) || echo 'regime-init: nothing changed; the program store, origin and AGENTS.md were already in place'
+# hcom reads only HCOM_DIR, which the levers export to their own children, so the listing names the store itself.
+listing=$(printf 'HCOM_DIR=%q hcom list -v' "${HCOM_DIR}") || refuse 'cannot format the store-scoped hcom listing'
 cat << EOF
 
 Next, in ${checkout}:
   hcom-seat orchestrator; hcom-seat worker; hcom-seat audit
-  hcom list -v
+  ${listing}
   hcom-dispatch ${HCOM_TEAM} operator orchestrator-<word> - "AGMSG-TASK v1 task_id=O1 brief=<absolute path of the program brief>"
+From inside a seat, which inherits HCOM_DIR and HCOM_TEAM from its launch, unset both first
+(env -u HCOM_DIR -u HCOM_TEAM <command>), or the seats join the inheriting seat's store and team.
 EOF
+if [[ -n ${inherited} ]]; then
+    echo "regime-init: note: this shell set ${inherited}, so the origin and the lines above use them, not the store derived for ${REGIME_SLUG:-this repository}; rerun as env -u HCOM_DIR -u HCOM_TEAM regime-init ${program} to bind the repository's own store" >&2
+fi

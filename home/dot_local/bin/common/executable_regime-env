@@ -105,18 +105,24 @@ regime_slug() {
 }
 
 # @description Derive the regime environment of the checkout the working directory is in; an explicit value
-#   always wins. A refusal prints its reason prefixed with the caller's name and returns 1.
+#   always wins. A derived store is bound to its checkout by its `origin` file, which only `regime-init` writes:
+#   every other caller requires it to exist and name this toplevel, so a second checkout with the same slug
+#   cannot open or create the store. No part of a derived store path may be a symlink (`~/.local/state/hcom`,
+#   the store, `origin`), so nothing reads or writes through one. A refusal prints its reason prefixed with the
+#   caller's name and returns 1.
 # @arg $1 string The caller's name, for messages.
+# @option --unbound-ok The caller is `regime-init`: a derived store without its `origin` file is allowed.
 # @set REGIME_TOPLEVEL The physical toplevel, empty when HCOM_DIR is explicit and the cwd is outside a checkout.
 # @set REGIME_SLUG The repository slug (empty with REGIME_TOPLEVEL).
+# @set REGIME_ORIGIN The derived store's origin file, empty when HCOM_DIR is explicit.
 # @set HCOM_TEAM `<slug>` unless set (exported).
 # @set HCOM_DIR `~/.local/state/hcom/<slug>` unless set (exported).
 # @set REGIME_SEATS_ROOT `~/.local/state/omp-seats/<slug>` unless set.
-# @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a derived store whose `origin` file is
-#   unreadable or names another toplevel (two checkouts with the same basename).
+# @exitcode 1 Outside a checkout with HCOM_DIR unset; an unusable slug; a symlink in the derived store path; a
+#   derived store without `origin` (unless --unbound-ok), or whose `origin` is unreadable or names another toplevel.
 regime_env() {
-    local who=$1 origin recorded
-    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
+    local who=$1 unbound_ok=${2:-} recorded part
+    REGIME_TOPLEVEL='' REGIME_SLUG='' REGIME_ORIGIN='' REGIME_SEATS_ROOT=${REGIME_SEATS_ROOT:-}
     if ! REGIME_TOPLEVEL=$(regime_toplevel); then
         REGIME_TOPLEVEL=''
         if [[ -n ${HCOM_DIR:-} ]]; then
@@ -135,16 +141,25 @@ regime_env() {
     : "${REGIME_SEATS_ROOT:=${HOME}/.local/state/omp-seats/${REGIME_SLUG}}"
     if [[ -z ${HCOM_DIR:-} ]]; then
         HCOM_DIR=${HOME}/.local/state/hcom/${REGIME_SLUG}
-        origin=${HCOM_DIR}/origin
-        if [[ -e ${origin} ]]; then
-            recorded=$(cat "${origin}") || {
-                echo "${who}: cannot read ${origin}" >&2
+        REGIME_ORIGIN=${HCOM_DIR}/origin
+        for part in "${HOME}/.local/state/hcom" "${HCOM_DIR}" "${REGIME_ORIGIN}"; do
+            if [[ -L ${part} ]]; then
+                echo "${who}: refused: ${part} is a symlink; a derived hcom store is a plain directory" >&2
+                return 1
+            fi
+        done
+        if [[ -e ${REGIME_ORIGIN} ]]; then
+            recorded=$(cat "${REGIME_ORIGIN}") || {
+                echo "${who}: cannot read ${REGIME_ORIGIN}" >&2
                 return 1
             }
             if [[ ${recorded} != "${REGIME_TOPLEVEL}" ]]; then # lint-comparisons: allow both are pwd -P forms written by regime-init
                 echo "${who}: refused: the store ${HCOM_DIR} belongs to ${recorded}, not ${REGIME_TOPLEVEL} (same slug ${REGIME_SLUG}); set HCOM_DIR and HCOM_TEAM explicitly" >&2
                 return 1
             fi
+        elif [[ ${unbound_ok} != --unbound-ok ]]; then
+            echo "${who}: refused: the derived store ${HCOM_DIR} has no origin file binding it to ${REGIME_TOPLEVEL}; run regime-init <program> in the checkout first" >&2
+            return 1
         fi
     fi
     export HCOM_DIR HCOM_TEAM

@@ -331,10 +331,11 @@ claude:
   # ~/.agents/agent-config.yaml for the installed copy.
   levers:
     sha256:
-      hcom-seat: c0704ccb5b58dca45be8d0e2848aef8aefa8958f0b788234b1191c975dfa22f5
+      hcom-seat: dc3c25b7e6ca321a08531e71c61071522d427d09373658d206a2ecf6f6bfafd4
       hcom-dispatch: a8b7561ee89ef92b7980b2398db3d34ed77f8ffccc98f350c023d705727b9329
       bus-history.sh: 878d66a1c3495777d6d8e8395334430e8dc91678074213d353e29dcbc0667154
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
+      seat-login-preflight: 83e0c7a24bd59120809f179e3ae3eb10054d3aa8dc6137669793cff7c67a31c3
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge and the openai-siwc extension.
     extensions:

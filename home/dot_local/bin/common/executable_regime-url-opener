@@ -92,7 +92,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.reply(405, "POST /open only")
 
     def do_POST(self) -> None:  # noqa: N802 - http.server dispatch name
-        if self.path != "/open":
+        if self.path != "/open":  # lint-comparisons: allow an HTTP request target, not a filesystem path
             self.record(f"refused path {self.path[:80]!r}")
             self.reply(404, "POST /open only")
             return

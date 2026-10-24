@@ -482,6 +482,32 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertIn("audit openai-siwc: absent", output)
         self.assertIn("after the login", output)
 
+    def test_a_linux_host_without_a_display_counts_as_remote(self) -> None:
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Linux\n")
+        headless = self.run_lever("worker")
+        self.assertEqual(headless.returncode, 2, headless.stderr)
+        self.assertIn("worker claude-bridge: absent; a login is the operator's step", headless.stderr)
+        for display in ({"DISPLAY": ":0"}, {"WAYLAND_DISPLAY": "wayland-0"}):
+            with self.subTest(**display):
+                local = self.run_lever("worker", **display)
+                self.assertEqual((local.returncode, local.stderr), (0, ""))
+
+    def test_a_profile_without_a_login_route_passes_and_an_unreadable_overlay_does_not(self) -> None:
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        (self.home / ".agents/omp/profiles/worker.yml").write_text("modelRoles: {}\n")
+        result = self.run_lever("worker", SSH_CONNECTION=remote)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("worker: no route", result.stderr)
+        self.assertIn("nothing to log in", result.stderr)
+        write_exec(self.bin / "awk", "#!/bin/sh\nexit 2\n")
+        overlay = self.home / ".agents/omp/profiles/audit.yml"
+        broken = self.run_lever("audit", SSH_CONNECTION=remote)
+        self.assertEqual(broken.returncode, 1)
+        self.assertIn(f"audit: unreadable ({overlay})", broken.stderr)
+        check = self.run_lever("--check", "audit")
+        self.assertEqual((check.returncode, check.stdout), (1, f"audit: unreadable ({overlay})\n"))
+        self.assertEqual(self.calls_text(), "")
+
 
 if __name__ == "__main__":
     unittest.main()

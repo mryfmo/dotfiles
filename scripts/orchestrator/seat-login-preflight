@@ -16,7 +16,9 @@
 #   never as absent, and makes the exit status 1.
 #
 #   `<role>` (orchestrator, worker or audit; `hcom-seat` calls it before it creates or starts anything)
-#   does nothing on a local host. On a remote host (`SSH_CONNECTION` set) a present login passes. An absent
+#   does nothing on a local host. On a remote host (`SSH_CONNECTION` set, or a Linux host without a display,
+#   which a herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) a
+#   present login passes. An absent
 #   one is logged in here only in the operator's own terminal (stdin and stdout a TTY, not inside a seat):
 #   SIWC through `omp --profile <role> login openai-siwc` with `OPENAI_SIWC_CALLBACK_PORT=1455`, which the
 #   `seat-host` SSH entry forwards back from the laptop, and `xdg-open`/`open` pointed at `regime-open-url`
@@ -27,6 +29,7 @@
 # @arg $1 string `--check`, or the role.
 # @arg $@ string With `--check`: profile names (default: every deployed overlay).
 # @env SSH_CONNECTION Set by sshd: this host is remote to the operator's terminal.
+# @env DISPLAY With WAYLAND_DISPLAY: a Linux host with neither has no local browser, so it counts as remote.
 # @env HCOM_LAUNCHED Set by hcom inside a seat: never run a login there.
 # @stdout With `--check`: one line per profile.
 # @stderr The role mode's report and refusals.
@@ -37,6 +40,61 @@
 #   seat-login-preflight --check
 #   seat-login-preflight audit
 set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
 
 profiles_dir=${HOME}/.agents/omp/profiles
 siwc_ext=${HOME}/.agents/omp/extensions/openai-siwc
@@ -65,12 +123,14 @@ mode_of() {
 
 # @description Print the provider of a profile's `modelRoles.default` (openai-siwc, claude-bridge, ...).
 # @arg $1 string Profile name.
-# @exitcode 3 The overlay is absent or names no default model.
+# @exitcode 2 The overlay exists but cannot be read.
+# @exitcode 3 The overlay is absent or names no default model with a provider.
 route_of() {
     local overlay=${profiles_dir}/$1.yml model
     [[ -f ${overlay} ]] || return 3
-    model=$(awk '/^modelRoles:/ { in_roles = 1; next } /^[^ ]/ { in_roles = 0 } in_roles && $1 == "default:" { print $2; exit }' "${overlay}") || return 3
-    [[ ${model} == */* ]] || return 3
+    model=$(awk '/^modelRoles:/ { in_roles = 1; next } /^[^ ]/ { in_roles = 0 } in_roles && $1 == "default:" { print $2; exit }' "${overlay}") || return 2
+    # A model id without a provider prefix leaves the prefix strip unchanged.
+    [[ -n ${model} && ${model%%/*} != "${model}" ]] || return 3
     printf '%s\n' "${model%%/*}"
 }
 
@@ -121,17 +181,25 @@ claude_state() {
 
 # @description Print `<profile> <route>: <state>` for one profile.
 # @arg $1 string Profile name.
-# @exitcode 0 Logged in. 1 Absent or the route is not a seat route. 2 Unreadable.
+# @exitcode 0 Logged in. 1 Absent. 2 Unreadable. 3 No seat login route, so nothing to log in.
 profile_line() {
     local route state status=0
-    route=$(route_of "$1") || {
+    route=$(route_of "$1") || status=$?
+    case ${status} in
+    0) ;;
+    2)
+        printf '%s: unreadable (%s)\n' "$1" "${profiles_dir}/$1.yml"
+        return 2
+        ;;
+    *)
         printf '%s: no route (overlay %s absent or without modelRoles.default)\n' "$1" "${profiles_dir}/$1.yml"
-        return 1
-    }
+        return 3
+        ;;
+    esac
     case ${route} in
     openai-siwc) state=$(siwc_state "$1") || status=$? ;;
     claude-bridge) state=$(claude_state) || status=$? ;;
-    *) state="not a seat login route" status=1 ;;
+    *) state="not a seat login route" status=3 ;;
     esac
     printf '%s %s: %s\n' "$1" "${route}" "${state}"
     return "${status}"
@@ -161,11 +229,11 @@ check() {
 # @description Name the laptop this SSH session comes from, from the tailnet when it knows the address.
 peer_name() {
     local client=${SSH_CONNECTION%% *} name=""
-    if command -v tailscale > /dev/null 2>&1; then
+    if [[ -n ${client} ]] && command -v tailscale > /dev/null 2>&1; then
         name=$(tailscale status --json 2> /dev/null | jq -r --arg ip "${client}" \
             'first(.Peer[]? | select(any(.TailscaleIPs[]?; . == $ip)) | .DNSName) // empty' 2> /dev/null) || name=""
     fi
-    printf '%s\n' "${name:-${client}}"
+    printf '%s\n' "${name:-${client:-the laptop of the seat-host SSH session}}"
 }
 
 # @description Run the role's login in the operator's terminal, then report whether it took.
@@ -209,7 +277,9 @@ orchestrator | worker | audit) ;;
 *) die "unknown role '${role}'; expected orchestrator, worker or audit" ;;
 esac
 # A local host keeps its own browser and login; nothing new happens there.
-[[ -n ${SSH_CONNECTION:-} ]] || exit 0
+if [[ -z ${SSH_CONNECTION:-} ]] && ! [[ $(uname -s) == Linux && -z ${DISPLAY:-} && -z ${WAYLAND_DISPLAY:-} ]]; then
+    exit 0
+fi
 
 status=0
 line=$(profile_line "${role}") || status=$?
@@ -219,12 +289,12 @@ case ${status} in
     exit 0
     ;;
 2) die "${line}; fix or move the record aside before a seat starts" 1 ;;
+3)
+    printf 'seat-login-preflight: %s; nothing to log in\n' "${line}" >&2
+    exit 0
+    ;;
 esac
 route=$(route_of "${role}") || die "${line}" 1
-case ${route} in
-openai-siwc | claude-bridge) ;;
-*) die "${line}" 1 ;;
-esac
 if [[ ! -t 0 || ! -t 1 || -n ${HCOM_LAUNCHED:-} ]]; then
     die "${line}; a login is the operator's step: run \`seat-login-preflight ${role}\` in your own terminal on this host, then start the seat again"
 fi

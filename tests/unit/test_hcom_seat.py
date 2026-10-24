@@ -93,6 +93,22 @@ class HcomSeatTest(unittest.TestCase):
             *(flag for ext in exts for flag in ("-e", str(ext))),
         ]  # fmt: skip
 
+    def test_a_remote_seat_without_a_login_starts_nothing(self):
+        """U37: hcom-seat runs seat-login-preflight beside it before it creates or starts anything."""
+        (self.profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
+        fakes = Path(self.temp.name) / "no-keychain"
+        fakes.mkdir()
+        (fakes / "security").write_text("#!/bin/sh\nexit 44\n")  # the host's real Keychain login never counts
+        (fakes / "security").chmod(0o755)
+        run = self.seat(
+            "worker", "--seats-root", self.seats, SSH_CONNECTION="100.64.0.2 50000 100.64.0.3 22",
+            PATH=f"{fakes}:{self.env['PATH']}", CLAUDE_CODE_OAUTH_TOKEN=None, CLAUDE_CONFIG_DIR=None,
+        )  # fmt: skip
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn("worker claude-bridge: absent; a login is the operator's step", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats, "worker").exists())
+
     def test_the_worker_launch_reaches_omp_in_a_worktree_of_origin_main(self):
         clone = f"{self.seats}/worker"
         run = self.seat("worker", "--seats-root", self.seats)

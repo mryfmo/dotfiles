@@ -11,12 +11,18 @@
 
 #
 # @description Run the installer under test for real, after noting which of its packages are not installed yet.
-# @arg $@ string The packages the installer installs.
+# @arg $@ string The packages the installer installs; at least one.
 # @set REAL_PACKAGES_NEW array The given packages that were not installed before this call.
-# @exitcode The installer's exit status.
+# @exitcode 1 No package was given: the teardown could not undo the install, so the case fails instead.
+# @exitcode The installer's exit status otherwise.
 #
 function install_real_packages() {
     local package
+    if [ "$#" -eq 0 ]; then
+        printf 'install_real_packages: no package given for %s; its teardown could not remove what it installs\n' \
+            "${SCRIPT_PATH}" >&2
+        return 1
+    fi
     REAL_PACKAGES_NEW=()
     for package in "$@"; do
         if [ "$(dpkg-query -W -f='${Status}' "${package}" 2> /dev/null)" != "install ok installed" ]; then

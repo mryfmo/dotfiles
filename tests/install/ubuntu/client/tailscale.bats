@@ -15,7 +15,8 @@ function teardown() {
 }
 
 @test "[ubuntu-client] tailscale" {
-    install_real_packages "${PACKAGES[@]}"
+    # install/ubuntu/client/tailscale.sh has no PACKAGES array; it installs this one package.
+    install_real_packages tailscale
 
     run dpkg -s 'tailscale'
     [ "${status}" -eq 0 ]

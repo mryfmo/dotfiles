@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+.
+----------------------------------------------------------------------
+Ran 1 test in 1.399s
+
+OK

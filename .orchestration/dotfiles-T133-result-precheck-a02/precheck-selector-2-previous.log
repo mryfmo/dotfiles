@@ -1,0 +1,35 @@
+FFF
+======================================================================
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 470, in test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan
+    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : secrets: 0 match(es)
+
+
+======================================================================
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16-le')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 470, in test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan
+    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : secrets: 0 match(es)
+
+
+======================================================================
+FAIL: test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan) (encoding='utf-16-be')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.9lhy5r/previous/tests/unit/test_result_precheck.py", line 470, in test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan
+    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : secrets: 0 match(es)
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.746s
+
+FAILED (failures=3)

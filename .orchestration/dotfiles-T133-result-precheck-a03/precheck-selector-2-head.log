@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_result_precheck_stops_when_the_clean_tree_query_fails runs tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.889s
+
+OK

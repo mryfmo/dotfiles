@@ -1,0 +1,43 @@
+result-precheck: tests/unit/test_result_precheck.py::test_previous_head_proof_selects_tests_by_exact_id runs tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id
+FF
+======================================================================
+FAIL: test_previous_head_proof_selects_tests_by_exact_id (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id) (name='test_requested')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.1r3vTL/previous/tests/unit/test_result_precheck.py", line 508, in test_previous_head_proof_selects_tests_by_exact_id
+    self.assertEqual(result.returncode, 0 if ok else 1, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1 : result-precheck: unit-test exit 0
+result-precheck: render-check exit 0
+result-precheck: format exit 0
+result-precheck: shellcheck exit 0
+result-precheck: secrets exit 0
+result-precheck: tests/unit/test_ids.py::test_requested previous head exit 1, this head exit 0
+precheck=37fd9ddf641ccde3101be0e4fc95e65de1ea894f9e7fbd179ffc830d1f535a4f
+
+
+======================================================================
+FAIL: test_previous_head_proof_selects_tests_by_exact_id (tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.1r3vTL/previous/tests/unit/test_result_precheck.py", line 513, in test_previous_head_proof_selects_tests_by_exact_id
+    self.assertEqual(tuple(proof.get(k) for k in keys), want)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (None, None, None, 1, None, 0) != ('tests.unit.test_ids.T.test_requested_ext[55 chars]1, 0)
+
+First differing element 0:
+None
+'tests.unit.test_ids.T.test_requested_extra'
+
+- (None, None, None, 1, None, 0)
++ ('tests.unit.test_ids.T.test_requested_extra',
++  'c27a90c7c58772a299ffbcfdb1c8be4315c16bc3',
++  1,
++  1,
++  1,
++  0)
+
+----------------------------------------------------------------------
+Ran 1 test in 13.991s
+
+FAILED (failures=2)

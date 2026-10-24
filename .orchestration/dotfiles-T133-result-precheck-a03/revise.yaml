@@ -1,0 +1,10 @@
+task_id: dotfiles-T133-result-precheck-a03
+round: revise-1
+reset_of: dotfiles-T133-result-precheck-a02
+amendment: 1
+previous_head: bccb2deabdf95bc558add6a5e56e4405a6a61b43
+check:
+  - tests/unit/test_result_precheck.py::test_dispatch_acceptance_check_compares_the_proof_baseline_with_the_latest_revise
+  - tests/unit/test_result_precheck.py::test_result_precheck_stops_when_the_clean_tree_query_fails
+  - tests/unit/test_result_precheck.py::test_previous_head_proof_selects_tests_by_exact_id
+reason: the ACCEPTANCE status=revise of 2026-10-18T22:16:07Z after the task-level audit of bccb2de (.orchestration/validation/dotfiles-T133-result-precheck-a03-audit-bccb2de.md, five P2) and amendment 1 (task sha256 d8048ef508676f65c5eaee82cc69a9f83f04b4418ed3e61bb9e4803d5c0a32ba); round 1's record (previous_head 4ed1b27a, four selectors) is this file at 58f98bf6

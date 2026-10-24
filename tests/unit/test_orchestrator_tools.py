@@ -467,7 +467,10 @@ class OrchestratorToolsTest(unittest.TestCase):
                 result, log = send(kind + lacking, 1)
                 self.assertIn(f"dispatch: {self.repo / rel} fails the task-consistency check", result.stderr)
                 self.assertIn("C2 allowed_files lacks .orchestration/t/**", result.stderr)
-                self.assertIn(f"task-consistency-check.py --root {self.repo} {self.repo / rel}", log)
+                self.assertIn(
+                    f"task-consistency-check.py --root {self.repo} --premises-sha {sha((self.repo / rel).read_text())} {self.repo / rel}",
+                    log,
+                )
                 self.assertIsNone(self.call("agmsg-dispatch"))
                 self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())
         # A cold cache stops the send with exit 2 and the warming command, never a fetch through the index.
@@ -584,7 +587,7 @@ class OrchestratorToolsTest(unittest.TestCase):
         result = self.run_tool("dispatch.sh", *args, code=1, env=env)
         self.assertIn(f"root: {self.repo}\n", result.stderr)
         self.assertIn("C6 design_review.receipt is stale", result.stderr)
-        checker = f"{self.repo}/scripts/orchestrator/task-consistency-check.py --root {self.repo} {task}"
+        checker = f"{self.repo}/scripts/orchestrator/task-consistency-check.py --root {self.repo} --premises-sha {sha(task.read_text())} {task}"
         self.assertIn(checker, (self.calls / "uv.log").read_text())
         self.assertIsNone(self.call("agmsg-dispatch"))
         self.assertEqual('---\n{"task": "t"}\n---\n', record.read_text())

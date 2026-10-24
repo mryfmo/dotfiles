@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_blob_scan_rejects_paths_outside_scan_directory runs tests.unit.test_result_precheck.ResultPrecheckTest.test_blob_scan_rejects_paths_outside_scan_directory
+.
+----------------------------------------------------------------------
+Ran 1 test in 1.426s
+
+OK

@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_refuses_symlinked_evidence runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence
+.
+----------------------------------------------------------------------
+Ran 1 test in 2.967s
+
+OK

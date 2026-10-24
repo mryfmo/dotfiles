@@ -1,0 +1,141 @@
+{
+  "head": "d3eb42493b4e4466134dcc1a04e6c371384176c5",
+  "code_head": "d3eb42493b4e4466134dcc1a04e6c371384176c5",
+  "tree": "dab53c6d0c314de763e7d57b8443dffd63923c3a",
+  "generated_at": "2026-10-19T12:06:22Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "b13bcc257cb903144bd969d847aea04d565e2c100e8228d7f9b0a23891f5d6b2"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "5f355d41d0efe9c0c6daf9d49709c86eee6557e9113031a4d67a17948954e1d1"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_precheck_fails_closed_when_masking_fails",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_fails_closed_when_masking_fails",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "37ebb19186f91e4c3708cf527cd7d0851c21914bd7477c3b98b802cc7634c4e2",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "cd423c0578d4976adbc5dd91a14d9523ef301a6ac4db99fddd0c8e18e1496b17"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_precheck_refuses_symlinked_evidence",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_refuses_symlinked_evidence",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "d9623a039d3cd5d54296530d03c237495822606decb35a466f3249a23800f92e",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "6e13662d9bd35bf16a8e8da8b34d374b2d52d85c496fa3d9c732b0de509e030a"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_dispatch_ignores_messages_from_unregistered_identities",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_ignores_messages_from_unregistered_identities",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "057bf639a2dc383bf8d70b7c73f537ff755893ac70bf3653a69529373a221141",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "0a44a610e01e695021443a5706a90a748117f68982ca6083451d5ab212e02c3a"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_precheck_fixtures_isolate_home",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_fixtures_isolate_home",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "974d0eba2ae180e44f0df080f307f0778e8c321bc74d9e3ece3f0ef2e41bbc39",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "d9045d20d85441785ee6469d0807026d24bd6c1786453d94acfcba88f00bf600"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_blob_scan_rejects_paths_outside_scan_directory",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_blob_scan_rejects_paths_outside_scan_directory",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "c56a7c88a2705e9f579c9a0633579158c0776ae83b1a95e66b543cacf5dcc55b",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "7de2c3401e7f1093759e03f852a50d7f916928a4c518ee02a7789b21138613b0"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_precheck_masks_logs_when_proof_worktree_creation_fails",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_masks_logs_when_proof_worktree_creation_fails",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "f615b203b2f1b44f12d49f946eedfac822826e7420226cb9e01679d15bc6774e",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "a6641589eb714eb3cff9a917642d29941d1a959f47de085d9a0ee7d30ef00318"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_dispatch_binds_precheck_to_code_head_across_update_branch",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_binds_precheck_to_code_head_across_update_branch",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "d4206882d3b1abe90734b03951fdd6e2cd250fce9ab909e2b403c648598a3a86",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "ef1bfd8fe209827baa4907bf786ff0d30b056a423e01d8b21befe5bc9d884f9a"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings",
+      "id": "tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings",
+      "previous_head": "ddf262dec0db404ffc4ba5e1095842f2f17c7e6d",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_tests": 1,
+      "previous_head_output_sha256": "35286f7abc777f6d7edbbfb82a75e4df9702926a819da3ff6b5c4b52c6064404",
+      "head_exit": 0,
+      "head_tests": 1,
+      "head_output_sha256": "d32458ce28ea92b616523d7644a879f5666b49301c42b09daec2374bcedd73bd"
+    }
+  ]
+}

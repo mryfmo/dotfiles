@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_masks_logs_when_proof_worktree_creation_fails runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_masks_logs_when_proof_worktree_creation_fails
+.
+----------------------------------------------------------------------
+Ran 1 test in 3.932s
+
+OK

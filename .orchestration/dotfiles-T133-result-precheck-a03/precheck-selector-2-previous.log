@@ -1,0 +1,27 @@
+result-precheck: tests/unit/test_result_precheck.py::test_result_precheck_stops_when_the_clean_tree_query_fails runs tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails
+F
+======================================================================
+FAIL: test_result_precheck_stops_when_the_clean_tree_query_fails (tests.unit.test_result_precheck.ResultPrecheckTest.test_result_precheck_stops_when_the_clean_tree_query_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.1r3vTL/previous/tests/unit/test_result_precheck.py", line 326, in test_result_precheck_stops_when_the_clean_tree_query_fails
+    self.assertEqual(
+    ~~~~~~~~~~~~~~~~^
+        (result.returncode, evidence.exists(), "index" in result.stderr), (2, False, True), result.stderr
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: Tuples differ: (1, True, True) != (2, False, True)
+
+First differing element 0:
+1
+2
+
+- (1, True, True)
++ (2, False, True) : fatal: .git/index: index file smaller than expected
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.036s
+
+FAILED (failures=1)

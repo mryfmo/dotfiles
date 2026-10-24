@@ -1,0 +1,48 @@
+result-precheck: tests/unit/test_result_precheck.py::test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings runs tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+FFF
+======================================================================
+FAIL: test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings) (task_sha256='b13ec3104320b0387f67791d4f660e922d3ed70f3ce7de9ba5ce9e0ba72e1119')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 435, in test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+    self.assertEqual(done, (code, True, "x"), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (0, False, '') != (0, True, 'x')
+
+First differing element 1:
+False
+True
+
+- (0, False, '')
++ (0, True, 'x') : 
+
+======================================================================
+FAIL: test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings) (task_sha256='0000000000000000000000000000000000000000000000000000000000000000')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 435, in test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+    self.assertEqual(done, (code, True, "x"), result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1, False, '') != (1, True, 'x')
+
+First differing element 1:
+False
+True
+
+- (1, False, '')
++ (1, True, 'x') : dispatch: task_sha256 mismatch: the line has 0000000000000000000000000000000000000000000000000000000000000000, /private/tmp/claude-501/tmphmshv8lt/repo/.orchestration/tasks/t.md hashes to b13ec3104320b0387f67791d4f660e922d3ed70f3ce7de9ba5ce9e0ba72e1119
+
+
+======================================================================
+FAIL: test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings (tests.unit.test_result_precheck.ResultPrecheckTest.test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/result-precheck.zNF2CI/previous/tests/unit/test_result_precheck.py", line 436, in test_dispatch_passes_the_task_sha_to_c14_and_forwards_warnings
+    self.assertIn(f"'--premises-sha', '{sha}'", argv.read_text())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "'--premises-sha', 'b13ec3104320b0387f67791d4f660e922d3ed70f3ce7de9ba5ce9e0ba72e1119'" not found in "['--root', '/private/tmp/claude-501/tmphmshv8lt/repo', '/private/tmp/claude-501/tmphmshv8lt/repo/.orchestration/tasks/t.md']"
+
+----------------------------------------------------------------------
+Ran 1 test in 1.013s
+
+FAILED (failures=3)

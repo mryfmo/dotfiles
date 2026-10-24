@@ -1,0 +1,52 @@
+{
+  "head": "bdd8ab81de7cd3667e9213c03d932e0cd1971680",
+  "tree": "5108c458f7b7cbb7b0dea302a71e4fdbf4ae8fe6",
+  "generated_at": "2026-10-18T06:33:41Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "8b1a9d53d671f19efea99bcca79ab508a0108590952540506eab39f9efa3170b"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "f170e34f5d9c464c7dd7be27fb8f87bb26969019903d50b6636103c97a779796"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ec427b4abbf24ab3958dd1498e28cc76113d99c85519521cfc6951635053f42a"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_commit_hook_checks_the_staged_blobs_not_the_working_tree",
+      "ok": true,
+      "previous_head_exit": 5,
+      "previous_head_output_sha256": "e70fec2825d9bf206d27463a792768195039599cb39bcca66339f47283f84cce",
+      "head_exit": 0,
+      "head_output_sha256": "7144c8021f3ea86bef0df5376a0e64788c19d4884c2f205f51f1553803153434"
+    }
+  ]
+}

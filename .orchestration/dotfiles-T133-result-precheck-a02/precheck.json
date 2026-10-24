@@ -1,0 +1,68 @@
+{
+  "head": "56a734cdc2b03fdda7d386895c104d83ccdba8cd",
+  "tree": "b29fe347be9bd87cdbb6a11873a64b9e1849301a",
+  "generated_at": "2026-10-18T12:54:34Z",
+  "checks": [
+    {
+      "name": "unit-test",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "26ebe8f1e75ff25f45225463fe5806b4f39ed2047c0b94dddeacc3849b5618db"
+    },
+    {
+      "name": "render-check",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "3cc07aa4e482b20772e8ba404d3c0d9e338adcd0cd2d4ff6edf14de8bf23db93"
+    },
+    {
+      "name": "format",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "487aa67922340408bfc8815a34545525710e2fd624adc3c040718db6bd95c922"
+    },
+    {
+      "name": "shellcheck",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secrets",
+      "ok": true,
+      "exit": 0,
+      "output_sha256": "ec427b4abbf24ab3958dd1498e28cc76113d99c85519521cfc6951635053f42a"
+    },
+    {
+      "name": "local-review",
+      "ok": null,
+      "deferred": "orchestrator"
+    }
+  ],
+  "selectors": [
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_pre_push_scans_each_blob_on_its_own_boundary",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "ef6b0d3638740b7164d6c79a2138527f132b7da6f6b995f4ed4aeb49fd2eb6af",
+      "head_exit": 0,
+      "head_output_sha256": "30293f77318eda07c250689e98ecee4ca82fdf562a19f7becf5ba3079392c940"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_result_precheck_decodes_or_refuses_utf16_before_the_secret_scan",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "521229fd1488116112c67171b76267549c8950fd263eb8f38b009f3d46fec30f",
+      "head_exit": 0,
+      "head_output_sha256": "7d39e798410f13905d67cb0c2a508daa93de05378f3500f369801bb684d72597"
+    },
+    {
+      "selector": "tests/unit/test_result_precheck.py::test_previous_head_proof_requires_an_executed_failing_test",
+      "ok": true,
+      "previous_head_exit": 1,
+      "previous_head_output_sha256": "6234b1c428316b80794f6cdc43a951d44583364db72191297434b561353372ea",
+      "head_exit": 0,
+      "head_output_sha256": "d8112a8f0c2c64712b40eda713bdea8b506ba36e7cc7eff3b30717fbf5594475"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_previous_head_proof_selects_tests_by_exact_id runs tests.unit.test_result_precheck.ResultPrecheckTest.test_previous_head_proof_selects_tests_by_exact_id
+.
+----------------------------------------------------------------------
+Ran 1 test in 14.491s
+
+OK

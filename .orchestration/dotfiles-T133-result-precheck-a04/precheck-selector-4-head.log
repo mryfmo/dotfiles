@@ -1,0 +1,6 @@
+result-precheck: tests/unit/test_result_precheck.py::test_precheck_fixtures_isolate_home runs tests.unit.test_result_precheck.ResultPrecheckTest.test_precheck_fixtures_isolate_home
+.
+----------------------------------------------------------------------
+Ran 1 test in 1.155s
+
+OK

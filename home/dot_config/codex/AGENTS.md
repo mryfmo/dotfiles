@@ -11,7 +11,7 @@
 
 ## プロジェクトの構成について
 
-- リポジトリ作業では `agmsg-orchestration` skill の「Codex seat worklogs」を読み、plan と todo を常に更新してください。
+- リポジトリ作業では plan と todo を常に更新してください。
 - plan/todo/learn はコミットせず、`active` な todo は `owner` ごとに 1 件までにしてください。
 
 ## コーディング全般について
@@ -65,7 +65,7 @@
 - リポジトリ全体の探索やシンボル検索の前に、`.ua/knowledge-graph.json` があればまず node の `summary` と `filePath` を照会し、`.ua/meta.json` の `gitCommitHash` が `git rev-parse HEAD` と一致するか、異なる場合も `git diff --name-only <hash>..HEAD` が `.ua/` または `.orchestration/` 内の path だけなら current と扱い、graph が存在しないか別の path が含まれる場合だけ grep にフォールバックしてください。
 - インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。
 - `.ua/` graph の RESULT は、`ua-symbol-coverage <前回 graph> <新 graph> --old-ref <前回 graph の rev> --repo-ref <新 graph の rev>`(`~/.local/bin/common` から PATH 上にあります。各 rev はその graph の `.ua/meta.json` の `gitCommitHash` で、フル再構築では `--old-ref` が前回の `meta.gitCommitHash` です。新 graph 側は通常 `HEAD`、変更前の base ではありません。`--old-ref` で rename と削除を区別します) の表を validation file に貼り、regression が 0 件(または減少ごとに原因となるソース変更を明記)の場合だけ accept します。`validateGraph` の成功は抽出の完全性を保証しません。
-- AGMSG-TASK を実行する worker は、`allowed_files` に `.ua/**` が含まれない限り、Understand-Anything の auto-update hook の指示(「knowledge graph is stale, you MUST update it」)を対象外として扱い、report に「hook fired; not acted on」と記録して作業を続けてください。orchestrator は自身のセッションで graph を更新せず、graph の更新は別の worker task にします。
+- worker seat は、unit の SCOPE に `.ua/**` が含まれない限り、Understand-Anything の auto-update hook の指示(「knowledge graph is stale, you MUST update it」)を対象外として扱い、report に「hook fired; not acted on」と記録して作業を続けてください。orchestrator は自身のセッションで graph を更新せず、graph の更新は別の worker seat の unit にします。
 
 ## CompactionDB
 

@@ -396,7 +396,7 @@ and task texts run on the `review` profile, the same model and effort as
 sandbox)
 for one independent task-level audit of each final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
-`home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
+`home/dot_config/claude/rules/regime.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
 answered under the ChatGPT login (probe 2026-10-05). Both xhigh settings
 answered on 2026-10-09: the Codex audit probe under the ChatGPT login, the
@@ -1147,9 +1147,8 @@ web UI or Crit data is unavailable; then set `CRIT_REVIEWED=1` with the same
 #### PR feedback and the merge gate
 
 Before a pull request is merged, every piece of GitHub feedback on its final
-head must be collected and dispositioned (rule:
-`home/dot_config/claude/rules/pr-integration.md`, mirrored in
-`home/dot_config/codex/AGENTS.md`):
+head must be collected and dispositioned (rule: `home/dot_config/codex/AGENTS.md`
+"PR 統合"; the Claude rule `pr-integration.md` was retired in U32):
 
 ```bash
 # Optional: request one CodeRabbit full review on the final head. The plan

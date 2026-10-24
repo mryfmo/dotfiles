@@ -12,3 +12,9 @@
 .local/bin/server/history.sh
 .local/bin/server/cache.sh
 .config/mise/mise.lock
+.config/claude/rules/agmsg-orchestration.md
+.config/claude/rules/crit-review.md
+.config/claude/rules/pr-integration.md
+.claude/rules/agmsg-orchestration.md
+.claude/rules/crit-review.md
+.claude/rules/pr-integration.md

@@ -1,6 +1,0 @@
-## PR integration
-
-- Before merging any pull request, MUST sweep all of its GitHub feedback for the final head commit with `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json`, and re-run the sweep after any new push: a disposition applies only to the head commit it was written for.
-- MUST give every item a disposition: `fixed:<commit>` with the root-cause fix in that commit, or `not-applicable:<reason>`. Stopgaps, suppressions, or "later" are not dispositions except an advisory P2 with an existing owner task file; its owned row and any small in-scope P2 revise round follow the SKILL's step-10 policy, and no `failure` or `warning` annotation is left undispositioned.
-- MUST pass the filled JSON to the integration gate, together with the task-level audit of the final head when the change needs review, and summarise the dispositions in the acceptance record. That post-round audit is the single authority on the PR's findings, dispositioned before the gate. A bot review is optional and never gated.
-- The gate command, its evidence rules, the boundary-PR exception and the merge procedure appear once, in the agmsg-orchestration SKILL's Orchestrator Playbook step 10.

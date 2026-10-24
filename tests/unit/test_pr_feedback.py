@@ -398,7 +398,10 @@ class PrFeedbackTest(unittest.TestCase):
 
 
 class PrIntegrationRuleParityTest(unittest.TestCase):
-    """Keep the PR integration rule, its mirrors, and the skills in step; the gate command lives in one place."""
+    """Keep the PR integration mirror and the skills in step; the gate command lives in one place.
+
+    The Claude rule `pr-integration.md` was retired in U32; the codex mirror and the skills go with the gate in U26.
+    """
 
     TOKENS = (
         "scripts/pr-feedback.py",
@@ -408,16 +411,9 @@ class PrIntegrationRuleParityTest(unittest.TestCase):
     GATE = "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review"
     POINTER = "Orchestrator Playbook step 10"
 
-    def test_rule_symlink_points_at_the_rule(self) -> None:
-        self.assertEqual(
-            (ROOT / "home/dot_claude/rules/symlink_pr-integration.md.tmpl").read_text(),
-            "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/pr-integration.md\n",
-        )
-
     def pointer_sources(self) -> dict[str, str]:
         codex = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
         return {
-            "claude rule": (ROOT / "home/dot_config/claude/rules/pr-integration.md").read_text(),
             "codex mirror": codex.split("## PR 統合", 1)[1].split("\n## ", 1)[0],
             "gh-first-workflow": (ROOT / "home/dot_agents/skills/gh-first-workflow/SKILL.md").read_text(),
         }

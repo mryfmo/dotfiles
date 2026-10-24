@@ -462,9 +462,6 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
-    crit_rule = ROOT / "home/dot_config/claude/rules/crit-review.md"
-    if not crit_rule.exists() or "/crit" not in crit_rule.read_text():
-        fail("Claude Code Crit review rule must require /crit")
     if os_name == "darwin":
         validate_claude_settings(manifest, "linux")
 

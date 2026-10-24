@@ -23,7 +23,7 @@ For pull requests, keep the description aligned with the full current PR content
 5. If additional commits are pushed after PR creation, inspect the updated commits/diff with `gh` and refresh the PR description so it reflects the full current PR, not only the latest increment.
 6. Include inspected URLs in the response.
 7. Write commit messages in Conventional Commit format.
-8. Before merging or accepting a PR, run the task-level audit and the gate as the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and the PR integration rule describe. The step starts with the `scripts/pr-feedback.py` sweep, where every item gets a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, and ends with the gate command, which appears only in that Orchestrator Playbook step 10.
+8. Before merging or accepting a PR, follow the `hcom-orchestration` SKILL's loop: a verdict row for the head sha, CI green, every bot finding fixed at root cause or dismissed with a pasted refutation, then the squash merge pinned to that head sha (`--match-head-commit`).
 
 ## Output Checklist
 
@@ -32,7 +32,7 @@ For pull requests, keep the description aligned with the full current PR content
 - Include inspected issue/PR URLs.
 - When commits were added after PR creation, confirm the PR description was updated to match the full current PR.
 - Keep commit subject in Conventional Commit form: `<type>(<scope>): <summary>`.
-- Before a merge: every `pr-feedback.py` item, including any CodeRabbit review and every `failure` and `warning` annotation, has a disposition in the saved JSON; a bot review is optional and not gated.
+- Before a merge: every bot finding, including any CodeRabbit review and every `failure` and `warning` annotation, is fixed at root cause or dismissed with a pasted refutation; a bot review is optional and not gated.
 - Do NOT include local absolute file paths (e.g., `/Users/.../`, `/home/.../`) in any output. Use repository-relative paths instead.
 
 Use [gh-git-rules.md](references/gh-git-rules.md) for command examples and commit-type guidance.

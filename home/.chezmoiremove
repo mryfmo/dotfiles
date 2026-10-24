@@ -3,6 +3,8 @@
 .claude/ccgate.jsonnet
 .local/bin/common/start-cognee-mcp
 .claude/skills/agmsg/**
+.agents/skills/agmsg/**
+.claude/commands/agmsg.md
 .config/alias/client.sh
 .config/alias/server.sh
 .config/tango.yml

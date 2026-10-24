@@ -55,6 +55,14 @@ class LeverSelfCheckTest(unittest.TestCase):
         self.assertIn("refused:", run.stderr)
         self.assertIn(message, run.stderr)
 
+    def assert_passed(self, run):
+        """The self-check let the lever through: none of its refusals is on stderr."""
+        for refusal in ("refused: sha256", "refused: manifest", "refused: no single", "refused: cannot"):
+            self.assertNotIn(refusal, run.stderr)
+
+    def launch(self, argv, cwd, env):
+        return subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=60, check=False)
+
     def test_the_installed_copies_are_the_checkout_bytes_and_pass(self):
         for name in LEVERS:
             with self.subTest(lever=name):
@@ -103,6 +111,47 @@ class LeverSelfCheckTest(unittest.TestCase):
         for name in LEVERS:
             with self.subTest(lever=name, producer="sed"):
                 self.assert_refused(self.run_lever(name, env=env), "cannot read")
+
+    def test_a_failing_dirname_is_not_consulted(self):
+        """The script directory is split in the shell (U31b, audit row 2586): a dirname that prints an existing
+        directory and exits nonzero cannot steer the self-check to another manifest, whatever the launch spelling."""
+        decoy = Path(self.temp.name) / "decoy"
+        (decoy / "home/dot_agents").mkdir(parents=True)
+        (decoy / "x/y").mkdir(parents=True)  # an existing directory, as in the audit scenario
+        (decoy / "home/dot_agents/agent-config.yaml").write_text("schema_version: 1\n")
+        env = self.fake_tools("dirname", body=f"echo {decoy}/x/y; exit 1")
+        path_env = {**env, "PATH": f"{self.bin}:{env['PATH']}"}
+        for name in LEVERS:
+            with self.subTest(lever=name, launch="installed path"):
+                self.assert_passed(self.run_lever(name, env=env))
+            with self.subTest(lever=name, launch="bare name through PATH"):
+                self.assert_passed(self.launch([name], self.home, path_env))
+            with self.subTest(lever=name, launch="checkout copy"):
+                self.assert_passed(self.launch([str(ROOT / "scripts/orchestrator" / name)], self.home, env))
+
+    def test_an_installed_lever_in_a_checkout_shaped_cwd_reads_the_deployed_manifest(self):
+        """A cwd holding scripts/orchestrator and a manifest with other pins changes nothing for the installed copy."""
+        checkout = Path(self.temp.name) / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        text = MANIFEST.read_text()
+        zeroed = text
+        for name in LEVERS:
+            pin_line = next(line for line in text.splitlines() if line.startswith(f"      {name}: "))
+            zeroed = zeroed.replace(pin_line, f"      {name}: " + "0" * 64)
+            shutil.copy2(self.bin / name, checkout / "scripts/orchestrator" / name)
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(zeroed)
+        path_env = {**self.env, "PATH": f"{self.bin}:{self.env['PATH']}"}
+        for name in LEVERS:
+            with self.subTest(lever=name, deployed="current"):
+                self.assert_passed(self.launch([name], checkout, path_env))
+        (self.home / ".agents/agent-config.yaml").write_text(zeroed)
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(text)
+        for name in LEVERS:
+            with self.subTest(lever=name, deployed="stale"):
+                self.assert_refused(
+                    self.launch([name], checkout, path_env), str(self.home / ".agents/agent-config.yaml")
+                )
 
 
 if __name__ == "__main__":

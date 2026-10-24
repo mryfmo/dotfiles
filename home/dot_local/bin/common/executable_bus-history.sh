@@ -31,9 +31,16 @@ set -euo pipefail
 #   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
 # @set LEVER_MANIFEST The manifest the pin came from.
 lever_self_check() {
-    local dir self name pin digest home
-    dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || {
-        echo "${0##*/}: refused: cannot resolve the script directory" >&2
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
         exit 2
     }
     self=${dir}/${BASH_SOURCE[0]##*/}

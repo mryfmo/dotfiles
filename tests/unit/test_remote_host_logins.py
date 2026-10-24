@@ -591,10 +591,19 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
             {"hostId": HOST_ID, "clientId": "oaiapp_x", "accountId": 7},
             [HOST_ID, "oaiapp_x"],
         )
-        for record in records:
-            with self.subTest(record=record):
+        one = json.dumps({"hostId": HOST_ID, "clientId": "oaiapp_x"})
+        # store.ts reads the file with JSON.parse, so a stream of valid records, or none, is not one record.
+        texts = [json.dumps(record) for record in records] + [
+            one + one,
+            f"{one}\n{one}\n",
+            "",
+            " \n",
+            one + " trailing",
+        ]
+        for text in texts:
+            with self.subTest(text=text):
                 shutil.rmtree(self.home / ".omp", ignore_errors=True)
-                reg = self.register(record=json.dumps(record))
+                reg = self.register(record=text)
                 check = self.run_lever("--check", "audit")
                 self.assertEqual((check.returncode, check.stdout), (1, f"audit openai-siwc: unreadable ({reg})\n"))
                 gate = self.run_lever("audit", SSH_CONNECTION=remote)

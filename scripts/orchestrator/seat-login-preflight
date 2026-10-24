@@ -10,7 +10,7 @@
 #
 #   `--check [<profile>...]` prints one line per profile (all overlays when none is named) from metadata
 #   only, never a token: SIWC is `registration.json` (host id and issued client id, which carry no token),
-#   held to the extension's record schema, plus the mtime of the profile's `agent.db`; Claude is the
+#   held to the extension's record schema (one JSON document), plus the mtime of the profile's `agent.db`; Claude is the
 #   `CLAUDE_CODE_OAUTH_TOKEN` variable, the credentials file, the macOS Keychain item (attributes only), or
 #   the token file a login shell exports. A record that exists but cannot be read or breaks its schema, and
 #   a producer (`uname`, `stat`, `date`, `security`) that fails, are reported as unreadable, never as
@@ -111,17 +111,21 @@ token_file=${HOME}/.config/claude-code/oauth-token
 callback_port=1455
 # The seat profiles, the values of `omp.roles` in home/dot_agents/agent-config.yaml.
 seat_profiles=(orchestrator worker audit review security)
-# openai-siwc `src/store.ts` `isRegistration`, with the issued client id held to the charset `src/seed.ts`
-# accepts, so nothing else reaches the terminal. \A and \z anchor the whole string, not one line.
+# openai-siwc `src/store.ts`: `JSON.parse` of the whole file, so exactly one top-level document (jq reads a stream, so
+# `-s` gathers every document and the filter requires one), then `isRegistration`, with the issued client id held to
+# the charset `src/seed.ts` accepts, so nothing else reaches the terminal. \A and \z anchor the whole string.
 # shellcheck disable=SC2016 # jq source, not shell
 registration_filter='
-if type == "object"
-    and (.hostId | type == "string"
-        and test("\\Aurn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\z"))
-    and ((has("clientId") | not) or (.clientId | type == "string" and test("\\A[A-Za-z0-9_.:-]{1,200}\\z")))
-    and ((has("accountId") | not) or (.accountId | type == "string" and length > 0))
-then [.hostId, (.clientId // "")] | @tsv
-else error("not a registration record")
+if length != 1 then error("not exactly one JSON document")
+else .[0]
+    | if type == "object"
+        and (.hostId | type == "string"
+            and test("\\Aurn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\z"))
+        and ((has("clientId") | not) or (.clientId | type == "string" and test("\\A[A-Za-z0-9_.:-]{1,200}\\z")))
+        and ((has("accountId") | not) or (.accountId | type == "string" and length > 0))
+    then [.hostId, (.clientId // "")] | @tsv
+    else error("not a registration record")
+    end
 end'
 # The login's scratch overlay and opener shims, removed on every exit.
 scratch=""
@@ -186,7 +190,7 @@ siwc_state() {
         printf 'absent (no %s)\n' "${reg}"
         return 1
     fi
-    if ! fields=$(jq -er "${registration_filter}" "${reg}" 2> /dev/null); then
+    if ! fields=$(jq -ers "${registration_filter}" "${reg}" 2> /dev/null); then
         printf 'unreadable (%s)\n' "${reg}"
         return 2
     fi

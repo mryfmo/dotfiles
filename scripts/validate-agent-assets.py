@@ -415,12 +415,13 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
 
 
 # The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is the audited squash
-# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *` or
-# `~/.local/bin/common/<lever> --<flag> *`, held to the same lever checks as a Claude allow rule. audit.yml keeps its
-# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table.
+# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *`,
+# `~/.local/bin/common/<lever> --<flag> *` or the exact bare `~/.local/bin/common/<lever>` (U28b F3), held to the same
+# lever checks as a Claude allow rule. audit.yml keeps its read-only allows under `always-ask`;
+# tests/unit/test_omp_seat_policy.py holds its decision table.
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
 OMP_MERGE_ALLOW = "gh pr merge * --squash --match-head-commit *"
-OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?: --[a-z][a-z-]*)? \*")
+OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
 
@@ -446,7 +447,7 @@ def validate_omp_policy_allow(
         lever = OMP_LEVER_ALLOW.fullmatch(match)
         if not lever:
             merge_form = f"{OMP_MERGE_ALLOW!r} or " if merge else ""
-            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [--<flag>] *")
+            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
         reason = lever_refusal(lever.group(1))
         if reason:
             fail(f"{label} allow rule {match!r}: scripts/orchestrator/{lever.group(1)} {reason}")

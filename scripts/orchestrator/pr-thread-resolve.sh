@@ -7,21 +7,25 @@
 #   (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). `<pr>` and `<comment-id>` are decimal and
 #   checked before the first `gh` call. The thread is the one whose first comment's `databaseId` is `<comment-id>`
 #   among the pull request's `reviewThreads` (GraphQL, read-only); the lever refuses when no thread has it, when
-#   the thread is already resolved, when its newest reply's first line is not a disposition of `preferences.md`
-#   standing order 22 (the grammar `pr-thread-reply.sh` posts and `pr-threads-check.sh` reads), so a resolution
-#   never hides an undisposed finding, and when the listing has more than 100 threads or a thread more than 100
-#   comments (a page it did not read). The one write is the `resolveReviewThread` mutation on that thread id.
-#   `<owner>/<repo>` comes from `gh repo view --json nameWithOwner`. Each `gh` call is bounded by
-#   PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
+#   the thread is already resolved, and when the listing has more than 100 threads or a thread more than 100
+#   comments (a page it did not read). The thread's newest reply must hold a disposition that is valid by the rule
+#   `pr-threads-check.sh` applies before a merge (U28b F1; the function `disposition` is the same in both files):
+#   `fixed: <sha>` names a commit of this checkout that is the pull request's head or an ancestor of it and was
+#   committed after the thread's first comment; `refuted:` cites a URL or a `file:line`; `residual: unit=U<n>`
+#   answers a P2 or P3 finding and `units.tsv` in `--records` has the row; `residual: operator=<ts>` has its
+#   `decisions.tsv` row in `--records`. So a resolution never hides a finding the merge check would refuse. The
+#   one write is the `resolveReviewThread` mutation on that thread id. `<owner>/<repo>` comes from
+#   `gh repo view --json nameWithOwner`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @arg $1 int The pull request number.
 # @arg $2 int The id of the thread's first review comment.
+# @option --records <dir> The program's records directory, holding `units.tsv` and `decisions.tsv`.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `resolved pr=<pr> comment=<id> thread=<node id>`.
+# @stdout One receipt line: `resolved pr=<pr> comment=<id> thread=<node id> disposition=<disposition>`.
 # @exitcode 0 The thread was resolved.
-# @exitcode 1 A `gh` read or the mutation failed, or the mutation did not report the thread resolved.
-# @exitcode 2 Refused: usage, no such thread, already resolved, no disposition reply, or an unread page.
+# @exitcode 1 A `gh` or `git` read or the mutation failed, or the mutation did not report the thread resolved.
+# @exitcode 2 Refused: usage, no such thread, already resolved, no valid disposition, or an unread page.
 # @example
-#   ~/.local/bin/common/pr-thread-resolve.sh 480 4365170609
+#   ~/.local/bin/common/pr-thread-resolve.sh 480 4365170609 --records .orchestration/orchestrate/regime-cutover
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -80,26 +84,30 @@ lever_self_check() {
 lever_self_check
 
 lever='pr-thread-resolve.sh'
-usage='usage: pr-thread-resolve.sh <pr> <comment-id>'
+usage='usage: pr-thread-resolve.sh <pr> <comment-id> [--records <dir>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
-# Each thread as `<id> <resolved> <first comment id> <comment count> <newest reply's first line>` (TSV), after one
-# `page <hasNextPage>` row.
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 threads_query='query($owner: String!, $name: String!, $pr: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $pr) {
+      headRefOid
       reviewThreads(first: 100) {
         pageInfo { hasNextPage }
-        nodes { id isResolved comments(first: 100) { totalCount nodes { databaseId body } } }
+        nodes { id isResolved comments(first: 100) { totalCount nodes { databaseId createdAt body } } }
       }
     }
   }
 }'
-threads_jq='.data.repository.pullRequest.reviewThreads
-  | (["page", (.pageInfo.hasNextPage | tostring)] | @tsv),
-    (.nodes[] | [.id, (.isResolved | tostring), (.comments.nodes[0].databaseId | tostring),
-      (.comments.totalCount | tostring),
-      ((.comments.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
+# `head <sha> <hasNextPage>`, then per thread `<node id> <resolved> <first id> <created epoch> <P0-P3 or -> <count>
+# <newest reply's first line>` (TSV; the reply is last because it may be empty).
+# shellcheck disable=SC2016 # jq source, not shell
+threads_jq='.data.repository.pullRequest
+  | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
+    (.reviewThreads.nodes[] | .comments as $c | [.id, (.isResolved | tostring),
+      ($c.nodes[0].databaseId | tostring), ($c.nodes[0].createdAt | fromdateiso8601 | tostring),
+      ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
+      ($c.totalCount | tostring),
+      (($c.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 resolve_mutation='mutation($thread: ID!) { resolveReviewThread(input: {threadId: $thread}) { thread { id isResolved } } }'
 
@@ -123,21 +131,108 @@ gh_bounded() {
     perl -e 'alarm shift; exec @ARGV or die "exec gh: $!\n"' "${gh_timeout}" gh "$@"
 }
 
-# @description Succeed when $1, a reply's first line, is a disposition (`preferences.md` standing order 22).
-# @arg $1 string The line.
-disposition_line() {
-    local fixed='^fixed: [0-9a-f]{40}( |$)'
-    local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
-    local unit='^residual: unit=U[0-9]+[a-z]? gate=[^[:space:]]'
-    local operator='^residual: operator=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
-    [[ $1 =~ ${fixed} || $1 =~ ${refuted} || $1 =~ ${unit} || $1 =~ ${operator} ]]
+# @description Succeed when the TSV file $1 has a row whose first field is $2.
+# @arg $1 path The file.
+# @arg $2 string The key.
+# @exitcode 0 Found. 1 Not found. 2 Unreadable.
+has_row() {
+    [[ -r $1 ]] || return 2
+    ROW_KEY=$2 awk -F '\t' '$1 == ENVIRON["ROW_KEY"] { found = 1 } END { exit !found }' "$1" || return 1
 }
 
-[[ $# -eq 2 ]] || refuse "${usage}"
-pr=$1
-comment=$2
+# @description Print the disposition a thread's newest reply carries, or `open (<why>)`.
+# @arg $1 int The created epoch of the thread's first comment.
+# @arg $2 string Its severity, P0-P3 or `-`.
+# @arg $3 string The first line of the newest reply.
+disposition() {
+    local created=$1 severity=$2 line=$3 fix fix_time status
+    local fixed='^fixed: ([0-9a-f]{40})( |$)'
+    local refuted='^refuted: .*(https://[^[:space:]]+|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*:[0-9]+)'
+    local unit='^residual: unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
+    local operator='^residual: operator=([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$'
+    if [[ ${line} =~ ${fixed} ]]; then
+        fix=${BASH_REMATCH[1]}
+        git cat-file -e "${fix}^{commit}" 2> /dev/null || {
+            echo "open (fixed: ${fix} is not a commit here)"
+            return
+        }
+        status=0
+        git merge-base --is-ancestor "${fix}" "${head}" || status=$?
+        case ${status} in
+        0) ;;
+        1)
+            echo "open (fixed: ${fix} is not in the head)"
+            return
+            ;;
+        *) fail "git merge-base --is-ancestor ${fix} ${head} failed" ;;
+        esac
+        fix_time=$(git show -s --format=%ct "${fix}") || fail "git show ${fix} failed"
+        if ((fix_time < created)); then
+            echo "open (fixed: ${fix} predates the finding)"
+            return
+        fi
+        echo "fixed ${fix}"
+    elif [[ ${line} =~ ${refuted} ]]; then
+        echo refuted
+    elif [[ ${line} =~ ${unit} ]]; then
+        fix=${BASH_REMATCH[1]}
+        [[ ${severity} == P2 || ${severity} == P3 ]] || {
+            echo "open (residual: unit= is for P2 and P3; this is ${severity/-/P1 (no badge)})"
+            return
+        }
+        [[ -n ${records} ]] || refuse "a residual needs --records to check units.tsv"
+        status=0
+        has_row "${records}/units.tsv" "${fix}" || status=$?
+        case ${status} in
+        0) echo "residual ${fix}" ;;
+        1) echo "open (residual: no units.tsv row ${fix})" ;;
+        *) fail "cannot read ${records}/units.tsv" ;;
+        esac
+    elif [[ ${line} =~ ${operator} ]]; then
+        fix=${BASH_REMATCH[1]}
+        [[ -n ${records} ]] || refuse "a residual needs --records to check decisions.tsv"
+        status=0
+        has_row "${records}/decisions.tsv" "${fix}" || status=$?
+        case ${status} in
+        0) echo "residual operator=${fix}" ;;
+        1) echo "open (residual: no decisions.tsv row at ${fix})" ;;
+        *) fail "cannot read ${records}/decisions.tsv" ;;
+        esac
+    elif [[ -z ${line} ]]; then
+        echo 'open (no reply)'
+    else
+        echo 'open (the newest reply is not a disposition)'
+    fi
+}
+
+pr=''
+comment=''
+records=''
+while (($#)); do
+    case $1 in
+    --records)
+        (($# >= 2)) || refuse "${usage}"
+        records=$2
+        shift 2
+        ;;
+    -*) refuse "${usage}" ;;
+    *)
+        if [[ -z ${pr} ]]; then
+            pr=$1
+        elif [[ -z ${comment} ]]; then
+            comment=$1
+        else
+            refuse "${usage}"
+        fi
+        shift
+        ;;
+    esac
+done
+[[ -n ${pr} && -n ${comment} ]] || refuse "${usage}"
 [[ ${pr} =~ ^[1-9][0-9]{0,9}$ ]] || refuse "the pull request is not a decimal number: ${pr}"
 [[ ${comment} =~ ^[1-9][0-9]{0,19}$ ]] || refuse "the comment id is not a decimal number: ${comment}"
+[[ -z ${records} || (-f ${records}/units.tsv && -f ${records}/decisions.tsv) ]] ||
+    refuse "--records holds no units.tsv and decisions.tsv: ${records}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 
 repo=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'gh repo view failed'
@@ -145,28 +240,36 @@ repo=$(gh_bounded repo view --json nameWithOwner --jq .nameWithOwner) || fail 'g
 listing=$(gh_bounded api graphql -f "query=${threads_query}" -f "owner=${repo%%/*}" -f "name=${repo#*/}" \
     -F "pr=${pr}" --jq "${threads_jq}") || fail "cannot list the review threads of pull request ${pr}"
 
+head=''
 page=''
 thread=''
-while IFS=$'\t' read -r id resolved first count reply; do
-    if [[ ${id} == page ]]; then
-        page=${resolved}
+while IFS=$'\t' read -r id resolved first created severity count reply; do
+    if [[ ${id} == head ]]; then
+        head=${resolved}
+        page=${first}
     elif [[ ${first} == "${comment}" ]]; then
         thread=${id}
         thread_resolved=${resolved}
+        thread_created=${created}
+        thread_severity=${severity}
         thread_count=${count}
         thread_reply=${reply}
     fi
 done <<< "${listing}"
-[[ ${page} == false ]] || refuse "pull request ${pr} has more than 100 review threads (or the listing is unreadable); resolve it by hand"
+[[ ${head} =~ ^[0-9a-f]{40}$ ]] || fail "the listing of pull request ${pr} has no readable head"
+[[ ${page} == false ]] || refuse "pull request ${pr} has more than 100 review threads; resolve it by hand"
 [[ -n ${thread} ]] || refuse "no review thread of pull request ${pr} starts with comment ${comment}"
 [[ ${thread_resolved} == false ]] || refuse "the thread of comment ${comment} is already resolved"
 if ! [[ ${thread_count} =~ ^[0-9]+$ ]] || ((thread_count > 100)); then
     refuse "the thread of comment ${comment} has more than 100 comments; resolve it by hand"
 fi
-disposition_line "${thread_reply}" ||
-    refuse "the newest reply in the thread of comment ${comment} is not a disposition; reply with pr-thread-reply.sh first"
+[[ ${thread_created} =~ ^[0-9]+$ ]] || fail "unreadable creation time for the thread of comment ${comment}"
+git cat-file -e "${head}^{commit}" 2> /dev/null || refuse "the head ${head} of pull request ${pr} is not a commit here; git fetch first"
+state=$(disposition "${thread_created}" "${thread_severity}" "${thread_reply}") || exit $?
+[[ ${state} != open* ]] ||
+    refuse "the thread of comment ${comment} has no valid disposition, ${state#open }; reply with pr-thread-reply.sh first"
 
 done_id=$(gh_bounded api graphql -f "query=${resolve_mutation}" -f "thread=${thread}" \
     --jq '.data.resolveReviewThread.thread | select(.isResolved) | .id') || fail "resolveReviewThread failed for ${thread}"
 [[ ${done_id} == "${thread}" ]] || fail "resolveReviewThread did not report ${thread} resolved"
-echo "resolved pr=${pr} comment=${comment} thread=${thread}"
+echo "resolved pr=${pr} comment=${comment} thread=${thread} disposition=${state}"

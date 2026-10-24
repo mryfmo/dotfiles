@@ -157,6 +157,13 @@ TABLE = {
         ("bash", "scripts/orchestrator/pr-thread-resolve.sh 480 1", "deny"),
         ("bash", "/Users/u/.local/bin/common/pr-update-branch.sh 480", "deny"),
         ("bash", "bash ~/.local/bin/common/records-sync.sh --unit U20", "deny"),
+        # U28b F3: records-sync.sh acts with no arguments; only the exact installed bare form passes.
+        ("bash", f"{LEVER}records-sync.sh", "allow"),
+        ("bash", "scripts/orchestrator/records-sync.sh", "deny"),
+        ("bash", "/Users/u/.local/bin/common/records-sync.sh", "deny"),
+        ("bash", f"{LEVER}records-sync.sh && gh pr close 1", "deny"),
+        ("bash", f"cd /x && {LEVER}records-sync.sh", "deny"),
+        ("bash", f"{LEVER}records-sync.sh | tee x", "deny"),
         ("bash", BODY_EDIT, "deny"),
         ("edit", None, "allow"),
         # U34/U36: a Task subagent on the claude-bridge route killed the orchestrator seat (2026-10-24 06:03Z).
@@ -189,6 +196,12 @@ TABLE = {
         ("bash", f"{BODY_EDIT} && gh pr close 9", "deny"),
         *[("bash", line, "deny") for line in ORCHESTRATOR_LEVERS if "pr-threads-check" not in line],
         ("bash", "shellcheck -x scripts/orchestrator/pr-close.sh", "allow"),
+        # U28b F3: the bare records-sync form, alone or chained, by any path, is denied to the worker.
+        ("bash", f"{LEVER}records-sync.sh", "deny"),
+        ("bash", "scripts/orchestrator/records-sync.sh", "deny"),
+        ("bash", f"cd /main && {LEVER}records-sync.sh", "deny"),
+        ("bash", f"{LEVER}records-sync.sh; echo done", "deny"),
+        ("bash", "git add scripts/orchestrator", "allow"),
         ("bash", "git add scripts/orchestrator/pr-body-edit.sh", "allow"),
         ("edit", None, "allow"),
         ("write", None, "allow"),
@@ -392,11 +405,13 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 "~/.local/bin/common/pr-close.sh --from-table *",
                 "~/.local/bin/common/pr-threads-check.sh *",
                 "~/.local/bin/common/records-sync.sh *",
+                "~/.local/bin/common/records-sync.sh",
             ],
         )
 
     def test_each_lever_allow_is_followed_by_its_catch_deny_before_the_gh_denies(self):
-        """U28: the allow, then the `*<lever> *` deny, both before the first common deny."""
+        """U28: a lever's allows, then its `*<lever> *` deny (and `*<lever>` after a bare allow, U28b F3), all
+        before the first common deny."""
         for role in ("orchestrator", "worker"):
             rules = self.policies[role]["bash"]["patterns"]
             first_common = next(index for index, rule in enumerate(rules) if rule["match"] in COMMON_DENIES)
@@ -405,8 +420,18 @@ class OmpSeatPolicyTest(unittest.TestCase):
                     continue
                 with self.subTest(role=role, rule=rule["match"]):
                     lever = rule["match"].removeprefix("~/.local/bin/common/").split(" ", 1)[0]
-                    self.assertEqual(rules[index + 1], {"match": f"*{lever} *", "approval": "deny"})
-                    self.assertLess(index + 1, first_common)
+                    after = index + 1
+                    while rules[after]["approval"] == "allow" and lever in rules[after]["match"]:
+                        after += 1
+                    self.assertEqual(rules[after], {"match": f"*{lever} *", "approval": "deny"})
+                    if " " not in rule["match"]:
+                        self.assertEqual(rules[after + 1], {"match": f"*{lever}", "approval": "deny"})
+                    self.assertLess(after, first_common)
+
+    def test_the_bare_records_sync_is_denied_in_the_worker_policy(self):
+        """U28b F3: records-sync.sh acts with no arguments, so the worker denies its bare name too."""
+        matches = [rule["match"] for rule in self.policies["worker"]["bash"]["patterns"] if rule["approval"] == "deny"]
+        self.assertIn("*records-sync.sh", matches)
 
     def test_the_worker_allows_only_its_body_lever_and_the_audit_ends_in_a_catch_all_deny(self):
         self.assertEqual(

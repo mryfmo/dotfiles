@@ -2,15 +2,18 @@
 # @file records-sync.sh
 # @brief Carry the program's records from the main checkout to a `records/sync-<n>` pull request.
 # @description
-#   Regime-cutover U28 (ADDENDUM), the orchestrator seat's lever, allowed by the row
-#   `~/.local/bin/common/records-sync.sh *` of `home/dot_agents/omp/policies/orchestrator.yml` (the seat's own
-#   `git push` and `gh pr create` stay denied). It runs in the main checkout, where the orchestrator writes its
-#   records (a linked worktree is refused). The copy set is the tracked changes against `HEAD` (`git diff
-#   --name-only HEAD`) and the untracked, not ignored files (`git ls-files --others --exclude-standard`) under
-#   `.orchestration/orchestrate/<program>/` and `.orchestration/validation/`; every path must lie under
-#   `.orchestration/` and be a regular file or a deletion (a symlink is refused, since its target could lie
-#   anywhere), else the run is refused before anything is created. `<n>` is one more than the largest number
-#   among the remote heads and the heads of the newest 1000 pull requests named `records/sync-<n>`, `records/program-store-<n>` or
+#   Regime-cutover U28 (ADDENDUM), the orchestrator seat's lever, allowed by the rows
+#   `~/.local/bin/common/records-sync.sh *` and the bare `~/.local/bin/common/records-sync.sh` of
+#   `home/dot_agents/omp/policies/orchestrator.yml` (the seat's own `git push` and `gh pr create` stay denied;
+#   `worker.yml` denies every form, bare included, U28b F3). It runs in the main checkout, where the orchestrator
+#   writes its records (a linked worktree is refused), and `.orchestration` there must be a real directory. The
+#   copy set is the tracked changes against `HEAD` (`git diff --name-only HEAD`) and the untracked, not ignored
+#   files (`git ls-files --others --exclude-standard`) under `.orchestration/orchestrate/<program>/` and
+#   `.orchestration/validation/`; every path must lie under `.orchestration/`, no component of it may be a
+#   symlink (git lists the tracked files below a linked directory too, U28b F2), and an existing source must be a
+#   regular file whose directory resolves (`pwd -P`) inside the store, else the run is refused before anything is
+#   created. `<n>` is one more than the largest number among the remote heads, the local branches (U28b F6) and
+#   the heads of the newest 1000 pull requests named `records/sync-<n>`, `records/program-store-<n>` or
 #   `records/<program>-sync-<n>` (the earlier syncs), and the branch must match `records/sync-<n>`. In a new
 #   worktree under `$TMPDIR` on that branch from `origin/main` it copies the set, masks the copies with the
 #   worktree's own `scripts/validate-agent-assets.py --mask-secrets` (the checkout's files are never changed;
@@ -19,7 +22,9 @@
 #   with `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`; the body lists the
 #   `units.tsv` ids and the `decisions.tsv` timestamps the sync adds or changes and, with `--unit`, the line
 #   `Program-Unit: <program>/<unit>`. The worktree is removed on every exit (`git worktree remove --force`, only
-#   on the path this run created; the branch stays). Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds.
+#   on the path this run created), and a run that exits before its push deletes the branch it created (only that
+#   one), so a retry takes the same number; a pushed branch stays. Each `gh` call is bounded by
+#   PR_LEVER_GH_TIMEOUT seconds.
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
 # @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
 # @option --unit <U<n>> The unit the body's `Program-Unit:` line names (the records unit, U20 for regime-cutover).
@@ -122,6 +127,12 @@ cleanup() {
         fi
         rm -r "${scratch}" 2> /dev/null || echo "${lever}: could not remove ${scratch}" >&2
     fi
+    # U28b F6: a run that created its branch and never pushed it deletes exactly that branch, so a retry is not
+    # blocked by it; a pushed branch stays (the remote holds it, and the next run numbers past it).
+    if [[ -n ${created_branch:-} && ${pushed:-0} == 0 ]]; then
+        git -C "${toplevel}" branch -D "${created_branch}" > /dev/null 2>&1 ||
+            echo "${lever}: could not delete the unpushed branch ${created_branch}" >&2
+    fi
 }
 
 base=origin/main
@@ -153,6 +164,12 @@ common_dir=$(cd "${common_dir}" && pwd -P) || refuse "cannot resolve ${common_di
 [[ ${git_dir} == "${common_dir}" ]] || # lint-comparisons: allow both sides are pwd -P forms
     refuse "${toplevel} is a linked worktree; run from the main checkout, where the orchestrator writes its records"
 cd "${toplevel}" || refuse "cannot enter ${toplevel}"
+# U28b F2: the store root itself is no symlink, so every canonical path below is measured against the real store.
+top_real=$(pwd -P) || refuse "cannot resolve ${toplevel}"
+[[ -d .orchestration && ! -L .orchestration ]] || refuse ".orchestration is missing or a symlink in ${toplevel}"
+store_root=$(cd .orchestration && pwd -P) || refuse "cannot resolve ${toplevel}/.orchestration"
+[[ ${store_root} == "${top_real}/.orchestration" ]] || # lint-comparisons: allow both sides are pwd -P forms
+    refuse ".orchestration resolves outside ${top_real}: ${store_root}"
 if [[ -z ${program} ]]; then
     programs=()
     for dir in .orchestration/orchestrate/*/; do
@@ -178,16 +195,30 @@ while IFS= read -r path; do
     *) refuse "a path of the copy set is outside .orchestration/: ${path}" ;;
     esac
     [[ ${path} != *..* ]] || refuse "a path of the copy set holds '..': ${path}" # lint-comparisons: allow refuses a raw git path that holds ..
-    [[ ! -L ${path} ]] || refuse "a path of the copy set is a symlink: ${path}"
-    [[ ! -e ${path} || -f ${path} ]] || refuse "a path of the copy set is not a regular file: ${path}"
+    # U28b F2: no component may be a symlink (git lists the tracked files below a linked directory too), and an
+    # existing source must resolve inside the store before anything is copied.
+    prefix=''
+    IFS=/ read -r -a parts <<< "${path}"
+    for part in "${parts[@]}"; do
+        prefix=${prefix:+${prefix}/}${part}
+        [[ ! -L ${prefix} ]] || refuse "a component of a path of the copy set is a symlink: ${prefix} (in ${path})"
+    done
+    if [[ -e ${path} ]]; then
+        [[ -f ${path} ]] || refuse "a path of the copy set is not a regular file: ${path}"
+        source_dir=$(cd "${path%/*}" && pwd -P) || refuse "cannot resolve the directory of ${path}"
+        [[ ${source_dir} == "${store_root}" || ${source_dir} == "${store_root}"/* ]] || # lint-comparisons: allow both sides are pwd -P forms
+            refuse "a path of the copy set resolves outside ${store_root}: ${path}"
+    fi
     files+=("${path}")
 done <<< "${listed}"
 ((${#files[@]} > 0)) || refuse "nothing to sync under ${dirs[*]}"
 
 remote_heads=$(git ls-remote --heads origin 'refs/heads/records/*') || fail 'git ls-remote origin failed'
+# U28b F6: a local branch occupies its number too, whatever left it behind.
+local_heads=$(git for-each-ref --format='%(refname)' 'refs/heads/records/') || fail 'git for-each-ref failed'
 pr_heads=$(gh_bounded pr list --state all --limit 1000 --json headRefName --jq '.[].headRefName') ||
     fail 'gh pr list failed'
-last=$(printf '%s\n%s\n' "${remote_heads}" "${pr_heads}" |
+last=$(printf '%s\n%s\n%s\n' "${remote_heads}" "${local_heads}" "${pr_heads}" |
     PROGRAM=${program} awk '{ ref = $NF; sub(/^refs\/heads\//, "", ref) }
         ref ~ "^records/(sync|program-store|" ENVIRON["PROGRAM"] "-sync)-[0-9]+$" { n = ref; sub(/.*-/, "", n); if (n + 0 > max) max = n + 0 }
         END { print max + 0 }') || fail 'cannot number the sync'
@@ -200,6 +231,8 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/records-sync.XXXXXX") || fail 'mktemp faile
 trap cleanup EXIT
 tree=${scratch}/tree
 git worktree add --quiet -b "${branch}" "${tree}" "${base}" || fail "git worktree add ${branch} failed"
+created_branch=${branch}
+pushed=0
 masked=()
 for path in "${files[@]}"; do
     if [[ -e ${path} ]]; then
@@ -232,6 +265,7 @@ title="chore(records): ${program} sync ${n}"
 git -C "${tree}" commit --quiet -m "${title}" -m "Carries ${count} file(s) of ${records}/ and .orchestration/validation/ from the main checkout (records-sync.sh)." -m "${footer}" ||
     fail 'git commit failed'
 git -C "${tree}" push --quiet origin "refs/heads/${branch}:refs/heads/${branch}" || fail "git push ${branch} failed; nothing was opened"
+pushed=1
 body=${scratch}/body.md
 {
     # shellcheck disable=SC2016 # the backticks are Markdown code spans

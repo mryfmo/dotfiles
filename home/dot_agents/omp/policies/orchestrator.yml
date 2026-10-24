@@ -48,9 +48,15 @@ bash:
       approval: allow
     - match: "*pr-threads-check.sh *"
       approval: deny
+    # records-sync.sh acts with no arguments too (U28b F3): the exact bare form is allowed, every other bare
+    # spelling and the bare form chained are denied as the argument forms are.
     - match: "~/.local/bin/common/records-sync.sh *"
       approval: allow
+    - match: "~/.local/bin/common/records-sync.sh"
+      approval: allow
     - match: "*records-sync.sh *"
+      approval: deny
+    - match: "*records-sync.sh"
       approval: deny
     # The worker's lever: the orchestrator edits no pull-request body.
     - match: "*pr-body-edit.sh *"

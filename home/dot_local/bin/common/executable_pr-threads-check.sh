@@ -7,8 +7,9 @@
 #   `hcom-orchestration` SKILL runs it before the merge command (step 6). It lists every review thread of the
 #   pull request (GraphQL `reviewThreads`, read-only; more than 100 threads, or more than 100 comments in one,
 #   is a refusal, never a partial read) and requires `--head` to be the pull request's current `headRefOid` and
-#   a commit in this checkout (`git fetch` first). A resolved thread passes. An unresolved thread passes only when
-#   the first line of its newest reply is a disposition of `preferences.md` standing order 22, checked here:
+#   a commit in this checkout (`git fetch` first). Every thread, resolved or not (GitHub's `isResolved` alone
+#   proves nothing, U28b F1), passes only when the first line of its newest reply is a disposition of
+#   `preferences.md` standing order 22, checked here:
 #   `fixed: <sha>` when `<sha>` is `--head` or an ancestor of it and was committed after the thread's first
 #   comment (so a thread opened after the head cannot be `fixed`); `refuted: <text>` citing a URL or a
 #   `file:line`; `residual: unit=U<n> gate=<clause>` when the finding is P2 or P3 (the `![P<n> Badge]` of its
@@ -23,7 +24,7 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One line per thread, `thread comment=<id> severity=<P0-P3> state=<disposition>`, then
 #   `summary threads=<n> open=<n>`.
-# @exitcode 0 Every thread is resolved or disposed.
+# @exitcode 0 Every thread carries a valid disposition.
 # @exitcode 1 A `gh` or `git` read failed.
 # @exitcode 2 Refused: usage, a moved or unknown head, an unread page, or at least one thread without a valid
 #   disposition (its line says `state=open`).
@@ -141,7 +142,7 @@ has_row() {
     ROW_KEY=$2 awk -F '\t' '$1 == ENVIRON["ROW_KEY"] { found = 1 } END { exit !found }' "$1" || return 1
 }
 
-# @description Print the disposition of an unresolved thread, or `open (<why>)`.
+# @description Print the disposition a thread's newest reply carries, or `open (<why>)`.
 # @arg $1 int The created epoch of the thread's first comment.
 # @arg $2 string Its severity, P0-P3 or `-`.
 # @arg $3 string The first line of the newest reply.
@@ -255,10 +256,13 @@ while IFS=$'\t' read -r first resolved created severity count reply; do
         fail "unreadable thread row: ${first}"
     ((count <= 100)) || refuse "the thread of comment ${first} has more than 100 comments; check it by hand"
     threads=$((threads + 1))
+    # A resolved thread is judged like an open one (U28b F1): GitHub's isResolved says someone clicked, not why.
+    state=$(disposition "${created}" "${severity}" "${reply}") || exit $?
     if [[ ${resolved} == true ]]; then
-        state=resolved
-    else
-        state=$(disposition "${created}" "${severity}" "${reply}") || exit $?
+        case ${state} in
+        open*) state="open (resolved without a valid disposition: ${state#open (}" ;;
+        *) state="resolved ${state}" ;;
+        esac
     fi
     [[ ${state} != open* ]] || open=$((open + 1))
     echo "thread comment=${first} severity=${severity/-/none} state=${state}"

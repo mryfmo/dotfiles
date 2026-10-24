@@ -37,6 +37,10 @@ bash:
       approval: deny
     - match: "*records-sync.sh *"
       approval: deny
+    # records-sync.sh acts with no arguments too (U28b F3), so its bare name is denied as well; a worker that edits
+    # it names its directory (`git add scripts/orchestrator`, `shellcheck scripts/orchestrator/*`), never the file.
+    - match: "*records-sync.sh"
+      approval: deny
     - match: "*sudo *"
       approval: deny
     - match: "*rm -rf *"

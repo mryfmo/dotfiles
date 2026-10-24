@@ -1123,13 +1123,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         installed = "~/.local/bin/common/pr-close.sh --from-table *"
         self.module.validate_omp_policy_allow(policy(merge, installed), "orchestrator.yml", pinned, merge=True)
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh *"), "worker.yml", pinned)
+        # U28b F3: the exact bare form of a lever that acts without arguments.
+        self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh"), "orchestrator.yml", pinned)
         cases = {
             (merge, False): "is not ~/.local/bin/common/<lever>",
             ("gh pr close *", True): "is not 'gh pr merge",
             ("gh api *", True): "is not 'gh pr merge",
             ("*", True): "is not 'gh pr merge",
             ("bash *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh x", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh*", True): "is not 'gh pr merge",
             ("~/.local/bin/common/pr-close.sh --from-table x *", True): "is not 'gh pr merge",
             ("~/.local/bin/common/pr-close.sh * && *", True): "is not 'gh pr merge",
             ("/Users/x/.local/bin/common/pr-close.sh *", True): "is not 'gh pr merge",

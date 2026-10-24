@@ -287,44 +287,120 @@ class PrThreadReplyTest(PrLeverTestCase):
         )
 
 
-class PrThreadResolveTest(PrLeverTestCase):
+def invalid_dispositions(fixture):
+    """Replies that parse as dispositions but do not hold for `fixture`'s commits and records (U28b F1)."""
+    return [
+        (f"fixed: {SHA_B}", "P2", "is not a commit here"),
+        (f"fixed: {fixture.old}", "P2", "predates the finding"),
+        ("residual: unit=U99 gate=no such unit", "P2", "no units.tsv row U99"),
+        ("residual: unit=U29 gate=a P1 needs the operator", "P1", "is for P2 and P3; this is P1"),
+        ("residual: operator=2026-10-24T00:00:00Z", "P1", "no decisions.tsv row"),
+    ]
+
+
+class ThreadsFixture(PrLeverTestCase):
+    """A head commit at 02:00Z with an older one at 00:30Z, findings at 01:00Z, and a records directory."""
+
+    def setUp(self):
+        super().setUp()
+        # The finding is from 01:00Z; the fix commit at 02:00Z is the head, an older commit at 00:30Z is in it.
+        self.git("commit", "-q", "--allow-empty", "-m", "old", env={"GIT_COMMITTER_DATE": "2026-10-24T00:30:00Z"})
+        self.old = self.git("rev-parse", "HEAD")
+        self.git("commit", "-q", "--allow-empty", "-m", "fix", env={"GIT_COMMITTER_DATE": "2026-10-24T02:00:00Z"})
+        self.head = self.git("rev-parse", "HEAD")
+        self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
+        self.records.mkdir(parents=True)
+        (self.records / "units.tsv").write_text("id\ttrack\nU29\tseats\n")
+        (self.records / "decisions.tsv").write_text("ts\tphase\n2026-10-24T12:53:00Z\tlanding\n")
+
+
+class PrThreadResolveTest(ThreadsFixture):
     def listing(self, *nodes, more=False):
-        return {"match": r"^api graphql -f query=query", "json": threads_json(list(nodes), more=more)}
+        return {"match": r"^api graphql -f query=query", "json": threads_json(list(nodes), head=self.head, more=more)}
+
+    def resolve(self, *args):
+        return self.run_lever("pr-thread-resolve.sh", *args, "--records", str(self.records))
 
     def test_a_disposed_thread_is_resolved_by_its_node_id(self):
-        self.answer(self.listing(thread(100), thread(4365170609, replies=["fixed: " + SHA_A])), RESOLVED)
-        run = self.run_lever("pr-thread-resolve.sh", "480", "4365170609")
+        self.answer(self.listing(thread(100), thread(4365170609, replies=[f"fixed: {self.head}"])), RESOLVED)
+        run = self.resolve("480", "4365170609")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stdout, "resolved pr=480 comment=4365170609 thread=T4365170609\n")
+        self.assertEqual(
+            run.stdout, f"resolved pr=480 comment=4365170609 thread=T4365170609 disposition=fixed {self.head}\n"
+        )
         listing = self.gh_calls()[1]
         self.assertIn("owner=acme", listing)
         self.assertIn("name=widgets", listing)
         self.assertIn("pr=480", listing)
         self.assertEqual(len(self.writes()), 1)
 
+    def test_each_valid_disposition_resolves(self):
+        for reply, severity in (
+            ("refuted: https://docs.github.com/en/rest says so", "P2"),
+            ("residual: unit=U29 gate=no Linux make update until U29", "P3"),
+            ("residual: operator=2026-10-24T12:53:00Z", "P1"),
+        ):
+            with self.subTest(reply=reply):
+                self.calls.unlink(missing_ok=True)
+                self.answer(self.listing(thread(4365170609, severity=severity, replies=[reply])), RESOLVED)
+                self.assertEqual(self.resolve("480", "4365170609").returncode, 0)
+                self.assertEqual(len(self.writes()), 1)
+
     def test_refusals(self):
         cases = [
             ((), (thread(1),), "usage:"),
             (("480", "x"), (thread(1),), "not a decimal number"),
+            (("480", "4365170609", "9"), (thread(1),), "usage:"),
             (("480", "4365170609"), (thread(1),), "no review thread"),
             (
                 ("480", "4365170609"),
                 (thread(4365170609, resolved=True, replies=["refuted: a.py:1"]),),
                 "already resolved",
             ),
-            (("480", "4365170609"), (thread(4365170609),), "not a disposition"),
+            (("480", "4365170609"), (thread(4365170609),), "no valid disposition"),
             (
                 ("480", "4365170609"),
                 (thread(4365170609, replies=["refuted: a.py:1", "@codex ok?"]),),
-                "not a disposition",
+                "no valid disposition",
             ),
         ]
         for args, nodes, message in cases:
             with self.subTest(args=args, message=message):
                 self.answer(self.listing(*nodes), RESOLVED)
-                self.assert_refused(self.run_lever("pr-thread-resolve.sh", *args), message)
+                self.assert_refused(self.resolve(*args), message)
         self.answer(self.listing(thread(4365170609, replies=["refuted: a.py:1"]), more=True), RESOLVED)
-        self.assert_refused(self.run_lever("pr-thread-resolve.sh", "480", "4365170609"), "more than 100 review threads")
+        self.assert_refused(self.resolve("480", "4365170609"), "more than 100 review threads")
+        self.answer(self.listing(thread(4365170609, replies=["residual: unit=U29 gate=x"])), RESOLVED)
+        self.assert_refused(self.run_lever("pr-thread-resolve.sh", "480", "4365170609"), "needs --records")
+        self.answer(self.listing(thread(4365170609, replies=["refuted: a.py:1"])), RESOLVED)
+        self.assert_refused(
+            self.run_lever("pr-thread-resolve.sh", "480", "4365170609", "--records", str(self.tmp)),
+            "holds no units.tsv",
+        )
+
+    def test_a_head_missing_here_is_refused(self):
+        listing = self.listing(thread(4365170609, replies=["refuted: a.py:1"]))
+        listing["json"]["data"]["repository"]["pullRequest"]["headRefOid"] = SHA_B
+        self.answer(listing, RESOLVED)
+        self.assert_refused(self.resolve("480", "4365170609"), "git fetch first")
+
+    def test_resolve_then_check_refuses_a_disposition_that_does_not_hold(self):
+        """U28b F1: the reply lever accepts these lines by form; resolving them is refused, and a thread someone
+        resolved anyway (in the web UI) is still open to the merge check."""
+        for reply, severity, reason in invalid_dispositions(self):
+            with self.subTest(reply=reply):
+                self.calls.unlink(missing_ok=True)
+                self.answer(self.listing(thread(4365170609, severity=severity, replies=[reply])), RESOLVED)
+                self.assert_refused(self.resolve("480", "4365170609"), reason)
+                self.assertEqual(self.writes(), [], "no resolveReviewThread")
+                resolved = thread(4365170609, resolved=True, severity=severity, replies=[reply])
+                self.answer(self.listing(resolved), RESOLVED)
+                check = self.run_lever(
+                    "pr-threads-check.sh", "480", "--head", self.head, "--records", str(self.records)
+                )
+                self.assertEqual(check.returncode, 2, check.stdout + check.stderr)
+                self.assertIn("state=open (resolved without a valid disposition: ", check.stdout)
+                self.assertIn(reason, check.stdout)
 
     def test_a_mutation_that_does_not_report_resolved_fails(self):
         mutation = {
@@ -332,7 +408,7 @@ class PrThreadResolveTest(PrLeverTestCase):
             "json": {"data": {"resolveReviewThread": {"thread": {"id": "T4365170609", "isResolved": False}}}},
         }
         self.answer(self.listing(thread(4365170609, replies=["refuted: a.py:1"])), mutation)
-        self.assertEqual(self.run_lever("pr-thread-resolve.sh", "480", "4365170609").returncode, 1)
+        self.assertEqual(self.resolve("480", "4365170609").returncode, 1)
 
 
 class PrUpdateBranchTest(PrLeverTestCase):
@@ -594,19 +670,7 @@ class PrBodyEditTest(PrLeverTestCase):
         )
 
 
-class PrThreadsCheckTest(PrLeverTestCase):
-    def setUp(self):
-        super().setUp()
-        # The finding is from 01:00Z; the fix commit at 02:00Z is the head, an older commit at 00:30Z is in it.
-        self.git("commit", "-q", "--allow-empty", "-m", "old", env={"GIT_COMMITTER_DATE": "2026-10-24T00:30:00Z"})
-        self.old = self.git("rev-parse", "HEAD")
-        self.git("commit", "-q", "--allow-empty", "-m", "fix", env={"GIT_COMMITTER_DATE": "2026-10-24T02:00:00Z"})
-        self.head = self.git("rev-parse", "HEAD")
-        self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
-        self.records.mkdir(parents=True)
-        (self.records / "units.tsv").write_text("id\ttrack\nU29\tseats\n")
-        (self.records / "decisions.tsv").write_text("ts\tphase\n2026-10-24T12:53:00Z\tlanding\n")
-
+class PrThreadsCheckTest(ThreadsFixture):
     def check(self, *nodes, head=None, more=False, records=True):
         self.answer(
             {
@@ -621,7 +685,7 @@ class PrThreadsCheckTest(PrLeverTestCase):
 
     def test_resolved_and_disposed_threads_pass(self):
         run = self.check(
-            thread(1, resolved=True),
+            thread(1, resolved=True, replies=["refuted: a.py:1"]),
             thread(2, replies=[f"fixed: {self.head}"]),
             thread(3, replies=["refuted: https://docs.github.com/en/rest/pulls/comments says so"]),
             thread(4, severity="P3", replies=["residual: unit=U29 gate=no Linux make update until U29"]),
@@ -631,7 +695,7 @@ class PrThreadsCheckTest(PrLeverTestCase):
         self.assertEqual(
             run.stdout.splitlines(),
             [
-                "thread comment=1 severity=P2 state=resolved",
+                "thread comment=1 severity=P2 state=resolved refuted",
                 f"thread comment=2 severity=P2 state=fixed {self.head}",
                 "thread comment=3 severity=P2 state=refuted",
                 "thread comment=4 severity=P3 state=residual U29",
@@ -656,11 +720,25 @@ class PrThreadsCheckTest(PrLeverTestCase):
         ]
         for node, message in cases:
             with self.subTest(message=message, node=node["comments"]["nodes"][-1]["body"][:40]):
-                run = self.check(thread(9, resolved=True), node)
+                run = self.check(thread(9, resolved=True, replies=["refuted: a.py:1"]), node)
                 self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
                 self.assertIn("state=open", run.stdout)
                 self.assertIn(message, run.stdout)
                 self.assertTrue(run.stdout.endswith("summary threads=2 open=1\n"))
+
+    def test_a_resolved_thread_is_judged_like_an_open_one(self):
+        """U28b F1: isResolved alone passes nothing; a resolved thread without a reply, or with one that does not
+        hold, is open."""
+        cases = [(None, "P2", "no reply"), ("looks fine", "P2", "not a disposition")]
+        cases += invalid_dispositions(self)
+        for reply, severity, reason in cases:
+            with self.subTest(reply=reply):
+                node = thread(1, resolved=True, severity=severity, replies=[reply] if reply else [])
+                run = self.check(node)
+                self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                self.assertIn("state=open (resolved without a valid disposition: ", run.stdout)
+                self.assertIn(reason, run.stdout)
+                self.assertTrue(run.stdout.endswith("summary threads=1 open=1\n"))
 
     def test_a_fix_outside_the_head_is_open(self):
         self.git("switch", "-q", "-c", "side", self.old)
@@ -699,8 +777,22 @@ class PrThreadsCheckTest(PrLeverTestCase):
         self.assertNotIn("summary", run.stdout)
 
 
+class DispositionDriftTest(unittest.TestCase):
+    def test_the_resolve_lever_and_the_merge_check_judge_by_the_same_function(self):
+        """U28b F1: `disposition` is one text in pr-thread-resolve.sh and pr-threads-check.sh."""
+
+        def function(name):
+            text = (LEVERS / name).read_text()
+            start = text.index("disposition() {")
+            return text[start : text.index("\n}\n", start)]
+
+        self.assertEqual(function("pr-thread-resolve.sh"), function("pr-threads-check.sh"))
+
+
 GIT_WRAPPER = """#!/usr/bin/env python3
 import os, subprocess, sys
+if os.environ.get("FAKE_GIT_FAIL") and os.environ["FAKE_GIT_FAIL"] in sys.argv[1:]:
+    sys.exit("fake-git: failing as asked")
 run = subprocess.run([os.environ["REAL_GIT"], *sys.argv[1:]], stdout=subprocess.PIPE)
 sys.stdout.buffer.write(run.stdout)
 extra = os.environ.get("FAKE_GIT_EXTRA_OTHERS")
@@ -834,6 +926,62 @@ class RecordsSyncTest(PrLeverTestCase):
         linked = self.root / "linked"
         self.git("worktree", "add", "-q", "--detach", str(linked))
         self.assert_refused(self.run_lever("records-sync.sh", cwd=linked), "linked worktree")
+
+    def assert_nothing_left(self):
+        self.assertEqual(self.writes(), [], "no gh pr create")
+        self.assertEqual(self.git("ls-remote", "--heads", str(self.origin)).count("refs/heads/"), 1, "main only")
+        self.assertEqual(self.git("for-each-ref", "refs/heads/records/"), "", "no local records branch")
+        self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1)
+
+    def test_a_symlinked_ancestor_is_refused_before_any_copy(self):
+        """U28b F2: git lists the tracked files below a linked directory; none of them is copied or pushed."""
+        self.github()
+        outside = self.root / "outside-orchestrate"
+        shutil.move(str(self.repo / ".orchestration/orchestrate"), str(outside))
+        (self.repo / ".orchestration/orchestrate").symlink_to(outside)
+        (outside / "prog/units.tsv").write_text("id\ttrack\nU1\tseats\nU9\toutside the store\n")
+        run = self.run_lever("records-sync.sh", "--program", "prog")
+        self.assert_refused(run, "is a symlink: .orchestration/orchestrate")
+        self.assert_nothing_left()
+
+    def test_a_symlinked_store_root_is_refused(self):
+        self.github()
+        outside = self.root / "outside-store"
+        shutil.move(str(self.repo / ".orchestration"), str(outside))
+        (self.repo / ".orchestration").symlink_to(outside)
+        (outside / "orchestrate/prog/units.tsv").write_text("id\ttrack\nU9\toutside\n")
+        self.assert_refused(
+            self.run_lever("records-sync.sh", "--program", "prog"), ".orchestration is missing or a symlink"
+        )
+        self.assert_nothing_left()
+
+    def test_a_failed_run_leaves_no_branch_and_the_rerun_takes_the_same_number(self):
+        """U28b F6: the commit fails; the branch this run created is deleted, so the rerun syncs as records/sync-7."""
+        self.github()
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        self.env["FAKE_GIT_FAIL"] = "commit"
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        del self.env["FAKE_GIT_FAIL"]
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assert_nothing_left()
+        run = self.run_lever("records-sync.sh", "--unit", "U20")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 "), run.stdout)
+
+    def test_a_local_branch_takes_its_number(self):
+        """U28b F6: a local records branch, whatever left it, is never reused."""
+        self.github()
+        entries = json.loads(self.responses.read_text())
+        entries[2]["match"] = r"^pr create --base main --head records/sync-8 "
+        self.responses.write_text(json.dumps(entries))
+        self.git("branch", "records/sync-7")
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.startswith("synced branch=records/sync-8 "), run.stdout)
+        self.assertEqual(self.git("rev-parse", "records/sync-7"), self.git("rev-parse", "main"), "left as it was")
 
 
 if __name__ == "__main__":

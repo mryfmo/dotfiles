@@ -333,9 +333,10 @@ peer_name() {
 # @arg $1 string Role (its profile has the same name).
 # @arg $2 string Route.
 login() {
-    local role=$1 route=$2 status=0
+    local role=$1 route=$2 status=0 peer
     scratch=$(mktemp -d "${TMPDIR:-/tmp}/seat-login.XXXXXX") || die "cannot create a scratch directory" 1
-    printf 'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n' "${role}" "${route}" "$(peer_name)" >&2
+    peer=$(peer_name) || die "cannot name the host whose browser opens the sign-in" 1
+    printf 'seat-login-preflight: %s needs a %s login on this host; the sign-in opens in the browser of %s\n' "${role}" "${route}" "${peer}" >&2
     case ${route} in
     openai-siwc)
         # The CLI login loads extensions from settings only, so a one-command overlay names it.

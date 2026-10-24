@@ -374,9 +374,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "skills": {"canonical_dir": "~/.agents/skills"},
             "model_profiles": profiles,
             "interactive_profile": "deep",
-            "worker_kind": "claude",
-            "orchestrator_kind": "claude",
-            "worker_profile": "standard",
             "claude": {},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
             "mcp_servers": {},
@@ -413,54 +410,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
 
-    def test_agent_manifest_rejects_invalid_or_missing_worker_kind(self) -> None:
-        for value in ("banana", None):
-            with self.subTest(worker_kind=value):
-                manifest = self.write_valid_agent_manifest()
-                manifest["worker_kind"] = value
-                stderr = io.StringIO()
-                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-                    self.module.validate_agent_manifest()
-                self.assertIn("worker_kind must be codex or claude", stderr.getvalue())
-
-    def test_agent_manifest_rejects_invalid_or_missing_orchestrator_kind(self) -> None:
-        for value in ("banana", None):
-            with self.subTest(orchestrator_kind=value):
-                manifest = self.write_valid_agent_manifest()
-                manifest["orchestrator_kind"] = value
-                stderr = io.StringIO()
-                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-                    self.module.validate_agent_manifest()
-                self.assertIn("orchestrator_kind must be claude or codex", stderr.getvalue())
-
-    def test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees(self) -> None:
-        manifest = self.write_valid_agent_manifest()
-        manifest["worker_worktree"] = ".claude/worktrees/worker-c"
-
-        self.module.validate_agent_manifest()
-
-    def test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees(self) -> None:
-        for value in ("worker-c", "/abs/.claude/worktrees/x", ".claude/worktrees/..", ".claude/worktrees/a/b", 3):
-            with self.subTest(worker_worktree=value):
-                manifest = self.write_valid_agent_manifest()
-                manifest["worker_worktree"] = value
-                stderr = io.StringIO()
-                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-                    self.module.validate_agent_manifest()
-                self.assertIn("worker_worktree must be a relative path under .claude/worktrees/", stderr.getvalue())
-
-    def test_agent_manifest_rejects_unknown_worker_profile(self) -> None:
-        manifest = self.write_valid_agent_manifest()
-        manifest["worker_profile"] = "banana"
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_agent_manifest()
-        self.assertIn(
-            "worker_profile must name a defined model profile: 'banana'",
-            stderr.getvalue(),
-        )
-
-    def test_agent_manifest_requires_fable_advisor_on_the_worker_profile(self) -> None:
+    def test_agent_manifest_requires_fable_advisor_on_the_standard_profile(self) -> None:
         for advisor in (None, "opus"):
             with self.subTest(advisor=advisor):
                 manifest = self.write_valid_agent_manifest()

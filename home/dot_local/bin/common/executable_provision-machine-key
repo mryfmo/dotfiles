@@ -15,9 +15,17 @@ set -Eeuo pipefail
 readonly MACHINE_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
 readonly MACHINE_SSH_PUBLIC_KEY_PATH="${MACHINE_SSH_KEY_PATH}.pub"
 
+# @description Print the short host name, or fail naming the read when neither form works.
+function short_hostname() {
+    if ! hostname -s 2> /dev/null && ! hostname; then
+        printf 'provision-machine-key: cannot read the host name for the SSH key comment\n' >&2
+        return 1
+    fi
+}
+
 # @description Return the email address used as the SSH key comment.
 function ssh_key_email() {
-    local configured_email
+    local configured_email host
     configured_email="$(git config --global --get user.email || true)"
 
     if [[ -n "${configured_email}" ]]; then
@@ -25,11 +33,14 @@ function ssh_key_email() {
         return 0
     fi
 
-    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2> /dev/null || hostname)"
+    host="$(short_hostname)" || return 1
+    printf '%s@%s\n' "${USER:-user}" "${host}"
 }
 
 # @description Generate the machine SSH key through ssh-keygen when it does not already exist.
 function ensure_machine_ssh_key() {
+    local email host
+
     if [[ -r "${MACHINE_SSH_PUBLIC_KEY_PATH}" ]]; then
         printf 'Machine SSH key already exists: %s\n' "${MACHINE_SSH_PUBLIC_KEY_PATH}"
         return 0
@@ -38,8 +49,10 @@ function ensure_machine_ssh_key() {
     mkdir -p "${HOME%/}/.ssh"
     chmod 0700 "${HOME%/}/.ssh"
 
+    email="$(ssh_key_email)" || return 1
+    host="$(short_hostname)" || return 1
     printf 'Generating machine SSH key: %s\n' "${MACHINE_SSH_KEY_PATH}"
-    ssh-keygen -t ed25519 -C "$(ssh_key_email) ($(hostname -s 2> /dev/null || hostname))" \
+    ssh-keygen -t ed25519 -C "${email} (${host})" \
         -f "${MACHINE_SSH_KEY_PATH}" -N ""
     chmod 0600 "${MACHINE_SSH_KEY_PATH}"
     chmod 0644 "${MACHINE_SSH_PUBLIC_KEY_PATH}"

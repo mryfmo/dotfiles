@@ -347,7 +347,6 @@ fi
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
-        env.pop("HERDR_AGENTS_WORKER_KIND", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -911,6 +910,21 @@ exec {real} "$@"
                 self.assertEqual(
                     f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
                 )
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a mode-000 file")
+    def test_retire_refuses_when_the_pre_push_hook_cannot_be_read(self) -> None:
+        self.install_agmsg_fakes()
+        hook = self.init_git_workdir()
+        hook.write_text(self.RETIRED_STUB)
+        hook.chmod(0o000)
+
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"cannot hash {hook.resolve()}", result.stderr)
+        self.assertNotIn("removed the retired main-push guard stub", result.stderr)
+        hook.chmod(0o644)
+        self.assertEqual(hook.read_text(), self.RETIRED_STUB)
 
     def test_make_update_retires_agmsg_and_upgrade_is_gone(self) -> None:
         result = subprocess.run(

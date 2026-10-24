@@ -85,27 +85,6 @@ model_profiles:
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "openai-siwc/gpt-6-astra" }
 interactive_profile: deep
-# Worker pane agent for herdr-agents: codex or claude. Renders into
-# ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit
-# HERDR_AGENTS_WORKER_KIND in the environment still overrides it.
-worker_kind: claude
-# Orchestrator pane agent for the herdr-agents pair: claude or codex; codex
-# means the pair is driven by codex-orchestrate (T86). Renders into
-# ~/.agents/model-profiles.env as HERDR_AGENTS_ORCHESTRATOR_KIND; an explicit
-# HERDR_AGENTS_ORCHESTRATOR_KIND in the environment still overrides it.
-orchestrator_kind: claude
-# Worker pane model profile for herdr-agents. Renders into
-# ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_PROFILE; an explicit
-# HERDR_AGENTS_WORKER_PROFILE in the environment still overrides it.
-worker_profile: standard
-# Worktree that seats the herdr-agents pair's worker pane, relative to the
-# repository root. Renders into ~/.agents/model-profiles.env as
-# HERDR_AGENTS_WORKER_WORKTREE; herdr-agents creates it from origin/main when
-# missing, registers the worker identity there, and sets delivery on it.
-worker_worktree: .claude/worktrees/worker-c
-# Number of seated worker worktrees herdr-agents --add-worker allows.
-# Read from the deployed ~/.agents/agent-config.yaml.
-worker_cap: 4
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
@@ -325,7 +304,7 @@ claude:
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       regime-init: 214a381e4c7573324385aedb9d2940511f5880e5248097f751337b1d304de7bd
-      seat-login-preflight: d4a64e9d33de9b9f379fd622a4f7dd8616cc27fb5447e62ed21b1fc9292ecff5
+      seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
       regime-start: e22a968488714825019cc1aeea6a1346b027377d3b0d21dcb6d3762ab518178a
       regime-stop: 578db3f205077cff31951ccfd5fd0c0bd873e6a58687a3e665ac54d30f1dd26b
     # The only extension directories `hcom-seat` loads, by default or through

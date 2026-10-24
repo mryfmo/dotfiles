@@ -14,6 +14,10 @@ with a custom header needs a CORS preflight this server never answers. Every req
 `~/.local/state/hcom/url-opener.log` with the decision and the URL's scheme, host and path only, never
 its query. It binds 127.0.0.1 only and never runs a shell.
 
+launchd sends its stdout and stderr to /dev/null, because launchd opens those files before Python starts
+and a fresh home has no log directory yet. The start, a failed bind and every request therefore go to the
+log file, whose parent this script creates before it binds.
+
 Usage: regime-url-opener [--port 1456] [--log PATH]
 """
 
@@ -69,6 +73,12 @@ def opener() -> str | None:
     return shutil.which("open" if sys.platform == "darwin" else "xdg-open")
 
 
+def append_log(path: Path, entry: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(path, "a", encoding="utf-8") as log:
+        log.write(f"{utc_now()} {entry}\n")
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "regime-url-opener"
     log_path: Path
@@ -77,10 +87,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return None  # the decision log below is the only record
 
     def record(self, decision: str, shown: str = "") -> None:
-        line = f"{utc_now()} {decision}{' ' + shown if shown else ''}\n"
-        self.log_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with open(self.log_path, "a", encoding="utf-8") as log:
-            log.write(line)
+        append_log(self.log_path, f"{decision}{' ' + shown if shown else ''}")
 
     def reply(self, status: int, text: str) -> None:
         body = (text + "\n").encode()
@@ -142,8 +149,19 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--log", type=Path, default=Path.home() / ".local/state/hcom/url-opener.log")
     args = parser.parse_args(argv)
     Handler.log_path = args.log
-    server = http.server.HTTPServer(("127.0.0.1", args.port), Handler)
+    try:
+        args.log.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    except OSError as error:
+        print(f"regime-url-opener: cannot create the log directory {args.log.parent}: {error}", file=sys.stderr)
+        return 1
+    try:
+        server = http.server.HTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError as error:
+        append_log(args.log, f"failed to bind 127.0.0.1:{args.port}: {error.strerror or error}")
+        print(f"regime-url-opener: cannot bind 127.0.0.1:{args.port}: {error}", file=sys.stderr)
+        return 1
     host, port = server.server_address[:2]
+    append_log(args.log, f"listening on {host}:{port}")
     print(f"regime-url-opener: listening on {host}:{port}", flush=True)
     try:
         server.serve_forever()

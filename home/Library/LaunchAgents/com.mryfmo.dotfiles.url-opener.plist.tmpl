@@ -23,9 +23,11 @@
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <!-- launchd opens these before Python runs, and a fresh home has no log directory yet, so they are
+         /dev/null; the opener creates its own log's parent and records its start there. -->
     <key>StandardOutPath</key>
-    <string>{{ .chezmoi.homeDir }}/.local/state/hcom/url-opener.launchd.log</string>
+    <string>/dev/null</string>
     <key>StandardErrorPath</key>
-    <string>{{ .chezmoi.homeDir }}/.local/state/hcom/url-opener.launchd.log</string>
+    <string>/dev/null</string>
 </dict>
 </plist>

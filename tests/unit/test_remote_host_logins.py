@@ -98,6 +98,11 @@ class UrlOpenerTest(unittest.TestCase):
         self.assertEqual(self.post(CLAUDE_URL), 200)
         self.assertEqual(self.opened_urls(), [SIWC_URL, CLAUDE_URL])
 
+    def test_a_fresh_home_gets_the_log_parent_and_the_start_is_recorded(self) -> None:
+        # setUp started the opener with a log under a directory that did not exist, as on a fresh home.
+        self.assertEqual(stat.S_IMODE(self.log.parent.stat().st_mode), 0o700)
+        self.assertRegex(self.log.read_text(), rf"^\S+Z listening on 127\.0\.0\.1:{self.port}\n$")
+
     def test_anything_else_is_refused_and_nothing_opens(self) -> None:
         cases = {
             "https://evil.example/authorize": 403,
@@ -170,6 +175,23 @@ class OpenUrlWithoutOpenerTest(unittest.TestCase):
                     check=False, capture_output=True, text=True,
                 )  # fmt: skip
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class OpenerStartTest(unittest.TestCase):
+    def test_a_failed_bind_is_recorded_in_the_log_it_creates(self) -> None:
+        """Under launchd stdout and stderr are /dev/null, so the log is the only place a start failure shows."""
+        with tempfile.TemporaryDirectory() as temp, socket.socket() as taken:
+            taken.bind(("127.0.0.1", 0))
+            taken.listen()
+            port = taken.getsockname()[1]
+            log = Path(temp) / "fresh/state/url-opener.log"
+            result = subprocess.run(
+                [sys.executable, "-I", str(OPENER), "--port", str(port), "--log", str(log)],
+                env={"PATH": "/usr/bin:/bin", "HOME": temp}, capture_output=True, text=True, timeout=30, check=False,
+            )  # fmt: skip
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn(f"cannot bind 127.0.0.1:{port}", result.stderr)
+            self.assertRegex(log.read_text(), rf"^\S+Z failed to bind 127\.0\.0\.1:{port}: .+\n$")
 
 
 class TokenExportTest(unittest.TestCase):
@@ -273,6 +295,9 @@ class UrlOpenerAgentTest(unittest.TestCase):
         )
         self.assertTrue(plist["RunAtLoad"])
         self.assertTrue(plist["KeepAlive"])
+        # launchd opens these before Python runs; a fresh home has no log directory, so they must not need one.
+        self.assertEqual((plist["StandardOutPath"], plist["StandardErrorPath"]), ("/dev/null", "/dev/null"))
+        self.assertNotIn("WorkingDirectory", plist)
         ignore = (ROOT / "home/.chezmoitemplates/chezmoiignore.d/ubuntu/common").read_text().splitlines()
         self.assertIn("Library", ignore)
 
@@ -285,6 +310,7 @@ class PreflightTest(unittest.TestCase):
         self.home = self.temp / "home"
         self.bin = self.temp / "bin"
         self.calls = self.temp / "calls.txt"
+        self.bun_calls = self.temp / "bun-calls.txt"
         profiles = self.home / ".agents/omp/profiles"
         profiles.mkdir(parents=True)
         (profiles / "audit.yml").write_text(
@@ -294,6 +320,15 @@ class PreflightTest(unittest.TestCase):
         (profiles / "worker.yml").write_text("modelRoles:\n  default: claude-bridge/claude-opus-5-5\n")
         # The macOS Keychain branch must never see the real login of the host running the test.
         write_exec(self.bin / "security", "#!/bin/sh\nexit 44\n")
+        # The SIWC readiness count (src/credentials.ts) without a real agent.db: FAKE_SIWC_LOGINS logins.
+        write_exec(
+            self.bin / "bun",
+            f"""#!/bin/sh
+printf 'bun %s\\n' "$*" >> "{self.bun_calls}"
+[ "${{FAKE_BUN_FAILS:-0}}" = 1 ] && exit 2
+printf '%s\\n' "${{FAKE_SIWC_LOGINS:-1}}"
+""",
+        )
         # The fake logins record what the pre-flight handed them, then create what a real login leaves.
         write_exec(
             self.bin / "omp",
@@ -363,6 +398,9 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
 
     def calls_text(self) -> str:
         return self.calls.read_text() if self.calls.exists() else ""
+
+    def bun_calls_text(self) -> str:
+        return self.bun_calls.read_text() if self.bun_calls.exists() else ""
 
     def register(self, profile: str = "audit", record: str | None = None) -> Path:
         agent = self.home / f".omp/profiles/{profile}/agent"
@@ -435,9 +473,12 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual(result.stdout, f"missing: no route (overlay {overlay} absent or without modelRoles.default)\n")
 
     def test_a_local_host_does_nothing(self) -> None:
+        # Explicitly local on every runner: macOS, no SSH session. A Linux CI runner has no display, which
+        # counts as remote (test_a_linux_host_without_a_display_counts_as_remote).
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\n")
         result = self.run_lever("audit")
         self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
-        self.assertEqual(self.calls_text(), "")
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
 
     def test_a_remote_host_with_a_login_passes_with_one_line(self) -> None:
         self.register()
@@ -516,6 +557,150 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         check = self.run_lever("--check", "audit")
         self.assertEqual((check.returncode, check.stdout), (1, f"audit: unreadable ({overlay})\n"))
         self.assertEqual(self.calls_text(), "")
+
+    def test_every_seat_profile_is_accepted_and_security_logs_in_with_its_own_profile(self) -> None:
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        profiles = self.home / ".agents/omp/profiles"
+        (profiles / "security.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
+        (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
+        status, output = self.run_tty("security", SSH_CONNECTION=remote)
+        self.assertEqual(status, 0, output)
+        self.assertIn("omp --profile security login openai-siwc\nOPENAI_SIWC_CALLBACK_PORT=1455\n", self.calls_text())
+        self.assertIn(f"seat-login-preflight: security openai-siwc: registered (host {HOST_ID}", output)
+        script = self.home / ".agents/omp/extensions/openai-siwc/src/credentials.ts"
+        self.assertEqual(self.bun_calls_text(), f"bun {script} --profile security\n")
+        review = self.run_lever("review", SSH_CONNECTION=remote)
+        self.assertEqual(review.returncode, 2)
+        self.assertIn("review claude-bridge: absent; a login is the operator's step", review.stderr)
+        unknown = self.run_lever("reviewer", SSH_CONNECTION=remote)
+        self.assertEqual(unknown.returncode, 2)
+        self.assertIn(
+            "unknown seat profile 'reviewer'; expected one of: orchestrator worker audit review security",
+            unknown.stderr,
+        )
+        self.assertIn("<orchestrator|worker|audit|review|security>", self.run_lever().stderr)
+
+    def test_a_record_that_breaks_the_store_schema_is_unreadable_not_registered(self) -> None:
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        records = (
+            {"hostId": "bad", "clientId": "oaiapp_x"},
+            {"hostId": HOST_ID + "\nx", "clientId": "oaiapp_x"},
+            {"hostId": HOST_ID, "clientId": None},
+            {"hostId": HOST_ID, "clientId": ""},
+            {"hostId": HOST_ID, "clientId": "oaiapp\tx"},
+            {"hostId": HOST_ID, "clientId": "oaiapp_x", "accountId": 7},
+            [HOST_ID, "oaiapp_x"],
+        )
+        for record in records:
+            with self.subTest(record=record):
+                shutil.rmtree(self.home / ".omp", ignore_errors=True)
+                reg = self.register(record=json.dumps(record))
+                check = self.run_lever("--check", "audit")
+                self.assertEqual((check.returncode, check.stdout), (1, f"audit openai-siwc: unreadable ({reg})\n"))
+                gate = self.run_lever("audit", SSH_CONNECTION=remote)
+                self.assertEqual(gate.returncode, 1, gate.stderr)
+                self.assertIn(f"unreadable ({reg}); fix or move the record aside", gate.stderr)
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
+
+    def test_a_failed_producer_is_unreadable_never_absent_or_local(self) -> None:
+        write_exec(self.bin / "uname", "#!/bin/sh\nexit 1\n")
+        for args in (("audit",), ("--check",)):
+            with self.subTest(args=args):
+                result = self.run_lever(*args)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn("cannot read the system name: uname -s failed", result.stderr)
+        (self.bin / "uname").unlink()
+        db = self.register().parent.parent / "agent.db"
+        write_exec(self.bin / "date", "#!/bin/sh\nexit 1\n")
+        result = self.run_lever("--check", "audit")
+        self.assertEqual(
+            (result.returncode, result.stdout), (1, f"audit openai-siwc: unreadable (cannot read the mtime of {db})\n")
+        )
+        (self.bin / "date").unlink()
+        write_exec(self.bin / "stat", "#!/bin/sh\nexit 1\n")
+        credentials = self.home / ".claude/.credentials.json"
+        token = self.home / ".config/claude-code/oauth-token"
+        for path, content in ((credentials, "{}"), (token, FAKE_OAUTH_VALUE + "\n")):
+            with self.subTest(path=path.name):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+                result = self.run_lever("--check", "orchestrator")
+                self.assertEqual(
+                    (result.returncode, result.stdout),
+                    (1, f"orchestrator claude-bridge: unreadable (cannot read the mode or mtime of {path})\n"),
+                )
+                path.unlink()
+        # A Keychain read that fails other than "not found" (exit 44), on any runner through a Darwin uname.
+        write_exec(self.bin / "uname", "#!/bin/sh\necho Darwin\n")
+        write_exec(self.bin / "security", "#!/bin/sh\nexit 51\n")
+        result = self.run_lever("--check", "orchestrator")
+        self.assertEqual(
+            (result.returncode, result.stdout),
+            (1, "orchestrator claude-bridge: unreadable (security find-generic-password exited 51)\n"),
+        )
+        # The overlay enumeration needs no external producer.
+        write_exec(self.bin / "security", "#!/bin/sh\nexit 44\n")
+        write_exec(self.bin / "basename", "#!/bin/sh\nexit 1\n")
+        (self.bin / "stat").unlink()
+        result = self.run_lever("--check")
+        self.assertEqual(
+            [line.split(":")[0] for line in result.stdout.splitlines()],
+            ["audit openai-siwc", "orchestrator claude-bridge", "worker claude-bridge"],
+        )
+        self.assertEqual(self.calls_text(), "")
+
+    def test_a_registration_without_a_stored_login_is_not_ready(self) -> None:
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        db = self.register().parent.parent / "agent.db"
+        check = self.run_lever("--check", "audit", FAKE_SIWC_LOGINS="0")
+        self.assertEqual(check.returncode, 0)
+        self.assertTrue(check.stdout.startswith(f"audit openai-siwc: registered (host {HOST_ID}"), check.stdout)
+        self.assertEqual(self.bun_calls_text(), "", "--check stays metadata only")
+        gate = self.run_lever("audit", SSH_CONNECTION=remote, FAKE_SIWC_LOGINS="0")
+        self.assertEqual(gate.returncode, 2, gate.stderr)
+        self.assertIn(
+            f"audit openai-siwc: absent (registered: host {HOST_ID}, client oaiapp_fake; no openai-siwc login in {db});"
+            " a login is the operator's step",
+            gate.stderr,
+        )
+        script = self.home / ".agents/omp/extensions/openai-siwc/src/credentials.ts"
+        self.assertEqual(self.bun_calls_text(), f"bun {script} --profile audit\n")
+        for extra in ({"FAKE_BUN_FAILS": "1"}, {"FAKE_SIWC_LOGINS": "many"}):
+            with self.subTest(**extra):
+                broken = self.run_lever("audit", SSH_CONNECTION=remote, **extra)
+                self.assertEqual(broken.returncode, 1, broken.stderr)
+                self.assertIn(f"unreadable (cannot count the openai-siwc logins in {db}); fix or move", broken.stderr)
+        # In the operator's terminal the same state is a login to run, and a login that stores nothing fails.
+        status, output = self.run_tty("audit", SSH_CONNECTION=remote, FAKE_SIWC_LOGINS="0")
+        self.assertEqual(status, 1, output)
+        self.assertIn("omp --profile audit login openai-siwc\n", self.calls_text())
+        self.assertIn("no openai-siwc login in", output)
+        self.assertIn("after the login", output)
+
+    def test_a_token_file_this_shell_has_not_exported_is_refused(self) -> None:
+        remote = "100.64.0.2 50000 100.64.0.3 22"
+        token = self.home / ".config/claude-code/oauth-token"
+        token.parent.mkdir(parents=True)
+        token.write_text(FAKE_OAUTH_VALUE + "\n")
+        token.chmod(0o600)
+        gate = self.run_lever("orchestrator", SSH_CONNECTION=remote)
+        self.assertEqual(gate.returncode, 2, gate.stderr)
+        self.assertRegex(
+            gate.stderr,
+            r"orchestrator claude-bridge: login not in this environment \(token file 600, mtime \S+Z;"
+            r" CLAUDE_CODE_OAUTH_TOKEN is unset here\); .*open a new login shell on this host",
+        )
+        status, output = self.run_tty("orchestrator", SSH_CONNECTION=remote)
+        self.assertEqual(status, 2, output)
+        self.assertEqual(self.calls_text(), "", "no login runs: a login cannot export the file")
+        ready = self.run_lever("orchestrator", SSH_CONNECTION=remote, **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
+        self.assertEqual(ready.returncode, 0, ready.stderr)
+        self.assertIn("orchestrator claude-bridge: login present (env token)", ready.stderr)
+        check = self.run_lever("--check", "orchestrator")
+        self.assertIn("a new login shell exports it", check.stdout)
+        for result in (gate, ready, check):
+            self.assertNotIn(FAKE_OAUTH_VALUE, result.stdout + result.stderr)
+        self.assertNotIn(FAKE_OAUTH_VALUE, output)
 
 
 if __name__ == "__main__":

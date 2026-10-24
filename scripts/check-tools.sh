@@ -329,9 +329,11 @@ function check_seat_logins() {
         case "${line}" in
         '') ;;
         'not applicable:'*) printf '%s\n' "${line}" ;;
+        # The lever's own refusal or failed producer (pin, uname), never a profile line.
+        'seat-login-preflight:'*) printf 'required failed: %s\n' "${line}" >&2 ;;
         *': unreadable'*) printf 'required failed: seat login %s\n' "${line}" >&2 ;;
         *': absent'* | *': no route'* | *': not a seat login route'*)
-            warn_optional "seat login ${line} (log in on this host: seat-login-preflight <role>, docs/remote-host-logins.md)"
+            warn_optional "seat login ${line} (log in on this host: seat-login-preflight <profile>, docs/remote-host-logins.md)"
             ;;
         *) printf 'found:   seat login %s\n' "${line}" ;;
         esac

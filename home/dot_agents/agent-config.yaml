@@ -335,7 +335,7 @@ claude:
       hcom-dispatch: a8b7561ee89ef92b7980b2398db3d34ed77f8ffccc98f350c023d705727b9329
       bus-history.sh: 878d66a1c3495777d6d8e8395334430e8dc91678074213d353e29dcbc0667154
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
-      seat-login-preflight: 83e0c7a24bd59120809f179e3ae3eb10054d3aa8dc6137669793cff7c67a31c3
+      seat-login-preflight: a5c519722ba4532f774ee70febd8b44d763bb7d4f1a330d5ac0d4168b8951dea
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge and the openai-siwc extension.
     extensions:

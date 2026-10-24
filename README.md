@@ -100,11 +100,11 @@ click is the laptop's. The design and the threat table are in
 2. On the laptop, load the URL opener once:
    `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist`.
    It opens only https sign-in URLs on `auth.openai.com`, `claude.com`,
-   `claude.ai`, `console.anthropic.com` and `platform.claude.com`, and logs each
-   decision to `~/.local/state/hcom/url-opener.log`.
+   `claude.ai`, `console.anthropic.com` and `platform.claude.com`, and logs its
+   start and each decision to `~/.local/state/hcom/url-opener.log`.
 3. On the Ubuntu host, in your own terminal, run
-   `seat-login-preflight <role>` for each seat role that `make doctor` reports
-   absent. The ChatGPT sign-in completes through the forwarded callback. The
+   `seat-login-preflight <profile>` for each seat profile (orchestrator,
+   worker, audit, review, security) that `make doctor` reports absent. The ChatGPT sign-in completes through the forwarded callback. The
    Claude sign-in shows a code in the laptop tab; paste it at the terminal
    prompt. If that flow fails, run `claude setup-token` on the laptop and store
    the token in `~/.config/claude-code/oauth-token` (mode 0600) on the Ubuntu
@@ -112,7 +112,11 @@ click is the laptop's. The design and the threat table are in
 4. `make doctor` on the Ubuntu host lists each seat profile under "Seat logins"
    from presence and mtimes only.
 5. `hcom-seat <role>` there runs the same pre-flight before it starts a seat.
-   A seat never runs a login: without one, it refuses and names the command.
+   It also checks that the seat can use the login: a ChatGPT login stored in
+   the profile's `agent.db`, and `CLAUDE_CODE_OAUTH_TOKEN` in the shell when
+   the token file is the only Claude login (open a new login shell after
+   writing it). A seat never runs a login: without one, it refuses and names
+   the command.
 
 ### Private credentials and keys
 

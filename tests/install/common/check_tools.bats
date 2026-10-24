@@ -203,6 +203,19 @@ function seat_login_home() {
     [[ "${output}" != *"audit openai-siwc: absent"* ]]
 }
 
+@test "[common] check_seat_logins reports the pre-flight's own failure as a failure, never as found" {
+    local home
+    home="$(seat_login_home)"
+    printf '#!/bin/sh\nexit 1\n' > "${BATS_TEST_TMPDIR}/fakebin/uname"
+    chmod +x "${BATS_TEST_TMPDIR}/fakebin/uname"
+
+    run env -u CLAUDE_CODE_OAUTH_TOKEN HOME="${home}" PATH="${BATS_TEST_TMPDIR}/fakebin:${PATH}" \
+        bash -c "source '${SCRIPT_PATH}'; check_seat_logins; [ \"\${required_failures}\" -eq 1 ]"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"required failed: seat-login-preflight: cannot read the system name: uname -s failed"* ]]
+    [[ "${output}" != *"found:"* ]]
+}
+
 @test "[common] check_seat_logins is not applicable without seat profiles" {
     run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; check_seat_logins; [ \"\${optional_warnings}\" -eq 0 ]"
     [ "${status}" -eq 0 ]

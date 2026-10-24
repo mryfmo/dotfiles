@@ -84,6 +84,30 @@ class UsageReviewTests(unittest.TestCase):
         self.assertEqual('{"keep":"unchanged"}\n', existing.read_text())
         self.assertFalse(marker.exists())
 
+    def test_snapshot_stops_before_ccusage_when_dirname_fails(self) -> None:
+        # A failed dirname used to resolve the repository root to /, so the snapshot went to /.agents/worklog.
+        repo = self.temp_dir / "repo"
+        scripts, bin_dir = repo / "scripts", repo / "bin"
+        scripts.mkdir(parents=True)
+        bin_dir.mkdir()
+        shutil.copy2(SNAPSHOT_PATH, scripts / SNAPSHOT_PATH.name)
+        marker = repo / "ccusage-called"
+        for name, body in (("ccusage", f"touch {marker}\n"), ("dirname", "exit 1\n")):
+            stub = bin_dir / name
+            stub.write_text("#!/usr/bin/env bash\n" + body)
+            stub.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(scripts / SNAPSHOT_PATH.name)],
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PATH": f"{bin_dir}:/usr/bin:/bin"},
+        )
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("usage-snapshot: dirname failed on", result.stderr)
+        self.assertFalse(marker.exists())
+
     def test_report_computes_share_ratio_and_baseline_deltas(self) -> None:
         report = load_report_module()
         baseline = self.write_snapshot(

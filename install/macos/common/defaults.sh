@@ -62,9 +62,58 @@ function defaults_controlcenter() {
 }
 
 #
+# @description Print a Dock tile entry for one application.
+# @arg $1 path The application bundle.
+# @stdout The tile's plist dict.
+#
+function dock_item() {
+    local app_file_path="$1"
+    printf '
+        <dict>
+            <key>tile-data</key>
+                <dict>
+                    <key>file-data</key>
+                        <dict>
+                            <key>_CFURLString</key><string>%s</string>
+                            <key>_CFURLStringType</key><integer>0</integer>
+                        </dict>
+                </dict>
+        </dict>', "${app_file_path}"
+}
+
+#
+# @description Print the path of System Preferences, or of System Settings from Ventura on.
+# @stdout The application bundle path.
+# @exitcode 1 Neither application exists.
+#
+function get_system_app_path() {
+    local system_preferences_path="/System/Applications/System Preferences.app/"
+    local system_settings_path="/System/Applications/System Settings.app/"
+
+    if [ -e "${system_preferences_path}" ]; then
+        echo "${system_preferences_path}"
+    elif [ -e "${system_settings_path}" ]; then
+        # for Ventura
+        echo "${system_settings_path}"
+    else
+        echo "Could not found system app ${system_preferences_path} and ${system_settings_path}" >&2
+        exit 1
+    fi
+}
+
+#
 # @description Customize Dock behavior and its pinned applications.
+# @exitcode 1 get_system_app_path finds no system settings app; the Dock is left unchanged.
 #
 function defaults_dock() {
+    local chrome_item system_app_path system_app_item
+    chrome_item="$(dock_item /Applications/Google\ Chrome.app)" || return 1
+    system_app_path="$(get_system_app_path)" || {
+        echo "get_system_app_path failed; the Dock was not changed" >&2
+        return 1
+    }
+    system_app_item="$(dock_item "${system_app_path}")" || return 1
+
     # Keep the Dock visible.
     defaults write com.apple.dock autohide -bool false
     # Set the icon size of Dock items to 30 pixels
@@ -77,39 +126,7 @@ function defaults_dock() {
     defaults write com.apple.dock recent-apps -array ""
     defaults write com.apple.dock persistent-others -array ""
 
-    function dock_item() {
-        local app_file_path="$1"
-        printf '
-        <dict>
-            <key>tile-data</key>
-                <dict>
-                    <key>file-data</key>
-                        <dict>
-                            <key>_CFURLString</key><string>%s</string>
-                            <key>_CFURLStringType</key><integer>0</integer>
-                        </dict>
-                </dict>
-        </dict>', "${app_file_path}"
-    }
-
-    function get_system_app_path() {
-        local system_preferences_path="/System/Applications/System Preferences.app/"
-        local system_settings_path="/System/Applications/System Settings.app/"
-
-        if [ -e "${system_preferences_path}" ]; then
-            echo "${system_preferences_path}"
-        elif [ -e "${system_settings_path}" ]; then
-            # for Ventura
-            echo "${system_settings_path}"
-        else
-            echo "Could not found system app ${system_preferences_path} and ${system_settings_path}" >&2
-            exit 1
-        fi
-    }
-
-    defaults write com.apple.dock persistent-apps -array \
-        "$(dock_item /Applications/Google\ Chrome.app)" \
-        "$(dock_item "$(get_system_app_path)")"
+    defaults write com.apple.dock persistent-apps -array "${chrome_item}" "${system_app_item}"
 }
 
 #

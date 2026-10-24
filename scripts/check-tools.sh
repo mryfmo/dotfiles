@@ -26,16 +26,16 @@ function section() {
 # @arg $@ string Optional version command arguments.
 #
 function check_command() {
-    local command_name="$1"
+    local command_name="$1" command_path
     shift || true
 
-    if ! command -v "${command_name}" > /dev/null 2>&1; then
+    if ! command_path="$(command -v "${command_name}" 2> /dev/null)"; then
         printf 'required missing: %s\n' "${command_name}" >&2
         ((required_failures += 1))
         return 0
     fi
 
-    printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+    printf 'found:   %s -> %s\n' "${command_name}" "${command_path}"
 
     local output first_line
 
@@ -128,7 +128,13 @@ function check_private_chezmoi() {
 # @description Require Homebrew on macOS and skip it on other platforms.
 #
 function check_homebrew() {
-    if [ "$(uname)" != "Darwin" ]; then
+    local kernel
+    if ! kernel="$(uname)"; then
+        printf 'required failed: uname; cannot tell whether Homebrew applies\n' >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${kernel}" != "Darwin" ]; then
         printf 'not applicable: Homebrew (non-Darwin)\n'
         return 0
     fi
@@ -201,9 +207,14 @@ function check_hcom() {
 #   authenticated gh, because a GitHub release attestation is the only verification Zed publishes.
 #
 function check_zed() {
-    local target="${HOME%/}/.local/bin/zed" system
+    local target="${HOME%/}/.local/bin/zed" system kernel
     system="$(chezmoi execute-template '{{ .system }}' 2> /dev/null || true)"
-    if [ "$(uname -s)" != Linux ] || [ "${system}" != client ]; then
+    if ! kernel="$(uname -s)"; then
+        printf 'required failed: uname -s; cannot tell whether Zed applies\n' >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${kernel}" != Linux ] || [ "${system}" != client ]; then
         printf 'not applicable: Zed (installed on Ubuntu clients only)\n'
         return 0
     fi
@@ -225,8 +236,15 @@ function check_apparmor_userns() {
     local restrict="${APPARMOR_USERNS_SYSCTL:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
     local bwrap="${APPARMOR_USERNS_BWRAP:-/usr/bin/bwrap}"
     local profile="${APPARMOR_USERNS_PROFILE_TARGET:-/etc/apparmor.d/bwrap-userns}"
+    local restricted=""
 
-    if [ "$(cat "${restrict}" 2> /dev/null)" != "1" ]; then
+    # A host without the sysctl has no restriction; one that exists but cannot be read decides nothing.
+    if [ -e "${restrict}" ] && ! restricted="$(cat "${restrict}")"; then
+        printf 'required failed: cannot read %s; the AppArmor userns restriction is unknown\n' "${restrict}" >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${restricted}" != "1" ]; then
         printf 'not applicable: AppArmor userns restriction (not enabled)\n'
         return 0
     fi
@@ -266,16 +284,21 @@ function check_gh_extensions() {
 #   side, so this check has no sysctl or profile logic.
 #
 function check_claude_sandbox() {
-    local command_name
+    local command_name command_path kernel
 
-    if [ "$(uname)" != "Linux" ]; then
+    if ! kernel="$(uname)"; then
+        printf 'required failed: uname; cannot tell whether the Claude Code sandbox prerequisites apply\n' >&2
+        ((required_failures += 1))
+        return 0
+    fi
+    if [ "${kernel}" != "Linux" ]; then
         printf 'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'
         return 0
     fi
 
     for command_name in bwrap socat; do
-        if command -v "${command_name}" > /dev/null 2>&1; then
-            printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+        if command_path="$(command -v "${command_name}" 2> /dev/null)"; then
+            printf 'found:   %s -> %s\n' "${command_name}" "${command_path}"
         else
             warn_optional "Claude Code sandbox prerequisite is missing: ${command_name} (run make update)"
         fi

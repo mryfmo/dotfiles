@@ -193,3 +193,16 @@ function seat_login_home() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"not applicable: no omp seat profiles under ${BATS_TEST_TMPDIR}/empty/.agents/omp/profiles"* ]]
 }
+
+@test "[common] a platform check counts a required failure when uname fails, never not-applicable" {
+    local check
+    for check in check_homebrew check_zed check_claude_sandbox; do
+        run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; uname() { return 1; }; chezmoi() { printf client; }; ${check}; echo \"req=\${required_failures}\""
+        [ "${status}" -eq 0 ]
+        grep -qF -- "required failed: uname" <<< "${output}"
+        if grep -qF -- "not applicable" <<< "${output}"; then
+            false
+        fi
+        grep -qF -- "req=1" <<< "${output}"
+    done
+}

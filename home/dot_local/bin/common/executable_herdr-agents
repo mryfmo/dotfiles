@@ -44,7 +44,7 @@ USAGE
 #   other pre-push hook is left alone.
 # @arg $1 workdir Repository path.
 function remove_retired_pre_push_stub() {
-    local workdir="$1" common_dir hook
+    local workdir="$1" common_dir hook blob header
     local stub_blob=af94a0b55e08a02423f72f3d4f713a4a804d905e
 
     common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 0
@@ -52,10 +52,20 @@ function remove_retired_pre_push_stub() {
     # The installer never wrote outside the common git dir (a core.hooksPath
     # elsewhere was left alone), so a hook there is not ours to remove.
     [[ ${hook} == "${common_dir}"/* && -f ${hook} ]] || return 0
-    if [[ "$(git -C "${workdir}" hash-object --no-filters -- "${hook}")" == "${stub_blob}" ]]; then
+    if ! blob="$(git -C "${workdir}" hash-object --no-filters -- "${hook}")"; then
+        printf 'herdr-agents: cannot hash %s, so whether it is the retired main-push guard stub is unknown; nothing removed\n' "${hook}" >&2
+        exit 1
+    fi
+    if [[ ${blob} == "${stub_blob}" ]]; then
         rm -f -- "${hook}" "${common_dir}/orch-push-main.log"
         printf 'herdr-agents: removed the retired main-push guard stub at %s; the GitHub ruleset on main is the boundary.\n' "${hook}" >&2
-    elif [[ "$(sed -n 2p "${hook}")" == "# herdr-agents main-push guard:"* ]]; then
+        return 0
+    fi
+    if ! header="$(sed -n 2p "${hook}")"; then
+        printf 'herdr-agents: cannot read %s, so whether it is an edited main-push guard stub is unknown\n' "${hook}" >&2
+        exit 1
+    fi
+    if [[ ${header} == "# herdr-agents main-push guard:"* ]]; then
         printf 'herdr-agents: %s is an edited copy of the retired main-push guard stub; leaving it unchanged. Remove it by hand: without the guard mode it may refuse every push to main.\n' "${hook}" >&2
     fi
 }
@@ -123,11 +133,16 @@ function retire_agmsg() {
     fi
 
     if [[ -d ${workdir} ]]; then
-        if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
+        local real_workdir real_home
+        if ! real_workdir="$(cd -- "${workdir}" && pwd -P)" || ! real_home="$(cd -- "${HOME}" && pwd -P)"; then
+            printf 'herdr-agents: cannot resolve %s or the home directory to a physical path; nothing retired from it\n' "${workdir}" >&2
+            exit 1
+        fi
+        if [[ ${real_workdir} == "${real_home}" ]]; then
             printf "Skipping agmsg retire for \$HOME; use a repository directory instead.\n" >&2
             return 0
         fi
-        remove_retired_pre_push_stub "$(cd -- "${workdir}" && pwd -P)"
+        remove_retired_pre_push_stub "${real_workdir}"
     fi
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
@@ -135,7 +150,7 @@ function retire_agmsg() {
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local teams_dir="${HOME}/.agents/skills/agmsg/teams"
-    local acted=false rows team name rule hooks guard
+    local acted=false rows team name rule rules hooks guard
 
     mkdir -p "${log_file%/*}"
     # The command substitution runs in a subshell, so a read error exits it and
@@ -154,9 +169,13 @@ function retire_agmsg() {
                 exit 1
             fi
             printf 'agmsg retired: removed the agmsg hooks from %s\n' "${claude_hooks_file}"
+            if ! rules="$(jq -r '.permissions.allow[]? | select(contains("agmsg/scripts/"))' "${claude_hooks_file}" 2> /dev/null)"; then
+                printf 'herdr-agents: cannot read the allow rules of %s after delivery.sh set off\n' "${claude_hooks_file}" >&2
+                exit 1
+            fi
             while IFS= read -r rule; do
                 [[ -z ${rule} ]] || printf 'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n' "${claude_hooks_file}" "${rule}"
-            done < <(jq -r '.permissions.allow[]? | select(contains("agmsg/scripts/"))' "${claude_hooks_file}" 2> /dev/null)
+            done <<< "${rules}"
         fi
     elif [[ ${report_skips} == --report-skips ]]; then
         acted=true
@@ -227,7 +246,7 @@ function retire_agmsg() {
 # @exitcode 1 When every registration is DIR or a clone of this repository.
 # @exitcode 2 When the member's registrations cannot be read.
 function agmsg_member_other_project() {
-    local config="$1" name="$2" project="$3" identity="$4" rows row other
+    local config="$1" name="$2" project="$3" identity="$4" rows row other other_identity
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local -a registrations=()
 
@@ -248,7 +267,10 @@ function agmsg_member_other_project() {
         if [[ ${other} != *$'\n'* && -d ${other} ]]; then
             # The same directory (by device and inode), whatever path spells it.
             [[ ! ${other} -ef ${project} ]] || continue
-            [[ -z ${identity} || "$(repository_identity "${other}")" != "${identity}" ]] || continue
+            if [[ -n ${identity} ]]; then
+                other_identity="$(repository_identity "${other}")" || return 2
+                [[ ${other_identity} != "${identity}" ]] || continue
+            fi
         fi
         printf '%s\n' "${other}"
         return 0
@@ -272,7 +294,9 @@ function registered_agmsg_projects() {
     [[ -d ${teams_dir} ]] || return 0
     for config in "${teams_dir}"/*/config.json; do
         [[ -f ${config} ]] || continue
-        team="$(basename -- "$(dirname -- "${config}")")"
+        # The glob ends in /config.json, so the team is the directory above it.
+        team="${config%/config.json}"
+        team="${team##*/}"
         if ! jq -c --arg team "${team}" '.agents // {} | to_entries[] | .value
             | (if (.registrations | type) == "array" then .registrations else [{type: .type, project: .project}] end)[]
             | select(.type == "claude-code" and (.project | type) == "string" and .project != "") | {project, team: $team}' "${config}" 2> /dev/null; then
@@ -298,7 +322,10 @@ function repository_identity() {
     url="$(git -C "$1" config --get remote.origin.url 2> /dev/null)" || url=""
     [[ -n ${roots} && -n ${url} ]] || return 0
     # https://host/owner/repo(.git) and git@host:owner/repo(.git) -> host/owner/repo
-    url="$(sed -E -e 's#^[a-z+]+://([^@/]*@)?##' -e 's#^[^@/]*@([^:/]+):#\1/#' -e 's#/+$##' -e 's#\.git$##' <<< "${url}" | tr '[:upper:]' '[:lower:]')"
+    if ! url="$(sed -E -e 's#^[a-z+]+://([^@/]*@)?##' -e 's#^[^@/]*@([^:/]+):#\1/#' -e 's#/+$##' -e 's#\.git$##' <<< "${url}" | tr '[:upper:]' '[:lower:]')"; then
+        printf 'herdr-agents: cannot normalize the origin URL of %s\n' "$1" >&2
+        return 1
+    fi
     printf '%s| %s\n' "${roots}" "${url}"
 }
 
@@ -313,16 +340,20 @@ function repository_identity() {
 # @arg $1 clone Absolute path of the clone this runs in.
 # @exitcode 1 As retire_agmsg, or when a team config cannot be read.
 function retire_registered_agmsg_projects() {
-    local clone="$1" registrations row project team identity
+    local clone="$1" registrations grouped row project project_identity team identity
     local -a rows=()
 
     registrations="$(registered_agmsg_projects)" || exit 1
-    identity="$(repository_identity "${clone}")"
+    identity="$(repository_identity "${clone}")" || exit 1
     # One visit per project, its teams joined; collected first so no command
     # below reads the list as its stdin.
+    if ! grouped="$(jq -sc 'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}' <<< "${registrations}")"; then
+        printf 'herdr-agents: cannot group the registered agmsg projects by project\n' >&2
+        exit 1
+    fi
     while IFS= read -r row; do
         [[ -n ${row} ]] && rows+=("${row}")
-    done < <(jq -sc 'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}' <<< "${registrations}")
+    done <<< "${grouped}"
     for row in ${rows[@]+"${rows[@]}"}; do
         project="$(jq -r '.project' <<< "${row}")"
         team="$(jq -r '.teams' <<< "${row}")"
@@ -336,7 +367,11 @@ function retire_registered_agmsg_projects() {
         fi
         # The same directory (by device and inode), whatever path spells it.
         [[ ! ${project} -ef ${clone} ]] || continue
-        if [[ -z ${identity} || "$(repository_identity "${project}")" != "${identity}" ]]; then
+        project_identity=""
+        if [[ -n ${identity} ]]; then
+            project_identity="$(repository_identity "${project}")" || exit 1
+        fi
+        if [[ -z ${identity} || ${project_identity} != "${identity}" ]]; then
             printf 'agmsg retire: registered project %s (team %s) is not a clone of this repository; skipped\n' "${project}" "${team}"
             continue
         fi
@@ -371,9 +406,15 @@ shift
 require_command jq
 if [[ $# -gt 0 ]]; then
     cd -- "$1"
-    retire_agmsg "$(pwd -P)"
+fi
+if ! here="$(pwd -P)"; then
+    printf 'herdr-agents: cannot resolve the current directory to a physical path\n' >&2
+    exit 1
+fi
+if [[ $# -gt 0 ]]; then
+    retire_agmsg "${here}"
 else
     require_command git
-    retire_registered_agmsg_projects "$(pwd -P)"
+    retire_registered_agmsg_projects "${here}"
 fi
 exit 0

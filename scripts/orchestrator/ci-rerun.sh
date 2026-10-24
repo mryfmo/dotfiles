@@ -31,7 +31,10 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 run_id=$1
-root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+# The script's directory, split in the shell: a $(dirname) inside the git call would lose its status.
+script_dir=${BASH_SOURCE[0]%/*}
+[[ ${script_dir} != "${BASH_SOURCE[0]}" ]] || script_dir=.
+root="$(git -C "${script_dir:-/}" rev-parse --show-toplevel)" || exit 1
 flakes="${root}/.github/flakes.yaml"
 ledger="${root}/.orchestration/validation/ci-reruns.tsv"
 reservation="${root}/.orchestration/validation/ci-reruns.lock.d/${run_id}"

@@ -20,9 +20,17 @@ function login_to_github() {
     gh auth login -h github.com -p https
 }
 
+# @description Print the short host name, or fail naming the read when neither form works.
+function short_hostname() {
+    if ! hostname -s 2> /dev/null && ! hostname; then
+        printf 'setup-gh: cannot read the host name for the SSH key comment\n' >&2
+        return 1
+    fi
+}
+
 # @description Return the email address used as the SSH key comment.
 function ssh_key_comment() {
-    local configured_email
+    local configured_email host
     configured_email="$(git config --global --get user.email || true)"
 
     if [[ -n "${configured_email}" ]]; then
@@ -30,11 +38,14 @@ function ssh_key_comment() {
         return 0
     fi
 
-    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2> /dev/null || hostname)"
+    host="$(short_hostname)" || return 1
+    printf '%s@%s\n' "${USER:-user}" "${host}"
 }
 
 # @description Create the default SSH key through ssh-keygen when it is missing.
 function ensure_default_ssh_key() {
+    local comment
+
     if [[ -r "${DEFAULT_SSH_PUBLIC_KEY_PATH}" ]]; then
         return 0
     fi
@@ -47,15 +58,16 @@ function ensure_default_ssh_key() {
 
     if [[ ! -t 0 ]]; then
         printf 'Public SSH key not found: %s\n' "${DEFAULT_SSH_PUBLIC_KEY_PATH}" >&2
-        printf 'Run `ssh-keygen -t ed25519 -f %s -C "$(git config --global --get user.email)"` or restore the key from private chezmoi state.\n' "${DEFAULT_SSH_KEY_PATH}" >&2
+        printf "Run \`ssh-keygen -t ed25519 -f %s -C \"\$(git config --global --get user.email)\"\` or restore the key from private chezmoi state.\n" "${DEFAULT_SSH_KEY_PATH}" >&2
         return 1
     fi
 
     mkdir -p "${HOME%/}/.ssh"
     chmod 0700 "${HOME%/}/.ssh"
 
+    comment="$(ssh_key_comment)" || return 1
     printf 'Default SSH key not found. Creating %s interactively.\n' "${DEFAULT_SSH_KEY_PATH}" >&2
-    ssh-keygen -t ed25519 -f "${DEFAULT_SSH_KEY_PATH}" -C "$(ssh_key_comment)"
+    ssh-keygen -t ed25519 -f "${DEFAULT_SSH_KEY_PATH}" -C "${comment}"
     chmod 0600 "${DEFAULT_SSH_KEY_PATH}"
     chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }

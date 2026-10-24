@@ -117,7 +117,8 @@ function path_is_in_safe_root() {
         "${HOME}/.claude/hooks/herdr-agent-state.sh" \
         "${CODEX_ASSET_ROOT}/herdr-agent-state.sh" \
         "${HOME}/.local/bin/hcom"; do
-        [ "${candidate}" = "$(normalize_action_path "${root}")" ] && return 0
+        root="$(normalize_action_path "${root}")" || return 1
+        [ "${candidate}" = "${root}" ] && return 0
     done
     return 1
 }
@@ -222,10 +223,11 @@ function is_plugin_data_path() {
 # @arg $1 path Recorded path.
 #
 function is_plugin_config_path() {
-    local candidate
+    local candidate settings_path config_path
     candidate="$(normalize_action_path "$1")" || return 1
-    [ "${candidate}" = "$(normalize_action_path "${HOME}/.claude/settings.json")" ] ||
-        [ "${candidate}" = "$(normalize_action_path "${CODEX_ASSET_ROOT}/config.toml")" ]
+    settings_path="$(normalize_action_path "${HOME}/.claude/settings.json")" || return 1
+    config_path="$(normalize_action_path "${CODEX_ASSET_ROOT}/config.toml")" || return 1
+    [ "${candidate}" = "${settings_path}" ] || [ "${candidate}" = "${config_path}" ]
 }
 
 #
@@ -414,7 +416,12 @@ function load_entry() {
     fi
     if [ -z "${ENTRY}" ]; then
         printf 'ERROR: unknown manifest step: %s\n' "${STEP}" >&2
-        printf 'Known steps: %s\n' "$(jq -r '.steps | keys | join(", ")' "${MANIFEST_PATH}")" >&2
+        local known_steps
+        known_steps="$(jq -r '.steps | keys | join(", ")' "${MANIFEST_PATH}")" || {
+            fail "cannot list the steps of ${MANIFEST_PATH}"
+            return 1
+        }
+        printf 'Known steps: %s\n' "${known_steps}" >&2
         return 1
     fi
     printf '%s\n' "${ENTRY}" | jq -e '
@@ -426,13 +433,21 @@ function load_entry() {
         return 1
     }
 
-    local value
+    local value values
+    values="$(jq -r '.paths[]' <<< "${ENTRY}")" || {
+        fail "cannot read the recorded paths of manifest entry: ${STEP}"
+        return 1
+    }
     while IFS= read -r value; do
-        [ -n "${value}" ] && RECORDED_PATHS+=("${value}")
-    done < <(printf '%s\n' "${ENTRY}" | jq -r '.paths[]')
+        [ -z "${value}" ] || RECORDED_PATHS+=("${value}")
+    done <<< "${values}"
+    values="$(jq -r '.commands[]' <<< "${ENTRY}")" || {
+        fail "cannot read the recorded commands of manifest entry: ${STEP}"
+        return 1
+    }
     while IFS= read -r value; do
-        [ -n "${value}" ] && RECORDED_COMMANDS+=("${value}")
-    done < <(printf '%s\n' "${ENTRY}" | jq -r '.commands[]')
+        [ -z "${value}" ] || RECORDED_COMMANDS+=("${value}")
+    done <<< "${values}"
 }
 
 #

@@ -55,3 +55,22 @@ function setup() {
     [[ "${output}" == *"-t ed25519"* ]]
     [[ "${output}" == *"-N "* ]]
 }
+
+@test "[common] provision-machine-key refuses to generate a key when the host name cannot be read" {
+    local home_dir="${BATS_TEST_TMPDIR}/home"
+    local calls_path="${BATS_TEST_TMPDIR}/calls.txt"
+    mkdir -p "${home_dir}"
+    : > "${calls_path}"
+
+    run env HOME="${home_dir}" CALLS_PATH="${calls_path}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        function hostname() { return 1; }
+        function ssh-keygen() { printf "%s\n" "$*" >> "${CALLS_PATH}"; }
+        main
+    '
+
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"cannot read the host name for the SSH key comment"* ]]
+    [[ "${output}" != *"Generating machine SSH key"* ]]
+    [ ! -s "${calls_path}" ]
+}

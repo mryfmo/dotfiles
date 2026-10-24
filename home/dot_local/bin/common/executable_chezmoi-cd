@@ -10,9 +10,11 @@
 
 # @description Change into the current chezmoi source path.
 chezmoi-cd() {
-    cd "$(chezmoi source-path)" || return
+    local source_path
+    source_path=$(chezmoi source-path) || return
+    cd -- "$source_path" || return
 }
 
-if [ -n "$($SHELL -c "echo ${ZSH_VERSION}")" ]; then
+if [ -n "${ZSH_VERSION:-}" ]; then
     chezmoi-cd
 fi

@@ -325,7 +325,7 @@ claude:
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       regime-init: 1364b631df108279fe473e8f2840ed2164c8f65096019dea8711bba003f0b4ad
-      seat-login-preflight: d4a64e9d33de9b9f379fd622a4f7dd8616cc27fb5447e62ed21b1fc9292ecff5
+      seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
     # gate's directory, which every launch loads (regime-cutover U33c).

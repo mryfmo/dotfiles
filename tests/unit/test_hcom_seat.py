@@ -173,6 +173,16 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(self.seat("worker", "--seats-root", self.seats, "--ext", str(link)).returncode, 2)
         self.assertEqual(self.calls_of("hcom"), [])
 
+    @unittest.skipIf(os.geteuid() == 0, "root enters a mode-000 directory, so cd cannot be made to fail")
+    def test_an_extension_directory_that_cannot_be_resolved_is_a_refusal(self):
+        """`cd` into the extension fails, so its canonical path is unknown: the launch is refused (preferences 21)."""
+        self.bridge.chmod(0)
+        self.addCleanup(self.bridge.chmod, 0o755)
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("cannot resolve extension directory", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+
     def test_an_unreadable_or_missing_allow_list_is_a_refusal(self):
         """A failed read of the allow-list refuses the launch instead of reading as an empty list (preferences 21)."""
         bindir = Path(self.temp.name) / "bad-awk"

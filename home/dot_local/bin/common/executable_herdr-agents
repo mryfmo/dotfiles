@@ -1570,7 +1570,7 @@ function repository_identity() {
 # @arg $1 clone Absolute path of the clone this runs in.
 # @exitcode 1 As retire_agmsg, or when a team config cannot be read.
 function retire_registered_agmsg_projects() {
-    local clone="$1" registrations project path team identity
+    local clone="$1" registrations project team identity
     local -a projects=()
 
     registrations="$(registered_agmsg_projects)" || exit 1
@@ -1585,9 +1585,9 @@ function retire_registered_agmsg_projects() {
             printf 'agmsg retire: registered project %s (team %s) is gone; skipped\n' "${project}" "${team}"
             continue
         fi
-        path="$(cd -- "${project}" && pwd -P)"
-        [[ ${path} != "${clone}" ]] || continue
-        if [[ -z ${identity} || "$(repository_identity "${path}")" != "${identity}" ]]; then
+        # The same directory (by device and inode), whatever path spells it.
+        [[ ! ${project} -ef ${clone} ]] || continue
+        if [[ -z ${identity} || "$(repository_identity "${project}")" != "${identity}" ]]; then
             printf 'agmsg retire: registered project %s (team %s) is not a clone of this repository; skipped\n' "${project}" "${team}"
             continue
         fi

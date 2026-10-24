@@ -17,7 +17,12 @@
 
 set -Eeuo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# dirname is captured on its own line: inside the cd its status would be lost.
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
+    echo "upgrade-tools: dirname failed on ${BASH_SOURCE[0]}; the repository root is unknown" >&2
+    exit 1
+}
+repo_root="$(cd "${script_dir}/.." && pwd)" || exit 1
 # chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME
 # says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git
 # config's XDG_CONFIG_HOME below cannot redirect it.
@@ -40,16 +45,28 @@ function section() {
 
 #
 # @description Return success when the current OS is macOS.
+# @exitcode 1 Also exits the script when uname fails: a failed read is not "another OS".
 #
 function is_macos() {
-    [ "$(uname)" = "Darwin" ]
+    local kernel
+    kernel="$(uname)" || {
+        echo "uname failed; cannot tell whether this host is macOS" >&2
+        exit 1
+    }
+    [ "${kernel}" = "Darwin" ]
 }
 
 #
 # @description Return success when the current OS is Linux.
+# @exitcode 1 Also exits the script when uname fails: a failed read is not "another OS".
 #
 function is_linux() {
-    [ "$(uname)" = "Linux" ]
+    local kernel
+    kernel="$(uname)" || {
+        echo "uname failed; cannot tell whether this host is Linux" >&2
+        exit 1
+    }
+    [ "${kernel}" = "Linux" ]
 }
 
 #
@@ -180,11 +197,13 @@ function upgrade_homebrew() {
 #
 function upgrade_mise_self() {
     local mise_executable
+    local mise_dir
     local mise_prefix
 
     has_command mise || return 1
     mise_executable="$(type -P mise)" || return 1
-    mise_prefix="$(cd "$(dirname "${mise_executable}")/.." && pwd -P)" || return
+    mise_dir="$(dirname -- "${mise_executable}")" || return
+    mise_prefix="$(cd "${mise_dir}/.." && pwd -P)" || return
 
     section "mise self-update"
     if [[ -f "${mise_prefix}/lib/mise-self-update-instructions.toml" ||

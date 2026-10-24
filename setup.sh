@@ -173,9 +173,13 @@ function github_release_tag() {
 #   older system gh earlier on PATH (Ubuntu's apt gh predates 2.93.0) never hides it.
 #
 function github_attestation_ready() {
-    local PATH="${HOME}/.local/share/mise/shims:${PATH}" version
+    local PATH="${HOME}/.local/share/mise/shims:${PATH}" version version_output
     command -v gh > /dev/null 2>&1 || return 1
-    version="$(github_dotcom_gh --version 2> /dev/null | awk 'NR == 1 { print $3 }')"
+    if ! version_output="$(github_dotcom_gh --version 2> /dev/null)"; then
+        printf 'gh --version failed, so gh is not used for attestations.\n' >&2
+        return 1
+    fi
+    read -r _ _ version _ <<< "${version_output}"
     # Only a stable X.Y.Z counts: a prerelease such as 2.93.0-rc.1 sorts below the 2.93.0 fix.
     if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
         ! printf '%s\n%s\n' "${GITHUB_ATTESTATION_MIN_GH}" "${version}" | awk -F. '
@@ -225,7 +229,7 @@ function github_release_attestation() {
 # @exitcode 2 No gh 2.93.0 or newer is authenticated to github.com, so nothing was downloaded.
 #
 function github_release_verified_sha256() (
-    local actual base="https://github.com/$1/releases/download/$2" dir expected
+    local actual base="https://github.com/$1/releases/download/$2" dir expected sum
     github_attestation_ready || return 2
     dir="$(mktemp -d "${TMPDIR:-/tmp}/github-release.XXXXXX")" || return 1
     trap 'rm -rf "${dir}"' EXIT
@@ -233,10 +237,17 @@ function github_release_verified_sha256() (
     curl -fsSL "${base}/$4" -o "${dir}/$4" || return 1
     expected="$(awk -v name="$3" '$2 == name { print $1; exit }' "${dir}/$4")"
     if command -v sha256sum > /dev/null 2>&1; then
-        actual="$(sha256sum "${dir}/$3" | awk '{ print $1 }')"
+        sum="$(sha256sum "${dir}/$3")" || {
+            printf 'sha256sum could not hash %s\n' "$3" >&2
+            return 1
+        }
     else
-        actual="$(shasum -a 256 "${dir}/$3" | awk '{ print $1 }')"
+        sum="$(shasum -a 256 "${dir}/$3")" || {
+            printf 'shasum -a 256 could not hash %s\n' "$3" >&2
+            return 1
+        }
     fi
+    actual="${sum%% *}"
     if [ -z "${expected}" ] || [ "${actual}" != "${expected}" ]; then
         printf 'Checksum mismatch for %s\n' "$3" >&2
         return 1
@@ -306,12 +317,16 @@ function sha256_file() {
 # @arg $1 path File to verify.
 # @arg $2 expected Expected lowercase digest.
 function verify_sha256() {
-    local path="$1" expected="${2:-}"
+    local path="$1" expected="${2:-}" actual
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${path}" >&2
         return 1
     }
-    [ "$(sha256_file "${path}")" = "${expected}" ] || {
+    actual="$(sha256_file "${path}")" || {
+        printf 'sha256_file could not hash %s\n' "${path}" >&2
+        return 1
+    }
+    [ "${actual}" = "${expected}" ] || {
         printf 'Checksum mismatch for %s\n' "${path}" >&2
         return 1
     }
@@ -389,6 +404,7 @@ function keepalive_sudo() {
 }
 
 function initialize_os_macos() {
+    local brew_env
     local brew_prefix
     local installer
     local installer_sha256
@@ -440,7 +456,11 @@ function initialize_os_macos() {
         exit 1
     fi
 
-    eval "$("${brew_prefix}/bin/brew" shellenv)"
+    if ! brew_env="$("${brew_prefix}/bin/brew" shellenv)"; then
+        echo "${brew_prefix}/bin/brew shellenv failed; cannot continue bootstrap." >&2
+        exit 1
+    fi
+    eval "${brew_env}"
 }
 
 function initialize_os_linux() {
@@ -474,7 +494,10 @@ function run_chezmoi() {
     local fallback_sha256
     local fallback=""
     local local_drift=false
+    local machine
     local no_tty_option
+    local os_type
+    local source_path
     local stage
     local status_line
     local status_output
@@ -495,7 +518,15 @@ function run_chezmoi() {
     fi
     chezmoi_version="${chezmoi_tag#v}"
     base_url="https://github.com/${CHEZMOI_RELEASE_REPO}/releases/download/${chezmoi_tag}"
-    case "$(get_os_type)/$(uname -m)" in
+    os_type="$(get_os_type)" || {
+        printf 'get_os_type (uname) failed; chezmoi was not installed.\n' >&2
+        return 1
+    }
+    machine="$(uname -m)" || {
+        printf 'uname -m failed; chezmoi was not installed.\n' >&2
+        return 1
+    }
+    case "${os_type}/${machine}" in
     Darwin/x86_64)
         artifact="chezmoi_${chezmoi_version}_darwin_amd64.tar.gz"
         fallback_sha256="${CHEZMOI_FALLBACK_DARWIN_AMD64_SHA256}"
@@ -513,7 +544,7 @@ function run_chezmoi() {
         fallback_sha256="${CHEZMOI_FALLBACK_LINUX_ARM64_SHA256}"
         ;;
     *)
-        printf 'Unsupported chezmoi platform: %s/%s\n' "$(get_os_type)" "$(uname -m)" >&2
+        printf 'Unsupported chezmoi platform: %s/%s\n' "${os_type}" "${machine}" >&2
         return 1
         ;;
     esac
@@ -567,7 +598,11 @@ function run_chezmoi() {
     # Therefore, it is currnetly difficult to decrypt the files encrypted with `age` in this workflow.
     # I decided to temporarily remove the encrypted target files from chezmoi's control.
     if is_ci_or_not_tty; then
-        find "$(${chezmoi_cmd} source-path)" -type f -name "encrypted_*" -exec rm -fv {} +
+        if ! source_path="$("${chezmoi_cmd}" source-path)"; then
+            echo "chezmoi source-path failed; no destination targets were changed." >&2
+            return 1
+        fi
+        find "${source_path}" -type f -name "encrypted_*" -exec rm -fv {} +
     fi
 
     # Add to PATH for installing the necessary binary files under `$HOME/.local/bin`.

@@ -31,11 +31,16 @@ fi
 # @description Print the Zed release artifact name for this architecture.
 #
 function zed_artifact() {
-    case "$(uname -m)" in
+    local machine
+    machine="$(uname -m)" || {
+        printf 'uname -m failed; no Zed artifact was chosen.\n' >&2
+        return 1
+    }
+    case "${machine}" in
     x86_64 | amd64) printf 'zed-linux-x86_64.tar.gz\n' ;;
     aarch64 | arm64) printf 'zed-linux-aarch64.tar.gz\n' ;;
     *)
-        printf 'Unsupported Zed architecture: %s\n' "$(uname -m)" >&2
+        printf 'Unsupported Zed architecture: %s\n' "${machine}" >&2
         return 1
         ;;
     esac
@@ -98,7 +103,7 @@ function link_zed_bin() {
 # @description Install or update Zed to the newest cooled-down release.
 #
 function main() {
-    local installed status=0 tag
+    local installed sorted status=0 tag
     # gh is a mise tool; its shim supplies the API token when no gh is on PATH yet. The attestation
     # checks put the shim first themselves (scripts/lib/github-release.sh).
     PATH="${PATH}:${HOME}/.local/share/mise/shims"
@@ -113,7 +118,13 @@ function main() {
         return 0
     fi
     # Zed updates itself, so an installed release at or past the cooled-down one stays.
-    if [ -n "${installed}" ] && [ "$(printf '%s\n%s\n' "${tag#v}" "${installed}" | sort -V | tail -n 1)" = "${installed}" ]; then
+    if [ -n "${installed}" ]; then
+        sorted="$(sort -V <<< "${tag#v}"$'\n'"${installed}")" || {
+            printf 'sort -V could not order Zed %s and %s; nothing was installed.\n' "${installed}" "${tag}" >&2
+            return 1
+        }
+    fi
+    if [ -n "${installed}" ] && [ "${sorted##*$'\n'}" = "${installed}" ]; then
         [ "${installed}" = "${tag#v}" ] ||
             printf 'zed %s stays: it is newer than the cooled-down %s (Zed updates itself).\n' "${installed}" "${tag}" >&2
         return 0

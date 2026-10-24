@@ -83,6 +83,47 @@ function teardown() {
     fi
 }
 
+@test "[ubuntu-client] setup_repository writes no repository when dpkg or lsb_release cannot be read" {
+    local producer
+    for producer in dpkg lsb_release; do
+        local calls_path="${BATS_TEST_TMPDIR}/docker-${producer}-calls.txt"
+
+        run env CALLS_PATH="${calls_path}" FAILING="${producer}" bash -c '
+            source "'"${SCRIPT_PATH}"'"
+            curl() { printf "docker signing key\n"; }
+            dpkg() { [ "${FAILING}" != dpkg ] && printf "amd64\n"; }
+            lsb_release() { [ "${FAILING}" != lsb_release ] && printf "noble\n"; }
+            sudo() {
+                printf "%s\n" "$*" >> "${CALLS_PATH}"
+                if [ "$1" = "gpg" ] || [ "$1" = "tee" ]; then
+                    cat > /dev/null
+                fi
+            }
+
+            setup_repository
+        '
+
+        [ "${status}" -eq 1 ]
+        grep -qE -- "^${producer} .* failed; the Docker repository was not configured$" <<< "${output}"
+        if grep -qE '^(tee /etc/apt/sources.list.d/docker.list|gpg )' "${calls_path}"; then
+            false
+        fi
+    done
+}
+
+@test "[ubuntu-client] configure_docker_group adds no user when id cannot name the user" {
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        id() { return 1; }
+        sudo() { printf "unexpected: sudo %s\n" "$*"; }
+
+        configure_docker_group
+    '
+
+    [ "${status}" -eq 1 ]
+    [ "${output}" = "id -un failed; no user was added to the docker group" ]
+}
+
 # uninstall_old_docker has no install_* counterpart: main calls it first, to remove the distribution's Docker
 # packages that conflict with Docker's own (docs.docker.com/engine/install/ubuntu, "Uninstall old versions").
 # The list below is that set; the cases check it is removed whole, one package per call, and never a package

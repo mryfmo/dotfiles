@@ -98,6 +98,22 @@ class AwsCliAcquisitionTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Unsupported AWS CLI architecture: riscv64", result.stderr)
 
+    def test_a_failed_uname_chooses_no_archive_and_downloads_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            calls = Path(directory) / "curl"
+            prelude = 'uname() { return 1; }\ncurl() { printf "%s\\n" "$*" >> "${CALLS}"; }\n'
+            for body, message in (
+                ("aws_cli_url", "uname -s failed; no AWS CLI archive was chosen."),
+                ("install_aws_cli", "uname -s failed; the AWS CLI was not installed."),
+            ):
+                with self.subTest(body=body):
+                    result = self.run_shell(prelude + body, {"CALLS": str(calls)})
+
+                    self.assertEqual(1, result.returncode, result.stderr)
+                    self.assertEqual(f"{message}\n", result.stderr)
+                    self.assertEqual("", result.stdout)
+                    self.assertFalse(calls.exists())
+
     def test_gpgv_failure_preserves_existing_aws_and_skips_unzip(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

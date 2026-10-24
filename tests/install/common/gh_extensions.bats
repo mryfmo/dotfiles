@@ -55,3 +55,22 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     [ "${status}" -eq 0 ]
     [ -z "${output}" ]
 }
+
+@test "[common] gh_extensions refuses when mise activate fails, before any gh call" {
+    export HOME="${BATS_TEST_TMPDIR}/home"
+    mkdir -p "${HOME}/.local/bin"
+    printf '#!/bin/sh\necho "mise: broken" >&2\nexit 3\n' > "${HOME}/.local/bin/mise"
+    chmod +x "${HOME}/.local/bin/mise"
+
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        gh() { printf "unexpected: %s\n" "$*"; }
+        main
+    '
+
+    [ "${status}" -ne 0 ]
+    grep -qF -- "${HOME}/.local/bin/mise activate bash failed; gh extensions were not installed." <<< "${output}"
+    if grep -qF -- "unexpected:" <<< "${output}"; then
+        false
+    fi
+}

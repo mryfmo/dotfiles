@@ -377,12 +377,20 @@ jobs:
           mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
             sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
 
+      - name: Put the pinned `shfmt` on PATH
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # scripts/ci/masked-dirname-check.sh parses with shfmt, in `make shellcheck` and in its unit tests; this is
+        # the version the `shfmt` step pins.
+        run: |
+          mise install shfmt@3.14.1
+          dirname "$(mise which --tool shfmt@3.14.1 shfmt)" >> "${GITHUB_PATH}"
+
       - name: Run `ShellCheck`
         if: ${{ steps.decide.outputs.should_test == 'true' }}
-        # The Makefile's shellcheck target names the two groups (regime-cutover U38): setup.sh, install/**
-        # and scripts/*.sh with the default checks (--norc, until U38b), and the bash scripts of
-        # scripts/orchestrator/* and home/dot_local/bin/common/executable_* with .shellcheckrc
-        # (check-extra-masked-returns) plus scripts/ci/masked-dirname-check.sh.
+        # The Makefile's shellcheck target names the two groups (regime-cutover U38, U38b): setup.sh,
+        # install/**, scripts/*.sh and scripts/lib/*, and the bash scripts of scripts/orchestrator/* and
+        # home/dot_local/bin/common/executable_*, both with .shellcheckrc (check-extra-masked-returns) plus
+        # scripts/ci/masked-dirname-check.sh. tests/unit/test_shellcheck_target.py pins this step to that target.
         run: make shellcheck
 
       - name: Setup uv

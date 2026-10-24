@@ -16,11 +16,12 @@ DISABLED = "#!/bin/bash\nprintf ' SleepDisabled\\t\\t%s\\n hibernatemode\\t\\t3\
 
 
 class CheckSleepTest(unittest.TestCase):
-    def run_check(self, system, pmset_body):
+    def run_check(self, system, pmset_body, uname_body=None):
         with tempfile.TemporaryDirectory() as temp:
             bin_dir = Path(temp) / "bin"
             bin_dir.mkdir()
-            for name, body in (("uname", f"#!/bin/bash\necho {system}\n"), ("pmset", pmset_body)):
+            uname_body = uname_body or f"#!/bin/bash\necho {system}\n"
+            for name, body in (("uname", uname_body), ("pmset", pmset_body)):
                 stub = bin_dir / name
                 stub.write_text(body)
                 stub.chmod(0o755)
@@ -55,6 +56,13 @@ class CheckSleepTest(unittest.TestCase):
                 result = self.run_check(system, pmset_body)
                 self.assertEqual(code, result.returncode, result.stdout + result.stderr)
                 self.assertIn(text, result.stdout + result.stderr)
+
+    def test_a_failed_uname_fails_the_check_instead_of_skipping_it(self):
+        result = self.run_check("", DISABLED.format(value=1), uname_body="#!/bin/bash\nexit 1\n")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("sleep check: uname -s failed; cannot tell whether this host is macOS", result.stderr)
+        self.assertNotIn("skipped", result.stdout)
 
 
 if __name__ == "__main__":

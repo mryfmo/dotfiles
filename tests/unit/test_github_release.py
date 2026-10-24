@@ -327,6 +327,31 @@ class GithubReleaseTest(unittest.TestCase):
                 if outcome in ("gh version unreadable", "gh too old", "gh prerelease of the fixed version"):
                     self.assertIn("GHSA-8xvp-7hj6-mcj9", result.stderr)
 
+    def test_a_gh_whose_version_command_fails_is_never_used_and_says_so(self) -> None:
+        asset = self.temp_dir / "asset.tar.gz"
+        asset.write_text("payload\n")
+        self.executable("gh", f'printf "gh %s\\n" "$*" >> "{self.log}"\n[ "$1" = --version ] && exit 1\nexit 0\n')
+
+        result = self.run_helper(f'github_release_attestation owner/repo v1 "{asset}"')
+
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("gh --version failed, so gh is not used for attestations.", result.stderr)
+        self.assertNotIn("verify-asset", self.log.read_text())
+
+    def test_a_verified_sha256_is_refused_when_the_hasher_fails(self) -> None:
+        self.link("mktemp", "rm", "awk")
+        result = self.run_helper(
+            "github_attestation_ready() { return 0; }\n"
+            'curl() { while [ "$#" -gt 0 ]; do [ "$1" = -o ] && { printf "abc  asset\\n" > "$2"; shift; }; shift; done; }\n'
+            "sha256sum() { return 1; }\n"
+            'github_release_attestation() { echo "attested" >&2; }\n'
+            "github_release_verified_sha256 owner/repo v1 asset sums.txt"
+        )
+
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertEqual("sha256sum could not hash asset\n", result.stderr)
+        self.assertEqual("", result.stdout)
+
     def test_attestation_prefers_mise_gh_over_an_older_system_gh(self) -> None:
         # Ubuntu's apt gh predates 2.93.0; mise's current gh must win even when the old one comes first.
         asset = self.temp_dir / "asset.tar.gz"

@@ -517,3 +517,96 @@ EOF
         done
     )
 }
+
+@test "[common] checksum verification names sha256_file when it cannot hash the file" {
+    local payload="${BATS_TEST_TMPDIR}/payload"
+    local marker="${BATS_TEST_TMPDIR}/executed"
+    printf '#!/bin/sh\ntouch %q\n' "${marker}" > "${payload}"
+
+    run bash -c 'source ./setup.sh; sha256_file() { return 1; }; verify_sha256 "$1" "$2" && sh "$1"' _ "${payload}" "$(printf x | shasum -a 256 | awk '{print $1}')"
+    [ "${status}" -ne 0 ]
+    [ "${output}" = "sha256_file could not hash ${payload}" ]
+    [ ! -e "${marker}" ]
+}
+
+@test "[common] setup.sh stops the bootstrap when brew shellenv fails" {
+    local tmpdir
+
+    tmpdir="$(mktemp -d)"
+    mkdir -p "${tmpdir}/brew/bin"
+    printf '#!/bin/sh\n[ "$1" = shellenv ] && exit 4\nprintf "%%s\\n" "%s"\n' "${tmpdir}/brew" > "${tmpdir}/brew/bin/brew"
+    chmod +x "${tmpdir}/brew/bin/brew"
+
+    run env PATH="${tmpdir}/brew/bin:/usr/bin:/bin" CI=true bash -c 'source ./setup.sh; initialize_os_macos; echo continued'
+    [ "${status}" -eq 1 ]
+    grep -qF -- "${tmpdir}/brew/bin/brew shellenv failed; cannot continue bootstrap." <<< "${output}"
+    if grep -qF -- "continued" <<< "${output}"; then
+        false
+    fi
+}
+
+@test "[common] setup.sh installs no chezmoi when uname cannot report the platform" {
+    local fetched="${BATS_TEST_TMPDIR}/fetched"
+
+    run env FETCHED="${fetched}" bash -c '
+        source ./setup.sh
+        github_attestation_ready() { return 1; }
+        fetch_file() { touch "${FETCHED}"; }
+        uname() { [ "$#" -eq 0 ] && printf "Linux\n" || return 1; }
+        run_chezmoi
+    '
+    [ "${status}" -eq 1 ]
+    grep -qF -- "uname -m failed; chezmoi was not installed." <<< "${output}"
+    [ ! -e "${fetched}" ]
+}
+
+@test "[common] setup.sh applies nothing when chezmoi source-path fails in CI" {
+    local tmpdir
+
+    tmpdir="$(mktemp -d)"
+    mkdir -p "${tmpdir}/bin" "${tmpdir}/home/fakebrew/bin" "${tmpdir}/release"
+    cat > "${tmpdir}/release/chezmoi" << 'EOF'
+#!/usr/bin/env bash
+echo "chezmoi $*" >> "${HOME}/log"
+[ "${1:-}" != source-path ]
+EOF
+    chmod +x "${tmpdir}/release/chezmoi"
+    create_chezmoi_release_fixture "${tmpdir}" darwin arm64
+
+    cat > "${tmpdir}/home/fakebrew/bin/brew" << 'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    --prefix) printf '%s\n' "${HOME}/fakebrew" ;;
+    shellenv) printf 'export PATH="%s/bin:${PATH}"\n' "${HOME}/fakebrew" ;;
+esac
+EOF
+    chmod +x "${tmpdir}/home/fakebrew/bin/brew"
+
+    cat > "${tmpdir}/bin/uname" << 'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = -m ]; then printf 'arm64\n'; else printf 'Darwin\n'; fi
+EOF
+    chmod +x "${tmpdir}/bin/uname"
+
+    cat > "${tmpdir}/bin/curl" << 'EOF'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = -o ]; then output="$2"; shift 2; else url="$1"; shift; fi
+done
+if [ -n "${output:-}" ]; then cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"; else cat "${CHEZMOI_FIXTURE_DIR}/${url##*/}"; fi
+EOF
+    chmod +x "${tmpdir}/bin/curl"
+
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" CI=true \
+        RUNNER_TEMP="${tmpdir}" \
+        CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
+        HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \
+        bash -c "$(cat setup.sh)"
+
+    [ "${status}" -ne 0 ]
+    grep -qF -- "chezmoi source-path failed; no destination targets were changed." <<< "${output}"
+    grep -q '^chezmoi source-path$' "${tmpdir}/home/log"
+    if grep -Eq '^chezmoi (status|diff|apply)' "${tmpdir}/home/log"; then
+        false
+    fi
+}

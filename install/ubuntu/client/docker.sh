@@ -50,14 +50,24 @@ function setup_repository() {
         gnupg \
         lsb-release
 
+    local arch codename
+    arch="$(dpkg --print-architecture)" || {
+        echo "dpkg --print-architecture failed; the Docker repository was not configured" >&2
+        return 1
+    }
+    codename="$(lsb_release -cs)" || {
+        echo "lsb_release -cs failed; the Docker repository was not configured" >&2
+        return 1
+    }
+
     # Add Docker’s official GPG key:
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
 
     # Use the following command to set up the repository:
     echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        ${codename} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 }
 
 #
@@ -76,7 +86,12 @@ function install_docker_engine() {
 # @description Add the current user to the docker group so docker can run without sudo.
 #
 function configure_docker_group() {
-    sudo usermod -aG docker "$(id -un)"
+    local user
+    user="$(id -un)" || {
+        echo "id -un failed; no user was added to the docker group" >&2
+        return 1
+    }
+    sudo usermod -aG docker "${user}"
 }
 
 #

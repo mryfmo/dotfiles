@@ -26,10 +26,14 @@ readonly AWS_CLI_ETAG_FILE="${XDG_STATE_HOME:-${HOME}/.local/state}/dotfiles/aws
 # @stdout The official x86_64 or aarch64 archive URL, or the macOS pkg URL.
 #
 function aws_cli_url() {
-    local architecture
+    local architecture kernel
 
+    kernel="$(uname -s)" || {
+        printf 'uname -s failed; no AWS CLI archive was chosen.\n' >&2
+        return 1
+    }
     # The macOS pkg serves every architecture.
-    if [ "$(uname -s)" = Darwin ]; then
+    if [ "${kernel}" = Darwin ]; then
         printf 'https://awscli.amazonaws.com/AWSCLIV2.pkg\n'
         return
     fi
@@ -104,9 +108,15 @@ function install_aws_cli() (
     local temporary_dir
     local staged_version
     local same_version_dir
+    local active_version
+    local kernel
     local macos=""
 
-    if [ "$(uname -s)" = Darwin ]; then
+    kernel="$(uname -s)" || {
+        printf 'uname -s failed; the AWS CLI was not installed.\n' >&2
+        return 1
+    }
+    if [ "${kernel}" = Darwin ]; then
         macos=1
         archive_url="https://awscli.amazonaws.com/v2/install.sh"
     else
@@ -157,9 +167,12 @@ function install_aws_cli() (
     # would never be repaired. Remove that directory first, after the signature and the staged CLI
     # passed and only when the active CLI does not run as the staged release.
     same_version_dir="${AWS_CLI_INSTALL_DIR}/v2/${staged_version}"
-    if [[ "${staged_version}" =~ ^[0-9]+(\.[0-9]+)*$ && -d "${same_version_dir}" ]] &&
-        [ "$(verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" 2> /dev/null)" != "aws-cli/${staged_version}" ]; then
-        rm -rf "${same_version_dir}" || return
+    if [[ "${staged_version}" =~ ^[0-9]+(\.[0-9]+)*$ && -d "${same_version_dir}" ]]; then
+        # An active CLI that does not run is not the staged release either, so its failure is the answer.
+        active_version="$(verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" 2> /dev/null)" || active_version=""
+        if [ "${active_version}" != "aws-cli/${staged_version}" ]; then
+            rm -rf "${same_version_dir}" || return
+        fi
     fi
     mkdir -p "${AWS_CLI_BIN_DIR}" "$(dirname "${AWS_CLI_INSTALL_DIR}")" || return
     "${temporary_dir}/aws/install" \
@@ -185,7 +198,7 @@ function aws_cli_archive_etag() {
 #   AWS CLI still runs.
 #
 function main() {
-    local etag status=0
+    local etag recorded status=0
     if ! etag="$(aws_cli_archive_etag)"; then
         # Only a CLI that still runs stays; a broken one fails the offline apply instead of passing.
         verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1 || {
@@ -195,8 +208,10 @@ function main() {
         printf 'warning: could not reach the AWS CLI archive; the installed AWS CLI stays.\n' >&2
         return 0
     fi
-    # The recorded ETag counts only for an AWS CLI that still runs; a broken one is reinstalled.
-    if [ "$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" = "${etag}" ] &&
+    # The recorded ETag counts only for an AWS CLI that still runs; a broken one is reinstalled. No
+    # readable record is no match: the verified install runs again and records it.
+    recorded="$(cat "${AWS_CLI_ETAG_FILE}" 2> /dev/null)" || recorded=""
+    if [ "${recorded}" = "${etag}" ] &&
         verify_aws_cli_version "${AWS_CLI_BIN_DIR}/aws" "AWS CLI check" > /dev/null 2>&1; then
         return 0
     fi

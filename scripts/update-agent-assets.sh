@@ -17,14 +17,19 @@ set -Eeuo pipefail
 # @exitcode 1 Neither the wrapper export nor direct script path was valid.
 #
 function resolve_dotfiles_source_dir() {
-    local candidate
+    local candidate script_dir
 
     if [[ -n "${DOTFILES_SOURCE_DIR:-}" ]] && [[ -d "${DOTFILES_SOURCE_DIR}/vendor/compactiondb" ]]; then
         printf '%s\n' "${DOTFILES_SOURCE_DIR}"
         return 0
     fi
 
-    candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    # dirname is captured on its own line: inside the cd its status would be lost.
+    script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
+        printf 'dirname failed on %s; the dotfiles source root is unknown.\n' "${BASH_SOURCE[0]}" >&2
+        return 1
+    }
+    candidate="$(cd "${script_dir}/.." && pwd)" || return 1
     if [[ -d "${candidate}/vendor/compactiondb" ]]; then
         printf '%s\n' "${candidate}"
         return 0
@@ -124,6 +129,7 @@ function remove_node_global_agent_cli_shadows() {
 function ensure_mise_npm_agent_cli() {
     local cli="$1"
     local mise_tool="$2"
+    local cli_version install_path
 
     if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
         return 0
@@ -135,7 +141,13 @@ function ensure_mise_npm_agent_cli() {
         mise install --force "${mise_tool}"
     hash -r
     "${cli}" --version > /dev/null
-    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
+    # A version the repaired CLI cannot print is recorded as unknown; its path must resolve.
+    cli_version="$("${cli}" --version 2> /dev/null || printf 'unknown\n')"
+    install_path="$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" || {
+        printf 'Cannot locate the repaired %s for the asset manifest.\n' "${cli}" >&2
+        return 1
+    }
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "${cli_version}" "${install_path}" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force ${mise_tool}"
 }
 
 #
@@ -228,7 +240,7 @@ function install_crit_release() (
     local pinned="$2"
     local target="$3"
     local tag="${CRIT_PIN_VERSION}"
-    local actual base_url checksums download expected staging=""
+    local actual base_url checksums download expected staged_version staging=""
 
     base_url="https://github.com/${CRIT_RELEASE_REPO}/releases/download/${tag}"
     download="$(mktemp)" || return
@@ -247,7 +259,8 @@ function install_crit_release() (
     mkdir -p "$(dirname "${target}")" || return
     staging="$(mktemp "${target}.XXXXXX")" || return
     install -m 0755 "${download}" "${staging}" || return
-    [ "$(crit_version "${staging}")" = "${tag#v}" ] || return
+    staged_version="$(crit_version "${staging}")" || return
+    [ "${staged_version}" = "${tag#v}" ] || return
     mv -f "${staging}" "${target}"
 )
 
@@ -265,24 +278,45 @@ function crit_version() {
 }
 
 #
+# @description Print the host's kernel name and machine (`uname -s`, `uname -m`), space-separated,
+#   for the platform cases below.
+# @exitcode 1 uname failed; the message names the flag, and no platform is guessed.
+#
+function uname_platform() {
+    local kernel machine
+    kernel="$(uname -s)" || {
+        printf 'uname -s failed; the platform is unknown.\n' >&2
+        return 1
+    }
+    machine="$(uname -m)" || {
+        printf 'uname -m failed; the platform is unknown.\n' >&2
+        return 1
+    }
+    printf '%s %s\n' "${kernel}" "${machine}"
+}
+
+#
 # @description Ensure the Crit CLI is the pinned release for agent integrations.
 #
 function ensure_crit_cli() {
-    local artifact checksum tag="${CRIT_PIN_VERSION}" target
+    local artifact checksum installed kernel machine platform tag="${CRIT_PIN_VERSION}" target
 
-    case "$(uname -s)-$(uname -m)" in
+    platform="$(uname_platform)" || return 1
+    read -r kernel machine <<< "${platform}"
+    case "${kernel}-${machine}" in
     Linux-x86_64 | Linux-amd64) artifact="crit-linux-amd64" checksum="${CRIT_LINUX_AMD64_SHA256}" ;;
     Linux-aarch64 | Linux-arm64) artifact="crit-linux-arm64" checksum="${CRIT_LINUX_ARM64_SHA256}" ;;
     Darwin-x86_64 | Darwin-amd64) artifact="crit-darwin-amd64" checksum="${CRIT_DARWIN_AMD64_SHA256}" ;;
     Darwin-arm64 | Darwin-aarch64) artifact="crit-darwin-arm64" checksum="${CRIT_DARWIN_ARM64_SHA256}" ;;
     *)
-        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "${kernel}" "${machine}"
         return 1
         ;;
     esac
 
     target="${HOME}/.local/bin/crit"
-    if [ "$(crit_version "${target}")" != "${tag#v}" ]; then
+    installed="$(crit_version "${target}")" || return 1
+    if [ "${installed}" != "${tag#v}" ]; then
         section "Crit CLI"
         install_crit_release "${artifact}" "${checksum}" "${target}" || return 1
     fi
@@ -422,7 +456,11 @@ function ensure_herdr_integrations() {
     section "herdr integrations"
     herdr integration install claude
     herdr integration install codex
-    manifest_record "ensure_herdr_integrations" integration "$(herdr --version 2> /dev/null | awk 'NF { version = $NF } END { print version ? version : "unknown" }')" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
+    # A herdr that cannot print its version is recorded as unknown, as before.
+    local herdr_output herdr_version
+    herdr_output="$(herdr --version 2> /dev/null)" || herdr_output=""
+    herdr_version="$(awk 'NF { version = $NF } END { print version ? version : "unknown" }' <<< "${herdr_output}")" || return 1
+    manifest_record "ensure_herdr_integrations" integration "${herdr_version}" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
 }
 
 #
@@ -477,7 +515,9 @@ function update_claude_superpowers() {
     else
         claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
     fi
-    manifest_record "update_claude_superpowers" plugin "$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" || return 1
+    manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -507,7 +547,9 @@ function update_claude_crit() {
     else
         claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
     fi
-    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" || return 1
+    manifest_record "update_claude_crit" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -535,7 +577,9 @@ function update_claude_ponytail() {
         claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
     fi
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
-    manifest_record "update_claude_ponytail" plugin "$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" || return 1
+    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -562,7 +606,9 @@ function update_claude_understand_anything() {
     else
         claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
     fi
-    manifest_record "update_claude_understand_anything" plugin "$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" || return 1
+    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #
@@ -593,7 +639,9 @@ function update_codex_superpowers() {
         # shellcheck disable=SC2016 # Backticks are literal operator guidance.
         printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"
     fi
-    manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" || return 1
+    manifest_record "update_codex_superpowers" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -643,7 +691,9 @@ function update_codex_ponytail() {
     fi
     printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
-    manifest_record "update_codex_ponytail" plugin "$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
+    local plugin_version
+    plugin_version="$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" || return 1
+    manifest_record "update_codex_ponytail" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -666,7 +716,11 @@ function update_codex_crit() {
     if [ -f "${HOME}/.agents/plugins/marketplace.json" ]; then
         chmod 644 "${HOME}/.agents/plugins/marketplace.json"
     fi
-    manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
+    # A crit that cannot print its version is recorded with an empty version, as before.
+    local crit_output plugin_version
+    crit_output="$(crit --version 2> /dev/null)" || crit_output=""
+    plugin_version="$(awk 'NR == 1 { print $2 }' <<< "${crit_output}")" || return 1
+    manifest_record "update_codex_crit" plugin "${plugin_version}" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
 }
 
 #
@@ -817,9 +871,11 @@ function update_codex_understand_anything() {
 # @description
 #   Upstream publishes darwin-arm64, linux-x64, and linux-arm64 builds only;
 #   Intel macOS has no release asset, so it is skipped rather than failed.
+# @arg $1 string Kernel name (`uname -s`).
+# @arg $2 string Machine (`uname -m`).
 #
 function zenbu_platform_supported() {
-    case "$(uname -s)-$(uname -m)" in
+    case "$1-$2" in
     Darwin-arm64 | Linux-x86_64 | Linux-amd64 | Linux-aarch64 | Linux-arm64)
         return 0
         ;;
@@ -858,10 +914,12 @@ function run_pinned_installer() {
 # @description Install or update the terminal-code (tode) CLI at the pinned version.
 #
 function update_terminal_code() {
-    local installed
+    local installed kernel machine platform
 
-    zenbu_platform_supported || {
-        printf 'Skipping terminal-code: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+    platform="$(uname_platform)" || return 1
+    read -r kernel machine <<< "${platform}"
+    zenbu_platform_supported "${kernel}" "${machine}" || {
+        printf 'Skipping terminal-code: unsupported platform %s %s.\n' "${kernel}" "${machine}"
         return 0
     }
 
@@ -891,10 +949,12 @@ function update_terminal_code() {
 #   run `terminal-browser setup` manually once if wanted.
 #
 function update_terminal_browser() {
-    local installed
+    local installed kernel machine platform
 
-    zenbu_platform_supported || {
-        printf 'Skipping terminal-browser: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+    platform="$(uname_platform)" || return 1
+    read -r kernel machine <<< "${platform}"
+    zenbu_platform_supported "${kernel}" "${machine}" || {
+        printf 'Skipping terminal-browser: unsupported platform %s %s.\n' "${kernel}" "${machine}"
         return 0
     }
 
@@ -942,7 +1002,7 @@ function normalize_node_path() {
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_omp() (
-    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link resolved
+    local installed download_dir tarball actual entry="${HOME}/.local/bin/omp" aside="" link resolved package_dir
     has_command npm || {
         printf 'Skipping omp: npm command not found.\n'
         return 0
@@ -969,9 +1029,10 @@ function update_omp() (
     # npm resolves the link against the bin directory, and its prefix, before its ownership check (bin-links check-bin),
     # so both fold here too, and a target that leaves this prefix's package is not npm's own (the Bot's 4307029052).
     link="$(readlink "${entry}")" || link=""
-    resolved="$(normalize_node_path "${entry%/*}" "${link}")"
+    resolved="$(normalize_node_path "${entry%/*}" "${link}")" || return
+    package_dir="$(normalize_node_path "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent")" || return
     if { [ -f "${entry}" ] || [ -L "${entry}" ]; } &&
-        [[ "${resolved}" != "$(normalize_node_path "${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent")/"* ]]; then
+        [[ "${resolved}" != "${package_dir}/"* ]]; then # lint-comparisons: allow both sides are normalize_node_path forms
         aside="${HOME}/.local/share/agent-assets/omp/omp.previous"
         printf 'Moving %s to %s: npm does not own it%s.\n' "${entry}" "${aside}" "${link:+ (it points to ${link} and resolves to ${resolved})}"
         mkdir -p "${aside%/*}" && rm -rf "${aside}" && mv "${entry}" "${aside}" || return
@@ -993,14 +1054,16 @@ function update_omp() (
 # @exitcode 1 The download checksum or installed version differs from its pin.
 #
 function update_hcom() (
-    local url expected installed download_dir wheel actual wheel_dir
-    case "$(uname -s)-$(uname -m)" in
+    local url expected installed download_dir wheel actual wheel_dir kernel machine platform
+    platform="$(uname_platform)" || return 1
+    read -r kernel machine <<< "${platform}"
+    case "${kernel}-${machine}" in
     Darwin-arm64 | Darwin-aarch64) url="${HCOM_DARWIN_ARM64_URL}" expected="${HCOM_DARWIN_ARM64_SHA256}" ;;
     Darwin-x86_64 | Darwin-amd64) url="${HCOM_DARWIN_AMD64_URL}" expected="${HCOM_DARWIN_AMD64_SHA256}" ;;
     Linux-x86_64 | Linux-amd64) url="${HCOM_LINUX_AMD64_URL}" expected="${HCOM_LINUX_AMD64_SHA256}" ;;
     Linux-aarch64 | Linux-arm64) url="${HCOM_LINUX_ARM64_URL}" expected="${HCOM_LINUX_ARM64_SHA256}" ;;
     *)
-        printf 'Skipping hcom: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        printf 'Skipping hcom: unsupported platform %s %s.\n' "${kernel}" "${machine}"
         return 0
         ;;
     esac
@@ -1049,14 +1112,18 @@ function update_hcom() (
 # @exitcode 1 A patch or the lockfile is missing from home/dot_agents/assets/pi-claude-bridge.
 #
 function pi_claude_bridge_inputs() {
-    local file
+    local file sum
     printf 'pi-claude-bridge-%s.tgz %s\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}" "${PI_CLAUDE_BRIDGE_TARBALL_SHA256}"
     for file in "${PI_CLAUDE_BRIDGE_ASSET_DIR}"/patches/*.patch "${PI_CLAUDE_BRIDGE_ASSET_DIR}/bun.lock"; do
         [ -f "${file}" ] || {
             printf 'pi-claude-bridge asset file missing: %s\n' "${file}" >&2
             return 1
         }
-        printf '%s %s\n' "${file##*/}" "$(shasum -a 256 "${file}" | awk '{ print $1 }')"
+        sum="$(shasum -a 256 "${file}")" || {
+            printf 'shasum -a 256 could not hash %s; the pi-claude-bridge inputs are unknown\n' "${file}" >&2
+            return 1
+        }
+        printf '%s %s\n' "${file##*/}" "${sum%% *}"
     done
 }
 
@@ -1075,7 +1142,7 @@ function pi_claude_bridge_inputs() {
 function update_pi_claude_bridge() (
     local install_dir="${HOME}/.local/lib/omp-extensions/pi-claude-bridge"
     local omp_dir="${HOME}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
-    local inputs download_dir tarball actual staging="" patch_file previous
+    local inputs receipt download_dir tarball actual staging="" patch_file previous
     has_command bun || {
         printf 'Skipping pi-claude-bridge: bun command not found.\n'
         return 0
@@ -1086,8 +1153,10 @@ function update_pi_claude_bridge() (
     }
     section "pi-claude-bridge"
     inputs="$(pi_claude_bridge_inputs)" || return
+    # No readable RECEIPT is no match: the verified install runs again and writes it.
+    receipt="$(sed -n '1,/^bun.lock /p' "${install_dir}/RECEIPT" 2> /dev/null)" || receipt=""
     if [ -d "${install_dir}/node_modules/@anthropic-ai/claude-agent-sdk" ] &&
-        [ "$(sed -n '1,/^bun.lock /p' "${install_dir}/RECEIPT" 2> /dev/null)" = "${inputs}" ]; then
+        [ "${receipt}" = "${inputs}" ]; then
         printf 'pi-claude-bridge %s is already installed.\n' "${PI_CLAUDE_BRIDGE_PIN_VERSION}"
     else
         download_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-assets.XXXXXX")" || return
@@ -1166,7 +1235,22 @@ function check_pi_claude_bridge() {
         printf 'pi-claude-bridge loaded but omp did not reach the model.\n' >&2
         return 1
     fi
-    printf 'pi-claude-bridge loaded in %s.\n' "$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')"
+    local version
+    version="$(omp_version_label)"
+    printf 'pi-claude-bridge loaded in %s.\n' "${version}"
+}
+
+#
+# @description Print the version `omp --version` reports on its first line, or `unknown` when omp cannot report
+#   one: the version only labels a success message, so its read failing changes no decision.
+#
+function omp_version_label() {
+    local output
+    if output="$(omp --version 2> /dev/null)"; then
+        awk 'NR == 1 { print $NF }' <<< "${output}"
+    else
+        printf 'unknown\n'
+    fi
 }
 
 #
@@ -1180,7 +1264,7 @@ function check_pi_claude_bridge() {
 # @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.
 #
 function check_pstack() {
-    local file cwd listing
+    local file cwd listing count version
     for file in "${HOME}/.agents/skills/poteto-mode/SKILL.md" "${HOME}/.agents/docs/harness/claude-code.md"; do
         [ -f "${file}" ] || {
             printf 'pstack: %s is missing; run make update.\n' "${file}" >&2
@@ -1199,17 +1283,23 @@ function check_pstack() {
         printf 'pstack: omp skill list does not name poteto-mode.\n' >&2
         return 1
     fi
-    printf 'pstack skills reach %s: %s skills listed, poteto-mode among them.\n' "$(omp --version 2> /dev/null | awk 'NR == 1 { print $NF }')" "$(printf '%s\n' "${listing}" | jq '.skills | length')"
+    count="$(jq '.skills | length' <<< "${listing}")" || return 1
+    version="$(omp_version_label)"
+    printf 'pstack skills reach %s: %s skills listed, poteto-mode among them.\n' "${version}" "${count}"
 }
 
 #
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
-    local source_root
+    local source_root version
     source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
     rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
-    manifest_record "update_compactiondb" rsync "$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
+    version="$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" || {
+        printf 'Cannot read the CompactionDB version from %sCHANGELOG.md.\n' "${source_root}" >&2
+        return 1
+    }
+    manifest_record "update_compactiondb" rsync "${version}" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
 }
 
 #

@@ -108,5 +108,57 @@ class UpgradeUvToolsTest(unittest.TestCase):
                 self.assertEqual(pin, result.stdout.strip())
 
 
+class PlatformPredicateTest(unittest.TestCase):
+    def test_a_failed_uname_exits_the_script_instead_of_reading_as_another_os(self):
+        for predicate, os_name in (("is_macos", "macOS"), ("is_linux", "Linux")):
+            with self.subTest(predicate=predicate):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; uname() {{ return 1; }}; if ! {predicate}; then echo "other OS"; fi',
+                        "bash",
+                        str(UPGRADER),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(f"uname failed; cannot tell whether this host is {os_name}\n", result.stderr)
+                self.assertNotIn("other OS", result.stdout)
+
+    def test_a_failed_dirname_stops_the_script_and_the_mise_self_update(self):
+        # A failed dirname used to resolve the repository root, or the mise prefix, to /.
+        with tempfile.TemporaryDirectory() as directory:
+            bin_dir = Path(directory)
+            for name, body in (("dirname", "exit 1\n"), ("mise", "echo mise-ran\n")):
+                (bin_dir / name).write_text("#!/usr/bin/env bash\n" + body)
+                (bin_dir / name).chmod(0o755)
+            for label, script, env, message in (
+                ("root", 'source "$1"', {"PATH": f"{bin_dir}:/usr/bin:/bin"}, "upgrade-tools: dirname failed on"),
+                (
+                    "mise prefix",
+                    'source "$1"; dirname() { return 1; }; upgrade_mise_self',
+                    {"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+                    "",
+                ),
+            ):
+                with self.subTest(label=label):
+                    result = subprocess.run(
+                        ["bash", "-c", script, "bash", str(UPGRADER)],
+                        env=os.environ | env,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(message, result.stderr)
+                    self.assertNotIn("mise self-update", result.stdout)
+                    self.assertNotIn("mise-ran", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

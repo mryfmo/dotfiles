@@ -59,17 +59,24 @@ function mise_artifact() {
 # @arg $2 manifest Checksum manifest path.
 # @arg $3 name Artifact name in the manifest.
 function verify_mise_archive() {
-    local archive="$1" manifest="$2" name="$3" expected actual
+    local archive="$1" manifest="$2" name="$3" expected actual sum
     expected="$(awk -v name="./${name}" '$2 == name { print $1 }' "${manifest}")"
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${name}" >&2
         return 1
     }
     if command -v sha256sum > /dev/null 2>&1; then
-        actual="$(sha256sum "${archive}" | awk '{ print $1 }')"
+        sum="$(sha256sum "${archive}")" || {
+            printf 'sha256sum could not hash %s\n' "${archive}" >&2
+            return 1
+        }
     else
-        actual="$(shasum -a 256 "${archive}" | awk '{ print $1 }')"
+        sum="$(shasum -a 256 "${archive}")" || {
+            printf 'shasum -a 256 could not hash %s\n' "${archive}" >&2
+            return 1
+        }
     fi
+    actual="${sum%% *}"
     [ "${actual}" = "${expected}" ] || {
         printf 'Checksum mismatch for %s\n' "${name}" >&2
         return 1
@@ -85,17 +92,25 @@ function verify_mise_archive() {
 # @exitcode 3 The release key could not be downloaded, so nothing was checked.
 #
 function verify_mise_shasums_signature() {
-    local key="$2/mise-release-key.asc" key_data fingerprint validity expiration
+    local key="$2/mise-release-key.asc" key_data key_fields fingerprint validity expiration now
     curl -fsSL "${MISE_GPG_KEY_URL}" -o "${key}" || return 3
     mkdir -m 700 "$2/gnupg" || return
     key_data="$(gpg --homedir "$2/gnupg" --batch --with-colons --import-options show-only --import "${key}")" || return
     # Exactly one primary key, and the fingerprint line right after it is the primary's own.
-    read -r fingerprint validity expiration <<< "$(awk -F: '
+    key_fields="$(awk -F: '
         $1 == "pub" { keys++; validity = $2; expiration = $7; primary = 1; next }
         $1 == "fpr" && primary { fingerprint = $10; primary = 0 }
-        END { if (keys == 1) print fingerprint, validity, expiration }' <<< "${key_data}")"
+        END { if (keys == 1) print fingerprint, validity, expiration }' <<< "${key_data}")" || {
+        printf 'awk could not read the mise release key listing.\n' >&2
+        return 1
+    }
+    read -r fingerprint validity expiration <<< "${key_fields}"
+    now="$(date +%s)" || {
+        printf 'date +%%s failed; the mise release key expiry was not checked.\n' >&2
+        return 1
+    }
     if [ "${fingerprint}" != "${MISE_GPG_FINGERPRINT}" ] || [ "${validity}" != "-" ] ||
-        { [ -n "${expiration}" ] && ! [ "${expiration}" -gt "$(date +%s)" ] 2> /dev/null; }; then
+        { [ -n "${expiration}" ] && ! [ "${expiration}" -gt "${now}" ] 2> /dev/null; }; then
         printf 'mise release key validation failed.\n' >&2
         return 1
     fi
@@ -157,7 +172,7 @@ function mise_fallback_sha256() {
 #   checksum file is checked on every path.
 #
 function _install_mise_binary() (
-    local artifact attestation=0 base_url fallback="" gpg_ready="" installed signature=0 stage="" tag tmpdir
+    local artifact attestation=0 base_url fallback="" gpg_ready="" installed reviewed signature=0 stage="" tag tmpdir
     if mise_gpg_ready; then gpg_ready=1; fi
     if [ -n "${gpg_ready}" ] || github_attestation_ready; then
         tag="$(github_release_tag "${MISE_RELEASE_REPO}")" || {
@@ -209,7 +224,11 @@ function _install_mise_binary() (
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
     if [ -n "${fallback}" ]; then
         # The reviewed sha256 is the check here; SHASUMS256.txt above only re-checked the download.
-        printf '%s  ./%s\n' "$(mise_fallback_sha256 "${artifact}")" "${artifact}" > "${tmpdir}/reviewed.txt"
+        reviewed="$(mise_fallback_sha256 "${artifact}")" || {
+            printf 'mise_fallback_sha256 has no reviewed sha256 for %s; nothing was installed.\n' "${artifact}" >&2
+            return 1
+        }
+        printf '%s  ./%s\n' "${reviewed}" "${artifact}" > "${tmpdir}/reviewed.txt"
         verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/reviewed.txt" "${artifact}" || {
             printf 'mise %s does not match its reviewed sha256; nothing was installed.\n' "${tag}" >&2
             return 1

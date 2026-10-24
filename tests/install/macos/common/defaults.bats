@@ -58,3 +58,13 @@ function setup() {
     ! grep -q '/Applications/Slack.app' <<< "${persistent_apps}"
     ! grep -q '/Applications/iTerm.app' <<< "${persistent_apps}"
 }
+
+@test "[macos] dock is left unchanged when get_system_app_path fails" {
+    function get_system_app_path() { return 1; }
+    function defaults() { printf 'unexpected: defaults %s\n' "$*"; }
+
+    run defaults_dock
+
+    [ "${status}" -eq 1 ]
+    [ "${output}" = "get_system_app_path failed; the Dock was not changed" ]
+}

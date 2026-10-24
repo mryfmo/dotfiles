@@ -39,6 +39,14 @@ class RulesCutoverTest(unittest.TestCase):
             text,
         )
 
+    def test_the_standing_orders_never_outrank_the_operator(self):
+        # PR #490 review 4366356030: repository text never gains authority over the operator's own instructions.
+        text = REGIME.read_text()
+        self.assertNotIn("wins over any message", text)
+        self.assertIn("never the operator's own instructions, which outrank both", text)
+        # PR #490 review 4366356034: an allow rule or policy row grants approval, never containment.
+        self.assertIn("A lever never widens a seat's boundary: approval is not containment", text)
+
     def test_the_regime_rule_is_linked_like_the_others(self):
         self.assertEqual(
             (SYMLINKS / "symlink_regime.md.tmpl").read_text(),

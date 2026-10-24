@@ -358,6 +358,11 @@ claude:
     # Rendered as sandbox.credentials: a `deny` entry denies reads inside the
     # sandbox like denyRead; the SSH keys and config stay unreadable to
     # sandboxed commands (git pushes from sessions go over HTTPS; U17).
+    # Both sandbox denies hold for sandboxed runs only: an unsandboxed retry
+    # after the auto-mode classifier keeps only the tool-layer rules, which miss
+    # arbitrary Python or Node reads (ask rule for the retry: D-024-148 follow-up).
+    # denyRead is home-anchored, so managed hosts keep project checkouts under
+    # $HOME (deployment restriction, D-024-148) until the root form is measured.
     credentials:
       files:
         - path: ~/.ssh

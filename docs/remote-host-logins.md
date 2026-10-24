@@ -56,7 +56,7 @@ which opens allow-listed sign-in hosts only.
   `redirect_uri=http://localhost:50903/callback`, then `:50915`, then `:50920`. The port is not fixed,
   so no forward can carry it, and the paste-code flow is the route.
 - The bridge child never runs in bare mode. `grep -rn -- '--bare'` over the installed bridge `src` and
-  the four patches prints nothing, and its only extra CLI arguments are `model`, `strict-mcp-config`
+  the five patches prints nothing, and its only extra CLI arguments are `model`, `strict-mcp-config`
   and `thinking-display` (`src/index.ts`, `extraArgs`).
 - Forwards were measured through a scratch sshd on 127.0.0.1:22337 (user-run, keys and config under
   `$TMPDIR`). A request to the client's 21455 reached a server-side listener on 1455, and the far

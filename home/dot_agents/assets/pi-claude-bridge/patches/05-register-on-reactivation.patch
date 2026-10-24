@@ -1,0 +1,23 @@
+diff -ruN a/src/index.ts b/src/index.ts
+--- a/src/index.ts	2026-10-25 07:12:50
++++ b/src/index.ts	2026-10-25 07:12:50
+@@ -2596,9 +2596,17 @@
+ 		// Context models (toBridgeContext normalizes at the stream entry points).
+ 		streamSimple: streamClaudeAgentSdk as any,
+ 	};
+-	if (!g[ACTIVE_STREAM_SIMPLE_KEY]) {
+-		// First instance: store our streamSimple and register.
++	// omp builds a Task subagent by calling this factory again on the same module
++	// instance, then clears the provider's registrations by source from the
++	// registry it shares with the parent and applies only the registrations
++	// queued during that call. Deferring here would leave both sessions without
++	// claude-bridge ("No API key for provider: claude-bridge"), and omp's
++	// ModelRegistry has no getProvider() for the session_start check below.
++	// Re-registering this instance's own stream fn replaces nothing.
++	if (!g[ACTIVE_STREAM_SIMPLE_KEY] || g[ACTIVE_STREAM_SIMPLE_KEY] === streamClaudeAgentSdk) {
++		// First instance, or this instance activated again: store our streamSimple and register.
+ 		g[ACTIVE_STREAM_SIMPLE_KEY] = streamClaudeAgentSdk;
++		debug(`provider: registering at load (module=${moduleInstanceId})`);
+ 		pi.registerProvider(PROVIDER_ID, providerConfig);
+ 	} else {
+ 		// Later instance: register only if this session's registry lacks the provider.

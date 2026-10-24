@@ -1664,13 +1664,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         # U40: nothing reads worker_kind, orchestrator_kind, worker_profile, worker_worktree or worker_cap since
         # U26 removed herdr-agents' worker modes, so the manifest drops them and the launch fragment names none.
         keys = ("worker_kind", "orchestrator_kind", "worker_profile", "worker_worktree", "worker_cap")
-        manifest = self.module.parse_manifest((ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        # The keys were top-level; read as text, as make unit-test has no PyYAML.
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         for key in keys:
             with self.subTest(key=key):
-                self.assertNotIn(key, manifest)
+                self.assertIsNone(re.search(rf"^{re.escape(key)}:", text, re.MULTILINE))
         stale = sample_manifest() | {key: "x" for key in keys}
         for env in (
-            self.module.render_model_profiles_env(manifest),
+            self.module.render_model_profiles_env(sample_manifest()),
             self.module.render_model_profiles_env(stale),
             (ROOT / "home/dot_agents/model-profiles.env").read_text(),
         ):

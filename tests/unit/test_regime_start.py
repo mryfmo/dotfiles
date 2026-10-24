@@ -441,12 +441,13 @@ class RegimeStartTest(unittest.TestCase):
     def test_a_dead_owner_releases_the_lock_at_once(self):
         """The kernel drops the lock with its last holder: a killed holder, or a pass killed with its whole launch,
         never blocks the next start or stop, and no launch continues outside the lock."""
+        # The directory exists before the holder starts, so its open cannot race the mkdir (U36c audit).
+        self.registry.mkdir(parents=True, exist_ok=True)
         holder = subprocess.Popen(
             [sys.executable, "-I", "-c", HOLDER, str(self.lock)],
             stdout=subprocess.PIPE, text=True,
         )  # fmt: skip
         self.addCleanup(lambda: holder.poll() is None and holder.kill())
-        self.registry.mkdir(parents=True, exist_ok=True)
         self.assertEqual(holder.stdout.readline(), "held\n")
         self.assertEqual(self.run_lever(START, REGIME_LOCK_WAIT_SECONDS="1").returncode, 2)
         holder.kill()

@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SHARDS = ROOT / "scripts/ci/unittest-shards.py"
 REMOTE = ROOT / ".github/workflows/remote.yaml"
+TEST = ROOT / ".github/workflows/test.yaml"
 # The render-only subtrees of home/ and the targets chezmoi gives them; the bootstrap must neither execute nor read
 # any of these targets, or a change there needs the full bootstrap again.
 RENDER_ONLY = {
@@ -272,6 +273,15 @@ class MakeUnitTestTest(unittest.TestCase):
         self.assertRegex(warm, r"^uv run (--offline )?--with pyyaml python -c 'import yaml'$")
         self.assertEqual(run, "uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs 0")
         self.assertTrue(self.make("UNIT_TEST_JOBS=3").endswith("--jobs 3\n"))
+
+    def test_every_test_job_runs_the_shards_and_fails_on_their_status(self) -> None:
+        step = TEST.read_text().split("      - name: Run Python unit tests\n", 1)[1].split("\n      - name: ", 1)[0]
+        step = "".join(line + "\n" for line in step.splitlines() if not line.lstrip().startswith("#"))
+        self.assertIn('UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test\n', step)
+        for weakening in ("continue-on-error", "|| true", "set +e", "UNIT_TEST_JOBS=1"):
+            with self.subTest(weakening=weakening):
+                self.assertNotIn(weakening, step)
+        self.assertNotIn("U39 measurement", TEST.read_text())
 
 
 class RenderOnlySubtreesTest(unittest.TestCase):

@@ -4363,7 +4363,7 @@
 </ul>
 <h2 id="aliases">Aliases<a class="headerlink" href="#aliases" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>ls</code>: <code>"eza --long --group --header --binary --time-style=long-iso --icons"</code></li>
+<li><code>ls</code>: <code>"eza --long --group --header --binary --time-style=long-iso --icons=auto"</code></li>
 <li><code>chezmoi-private</code>: <code>"chezmoi --source ~/.local/share/chezmoi-private --config ~/.config/chezmoi-private/chezmoi.yaml"</code></li>
 <li><code>gm</code>: <code>'git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'</code></li>
 </ul>
@@ -4373,8 +4373,9 @@
 <span class="c1"># Shared shell aliases used across machines.</span>
 <span class="c1"># These aliases wrap common repository and local workflow commands.</span>
 
-<span class="c1"># Use eza for ls command</span>
-<span class="nb">alias</span><span class="w"> </span><span class="nv">ls</span><span class="o">=</span><span class="s2">"eza --long --group --header --binary --time-style=long-iso --icons"</span>
+<span class="c1"># Use eza for ls command. In eza 0.23.5 `--icons` takes an optional WHEN value,</span>
+<span class="c1"># so the bare flag swallows the first path argument and `ls dir` fails.</span>
+<span class="nb">alias</span><span class="w"> </span><span class="nv">ls</span><span class="o">=</span><span class="s2">"eza --long --group --header --binary --time-style=long-iso --icons=auto"</span>
 
 <span class="c1"># Alias for private chezmoi configuration</span>
 <span class="c1"># ref. https://www.chezmoi.io/user-guide/frequently-asked-questions/design/#can-chezmoi-support-multiple-sources-or-multiple-source-states</span>

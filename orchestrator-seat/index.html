@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
       
 
@@ -1731,6 +1731,62 @@
     
   
     home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_regime-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/home/dot_local/bin/common/executable_regime-init/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-init
   
 
     
@@ -4774,7 +4830,7 @@
 <h1 id="the-orchestrator-seat-stop-gate-skill-and-doctor-wiring">The orchestrator seat: stop gate, skill and doctor wiring<a class="headerlink" href="#the-orchestrator-seat-stop-gate-skill-and-doctor-wiring" title="Permanent link">&para;</a></h1>
 <p>Plan 025 W6b (U9). The orchestrator seat is the omp process that <code>scripts/orchestrator/hcom-seat orchestrator</code> starts in the repository checkout. This page covers the three pieces that make it able to run the program loop: the <code>session_stop</code> gate that keeps it from ending a turn while it owes the bus a reply, the <code>hcom-orchestration</code> skill that is its playbook, and the <code>make doctor</code> line that proves the bridge it talks through still loads. omp paths below are relative to <code>~/.local/lib/node_modules/@oh-my-pi/pi-coding-agent</code> (omp 18.11.3); facts marked measured come from the U9 scratch runs of 2026-10-23 under <code>HOME=$TMPDIR/u9-home</code>.</p>
 <h2 id="the-stop-gate">The stop gate<a class="headerlink" href="#the-stop-gate" title="Permanent link">&para;</a></h2>
-<p><code>home/dot_agents/omp/hooks/stop-gate.ts</code>, applied to <code>~/.agents/omp/hooks/stop-gate.ts</code>. It is an omp extension loaded with <code>-e ~/.agents/omp/hooks</code>: a configured directory without a <code>package.json</code> manifest or an <code>index.ts</code> is scanned one level deep for <code>.ts</code> files (<code>src/extensibility/extensions/directory-resolution.ts:101-140</code>, called from <code>loader.ts:652</code>), so the <code>tests/</code> directory beside it is not loaded.</p>
+<p><code>home/dot_agents/omp/hooks/stop-gate.ts</code>, applied to <code>~/.agents/omp/hooks/stop-gate.ts</code>. It is an omp extension loaded with <code>-e ~/.agents/omp/hooks</code>: a configured directory without a <code>package.json</code> manifest or an <code>index.ts</code> is scanned one level deep for <code>.ts</code> files (<code>src/extensibility/extensions/directory-resolution.ts:101-140</code>, called from <code>loader.ts:652</code>), so the <code>tests/</code> directory beside it is not loaded. <code>hcom-seat</code> passes <code>-e ~/.agents/omp/hooks</code> on every launch, whatever the role or <code>--ext</code> (U33c). Before U33c no seat loaded it: on 2026-10-24 the orchestrator, audit and worker seats ran omp with <code>-e</code> for the pi-claude-bridge, the openai-siwc extension and hcom's own <code>hcom.ts</code> only (<code>ps</code>, pids 42205, 8361 and 5621), so the gate described here never ran in an hcom seat until then.</p>
 <h3 id="the-event">The event<a class="headerlink" href="#the-event" title="Permanent link">&para;</a></h3>
 <p>omp fires <code>session_stop</code> when a main-agent turn is about to settle (<code>src/extensibility/shared-events.ts:109-119</code>, "handlers may request one continuation turn"); an extension subscribes with <code>pi.on("session_stop", …)</code> (<code>src/extensibility/extensions/types.ts:1661</code>). This is omp's native blocking stop hook, so no fallback is needed:</p>
 <ul>
@@ -4784,7 +4840,7 @@
 <li>Subagents never see the event (<code>agent-session.ts:5254</code>), so the gate applies to the seat's own turns only.</li>
 </ul>
 <h3 id="the-rule">The rule<a class="headerlink" href="#the-rule" title="Permanent link">&para;</a></h3>
-<p>The gate reads the thread's rows since the seat started, <code>scripts/orchestrator/bus-history.sh $HCOM_TEAM --limit 100000 --since &lt;seat start&gt;</code> from the seat's cwd (the checkout), and keeps the newest row per <code>task_id</code> among the rows that move a task. The script keeps the newest <code>--limit</code> rows (default 200), so the gate asks for far more than a program writes and treats a full window as unreadable (a warning, the turn ends unchecked) rather than as proof of no debt:</p>
+<p>The gate reads the thread's rows since the seat started, <code>~/.local/bin/common/bus-history.sh &lt;team&gt; --limit 100000 --since &lt;seat start&gt;</code>, and keeps the newest row per <code>task_id</code> among the rows that move a task. The script keeps the newest <code>--limit</code> rows (default 200), so the gate asks for far more than a program writes and treats a full window as unreadable (a warning, the turn ends unchecked) rather than as proof of no debt:</p>
 <table>
 <thead>
 <tr>
@@ -4798,7 +4854,7 @@
 <td>open: awaiting RESULT</td>
 </tr>
 <tr>
-<td><code>RESULT</code> from another seat</td>
+<td><code>RESULT</code> from a seat the seat's TASK under that id went to (its <code>to</code> column)</td>
 <td>open: owes a VERDICT, MERGED or HOLD line</td>
 </tr>
 <tr>
@@ -4810,11 +4866,12 @@
 <td>closed: the audit seat's answer (U9b, U9c)</td>
 </tr>
 <tr>
-<td>anything else (PING, PONG, another seat's TASK, MERGED or HOLD, a VERDICT from any other seat or on any other id, …)</td>
+<td>anything else (PING, PONG, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat or on any other id, …)</td>
 <td>no effect; the previous moving row keeps the state</td>
 </tr>
 </tbody>
 </table>
+<p>Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker or audit seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.</p>
 <p>One message lists the open items with their row ids and the ways out: answer them, wait with <code>hcom listen</code>, or send <code>HOLD v1 task_id=&lt;id&gt; note=&lt;why&gt;</code>, the auditable override that the skill names. <code>OMP_STOP_GATE_ALLOW_OPEN=1</code> ends the turn with the warning instead of the block.</p>
 <h3 id="the-seats-environment">The seat's environment<a class="headerlink" href="#the-seats-environment" title="Permanent link">&para;</a></h3>
 <table>
@@ -4829,12 +4886,12 @@
 <tr>
 <td><code>HCOM_DIR</code></td>
 <td>the program's private bus store, read by <code>bus-history.sh</code></td>
-<td>the operator before <code>hcom-seat</code>; hcom passes it to the seat</td>
+<td>the environment when set; else <code>hcom-seat</code> derives <code>~/.local/state/hcom/&lt;slug&gt;</code> from the checkout (regime-env, U33) and exports it; hcom passes it to the seat</td>
 </tr>
 <tr>
 <td><code>HCOM_TEAM</code></td>
 <td>the thread every TASK line of the program names</td>
-<td>the operator before <code>hcom-seat</code>, beside <code>HCOM_DIR</code></td>
+<td>hcom does not pass it into the pane it launches (measured in the U33 pilot), so <code>hcom-seat</code> passes the team it was given, explicit or derived, as <code>--hcom-team &lt;team&gt;</code>; the gate reads that flag, else <code>HCOM_TEAM</code>, never a team derived from the cwd, and exports the result as <code>HCOM_TEAM</code> into the seat at session start (U33c)</td>
 </tr>
 <tr>
 <td><code>HCOM_NAME</code></td>
@@ -4848,10 +4905,11 @@
 </tr>
 </tbody>
 </table>
-<p>Without <code>HCOM_TEAM</code> or a seat name the gate is inert and says so at every stop; a <code>bus-history.sh</code> failure ends the turn with the failure in the warning. Both are visible, never silent (M-20261023-01). In print mode (<code>omp -p</code>, <code>omp-run.sh</code>) there is no UI, so the warning goes to stderr, which <code>omp-run.sh</code> holds and replays; interactively it is <code>ctx.ui.notify(…, "warning")</code>.</p>
+<p><code>&lt;slug&gt;</code> is the main checkout's basename, lower-cased, <code>[^a-z0-9_-]</code> as <code>-</code>, at most 40 characters (<code>README.md</code>, "Run a program in another repository"). Without a team (no <code>--hcom-team</code> and no <code>HCOM_TEAM</code>, or one outside the team grammar) or a seat name the gate is inert and says so at every stop; a <code>bus-history.sh</code> failure ends the turn with the failure in the warning. Both are visible, never silent (M-20261023-01). In print mode (<code>omp -p</code>, <code>omp-run.sh</code>) there is no UI, so the warning goes to stderr, which <code>omp-run.sh</code> holds and replays; interactively it is <code>ctx.ui.notify(…, "warning")</code>.</p>
 <h3 id="measured">Measured<a class="headerlink" href="#measured" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts</code>: 7 tests, 25 assertions, pass (U9c run, 2026-10-23). They cover the open and closed transitions above, the three VERDICTs that settle nothing, the exact message, the block on the first settle and the capped continuation on the next, <code>OMP_STOP_GATE_ALLOW_OPEN</code>, the inert case, and the <code>bus-history.sh</code> argv (<code>&lt;team&gt; --since &lt;ISO second&gt;Z</code>).</li>
+<li>U33c, 2026-10-24: <code>bun test home/dot_agents/omp/hooks/tests/stop-gate.test.ts</code>, 11 pass, adding the flag over <code>HCOM_TEAM</code> over nothing (a <code>regime-env</code> beside the installed <code>bus-history.sh</code> is never consulted), the team grammar, and a peer's RESULT that opens nothing. Under a scratch HOME, a probe extension that registers <code>hcom-team</code> saw <code>getFlag</code> <code>undefined</code> while loading and <code>"custom"</code> at <code>session_start</code> for <code>omp -e probe.ts --hcom-team custom --mode rpc --no-session</code> (also <code>--hcom-team=regime</code>), and omp without an extension that registers it exits 2 with <code>Error: unknown flag: --hcom-team</code>. <code>tests/unit/test_hcom_seat.py</code> <code>test_the_team_crosses_the_launch_boundary_as_a_flag_and_the_gate_blocks_on_it</code> launches with <code>HCOM_TEAM=custom</code> through a fake hcom that drops <code>HCOM_TEAM</code> as the real one does, then runs the real gate (<code>tests/launch-driver.ts</code>, under bun) on that argv and environment: it blocks on thread <code>custom</code>, and without the flag it is inert instead of reading the checkout's slug.</li>
 <li>Load check under <code>HOME=$TMPDIR/u9-home</code> with a fake <code>scripts/orchestrator/bus-history.sh</code> in the cwd: <code>omp --no-extensions -e &lt;hooks dir&gt; --no-session --max-time 60 --model openai/gpt-5 -p "Reply with the single word PONG."</code> exits 1 with <code>error: No API key found for openai.</code>; no <code>Failed to load extension</code> in stderr or in <code>$HOME/.omp/logs/omp.2026-10-23.*.log</code> (grep count 0). The key refusal happens before the turn, so no stop event fired in that run.</li>
 <li>Bridge-route run, same HOME, <code>-e ~/.local/lib/omp-extensions/pi-claude-bridge -e &lt;hooks dir&gt; --model claude-bridge/claude-haiku-4-5 --max-time 90</code>, the fake bus holding one TASK from <code>orch</code> without a RESULT: the bridge fails inside the turn (<code>Not logged in · Please run /login</code>, the operator-only step), so the stop event fires. The fake recorded <code>u9team --since 2026-10-23T04:54:14Z</code>; stderr holds the gate's warning <code>stop-gate: 1 open item(s) on hcom thread u9team: U9 awaiting RESULT (row 3). …</code> 10 times, one per settle pass: the block, the eight capped continuations, and the pass at which omp refused a ninth and ended the turn (exit 1). No <code>Failed to load extension</code> in stderr or the two omp logs (grep count 0 each).</li>
 </ul>
@@ -4878,11 +4936,15 @@
 <td>closed: one <code>block</code> then capped continuations, asserted by the <code>stop_hook_active</code> test; the cap is omp's (<code>agent-session.ts:470</code>)</td>
 </tr>
 <tr>
-<td><code>bus-history.sh</code>, resolved from the seat's cwd</td>
-<td>residual: the seat's cwd is the checkout <code>hcom-seat</code> started it in, and the script is read-only over the store; a worktree of a PR head could carry a different script, which is why the gate is loaded in the orchestrator seat only; owner: <code>hcom-seat</code> and the policies</td>
+<td><code>bus-history.sh</code>, the script the gate runs</td>
+<td>closed: the gate runs the copy chezmoi installs read-only at <code>$HOME/.local/bin/common/bus-history.sh</code>, resolved when it loads and never from the seat's cwd, so a worktree of a PR head cannot answer with its own rows (U33); <code>bus-history.sh is the installed copy under HOME, never the one in the seat's cwd (U33)</code> in <code>tests/stop-gate.test.ts</code>, with a decoy in the cwd that must not run</td>
 </tr>
 <tr>
-<td>the environment (<code>HCOM_TEAM</code>, <code>HCOM_NAME</code>, the override)</td>
+<td>the team (<code>--hcom-team</code>, <code>HCOM_TEAM</code>)</td>
+<td>closed: the launcher passes exactly the team it was given and the gate never derives one from the cwd, so an explicit team cannot be swapped for the checkout's slug; a value outside the team grammar leaves the gate inert, visibly; <code>test_the_team_crosses_the_launch_boundary_as_a_flag_and_the_gate_blocks_on_it</code>, the flag tests in <code>tests/stop-gate.test.ts</code>. residual: the gate half of that regression needs bun, which the CI unit job does not install, so it runs on hosts with bun only; owner: the CI workflow</td>
+</tr>
+<tr>
+<td>the environment (<code>HCOM_NAME</code>, the override)</td>
 <td>residual: read once at load; an operator sets them, a seat's policy overlay cannot change its own environment; owner: the seat policies</td>
 </tr>
 <tr>
@@ -4952,10 +5014,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

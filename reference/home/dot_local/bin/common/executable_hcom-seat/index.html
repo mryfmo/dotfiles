@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.57a0d79d.min.css">
       
       
 
@@ -1669,6 +1669,62 @@
     
   
     home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_regime-init/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_regime-init
   
 
     
@@ -4638,7 +4694,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_hcom-seat">home/dot_local/bin/common/executable_hcom-seat<a class="headerlink" href="#homedot_localbincommonexecutable_hcom-seat" title="Permanent link">&para;</a></h1>
-<p>Plan 025 W5b (U7), the minimal form before X. A seat is one omp process that <code>hcom omp</code> starts in a herdr pane (<code>hcom omp --help</code>: <code>hcom [N] omp [args...]</code>, <code>--tag &lt;name&gt;</code>, <code>--dir &lt;path&gt;</code>, <code>--terminal &lt;preset&gt;</code>; hcom gives the seat HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For <code>&lt;role&gt;</code> the launch line is <code>hcom omp --tag &lt;name&gt; --dir &lt;dir&gt; --terminal herdr --go -- --profile &lt;role&gt; --config ~/.agents/omp/policies/&lt;role&gt;.yml --config ~/.agents/omp/profiles/&lt;role&gt;.yml -e &lt;ext&gt;...</code>; hcom drops the <code>--</code> and forwards what follows to omp verbatim (hcom 0.7.30 <code>extract_launch_flags</code>, <code>src/commands/launch.rs:572-581</code>). <code>--go</code> is hcom's launch gate: inside an AI tool, hcom without it prints <code>== LAUNCH PREVIEW == / Add --go to proceed.</code> and starts nothing (<code>launch.rs:48,388-389</code>, measured on the real host 2026-10-23), and <code>extract_launch_flags</code> consumes it only before the <code>--</code> (<code>launch.rs:650-652</code>). The profile equals the role. A named profile reads its own <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code> (pi-utils <code>src/dirs.ts:312-315</code>, U10), so the manifest's <code>modelRoles.default</code> and <code>skills.customDirectories</code> reach the seat only through the second overlay, rendered per role (U14); the first overlay owns the approval mode (U6). Both are required. The extensions default to the directory the role's model route needs, the pi-claude-bridge for orchestrator and worker and the openai-siwc for audit, plus the other one when it is present; <code>--ext</code> replaces that list. Every directory, a default or <code>--ext</code>, must resolve to an entry of <code>claude.levers.extensions</code> in the manifest the self-check reads (regime-cutover U31), else the launch is refused. The orchestrator sits in the repository this command runs in; every other role gets the worktree <code>&lt;seats-root&gt;/&lt;name&gt;</code>, which is created detached from <code>origin/main</code> when absent and reused when it is a worktree of this repository (any other directory at that path is refused). Every input is checked before anything is created or started: an unknown role, a name outside <code>^[a-z0-9][a-z0-9_-]{0,63}$</code>, an unset HCOM_DIR, hcom absent from PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout is exit 2 with the reason. <code>--dry-run</code> prints the launch line and creates and starts nothing. Otherwise hcom's own exit status is returned (<code>hcom omp --help</code>: 0 ready, 1 launch failed, 2 still launching or blocked on user attention).</p>
+<p>Plan 025 W5b (U7), the minimal form before X. A seat is one omp process that <code>hcom omp</code> starts in a herdr pane (<code>hcom omp --help</code>: <code>hcom [N] omp [args...]</code>, <code>--tag &lt;name&gt;</code>, <code>--dir &lt;path&gt;</code>, <code>--terminal &lt;preset&gt;</code>; hcom gives the seat HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For <code>&lt;role&gt;</code> the launch line is <code>hcom omp --tag &lt;name&gt; --dir &lt;dir&gt; --terminal herdr --go -- --profile &lt;role&gt; --config ~/.agents/omp/policies/&lt;role&gt;.yml --config ~/.agents/omp/profiles/&lt;role&gt;.yml -e &lt;ext&gt;...</code>; hcom drops the <code>--</code> and forwards what follows to omp verbatim (hcom 0.7.30 <code>extract_launch_flags</code>, <code>src/commands/launch.rs:572-581</code>). <code>--go</code> is hcom's launch gate: inside an AI tool, hcom without it prints <code>== LAUNCH PREVIEW == / Add --go to proceed.</code> and starts nothing (<code>launch.rs:48,388-389</code>, measured on the real host 2026-10-23), and <code>extract_launch_flags</code> consumes it only before the <code>--</code> (<code>launch.rs:650-652</code>). The profile equals the role. A named profile reads its own <code>~/.omp/profiles/&lt;role&gt;/agent/config.yml</code> (pi-utils <code>src/dirs.ts:312-315</code>, U10), so the manifest's <code>modelRoles.default</code> and <code>skills.customDirectories</code> reach the seat only through the second overlay, rendered per role (U14); the first overlay owns the approval mode (U6). Both are required. The extensions default to the directory the role's model route needs, the pi-claude-bridge for orchestrator and worker and the openai-siwc for audit, plus the other one when it is present; <code>--ext</code> replaces that list. The stop gate's directory <code>~/.agents/omp/hooks</code> is loaded on every launch, whatever <code>--ext</code> says, and the launch line ends with <code>--hcom-team &lt;HCOM_TEAM&gt;</code>: hcom passes HCOM_DIR into the pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the team this launch was given, an explicit one included (regime-cutover U33c; omp refuses the flag when no loaded extension registers it, so a launch without the gate fails instead of running unguarded). Every directory, a default, <code>--ext</code> or the gate's, must resolve to an entry of <code>claude.levers.extensions</code> in the manifest the self-check reads (regime-cutover U31), else the launch is refused. The orchestrator sits in the repository this command runs in; every other role gets the worktree <code>&lt;seats-root&gt;/&lt;name&gt;</code>, which is created detached from <code>origin/main</code> (HEAD in a repository without it) when absent and reused when it is a worktree of this repository (any other directory at that path is refused). HCOM_DIR, HCOM_TEAM and the seats root come from the environment or <code>--seats-root</code> when set, else from the checkout through the sourced regime-env helper (regime-cutover U33: <code>~/.local/state/hcom/&lt;slug&gt;</code>, <code>&lt;slug&gt;</code>, <code>~/.local/state/omp-seats/&lt;slug&gt;</code>), and are exported to the seat. Every input is checked before anything is created or started: an unknown role, a name or team outside <code>^[a-z0-9][a-z0-9_-]{0,63}$</code>, a store regime-env refuses, hcom absent from PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout is exit 2 with the reason. <code>--dry-run</code> prints the launch line, and the derived environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (<code>hcom omp --help</code>: 0 ready, 1 launch failed, 2 still launching or blocked on user attention).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_hcom-seat</code></li>
@@ -4674,25 +4730,36 @@
 <span class="c1">#   owns the approval mode (U6). Both are required. The extensions default to the</span>
 <span class="c1">#   directory the role's model route needs, the pi-claude-bridge for orchestrator</span>
 <span class="c1">#   and worker and the openai-siwc for audit, plus the other one when it is</span>
-<span class="c1">#   present; `--ext` replaces that list. Every directory, a default or `--ext`,</span>
-<span class="c1">#   must resolve to an entry of `claude.levers.extensions` in the manifest the</span>
-<span class="c1">#   self-check reads (regime-cutover U31), else the launch is refused. The</span>
+<span class="c1">#   present; `--ext` replaces that list. The stop gate's directory</span>
+<span class="c1">#   `~/.agents/omp/hooks` is loaded on every launch, whatever `--ext` says, and the</span>
+<span class="c1">#   launch line ends with `--hcom-team &lt;HCOM_TEAM&gt;`: hcom passes HCOM_DIR into the</span>
+<span class="c1">#   pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the</span>
+<span class="c1">#   team this launch was given, an explicit one included (regime-cutover U33c; omp</span>
+<span class="c1">#   refuses the flag when no loaded extension registers it, so a launch without the</span>
+<span class="c1">#   gate fails instead of running unguarded). Every directory, a default, `--ext` or</span>
+<span class="c1">#   the gate's, must resolve to an entry of `claude.levers.extensions` in the manifest</span>
+<span class="c1">#   the self-check reads (regime-cutover U31), else the launch is refused. The</span>
 <span class="c1">#   orchestrator sits in the repository</span>
 <span class="c1">#   this command runs in; every other role gets the worktree `&lt;seats-root&gt;/&lt;name&gt;`,</span>
-<span class="c1">#   which is created detached from `origin/main` when absent and reused when it is</span>
-<span class="c1">#   a worktree of this repository (any other directory at that path is refused).</span>
+<span class="c1">#   which is created detached from `origin/main` (HEAD in a repository without it)</span>
+<span class="c1">#   when absent and reused when it is a worktree of this repository (any other</span>
+<span class="c1">#   directory at that path is refused). HCOM_DIR, HCOM_TEAM and the seats root come</span>
+<span class="c1">#   from the environment or `--seats-root` when set, else from the checkout through</span>
+<span class="c1">#   the sourced regime-env helper (regime-cutover U33: `~/.local/state/hcom/&lt;slug&gt;`,</span>
+<span class="c1">#   `&lt;slug&gt;`, `~/.local/state/omp-seats/&lt;slug&gt;`), and are exported to the seat.</span>
 <span class="c1">#   Every input is checked before anything is created or started: an unknown role,</span>
-<span class="c1">#   a name outside `^[a-z0-9][a-z0-9_-]{0,63}$`, an unset HCOM_DIR, hcom absent from</span>
+<span class="c1">#   a name or team outside `^[a-z0-9][a-z0-9_-]{0,63}$`, a store regime-env refuses, hcom absent from</span>
 <span class="c1">#   PATH, an absent policy or profile overlay or extension directory, or a cwd outside a git checkout</span>
-<span class="c1">#   is exit 2 with the reason. `--dry-run` prints the launch line and creates and</span>
-<span class="c1">#   starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:</span>
+<span class="c1">#   is exit 2 with the reason. `--dry-run` prints the launch line, and the derived</span>
+<span class="c1">#   environment on stderr, and creates and starts nothing. Otherwise hcom's own exit status is returned (`hcom omp --help`:</span>
 <span class="c1">#   0 ready, 1 launch failed, 2 still launching or blocked on user attention).</span>
 <span class="c1"># @arg $1 string Role: orchestrator, worker or audit.</span>
 <span class="c1"># @option --name &lt;name&gt; Seat name, passed as the hcom tag (default: the role; `&lt;role&gt;-&lt;n&gt;` for a second seat of a role).</span>
-<span class="c1"># @option --seats-root &lt;dir&gt; Parent of the seat worktrees (default: ~/.local/state/omp-seats).</span>
+<span class="c1"># @option --seats-root &lt;dir&gt; Parent of the seat worktrees (default: ~/.local/state/omp-seats/&lt;slug&gt;, regime-env).</span>
 <span class="c1"># @option --ext &lt;dir&gt; Extension directory in claude.levers.extensions, repeatable; replaces the role's default list.</span>
 <span class="c1"># @option --dry-run Print the launch line and exit 0 without creating a worktree or starting hcom.</span>
-<span class="c1"># @env HCOM_DIR The program's private hcom store (required: without it hcom would use ~/.hcom).</span>
+<span class="c1"># @env HCOM_DIR The program's private hcom store (default: ~/.local/state/hcom/&lt;slug&gt;, regime-env).</span>
+<span class="c1"># @env HCOM_TEAM The team thread (default: the repository slug, regime-env); passed to the seat as --hcom-team.</span>
 <span class="c1"># @stdout The launch line with --dry-run, else hcom's output.</span>
 <span class="c1"># @exitcode 0 Dry run printed, or hcom reports the seat ready.</span>
 <span class="c1"># @exitcode 2 A refusal, before anything is created or started.</span>
@@ -4706,6 +4773,7 @@
 <span class="c1">#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the</span>
 <span class="c1">#   file. The pin is the `claude.levers.sha256.&lt;name&gt;` line, which `scripts/generate-agent-configs.py` refreshes.</span>
 <span class="c1"># @set LEVER_MANIFEST The manifest the pin came from.</span>
+<span class="c1"># @set LEVER_DIR The physical directory of this file, where the sourced regime-env helper sits (U33).</span>
 lever_self_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>src<span class="w"> </span>dir<span class="w"> </span>self<span class="w"> </span>name<span class="w"> </span>pin<span class="w"> </span>digest<span class="w"> </span>home
 <span class="w">    </span><span class="c1"># The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.</span>
@@ -4720,6 +4788,8 @@ lever_self_check<span class="o">()</span><span class="w"> </span><span class="o"
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">self</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]##*/</span><span class="si">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2034 # read by the levers that source regime-env from this directory</span>
+<span class="w">    </span><span class="nv">LEVER_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">self</span><span class="p">##*/</span><span class="si">}</span>
 <span class="w">    </span><span class="nv">home</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">home</span><span class="o">=</span><span class="s1">''</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">home</span><span class="si">}</span><span class="s2">/.local/bin/common"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="c1"># lint-comparisons: allow both sides are pwd -P forms</span>
@@ -4765,7 +4835,7 @@ refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="o">((</span><span class="nv">$#</span><span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">usage</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">role</span><span class="o">=</span><span class="nv">$1</span>
 <span class="nb">shift</span>
-<span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="w"> </span><span class="nv">seats_root</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.local/state/omp-seats<span class="w"> </span><span class="nv">dry_run</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">user_exts</span><span class="o">=()</span>
+<span class="nv">name</span><span class="o">=</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="w"> </span><span class="nv">seats_root</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="nv">dry_run</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">user_exts</span><span class="o">=()</span>
 <span class="k">while</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>--dry-run<span class="o">)</span><span class="w"> </span><span class="nv">dry_run</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
@@ -4785,6 +4855,7 @@ refuse<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 
 <span class="nv">bridge</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.local/lib/omp-extensions/pi-claude-bridge
 <span class="nv">siwc</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/omp/extensions/openai-siwc
+<span class="nv">gate</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/omp/hooks
 <span class="c1"># One row per role: the extension its model route needs first, the optional one second.</span>
 <span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 orchestrator<span class="w"> </span><span class="p">|</span><span class="w"> </span>worker<span class="o">)</span><span class="w"> </span><span class="nv">exts</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">bridge</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">siwc</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
@@ -4792,8 +4863,14 @@ audit<span class="o">)</span><span class="w"> </span><span class="nv">exts</span
 *<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"unknown role '</span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="s2">'; expected orchestrator, worker or audit"</span><span class="w"> </span><span class="p">;;</span>
 <span class="k">esac</span>
 <span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>a-z0-9<span class="o">][</span>a-z0-9_-<span class="o">]{</span><span class="m">0</span>,63<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"name '</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"</span>
-<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'HCOM_DIR is unset; export the program'</span><span class="se">\'</span><span class="s1">'s private hcom store first'</span>
+<span class="c1"># HCOM_DIR, HCOM_TEAM and the seats root come from the environment when set, else from this checkout (regime-env,</span>
+<span class="c1"># regime-cutover U33). hcom passes HCOM_DIR into the seat but not HCOM_TEAM, so the team rides --hcom-team below.</span>
+<span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span>/regime-env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"regime-env unreadable beside this script: </span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/regime-env"</span>
+<span class="c1"># shellcheck source=scripts/orchestrator/regime-env</span>
+.<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LEVER_DIR</span><span class="si">}</span><span class="s2">/regime-env"</span>
+regime_env<span class="w"> </span>hcom-seat<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>hcom<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'hcom not found on PATH'</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>a-z0-9<span class="o">][</span>a-z0-9_-<span class="o">]{</span><span class="m">0</span>,63<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"team '</span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="k">:-</span><span class="si">}</span><span class="s2">' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$"</span>
 <span class="nv">policy</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/omp/policies/<span class="si">${</span><span class="nv">role</span><span class="si">}</span>.yml
 <span class="nv">profile</span><span class="o">=</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/omp/profiles/<span class="si">${</span><span class="nv">role</span><span class="si">}</span>.yml
 <span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">policy</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"policy overlay absent: </span><span class="si">${</span><span class="nv">policy</span><span class="si">}</span><span class="s2">"</span>
@@ -4803,6 +4880,8 @@ audit<span class="o">)</span><span class="w"> </span><span class="nv">exts</span
 <span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">exts</span><span class="p">[1]</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">exts</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">exts</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="k">fi</span>
+<span class="c1"># The stop gate rides every launch, after the route's extensions; --ext never drops it (U33c).</span>
+<span class="nv">exts</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">gate</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="c1"># The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so the</span>
 <span class="c1"># installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list.</span>
 <span class="nv">allowed</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'</span>
@@ -4832,7 +4911,9 @@ audit<span class="o">)</span><span class="w"> </span><span class="nv">exts</span
 <span class="k">done</span>
 <span class="nv">exts</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">checked</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="nv">repo</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'run hcom-seat inside the repository checkout'</span>
-<span class="nv">common</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span>
+<span class="nv">common</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read the git common directory of </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">seats_root</span><span class="o">=</span><span class="si">${</span><span class="nv">seats_root</span><span class="k">:-</span><span class="si">${</span><span class="nv">REGIME_SEATS_ROOT</span><span class="k">:-</span><span class="si">}}</span>
+<span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">seats_root</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s1">'no seats root: pass --seats-root or run inside a checkout'</span>
 <span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">role</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
 orchestrator<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
 *<span class="o">)</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="si">${</span><span class="nv">seats_root</span><span class="si">}</span>/<span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="p">;;</span>
@@ -4842,14 +4923,29 @@ orchestrator<span class="o">)</span><span class="w"> </span><span class="nv">dir
 <span class="k">for</span><span class="w"> </span>ext<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exts</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="nv">argv</span><span class="o">+=(</span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ext</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="k">done</span>
+<span class="nv">argv</span><span class="o">+=(</span>--hcom-team<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="k">if</span><span class="w"> </span><span class="o">((</span>dry_run<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%q '</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">echo</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"hcom-seat: environment HCOM_DIR=</span><span class="si">${</span><span class="nv">HCOM_DIR</span><span class="si">}</span><span class="s2"> HCOM_TEAM=</span><span class="si">${</span><span class="nv">HCOM_TEAM</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>--detach<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>origin/main
-<span class="k">elif</span><span class="w"> </span>!<span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a</span>
+<span class="w">    </span><span class="c1"># genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.</span>
+<span class="w">    </span><span class="nv">origin_main</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>for-each-ref<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(objecttype)'</span><span class="w"> </span>refs/remotes/origin/main<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>refuse<span class="w"> </span><span class="s2">"cannot inspect refs/remotes/origin/main in </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">origin_main</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="si">${</span><span class="nv">origin_main</span><span class="si">}</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>commit<span class="o">)</span><span class="w"> </span><span class="nv">base</span><span class="o">=</span>origin/main<span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="s1">''</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">base</span><span class="o">=</span>HEAD
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"hcom-seat: origin/main is absent in </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">; the seat worktree starts at HEAD"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"refs/remotes/origin/main in </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2"> does not resolve to a commit: </span><span class="si">${</span><span class="nv">origin_main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>--detach<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">elif</span><span class="w"> </span>!<span class="w"> </span><span class="nv">seat_common</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>!<span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">seat_common</span><span class="si">}</span><span class="w"> </span>-ef<span class="w"> </span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="c1"># A stale or foreign directory at the seat path would seat omp in the wrong tree.</span>
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"seat directory exists and is not a worktree of </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">fi</span>
@@ -4910,10 +5006,10 @@ orchestrator<span class="o">)</span><span class="w"> </span><span class="nv">dir
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

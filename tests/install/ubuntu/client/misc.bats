@@ -78,3 +78,39 @@ function teardown() {
         false
     fi
 }
+
+@test "[ubuntu-client] install_chromium retries a failed snap install and succeeds on the third attempt" {
+    local calls="${BATS_TEST_TMPDIR}/snap_calls"
+    run env SNAP_RETRY_DELAY=0 /bin/bash -c '
+        source "$1"
+        calls_file=$2
+        sudo() {
+            "$@"
+        }
+        snap() {
+            echo "snap $*" >> "${calls_file}"
+            [ "$(wc -l < "${calls_file}")" -ge 3 ]
+        }
+        install_chromium
+    ' _ "${SCRIPT_PATH}" "${calls}"
+    [ "${status}" -eq 0 ]
+    [ "$(grep -c '^snap install chromium$' "${calls}")" -eq 3 ]
+}
+
+@test "[ubuntu-client] install_chromium fails after three failed snap installs" {
+    local calls="${BATS_TEST_TMPDIR}/snap_calls"
+    run env SNAP_RETRY_DELAY=0 /bin/bash -c '
+        source "$1"
+        calls_file=$2
+        sudo() {
+            "$@"
+        }
+        snap() {
+            echo "snap $*" >> "${calls_file}"
+            return 1
+        }
+        install_chromium
+    ' _ "${SCRIPT_PATH}" "${calls}"
+    [ "${status}" -ne 0 ]
+    [ "$(grep -c '^snap install chromium$' "${calls}")" -eq 3 ]
+}

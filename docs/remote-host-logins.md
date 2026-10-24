@@ -1,0 +1,84 @@
+# Seat logins on a remote host
+
+regime-cutover U37. The laptop (macOS: Ghostty, herdr, omp) reaches the Ubuntu host with
+`herdr --remote <ssh-target>` over SSH inside the tailnet. omp seats run on Ubuntu, but the Claude and
+ChatGPT sign-ins end in a browser consent, and the browser is on the laptop. A login is per host:
+each host signs in once, keeps its own tokens and refreshes them, and nothing copies a token between
+hosts. SIWC refresh tokens rotate, so one session cannot serve two hosts. The human acts are the
+consent click and, for Claude, pasting a code.
+
+## Routes
+
+| Route                                                                                                              | Login record on the seat host                                                                                                                  | Browserless flow                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ChatGPT (`openai-siwc`, the `audit` and `security` profiles)                                                       | `~/.omp/profiles/<profile>/agent/openai-siwc/registration.json` (host id and issued client id, no token) and the profile's `agent.db` (tokens) | The callback is a `127.0.0.1` loopback, the only redirect SIWC allows. `OPENAI_SIWC_CALLBACK_PORT=1455` pins it, and the laptop's `LocalForward 1455 127.0.0.1:1455` carries the browser's redirect to the seat host's listener.                                               |
+| Claude (`claude-bridge`, the `orchestrator`, `worker` and `review` profiles; the bridge child uses the host login) | `~/.claude/.credentials.json` (0600), or `CLAUDE_CODE_OAUTH_TOKEN`                                                                             | `claude auth login` with `BROWSER=regime-open-url`. The callback port is random, so the browser shows a code to paste at the prompt. The fallback is `claude setup-token` on the laptop, with the token stored in `~/.config/claude-code/oauth-token` (0600) on the seat host. |
+
+The URL reaches the laptop browser through `regime-open-url` on the seat host. It posts the URL over
+`RemoteForward 127.0.0.1:1456 127.0.0.1:1456` to `regime-url-opener`, a launchd agent on the laptop,
+which opens allow-listed sign-in hosts only.
+
+## Pieces
+
+- `home/private_dot_ssh/private_config.tmpl`: on macOS only, `Match tagged seat-host` adds the two
+  forwards. The operator's own host entry in `~/.ssh/conf.d/` carries `Tag seat-host`, so no machine
+  name enters this public repository (README "Private credentials and keys"). A second session to the
+  same host only warns that a port is taken. The Linux render is the old file, byte for byte.
+- `regime-url-opener` (laptop, `~/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist`) and
+  `regime-open-url` (seat host).
+- `seat-login-preflight` (`scripts/orchestrator/`, installed to `~/.local/bin/common/`, pinned in
+  `claude.levers.sha256`). With `--check` it backs the "Seat logins" section of `make doctor`. Given a
+  role, `hcom-seat` runs it before it creates or starts anything.
+- `openai-siwc`: `OPENAI_SIWC_CALLBACK_PORT` and `src/seed.ts`, which seeds a registration with the
+  laptop's issued client id and a fresh host id, so the ChatGPT account shows one client with one host
+  per machine. The seat host still signs in once.
+- `~/.zshenv` and `~/.profile`: export `CLAUDE_CODE_OAUTH_TOKEN` from the token file when it is
+  non-empty, and from nothing else.
+
+## Measurements (2026-10-24, this laptop)
+
+- omp 18.11.3 ignores `BROWSER`. `openPath` runs `open <url>` on macOS and `xdg-open <url>` on Linux
+  (`src/utils/open.ts:73-87`). `omp login` prints `Open this URL in your browser:` and the full URL
+  before it opens anything (`src/cli/oauth-terminal.ts:163-176`). The CLI login loads extensions from
+  settings only, not from `-e`: `Unknown OAuth provider 'openai-siwc'`. A one-command
+  `PI_CONFIG_FILES` overlay naming the extension works without touching `~/.omp`. In a scratch HOME,
+  `omp --profile audit login openai-siwc` printed an authorize URL with
+  `redirect_uri=http%3A%2F%2F127.0.0.1%3A1455%2Fauth%2Fcallback`, handed the same URL to the fake
+  `open`, wrote `registration.json` with mode 0600, and waited for the callback.
+- Claude Code 2.1.309 honours `BROWSER`. Three `claude auth login` runs in scratch `CLAUDE_CONFIG_DIR`s
+  handed `https://claude.com/cai/oauth/authorize?code=true&…` to a fake browser, with
+  `redirect_uri=http://localhost:50903/callback`, then `:50915`, then `:50920`. The port is not fixed,
+  so no forward can carry it, and the paste-code flow is the route.
+- The bridge child never runs in bare mode. `grep -rn -- '--bare'` over the installed bridge `src` and
+  the four patches prints nothing, and its only extra CLI arguments are `model`, `strict-mcp-config`
+  and `thinking-display` (`src/index.ts`, `extraArgs`).
+- Forwards were measured through a scratch sshd on 127.0.0.1:22337 (user-run, keys and config under
+  `$TMPDIR`). A request to the client's 21455 reached a server-side listener on 1455, and the far
+  end's 127.0.0.1:21456 reached a client-side listener on 1456. Both ports are shifted on the client
+  side, because one host has one loopback. `ssh -O check` reported `Master running`. `Match tagged
+seat-host` gave the forwards to the tagged host only. A Unix-socket `RemoteForward` was mode 0600,
+  but the socket outlived its session and the next bind failed, even with `StreamLocalBindUnlink yes`
+  on macOS sshd (`unix_listener: cannot bind … Address already in use`). The TCP form survived three
+  sessions in a row, so it is the one used.
+- herdr 0.9.5 has no API request that opens a given URL on the attached client. `pane.link.activate`
+  takes a pane cell (`pane_id`, `viewport_row`, `col`), and `notification show` takes a title, a body
+  and a sound. So the opener is a launchd agent, not a herdr call. `herdr --remote` runs the system
+  `ssh`, which reads `~/.ssh/config`.
+- Not measured, because each would change the live tailnet: Tailscale SSH carrying `-L`/`-R`
+  (tailscale/tailscale #6575 and #5091 reported it did not), and `tailscale serve` for the opener. The
+  forwards therefore go through OpenSSH over the tailnet. The opener stays a loopback agent behind the
+  RemoteForward: `tailscale serve` would expose it to every tailnet peer until an ACL in the admin
+  console narrowed it.
+
+## Threat table
+
+| Path or control                                  | Control                                                                                                                                                                                                                                                                                                                                                                 | Disposition                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LocalForward 1455` (SIWC callback)              | Loopback on both ends; only while an SSH session to the tagged host is open; `OPENAI_SIWC_CALLBACK_PORT` makes the seat's listener fail closed when the port is taken instead of moving to a random port.                                                                                                                                                               | residual: any local user on the seat host can bind 127.0.0.1:1455 before the seat does and receive the authorization code. That user would also need the PKCE verifier, which only the seat's own process holds, unless the user started the flow themselves (next row). The design assumes a single-user seat host. |
+| `RemoteForward 1456` and `regime-url-opener`     | Loopback only; https only; exact host allow-list; no user info, no port but 443; `X-Regime-Open: 1` header (a cross-origin page cannot send it without a CORS preflight, which the server never answers); body of at most 8 KB; `open`/`xdg-open` with an argument list, never a shell; a log of every decision with scheme, host and path, never the query.            | residual: a local user on a multi-user seat host can make the laptop browser open an allow-listed authorize URL with their own client and challenge. The consent page is the gate, and a returning sign-in may skip it. Single-user seat host assumed, as above.                                                     |
+| `regime-open-url`                                | Posts to 127.0.0.1 only, with proxies disabled; never logs the URL; on failure the caller has already printed the URL.                                                                                                                                                                                                                                                  | closed: `tests/unit/test_remote_host_logins.py` (`test_the_client_hands_the_url_to_the_opener`, `test_no_opener_is_a_named_failure…`).                                                                                                                                                                               |
+| `~/.config/claude-code/oauth-token`              | Created by the operator, mode 0600, outside the repository; read only by the login shell, and exported only when non-empty; no seat writes or prints it.                                                                                                                                                                                                                | residual: once exported, the variable is in every child process of that shell, including the seats, which need it, and any other program the operator runs there. That is the vendor's documented mechanism.                                                                                                         |
+| `seat-login-preflight --check` and `make doctor` | Presence and mtimes only. It reads `registration.json` (host id and client id, which carry no token) and never opens `agent.db` or a credentials file; it checks the Keychain item's attributes only (`security find-generic-password -s`, no `-w`/`-g`). An unreadable record is a failure, never "absent".                                                            | closed: `test_an_unreadable_record_is_never_read_as_absent`, `test_a_failing_jq_with_a_valid_record_is_unreadable_not_absent`, `test_check_reports_each_claude_route_without_printing_a_token`, and the `check_seat_logins` bats cases.                                                                              |
+| `seat-login-preflight <role>` (logins)           | Runs a login only with stdin and stdout on a TTY and `HCOM_LAUNCHED` unset, so only in the operator's own terminal and never in a seat (standing order 4); elsewhere it refuses with exit 2 and names the command. The opener shims and the overlay live in a `mktemp -d` directory removed on exit. A failed or ineffective login exits 1, so the seat does not start. | closed: `test_without_the_operators_terminal_a_missing_login_refuses_and_runs_nothing`, `test_a_failed_or_ineffective_login_keeps_the_seat_from_starting`, `test_a_remote_seat_without_a_login_starts_nothing` (`tests/unit/test_hcom_seat.py`).                                                                     |
+| `src/seed.ts`                                    | Never replaces a record; refuses an unreadable one; validates the client id and the profile name; writes the record 0600 in a 0700 directory through the store.                                                                                                                                                                                                         | closed: `tests/seed.test.ts`.                                                                                                                                                                                                                                                                                        |
+| `Match tagged seat-host` (`~/.ssh/config`)       | macOS only; applies only to a host entry the operator tags; the Linux render is unchanged.                                                                                                                                                                                                                                                                              | closed: `SshForwardTest`. residual: needs an OpenSSH client that knows `Tag` and `Match tagged` (measured with OpenSSH_10.3p1).                                                                                                                                                                                      |

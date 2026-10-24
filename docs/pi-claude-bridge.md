@@ -81,10 +81,26 @@ path, which is why the install directory carries its own `node_modules`.
 
 ## Operator login
 
-The child Claude Code uses the host's claude.ai login, which lives in the
-Keychain. Before the first bridge turn, the operator runs `claude` once and
-completes `/login` in their own terminal; no script does this. Without the
-login a bridge turn ends with `Not logged in · Please run /login`.
+The child Claude Code uses the host's claude.ai login: the Keychain on macOS,
+`~/.claude/.credentials.json` (mode 0600) on Linux (Claude Code authentication
+doc, "Credential management"). Before the first bridge turn, the operator runs
+`claude` once and completes `/login` in their own terminal; no script does this.
+Without the login a bridge turn ends with `Not logged in · Please run /login`.
+
+A Linux seat host reached over SSH (`herdr --remote`) has no browser of its
+own. There, `claude auth login` sends its URL to `$BROWSER`, which
+`seat-login-preflight <role>` points at `regime-open-url`, so the laptop
+browser opens it. The callback port is random (50903, 50915 and 50920 on three
+runs, Claude Code 2.1.309), so no SSH forward can carry it. The URL asks for
+the code flow (`code=true`), so the page shows a code to paste at the
+terminal's prompt. The fallback is `claude setup-token` on the laptop: the
+operator stores the printed one-year token in `~/.config/claude-code/oauth-token`
+on the seat host, mode 0600, by hand. `~/.zshenv` and `~/.profile` then export
+it as `CLAUDE_CODE_OAUTH_TOKEN` when the file is non-empty. The Agent SDK reads
+that variable, except in bare mode, and the bridge never passes `--bare`: its
+only extra CLI arguments are `model`, `strict-mcp-config` and
+`thinking-display` (`src/index.ts`, `extraArgs`). The steps are in
+`docs/remote-host-logins.md`.
 
 ## Load check
 

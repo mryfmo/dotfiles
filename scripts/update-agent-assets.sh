@@ -1341,6 +1341,7 @@ function main() {
     ensure_herdr_integrations
     # After every plugin update above, so the trust hashes follow the plugin content of this run.
     refresh_codex_hook_trust
+    manifest_prune_retired
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

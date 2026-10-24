@@ -155,3 +155,55 @@ function manifest_record() {
     fi
     return 0
 }
+
+#
+# @description Drop manifest records of install steps that no longer exist, so a retired step does
+#   not leave a permanent doctor failure. A step exists when its name, before any `:` identity
+#   suffix, is a function defined in the calling shell. An absent manifest is left absent.
+# @stdout Prints one line per pruned step.
+#
+function _manifest_prune_retired() {
+    local manifest_path temporary_path step steps retired_json
+    local -a retired=()
+
+    [ -n "${HOME:-}" ] || return 1
+    manifest_path="${HOME}/.agents/.installed-manifest.json"
+    [ -f "${manifest_path}" ] || return 0
+
+    steps="$(jq -r 'if type != "object" or ((.steps // {}) | type) != "object" then error("invalid manifest") else (.steps // {}) | keys[] end' "${manifest_path}")" || return 1
+    while IFS= read -r step; do
+        [ -z "${step}" ] || declare -F "${step%%:*}" > /dev/null || retired+=("${step}")
+    done <<< "${steps}"
+    [ "${#retired[@]}" -gt 0 ] || return 0
+
+    retired_json="$(jq -cn --args '$ARGS.positional' "${retired[@]}")" || return 1
+    temporary_path="$(mktemp "${manifest_path}.tmp.XXXXXX")" || return 1
+    chmod 600 "${temporary_path}" || {
+        rm -f "${temporary_path}"
+        return 1
+    }
+    # shellcheck disable=SC2016 # jq expands $retired; the shell must not expand it.
+    jq --argjson retired "${retired_json}" '.steps |= with_entries(select(.key as $k | $retired | index($k) | not))' "${manifest_path}" > "${temporary_path}" || {
+        rm -f "${temporary_path}"
+        return 1
+    }
+    mv "${temporary_path}" "${manifest_path}" || {
+        rm -f "${temporary_path}"
+        return 1
+    }
+    for step in "${retired[@]}"; do
+        printf 'Pruned retired asset manifest step %s.\n' "${step}"
+    done
+}
+
+#
+# @description Prune retired manifest steps without propagating manifest failures.
+# @stdout Prints one line per pruned step.
+# @stderr Prints one warning line when pruning fails.
+#
+function manifest_prune_retired() {
+    if ! _manifest_prune_retired 2> /dev/null; then
+        printf 'warning: failed to prune retired asset manifest steps\n' >&2
+    fi
+    return 0
+}

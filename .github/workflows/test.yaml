@@ -263,11 +263,14 @@ jobs:
           "${bun_bin}" --version
           # openai-siwc's tests/requests.test.ts drives omp's own Responses transport from the installed omp package
           # (OMP_PACKAGE_DIR). update_omp installs it as hosts get it: the pinned tarball, its sha256 checked, then
-          # npm, here into a scratch HOME. It skips without npm, so the package file is checked afterwards.
+          # npm, here into a scratch HOME. It skips without npm, so the package file is checked afterwards. It then
+          # runs `omp --version`, and omp's entry point is `#!/usr/bin/env bun`, so bun is on its PATH as on a host.
           omp_home="${RUNNER_TEMP}/omp-home"
           mkdir -p "${omp_home}"
           node_bin_dir="$(mise -C "${RUNNER_TEMP}/statusline-mise" where node)/bin"
-          HOME="${omp_home}" PATH="${node_bin_dir}:${PATH}" bash -c 'source ./scripts/update-agent-assets.sh && update_omp'
+          bun_bin_dir="$(dirname "${bun_bin}")"
+          HOME="${omp_home}" PATH="${node_bin_dir}:${bun_bin_dir}:${PATH}" \
+            bash -c 'source ./scripts/update-agent-assets.sh && update_omp'
           export OMP_PACKAGE_DIR="${omp_home}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
           test -f "${OMP_PACKAGE_DIR}/package.json"
           for tests in home/dot_agents/omp/hooks/tests home/dot_agents/omp/extensions/openai-siwc/tests; do

@@ -1404,7 +1404,7 @@ function has_agmsg_hooks() {
 #   never touches permissions, so an agmsg allow rule it leaves is reported,
 #   never edited here.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
-# @exitcode 1 When an agmsg hook survives `set off` or leave.sh fails.
+# @exitcode 1 When an agmsg hook survives `set off`, identities.sh fails, or leave.sh fails.
 function retire_agmsg() {
     local workdir="$1"
 
@@ -1439,9 +1439,17 @@ function retire_agmsg() {
         fi
     fi
 
+    # A failed or missing lookup is not "no identity": never claim retired then.
     rows=""
-    [[ ! -x ${scripts}/identities.sh ]] ||
-        rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null | sort -u)" || rows=""
+    if [[ ! -x ${scripts}/identities.sh ]]; then
+        acted=true
+        printf 'agmsg identities script not found; skipping team leave: %s\n' "${scripts}/identities.sh" >&2
+    elif ! rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2>> "${log_file}")"; then
+        printf 'herdr-agents: identities.sh %s claude-code failed, so its agmsg identities are unknown (log: %s)\n' \
+            "${workdir}" "${log_file}" >&2
+        exit 1
+    fi
+    rows="$(sort -u <<< "${rows}")"
     while IFS=$'\t' read -r team name; do
         [[ -n ${team} && -n ${name} ]] || continue
         acted=true

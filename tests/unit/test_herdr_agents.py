@@ -1013,6 +1013,25 @@ fi
         self.assertIn(f"agmsg delivery script not found; skipping hook removal: {scripts}/delivery.sh", result.stderr)
         self.assertEqual(result.stdout, "agmsg retired: claude-orchestrator left team dotfiles-conformance\n")
 
+    def test_retire_agmsg_never_claims_retired_when_the_identity_lookup_fails(self) -> None:
+        scripts = self.install_agmsg_retire_fakes()
+        (self.workdir / ".claude/settings.local.json").write_text("{}")
+        identities = scripts / "identities.sh"
+
+        identities.write_text("#!/usr/bin/env bash\nprintf 'agmsg state unreadable\\n' >&2\nexit 3\n")
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"identities.sh {self.workdir.resolve()} claude-code failed", result.stderr)
+        self.assertNotIn("already retired", result.stdout)
+
+        identities.unlink()
+        result = self.run_agmsg_retire_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"agmsg identities script not found; skipping team leave: {identities}", result.stderr)
+        self.assertNotIn("already retired", result.stdout)
+
     def test_retire_agmsg_refuses_home_without_agmsg_calls(self) -> None:
         self.install_agmsg_retire_fakes()
         self.workdir = self.home_dir

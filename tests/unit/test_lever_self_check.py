@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LEVERS = ("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+LEVERS = ("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-env", "regime-init")
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 

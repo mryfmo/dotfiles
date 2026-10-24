@@ -210,9 +210,10 @@ MANAGED_ALLOW = [
     "Bash(~/.local/bin/common/hcom-dispatch *)",
     "Bash(~/.local/bin/common/bus-history.sh *)",
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
+    "Bash(~/.local/bin/common/regime-init *)",
     "Bash(hcom list *)",
 ]
-LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "worktree-gc.sh")
+LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "regime-env", "regime-init", "worktree-gc.sh")
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -773,6 +774,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     "~/.local/state/mise",
                     "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
+                    "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
                 ]
                 self.assertEqual(
@@ -803,8 +805,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "DO_NOT_TRACK": "1",
                         "CHECKPOINT_DISABLE": "1",
                         "AWS_EC2_METADATA_DISABLED": "true",
-                        "HCOM_DIR": "/render-home/.local/state/hcom-regime",
-                        "HCOM_TEAM": "regime",
                     },
                     settings["env"],
                 )
@@ -1626,8 +1626,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual([], claude["sandbox"]["excludedCommands"])
         self.assertEqual(MANAGED_ALLOW, claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        self.assertEqual("/render-home/.local/state/hcom-regime", claude["env"]["HCOM_DIR"])
-        self.assertEqual("regime", claude["env"]["HCOM_TEAM"])
+        # No session-wide bus: the store and team are per repository, derived by the levers (regime-cutover U33).
+        self.assertNotIn("HCOM_DIR", claude["env"])
+        self.assertNotIn("HCOM_TEAM", claude["env"])
         self.assertIn("~/.local/state/hcom-regime", claude["sandbox"]["filesystem"]["allowWrite"])
         self.assertIn("~/.local/state/omp-seats", claude["sandbox"]["filesystem"]["allowWrite"])
         manifest = load_manifest_fixture(self.temp_dir)

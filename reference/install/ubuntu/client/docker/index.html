@@ -4814,14 +4814,24 @@
 <span class="w">        </span>gnupg<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>lsb-release
 
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>arch<span class="w"> </span>codename
+<span class="w">    </span><span class="nv">arch</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dpkg<span class="w"> </span>--print-architecture<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"dpkg --print-architecture failed; the Docker repository was not configured"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">codename</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>lsb_release<span class="w"> </span>-cs<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"lsb_release -cs failed; the Docker repository was not configured"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+
 <span class="w">    </span><span class="c1"># Add Docker’s official GPG key:</span>
 <span class="w">    </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/apt/keyrings
 <span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://download.docker.com/linux/ubuntu/gpg<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--yes<span class="w"> </span>--dearmor<span class="w"> </span>-o<span class="w"> </span>/etc/apt/keyrings/docker.gpg
 
 <span class="w">    </span><span class="c1"># Use the following command to set up the repository:</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"deb [arch=</span><span class="k">$(</span>dpkg<span class="w"> </span>--print-architecture<span class="k">)</span><span class="s2"> signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \</span>
-<span class="s2">        </span><span class="k">$(</span>lsb_release<span class="w"> </span>-cs<span class="k">)</span><span class="s2"> stable"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/etc/apt/sources.list.d/docker.list<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">        </span><span class="s2">"deb [arch=</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2"> signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \</span>
+<span class="s2">        </span><span class="si">${</span><span class="nv">codename</span><span class="si">}</span><span class="s2"> stable"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/etc/apt/sources.list.d/docker.list<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4840,7 +4850,12 @@
 <span class="c1"># @description Add the current user to the docker group so docker can run without sudo.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>configure_docker_group<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>id<span class="w"> </span>-un<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>user
+<span class="w">    </span><span class="nv">user</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>id<span class="w"> </span>-un<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"id -un failed; no user was added to the docker group"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">user</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

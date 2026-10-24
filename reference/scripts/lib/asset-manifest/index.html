@@ -4744,6 +4744,7 @@
 
 
 <h1 id="scriptslibasset-manifestsh">scripts/lib/asset-manifest.sh<a class="headerlink" href="#scriptslibasset-manifestsh" title="Permanent link">&para;</a></h1>
+<p>list cannot be read or does not name it: the manifest records what it could not read as such.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/lib/asset-manifest.sh</code></li>
@@ -4765,38 +4766,51 @@
 <span class="c1"># @brief Record installed agent assets in a private atomic JSON manifest.</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Return the installed version of a Claude Code plugin.</span>
+<span class="c1"># @description Return the installed version of a Claude Code plugin, or `unknown` when the plugin</span>
+<span class="c1">#   list cannot be read or does not name it: the manifest records what it could not read as such.</span>
 <span class="c1"># @arg $1 string Fully qualified Claude Code plugin ID.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>manifest_claude_plugin_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>version
 
-<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'first(.[] | select(.id == $id) | .version)'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">"unknown"</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'first(.[] | select(.id == $id) | .version)'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unknown\n'</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Return the installed version of a Codex plugin.</span>
+<span class="c1"># @description Return the installed version of a Codex plugin, or `unknown` when the plugin list</span>
+<span class="c1">#   cannot be read or does not name it.</span>
 <span class="c1"># @arg $1 string Fully qualified Codex plugin ID.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>manifest_codex_plugin_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>version
 
-<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'first(.installed[] | select(.pluginId == $id) | .version)'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">"unknown"</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'first(.installed[] | select(.pluginId == $id) | .version)'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'unknown\n'</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Return the installed Homebrew formula version.</span>
+<span class="c1"># @description Return the installed Homebrew formula version, or `unknown` when brew cannot list it</span>
+<span class="c1">#   (a formula that is not installed makes `brew list --versions` fail).</span>
 <span class="c1"># @arg $1 string Homebrew formula name.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>manifest_brew_formula_version<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">formula</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">""</span>
 
-<span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>list<span class="w"> </span>--versions<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">formula</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == formula { print $2; exit }'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>list<span class="w"> </span>--versions<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">formula</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == formula { print $2; exit }'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 

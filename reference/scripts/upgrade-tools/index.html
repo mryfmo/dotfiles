@@ -4795,7 +4795,12 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
+<span class="c1"># dirname is captured on its own line: inside the cd its status would be lost.</span>
+<span class="nv">script_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"upgrade-tools: dirname failed on </span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">; the repository root is unknown"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+<span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="c1"># chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME</span>
 <span class="c1"># says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git</span>
 <span class="c1"># config's XDG_CONFIG_HOME below cannot redirect it.</span>
@@ -4818,16 +4823,28 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Return success when the current OS is macOS.</span>
+<span class="c1"># @exitcode 1 Also exits the script when uname fails: a failed read is not "another OS".</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>is_macos<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Darwin"</span><span class="w"> </span><span class="o">]</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>kernel
+<span class="w">    </span><span class="nv">kernel</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"uname failed; cannot tell whether this host is macOS"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kernel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Darwin"</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Return success when the current OS is Linux.</span>
+<span class="c1"># @exitcode 1 Also exits the script when uname fails: a failed read is not "another OS".</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>is_linux<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Linux"</span><span class="w"> </span><span class="o">]</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>kernel
+<span class="w">    </span><span class="nv">kernel</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"uname failed; cannot tell whether this host is Linux"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kernel</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Linux"</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4958,11 +4975,13 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_mise_self<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_executable
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_dir
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_prefix
 
 <span class="w">    </span>has_command<span class="w"> </span>mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nv">mise_executable</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">type</span><span class="w"> </span>-P<span class="w"> </span>mise<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nv">mise_prefix</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_executable</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">mise_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_executable</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">mise_prefix</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_dir</span><span class="si">}</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"mise self-update"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_prefix</span><span class="si">}</span><span class="s2">/lib/mise-self-update-instructions.toml"</span><span class="w"> </span><span class="o">||</span>

@@ -4722,7 +4722,7 @@
 
 
 <h1 id="scriptscimasked-dirname-checksh">scripts/ci/masked-dirname-check.sh<a class="headerlink" href="#scriptscimasked-dirname-checksh" title="Permanent link">&para;</a></h1>
-<p>ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape <code>dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &amp;&amp; pwd -P)</code> passes it although the inner status is lost. This check reports every <code>$(dirname</code> or <code>$(basename</code> that opens while another <code>$(</code> is still open on the same line, as <code>file:line: …</code>; capture the path first or split it in the shell (<code>${path%/*}</code>, <code>${path##*/}</code>). Single-quoted text and comments are skipped. shortcut: a per-line scan, so a substitution split across lines or a heredoc body is read as plain lines; upgrade to an AST walk (shfmt --to-json) if such a shape appears.</p>
+<p>ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape <code>dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &amp;&amp; pwd -P)</code> passes it although the inner status is lost. This check parses each file with shfmt (<code>shfmt -ln bash --to-json</code>) and reports every command substitution (<code>$(…)</code> or backquotes) that opens inside another one, as <code>file:line: …</code> at the line where the inner one opens; capture the inner result first, or split a path in the shell (<code>${path%/*}</code>, <code>${path##*/}</code>). The rule does not look at the command name: matching names lost four audit rounds to spellings bash resolves at run time (<code>$'\544irname'</code>, <code>command -p dirname</code>, <code>exec -a x dirname</code>, <code>/usr/bin/dirname</code>), and SC2312 already refuses the other commands in this shape, so the linted groups held no nested substitution when the rule was set (regime-cutover U38b). A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as bash reads it (shfmt expands the body of a partly quoted delimiter such as <code>&lt;&lt;'E'OF</code>). The files are parsed as bash: <code>make shellcheck</code> passes only bash scripts, and bash also parses the repository's POSIX scripts. A file shfmt cannot parse is refused, never read as clean; that includes a heredoc delimiter with ANSI-C escapes (<code>&lt;&lt;$'\x45OF'</code>), which shfmt 3.14.1 and ShellCheck 0.11.0 both fail to terminate.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/ci/masked-dirname-check.sh</code></li>
@@ -4732,27 +4732,46 @@
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 <span class="c1"># @file masked-dirname-check.sh</span>
-<span class="c1"># @brief Refuse a `$(dirname …)` or `$(basename …)` nested inside another command substitution.</span>
+<span class="c1"># @brief Refuse a command substitution nested inside another one, the shape SC2312 lets through for dirname and basename.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   ShellCheck's SC2312 (check-extra-masked-returns) exempts dirname and basename, so the U31 shape</span>
 <span class="c1">#   `dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &amp;&amp; pwd -P)` passes it although the inner status is</span>
-<span class="c1">#   lost. This check reports every `$(dirname` or `$(basename` that opens while another `$(` is still</span>
-<span class="c1">#   open on the same line, as `file:line: …`; capture the path first or split it in the shell</span>
-<span class="c1">#   (`${path%/*}`, `${path##*/}`). Single-quoted text and comments are skipped.</span>
-<span class="c1">#   shortcut: a per-line scan, so a substitution split across lines or a heredoc body is read as</span>
-<span class="c1">#   plain lines; upgrade to an AST walk (shfmt --to-json) if such a shape appears.</span>
+<span class="c1">#   lost. This check parses each file with shfmt (`shfmt -ln bash --to-json`) and reports every</span>
+<span class="c1">#   command substitution (`$(…)` or backquotes) that opens inside another one, as `file:line: …` at</span>
+<span class="c1">#   the line where the inner one opens; capture the inner result first, or split a path in the shell</span>
+<span class="c1">#   (`${path%/*}`, `${path##*/}`). The rule does not look at the command name: matching names lost</span>
+<span class="c1">#   four audit rounds to spellings bash resolves at run time (`$'\544irname'`, `command -p dirname`,</span>
+<span class="c1">#   `exec -a x dirname`, `/usr/bin/dirname`), and SC2312 already refuses the other commands in this</span>
+<span class="c1">#   shape, so the linted groups held no nested substitution when the rule was set (regime-cutover</span>
+<span class="c1">#   U38b). A heredoc body whose delimiter has any quoted or escaped part is literal and skipped, as</span>
+<span class="c1">#   bash reads it (shfmt expands the body of a partly quoted delimiter such as `&lt;&lt;'E'OF`).</span>
+<span class="c1">#   The files are parsed as bash: `make shellcheck` passes only bash scripts, and bash also parses</span>
+<span class="c1">#   the repository's POSIX scripts. A file shfmt cannot parse is refused, never read as clean; that</span>
+<span class="c1">#   includes a heredoc delimiter with ANSI-C escapes (`&lt;&lt;$'\x45OF'`), which shfmt 3.14.1 and</span>
+<span class="c1">#   ShellCheck 0.11.0 both fail to terminate.</span>
 <span class="c1"># @arg $@ path The files to check (the ShellCheck groups of `make shellcheck`).</span>
-<span class="c1"># @exitcode 0 No nested dirname or basename substitution.</span>
+<span class="c1"># @env SHFMT The shfmt to run (default `shfmt` on PATH; CI puts the mise-pinned 3.14.1 there).</span>
+<span class="c1"># @exitcode 0 No command substitution nested inside another.</span>
 <span class="c1"># @exitcode 1 At least one finding, each printed as `file:line: …`.</span>
-<span class="c1"># @exitcode 2 No file given, or a listed file cannot be read: the list is refused, never read as clean.</span>
+<span class="c1"># @exitcode 2 No file given, a listed file cannot be read or parsed, or shfmt or python3 is missing:</span>
+<span class="c1">#   the list is refused, never read as clean.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   scripts/ci/masked-dirname-check.sh scripts/orchestrator/hcom-seat</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="nv">shfmt</span><span class="o">=</span><span class="si">${</span><span class="nv">SHFMT</span><span class="k">:-</span><span class="nv">shfmt</span><span class="si">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: no file to check; an empty list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="k">fi</span>
+
+<span class="k">for</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shfmt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: </span><span class="si">${</span><span class="nv">tool</span><span class="si">}</span><span class="s2"> not found; the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">done</span>
 
 <span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4761,45 +4780,62 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">done</span>
 
+<span class="c1"># Reads shfmt's typed JSON on stdin; argv[1] names the file. Exits 1 when it prints a finding.</span>
+<span class="nv">walk</span><span class="o">=</span><span class="k">$(</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
+<span class="s">import json</span>
+<span class="s">import sys</span>
+
+<span class="s">MESSAGE = "a command substitution inside another one loses its status; capture it first, or split a path in the shell"</span>
+
+
+<span class="s">def quoted(word):</span>
+<span class="s">    """Whether any part of the word is quoted or escaped."""</span>
+<span class="s">    return any(</span>
+<span class="s">        part.get("Type") in ("SglQuoted", "DblQuoted") or (part.get("Type") == "Lit" and "\\" in part["Value"])</span>
+<span class="s">        for part in word.get("Parts") or []</span>
+<span class="s">    )</span>
+
+
+<span class="s">findings = set()</span>
+
+
+<span class="s">def walk(node, depth):</span>
+<span class="s">    if isinstance(node, list):</span>
+<span class="s">        for item in node:</span>
+<span class="s">            walk(item, depth)</span>
+<span class="s">        return</span>
+<span class="s">    if not isinstance(node, dict):</span>
+<span class="s">        return</span>
+<span class="s">    if node.get("Type") == "CmdSubst":</span>
+<span class="s">        if depth:</span>
+<span class="s">            findings.add(node["Pos"]["Line"])</span>
+<span class="s">        depth += 1</span>
+<span class="s">    elif node.get("Hdoc") and quoted(node["Word"]):</span>
+<span class="s">        # shfmt 3.14.1 parses the body of a partly quoted delimiter (`&lt;&lt;'E'OF`, `&lt;&lt;E"O"F`) as expanded text;</span>
+<span class="s">        # bash makes the body literal once any part of the delimiter is quoted.</span>
+<span class="s">        node = {key: value for key, value in node.items() if key != "Hdoc"}</span>
+<span class="s">    for value in node.values():</span>
+<span class="s">        walk(value, depth)</span>
+
+
+<span class="s">walk(json.load(sys.stdin), 0)</span>
+<span class="s">for line in sorted(findings):</span>
+<span class="s">    print(f"{sys.argv[1]}:{line}: {MESSAGE}")</span>
+<span class="s">sys.exit(1 if findings else 0)</span>
+<span class="s">PY</span>
+<span class="k">)</span>
+
 <span class="nv">status</span><span class="o">=</span><span class="m">0</span>
 <span class="k">for</span><span class="w"> </span>file<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="c1"># awk exits 1 for a finding; any other failure (a read error) refuses the list.</span>
-<span class="w">    </span>awk<span class="w"> </span><span class="s1">'</span>
-<span class="s1">        /^[ \t]*#/ { next }</span>
-<span class="s1">        {</span>
-<span class="s1">            line = $0; n = length(line); depth = 0; dq[0] = 0; paren[0] = 0</span>
-<span class="s1">            for (i = 1; i &lt;= n; i++) {</span>
-<span class="s1">                c = substr(line, i, 1)</span>
-<span class="s1">                if (c == "\\") { i++; continue }</span>
-<span class="s1">                if (!dq[depth] &amp;&amp; c == "\047") {</span>
-<span class="s1">                    j = index(substr(line, i + 1), "\047")</span>
-<span class="s1">                    if (j == 0) break</span>
-<span class="s1">                    i += j</span>
-<span class="s1">                    continue</span>
-<span class="s1">                }</span>
-<span class="s1">                if (!dq[depth] &amp;&amp; c == "#" &amp;&amp; (i == 1 || substr(line, i - 1, 1) ~ /[ \t;]/)) break</span>
-<span class="s1">                if (c == "\"") { dq[depth] = !dq[depth]; continue }</span>
-<span class="s1">                if (c == "$" &amp;&amp; substr(line, i + 1, 1) == "(") {</span>
-<span class="s1">                    if (depth &gt; 0 &amp;&amp; substr(line, i + 2) ~ /^(dirname|basename)([ \t)]|$)/) {</span>
-<span class="s1">                        printf "%s:%d: a $(dirname) or $(basename) inside another command substitution loses its status; capture it first or split the path in the shell\n", FILENAME, FNR</span>
-<span class="s1">                        found = 1</span>
-<span class="s1">                    }</span>
-<span class="s1">                    depth++; dq[depth] = 0; paren[depth] = 0; i++</span>
-<span class="s1">                    continue</span>
-<span class="s1">                }</span>
-<span class="s1">                if (dq[depth]) continue</span>
-<span class="s1">                if (c == "(") { paren[depth]++; continue }</span>
-<span class="s1">                if (c == ")") {</span>
-<span class="s1">                    if (paren[depth] &gt; 0) paren[depth]--</span>
-<span class="s1">                    else if (depth &gt; 0) depth--</span>
-<span class="s1">                }</span>
-<span class="s1">            }</span>
-<span class="s1">        }</span>
-<span class="s1">        END { exit found ? 1 : 0 }</span>
-<span class="s1">    '</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">tree</span><span class="o">=</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">shfmt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ln<span class="w"> </span>bash<span class="w"> </span>--to-json<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: shfmt cannot parse </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">; the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">walk</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span><span class="nv">code</span><span class="o">=</span><span class="nv">$?</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>code<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: cannot read </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2"> (awk exit </span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">); the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"masked-dirname-check: cannot walk the syntax tree of </span><span class="si">${</span><span class="nv">file</span><span class="si">}</span><span class="s2"> (python3 exit </span><span class="si">${</span><span class="nv">code</span><span class="si">}</span><span class="s2">); the list is refused"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>

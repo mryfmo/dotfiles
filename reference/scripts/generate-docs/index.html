@@ -4751,6 +4751,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>checked_template_files</code></li>
 <li><code>clean_generated_docs</code></li>
 <li><code>collect_source_files</code></li>
 <li><code>collect_template_files</code></li>
@@ -4781,6 +4782,7 @@
 <li><code>render_shell_page</code></li>
 <li><code>resolve_template_target</code></li>
 <li><code>short_summary_for_source</code></li>
+<li><code>sorted_source_files</code></li>
 <li><code>source_category_for_path</code></li>
 <li><code>source_group_description</code></li>
 <li><code>source_group_for_path</code></li>
@@ -4867,7 +4869,9 @@
 <span class="w">            </span><span class="s2">":(glob)home/dot_local/bin/**"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">            </span><span class="s2">":(glob)home/dot_claude/hooks/**"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">            </span><span class="s2">":(glob)home/dot_config/alias/*.sh"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">done</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -5237,7 +5241,12 @@
 <span class="w">    </span>print_page_header<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shell-fallback"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">function_count</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>function_names
 
+<span class="w">    </span><span class="nv">function_names</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>extract_function_names<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'generate-docs: cannot read the function names of %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>function_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
@@ -5247,7 +5256,7 @@
 
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- `%s`\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">function_count</span><span class="o">=</span><span class="k">$((</span><span class="nv">function_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>extract_function_names<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_names</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_count</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\n"</span>
@@ -5290,9 +5299,41 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print the collected source files in C-locale order.</span>
+<span class="c1"># @exitcode 1 The source list or its sort failed; the message names which.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>sorted_source_files<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_files
+
+<span class="w">    </span><span class="nv">source_files</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>collect_source_files<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'generate-docs: cannot list the tracked source files\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_files</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_files</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'generate-docs: cannot sort the tracked source files\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the collected template wrappers.</span>
+<span class="c1"># @exitcode 1 The template list failed.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>checked_template_files<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>collect_template_files<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'generate-docs: cannot list the chezmoi template wrappers\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Generate Markdown reference pages for all collected source files.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_reference_pages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_files
+
+<span class="w">    </span><span class="nv">source_files</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sorted_source_files<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
@@ -5309,7 +5350,7 @@
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span>render_shell_page<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_source_files<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_files</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5339,7 +5380,10 @@
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>docs_link_for_source_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"reference/%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>link
+
+<span class="w">    </span><span class="nv">link</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"reference/%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">link</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -5348,6 +5392,9 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_template_mapping_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">found_template</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>template_files
+
+<span class="w">    </span><span class="nv">template_files</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>checked_template_files<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span><span class="o">{</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'# home/.chezmoiscripts Template Mapping\n\n'</span>
@@ -5368,7 +5415,7 @@
 <span class="w">            </span><span class="nv">target_link</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- `%s` -&gt; [`%s`](%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_link</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="nv">found_template</span><span class="o">=</span><span class="nb">true</span>
-<span class="w">        </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_template_files<span class="o">)</span>
+<span class="w">        </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_files</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">found_template</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"No template wrappers were found.\n"</span>
@@ -5412,14 +5459,18 @@
 <span class="k">function</span><span class="w"> </span>count_sources_for_group<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_files
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_group
 
+<span class="w">    </span><span class="nv">source_files</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sorted_source_files<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">source_group</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">count</span><span class="o">=</span><span class="k">$((</span><span class="nv">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_source_files<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_files</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
@@ -5429,14 +5480,18 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>count_mapped_templates<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>template_files
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>target_path
 
+<span class="w">    </span><span class="nv">template_files</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>checked_template_files<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>template_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">target_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">count</span><span class="o">=</span><span class="k">$((</span><span class="nv">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_template_files<span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_files</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
@@ -5526,8 +5581,11 @@ EOF
 <h1 id="_6"><a class="headerlink" href="#_6" title="Permanent link">&para;</a></h1>
 <p>function print_template_mapping_card() {
     local mapped_count
-    local shown_count=0</p>
-<div class="highlight"><pre><span></span><code>mapped_count="$(count_mapped_templates)"
+    local shown_count=0
+    local template_files
+    local target_link</p>
+<div class="highlight"><pre><span></span><code>mapped_count="$(count_mapped_templates)" || return 1
+template_files="$(checked_template_files)" || return 1
 
 printf '&lt;div class="landing-card" markdown="1"&gt;\n\n'
 printf '&lt;p class="landing-kicker"&gt;Chezmoi&lt;/p&gt;\n\n'
@@ -5548,12 +5606,13 @@ while IFS= read -r template_path; do
         continue
     fi
 
+    target_link="$(docs_link_for_source_page "${target_path}")" || return 1
     printf -- '- `%s` -&gt; [`%s`](%s)\n' \
         "${template_path}" \
         "${target_path}" \
-        "$(docs_link_for_source_page "${target_path}")"
+        "${target_link}"
     shown_count=$((shown_count + 1))
-done &lt; &lt;(collect_template_files)
+done &lt;&lt;&lt; "${template_files}"
 
 if [[ "${mapped_count}" -gt "${shown_count}" ]]; then
     printf '\n[%s more mappings](reference/chezmoi-templates.md)\n' "$((mapped_count - shown_count))"
@@ -5574,10 +5633,14 @@ printf '\n&lt;/div&gt;\n'
     local title
     local description
     local total_count
-    local shown_count=0</p>
+    local shown_count=0
+    local source_files
+    local source_group
+    local source_link</p>
 <div class="highlight"><pre><span></span><code>title="$(source_group_title "${group}")"
 description="$(source_group_description "${group}")"
-total_count="$(count_sources_for_group "${group}")"
+total_count="$(count_sources_for_group "${group}")" || return 1
+source_files="$(sorted_source_files)" || return 1
 
 if [[ "${total_count}" -eq 0 ]]; then
     return
@@ -5592,7 +5655,8 @@ printf '_%s documented entries_\n\n' "${total_count}"
 while IFS= read -r source_path; do
     [[ -n "${source_path}" ]] || continue
 
-    if [[ "$(source_group_for_path "${source_path}")" != "${group}" ]]; then
+    source_group="$(source_group_for_path "${source_path}")" || return 1
+    if [[ "${source_group}" != "${group}" ]]; then
         continue
     fi
 
@@ -5603,20 +5667,21 @@ while IFS= read -r source_path; do
     local summary
 
     summary="$(short_summary_for_source "${source_path}" 120)"
+    source_link="$(docs_link_for_source_page "${source_path}")" || return 1
 
     if [[ -n "${summary}" ]]; then
         printf -- '- [`%s`](%s): %s\n' \
             "${source_path}" \
-            "$(docs_link_for_source_page "${source_path}")" \
+            "${source_link}" \
             "${summary}"
     else
         printf -- '- [`%s`](%s)\n' \
             "${source_path}" \
-            "$(docs_link_for_source_page "${source_path}")"
+            "${source_link}"
     fi
 
     shown_count=$((shown_count + 1))
-done &lt; &lt;(collect_source_files | LC_ALL=C sort)
+done &lt;&lt;&lt; "${source_files}"
 
 if [[ "${total_count}" -gt "${shown_count}" ]]; then
     printf '\n[%s more entries in the full catalog](%s)\n' "$((total_count - shown_count))" "${CATALOG_HREF}"

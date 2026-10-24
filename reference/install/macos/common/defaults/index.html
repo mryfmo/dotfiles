@@ -4837,9 +4837,58 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print a Dock tile entry for one application.</span>
+<span class="c1"># @arg $1 path The application bundle.</span>
+<span class="c1"># @stdout The tile's plist dict.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>dock_item<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_file_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'</span>
+<span class="s1">        &lt;dict&gt;</span>
+<span class="s1">            &lt;key&gt;tile-data&lt;/key&gt;</span>
+<span class="s1">                &lt;dict&gt;</span>
+<span class="s1">                    &lt;key&gt;file-data&lt;/key&gt;</span>
+<span class="s1">                        &lt;dict&gt;</span>
+<span class="s1">                            &lt;key&gt;_CFURLString&lt;/key&gt;&lt;string&gt;%s&lt;/string&gt;</span>
+<span class="s1">                            &lt;key&gt;_CFURLStringType&lt;/key&gt;&lt;integer&gt;0&lt;/integer&gt;</span>
+<span class="s1">                        &lt;/dict&gt;</span>
+<span class="s1">                &lt;/dict&gt;</span>
+<span class="s1">        &lt;/dict&gt;'</span>,<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app_file_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the path of System Preferences, or of System Settings from Ventura on.</span>
+<span class="c1"># @stdout The application bundle path.</span>
+<span class="c1"># @exitcode 1 Neither application exists.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>get_system_app_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_preferences_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Preferences.app/"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_settings_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Settings.app/"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># for Ventura</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Could not found system app </span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Customize Dock behavior and its pinned applications.</span>
+<span class="c1"># @exitcode 1 get_system_app_path finds no system settings app; the Dock is left unchanged.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>defaults_dock<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>chrome_item<span class="w"> </span>system_app_path<span class="w"> </span>system_app_item
+<span class="w">    </span><span class="nv">chrome_item</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span>/Applications/Google<span class="se">\ </span>Chrome.app<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">system_app_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>get_system_app_path<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"get_system_app_path failed; the Dock was not changed"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">system_app_item</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_app_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+
 <span class="w">    </span><span class="c1"># Keep the Dock visible.</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>autohide<span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
 <span class="w">    </span><span class="c1"># Set the icon size of Dock items to 30 pixels</span>
@@ -4852,39 +4901,7 @@
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>recent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">""</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-others<span class="w"> </span>-array<span class="w"> </span><span class="s2">""</span>
 
-<span class="w">    </span><span class="k">function</span><span class="w"> </span>dock_item<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_file_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'</span>
-<span class="s1">        &lt;dict&gt;</span>
-<span class="s1">            &lt;key&gt;tile-data&lt;/key&gt;</span>
-<span class="s1">                &lt;dict&gt;</span>
-<span class="s1">                    &lt;key&gt;file-data&lt;/key&gt;</span>
-<span class="s1">                        &lt;dict&gt;</span>
-<span class="s1">                            &lt;key&gt;_CFURLString&lt;/key&gt;&lt;string&gt;%s&lt;/string&gt;</span>
-<span class="s1">                            &lt;key&gt;_CFURLStringType&lt;/key&gt;&lt;integer&gt;0&lt;/integer&gt;</span>
-<span class="s1">                        &lt;/dict&gt;</span>
-<span class="s1">                &lt;/dict&gt;</span>
-<span class="s1">        &lt;/dict&gt;'</span>,<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app_file_path</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="o">}</span>
-
-<span class="w">    </span><span class="k">function</span><span class="w"> </span>get_system_app_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_preferences_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Preferences.app/"</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_settings_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Settings.app/"</span>
-
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="c1"># for Ventura</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Could not found system app </span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="o">}</span>
-
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-apps<span class="w"> </span>-array<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span>/Applications/Google<span class="se">\ </span>Chrome.app<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>get_system_app_path<span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">chrome_item</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_app_item</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

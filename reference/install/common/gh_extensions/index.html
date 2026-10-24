@@ -4782,8 +4782,13 @@
 <span class="c1"># @description Activate `mise` so `gh` can resolve the expected toolchain.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>activate_mise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>activation
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">activation</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s activate bash failed; gh extensions were not installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">activation</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 

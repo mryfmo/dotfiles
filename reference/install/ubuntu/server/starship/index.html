@@ -4787,11 +4787,16 @@
 
 <span class="c1"># @description Print the Starship Linux artifact name and its reviewed sha256 for the current architecture.</span>
 <span class="k">function</span><span class="w"> </span>starship_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>machine
+<span class="w">    </span><span class="nv">machine</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'uname -m failed; no Starship artifact was chosen.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">machine</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'starship-x86_64-unknown-linux-musl.tar.gz %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">STARSHIP_X86_64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'starship-aarch64-unknown-linux-musl.tar.gz %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">STARSHIP_AARCH64_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported Starship architecture: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported Starship architecture: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">machine</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>

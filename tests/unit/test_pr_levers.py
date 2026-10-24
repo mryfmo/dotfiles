@@ -969,6 +969,32 @@ class RecordsSyncTest(PrLeverTestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.startswith("synced branch=records/sync-7 "), run.stdout)
 
+    def test_a_staged_rename_carries_its_source(self):
+        """U28c F1: with rename detection the source path was dropped and the old record stayed on the branch."""
+        self.github()
+        self.git("mv", str(self.records / "units.tsv"), str(self.records / "units-renamed.tsv"))
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        files = self.git("ls-tree", "-r", "--name-only", "records/sync-7", cwd=self.origin).splitlines()
+        self.assertIn(".orchestration/orchestrate/prog/units-renamed.tsv", files)
+        self.assertNotIn(".orchestration/orchestrate/prog/units.tsv", files)
+
+    def test_a_bare_run_names_the_records_unit(self):
+        """U28c F2: with no --unit the body still carries the `Program-Unit:` line the regime check requires."""
+        bodies = self.root / "bodies"
+        self.github()
+        fake = self.root / "bin/gh"
+        fake.unlink()
+        fake.write_text(
+            f'#!/bin/sh\nfor a; do case $a in */body.md) mkdir -p {bodies} && cp "$a" {bodies}/;; esac; done\nexec {FAKE_GH} "$@"\n'
+        )
+        fake.chmod(0o755)
+        with (self.records / "units.tsv").open("a") as units:
+            units.write("U2\tseats\n")
+        run = self.run_lever("records-sync.sh")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("Program-Unit: prog/U20\n", (bodies / "body.md").read_text())
+
     def test_a_local_branch_takes_its_number(self):
         """U28b F6: a local records branch, whatever left it, is never reused."""
         self.github()

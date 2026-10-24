@@ -7,7 +7,8 @@
 #   `home/dot_agents/omp/policies/orchestrator.yml` (the seat's own `git push` and `gh pr create` stay denied;
 #   `worker.yml` denies every form, bare included, U28b F3). It runs in the main checkout, where the orchestrator
 #   writes its records (a linked worktree is refused), and `.orchestration` there must be a real directory. The
-#   copy set is the tracked changes against `HEAD` (`git diff --name-only HEAD`) and the untracked, not ignored
+#   copy set is the tracked changes against `HEAD` (`git diff --no-renames --name-only HEAD`, so a staged rename
+#   lists its source too, U28c F1) and the untracked, not ignored
 #   files (`git ls-files --others --exclude-standard`) under `.orchestration/orchestrate/<program>/` and
 #   `.orchestration/validation/`; every path must lie under `.orchestration/`, no component of it may be a
 #   symlink (git lists the tracked files below a linked directory too, U28b F2), and an existing source must be a
@@ -20,14 +21,15 @@
 #   a masking failure aborts), refuses a staged path outside `.orchestration/`, commits
 #   `chore(records): <program> sync <n>` with the footer, pushes that branch only, and opens the pull request
 #   with `gh pr create --base main --head records/sync-<n> --title ... --body-file ...`; the body lists the
-#   `units.tsv` ids and the `decisions.tsv` timestamps the sync adds or changes and, with `--unit`, the line
-#   `Program-Unit: <program>/<unit>`. The worktree is removed on every exit (`git worktree remove --force`, only
+#   `units.tsv` ids and the `decisions.tsv` timestamps the sync adds or changes and the line
+#   `Program-Unit: <program>/<unit>`, which the `regime` check requires (U28c F2). The worktree is removed on every
+#   exit (`git worktree remove --force`, only
 #   on the path this run created), and a run that exits before its push deletes the branch it created (only that
 #   one), so a retry takes the same number; a pushed branch stays. Each `gh` call is bounded by
 #   PR_LEVER_GH_TIMEOUT seconds.
 # @option --base <ref> The start point; only `origin/main` (the default) is accepted.
 # @option --program <name> The program directory under `.orchestration/orchestrate/`; default: the only one.
-# @option --unit <U<n>> The unit the body's `Program-Unit:` line names (the records unit, U20 for regime-cutover).
+# @option --unit <U<n>> The unit the body's `Program-Unit:` line names; default: U20, the records unit.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `synced branch=records/sync-<n> files=<n> pr=<url>`.
 # @exitcode 0 The pull request was opened.
@@ -93,7 +95,7 @@ lever_self_check() {
 lever_self_check
 
 lever='records-sync.sh'
-usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n>]'
+usage='usage: records-sync.sh [--base origin/main] [--program <name>] [--unit U<n> (default U20)]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 footer='Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>'
 pr_footer='🤖 Generated with [Claude Code](https://claude.com/claude-code)'
@@ -137,7 +139,7 @@ cleanup() {
 
 base=origin/main
 program=''
-unit=''
+unit=U20
 while (($#)); do
     case $1 in
     --base | --program | --unit)
@@ -153,7 +155,7 @@ while (($#)); do
     esac
 done
 [[ ${base} == origin/main ]] || refuse "--base accepts only origin/main: ${base}" # lint-comparisons: allow a git ref name, not a path
-[[ -z ${unit} || ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
+[[ ${unit} =~ ^U[0-9]+$ ]] || refuse "--unit is not a plain unit id U<n>: ${unit}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 
 toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
@@ -184,7 +186,7 @@ fi
     refuse "no program directory .orchestration/orchestrate/${program}"
 dirs=(".orchestration/orchestrate/${program}/" .orchestration/validation/)
 
-changed=$(git diff --name-only -z HEAD -- "${dirs[@]}" | tr '\0' '\n') || fail 'git diff --name-only HEAD failed'
+changed=$(git diff --no-renames --name-only -z HEAD -- "${dirs[@]}" | tr '\0' '\n') || fail 'git diff --name-only HEAD failed'
 untracked=$(git ls-files -z --others --exclude-standard -- "${dirs[@]}" | tr '\0' '\n') || fail 'git ls-files --others failed'
 listed=$(printf '%s\n%s\n' "${changed}" "${untracked}" | sort -u) || fail 'cannot list the copy set'
 files=()
@@ -248,7 +250,7 @@ if ((${#masked[@]})); then
         fail 'masking the copies failed; nothing was committed or pushed'
 fi
 git -C "${tree}" add -A -- .orchestration || fail 'git add failed'
-staged=$(git -C "${tree}" diff --cached --name-only -z | tr '\0' '\n') || fail 'git diff --cached failed'
+staged=$(git -C "${tree}" diff --cached --no-renames --name-only -z | tr '\0' '\n') || fail 'git diff --cached failed'
 [[ -n ${staged} ]] || refuse 'the copies equal origin/main; nothing to sync'
 while IFS= read -r path; do
     [[ ${path} == .orchestration/* ]] || refuse "a staged path is outside .orchestration/: ${path}" # lint-comparisons: allow a repository-relative path as git prints it
@@ -272,7 +274,7 @@ body=${scratch}/body.md
     printf '## Summary\n\nRecords sync %s of `%s` (%s file(s)), carried by `records-sync.sh` from the main checkout; every copy was masked with `validate-agent-assets.py --mask-secrets`.\n\n' "${n}" "${program}" "${count}"
     printf -- '- units.tsv rows added or changed: %s\n' "${units:-none}"
     printf -- '- decisions.tsv rows added or changed: %s\n\n' "${decisions:-none}"
-    [[ -z ${unit} ]] || printf 'Program-Unit: %s/%s\n\n' "${program}" "${unit}"
+    printf 'Program-Unit: %s/%s\n\n' "${program}" "${unit}"
     printf '%s\n' "${pr_footer}"
 } > "${body}" || fail 'cannot write the body'
 url=$(gh_bounded pr create --base main --head "${branch}" --title "${title}" --body-file "${body}") ||

@@ -335,10 +335,15 @@ jobs:
             --ccusage "${ccusage_bin}"
             --ccusage-version "${ccusage_version}"
           )
+          smoke_failed() {
+            printf 'statusline smoke failed with npm:ccusage %s and npm:ccstatusline %s: bump the exact pins in home/dot_mise/config.toml\n' \
+              "${ccusage_version}" "${ccstatusline_version}" >&2
+            exit 1
+          }
 
           if [[ "${OS}" == ubuntu-* ]]; then
             sudo unshare --net -- sh -c 'test -z "$(ip route show)"'
-            sudo unshare --net -- "${smoke[@]}"
+            sudo unshare --net -- "${smoke[@]}" || smoke_failed
           elif [ "${OS}" = "macos-14" ]; then
             sandbox_profile='(version 1)(allow default)(deny network*)'
             if /usr/bin/sandbox-exec -p "${sandbox_profile}" \
@@ -346,7 +351,7 @@ jobs:
               echo "macOS network-denial oracle unexpectedly bound a socket" >&2
               exit 1
             fi
-            /usr/bin/sandbox-exec -p "${sandbox_profile}" "${smoke[@]}"
+            /usr/bin/sandbox-exec -p "${sandbox_profile}" "${smoke[@]}" || smoke_failed
           else
             echo "${OS} is not supported" >&2
             exit 1

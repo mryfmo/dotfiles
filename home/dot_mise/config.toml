@@ -29,8 +29,10 @@ ruff = "latest"
 "npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "latest"
 "npm:bash-language-server" = "latest"
-"npm:ccstatusline" = "latest"
-"npm:ccusage" = "latest"
+# Held with ccusage: the CI statusline smoke runs both; keep until ccusage restores linux-x64 (U42).
+"npm:ccstatusline" = "2.2.32"
+# Held: the npm backend installs 20.0.38 without its optional linux-x64 native binary (run 40087404553); keep until a release restores it.
+"npm:ccusage" = "20.0.37"
 "npm:pyright" = "latest"
 "npm:fast-cli" = "latest"
 "npm:prettier" = "latest"

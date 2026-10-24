@@ -4801,11 +4801,24 @@
 <span class="c1">#   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a</span>
 <span class="c1">#   transitional snap wrapper). Google Chrome is not used instead because</span>
 <span class="c1">#   Google does not publish a linux-arm64 build. Skips gracefully when snap</span>
-<span class="c1">#   is unavailable (e.g. minimal or container images).</span>
+<span class="c1">#   is unavailable (e.g. minimal or container images). The Snap Store</span>
+<span class="c1">#   intermittently answers HTTP 408 while fetching assertions, so the install</span>
+<span class="c1">#   is tried up to 3 times before its failure is returned.</span>
+<span class="c1"># @env SNAP_RETRY_DELAY Seconds between attempts; tests set 0. Default: 10, then 30.</span>
+<span class="c1"># @exitcode The last `snap install` exit status after the final failed attempt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_chromium<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>snap<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span>sudo<span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">delays</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">SNAP_RETRY_DELAY</span><span class="k">:-</span><span class="nv">10</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SNAP_RETRY_DELAY</span><span class="k">:-</span><span class="nv">30</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">attempt</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span>sudo<span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'install_chromium: snap install chromium failed (attempt %d/3, exit %d)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">attempt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">attempt</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-lt<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>sleep<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delays</span><span class="p">[attempt - 1]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">attempt</span><span class="o">=</span><span class="k">$((</span><span class="nv">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
+<span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

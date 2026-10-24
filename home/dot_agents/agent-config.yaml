@@ -306,14 +306,14 @@ claude:
   # regime-init reads its templates from ~/.agents/regime beside this manifest.
   levers:
     sha256:
-      hcom-seat: e43840568de480966e02c6e1f7c4e83615ccd77f1a0911b859d2ae7b34230851
-      hcom-dispatch: 4e6b6b7afd767f9ef6c23bceba979c7ae50d2885db48f9adf20728c58c854f58
-      bus-history.sh: be30762020e4dab642e73a80c0b27b058e1fd8d4450dc49b12b64a67d2247b0a
+      hcom-seat: 11b236e740e1667849f8e6c99e787dde3e191047c7325e59ae71d9a04a8796cc
+      hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
+      bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       regime-init: 214a381e4c7573324385aedb9d2940511f5880e5248097f751337b1d304de7bd
       seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
-      regime-start: e22a968488714825019cc1aeea6a1346b027377d3b0d21dcb6d3762ab518178a
+      regime-start: 531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142
       regime-stop: 578db3f205077cff31951ccfd5fd0c0bd873e6a58687a3e665ac54d30f1dd26b
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop

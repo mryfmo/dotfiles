@@ -3,16 +3,17 @@
 # @brief Print a team's hcom bus history as TSV rows the records can paste.
 # @description
 #   Plan 025 W2b (C-1). Reads `hcom events --type message --thread <team> --full
-#   --last <limit> [--after <since>]` (`hcom events --help`; hcom 0.7.30
-#   src/commands/events.rs:33 last, :39 full; `--last` is `ORDER BY id DESC LIMIT
-#   n`, events.rs:185, so the newest rows) and prints one row per message,
+#   --last <limit> [--after <since>]` (`hcom events --help`; hcom 0.7.30 and 0.7.31,
+#   measured 2026-10-23 and 2026-10-24; at v0.7.30 src/commands/events.rs:33 last,
+#   :39 full; `--last` is `ORDER BY id DESC LIMIT n`, events.rs:185, so the newest
+#   rows) and prints one row per message,
 #   ascending by id: `id<TAB>at<TAB>from<TAB>to<TAB>kind<TAB>body`. `at` is hcom's
 #   `ts` as printed, `to` the delivered_to names joined with commas (`-` when
 #   none), `kind` the first word of the text, and `body` the text with backslash,
 #   tab, CR and LF escaped as `\\`, `\t`, `\r` and `\n`, so every row is one line
 #   of five tabs. `--kind` keeps only the rows whose kind equals it. Never writes:
 #   the store `$HCOM_DIR/hcom.db` must already exist, because `hcom events`
-#   creates one on first use (observed with 0.7.30).
+#   creates one on first use (observed with 0.7.30 and 0.7.31).
 # @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).
 # @option --limit <n> Newest rows to read (default 200, a positive integer).
 # @option --since <ts> Only rows after this time, hcom's `--after` (`YYYY-MM-DD[THH:MM:SS[Z]]`).

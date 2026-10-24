@@ -68,13 +68,23 @@ The gate runs a repository script and `hcom` from the seat's environment and fee
 A seat lives in a herdr pane, so it ends with its process or with the herdr server: the herdr restart of 2026-10-24
 at 07:13 JST ended all three seats (`exit:shutdown`), and the orchestrator seat that spawned a subagent at 06:03Z
 stopped answering. `regime-start` (`scripts/orchestrator/regime-start`, a pinned lever) starts the orchestrator seat
-and registers the program in `~/.local/state/regime-supervisor/<slug>.conf`; `regime-start --supervise` is one pass
+and registers the checkout in `~/.local/state/regime-supervisor/<slug>-<first 12 hex of sha256(toplevel)>.conf`, one
+registration per checkout, so two checkouts with one basename never share one. `regime-start --supervise` is one pass
 over the registrations, which the launchd agent `com.mryfmo.dotfiles.regime-supervisor` (macOS) or the user units
-`regime-supervisor.service` and `.timer` (Linux) run at login and every 60 seconds; the operator enables them once
-(README, "Start here: the omp seats"). The pass relaunches a registered orchestrator that is not alive, unless the
+`regime-supervisor.service` and `.timer` (Linux) run at login and every 60 seconds once the operator enables them;
+both ship disabled (the plist carries `Disabled`, launchd.plist(5), and only the operator's `launchctl enable`, kept
+across logins and boots per launchctl(1), loads it; `make update` installs the systemd units without enabling them;
+README, "Start here: the omp seats"). The pass relaunches a registered orchestrator that is not alive, unless the
 newest stop event hcom recorded for the last seat (`hcom list --stopped <base name>`, the `(latest)` line) is
 `killed by:cli`, an `hcom kill`, which ends the supervision like `regime-stop` does. A failed launch waits 60 seconds,
-doubling to 30 minutes; a registration that does not parse, an hcom read that fails, or a stop record it cannot read
+doubling by saturation to 30 minutes, and the failure counter stops at 9999. `regime-start`, the pass and `regime-stop`
+(which is `regime-start --stop`) take one host lock, `~/.local/state/regime-supervisor/.lock`: start and stop wait for
+it, a pass that finds it held skips, and a lock left for ten minutes by a process that died is cleared. So a stop that
+arrives during a relaunch runs after it and stops the seat it launched. A registration must hold each of its eight
+keys exactly once (`toplevel`, `hcom_dir`, `hcom_team`, `program`, `seat`, `base`, `fails`, `next`), its seat must be
+`orchestrator-<base>`, its file name must be the one its own toplevel derives, and a store with an `origin` file must
+name that toplevel; one that breaks any of these is skipped and logged and never launched, rewritten or stopped from.
+A registration that does not parse, an hcom read that fails, or a stop record it cannot read
 launches nothing. Only the orchestrator is supervised: it relaunches the other seats itself (the skill's step 0).
 
 Measured on this host on 2026-10-24 with the levers of this branch, in a scratch repository `u36-pilot` with a scratch

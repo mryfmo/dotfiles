@@ -2,13 +2,15 @@
 # @file regime-stop
 # @brief Stop a program's orchestrator seat on purpose and end its supervision.
 # @description
-#   Regime-cutover U36. Run in the repository checkout. It removes the program's registration in
-#   `~/.local/state/regime-supervisor/<slug>.conf` first, so the supervisor (`regime-start --supervise`) never
-#   relaunches what this stops, then runs `hcom kill <name> --go` for every alive seat tagged `orchestrator` in the
-#   registered store (with `--all`, for every alive seat in that store), and logs each step in
-#   `<store>/supervisor.log`. Without a registration it uses the store and team regime-start would use (an explicit
-#   HCOM_DIR and HCOM_TEAM, the dotfiles pre-move pair, else regime-env). A seat's worktree and branch stay; a later
-#   `regime-start` starts the program again.
+#   Regime-cutover U36. Run in the repository checkout. It is `regime-start --stop` (the regime-start beside this
+#   file), so it takes the same host lock as regime-start and its supervisor pass and never interleaves with a
+#   relaunch. Under that lock it reads this checkout's own registration (`~/.local/state/regime-supervisor/
+#   <slug>-<hash of the toplevel>.conf`, which must name this toplevel), removes it, then runs
+#   `hcom kill <name> --go` for every alive seat tagged `orchestrator` in the registered store (with `--all`, for
+#   every alive seat in that store), and logs each step in `<store>/supervisor.log`. Without a registration it uses
+#   the store regime-start would choose (an explicit HCOM_DIR and HCOM_TEAM, the dotfiles pre-move pair, else
+#   regime-env), and a store whose `origin` names another checkout is refused. A seat's worktree and branch stay; a
+#   later `regime-start` starts the program again.
 # @option --all Also stop the workers and the audit seat of the store.
 # @stdout One line per seat stopped, or that none was alive.
 # @exitcode 0 Stopped, or nothing was alive.
@@ -75,66 +77,8 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: regime-stop [--all]'
-registry=${HOME}/.local/state/regime-supervisor
-name_grammar='^[a-z0-9][a-z0-9_-]{0,63}$'
-
-refuse() {
-    echo "regime-stop: $*" >&2
+[[ -x ${LEVER_DIR}/regime-start ]] || {
+    echo "regime-stop: regime-start is not beside this script: ${LEVER_DIR}/regime-start" >&2
     exit 2
 }
-
-all=0
-case ${#}:${1:-} in
-0:) ;;
-1:--all) all=1 ;;
-*) refuse "${usage}" ;;
-esac
-command -v hcom > /dev/null || refuse 'hcom not found on PATH'
-[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
-# shellcheck source=scripts/orchestrator/regime-env
-. "${LEVER_DIR}/regime-env"
-top=$(regime_toplevel) || refuse 'run regime-stop inside the repository checkout'
-slug=$(regime_slug "${top}") || refuse "cannot derive a repository slug from ${top}"
-conf=${registry}/${slug}.conf
-
-# The registered store wins: it is the one the supervisor would relaunch into.
-store='' team=''
-if [[ -f ${conf} ]]; then
-    while IFS= read -r line; do
-        case ${line} in
-        hcom_dir=/*) store=${line#hcom_dir=} ;;
-        hcom_team=*) team=${line#hcom_team=} ;;
-        esac
-    done < "${conf}" || refuse "cannot read ${conf}"
-    [[ -d ${store} && ${team} =~ ${name_grammar} ]] || refuse "${conf} names no usable store and team; remove it by hand after checking it"
-    export HCOM_DIR=${store} HCOM_TEAM=${team}
-else
-    legacy=${HOME}/.local/state/hcom-regime
-    if [[ -z ${HCOM_DIR:-} && -z ${HCOM_TEAM:-} && ${slug} == dotfiles && ! -e ${HOME}/.local/state/hcom/dotfiles/origin && -f ${legacy}/hcom.db ]]; then
-        export HCOM_DIR=${legacy} HCOM_TEAM=regime
-    fi
-    regime_env regime-stop || exit 2
-fi
-[[ -d ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} does not exist"
-listing=$(hcom list --format '{name} {tag} {status}') || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed); nothing changed"
-
-rm -f "${conf}"
-stamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-printf '%s regime-stop: supervision of %s ended\n' "$(stamp)" "${top}" >> "${HCOM_DIR}/supervisor.log" || true
-failed=0 stopped=0
-while read -r name tag status; do
-    [[ -n ${name} ]] || continue
-    case ${status} in active | listening | blocked) ;; *) continue ;; esac
-    ((all)) || [[ ${tag} == orchestrator ]] || continue
-    if hcom kill "${name}" --go > /dev/null; then
-        echo "regime-stop: stopped ${name}"
-        printf '%s regime-stop: stopped %s\n' "$(stamp)" "${name}" >> "${HCOM_DIR}/supervisor.log" || true
-        stopped=$((stopped + 1))
-    else
-        echo "regime-stop: hcom kill ${name} failed" >&2
-        failed=1
-    fi
-done <<< "${listing}"
-((stopped || failed)) || echo "regime-stop: no seat to stop in ${HCOM_DIR}; supervision ended"
-exit "${failed}"
+exec "${LEVER_DIR}/regime-start" --stop "$@"

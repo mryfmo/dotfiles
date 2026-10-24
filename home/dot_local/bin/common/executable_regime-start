@@ -11,22 +11,30 @@
 #   regime-env derives both (U33). An explicit store must already exist. When a seat tagged `orchestrator` is
 #   alive in the store (hcom status active, listening or blocked) it is reported, not duplicated; otherwise
 #   `hcom-seat orchestrator` (the copy beside this file) launches it from the checkout, and the command waits up
-#   to 120 s for it to be alive. Either way the program is registered for the supervisor in
-#   `~/.local/state/regime-supervisor/<slug>.conf` (toplevel, store, team, program, last seat name), and the
-#   command prints the seat's name and where to type.
+#   to 120 s for it to be alive. Either way the checkout is registered for the supervisor (toplevel, store, team,
+#   program, last seat name), and the command prints the seat's name and where to type. A checkout already
+#   registered on another store or team is refused until regime-stop, and a store whose `origin` names another
+#   checkout is refused, an explicit one included.
 #
 #   `--supervise` is one supervisor pass, run every 60 s by the launchd agent
-#   `com.mryfmo.dotfiles.regime-supervisor` (macOS) or the `regime-supervisor.timer` user unit (Linux). For each
-#   registration with no orchestrator alive in its store it reads hcom's newest stop record of the last seat
-#   (the `(latest)` event of `hcom list --stopped <base name>`): `killed by:cli`, an operator's `hcom kill`, ends
-#   the supervision (the registration is removed); a record that cannot be read launches nothing; anything else
-#   (a crash, a herdr restart, or no last seat yet) is relaunched like the
-#   interactive form, at most once per backoff window (60 s doubling to 30 minutes after each failed launch,
-#   reset by a seat seen alive). Every decision is a line in `<store>/supervisor.log`. A registration that does
-#   not parse, or an hcom read that fails, is logged and launches nothing. `regime-stop` ends a supervision on
-#   purpose.
+#   `com.mryfmo.dotfiles.regime-supervisor` (macOS) or the `regime-supervisor.timer` user unit (Linux) once the
+#   operator enables them; both ship disabled. For each registration with no orchestrator alive in its store it reads
+#   hcom's newest stop record of the last seat (the `(latest)` event of `hcom list --stopped <base name>`):
+#   `killed by:cli`, an operator's `hcom kill`, ends the supervision (the registration is removed); a record that
+#   cannot be read launches nothing; anything else (a crash, a herdr restart) is relaunched like the interactive
+#   form, at most once per backoff window (60 s doubling, saturated at 30 minutes, reset by a seat seen alive). Every
+#   decision is a line in `<store>/supervisor.log`.
+#
+#   `--stop [--all]` is regime-stop (the lever beside this file runs it). Start, stop and the supervisor pass take
+#   one host lock, `~/.local/state/regime-supervisor/.lock`, so a stop never interleaves with a relaunch: start and
+#   stop wait for it, a pass that finds it held skips. A registration is
+#   `~/.local/state/regime-supervisor/<slug>-<first 12 hex of sha256(toplevel)>.conf`, one per checkout, with every
+#   key exactly once (toplevel, hcom_dir, hcom_team, program, seat, base, fails, next); a registration that breaks
+#   that, names another toplevel, or whose store's `origin` names another checkout is never launched, replaced or
+#   stopped from.
 # @arg $1 string Program name (`^[a-z0-9][a-z0-9_-]{0,63}$`) whose store `.orchestration/orchestrate/<program>/` must exist; optional.
 # @option --supervise One supervisor pass over every registration; no other argument.
+# @option --stop [--all] regime-stop.
 # @env HCOM_DIR The hcom store (default: as described above).
 # @env HCOM_TEAM The team (default: as described above).
 # @stdout The seat's name and where to type (interactive form).
@@ -94,15 +102,128 @@ lever_self_check() {
 }
 lever_self_check
 
-usage='usage: regime-start [<program>] | regime-start --supervise'
+usage='usage: regime-start [<program>] | regime-start --supervise | regime-start --stop [--all]'
+me=regime-start
 registry=${HOME}/.local/state/regime-supervisor
+lock=${registry}/.lock
 name_grammar='^[a-z0-9][a-z0-9_-]{0,63}$'
 wait_seconds=${REGIME_START_WAIT_SECONDS:-120}
-[[ ${wait_seconds} =~ ^[0-9]+$ ]] || wait_seconds=120
+[[ ${wait_seconds} =~ ^[0-9]{1,4}$ ]] || wait_seconds=120
+lock_wait=${REGIME_LOCK_WAIT_SECONDS:-300}
+[[ ${lock_wait} =~ ^[0-9]{1,4}$ ]] || lock_wait=300
 
 refuse() {
-    echo "regime-start: $*" >&2
+    echo "${me}: $*" >&2
     exit 2
+}
+
+# @description Take the host's one regime lock, which regime-start, its supervisor pass and regime-stop share, so a
+#   stop never interleaves with a launch (U36 F2). mkdir is atomic; a lock not refreshed for ten minutes belongs to a
+#   process that died and is cleared once. Released on exit.
+# @arg $1 string `wait` (up to REGIME_LOCK_WAIT_SECONDS, default 300) or `try` (once).
+# @exitcode 1 The lock is held by another process.
+take_lock() {
+    local waited=0
+    mkdir -p "${registry}"
+    while ! mkdir "${lock}" 2> /dev/null; do
+        if [[ -n $(find "${lock}" -maxdepth 0 -mmin +10 2> /dev/null) ]] && rmdir "${lock}" 2> /dev/null; then
+            continue
+        fi
+        [[ $1 == wait ]] && ((waited < lock_wait)) || return 1
+        sleep 1
+        waited=$((waited + 1))
+    done
+    trap 'rmdir "${lock}" 2> /dev/null || true' EXIT
+}
+
+# @description Print the registration file of a checkout: `<slug>-<first 12 hex of sha256(toplevel)>.conf`, so two
+#   checkouts with one basename never share a registration (U36 F3).
+# @arg $1 path The physical toplevel.
+# @arg $2 string Its slug.
+# @exitcode 1 The digest could not be computed.
+registration_path() {
+    local digest
+    if command -v sha256sum > /dev/null; then
+        digest=$(printf '%s' "$1" | sha256sum) || return 1
+    else
+        digest=$(printf '%s' "$1" | shasum -a 256) || return 1
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || return 1
+    printf '%s/%s-%s.conf\n' "${registry}" "$2" "${digest:0:12}"
+}
+
+# @description Read a registration into reg_top, reg_store, reg_team, reg_program, reg_seat, reg_base, reg_fails and
+#   reg_next. Every key must appear exactly once and nothing else may (U36 F4); the seat is `orchestrator-<base>`;
+#   the counters have bounded lengths (U36 F5); and the file must be the one registration_path names for its own
+#   toplevel, so a registration copied to another checkout's name is refused, and a store with an `origin` file
+#   (a derived one, written by regime-init) must name that toplevel (U36 F3).
+# @arg $1 path The registration file.
+# @stdout Nothing.
+# @stderr Nothing.
+# @set reg_error Why the registration is unusable, empty when it is usable.
+read_registration() {
+    local conf=$1 line key value expected slug recorded
+    # Bash 3.2 (macOS /bin/bash) has no associative arrays, so the keys seen are one space-separated string.
+    local seen=' '
+    reg_error='' reg_top='' reg_store='' reg_team='' reg_program='' reg_seat='' reg_base='' reg_fails='' reg_next=''
+    if ! [[ -f ${conf} && -r ${conf} ]]; then
+        reg_error='unreadable'
+        return 0
+    fi
+    while IFS= read -r line || [[ -n ${line} ]]; do
+        key=${line%%=*}
+        value=${line#*=}
+        if [[ ${line} != *=* ]]; then
+            reg_error="a line without a key: '${line}'"
+            return 0
+        fi
+        case ${key} in
+        toplevel | hcom_dir | hcom_team | program | seat | base | fails | next) ;;
+        *)
+            reg_error="unknown key '${key}'"
+            return 0
+            ;;
+        esac
+        if [[ ${seen} == *" ${key} "* ]]; then
+            reg_error="key '${key}' appears twice"
+            return 0
+        fi
+        seen+="${key} "
+        printf -v "reg_${key/toplevel/top}" '%s' "${value}"
+    done < "${conf}" || {
+        reg_error='unreadable'
+        return 0
+    }
+    reg_store=${reg_hcom_dir:-} reg_team=${reg_hcom_team:-}
+    for key in toplevel hcom_dir hcom_team program seat base fails next; do
+        if [[ ${seen} != *" ${key} "* ]]; then
+            reg_error="key '${key}' is missing"
+            return 0
+        fi
+    done
+    if [[ ${reg_top} != /* || ! -d ${reg_top} || ${reg_store} != /* || ! -d ${reg_store} ]]; then # lint-comparisons: allow an absolute-path prefix test, not a comparison of two paths
+        reg_error='the toplevel or the store is not an existing absolute directory'
+    elif [[ ! ${reg_team} =~ ${name_grammar} || ! ${reg_base} =~ ${name_grammar} ]]; then
+        reg_error='the team or the base name is outside the grammar'
+    elif [[ -n ${reg_program} && ! ${reg_program} =~ ${name_grammar} ]]; then
+        reg_error='the program is outside the grammar'
+    elif [[ ${reg_seat} != "orchestrator-${reg_base}" ]]; then
+        reg_error="the seat '${reg_seat}' is not orchestrator-<base>"
+    elif [[ ! ${reg_fails} =~ ^[0-9]{1,4}$ || ! ${reg_next} =~ ^[0-9]{1,12}$ ]]; then
+        reg_error='the counters are not bounded numbers'
+    elif ! slug=$(regime_slug "${reg_top}" 2> /dev/null) || ! expected=$(registration_path "${reg_top}" "${slug}"); then
+        reg_error="cannot derive the registration name of ${reg_top}"
+    elif [[ ${conf##*/} != "${expected##*/}" ]]; then
+        reg_error="the file name does not belong to the toplevel ${reg_top}"
+    elif [[ -e ${reg_store}/origin ]]; then
+        if ! recorded=$(cat "${reg_store}/origin" 2> /dev/null); then
+            reg_error="cannot read ${reg_store}/origin"
+        elif [[ ${recorded} != "${reg_top}" ]]; then # lint-comparisons: allow both are pwd -P forms (regime-init, regime_toplevel)
+            reg_error="the store ${reg_store} belongs to ${recorded}, not ${reg_top}"
+        fi
+    fi
+    return 0
 }
 
 # @description Append one timestamped line to the store's supervisor log; a log that cannot be written is said on stderr.
@@ -135,6 +256,8 @@ alive_orchestrators() {
 # @exitcode 1 hcom-seat failed, or no seat was alive within the wait.
 launch_orchestrator() {
     local top=$1 status=0 waited=0 alive=''
+    # A launch can take minutes; the lock's mtime says it is still held by a live process.
+    touch "${lock}" 2> /dev/null || true
     (cd "${top}" && "${LEVER_DIR}/hcom-seat" orchestrator) >&2 || status=$?
     # hcom's status 2 is "still launching": wait for the seat like a ready one.
     if ((status != 0 && status != 2)); then
@@ -165,56 +288,62 @@ write_registration() {
     mv -f "${temp}" "${file}"
 }
 
-if [[ ${1:-} == --supervise ]]; then
+# @description Print the backoff after the given number of failed launches: 60 s doubling, saturated at 1800 s
+#   before it can overflow (U36 F5).
+# @arg $1 int Failed launches in a row, at least 1.
+backoff_seconds() {
+    local delay=60 step=1
+    while ((step < $1 && delay < 1800)); do
+        delay=$((delay * 2))
+        step=$((step + 1))
+    done
+    ((delay <= 1800)) || delay=1800
+    printf '%s\n' "${delay}"
+}
+
+mode=start all=0
+case ${1:-} in
+--supervise)
     (($# == 1)) || refuse "${usage}"
-    supervise=1
-else
-    (($# <= 1)) || refuse "${usage}"
-    supervise=0
-fi
+    mode=supervise
+    ;;
+--stop)
+    me=regime-stop
+    case ${#}:${2:-} in
+    1:) ;;
+    2:--all) all=1 ;;
+    *) refuse 'usage: regime-stop [--all]' ;;
+    esac
+    mode=stop
+    ;;
+*) (($# <= 1)) || refuse "${usage}" ;;
+esac
 command -v hcom > /dev/null || refuse 'hcom not found on PATH'
 [[ -x ${LEVER_DIR}/hcom-seat ]] || refuse "hcom-seat is not beside this script: ${LEVER_DIR}/hcom-seat"
+[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
+# shellcheck source=scripts/orchestrator/regime-env
+. "${LEVER_DIR}/regime-env"
 
-if ((supervise)); then
-    # One pass at a time: a manual pass and the timer's must not both launch. mkdir is atomic; a lock older than
-    # ten minutes is a pass that died, so it is cleared once.
-    mkdir -p "${registry}"
-    lock=${registry}/.lock
-    if ! mkdir "${lock}" 2> /dev/null; then
-        if [[ -n $(find "${lock}" -maxdepth 0 -mmin +10 2> /dev/null) ]] && rmdir "${lock}" && mkdir "${lock}" 2> /dev/null; then
-            :
-        else
-            echo "regime-start: another supervisor pass holds ${lock}" >&2
-            exit 0
-        fi
+if [[ ${mode} == supervise ]]; then
+    # A pass that finds the lock held skips: the next one comes in 60 s.
+    if ! take_lock try; then
+        echo "regime-start: another regime-start or regime-stop holds ${lock}" >&2
+        exit 0
     fi
-    trap 'rmdir "${lock}" 2> /dev/null || true' EXIT
     now=$(date +%s)
     for conf in "${registry}"/*.conf; do
         [[ -f ${conf} ]] || continue
-        top='' store='' team='' program='' seat='' base='' fails=0 next=0 bad='' newest=''
-        while IFS= read -r line; do
-            case ${line} in
-            toplevel=/*) top=${line#toplevel=} ;;
-            hcom_dir=/*) store=${line#hcom_dir=} ;;
-            hcom_team=*) team=${line#hcom_team=} ;;
-            program=*) program=${line#program=} ;;
-            seat=*) seat=${line#seat=} ;;
-            base=*) base=${line#base=} ;;
-            fails=*) fails=${line#fails=} ;;
-            next=*) next=${line#next=} ;;
-            *) bad="unknown line '${line}'" ;;
-            esac
-        done < "${conf}" || bad='unreadable'
-        [[ ${team} =~ ${name_grammar} && -d ${top} && -d ${store} && ${fails} =~ ^[0-9]+$ && ${next} =~ ^[0-9]+$ ]] || bad=${bad:-'incomplete or invalid fields'}
-        for value in "${program}" "${seat}" "${base}"; do
-            [[ -z ${value} || ${value} =~ ${name_grammar} ]] || bad='a name outside the grammar'
-        done
-        if [[ -n ${bad} ]]; then
-            echo "regime-start: skipped ${conf}: ${bad}" >&2
-            [[ -d ${store} ]] && log_line "${store}" "skipped ${conf}: ${bad}; nothing launched"
+        newest=''
+        read_registration "${conf}"
+        if [[ -n ${reg_error} ]]; then
+            echo "regime-start: skipped ${conf}: ${reg_error}" >&2
+            if [[ ${reg_store} == /* && -d ${reg_store} ]]; then # lint-comparisons: allow an absolute-path prefix test
+                log_line "${reg_store}" "skipped ${conf}: ${reg_error}; nothing launched"
+            fi
             continue
         fi
+        top=${reg_top} store=${reg_store} team=${reg_team} program=${reg_program}
+        seat=${reg_seat} base=${reg_base} fails=$((10#${reg_fails})) next=$((10#${reg_next}))
         export HCOM_DIR=${store} HCOM_TEAM=${team}
         if ! alive=$(alive_orchestrators); then
             log_line "${store}" "hcom list failed; nothing launched"
@@ -222,42 +351,39 @@ if ((supervise)); then
         fi
         if [[ -n ${alive} ]]; then
             read -r seat base <<< "${alive%%$'\n'*}"
-            if [[ ${fails} != 0 ]] || ! grep -qx "seat=${seat}" "${conf}"; then
+            if ((fails != 0)) || [[ ${seat} != "${reg_seat}" ]]; then
                 write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" fails=0 next=0
             fi
             continue
         fi
-        if [[ -n ${base} ]]; then
-            if ! stopped=$(hcom list --stopped "${base}"); then
-                log_line "${store}" "hcom list --stopped ${base} failed; nothing launched"
-                continue
-            fi
-            # The named form ends with `Stop history (<n> events):` and one `<age>  [<reason> by:<who>]` line per event,
-            # the newest marked `(latest)` (hcom 0.7.30, measured). A stop record that cannot be read is no license.
-            newest=$(grep -m1 -E '\[[^]]+\] \(latest\)$' <<< "${stopped}" || true)
-            newest=${newest#"${newest%%[![:space:]]*}"}
-            if [[ -z ${newest} ]]; then
-                log_line "${store}" "cannot read the stop record of ${seat}; nothing launched"
-                continue
-            fi
-            if [[ ${newest} == *"[killed by:cli] (latest)" ]]; then
-                log_line "${store}" "${seat} was stopped with hcom kill; supervision of ${top} ends (registration removed)"
-                rm -f "${conf}"
-                continue
-            fi
+        if ! stopped=$(hcom list --stopped "${base}"); then
+            log_line "${store}" "hcom list --stopped ${base} failed; nothing launched"
+            continue
+        fi
+        # The named form ends with `Stop history (<n> events):` and one `<age>  [<reason> by:<who>]` line per event,
+        # the newest marked `(latest)` (hcom 0.7.30, measured). A stop record that cannot be read is no license.
+        newest=$(grep -m1 -E '\[[^]]+\] \(latest\)$' <<< "${stopped}" || true)
+        newest=${newest#"${newest%%[![:space:]]*}"}
+        if [[ -z ${newest} ]]; then
+            log_line "${store}" "cannot read the stop record of ${seat}; nothing launched"
+            continue
+        fi
+        if [[ ${newest} == *"[killed by:cli] (latest)" ]]; then
+            log_line "${store}" "${seat} was stopped with hcom kill; supervision of ${top} ends (registration removed)"
+            rm -f "${conf}"
+            continue
         fi
         if ((now < next)); then
             continue
         fi
-        log_line "${store}" "no orchestrator alive (last seat ${seat:-none}: ${newest:-no stop record}); relaunching from ${top}"
+        log_line "${store}" "no orchestrator alive (last seat ${seat}: ${newest}); relaunching from ${top}"
         if alive=$(launch_orchestrator "${top}" 2>> "${store}/supervisor.log"); then
             read -r seat base <<< "${alive}"
             log_line "${store}" "relaunched ${seat}"
             write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" fails=0 next=0
         else
-            fails=$((fails + 1))
-            delay=$((60 << (fails - 1)))
-            ((delay <= 1800)) || delay=1800
+            ((fails >= 9999)) || fails=$((fails + 1))
+            delay=$(backoff_seconds "${fails}")
             log_line "${store}" "relaunch failed (${fails} in a row); next attempt in ${delay} s"
             write_registration "${conf}" "toplevel=${top}" "hcom_dir=${store}" "hcom_team=${team}" "program=${program}" "seat=${seat}" "base=${base}" "fails=${fails}" "next=$((now + delay))"
         fi
@@ -265,29 +391,82 @@ if ((supervise)); then
     exit 0
 fi
 
+# @description Choose the store and team of this checkout when it has no registration: an explicit pair, else the
+#   dotfiles pre-move pair, else regime-env's derivation. A store whose `origin` names another checkout is refused,
+#   an explicit one included (U36 F3).
+choose_store() {
+    local legacy=${HOME}/.local/state/hcom-regime recorded
+    if [[ -z ${HCOM_DIR:-} && -z ${HCOM_TEAM:-} && ${slug} == dotfiles && ! -e ${HOME}/.local/state/hcom/dotfiles/origin && -f ${legacy}/hcom.db ]]; then
+        # The dotfiles program before its one-time store move (README "Run a program in another repository").
+        export HCOM_DIR=${legacy} HCOM_TEAM=regime
+        echo "${me}: the dotfiles program has not moved its store yet; using HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM}" >&2
+    fi
+    regime_env "${me}" || exit 2
+    [[ -d ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} does not exist; run regime-init <program> first or set an existing store"
+    [[ ${HCOM_TEAM} =~ ${name_grammar} ]] || refuse "team '${HCOM_TEAM}' is outside ${name_grammar}"
+    if [[ -e ${HCOM_DIR}/origin ]]; then
+        recorded=$(cat "${HCOM_DIR}/origin") || refuse "cannot read ${HCOM_DIR}/origin"
+        if [[ ${recorded} != "${top}" ]]; then # lint-comparisons: allow both are pwd -P forms (regime-init, regime_toplevel)
+            refuse "the store ${HCOM_DIR} belongs to ${recorded}, not ${top}"
+        fi
+    fi
+}
+
+top=$(regime_toplevel) || refuse "run ${me} inside the repository checkout"
+slug=$(regime_slug "${top}") || refuse "cannot derive a repository slug from ${top}"
+conf=$(registration_path "${top}" "${slug}") || refuse "cannot hash the toplevel ${top}"
+
+if [[ ${mode} == stop ]]; then
+    take_lock wait || refuse "another regime-start or regime-stop holds ${lock} after ${lock_wait} s; nothing changed"
+    if [[ -e ${conf} ]]; then
+        # The registered store wins: it is the one the supervisor would relaunch into.
+        read_registration "${conf}"
+        [[ -z ${reg_error} ]] || refuse "the registration ${conf} is unusable (${reg_error}); check it and remove it by hand; nothing changed"
+        if [[ ${reg_top} != "${top}" ]]; then # lint-comparisons: allow both are pwd -P forms
+            refuse "the registration ${conf} names ${reg_top}, not ${top}; nothing changed"
+        fi
+        export HCOM_DIR=${reg_store} HCOM_TEAM=${reg_team}
+    else
+        choose_store
+    fi
+    listing=$(hcom list --format '{name} {tag} {status}') || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed); nothing changed"
+    rm -f "${conf}"
+    log_line "${HCOM_DIR}" "regime-stop: supervision of ${top} ended"
+    failed=0 stopped=0
+    while read -r name tag status; do
+        [[ -n ${name} ]] || continue
+        case ${status} in active | listening | blocked) ;; *) continue ;; esac
+        ((all)) || [[ ${tag} == orchestrator ]] || continue
+        if hcom kill "${name}" --go > /dev/null; then
+            echo "regime-stop: stopped ${name}"
+            log_line "${HCOM_DIR}" "regime-stop: stopped ${name}"
+            stopped=$((stopped + 1))
+        else
+            echo "regime-stop: hcom kill ${name} failed" >&2
+            failed=1
+        fi
+    done <<< "${listing}"
+    ((stopped || failed)) || echo "regime-stop: no seat to stop in ${HCOM_DIR}; supervision ended"
+    exit "${failed}"
+fi
+
 program=${1:-}
 [[ -z ${program} || ${program} =~ ${name_grammar} ]] || refuse "program '${program}' is outside ${name_grammar}"
-[[ -r ${LEVER_DIR}/regime-env ]] || refuse "regime-env unreadable beside this script: ${LEVER_DIR}/regime-env"
-# shellcheck source=scripts/orchestrator/regime-env
-. "${LEVER_DIR}/regime-env"
-top=$(regime_toplevel) || refuse 'run regime-start inside the repository checkout'
-slug=$(regime_slug "${top}") || refuse "cannot derive a repository slug from ${top}"
-legacy=${HOME}/.local/state/hcom-regime
-if [[ -z ${HCOM_DIR:-} && -z ${HCOM_TEAM:-} && ${slug} == dotfiles && ! -e ${HOME}/.local/state/hcom/dotfiles/origin && -f ${legacy}/hcom.db ]]; then
-    # The dotfiles program before its one-time store move (README "Run a program in another repository").
-    export HCOM_DIR=${legacy} HCOM_TEAM=regime
-    echo "regime-start: the dotfiles program has not moved its store yet; using HCOM_DIR=${HCOM_DIR} HCOM_TEAM=${HCOM_TEAM}" >&2
-fi
-regime_env regime-start || exit 2
-[[ -d ${HCOM_DIR} ]] || refuse "the hcom store ${HCOM_DIR} does not exist; run regime-init <program> first or set an existing store"
-[[ ${HCOM_TEAM} =~ ${name_grammar} ]] || refuse "team '${HCOM_TEAM}' is outside ${name_grammar}"
+choose_store
 store_dir=''
 if [[ -n ${program} ]]; then
     store_dir=${top}/.orchestration/orchestrate/${program}
     [[ -d ${store_dir} ]] || refuse "no program store ${store_dir}; run regime-init ${program} first"
 fi
-conf=${registry}/${slug}.conf
-
+take_lock wait || refuse "another regime-start or regime-stop holds ${lock} after ${lock_wait} s; nothing changed"
+# This checkout's own registration is replaced only for the same store and team (U36 F3).
+if [[ -e ${conf} ]]; then
+    read_registration "${conf}"
+    [[ -z ${reg_error} ]] || refuse "the registration ${conf} is unusable (${reg_error}); check it, remove it, then run regime-start again"
+    if [[ ${reg_store} != "${HCOM_DIR}" || ${reg_team} != "${HCOM_TEAM}" ]]; then # lint-comparisons: allow both are the absolute store paths regime-start wrote
+        refuse "this checkout is registered on the store ${reg_store} and team ${reg_team}; run regime-stop first to move it to ${HCOM_DIR} and ${HCOM_TEAM}"
+    fi
+fi
 alive=$(alive_orchestrators) || refuse "cannot read the seats of ${HCOM_DIR} (hcom list failed)"
 if [[ -n ${alive} ]]; then
     read -r seat base <<< "${alive%%$'\n'*}"

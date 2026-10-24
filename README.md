@@ -644,23 +644,32 @@ session is optional and not part of the loop.
    the orchestrator; `regime-stop --all` also stops the workers and the audit
    seat. Their worktrees and branches stay, and `regime-start` starts again.
 
-The supervisor keeps the orchestrator alive. Enable it once per host; it is
-off until you do:
+The supervisor keeps the orchestrator alive. It ships disabled, and enabling it
+is a host-wide choice that persists across logins and reboots until you
+disable it:
 
-- macOS:
-  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist`;
-  disable with
-  `launchctl bootout gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`.
-- Linux:
-  `systemctl --user daemon-reload && systemctl --user enable --now regime-supervisor.timer`;
-  disable with `systemctl --user disable --now regime-supervisor.timer`.
+- macOS, enable:
+  `launchctl enable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, then
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mryfmo.dotfiles.regime-supervisor.plist`
+  to start it now. The plist carries `Disabled`, so launchd skips it at login
+  until `launchctl enable` records the override, which launchd keeps across
+  logins and boots.
+- macOS, disable:
+  `launchctl bootout gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, then
+  `launchctl disable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor`, so it
+  does not come back at the next login.
+- Linux, enable:
+  `systemctl --user daemon-reload && systemctl --user enable --now regime-supervisor.timer`.
+  `make update` installs the unit files and never enables them.
+- Linux, disable: `systemctl --user disable --now regime-supervisor.timer`.
 
-It runs `regime-start --supervise` at login and every 60 seconds. A program
+It runs `regime-start --supervise` at login and every 60 seconds. A checkout
 that `regime-start` registered and whose orchestrator died (a crash or a herdr
 restart) gets a new one, at most once per backoff window (60 seconds, doubling
 to 30 minutes after each failed launch); one stopped with `regime-stop` or
-`hcom kill` is left stopped. Each decision is a line in `<store>/supervisor.log`
-(`docs/orchestrator-seat.md`, "The supervisor").
+`hcom kill` is left stopped. `regime-start`, `regime-stop` and the pass take one
+lock, so a stop never races a relaunch. Each decision is a line in
+`<store>/supervisor.log` (`docs/orchestrator-seat.md`, "The supervisor").
 
 ### agmsg
 

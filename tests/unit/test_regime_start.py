@@ -7,6 +7,7 @@ scratch git repository; the store is an explicit scratch directory unless a test
 seat or reads the real `~/.local/state`.
 """
 
+import hashlib
 import json
 import os
 import plistlib
@@ -71,7 +72,21 @@ class RegimeStartTest(unittest.TestCase):
         }
         self.git("init", "-q")
         self.git("commit", "-q", "--allow-empty", "-m", "init")
-        self.conf = self.home / ".local/state/regime-supervisor/pilot.conf"
+        self.registry = self.home / ".local/state/regime-supervisor"
+        self.conf = self.conf_of(self.repo)
+
+    def conf_of(self, toplevel, slug="pilot"):
+        """The checkout's registration: `<slug>-<first 12 hex of sha256(toplevel)>.conf` (U36 F3)."""
+        return self.registry / f"{slug}-{hashlib.sha256(str(toplevel).encode()).hexdigest()[:12]}.conf"
+
+    def make_repo(self, path):
+        path.mkdir(parents=True)
+        self.git("init", "-q", cwd=path)
+        self.git("commit", "-q", "--allow-empty", "-m", "init", cwd=path)
+        return path
+
+    def kills(self):
+        return [call for call in self.hcom()["calls"] if call["argv"][:1] == ["kill"]]
 
     def git(self, *args, cwd=None):
         subprocess.run(["git", *args], cwd=cwd or self.repo, env=self.env, check=True, capture_output=True)
@@ -216,17 +231,6 @@ class RegimeStartTest(unittest.TestCase):
         refused = self.run_lever(START, FAKE_LIST_FAILS="1")
         self.assertEqual(refused.returncode, 2)
         self.assertIn("hcom list failed", refused.stderr)
-        good = self.conf.read_text()
-        for bad in (
-            good.replace("hcom_team=pilot", "hcom_team=Bad Team"),
-            good + "exec=evil\n",
-            good.replace("fails=0", "fails=x"),
-        ):
-            with self.subTest(bad=bad.splitlines()[-1]):
-                self.conf.write_text(bad)
-                run = self.run_lever(START, "--supervise", cwd=self.temp)
-                self.assertEqual(run.returncode, 0)
-                self.assertIn(f"skipped {self.conf}", run.stderr)
         self.assertEqual(len(self.launches()), launches)
 
     def test_a_seat_that_never_comes_alive_is_a_failure(self):
@@ -250,12 +254,164 @@ class RegimeStartTest(unittest.TestCase):
         (launch,) = self.launches()
         self.assertEqual((launch["HCOM_DIR"], launch["HCOM_TEAM"]), (str(legacy), "regime"))
         self.assertEqual(launch["argv"][-2:], ["--hcom-team", "regime"])
-        conf = dict(
-            line.split("=", 1)
-            for line in (self.home / ".local/state/regime-supervisor/dotfiles.conf").read_text().splitlines()
-        )
+        conf = dict(line.split("=", 1) for line in self.conf_of(repo, "dotfiles").read_text().splitlines())
         self.assertEqual((conf["hcom_dir"], conf["hcom_team"]), (str(legacy), "regime"))
         self.assertIn("regime-start launched", self.log(legacy))
+
+    def test_a_registration_must_hold_every_key_once_or_nothing_launches(self):
+        """U36 F4: a missing, repeated, unknown or empty key, a truncated file or a seat that is not
+        `orchestrator-<base>` is skipped and logged; it never launches and never skips the stop record."""
+        self.assertEqual(self.run_lever(START).returncode, 0)
+        kill = subprocess.run(["hcom", "kill", "orchestrator-rafa", "--go"], env=self.env, check=False)
+        self.assertEqual(kill.returncode, 0)
+        good = self.conf.read_text()
+        lines = good.splitlines()
+        cases = {
+            "base missing": "\n".join(line for line in lines if not line.startswith("base=")) + "\n",
+            "seat missing": "\n".join(line for line in lines if not line.startswith("seat=")) + "\n",
+            "truncated": "\n".join(lines[:3]) + "\n",
+            "truncated mid-line": good[: good.index("base=") + 3],
+            "empty": "",
+            "empty base": good.replace("base=rafa", "base="),
+            "repeated key": good + "base=zulu\n",
+            "unknown key": good + "exec=evil\n",
+            "a line without a key": good + "rafa\n",
+            "seat not orchestrator-<base>": good.replace("seat=orchestrator-rafa", "seat=orchestrator-zulu"),
+            "bad team": good.replace("hcom_team=pilot", "hcom_team=Bad Team"),
+            "unbounded counter": good.replace("fails=0", "fails=99999"),
+            "not a number": good.replace("next=0", "next=x"),
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                self.conf.write_text(text)
+                run = self.run_lever(START, "--supervise", cwd=self.temp)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(f"skipped {self.conf}: ", run.stderr)
+                self.assertEqual(self.conf.read_text(), text, "an unusable registration is never removed or rewritten")
+                stop = self.run_lever(STOP)
+                self.assertEqual(stop.returncode, 2, stop.stdout)
+                self.assertIn("is unusable", stop.stderr)
+        self.assertEqual(len(self.launches()), 1, "nothing relaunched the seat stopped with hcom kill")
+        self.assertEqual(len(self.kills()), 1, "a stop from an unusable registration kills nothing")
+
+    def test_two_checkouts_with_one_basename_keep_separate_registrations(self):
+        """U36 F3: a registration belongs to one canonical toplevel; stop and start never adopt another's."""
+        other = self.make_repo(self.temp / "elsewhere/pilot")
+        other_store = self.temp / "other-store"
+        other_store.mkdir()
+        self.assertEqual(self.run_lever(START).returncode, 0)
+        run = self.run_lever(START, cwd=other, HCOM_DIR=str(other_store))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotEqual(self.conf, self.conf_of(other))
+        self.assertEqual(
+            sorted(path.name for path in self.registry.glob("*.conf")),
+            sorted([self.conf.name, self.conf_of(other).name]),
+        )
+        # Stopping the second checkout stops only its seat and its registration.
+        stop = self.run_lever(STOP, cwd=other, HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(stop.returncode, 0, stop.stderr)
+        self.assertEqual(
+            [(call["argv"][1], call["HCOM_DIR"]) for call in self.kills()], [("orchestrator-zulu", str(other_store))]
+        )
+        self.assertTrue(self.conf.exists())
+        self.assertFalse(self.conf_of(other).exists())
+        # A registration copied under another checkout's name is refused, not adopted.
+        shutil.copy(self.conf, self.conf_of(other))
+        forged = self.run_lever(STOP, cwd=other, HCOM_DIR=None, HCOM_TEAM=None)
+        self.assertEqual(forged.returncode, 2)
+        self.assertIn("the file name does not belong to the toplevel", forged.stderr)
+        self.assertEqual(len(self.kills()), 1)
+        self.conf_of(other).unlink()
+        # A registered checkout cannot be moved to another store or team without regime-stop.
+        moved = self.run_lever(START, HCOM_DIR=str(other_store))
+        self.assertEqual(moved.returncode, 2)
+        self.assertIn("run regime-stop first", moved.stderr)
+        self.assertIn(f"hcom_dir={self.store}", self.conf.read_text())
+        # A store whose origin names another checkout is refused, an explicit store included.
+        (other_store / "origin").write_text(f"{other}\n")
+        for lever in (START, STOP):
+            with self.subTest(lever=lever.name):
+                third = self.make_repo(self.temp / f"third-{lever.name}/pilot")
+                refused = self.run_lever(lever, cwd=third, HCOM_DIR=str(other_store))
+                self.assertEqual(refused.returncode, 2)
+                self.assertIn(f"the store {other_store} belongs to {other}", refused.stderr)
+        (self.store / "origin").write_text(f"{other}\n")
+        self.crash()
+        launches = len(self.launches())
+        skipped = self.run_lever(START, "--supervise", cwd=self.temp)
+        self.assertIn(f"the store {self.store} belongs to {other}", skipped.stderr)
+        self.assertEqual(len(self.launches()), launches)
+
+    def test_stop_waits_for_a_relaunch_in_flight_and_wins(self):
+        """U36 F2: start, stop and the pass share one lock, so a stop during a paused relaunch runs after it."""
+        self.assertEqual(self.run_lever(START).returncode, 0)
+        self.crash()
+        pause = self.temp / "release"
+        supervise = subprocess.Popen(
+            [str(START), "--supervise"], cwd=self.temp, env={**self.env, "FAKE_LAUNCH_PAUSE": str(pause)},
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )  # fmt: skip
+        self.addCleanup(supervise.kill)
+        started = Path(f"{pause}.started")
+        for _ in range(300):
+            if started.exists():
+                break
+            time.sleep(0.1)
+        self.assertTrue(started.exists(), "the pass reached its launch")
+        stop = subprocess.Popen(
+            [str(STOP)], cwd=self.repo, env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        self.addCleanup(stop.kill)
+        time.sleep(1.5)
+        self.assertIsNone(stop.poll(), "regime-stop waits for the lock the paused pass holds")
+        pause.touch()
+        self.assertEqual(supervise.wait(60), 0, supervise.communicate()[1])
+        out, err = stop.communicate(timeout=60)
+        self.assertEqual(stop.returncode, 0, err)
+        self.assertEqual(out, "regime-stop: stopped orchestrator-zulu\n", "the stop sees and stops the relaunched seat")
+        self.assertFalse(self.conf.exists(), "the pass's rewrite does not survive the stop")
+        self.assertEqual(self.hcom()["alive"], [])
+        self.assertEqual(self.run_lever(START, "--supervise", cwd=self.temp).returncode, 0)
+        self.assertEqual(len(self.launches()), 2, "nothing relaunched after the stop")
+
+    def test_a_lock_held_too_long_refuses_start_and_stop_and_a_pass_skips(self):
+        self.registry.mkdir(parents=True)
+        (self.registry / ".lock").mkdir()
+        for lever in (START, STOP):
+            with self.subTest(lever=lever.name):
+                run = self.run_lever(lever, REGIME_LOCK_WAIT_SECONDS="1")
+                self.assertEqual(run.returncode, 2)
+                self.assertIn("holds", run.stderr)
+                self.assertIn("nothing changed", run.stderr)
+        run = self.run_lever(START, "--supervise", cwd=self.temp)
+        self.assertEqual(run.returncode, 0)
+        self.assertEqual(self.launches(), [])
+        self.assertTrue((self.registry / ".lock").is_dir(), "a fresh lock is never broken")
+        old = time.time() - 11 * 60
+        os.utime(self.registry / ".lock", (old, old))
+        run = self.run_lever(START)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse((self.registry / ".lock").exists(), "a lock older than ten minutes is cleared, then released")
+
+    def test_the_backoff_saturates_and_the_counter_is_bounded(self):
+        """U36 F5: the delay is computed by saturated doubling, never by a shift that overflows."""
+        self.assertEqual(self.run_lever(START).returncode, 0)
+        self.crash()
+        good = self.conf.read_text()
+        for fails, expected, delay in (
+            ("0", "1", 60), ("1", "2", 120), ("4", "5", 960), ("5", "6", 1800), ("59", "60", 1800),
+            ("63", "64", 1800), ("9998", "9999", 1800), ("9999", "9999", 1800),
+        ):  # fmt: skip
+            with self.subTest(fails=fails):
+                self.conf.write_text(good.replace("fails=0", f"fails={fails}"))
+                before = int(time.time())
+                run = self.run_lever(START, "--supervise", cwd=self.temp, FAKE_LAUNCH_FAILS="1")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                registration = dict(line.split("=", 1) for line in self.conf.read_text().splitlines())
+                self.assertEqual(registration["fails"], expected)
+                self.assertGreaterEqual(int(registration["next"]), before + delay)
+                self.assertLessEqual(int(registration["next"]), int(time.time()) + delay)
+                self.assertIn(f"relaunch failed ({expected} in a row); next attempt in {delay} s", self.log())
 
 
 def render(path, os_name):
@@ -279,6 +435,9 @@ class SupervisorDefinitionTest(unittest.TestCase):
         self.assertEqual(plist["ProgramArguments"], command)
         self.assertTrue(plist["RunAtLoad"])
         self.assertEqual((plist["StandardOutPath"], plist["StandardErrorPath"]), ("/dev/null", "/dev/null"))
+        # U36 F1: launchd loads ~/Library/LaunchAgents at every login, so the job ships disabled; only the
+        # operator's `launchctl enable` override, which launchd keeps across logins and boots, loads it.
+        self.assertIs(plist["Disabled"], True)
         service = render(SERVICE, "linux").splitlines()
         timer = render(TIMER, "linux").splitlines()
         self.assertIn(f"ExecStart={' '.join(command)}", service)
@@ -290,6 +449,32 @@ class SupervisorDefinitionTest(unittest.TestCase):
         ignore = ROOT / "home/.chezmoitemplates/chezmoiignore.d"
         self.assertIn("Library", (ignore / "ubuntu/common").read_text().splitlines())
         self.assertIn(".config/systemd", (ignore / "macos").read_text().splitlines())
+
+    def test_nothing_enables_the_supervisor_but_the_operator(self):
+        """U36 F1: no managed file links the timer into timers.target.wants or runs launchctl or systemctl for the
+        supervisor, so a fresh login on a fresh host starts none; the README carries the persistent commands."""
+        self.assertEqual(list((ROOT / "home").rglob("*.wants")), [])
+        hits = []
+        for root in (
+            ROOT / "home/.chezmoiscripts",
+            ROOT / "install",
+            ROOT / "scripts",
+            ROOT / "Makefile",
+            ROOT / "setup.sh",
+        ):
+            for path in [root] if root.is_file() else [path for path in root.rglob("*") if path.is_file()]:
+                text = path.read_text(errors="replace")
+                if "regime-supervisor" in text and ("launchctl" in text or "systemctl" in text):
+                    hits.append(str(path.relative_to(ROOT)))
+        self.assertEqual(hits, [])
+        readme = (ROOT / "README.md").read_text()
+        for command in (
+            "launchctl enable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor",
+            "launchctl disable gui/$(id -u)/com.mryfmo.dotfiles.regime-supervisor",
+            "systemctl --user enable --now regime-supervisor.timer",
+            "systemctl --user disable --now regime-supervisor.timer",
+        ):
+            self.assertIn(command, readme)
 
 
 if __name__ == "__main__":

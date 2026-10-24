@@ -4,8 +4,6 @@
   "effortLevel": "xhigh",
   "advisorModel": "fable",
   "alwaysThinkingEnabled": true,
-  "autoUpdates": false,
-  "autoUpdatesChannel": "stable",
   "plansDirectory": "./.agents/worklog/claude",
   "permissions": {
     "allow": [

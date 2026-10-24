@@ -103,8 +103,6 @@ def sample_manifest() -> dict:
             "mcp_config_path": "home/dot_claude/private_mcp.json.tmpl",
             "schema": "https://json.schemastore.org/claude-code-settings.json",
             "alwaysThinkingEnabled": True,
-            "autoUpdates": False,
-            "autoUpdatesChannel": "stable",
             "plansDirectory": "./.agents/worklog/claude",
             "permissions": {"deny": [], "defaultMode": "plan", "ask": []},
             "hooks": {
@@ -1528,6 +1526,35 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(table["matcher"], "*")
                 self.assertEqual(handler["command"], "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify")
                 self.assertEqual(handler["timeout"], timeout)
+
+    def test_managed_claude_settings_name_no_update_channel(self) -> None:
+        """mise is the only version channel: no release channel and no dead `autoUpdates` key (regime-cutover U18)."""
+        claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
+        self.assertNotIn("autoUpdatesChannel", claude)
+        self.assertNotIn("autoUpdates", claude)
+
+    def test_login_environments_block_every_claude_update_path(self) -> None:
+        """Sourcing each managed login file exports DISABLE_UPDATES and DISABLE_AUTOUPDATER (regime-cutover U18)."""
+        home = self.temp_dir / "home"
+        home.mkdir()
+        env = {"PATH": os.environ["PATH"], "HOME": str(home)}
+        probe = 'printf "%s %s" "${DISABLE_UPDATES:-unset}" "${DISABLE_AUTOUPDATER:-unset}"'
+        for shell, source in (
+            ("zsh", ROOT / "home/dot_zshenv"),  # every zsh, client login shell and server bashrc's exec zsh
+            ("bash", ROOT / "home/dot_profile"),  # ~/.profile, read by the server's bash login shell
+        ):
+            if not shutil.which(shell):
+                self.fail(f"{shell} is required to source {source}")
+            with self.subTest(file=source.name):
+                result = subprocess.run(
+                    [shell, "-c", f'. "{source}" > /dev/null 2>&1; {probe}'],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                self.assertEqual(result.stdout, "1 1", result.stderr)
 
     def test_managed_claude_sandbox_confines_agmsg_dispatch(self) -> None:
         claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())

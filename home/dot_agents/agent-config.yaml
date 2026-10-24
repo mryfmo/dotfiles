@@ -216,8 +216,12 @@ claude:
   # No effect on Fable 5 (thinking cannot be disabled there); applies when the
   # interactive profile maps to Sonnet or below.
   alwaysThinkingEnabled: true
-  autoUpdates: false
-  autoUpdatesChannel: stable
+  # No update keys (regime-cutover U18): mise's `npm:@anthropic-ai/claude-code`
+  # entry is the only version channel, and DISABLE_UPDATES/DISABLE_AUTOUPDATER in
+  # home/dot_zshenv and home/dot_profile block Claude Code's own updater.
+  # `autoUpdatesChannel` would name a channel the mise install never follows,
+  # and `autoUpdates` is not a settings key (`{"autoUpdates": false}` alone:
+  # `claude doctor` 2.1.309 reports `Auto-updates: enabled`).
   plansDirectory: ./.agents/worklog/claude
   disableSkillShellExecution: true
   includeGitInstructions: true

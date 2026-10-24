@@ -1,3 +1,6 @@
+# Claude Code's updater stays blocked (manual `claude update` too) so mise is the only version channel.
+export DISABLE_AUTOUPDATER=1
+export DISABLE_UPDATES=1
 export PATH="$PATH:$HOME/.local/bin"
 eval "$(mise activate bash --shims)"
 

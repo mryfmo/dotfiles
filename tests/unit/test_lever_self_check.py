@@ -24,6 +24,13 @@ LEVERS = (
     "seat-login-preflight",
     "regime-start",
     "regime-stop",
+    "pr-thread-reply.sh",
+    "pr-thread-resolve.sh",
+    "pr-update-branch.sh",
+    "pr-close.sh",
+    "pr-body-edit.sh",
+    "pr-threads-check.sh",
+    "records-sync.sh",
 )
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 

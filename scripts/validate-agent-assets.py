@@ -414,6 +414,58 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
             fail(f"{label}.allow rule {rule!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
+# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is the audited squash
+# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *`,
+# `~/.local/bin/common/<lever> --<flag> *` or the exact bare `~/.local/bin/common/<lever>` (U28b F3), held to the same
+# lever checks as a Claude allow rule. audit.yml keeps its read-only allows under `always-ask`;
+# tests/unit/test_omp_seat_policy.py holds its decision table.
+OMP_WRITING_POLICIES = ("orchestrator", "worker")
+OMP_MERGE_ALLOW = "gh pr merge * --squash --match-head-commit *"
+OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
+OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
+
+
+def validate_omp_policy_allow(
+    policy: Any, label: str, pinned: Iterable[str] | None = None, merge: bool = False
+) -> None:
+    patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
+    if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
+        fail(f"{label} bash.patterns must be a list of rules")
+    for rule in patterns:
+        if rule.get("approval") != "allow":
+            continue
+        match = rule.get("match")
+        if merge and match == OMP_MERGE_ALLOW:
+            continue
+        if not isinstance(match, str):
+            fail(f"{label} allow rule {match!r} is not a string")
+        if OMP_CHECKOUT_LEVER.match(match):
+            fail(
+                f"{label} allow rule {match!r} names a lever inside the rewritable checkout; "
+                f"name the installed copy, {LEVER_INSTALL_PREFIX}<lever> * (regime-cutover U28)"
+            )
+        lever = OMP_LEVER_ALLOW.fullmatch(match)
+        if not lever:
+            merge_form = f"{OMP_MERGE_ALLOW!r} or " if merge else ""
+            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
+        reason = lever_refusal(lever.group(1))
+        if reason:
+            fail(f"{label} allow rule {match!r}: scripts/orchestrator/{lever.group(1)} {reason}")
+        if pinned is not None and lever.group(1) not in pinned:
+            fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
+
+
+def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
+    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    if policies is None and yaml is None:
+        fail("PyYAML is required to read the omp seat policies")
+    pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
+    for role in OMP_WRITING_POLICIES:
+        path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
+        policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
+        validate_omp_policy_allow(policy, str(path), pinned, merge=role == "orchestrator")
+
+
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
 # in Edit/Read rules will be ignored"); a trailing `/**` is the directory form and is enforced. Only the `.env` pair
 # keeps its glob, because `sandbox.filesystem.denyRead` covers it for subprocesses (regime-cutover U17).
@@ -1594,6 +1646,7 @@ def main() -> None:
     validate_claude_skill_parity()
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
+    validate_omp_policies(manifest)
     validate_repo_claude_settings_portable()
     validate_compactiondb_project_copy()
     validate_codex_plugins()

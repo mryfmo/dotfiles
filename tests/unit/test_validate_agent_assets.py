@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture
+from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
 
 sys.dont_write_bytecode = True
 
@@ -1091,6 +1091,68 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(manifest)
                 )
                 self.module.validate_claude_settings(manifest, os_name)
+
+    def test_the_omp_writing_seats_allow_only_the_merge_and_installed_levers(self) -> None:
+        """U28: the committed orchestrator.yml and worker.yml pass; every other allow form is refused."""
+        self.module.ROOT = ROOT
+        manifest = load_manifest_fixture(self.temp_dir)
+        # The overlays parsed by chezmoi's fromYaml, as load_manifest_fixture parses the manifest: `make unit-test`
+        # gives the test process no PyYAML, and without it validate_omp_policies refuses to read the files.
+        policies = {
+            role: render_claude_template(
+                "{{ fromYaml "
+                + json.dumps((ROOT / f"home/dot_agents/omp/policies/{role}.yml").read_text())
+                + " | toJson }}",
+                self.temp_dir,
+            )
+            for role in self.module.OMP_WRITING_POLICIES
+        }
+        self.module.validate_omp_policies(manifest, policies)
+        if self.module.yaml is None:
+            with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                self.module.validate_omp_policies(manifest)
+            self.assertIn("PyYAML is required", stderr.getvalue())
+        self.module.ROOT = self.temp_dir
+        self.write_levers("pr-close.sh", "python3")
+        pinned = {"pr-close.sh": "0" * 64, "python3": "0" * 64}
+
+        def policy(*matches: str) -> dict:
+            return {"bash": {"patterns": [{"match": match, "approval": "allow"} for match in matches]}}
+
+        merge = "gh pr merge * --squash --match-head-commit *"
+        installed = "~/.local/bin/common/pr-close.sh --from-table *"
+        self.module.validate_omp_policy_allow(policy(merge, installed), "orchestrator.yml", pinned, merge=True)
+        self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh *"), "worker.yml", pinned)
+        # U28b F3: the exact bare form of a lever that acts without arguments.
+        self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh"), "orchestrator.yml", pinned)
+        cases = {
+            (merge, False): "is not ~/.local/bin/common/<lever>",
+            ("gh pr close *", True): "is not 'gh pr merge",
+            ("gh api *", True): "is not 'gh pr merge",
+            ("*", True): "is not 'gh pr merge",
+            ("bash *", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh x", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh*", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh --from-table x *", True): "is not 'gh pr merge",
+            ("~/.local/bin/common/pr-close.sh * && *", True): "is not 'gh pr merge",
+            ("/Users/x/.local/bin/common/pr-close.sh *", True): "is not 'gh pr merge",
+            ("scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
+            ("./scripts/orchestrator/pr-close.sh --from-table *", True): "names a lever inside the rewritable checkout",
+            ("*scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
+            ("~/.local/bin/common/absent.sh *", True): "absent.sh is not a regular file",
+            ("~/.local/bin/common/python3 *", True): "python3 is named as an interpreter",
+        }
+        for (match, merge_allowed), message in cases.items():
+            with self.subTest(rejects=match, merge=merge_allowed):
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned, merge=merge_allowed)
+                self.assertIn(message, stderr.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_omp_policy_allow(policy(installed), "seat.yml", {})
+        self.assertIn("no claude.levers.sha256 pin for pr-close.sh", stderr.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_omp_policy_allow({"bash": {"patterns": "x"}}, "seat.yml", pinned)
+        self.assertIn("bash.patterns must be a list of rules", stderr.getvalue())
 
     def test_claude_sandbox_requires_the_ssh_credential_deny_and_home_or_absolute_deny_read(self) -> None:
         cases = {

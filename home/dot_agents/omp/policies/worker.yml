@@ -18,6 +18,29 @@ tools:
     task: deny
 bash:
   patterns:
+    # The worker's one GitHub-write lever (U28, scripts/orchestrator/README.md "Seat levers for GitHub writes"): the
+    # body of its own branch's pull request, by the read-only copy chezmoi installs, as one simple command; the deny
+    # after it catches every other spelling with arguments and the lever chained to anything.
+    - match: "~/.local/bin/common/pr-body-edit.sh --body-file *"
+      approval: allow
+    - match: "*pr-body-edit.sh *"
+      approval: deny
+    # The orchestrator's levers. Only the name followed by a space is denied, so a worker still edits, tests and lints
+    # them as long as such a command names the file last (or names its directory).
+    - match: "*pr-thread-reply.sh *"
+      approval: deny
+    - match: "*pr-thread-resolve.sh *"
+      approval: deny
+    - match: "*pr-update-branch.sh *"
+      approval: deny
+    - match: "*pr-close.sh *"
+      approval: deny
+    - match: "*records-sync.sh *"
+      approval: deny
+    # records-sync.sh acts with no arguments too (U28b F3), so its bare name is denied as well; a worker that edits
+    # it names its directory (`git add scripts/orchestrator`, `shellcheck scripts/orchestrator/*`), never the file.
+    - match: "*records-sync.sh"
+      approval: deny
     - match: "*sudo *"
       approval: deny
     - match: "*rm -rf *"

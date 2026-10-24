@@ -34,7 +34,7 @@ function agentDb(profile: string, rows: Array<[string, string | null]>): string 
 }
 
 function run(profile: string) {
-	return Bun.spawnSync(["bun", SCRIPT, "--profile", profile], { env: { ...process.env, HOME: home } });
+	return Bun.spawnSync([process.execPath, SCRIPT, "--profile", profile], { env: { ...process.env, HOME: home } });
 }
 
 test("only active openai-siwc logins count", () => {

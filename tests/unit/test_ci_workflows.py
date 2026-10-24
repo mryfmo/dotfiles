@@ -321,7 +321,10 @@ class TypeScriptTestsStepTest(unittest.TestCase):
         self.assertIn("set -euo pipefail\n", step)
         self.assertIn('mise -C "${RUNNER_TEMP}/statusline-mise" install bun\n', step)
         self.assertIn(f"for tests in {' '.join(self.DIRECTORIES)}; do\n", step)
-        self.assertIn('"${bun_bin}" test "./${tests}"\n', step)
+        # ADDENDUM 3: the suites and anything they spawn get the same bun, never mise's unresolvable shim.
+        bun_lines = [line.strip() for line in step.splitlines() if '"${bun_bin}" test' in line]
+        self.assertEqual(['PATH="${bun_bin_dir}:${PATH}" "${bun_bin}" test "./${tests}"'], bun_lines)
+        self.assertIn('printf \'%s\\n\' "${bun_bin_dir}" >> "${GITHUB_PATH}"\n', step)
         # requests.test.ts imports the installed omp: the repository's own pinned, checksum-verified installer puts
         # it in a scratch HOME, and a missing package fails the step before bun runs.
         self.assertIn("bash -c 'source ./scripts/update-agent-assets.sh && update_omp'\n", step)

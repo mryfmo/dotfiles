@@ -37,3 +37,6 @@ Per STANDING 12 plus the threat table and the RESULT line.
 
 STANDING
 `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (lines 20 and 21).
+
+ADDENDUM (orchestrator-sari, 2026-10-24T06:3xZ): files shared with U36
+U36 (lane B, `feat/omp-first-operation`, in flight at the same time) adds a step 0 and one intro sentence to `home/dot_agents/skills/hcom-orchestration/SKILL.md`, a README section "Start here: the omp seats", and a supervisor paragraph to `docs/orchestrator-seat.md`. This unit owns the lever names in the three skills, the environment table of `docs/orchestrator-seat.md` and the README section "Run a program in another repository", and does not edit U36's sections. Before the RESULT line, `git fetch origin` and `git merge origin/main` into your own branch when `origin/main` moved since you branched, re-run the tests, and paste the merge line in the report; the orchestrator refuses a RESULT whose PR is behind `main` on a shared file.

@@ -31,3 +31,7 @@ Per STANDING 12 plus the RESULT line.
 
 STANDING
 `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (lines 20 and 21).
+
+ADDENDUM (orchestrator-sari, 2026-10-24T07:01:41Z): SCOPE extension for the crit rule (worker question row 2367, option A)
+Deleting `home/dot_config/claude/rules/crit-review.md` breaks two checks outside the SCOPE: `scripts/validate-agent-assets.py:465-467` (`crit_rule = ROOT / "home/dot_config/claude/rules/crit-review.md"` … `fail("Claude Code Crit review rule must require /crit")`) and `tests/install/common/lifecycle.bats:328,330,332,335,337` (five `grep` lines on that file). Both are in SCOPE now, for exactly those lines: drop the three-line check from the validator and the five bats lines. Keep `lifecycle.bats:327` and the `make require-crit-review` sentence in `home/dot_config/codex/AGENTS.md` (U26 retires the gate script, the Makefile target and those lines together). `scripts/validate-agent-assets.py` is also edited by U31 (landing first) and U26 (after U31, on another seat): before the RESULT, `git fetch origin` and `git merge origin/main` into your own branch when `origin/main` moved, re-run the tests and paste the merge line. ACCEPTANCE 2, 3 and 4 stand as written.
+Follow-up (orchestrator-sari, 2026-10-24T07:1xZ, worker row 2465): deleting `validate-agent-assets.py:466` leaves row 72 of `scripts/lint-comparisons-baseline.tsv` stale (its sha256 `11097b8b` is that line's), which fails `test_lint_comparisons`; that one row is in SCOPE and is deleted, nothing else in the file.

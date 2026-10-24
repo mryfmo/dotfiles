@@ -203,7 +203,6 @@ class AssetManifestTest(unittest.TestCase):
         updater = UPDATER.read_text()
         steps = (
             "ensure_crit_cli",
-            "update_agmsg",
             "ensure_herdr_integrations",
             "update_claude_superpowers",
             "update_claude_crit",
@@ -221,7 +220,7 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(18, updater.count('manifest_record "'))
+        self.assertEqual(17, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),

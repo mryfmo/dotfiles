@@ -63,7 +63,7 @@ class CodexConfigMergeTest(unittest.TestCase):
         output = self.merge(
             """
             [sandbox_workspace_write]
-            writable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
+            writable_roots = ["{{ .chezmoi.homeDir }}/.cache/codex-root"]
 
             [mcp_servers.filesystem_dotfiles]
             args = ["-y", "server", "{{ .chezmoi.sourceDir }}"]
@@ -74,7 +74,7 @@ class CodexConfigMergeTest(unittest.TestCase):
         data = tomllib.loads(output)
         self.assertEqual(
             data["sandbox_workspace_write"]["writable_roots"],
-            [str(self.source_dir / "target-home/.agents/skills/agmsg/db")],
+            [str(self.source_dir / "target-home/.cache/codex-root")],
         )
         self.assertEqual(
             data["mcp_servers"]["filesystem_dotfiles"]["args"],

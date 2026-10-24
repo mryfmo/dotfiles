@@ -60,14 +60,14 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
 
     def test_executable_prefix_is_compared_against_deployed_name(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
+        self.write_source("example/scripts/executable_send.sh")
+        self.write_target("example/scripts/send.sh", executable=True)
 
         self.assertEqual(self.compare(), [])
 
     def test_executable_prefix_requires_deployed_execute_bit(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        target = self.write_target("agmsg/scripts/send.sh")
+        self.write_source("example/scripts/executable_send.sh")
+        target = self.write_target("example/scripts/send.sh")
 
         self.assertEqual(self.compare(), [f"skills is not executable: {target}"])
 
@@ -77,52 +77,16 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(self.compare(), [])
 
-    def test_agmsg_runtime_paths_are_ignored_on_both_sides(self) -> None:
-        self.write_source("agmsg/db/.keep")
-        self.write_source("agmsg/run/.keep")
-        self.write_source("agmsg/teams/.keep")
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/.agmsg", "marker\n")
-        self.write_target("agmsg/db/config.yaml", "runtime\n")
-        self.write_target("agmsg/db/messages.db", "runtime\n")
-        self.write_target("agmsg/run/.lastcheck-worker", "runtime\n")
-        self.write_target("agmsg/teams/example/config.json", "runtime\n")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
-
-        self.assertEqual(self.compare(), [])
-
-    def test_agmsg_separate_store_prefix_is_ignored(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
-        self.write_target("agmsg/db-flue-pi/messages.db", "runtime\n")
-
-        self.assertEqual(self.compare(), [])
-
-    def test_only_exact_agmsg_root_legacy_database_names_are_ignored(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
-        for name in ("messages.db", "messages.db-wal", "messages.db-shm"):
-            self.write_target(f"agmsg/{name}", "runtime\n")
-
-        self.assertEqual(self.compare(), [])
-
-        self.write_target("agmsg/messages.db.backup", "unexpected\n")
-
-        self.assertEqual(
-            self.compare(),
-            ["skills has unexpected files: agmsg/messages.db.backup"],
-        )
-
     def test_unexpected_non_runtime_file_still_fails(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
-        self.write_target("agmsg/extra.txt")
+        self.write_source("example/scripts/executable_send.sh")
+        self.write_target("example/scripts/send.sh", executable=True)
+        self.write_target("example/extra.txt")
 
-        self.assertEqual(self.compare(), ["skills has unexpected files: agmsg/extra.txt"])
+        self.assertEqual(self.compare(), ["skills has unexpected files: example/extra.txt"])
 
     def test_unmanaged_top_level_skill_dir_warns(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
+        self.write_source("example/scripts/executable_send.sh")
+        self.write_target("example/scripts/send.sh", executable=True)
         self.write_target("crit/SKILL.md")
 
         self.assertEqual(
@@ -133,18 +97,18 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode(
         self,
     ) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
-        self.write_target("agmsg/extra.txt")
+        self.write_source("example/scripts/executable_send.sh")
+        self.write_target("example/scripts/send.sh", executable=True)
+        self.write_target("example/extra.txt")
 
         self.assertEqual(
             self.compare(warn_unmanaged_top_level=True),
-            ["skills has unexpected files: agmsg/extra.txt"],
+            ["skills has unexpected files: example/extra.txt"],
         )
 
     def test_content_drift_still_fails(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh", "source\n")
-        target = self.write_target("agmsg/scripts/send.sh", "target\n", executable=True)
+        self.write_source("example/scripts/executable_send.sh", "source\n")
+        target = self.write_target("example/scripts/send.sh", "target\n", executable=True)
 
         self.assertEqual(self.compare(), [f"skills differs: {target}"])
 
@@ -423,8 +387,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([f"WARN: unmanaged skill dir: {skills / 'orphan-skill'}"], shared)
 
     def test_ignored_paths_suppress_receipt_linked_tree_entries(self) -> None:
-        self.write_source("agmsg/scripts/executable_send.sh")
-        self.write_target("agmsg/scripts/send.sh", executable=True)
+        self.write_source("example/scripts/executable_send.sh")
+        self.write_target("example/scripts/send.sh", executable=True)
         self.write_target("terminal-browser/SKILL.md")
 
         expected_sources = self.module.source_files(self.source_root)
@@ -547,7 +511,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         failures = [
             f"Claude MCP config differs or is missing: {missing}",
             f"shared skill directory differs: {different}",
-            "shared skill directory is missing files: agmsg/scripts/history.sh",
+            "shared skill directory is missing files: example/scripts/history.sh",
             "Claude shared-skill symlink tree is missing: ~/.claude/skills",
         ]
 
@@ -562,13 +526,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_deleted_shared_skill_file_repair_converges(self) -> None:
         source_root = self.temp_dir / "repo/home"
-        source = source_root / "dot_agents/skills/agmsg/scripts/executable_history.sh"
+        source = source_root / "dot_agents/skills/example/scripts/executable_history.sh"
         source.parent.mkdir(parents=True)
         source.write_text("#!/usr/bin/env bash\n")
         source.chmod(0o755)
         home = self.temp_dir / "home"
         (home / ".agents/skills").mkdir(parents=True)
-        target = home / ".agents/skills/agmsg/scripts/history.sh"
+        target = home / ".agents/skills/example/scripts/history.sh"
         actions: list[object] = []
 
         def execute(action) -> bool:
@@ -599,9 +563,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             [],
             self.module.compare_tree_contents(
                 "shared skill directory",
-                {Path("agmsg/scripts/history.sh"): source.read_text()},
+                {Path("example/scripts/history.sh"): source.read_text()},
                 home / ".agents/skills",
-                {Path("agmsg/scripts/history.sh"): source},
+                {Path("example/scripts/history.sh"): source},
                 warn_unmanaged_top_level=True,
             ),
         )
@@ -978,28 +942,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.module, "understand_anything_core_warnings", return_value=["WARN: ua-core sentinel"]
             ),
             mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
-            mock.patch.object(self.module, "orchestrator_seat_lock_warnings", return_value=[]),
         ):
             self.assertIn("WARN: ua-core sentinel", self.module.check())
-
-    def seat_lock_fixture(self, owner: str, *, live: bool = True) -> tuple[Path, Path, Path]:
-        project = self.temp_dir / "project"
-        project.mkdir()
-        skill_dir = self.temp_dir / "agmsg"
-        (skill_dir / "scripts").mkdir(parents=True)
-        identities = skill_dir / "scripts/identities.sh"
-        identities.write_text(
-            "#!/bin/sh\nprintf 'dotfiles\\tclaude-remediation-dot\\ndotfiles\\tclaude-standard-dot-a005\\n'\n"
-        )
-        identities.chmod(0o755)
-        (skill_dir / "run").mkdir()
-        (skill_dir / "run/actas.dotfiles__claude-remediation-dot.session").write_text(owner + "\n")
-        (skill_dir / "run/actas.dotfiles__claude-standard-dot-a005.session").write_text("worker-bare\n")
-        proc = self.temp_dir / "proc"
-        (proc / "4242").mkdir(parents=True)
-        (proc / "4242/comm").write_text("claude\n" if live else "bash\n")
-        (proc / "4242/cwd").symlink_to(project)
-        return project, skill_dir, proc
 
     def fake_gh_status(self, accounts: list[dict]) -> str:
         """A fake gh whose `auth status --json hosts` reports ACCOUNTS; it fails if a token variable leaks."""
@@ -1189,26 +1133,6 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             findings = self.module.gh_login_findings(gh=str(gh), config_dir=self.temp_dir / "gh-config")
 
         self.assertEqual(findings, ["found: GitHub login machine-login (every seat on this machine acts as it)"])
-
-    def test_orchestrator_seat_lock_warns_on_a_bare_session_id(self) -> None:
-        project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare")
-
-        warnings = self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc)
-
-        self.assertEqual(1, len(warnings), warnings)
-        self.assertTrue(warnings[0].startswith("WARN: orchestrator seat lock "))
-        self.assertIn("actas.dotfiles__claude-remediation-dot.session", warnings[0])
-        self.assertIn("bare session id e7734322-bare", warnings[0])
-
-    def test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session(self) -> None:
-        project, skill_dir, proc = self.seat_lock_fixture("e7734322-sid.15760")
-        self.assertEqual([], self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc))
-
-        shutil.rmtree(self.temp_dir / "project")
-        shutil.rmtree(self.temp_dir / "agmsg")
-        shutil.rmtree(self.temp_dir / "proc")
-        project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare", live=False)
-        self.assertEqual([], self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc))
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@
     make -n setup
     make -n update
     make -n doctor
-    make -n require-crit-review
 }
 
 @test "[common] Makefile keeps apply as a compatibility alias" {
@@ -316,15 +315,6 @@ herdr server reload-config" ]
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
-    grep -q 'require-crit-review' Makefile
-    grep -q 'CRIT_REVIEWED' scripts/require-crit-review.py
-    grep -q 'AGENT_REVIEWED' scripts/require-crit-review.py
-    grep -q 'REVIEW_EVIDENCE' scripts/require-crit-review.py
-    grep -q 'review_surface' scripts/require-crit-review.py
-    grep -q 'review_outcome' scripts/require-crit-review.py
-    grep -q 'SELF_REVIEWER_TOKENS' scripts/require-crit-review.py
-    grep -q 'CRIT_REVIEW=off' scripts/require-crit-review.py
-    grep -q 'make require-crit-review' home/dot_config/codex/AGENTS.md
     grep -q 'crit status --json' home/dot_config/codex/AGENTS.md
     grep -q 'crit comments --all --json <review.json>' home/dot_config/codex/AGENTS.md
     grep -q '作業手順の証跡' home/dot_config/codex/AGENTS.md

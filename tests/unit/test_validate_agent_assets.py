@@ -87,7 +87,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
-        self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
+        self.codex_writable_roots = ["{{ .chezmoi.homeDir }}/.cache/codex-root"]
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
         (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
@@ -384,7 +384,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.load_yaml = lambda _path: manifest
         self.write_text_file(
             "README.md",
-            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\nherdr-agents --add-worker\nherdr-agents --remove-worker\n"
+            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         return manifest
@@ -495,7 +495,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_text_file(
             "README.md",
             "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `codex`; codex)\n"
-            "herdr-agents --add-worker\nherdr-agents --remove-worker\n"
             "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
         )
         stderr = io.StringIO()
@@ -516,21 +515,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assertIn(
             "must state the manifest orchestrator_kind as `orchestrator_kind` in "
             "`home/dot_agents/agent-config.yaml` (currently `codex`;",
-            stderr.getvalue(),
-        )
-
-    def test_agent_manifest_requires_readme_to_document_on_demand_seating(self) -> None:
-        self.write_valid_agent_manifest()
-        self.write_text_file(
-            "README.md",
-            "`worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`; codex)\n"
-            "`orchestrator_kind` in `home/dot_agents/agent-config.yaml`\n(currently `claude`; claude)\n",
-        )
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_agent_manifest()
-        self.assertIn(
-            "README.md must document herdr-agents --add-worker and --remove-worker for seating workers on demand",
             stderr.getvalue(),
         )
 
@@ -577,19 +561,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "verify": "none",
                     "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
                 },
-                "agmsg": {
-                    "source": "agmsg-installer",
-                    "upstream": "https://github.com/fujibee/agmsg",
-                    "pin": "1.5.0",
-                    "ref": "v1.5.0",
-                    "ref_commit": "c487be269c1973aeb01ca831806eb3f65ff3366d",
-                    "verify": "sha256",
-                    "sha256": "9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059",
-                    "bootstrap_integrity": "sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==",
-                    "reason": "fixture: no release assets",
-                    "install_path": "~/.agents/skills/agmsg",
-                    "installer": "scripts/update-agent-assets.sh#update_agmsg",
-                },
             }
         }
 
@@ -609,7 +580,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
             "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(pin=1.1),
-            "agmsg missing installer": lambda assets: assets["agmsg"].pop("installer"),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
@@ -700,93 +670,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_assets(manifest)
                 self.assertIn(message, stderr.getvalue())
-
-    def assert_agmsg_asset_rejected(self, **changes: object) -> str:
-        manifest = self.asset_manifest()
-        for key, value in changes.items():
-            if value is None:
-                manifest["assets"]["agmsg"].pop(key)
-            else:
-                manifest["assets"]["agmsg"][key] = value
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_assets(manifest)
-        return stderr.getvalue()
-
-    def test_agmsg_installer_requires_a_release_pin_and_its_tag(self) -> None:
-        for changes, message in (
-            ({"pin": "c487be269c1973aeb01ca831806eb3f65ff3366d"}, "must be an upstream release"),
-            ({"ref": None}, "must be the release tag v1.5.0"),
-            ({"ref": "v1.4.2"}, "must be the release tag v1.5.0"),
-        ):
-            with self.subTest(changes=changes):
-                self.assertIn(message, self.assert_agmsg_asset_rejected(**changes))
-
-    def test_agmsg_installer_requires_the_full_tag_commit(self) -> None:
-        for changes in ({"ref_commit": None}, {"ref_commit": "c487be2"}):
-            with self.subTest(changes=changes):
-                self.assertIn("ref_commit", self.assert_agmsg_asset_rejected(**changes))
-
-    def test_agmsg_installer_requires_the_npm_bootstrap_integrity(self) -> None:
-        for changes in (
-            {"bootstrap_integrity": None},
-            {"bootstrap_integrity": "sha256-not-an-npm-integrity-string"},
-        ):
-            with self.subTest(changes=changes):
-                self.assertIn("bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes))
-
-    def write_agmsg_installer_layout(self) -> None:
-        self.write_text_file("home/.chezmoiremove", ".claude/skills/agmsg/**\n")
-
-    def assert_agmsg_ownership_rejected(self, message: str) -> None:
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_agmsg_is_installer_owned()
-        self.assertIn(message, stderr.getvalue())
-
-    def test_agmsg_ownership_accepts_the_installer_layout(self) -> None:
-        self.write_agmsg_installer_layout()
-        self.write_text_file("home/dot_claude/commands/other.md", "other\n")
-
-        self.module.validate_agmsg_is_installer_owned()
-
-    def test_agmsg_ownership_rejects_a_vendored_skill_copy(self) -> None:
-        for vendored in (
-            "home/dot_agents/skills/agmsg",
-            "home/dot_claude/skills/agmsg",
-            "home/private_dot_agents/skills/exact_agmsg",
-        ):
-            with self.subTest(vendored=vendored):
-                self.write_agmsg_installer_layout()
-                self.write_text_file(f"{vendored}/SKILL.md", "vendored\n")
-                self.assert_agmsg_ownership_rejected(f"{vendored} must not exist")
-                shutil.rmtree(self.temp_dir / vendored)
-
-    def test_agmsg_ownership_rejects_a_managed_claude_command(self) -> None:
-        for name in ("symlink_agmsg.md.tmpl", "agmsg.md"):
-            with self.subTest(name=name):
-                self.write_agmsg_installer_layout()
-                path = f"home/dot_claude/commands/{name}"
-                self.write_text_file(path, "managed\n")
-                self.assert_agmsg_ownership_rejected(f"{path} must not exist")
-                (self.temp_dir / path).unlink()
-
-    def test_agmsg_ownership_requires_retiring_the_symlink_farm(self) -> None:
-        self.write_text_file("home/.chezmoiremove", ".codex/ccgate.jsonnet\n")
-
-        self.assert_agmsg_ownership_rejected("must retire .claude/skills/agmsg/**")
-
-    def test_agmsg_ownership_rejects_removing_installer_owned_paths(self) -> None:
-        for pattern in (
-            ".agents/skills/agmsg",
-            ".agents/skills/agmsg/**",
-            ".agents/skills/agmsg/.agmsg",
-            ".agents/skills/agmsg/VERSION",
-            ".claude/commands/agmsg.md",
-        ):
-            with self.subTest(pattern=pattern):
-                self.write_text_file("home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n")
-                self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
 
     def test_assets_report_an_unrendered_declare_r_version(self) -> None:
         relative = "install/ubuntu/common/tool.sh"
@@ -1103,7 +986,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "failIfUnavailable": False,
             "autoAllowBashIfSandboxed": True,
             "filesystem": {
-                "allowWrite": list(self.required_agmsg_writable_roots),
+                "allowWrite": list(self.codex_writable_roots),
                 "denyRead": ["~/**/.env", "~/**/.env.*"],
             },
             "credentials": {"files": [{"path": "~/.ssh", "mode": "deny"}]},
@@ -1114,7 +997,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
-        self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox")
+        self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.codex_writable_roots, "sandbox")
 
     def test_claude_sandbox_validator_refuses_each_forbidden_form(self) -> None:
         spec = importlib.util.spec_from_file_location(
@@ -1194,10 +1077,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 sandbox = self.valid_claude_sandbox()
                 breaks(sandbox)
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
 
     def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
-        for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
+        for allow in ("Bash(hcom list *)", [""], [3]):
             with (
                 self.subTest(rejects=allow),
                 contextlib.redirect_stderr(io.StringIO()) as stderr,
@@ -1208,7 +1091,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_claude_permissions_allow_accepts_the_fixed_rules_and_the_executable_levers(self) -> None:
         self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
-        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}, {"allow": MANAGED_ALLOW}):
+        for permissions in ({}, {"allow": []}, {"allow": ["Bash(hcom list *)"]}, {"allow": MANAGED_ALLOW}):
             with self.subTest(accepts=permissions):
                 self.module.validate_claude_permissions_allow(permissions, "permissions")
         pinned = {
@@ -1232,20 +1115,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         (levers / "uninstalled").chmod(0o755)
         installed = "Bash(~/.local/bin/common/{} *)".format
         cases = {
-            "Bash(*)": "is not Bash\\(agmsg-dispatch",
-            "Bash": "is not Bash\\(agmsg-dispatch",
-            "Bash(hcom *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(hcom list)": "is not Bash\\(agmsg-dispatch",
-            "Bash(git worktree remove *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(git *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(python3 *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(bash ~/.local/bin/common/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(/Users/x/.local/bin/common/hcom-seat *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(~/.local/bin/common/hcom-seat)": "is not Bash\\(agmsg-dispatch",
-            "Bash(~/.local/bin/common/hcom-seat:*)": "is not Bash\\(agmsg-dispatch",
-            "Bash(~/.local/bin/common/../../bin/sh *)": "is not Bash\\(agmsg-dispatch",
-            "Bash(~/.local/bin/common/*)": "is not Bash\\(agmsg-dispatch",
-            "Read(**)": "is not Bash\\(agmsg-dispatch",
+            "Bash(*)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(hcom *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(hcom list)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(git worktree remove *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(git *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(python3 *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(bash ~/.local/bin/common/hcom-seat *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(/Users/x/.local/bin/common/hcom-seat *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(~/.local/bin/common/hcom-seat)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(~/.local/bin/common/hcom-seat:*)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(~/.local/bin/common/../../bin/sh *)": "is not Bash\\(hcom list \\*\\) or",
+            "Bash(~/.local/bin/common/*)": "is not Bash\\(hcom list \\*\\) or",
+            "Read(**)": "is not Bash\\(hcom list \\*\\) or",
             "Bash(scripts/orchestrator/hcom-seat *)": "names a lever inside the rewritable checkout",
             "Bash(./scripts/orchestrator/hcom-seat *)": "names a lever inside the rewritable checkout",
             "Bash(scripts/orchestrator/hcom-seat:*)": "names a lever inside the rewritable checkout",
@@ -1262,9 +1145,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for rule, message in cases.items():
             with self.subTest(rejects=rule):
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_permissions_allow(
-                        {"allow": ["Bash(agmsg-dispatch:*)", rule]}, "permissions"
-                    )
+                    self.module.validate_claude_permissions_allow({"allow": ["Bash(hcom list *)", rule]}, "permissions")
                 self.assertRegex(stderr.getvalue(), message)
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_claude_permissions_allow({"allow": [installed("hcom-seat")]}, "permissions", {})
@@ -1328,11 +1209,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 sandbox = self.valid_claude_sandbox()
                 breaks(sandbox)
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
                 self.assertIn(message, stderr.getvalue())
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["denyRead"].append("/srv/secrets/**")
-        self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
 
     def test_claude_deny_rules_refuse_a_glob_last_segment_except_the_env_pair(self) -> None:
         accepted = [
@@ -1365,13 +1246,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")
-        self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+        self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
         for path in ("relative/cache", "~cache", "/tmp/*", 7):
             with self.subTest(path=path):
                 sandbox = self.valid_claude_sandbox()
                 sandbox["filesystem"]["allowWrite"].append(path)
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
                 self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
 
     def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
@@ -1387,11 +1268,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 sandbox = self.valid_claude_sandbox()
                 sandbox["network"]["allowUnixSockets"].append(socket)
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
                 self.assertIn("allowUnixSockets entries must be absolute or ~/ paths", stderr.getvalue())
 
     def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
-        roots = [*self.required_agmsg_writable_roots, "/extra/codex/root"]
+        roots = [*self.codex_writable_roots, "/extra/codex/root"]
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_claude_sandbox(self.valid_claude_sandbox(), roots, "sandbox")
 
@@ -1403,7 +1284,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "codex": {
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": self.required_agmsg_writable_roots,
+                    "writable_roots": self.codex_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -1421,16 +1302,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_codex_config(manifest)
 
     def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
-        self.write_codex_config(
-            f"network_access = false\nwritable_roots = {json.dumps(self.required_agmsg_writable_roots)}"
-        )
+        self.write_codex_config(f"network_access = false\nwritable_roots = {json.dumps(self.codex_writable_roots)}")
         manifest = {
             "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": self.required_agmsg_writable_roots,
+                    "writable_roots": self.codex_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -1445,32 +1324,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
-
-    def test_codex_sandbox_workspace_write_requires_all_agmsg_roots(self) -> None:
-        roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
-        self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
-        manifest = {
-            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
-            "interactive_profile": "standard",
-            "codex": {
-                "sandbox_workspace_write": {
-                    "network_access": False,
-                    "writable_roots": roots,
-                },
-                "shell_environment_policy": {
-                    "inherit": "core",
-                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
-                },
-                "tui": {},
-                "plugins": {},
-                "marketplaces": {},
-                "hooks": {},
-                "projects": {},
-            },
-        }
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_codex_config(manifest)
 
     def test_codex_command_hooks_accept_the_declared_tables(self) -> None:
         self.module.validate_codex_command_hooks(
@@ -1516,7 +1369,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "codex": {
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": self.required_agmsg_writable_roots,
+                    "writable_roots": self.codex_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -1532,7 +1385,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def write_codex_config_with_projects(self, projects_toml: str) -> None:
         self.write_codex_config(
-            f"network_access = false\nwritable_roots = {json.dumps(self.required_agmsg_writable_roots)}",
+            f"network_access = false\nwritable_roots = {json.dumps(self.codex_writable_roots)}",
             projects_toml=projects_toml,
         )
 

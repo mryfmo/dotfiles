@@ -23,19 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "home"
 HOME = Path.home()
 CHEZMOI_SOURCE_PREFIXES = ("executable_", "private_")
-AGMSG_RUNTIME_IGNORES = (
-    Path("agmsg/.agmsg"),
-    # agmsg-orchestration permits separate stores such as db-flue-pi.
-    Path("agmsg/db"),
-    Path("agmsg/run"),
-    Path("agmsg/teams"),
-)
-AGMSG_LEGACY_RUNTIME_FILES = {
-    Path("agmsg/messages.db"),
-    Path("agmsg/messages.db-shm"),
-    Path("agmsg/messages.db-wal"),
-}
-# backups/ holds update_agmsg's pre-install state copies (agmsg-state-<UTC>).
+# backups/ holds the pre-install state copies that earlier `make update` runs made.
 AGENT_ROOT_ALLOWLIST = {"backups", "compactiondb", "db", "run", "teams", "worklog"}
 UNDERSTAND_SKILL_ALLOWLIST = {
     "understand",
@@ -130,13 +118,6 @@ def same_modified(source: Path, target: Path, json_target: bool = False) -> bool
     return result.stdout == current
 
 
-def is_ignored_runtime_path(rel: Path) -> bool:
-    return rel in AGMSG_LEGACY_RUNTIME_FILES or any(
-        rel == ignored or ignored in rel.parents or (ignored == Path("agmsg/db") and str(rel).startswith("agmsg/db-"))
-        for ignored in AGMSG_RUNTIME_IGNORES
-    )
-
-
 def deployed_relative_path(source_rel: Path) -> Path:
     name = source_rel.name
     for prefix in CHEZMOI_SOURCE_PREFIXES:
@@ -146,21 +127,13 @@ def deployed_relative_path(source_rel: Path) -> Path:
 
 
 def source_files(root: Path) -> dict[Path, Path]:
-    return {
-        deployed_relative_path(path.relative_to(root)): path
-        for path in sorted(root.rglob("*"))
-        if path.is_file() and not is_ignored_runtime_path(deployed_relative_path(path.relative_to(root)))
-    }
+    return {deployed_relative_path(path.relative_to(root)): path for path in sorted(root.rglob("*")) if path.is_file()}
 
 
 def applied_files(root: Path) -> set[Path]:
     if not root.exists():
         return set()
-    return {
-        path.relative_to(root)
-        for path in sorted(root.rglob("*"))
-        if (path.is_file() or path.is_symlink()) and not is_ignored_runtime_path(path.relative_to(root))
-    }
+    return {path.relative_to(root) for path in sorted(root.rglob("*")) if path.is_file() or path.is_symlink()}
 
 
 def expects_executable(source: Path) -> bool:
@@ -513,7 +486,7 @@ def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None =
         UNDERSTAND_SKILL_ALLOWLIST
         | CRIT_PLUGIN_SKILLS
         | receipt_skill_names
-        # agmsg is owned by its upstream installer (update_agmsg), not chezmoi.
+        # The installed agmsg tree stays until U27 archives its db, teams and run and removes it.
         | {"agmsg", "db", "run", "teams"}
         # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
         | chezmoi_managed_child_names(skills_root)
@@ -564,64 +537,6 @@ def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
             f"WARN: Understand-Anything core build is stale: {dist} is older than {src} or {lockfile}; run make update"
         ]
     return []
-
-
-def live_claude_session(project: Path, proc: Path) -> bool:
-    """True when a process named `claude` runs with its cwd at PROJECT (Linux /proc)."""
-    for entry in proc.glob("[0-9]*"):
-        try:
-            if (entry / "comm").read_text().strip() == "claude" and (entry / "cwd").resolve() == project:
-                return True
-        except OSError:
-            continue
-    return False
-
-
-def orchestrator_seat_lock_warnings(
-    project: Path | None = None,
-    skill_dir: Path | None = None,
-    proc: Path = Path("/proc"),
-) -> list[str]:
-    """Warn when the orchestrator's actas lock holds a bare session id.
-
-    The Stop-hook inbox check compares the lock owner with the composite
-    `<sid>.<pid>`; a claim from sandboxed Bash cannot see the claude pid (pid
-    namespace) and writes the bare sid, so turn delivery skips silently. Only
-    the non-worker (no -aNNN) claude-code identities at PROJECT are checked,
-    only at the legacy lock path, and only while a claude session runs there.
-    The live-session scan reads /proc, so off Linux (where the pid-namespaced
-    sandbox does not exist) the check finds nothing.
-    """
-    project = (project or ROOT).resolve()
-    skill_dir = skill_dir or HOME / ".agents/skills/agmsg"
-    identities = skill_dir / "scripts/identities.sh"
-    if not identities.is_file() or not live_claude_session(project, proc):
-        return []
-    rows = subprocess.run(
-        [str(identities), str(project), "claude-code"],
-        env={**os.environ, "AGMSG_RESOLVE_PROJECT": "0"},
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout
-    warnings = []
-    for row in sorted(set(rows.splitlines())):
-        team, _, name = row.partition("\t")
-        if not name or re.search(r"-a\d{3}$", name):
-            continue
-        lock = skill_dir / "run" / f"actas.{team}__{name}.session"
-        try:
-            owner = lock.read_text().splitlines()[0].strip()
-        except (OSError, IndexError):
-            continue
-        if owner and not re.search(r"\.\d+$", owner):
-            warnings.append(
-                f"WARN: orchestrator seat lock {lock} holds the bare session id {owner} "
-                f"while a claude session runs in {project}; turn delivery skips silently. "
-                "Run `herdr-agents --attach` from the orchestrator pane outside the sandbox "
-                "(it replaces a stale lock: bare, or same-session composite whose pid is dead or not a claude process)"
-            )
-    return warnings
 
 
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
@@ -870,7 +785,6 @@ def check() -> list[str]:
         failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
-    failures.extend(orchestrator_seat_lock_warnings())
     failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures

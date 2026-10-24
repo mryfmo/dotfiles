@@ -87,6 +87,7 @@ update:
 # just fetched, so a recipe change lands in the same run. SYSTEM reaches it
 # through MAKEFLAGS.
 update-tree:
+	$(MAKE) agmsg-retire
 	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
@@ -121,7 +122,6 @@ update-tree:
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Herdr server unreachable; skipping config reload." >&2 ;; \
 	esac
-	$(MAKE) agmsg-retire
 
 .PHONY: apply
 apply: update
@@ -160,7 +160,9 @@ usage-report:
 
 .PHONY: agmsg-retire
 # The agmsg regime is retired (E1 of plan 025): remove its hooks and identities from every
-# registered clone of this repository, then from this one (D-024-145, D-024-147).
+# registered clone of this repository, then from this one (D-024-145, D-024-147). update-tree
+# runs it before `chezmoi apply`, so the installed agmsg tree whose scripts it calls is still
+# there when .chezmoiremove takes it away (U27).
 agmsg-retire:
 	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \
 		cd "$(CURDIR)" && bash home/dot_local/bin/common/executable_herdr-agents --retire-agmsg; \
@@ -197,10 +199,6 @@ UV_PYYAML = $(if $(shell uv run --offline --with pyyaml python -c 'import yaml' 
 validate-agent-assets:
 	$(UV_PYYAML) scripts/validate-agent-assets.py
 
-.PHONY: check-regime-boundary
-check-regime-boundary:
-	./scripts/check-regime-boundary.sh
-
 .PHONY: codex-hook-trust
 # Re-apply only the managed Codex config files so their modify scripts re-hash the trusted hooks;
 # `make update` already does this as the last step of scripts/update-agent-assets.sh.
@@ -210,14 +208,6 @@ codex-hook-trust:
 .PHONY: render-check
 render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
-
-.PHONY: require-crit-review
-# BASE=<ref> adds the committed <ref>...HEAD changes and requires PR_FEEDBACK_EVIDENCE and
-# ACCEPTANCE_EVIDENCE, plus AUDIT_EVIDENCE (an incorrect verdict's findings go in the record's audit_findings) when the change needs
-# review, for PR integration (home/dot_config/claude/rules/pr-integration.md; agmsg-orchestration
-# SKILL Orchestrator Playbook step 10).
-require-crit-review:
-	@AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" PR_FEEDBACK_EVIDENCE="$(PR_FEEDBACK_EVIDENCE)" ACCEPTANCE_EVIDENCE="$(ACCEPTANCE_EVIDENCE)" ./scripts/require-crit-review.py $(if $(BASE),--base "$(BASE)",)
 
 #
 # Documentation

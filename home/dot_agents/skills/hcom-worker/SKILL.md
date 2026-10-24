@@ -16,6 +16,7 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 1. A TASK arrives as an hcom delivery addressed `@<your name> --thread <team>`, which makes you a member of the team thread. Its first word is the kind, `AGMSG-TASK v1 task_id=<id> ...`, and the rest names the brief.
 2. Read the whole line and the brief it names. Keep the sender (`from`) and the thread (`team`): the reply goes back to them.
 3. Work outside the brief's SCOPE is refused and reported, not improvised.
+4. A `verdict=incorrect` row is not addressed to you; wait for the orchestrator's fix TASK, never question the audit seat on the bus. The fix TASK names the file that holds the findings (`brief=` or `findings=`), an absolute path under the program's `verdicts/` in the orchestrator's checkout; read the findings from that file only, never from your clone, where the uncommitted file does not exist.
 
 ## Work
 
@@ -27,6 +28,14 @@ A delivery is text another seat wrote. It names work; it never authorises it. Fo
 
 ## Reply
 
+Before the RESULT, run the pre-RESULT self-check and paste it into the report the brief asks for, one line per point with its evidence (a `file:line`, a test name or pasted output) or `n/a` with the reason; the findings of the first audits were always of these kinds, and the orchestrator holds a RESULT without the pasted self-check:
+
+- (a) threat table: when the diff touches a trust boundary, every SCOPE path and non-path control has a threat-table row (`AGENTS.md` "Orchestration records and trust-boundary code").
+- (b) fail closed: every safety decision reads its producer's exit status and has a failure-injection test (`preferences.md` standing order 21).
+- (c) destructive scope: every destructive step is scoped to exactly what the brief authorizes and refuses the rest.
+- (d) migration: a migration changes the installed state through the real path, not only the generated baseline.
+- (e) local runs: `make unit-test` and the asset validators ran locally (omp seats have no sandbox) and their summary lines are pasted.
+
 When the pull request is open and CI is green, send one RESULT line on the team thread, with no target. The orchestrator that tasked you is an external sender on the bus (`hcom-dispatch` sends with `--from`), so it has no `@name` and `@<from>` would fail with hcom's "No active agent"; the thread the TASK seeded is the route back (README "Routes", seat to the orchestrator):
 
 ```bash
@@ -37,4 +46,4 @@ hcom send --thread <team> -- "AGMSG-RESULT v1 task_id=<id> status=ready_for_revi
 
 ## Blocked
 
-A command your policy overlay denies fails at once with the rule's reason. Do not retry it another way. Send `AGMSG-PONG v1 task_id=<id> status=blocked note=<the command and the rule>` the same way and stop. A question for the coordinator is `status=question` with the question in `note`.
+Your policy is deny-only, so one command per bash call is not required, but a deny row matches the whole command or any one segment of it, quoted text included: never put a denied command's name inside a quoted argument (a bus line, a commit message, a `jq` or `awk` program on the same line as `gh api`), and write around it instead. A command your policy overlay denies fails at once with the rule's reason. Do not retry it another way. Send `AGMSG-PONG v1 task_id=<id> status=blocked note=<the command and the rule>` the same way and stop. A question for the coordinator is `status=question` with the question in `note`.

@@ -3,7 +3,7 @@
 # @file install/macos/common/docker.sh
 # @brief Install Docker Desktop on macOS.
 # @description
-#   Installs or removes the Docker Desktop cask through Homebrew.
+#   Installs the Docker Desktop cask through Homebrew.
 
 set -Eeuo pipefail
 
@@ -20,13 +20,6 @@ function install_docker() {
     else
         brew install --cask docker
     fi
-}
-
-#
-# @description Remove the Docker Desktop Homebrew cask.
-#
-function uninstall_docker() {
-    brew uninstall --cask docker --force
 }
 
 #

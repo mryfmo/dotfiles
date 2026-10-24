@@ -46,13 +46,6 @@ function install_ghostty() {
 }
 
 #
-# @description Remove Ghostty without removing the configured PPA.
-#
-function uninstall_ghostty() {
-    sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get remove -y "${PACKAGES[@]}"
-}
-
-#
 # @description Run the Ghostty installation flow.
 #
 function main() {

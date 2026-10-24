@@ -33,14 +33,6 @@ function install_chezmoi_private() {
 }
 
 #
-# @description Remove the private chezmoi source and config paths.
-#
-function uninstall_chezmoi_private() {
-    rm -rfv "${PRIVATE_DOTFILES_PATH}"
-    rm -rfv "${PRIVATE_DOTFILES_CONFIG_PATH}"
-}
-
-#
 # @description Run the private chezmoi initialization flow.
 #
 function main() {

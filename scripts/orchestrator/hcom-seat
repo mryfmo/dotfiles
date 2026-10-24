@@ -21,7 +21,10 @@
 #   owns the approval mode (U6). Both are required. The extensions default to the
 #   directory the role's model route needs, the pi-claude-bridge for orchestrator
 #   and worker and the openai-siwc for audit, plus the other one when it is
-#   present; `--ext` replaces that list. The orchestrator sits in the repository
+#   present; `--ext` replaces that list. Every directory, a default or `--ext`,
+#   must resolve to an entry of `claude.levers.extensions` in the manifest the
+#   self-check reads (regime-cutover U31), else the launch is refused. The
+#   orchestrator sits in the repository
 #   this command runs in; every other role gets the worktree `<seats-root>/<name>`,
 #   which is created detached from `origin/main` when absent and reused when it is
 #   a worktree of this repository (any other directory at that path is refused).
@@ -34,7 +37,7 @@
 # @arg $1 string Role: orchestrator, worker or audit.
 # @option --name <name> Seat name, passed as the hcom tag (default: the role; `<role>-<n>` for a second seat of a role).
 # @option --seats-root <dir> Parent of the seat worktrees (default: ~/.local/state/omp-seats).
-# @option --ext <dir> Extension directory, repeatable; replaces the role's default list.
+# @option --ext <dir> Extension directory in claude.levers.extensions, repeatable; replaces the role's default list.
 # @option --dry-run Print the launch line and exit 0 without creating a worktree or starting hcom.
 # @env HCOM_DIR The program's private hcom store (required: without it hcom would use ~/.hcom).
 # @stdout The launch line with --dry-run, else hcom's output.
@@ -44,6 +47,61 @@
 # @example
 #   HCOM_DIR=/path/to/.hcom scripts/orchestrator/hcom-seat worker --name worker-2 --dry-run
 set -euo pipefail
+
+# @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
+#   `~/.agents/agent-config.yaml` for the installed copy under ~/.local/bin/common, which a sandboxed session cannot
+#   write, else the checkout's home/dot_agents/agent-config.yaml. Every read is checked; a failure exits 2 naming the
+#   file. The pin is the `claude.levers.sha256.<name>` line, which `scripts/generate-agent-configs.py` refreshes.
+# @set LEVER_MANIFEST The manifest the pin came from.
+lever_self_check() {
+    local src dir self name pin digest home
+    # The directory is split from the path in the shell, so no external producer (dirname) can fail unseen.
+    src=${BASH_SOURCE[0]}
+    case ${src} in
+    */*) dir=${src%/*} ;;
+    *) dir=. ;;
+    esac
+    [[ -n ${dir} ]] || dir=/
+    dir=$(cd "${dir}" && pwd -P) || {
+        echo "${src##*/}: refused: cannot resolve the script directory of ${src}" >&2
+        exit 2
+    }
+    self=${dir}/${BASH_SOURCE[0]##*/}
+    name=${self##*/}
+    home=$(cd "${HOME}" 2> /dev/null && pwd -P) || home=''
+    if [[ -n ${home} && ${dir} == "${home}/.local/bin/common" ]]; then # lint-comparisons: allow both sides are pwd -P forms
+        LEVER_MANIFEST=${HOME}/.agents/agent-config.yaml
+    else
+        LEVER_MANIFEST=${dir}/../../home/dot_agents/agent-config.yaml
+    fi
+    [[ -r ${LEVER_MANIFEST} ]] || {
+        echo "${name}: refused: manifest unreadable: ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    pin=$(sed -n -E "s/^      ${name//./\\.}: ([0-9a-f]{64})\$/\\1/p" "${LEVER_MANIFEST}") || {
+        echo "${name}: refused: cannot read ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: no single sha256 pin for ${name} in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${self}") || digest=''
+    else
+        digest=$(shasum -a 256 < "${self}") || digest=''
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "${name}: refused: cannot hash ${self}" >&2
+        exit 2
+    }
+    [[ ${digest} == "${pin}" ]] || {
+        echo "${name}: refused: sha256 ${digest} of ${self} differs from the pin in ${LEVER_MANIFEST}" >&2
+        exit 2
+    }
+}
+lever_self_check
 
 usage='usage: hcom-seat <orchestrator|worker|audit> [--name <name>] [--seats-root <dir>] [--ext <dir>]... [--dry-run]'
 refuse() {
@@ -92,9 +150,34 @@ if ((${#user_exts[@]})); then
 elif [[ ! -d ${exts[1]} ]]; then
     exts=("${exts[0]}")
 fi
+# The extension allow-list (regime-cutover U31): claude.levers.extensions in the manifest the self-check read, so the
+# installed copy reads it from ~/.agents, outside every sandbox write root. A read failure is a refusal, not an empty list.
+allowed=$(awk '
+    /^  levers:$/ { levers = 1; next }
+    levers && /^  [^ ]/ { levers = 0 }
+    levers && /^    extensions:$/ { list = 1; next }
+    list && /^      - / { sub(/^      - /, ""); print; next }
+    list { list = 0 }
+' "${LEVER_MANIFEST}") || refuse "cannot read the extension allow-list in ${LEVER_MANIFEST}"
+[[ -n ${allowed} ]] || refuse "no extension allow-list (claude.levers.extensions) in ${LEVER_MANIFEST}"
+# The launch passes the canonical allow-list entry (`pwd -P` of the listed path), never the caller's spelling: a
+# symlink the caller controls could be swapped between this check and omp resolving `-e`.
+checked=()
 for ext in "${exts[@]}"; do
     [[ -d ${ext} ]] || refuse "extension directory absent: ${ext}"
+    real=$(cd "${ext}" && pwd -P) || refuse "cannot resolve extension directory: ${ext}"
+    listed=''
+    while IFS= read -r entry; do
+        entry=${entry/#\~/${HOME}}
+        # An entry that is absent or cannot be resolved lists nothing, so the extension stays refused.
+        [[ -d ${entry} ]] || continue
+        entry_real=$(cd "${entry}" && pwd -P) || continue
+        if [[ ${entry_real} == "${real}" ]]; then listed=${entry_real}; fi # lint-comparisons: allow both sides are pwd -P forms
+    done <<< "${allowed}"
+    [[ -n ${listed} ]] || refuse "extension directory is not in the allow-list (claude.levers.extensions): ${ext}"
+    checked+=("${listed}")
 done
+exts=("${checked[@]}")
 repo=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run hcom-seat inside the repository checkout'
 common=$(git rev-parse --path-format=absolute --git-common-dir)
 case ${role} in

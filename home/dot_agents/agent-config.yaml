@@ -232,19 +232,23 @@ claude:
     # sanctioned worker-to-orchestrator wake (T49). The other five are the
     # coordinator's levers (regime-cutover U16, scripts/orchestrator/README.md
     # "Pre-authorized levers"): deterministic wrappers that validate their own
-    # input, run from the checkout root, plus the read-only `hcom list`. Not
-    # `Bash(hcom *)` (hcom launches agents), no interpreter prefix, no
-    # absolute-path duplicate; validate-agent-assets.py refuses anything else.
+    # input, plus the read-only `hcom list`. Each lever rule names the copy
+    # chezmoi installs under ~/.local/bin/common (claude.levers below), which a
+    # sandboxed session cannot write and which checks its own sha256 at start
+    # (U31), never the rewritable checkout path; so the rules render on Linux
+    # and WSL2 too, where an allow rule approves an unsandboxed retry without a
+    # prompt. Not `Bash(hcom *)` (hcom launches agents), no interpreter prefix;
+    # validate-agent-assets.py refuses anything else, a checkout path included.
     # No rule authorises chains: "Claude Code is aware of shell operators,
     # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
     # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
     # independently." (code.claude.com/docs/en/permissions)
     allow:
       - Bash(agmsg-dispatch:*)
-      - Bash(scripts/orchestrator/hcom-seat *)
-      - Bash(scripts/orchestrator/hcom-dispatch *)
-      - Bash(scripts/orchestrator/bus-history.sh *)
-      - Bash(scripts/orchestrator/worktree-gc.sh *)
+      - Bash(~/.local/bin/common/hcom-seat *)
+      - Bash(~/.local/bin/common/hcom-dispatch *)
+      - Bash(~/.local/bin/common/bus-history.sh *)
+      - Bash(~/.local/bin/common/worktree-gc.sh *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
     # Read/Edit rules guard Claude's own file tools and the file commands it
@@ -318,6 +322,24 @@ claude:
     # take the store and the team from here. Claude Code reads it at start.
     HCOM_DIR: "{{ .chezmoi.homeDir }}/.local/state/hcom-regime"
     HCOM_TEAM: regime
+  # The coordinator's levers, installed read-only (regime-cutover U31). The
+  # generator renders home/dot_local/bin/common/executable_<name> from
+  # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
+  # ~/.local/bin/common/<name>, outside every sandbox write root, like
+  # hcom-reply) and refreshes the pins below; each lever refuses to run (exit 2)
+  # when its own sha256 differs from its line here, read from the deployed
+  # ~/.agents/agent-config.yaml for the installed copy.
+  levers:
+    sha256:
+      hcom-seat: c0704ccb5b58dca45be8d0e2848aef8aefa8958f0b788234b1191c975dfa22f5
+      hcom-dispatch: a8b7561ee89ef92b7980b2398db3d34ed77f8ffccc98f350c023d705727b9329
+      bus-history.sh: 878d66a1c3495777d6d8e8395334430e8dc91678074213d353e29dcbc0667154
+      worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
+    # The only extension directories `hcom-seat` loads, by default or through
+    # `--ext`: the pi-claude-bridge and the openai-siwc extension.
+    extensions:
+      - ~/.local/lib/omp-extensions/pi-claude-bridge
+      - ~/.agents/omp/extensions/openai-siwc
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from

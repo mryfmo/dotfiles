@@ -578,6 +578,28 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(merged, expected, "only the two retired keys change")
         self.assertEqual(self.merge(managed, after), after)
 
+    def test_installed_checkout_path_lever_rules_are_replaced_by_the_installed_path_rules(self) -> None:
+        """`make update` moves an installed settings file off the checkout-path lever rules (regime-cutover U31)."""
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        installed = json.loads(self.merge(managed, ""))
+        installed["permissions"]["allow"] = [
+            "Bash(agmsg-dispatch:*)",
+            *(f"Bash(scripts/orchestrator/{name} *)" for name in ("hcom-seat", "hcom-dispatch", "bus-history.sh")),
+            "Bash(scripts/orchestrator/worktree-gc.sh *)",
+            "Bash(hcom list *)",
+        ]
+        installed |= {"operatorOnly": {"kept": True}, "enabledPlugins": {"crit@crit": True}}
+
+        after = self.merge(managed, json.dumps(installed))
+        merged = json.loads(after)
+        self.assertEqual(merged["permissions"]["allow"], managed["permissions"]["allow"])
+        self.assertNotIn("scripts/orchestrator/", json.dumps(merged["permissions"]))
+        self.assertTrue(all("~/.local/bin/common/" in rule for rule in merged["permissions"]["allow"][1:-1]))
+        self.assertEqual((merged["operatorOnly"], merged["enabledPlugins"]), ({"kept": True}, {"crit@crit": True}))
+        self.assertEqual(self.merge(managed, after), after)
+
     def test_an_update_value_the_operator_set_differently_is_kept(self) -> None:
         for key, value in (("autoUpdatesChannel", "latest"), ("autoUpdates", True), ("autoUpdates", 0)):
             with self.subTest(key=key, value=value):

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -201,15 +202,17 @@ def execute_chezmoi_template(text: str, temp_dir: Path, os_name: str = "darwin")
     return result.stdout
 
 
-# The managed allow rules: the agmsg wake and the coordinator levers (regime-cutover U16).
+# The managed allow rules: the agmsg wake and the coordinator levers (regime-cutover U16), each lever rule naming the
+# copy chezmoi installs under ~/.local/bin/common (U31).
 MANAGED_ALLOW = [
     "Bash(agmsg-dispatch:*)",
-    "Bash(scripts/orchestrator/hcom-seat *)",
-    "Bash(scripts/orchestrator/hcom-dispatch *)",
-    "Bash(scripts/orchestrator/bus-history.sh *)",
-    "Bash(scripts/orchestrator/worktree-gc.sh *)",
+    "Bash(~/.local/bin/common/hcom-seat *)",
+    "Bash(~/.local/bin/common/hcom-dispatch *)",
+    "Bash(~/.local/bin/common/bus-history.sh *)",
+    "Bash(~/.local/bin/common/worktree-gc.sh *)",
     "Bash(hcom list *)",
 ]
+LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "worktree-gc.sh")
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -822,6 +825,67 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             settings["sandbox"]["excludedCommands"],
         )
         self.assertEqual(MANAGED_ALLOW, settings["permissions"]["allow"])
+        darwin = self.render_claude_template(self.module.render_claude_settings(manifest), "darwin")
+        self.assertEqual(MANAGED_ALLOW, darwin["permissions"]["allow"])
+
+    def test_darwin_allow_renders_into_the_darwin_variant_only(self) -> None:
+        """`claude.permissions.darwin_allow` stays available for a macOS-only rule (U31 part 1 mechanism)."""
+        manifest = load_manifest_fixture(self.temp_dir)
+        manifest["claude"]["permissions"]["darwin_allow"] = ["Bash(hcom list *)"]
+        manifest["claude"]["permissions"]["allow"] = ["Bash(agmsg-dispatch:*)"]
+        template = self.module.render_claude_settings(manifest)
+        self.assertEqual(
+            ["Bash(agmsg-dispatch:*)", "Bash(hcom list *)"],
+            self.render_claude_template(template, "darwin")["permissions"]["allow"],
+        )
+        self.assertEqual(
+            ["Bash(agmsg-dispatch:*)"], self.render_claude_template(template, "linux")["permissions"]["allow"]
+        )
+
+    def test_the_levers_install_byte_identical_and_pinned(self) -> None:
+        """The generator renders each lever's chezmoi copy and pins its sha256 in the manifest (regime-cutover U31)."""
+        self.module.ROOT = ROOT
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.assertEqual(list(LEVERS), self.module.lever_names(manifest))
+        installs = self.module.render_lever_installs(manifest)
+        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        for name in LEVERS:
+            with self.subTest(lever=name):
+                source = (ROOT / "scripts/orchestrator" / name).read_bytes()
+                installed = ROOT / "home/dot_local/bin/common" / f"executable_{name}"
+                self.assertEqual(installs[installed], source.decode())
+                self.assertEqual(installed.read_bytes(), source)
+                self.assertTrue(os.access(installed, os.X_OK))
+                pin = hashlib.sha256(source).hexdigest()
+                self.assertEqual(manifest["claude"]["levers"]["sha256"][name], pin)
+                self.assertIn(f"\n      {name}: {pin}\n", text)
+        self.assertEqual(self.module.refresh_lever_pins(text), text, "the committed pins are current")
+        stale = text.replace(manifest["claude"]["levers"]["sha256"]["hcom-seat"], "0" * 64)
+        self.assertEqual(self.module.refresh_lever_pins(stale), text, "a stale pin is refreshed and nothing else moves")
+
+    def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:
+        (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)
+        (self.temp_dir / "home/dot_agents").mkdir(parents=True)
+        (self.temp_dir / "scripts/orchestrator/hcom-seat").write_text("#!/usr/bin/env bash\nexit 0\n")
+        pin = hashlib.sha256(b"#!/usr/bin/env bash\nexit 0\n").hexdigest()
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        stale = "schema_version: 1\nclaude:\n  levers:\n    sha256:\n      hcom-seat: " + "0" * 64 + "\n"
+        manifest_path.write_text(stale)
+        self.module.load_manifest = lambda: {"claude": {}}
+        self.module.expected_outputs = lambda _manifest: {}
+        self.module.stale_profile_outputs = lambda _manifest: []
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn("home/dot_agents/agent-config.yaml", stderr.getvalue())
+        self.assertEqual(manifest_path.read_text(), stale, "--check writes nothing")
+        sys.argv = ["generate-agent-configs.py"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.main()
+        self.assertEqual(manifest_path.read_text(), stale.replace("0" * 64, pin))
 
     def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)

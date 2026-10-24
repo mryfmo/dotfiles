@@ -57,7 +57,7 @@ test("a malformed client id or profile name is refused", async () => {
 
 test("the CLI seeds the profile's record under HOME and exits 2 on a refusal", async () => {
 	const run = (...args: string[]) =>
-		Bun.spawnSync(["bun", path.join(import.meta.dir, "../src/seed.ts"), ...args], { env: { ...process.env, HOME: home } });
+		Bun.spawnSync([process.execPath, path.join(import.meta.dir, "../src/seed.ts"), ...args], { env: { ...process.env, HOME: home } });
 	const ok = run("--profile", "audit", "--client-id", "oaiapp_fake_client");
 	expect(ok.exitCode).toBe(0);
 	const file = registrationPath(profileAgentDir("audit", home));

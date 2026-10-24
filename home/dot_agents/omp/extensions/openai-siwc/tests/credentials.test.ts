@@ -34,7 +34,7 @@ function agentDb(profile: string, rows: Array<[string, string | null]>): string 
 }
 
 function run(profile: string) {
-	return Bun.spawnSync(["bun", SCRIPT, "--profile", profile], { env: { ...process.env, HOME: home } });
+	return Bun.spawnSync([process.execPath, SCRIPT, "--profile", profile], { env: { ...process.env, HOME: home } });
 }
 
 test("only active openai-siwc logins count", () => {
@@ -79,5 +79,5 @@ test("the command prints the count and never the stored data", () => {
 
 test("a bad profile name or usage exits 2", () => {
 	expect(run("../x").exitCode).toBe(2);
-	expect(Bun.spawnSync(["bun", SCRIPT]).exitCode).toBe(2);
+	expect(Bun.spawnSync([process.execPath, SCRIPT]).exitCode).toBe(2);
 });

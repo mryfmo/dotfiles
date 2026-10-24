@@ -1822,6 +1822,37 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + wizard,
         )
 
+    def test_omp_role_overlays_switch_off_the_disabled_providers(self) -> None:
+        manifest = sample_manifest()
+        manifest["omp"]["disabled_providers"] = ["agent-plugins"]
+        overlay = self.module.expected_outputs(manifest)[self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"]
+
+        self.assertEqual(
+            overlay,
+            f"# {self.module.GENERATED_HEADER}\n"
+            "modelRoles:\n  default: anthropic/sonnet\n"
+            "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
+            "disabledProviders:\n  - agent-plugins\n"
+            "setupVersion: 2\nstartup:\n  setupWizard: false\n",
+        )
+
+    def test_omp_disabled_providers_refuse_non_ids_and_model_routes(self) -> None:
+        for value, message in (
+            ("agent-plugins", "omp.disabled_providers must be a list of omp provider ids"),
+            ([3], "omp.disabled_providers entries must be omp provider ids: 3"),
+            (["Agent Plugins"], "omp.disabled_providers entries must be omp provider ids: 'Agent Plugins'"),
+            (["claude-bridge"], "must not name the model route claude-bridge; disabledProviders turns it off"),
+            (["openai-siwc"], "must not name the model route openai-siwc; disabledProviders turns it off"),
+            (["anthropic"], "must not name the model route anthropic; disabledProviders turns it off"),
+        ):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                manifest["omp"]["disabled_providers"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.expected_outputs(manifest)
+                self.assertIn(message, stderr.getvalue())
+
     def test_omp_roles_must_map_launcher_safe_roles_to_model_profiles(self) -> None:
         for value in (None, {}, "worker", ["worker"], {"worker": "nope"}, {"Worker-1": "standard"}, {"worker": 3}):
             with self.subTest(value=value):

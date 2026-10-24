@@ -4,6 +4,8 @@ modelRoles:
 skills:
   customDirectories:
     - {{ .chezmoi.homeDir }}/.agents/skills
+disabledProviders:
+  - agent-plugins
 setupVersion: 2
 startup:
   setupWizard: false

@@ -212,7 +212,7 @@ MANAGED_ALLOW = [
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
     "Bash(hcom list *)",
 ]
-LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "worktree-gc.sh")
+LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "seat-login-preflight", "worktree-gc.sh")
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:

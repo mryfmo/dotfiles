@@ -40,7 +40,10 @@ def main(argv: list[str]) -> int:
             response.read()
     except urllib.error.HTTPError as error:
         reason = error.read().decode("utf-8", "replace").strip() or error.reason
-        print(f"regime-open-url: the laptop opener refused the URL ({error.code}: {reason}); open the URL shown above yourself", file=sys.stderr)
+        print(
+            f"regime-open-url: the laptop opener refused the URL ({error.code}: {reason}); open the URL shown above yourself",
+            file=sys.stderr,
+        )
         return 1
     except (urllib.error.URLError, OSError) as error:
         reason = getattr(error, "reason", error)

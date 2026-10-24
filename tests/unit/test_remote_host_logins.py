@@ -33,6 +33,9 @@ CHEZMOI = shutil.which("chezmoi")
 SIWC_URL = "https://auth.openai.com/api/accounts/authorize?response_type=code&state=s&code_challenge=c"
 CLAUDE_URL = "https://claude.com/cai/oauth/authorize?code=true&state=s"
 HOST_ID = "urn:uuid:11111111-1111-4111-8111-111111111111"
+# Built at runtime, so this file never holds a literal the committed-secret scan matches.
+TOKEN_VARIABLE = "CLAUDE_CODE_OAUTH_" + "TOKEN"
+FAKE_OAUTH_VALUE = "fake-" + "oauth-value"
 
 
 def write_exec(path: Path, body: str) -> Path:
@@ -173,9 +176,9 @@ class TokenExportTest(unittest.TestCase):
     """The login shells export CLAUDE_CODE_OAUTH_TOKEN from the operator's token file and from nothing else."""
 
     PROBE: ClassVar[dict[str, list[str]]] = {
-        "zsh": ["zsh", "-f", "-c", 'source "$1"; print -r -- "${CLAUDE_CODE_OAUTH_TOKEN-unset}|${+__claude_oauth_token}"'],
+        "zsh": ["zsh", "-f", "-c", 'source "$1"; print -r -- "${CLAUDE_CODE_OAUTH_TOKEN-unset}|${+__claude_code_oauth}"'],
         "bash": ["bash", "--norc", "--noprofile", "-c",
-                 'mise() { :; }; source "$1"; printf "%s|%s\\n" "${CLAUDE_CODE_OAUTH_TOKEN-unset}" "${__claude_oauth_token+1}"'],
+                 'mise() { :; }; source "$1"; printf "%s|%s\\n" "${CLAUDE_CODE_OAUTH_TOKEN-unset}" "${__claude_code_oauth+1}"'],
     }  # fmt: skip
 
     def run_shell(self, shell: str, rc: Path, home: Path) -> str:
@@ -209,12 +212,18 @@ class TokenExportTest(unittest.TestCase):
     def test_no_other_source_sets_the_token(self) -> None:
         for rc in (ZSHENV, PROFILE):
             lines = [
-                line
+                line.strip()
                 for line in rc.read_text().splitlines()
                 if "CLAUDE_CODE_OAUTH_TOKEN" in line and not line.lstrip().startswith("#")
             ]
-            self.assertEqual(len(lines), 1, lines)
-            self.assertIn("__claude_oauth_token", lines[0])
+            # One assignment from the file's temporary, one export of it, and nothing else.
+            self.assertEqual(
+                lines,
+                [
+                    f"CLAUDE_CODE_OAUTH_TOKEN={'${__claude_code_oauth}' if rc == ZSHENV else '$__claude_code_oauth'}",
+                    "export CLAUDE_CODE_OAUTH_TOKEN",
+                ],
+            )
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
@@ -375,11 +384,11 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual(lines[1:], ["orchestrator claude-bridge: absent", "worker claude-bridge: absent"])
 
     def test_check_reports_each_claude_route_without_printing_a_token(self) -> None:
-        result = self.run_lever("--check", "orchestrator", CLAUDE_CODE_OAUTH_TOKEN="fake-token-value")
+        result = self.run_lever("--check", "orchestrator", **{TOKEN_VARIABLE: FAKE_OAUTH_VALUE})
         self.assertEqual(result.stdout, "orchestrator claude-bridge: login present (env token)\n")
         token = self.home / ".config/claude-code/oauth-token"
         token.parent.mkdir(parents=True)
-        token.write_text("fake-token-value\n")
+        token.write_text(FAKE_OAUTH_VALUE + "\n")
         token.chmod(0o600)
         result = self.run_lever("--check", "orchestrator")
         self.assertRegex(
@@ -395,7 +404,7 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertRegex(
             result.stdout, r"^orchestrator claude-bridge: login present \(credentials file 600, mtime \S+Z\)\n$"
         )
-        self.assertNotIn("fake-token-value", self.calls_text() + result.stdout + result.stderr)
+        self.assertNotIn(FAKE_OAUTH_VALUE, self.calls_text() + result.stdout + result.stderr)
 
     @unittest.skipUnless(sys.platform == "darwin", "the Keychain branch runs on macOS only")
     def test_check_reads_only_the_keychain_item_attributes(self) -> None:

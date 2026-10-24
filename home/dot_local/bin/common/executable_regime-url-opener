@@ -31,13 +31,16 @@ from pathlib import Path
 
 # The sign-in hosts of the two seat routes: SIWC (`auth.openai.com`) and Claude Code's `claude auth login`
 # (`claude.com/cai/oauth/authorize`, measured 2026-10-24 with Claude Code 2.1.309) and its Console flow.
-ALLOWED_HOSTS = frozenset({"auth.openai.com", "claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com"})
+ALLOWED_HOSTS = frozenset(
+    {"auth.openai.com", "claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com"}
+)
 MAX_BODY = 8192
 HEADER = "X-Regime-Open"
 
 
 def utc_now() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # datetime.UTC is Python 3.11+; launchd runs /usr/bin/python3, which is 3.9 on this macOS.
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")  # noqa: UP017
 
 
 def check_url(text: str) -> tuple[str | None, str]:
@@ -70,7 +73,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "regime-url-opener"
     log_path: Path
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - BaseHTTPRequestHandler's signature
+    def log_message(self, format: str, *args: object) -> None:
         return None  # the decision log below is the only record
 
     def record(self, decision: str, shown: str = "") -> None:
@@ -87,11 +90,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - http.server dispatch name
+    def do_GET(self) -> None:
         self.record("refused method GET")
         self.reply(405, "POST /open only")
 
-    def do_POST(self) -> None:  # noqa: N802 - http.server dispatch name
+    def do_POST(self) -> None:
         if self.path != "/open":  # lint-comparisons: allow an HTTP request target, not a filesystem path
             self.record(f"refused path {self.path[:80]!r}")
             self.reply(404, "POST /open only")

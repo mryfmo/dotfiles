@@ -15,9 +15,13 @@ export DISABLE_UPDATES=1
 # A remote seat host's Claude login (regime-cutover U37, docs/remote-host-logins.md): the operator stores
 # the `claude setup-token` token in this host-local 0600 file, and only that file feeds the variable.
 if [[ -r "${HOME}/.config/claude-code/oauth-token" ]]; then
-    __claude_oauth_token="$(<"${HOME}/.config/claude-code/oauth-token")"
-    [[ -n "${__claude_oauth_token}" ]] && export CLAUDE_CODE_OAUTH_TOKEN="${__claude_oauth_token}"
-    unset __claude_oauth_token
+    __claude_code_oauth="$(< "${HOME}/.config/claude-code/oauth-token")"
+    # A plain assignment never word-splits, so the value needs no quotes.
+    if [[ -n "${__claude_code_oauth}" ]]; then
+        CLAUDE_CODE_OAUTH_TOKEN=${__claude_code_oauth}
+        export CLAUDE_CODE_OAUTH_TOKEN
+    fi
+    unset __claude_code_oauth
 fi
 
 typeset -gU path PATH

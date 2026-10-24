@@ -14,9 +14,10 @@ ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts/ci/masked-dirname-check.sh"
 
 # scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect the audit seat found.
-U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || {\n'
+U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || exit 2\n'
 
 
+@unittest.skipUnless(shutil.which("shfmt") or os.environ.get("CI"), "needs shfmt outside CI (CI puts 3.14.1 on PATH)")
 class MaskedDirnameCheckTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="masked-dirname-check-test-"))
@@ -29,11 +30,13 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         path.write_text("#!/usr/bin/env bash\n" + body)
         return path
 
-    def run_check(self, *paths: Path) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(["bash", str(CHECK), *map(str, paths)], text=True, capture_output=True, check=False)
+    def run_check(self, *paths: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", str(CHECK), *map(str, paths)], text=True, capture_output=True, check=False, env=env
+        )
 
     def test_the_u31_shape_is_reported_at_its_line(self) -> None:
-        lever = self.script("lever", "set -euo pipefail\n" + U31_SHAPE + "    exit 2\n}\n")
+        lever = self.script("lever", "set -euo pipefail\n" + U31_SHAPE)
 
         result = self.run_check(lever)
 
@@ -175,10 +178,9 @@ class MaskedDirnameCheckTest(unittest.TestCase):
 
     def test_every_quoted_delimiter_form_ends_its_heredoc_and_the_scan_resumes(self) -> None:
         # Each body is literal (a nested dirname and an apostrophe that must not count), and the U31 shape after
-        # each heredoc must be reported: the delimiter was found, so the scan resumed as code.
+        # each heredoc must be reported: the delimiter was found, so the walk resumed as code.
         forms = {
             "ANSI-C": ("cat <<$'EOF'", "EOF"),
-            "ANSI-C escape": ("cat <<$'E\\'OF'", "E'OF"),
             "locale": ('cat <<$"EOF"', "EOF"),
             "single then unquoted": ("cat <<'E'OF", "EOF"),
             "unquoted then double": ('cat <<E"O"F', "EOF"),
@@ -187,8 +189,8 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         }
         lines, expected = ["#!/usr/bin/env bash"], []
         for operator, terminator in forms.values():
-            lines += [operator, 'it\'s $(cd "$(dirname "$0")")', terminator, U31_SHAPE.rstrip("\n"), "    exit 2", "}"]
-            expected.append(len(lines) - 2)
+            lines += [operator, 'it\'s $(cd "$(dirname "$0")")', terminator, U31_SHAPE.rstrip("\n")]
+            expected.append(len(lines))
         lever = self.temp_dir / "forms"
         lever.write_text("\n".join(lines) + "\n")
 
@@ -197,7 +199,38 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertEqual([f"{lever}:{n}" for n in expected], [x.split(": a ")[0] for x in result.stdout.splitlines()])
 
-    def test_a_file_that_ends_inside_a_substitution_string_or_heredoc_refuses_the_list(self) -> None:
+    def test_a_comment_or_a_split_command_word_inside_the_inner_substitution_is_reported(self) -> None:
+        # Round-2 audit shapes a lexical scan missed: a comment between `$(` and its command word, a command word
+        # split by a line continuation; and quoting, a `case` pattern's `)` and backquotes the parser resolves.
+        shapes = {
+            "comment": ('dir=$(cd "$(\n    # Locate this script.\n    dirname "$0")" && pwd -P)\n', 4),
+            "continued word": ('dir=$(cd "$(dir\\\nname "$0")" && pwd -P)\n', 2),
+            "escaped word": ('dir=$(cd "$(\\dirname "$0")")\n', 2),
+            "quoted word": ('name=$(printf %s "$("basename" "$0")")\n', 2),
+            "case pattern": ('x=$(case $y in\n  a) echo "$(dirname "$y")" ;;\nesac)\n', 3),
+            "backquotes": ('x=$(cd "`dirname "$0"`")\n', 2),
+        }
+        for name, (body, line) in shapes.items():
+            with self.subTest(shape=name):
+                lever = self.script(name.replace(" ", "-"), body)
+
+                result = self.run_check(lever)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(
+                    f"{lever}:{line}: a $(dirname) or $(basename) inside another command substitution loses its"
+                    " status; capture it first or split the path in the shell\n",
+                    result.stdout,
+                )
+
+    def test_a_command_word_with_an_expansion_is_not_a_literal_dirname(self) -> None:
+        clean = self.script("clean", 'dir=$(cd "$("${tool}" "$0")")\ndir=$(cd "$(dirname$x "$0")")\n')
+
+        result = self.run_check(clean)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_a_file_shfmt_cannot_parse_refuses_the_list(self) -> None:
         bodies = {
             "substitution": 'x=$(cd "$y"\n',
             "single-quote": "echo 'never closed\n",
@@ -210,7 +243,34 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 result = self.run_check(broken)
 
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-                self.assertIn(f"{broken} ends inside a substitution", result.stderr)
+                self.assertIn(f"shfmt cannot parse {broken}; the list is refused", result.stderr)
+                self.assertEqual("", result.stdout)
+
+    def test_an_ansi_c_delimiter_with_escapes_is_refused_as_shellcheck_refuses_it(self) -> None:
+        # bash decodes `$'\x45OF'` to EOF, but neither shfmt 3.14.1 nor ShellCheck 0.11.0 does: both read the
+        # heredoc as unterminated. `make shellcheck` fails such a file through ShellCheck (SC1044) whatever this
+        # check does, so the check refuses it too rather than read an unparsed file as clean.
+        forms = {"hex": "\\x45OF", "octal": "\\105OF", "escaped quote": "E\\'OF"}
+        for name, escaped in forms.items():
+            with self.subTest(form=name):
+                terminator = escaped.encode().decode("unicode_escape")
+                path = self.script(name.replace(" ", "-"), f"cat <<$'{escaped}'\nbody\n{terminator}\necho after\n")
+
+                result = self.run_check(path)
+
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"shfmt cannot parse {path}; the list is refused", result.stderr)
+                if shutil.which("shellcheck"):
+                    lint = subprocess.run(["shellcheck", str(path)], capture_output=True, text=True, check=False)
+                    self.assertIn("SC1044", lint.stdout)
+
+    def test_a_missing_shfmt_refuses_the_list(self) -> None:
+        clean = self.script("clean", "true\n")
+
+        result = self.run_check(clean, env=os.environ | {"SHFMT": str(self.temp_dir / "no-shfmt")})
+
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("no-shfmt not found; the list is refused", result.stderr)
 
 
 if __name__ == "__main__":

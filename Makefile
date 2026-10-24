@@ -223,9 +223,10 @@ render-check:
 # ShellCheck groups (regime-cutover U38, U38b), git pathspecs; CI's ShellCheck step runs this target and nothing else
 # (tests/unit/test_shellcheck_target.py pins the step, the groups and the checks). Each group's bash scripts (by
 # shebang) are linted with the root .shellcheckrc, which turns on check-extra-masked-returns (SC2312), and with
-# scripts/ci/masked-dirname-check.sh for the dirname/basename shape SC2312 exempts. A group whose pathspecs list no
-# file, or no bash script, is refused. The installer group (mode `every`) also refuses a listed file that is not a bash
-# script; the masked group (mode `bash`) skips the Python and other scripts among its files.
+# scripts/ci/masked-dirname-check.sh (a walk over shfmt's syntax tree; shfmt must be on PATH) for the dirname/basename
+# shape SC2312 exempts. A group whose pathspecs list no file, or no bash script, is refused. The installer group (mode
+# `every`) also refuses a listed file that is not a bash script; the masked group (mode `bash`) skips the Python and
+# other scripts among its files.
 SHELLCHECK_INSTALLER_GROUP := setup.sh install/*.sh install/**/*.sh scripts/*.sh scripts/lib/*
 SHELLCHECK_MASKED_GROUP := scripts/orchestrator/* home/dot_local/bin/common/executable_*
 SHELLCHECK_PATHSPECS = $(foreach group,$(1),'$(group)')

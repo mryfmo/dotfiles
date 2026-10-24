@@ -72,7 +72,10 @@ class ShellCheckStepTest(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(shutil.which("shellcheck") or os.environ.get("CI"), "needs shellcheck outside CI")
+@unittest.skipUnless(
+    (shutil.which("shellcheck") and shutil.which("shfmt")) or os.environ.get("CI"),
+    "needs shellcheck and shfmt outside CI",
+)
 class ShellCheckTargetBehaviourTest(unittest.TestCase):
     """The target runs in a scratch repository holding the Makefile's two inputs and the files under test."""
 

@@ -377,6 +377,14 @@ jobs:
           mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
             sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
 
+      - name: Put the pinned `shfmt` on PATH
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # scripts/ci/masked-dirname-check.sh parses with shfmt, in `make shellcheck` and in its unit tests; this is
+        # the version the `shfmt` step pins.
+        run: |
+          mise install shfmt@3.14.1
+          dirname "$(mise which --tool shfmt@3.14.1 shfmt)" >> "${GITHUB_PATH}"
+
       - name: Run `ShellCheck`
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         # The Makefile's shellcheck target names the two groups (regime-cutover U38, U38b): setup.sh,

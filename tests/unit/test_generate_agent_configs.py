@@ -202,17 +202,25 @@ def execute_chezmoi_template(text: str, temp_dir: Path, os_name: str = "darwin")
     return result.stdout
 
 
-# The managed allow rules: the agmsg wake and the coordinator levers (regime-cutover U16), each lever rule naming the
-# copy chezmoi installs under ~/.local/bin/common (U31).
+# The managed allow rules: the coordinator levers (regime-cutover U16), each lever rule naming the copy chezmoi
+# installs under ~/.local/bin/common (U31), and the read-only `hcom list`.
 MANAGED_ALLOW = [
-    "Bash(agmsg-dispatch:*)",
     "Bash(~/.local/bin/common/hcom-seat *)",
     "Bash(~/.local/bin/common/hcom-dispatch *)",
     "Bash(~/.local/bin/common/bus-history.sh *)",
     "Bash(~/.local/bin/common/worktree-gc.sh *)",
+    "Bash(~/.local/bin/common/regime-init *)",
     "Bash(hcom list *)",
 ]
-LEVERS = ("bus-history.sh", "hcom-dispatch", "hcom-seat", "worktree-gc.sh")
+LEVERS = (
+    "bus-history.sh",
+    "hcom-dispatch",
+    "hcom-seat",
+    "regime-env",
+    "regime-init",
+    "seat-login-preflight",
+    "worktree-gc.sh",
+)
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -261,7 +269,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         },
                     },
                 },
-                "agmsg": {"pin": "snapshot"},
+                "plain-asset": {"pin": "snapshot"},
             }
         }
 
@@ -599,19 +607,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn(".agents/plugins/marketplace.json", ignore)
 
     def test_claude_skill_symlink_outputs_strip_executable_target_prefix(self) -> None:
-        source = self.temp_dir / "home/dot_agents/skills/agmsg/scripts/executable_send.sh"
+        source = self.temp_dir / "home/dot_agents/skills/example/scripts/executable_send.sh"
         source.parent.mkdir(parents=True)
         source.write_text("#!/bin/sh\n")
 
         outputs = self.module.claude_skill_symlink_outputs()
 
-        target = self.temp_dir / "home/dot_claude/skills/agmsg/scripts/symlink_send.sh.tmpl"
+        target = self.temp_dir / "home/dot_claude/skills/example/scripts/symlink_send.sh.tmpl"
         self.assertEqual(
             outputs[target],
-            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/scripts/executable_send.sh\n",
+            "{{ .chezmoi.sourceDir }}/dot_agents/skills/example/scripts/executable_send.sh\n",
         )
         self.assertNotIn(
-            self.temp_dir / "home/dot_claude/skills/agmsg/scripts/symlink_executable_send.sh.tmpl",
+            self.temp_dir / "home/dot_claude/skills/example/scripts/symlink_executable_send.sh.tmpl",
             outputs,
         )
 
@@ -773,6 +781,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     "~/.local/state/mise",
                     "~/.local/share/uv",
                     "~/.local/state/hcom-regime",
+                    "~/.local/state/hcom",
                     "~/.local/state/omp-seats",
                 ]
                 self.assertEqual(
@@ -803,8 +812,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "DO_NOT_TRACK": "1",
                         "CHECKPOINT_DISABLE": "1",
                         "AWS_EC2_METADATA_DISABLED": "true",
-                        "HCOM_DIR": "/render-home/.local/state/hcom-regime",
-                        "HCOM_TEAM": "regime",
                     },
                     settings["env"],
                 )
@@ -832,15 +839,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         """`claude.permissions.darwin_allow` stays available for a macOS-only rule (U31 part 1 mechanism)."""
         manifest = load_manifest_fixture(self.temp_dir)
         manifest["claude"]["permissions"]["darwin_allow"] = ["Bash(hcom list *)"]
-        manifest["claude"]["permissions"]["allow"] = ["Bash(agmsg-dispatch:*)"]
+        manifest["claude"]["permissions"]["allow"] = []
         template = self.module.render_claude_settings(manifest)
-        self.assertEqual(
-            ["Bash(agmsg-dispatch:*)", "Bash(hcom list *)"],
-            self.render_claude_template(template, "darwin")["permissions"]["allow"],
-        )
-        self.assertEqual(
-            ["Bash(agmsg-dispatch:*)"], self.render_claude_template(template, "linux")["permissions"]["allow"]
-        )
+        self.assertEqual(["Bash(hcom list *)"], self.render_claude_template(template, "darwin")["permissions"]["allow"])
+        # With no shared rule (U26 removed the last one), the linux variant renders no allow rule.
+        self.assertEqual([], self.render_claude_template(template, "linux")["permissions"]["allow"])
 
     def test_the_levers_install_byte_identical_and_pinned(self) -> None:
         """The generator renders each lever's chezmoi copy and pins its sha256 in the manifest (regime-cutover U31)."""
@@ -907,13 +910,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         spec.loader.exec_module(validator)
         manifest = load_manifest_fixture(self.temp_dir)
         cases = [({}, True), ({"excludedCommands": []}, True)]
-        patterns = ["agmsg-dispatch *", "gh *", "git push *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
-        legacy = [
-            "agmsg-dispatch *",
-            "gh *",
-            "herdr-agents *",
-            "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/scripts/actas-claim.sh *",
-        ]
+        patterns = ["gh *", "git push *", "herdr-agents *", "actas-claim.sh *", "arbitrary *"]
+        legacy = ["gh *", "herdr-agents *"]
         cases += [
             ({"excludedCommands": value}, False)
             for value in (None, False, 0, "", {}, (), [None], [""], legacy, *([p] for p in patterns))
@@ -1620,14 +1618,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 )
                 self.assertEqual(result.stdout, "1 1", result.stderr)
 
-    def test_managed_claude_sandbox_confines_agmsg_dispatch(self) -> None:
+    def test_managed_claude_settings_render_the_levers_and_the_regime_env(self) -> None:
         claude = self.render_claude_template((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
         self.assertEqual([], claude["sandbox"]["excludedCommands"])
         self.assertEqual(MANAGED_ALLOW, claude["permissions"]["allow"])
         self.assertEqual("auto", claude["permissions"]["defaultMode"])
-        self.assertEqual("/render-home/.local/state/hcom-regime", claude["env"]["HCOM_DIR"])
-        self.assertEqual("regime", claude["env"]["HCOM_TEAM"])
+        # No session-wide bus: the store and team are per repository, derived by the levers (regime-cutover U33).
+        self.assertNotIn("HCOM_DIR", claude["env"])
+        self.assertNotIn("HCOM_TEAM", claude["env"])
         self.assertIn("~/.local/state/hcom-regime", claude["sandbox"]["filesystem"]["allowWrite"])
         self.assertIn("~/.local/state/omp-seats", claude["sandbox"]["filesystem"]["allowWrite"])
         manifest = load_manifest_fixture(self.temp_dir)

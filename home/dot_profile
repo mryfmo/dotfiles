@@ -7,6 +7,15 @@
 #   install`, DISABLE_AUTOUPDATER the background check (code.claude.com/docs/en/env-vars).
 export DISABLE_AUTOUPDATER=1
 export DISABLE_UPDATES=1
+# A remote seat host's Claude login (regime-cutover U37): only the operator's 0600 token file feeds it.
+if [ -r "$HOME/.config/claude-code/oauth-token" ]; then
+    __claude_code_oauth="$(cat "$HOME/.config/claude-code/oauth-token")"
+    if [ -n "$__claude_code_oauth" ]; then
+        CLAUDE_CODE_OAUTH_TOKEN=$__claude_code_oauth
+        export CLAUDE_CODE_OAUTH_TOKEN
+    fi
+    unset __claude_code_oauth
+fi
 export PATH="$PATH:$HOME/.local/bin"
 eval "$(mise activate bash --shims)"
 

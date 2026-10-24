@@ -21,6 +21,9 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # SessionStart entries are merged additively, so a managed command whose shape
 # changes would leave its previous variant behind and fire the hook twice. Any
 # entry invoking this script is managed, whatever home path it was rendered with.
+# herdr-agents no longer has a managed hook (its --attach mode left with the
+# old regime's tooling, regime-cutover U26); the name stays so an installed
+# entry is still managed and leaves on the next merge.
 MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
 # Keys the managed template used to set and no longer does (regime-cutover U18,
@@ -35,6 +38,26 @@ def is_retired_managed_default(key: str, value: Any) -> bool:
         return False
     default = RETIRED_MANAGED_DEFAULTS[key]
     return type(value) is type(default) and value == default
+
+
+def retired_managed_env() -> dict[str, str]:
+    """The `env` entries the template set before regime-cutover U33, with the values it rendered.
+
+    U16 put the dotfiles bus into every Claude session (`HCOM_DIR=<home>/.local/state/hcom-regime`,
+    `HCOM_TEAM=regime`); U33 derives the store and team per repository instead. An installed value still equal to
+    the old one came from the template and is dropped; a different value is an operator override and stays.
+    """
+    return {"HCOM_DIR": f"{home_dir()}/.local/state/hcom-regime", "HCOM_TEAM": "regime"}
+
+
+def merge_env(managed: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    retired = retired_managed_env()
+    kept = {
+        name: value
+        for name, value in current.items()
+        if name in managed or name not in retired or value != retired[name]  # lint-comparisons: allow an env value, not a path identity
+    }
+    return kept | managed
 
 
 def managed_post_tool_use_paths() -> set[str]:
@@ -189,7 +212,7 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
             ):
                 merged[key] = merge_hooks(managed_value, value)
             elif key == "env" and isinstance(value, dict) and isinstance(managed_value, dict):
-                merged[key] = value | managed_value
+                merged[key] = merge_env(managed_value, value)
             else:
                 merged[key] = managed_value
         elif not is_retired_managed_default(key, value):
@@ -208,20 +231,6 @@ def dump_settings(settings: dict[str, Any]) -> str:
 def main() -> int:
     baseline = source_dir() / ".chezmoitemplates/claude-settings-managed.json"
     managed = json.loads(render_managed_template(baseline.read_text()))
-    session_start = managed.get("hooks", {}).get("SessionStart")
-    if isinstance(session_start, list):
-        session_start.append(
-            {
-                "matcher": "*",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true',
-                        "timeout": 10,
-                    }
-                ],
-            }
-        )
     current_text = sys.stdin.read()
     current = load_json_object(current_text)
     merged = merge_settings(managed, current)

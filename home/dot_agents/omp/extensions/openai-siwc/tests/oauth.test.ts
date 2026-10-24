@@ -157,3 +157,81 @@ test.skipIf(!canBindLoopback)("the loopback listener binds 127.0.0.1 and serves 
 		loopback.close();
 	}
 });
+
+// OPENAI_SIWC_CALLBACK_PORT (docs/remote-host-logins.md): an SSH forward of that port must reach
+// this listener, so a pinned port is bound exactly or the login fails before any URL is shown.
+const freePort = (): number => {
+	const probe = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
+	const port = probe.port;
+	probe.stop(true);
+	return port;
+};
+
+test.skipIf(!canBindLoopback)("a pinned callback port is bound exactly", async () => {
+	const port = freePort();
+	const receiver = createCallbackReceiver("s");
+	const loopback = listenLoopback(receiver.handle, 0, { OPENAI_SIWC_CALLBACK_PORT: String(port) });
+	try {
+		expect(loopback.redirectUri).toBe(`http://127.0.0.1:${port}/auth/callback`);
+		const response = await fetch(`${loopback.redirectUri}?state=s&code=c`);
+		expect(response.status).toBe(200);
+	} finally {
+		loopback.close();
+	}
+});
+
+test.skipIf(!canBindLoopback)("a taken pinned port fails closed instead of falling back to a random one", () => {
+	const occupant = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("someone else") });
+	try {
+		expect(() =>
+			listenLoopback(createCallbackReceiver("s").handle, 0, { OPENAI_SIWC_CALLBACK_PORT: String(occupant.port) }),
+		).toThrow(`cannot listen on 127.0.0.1:${occupant.port}`);
+	} finally {
+		occupant.stop(true);
+	}
+});
+
+test.skipIf(!canBindLoopback)("unset or empty, a taken preferred port still falls back to a random one", () => {
+	const occupant = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("someone else") });
+	try {
+		for (const env of [{}, { OPENAI_SIWC_CALLBACK_PORT: "" }]) {
+			const loopback = listenLoopback(createCallbackReceiver("s").handle, occupant.port, env);
+			try {
+				expect(loopback.redirectUri).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/auth\/callback$/);
+				expect(loopback.redirectUri).not.toContain(`:${occupant.port}/`);
+			} finally {
+				loopback.close();
+			}
+		}
+	} finally {
+		occupant.stop(true);
+	}
+});
+
+test("a callback port that is not 1-65535 is refused before binding", () => {
+	for (const value of ["abc", "0", "65536", "14 55", "-1", "1455.0"]) {
+		expect(() => listenLoopback(createCallbackReceiver("s").handle, 0, { OPENAI_SIWC_CALLBACK_PORT: value })).toThrow(
+			"is not a port number from 1 to 65535",
+		);
+	}
+});
+
+test.skipIf(!canBindLoopback)("a login with its pinned port taken shows no URL and saves no client", async () => {
+	const occupant = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("someone else") });
+	const saved = process.env.OPENAI_SIWC_CALLBACK_PORT;
+	process.env.OPENAI_SIWC_CALLBACK_PORT = String(occupant.port);
+	let shown = 0;
+	try {
+		const login = createSiwcOAuth({ agentDir, agentName: "omp-test", fetch: server.fetch }).login({
+			...browser(),
+			onAuth: () => void shown++,
+		});
+		await expect(login).rejects.toThrow("OPENAI_SIWC_CALLBACK_PORT");
+		expect(shown).toBe(0);
+		expect((await loadRegistration(agentDir))?.clientId).toBeUndefined();
+	} finally {
+		if (saved === undefined) delete process.env.OPENAI_SIWC_CALLBACK_PORT;
+		else process.env.OPENAI_SIWC_CALLBACK_PORT = saved;
+		occupant.stop(true);
+	}
+});

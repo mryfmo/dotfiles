@@ -423,7 +423,8 @@ main
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
-        self.assertIn("\t$(MAKE) agmsg-retire", tree)
+        # The retire calls the installed agmsg tree, so it runs before the apply that can remove it (U26).
+        self.assertLess(tree.index("\t$(MAKE) agmsg-retire\n"), tree.index("\tchezmoi apply --verbose\n"))
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:

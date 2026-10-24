@@ -9,9 +9,6 @@
 # - Keep MCP servers disabled by default; enable only after checking scope and credentials.
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
-# - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
-#   The Claude sandbox allowWrite list is rendered from the same entries.
-# - Let upstream install.sh own ~/.agents/skills/agmsg; never vendor it (assets.agmsg).
 
 schema_version: 1
 
@@ -136,11 +133,7 @@ codex:
       gpt-5.6-sol: 2
   sandbox_workspace_write:
     network_access: false
-    writable_roots:
-      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db'
-      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams'
-      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run'
-      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools'
+    writable_roots: []
   shell_environment_policy:
     inherit: core
     set:
@@ -228,9 +221,8 @@ claude:
   permissions:
     # This must be user-level: project settings do not honour auto; the Stop gate and deny list are the boundaries.
     defaultMode: auto
-    # agmsg-dispatch inserts one agmsg row and sends a herdr wake, the
-    # sanctioned worker-to-orchestrator wake (T49). The other five are the
-    # coordinator's levers (regime-cutover U16, scripts/orchestrator/README.md
+    # The five rules are the coordinator's levers (regime-cutover U16,
+    # scripts/orchestrator/README.md
     # "Pre-authorized levers"): deterministic wrappers that validate their own
     # input, plus the read-only `hcom list`. Each lever rule names the copy
     # chezmoi installs under ~/.local/bin/common (claude.levers below), which a
@@ -244,11 +236,11 @@ claude:
     # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
     # independently." (code.claude.com/docs/en/permissions)
     allow:
-      - Bash(agmsg-dispatch:*)
       - Bash(~/.local/bin/common/hcom-seat *)
       - Bash(~/.local/bin/common/hcom-dispatch *)
       - Bash(~/.local/bin/common/bus-history.sh *)
       - Bash(~/.local/bin/common/worktree-gc.sh *)
+      - Bash(~/.local/bin/common/regime-init *)
       - Bash(hcom list *)
     # Secret files are guarded at two layers (regime-cutover U17). These
     # Read/Edit rules guard Claude's own file tools and the file commands it
@@ -315,35 +307,36 @@ claude:
     DO_NOT_TRACK: "1"
     CHECKPOINT_DISABLE: "1"
     AWS_EC2_METADATA_DISABLED: "true"
-    # The regime's hcom bus for every Claude session (regime-cutover U16 brief
-    # F8-coordinator-levers-preauthorized; docs/orchestrator-seat.md "The seat's
-    # environment"). "An allow rule won't match past an assignment of any other
-    # variable" (code.claude.com/docs/en/permissions, "Wrappers"), so the levers
-    # take the store and the team from here. Claude Code reads it at start.
-    HCOM_DIR: "{{ .chezmoi.homeDir }}/.local/state/hcom-regime"
-    HCOM_TEAM: regime
   # The coordinator's levers, installed read-only (regime-cutover U31). The
   # generator renders home/dot_local/bin/common/executable_<name> from
   # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
   # ~/.local/bin/common/<name>, outside every sandbox write root, like
   # hcom-reply) and refreshes the pins below; each lever refuses to run (exit 2)
   # when its own sha256 differs from its line here, read from the deployed
-  # ~/.agents/agent-config.yaml for the installed copy.
+  # ~/.agents/agent-config.yaml for the installed copy. regime-env is the
+  # helper the levers source for the per-repository derivation (U33): pinned
+  # and self-checked like a lever, but sourced, never run, so no allow rule;
+  # regime-init reads its templates from ~/.agents/regime beside this manifest.
   levers:
     sha256:
-      hcom-seat: c0704ccb5b58dca45be8d0e2848aef8aefa8958f0b788234b1191c975dfa22f5
-      hcom-dispatch: a8b7561ee89ef92b7980b2398db3d34ed77f8ffccc98f350c023d705727b9329
-      bus-history.sh: 878d66a1c3495777d6d8e8395334430e8dc91678074213d353e29dcbc0667154
+      hcom-seat: e43840568de480966e02c6e1f7c4e83615ccd77f1a0911b859d2ae7b34230851
+      hcom-dispatch: 2ca967ac1185f41709b38c85ff7a691ab6bb70c5ba609710450d5d53670e1c28
+      bus-history.sh: 0764d879658a82ccefe2b8272ba8cfaf7391dcdd89c9a955ac7e462fa59a9aa4
       worktree-gc.sh: f97d789be404230ecbb8ebc9e9ebb84e8df7e09d6845ecf2e281c01527b66158
+      regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
+      regime-init: 1364b631df108279fe473e8f2840ed2164c8f65096019dea8711bba003f0b4ad
+      seat-login-preflight: d4a64e9d33de9b9f379fd622a4f7dd8616cc27fb5447e62ed21b1fc9292ecff5
     # The only extension directories `hcom-seat` loads, by default or through
-    # `--ext`: the pi-claude-bridge and the openai-siwc extension.
+    # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
+    # gate's directory, which every launch loads (regime-cutover U33c).
     extensions:
       - ~/.local/lib/omp-extensions/pi-claude-bridge
       - ~/.agents/omp/extensions/openai-siwc
+      - ~/.agents/omp/hooks
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from
-  # codex.sandbox_workspace_write.writable_roots so both agents share one agmsg
+  # codex.sandbox_workspace_write.writable_roots so both agents share one
   # writable-roots list; ~/.claude is sandbox-protected, so it is not listed.
   # bubblewrap and socat come from the installers that the operator runs with
   # `make update` outside Claude sessions; on Ubuntu 24.04+ the bwrap-userns
@@ -368,8 +361,10 @@ claude:
         - ~/.cache/uv
         - ~/.local/state/mise
         - ~/.local/share/uv
-        # The hcom bus store: hcom secures the directory on every open, `hcom list` too (U16).
+        # The dotfiles program's hcom store until its one-time move (U16; README "Run a program in another repository").
         - ~/.local/state/hcom-regime
+        # The derived per-repository stores ~/.local/state/hcom/<slug> (regime-env, U33); no part may be a symlink.
+        - ~/.local/state/hcom
         # The omp seat worktrees, positioned by the orchestrator (hcom-orchestration step 4; U16).
         - ~/.local/state/omp-seats
       darwin_extra_allow_write:
@@ -736,38 +731,6 @@ assets:
     note: local-fork-vendored-under-vendor/compactiondb
     install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
-  agmsg:
-    source: agmsg-installer
-    upstream: https://github.com/fujibee/agmsg
-    pin: "1.5.0"
-    ref: v1.5.0
-    ref_commit: c487be269c1973aeb01ca831806eb3f65ff3366d
-    verify: sha256
-    sha256: 9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059
-    bootstrap_integrity: sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==
-    reason: fujibee/agmsg's skill releases (v1.5.x) carry no assets, checksums or attestations (its app-v* releases ship a separate app); the npm package's provenance covers only the npx bootstrapper, not the skill tree the installer uses.
-    install_path: ~/.agents/skills/agmsg
-    installer: scripts/update-agent-assets.sh#update_agmsg
-    note: >-
-      pin is the upstream release and ref its tag; ref_commit is the commit
-      behind that tag (lightweight tag, c487be2), and sha256 is the digest of
-      GitHub's source archive for ref_commit, which update_agmsg downloads,
-      verifies, and hands to that tree's own install.sh (--update only when
-      the upstream .agmsg marker exists). The archive + sha256 path replaces
-      the task's `git clone --branch` + `rev-parse` check (accepted change
-      request: a git checkout makes install.sh derive VERSION from `git
-      describe`, which defeats the VERSION == pin skip). bootstrap_integrity
-      is the npm dist.integrity of agmsg@<pin>, the bootstrapper behind
-      `npx agmsg@<pin>`; it is recorded for provenance only because that path
-      clones the tag with no checksum and ships no scripts itself. Bump pin,
-      ref, ref_commit, sha256 and bootstrap_integrity together after
-      reviewing the upstream diff.
-    render:
-      file: scripts/update-agent-assets.sh
-      constants:
-        AGMSG_PIN_COMMIT: ref_commit
-        AGMSG_PIN_SHA256: sha256
-        AGMSG_PIN_VERSION: pin
   claude-plugins:
     source: claude-plugin
     upstream: marketplaces

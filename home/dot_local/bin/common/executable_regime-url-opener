@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""regime-url-opener: open a seat host's sign-in URL in this laptop's default browser (regime-cutover U37).
+
+A seat on a remote host (Ubuntu, reached through `herdr --remote` over SSH) cannot open a browser, and the
+vendors' sign-in flows end in a browser consent. The SSH host entry tagged `seat-host` carries
+`RemoteForward 127.0.0.1:1456 127.0.0.1:1456`, so the remote `regime-open-url <url>` reaches this
+loopback listener (docs/remote-host-logins.md). launchd starts it
+(`~/Library/LaunchAgents/com.mryfmo.dotfiles.url-opener.plist`).
+
+It accepts exactly one request shape, `POST /open` with the header `X-Regime-Open: 1` and the URL as the
+body, and opens the URL only when it is `https` on an allow-listed sign-in host with no user info and no
+port but 443. The header keeps a web page in this browser from posting here, since a cross-origin request
+with a custom header needs a CORS preflight this server never answers. Every request is logged to
+`~/.local/state/hcom/url-opener.log` with the decision and the URL's scheme, host and path only, never
+its query. It binds 127.0.0.1 only and never runs a shell.
+
+launchd sends its stdout and stderr to /dev/null, because launchd opens those files before Python starts
+and a fresh home has no log directory yet. The start, a failed bind and every request therefore go to the
+log file, whose parent this script creates before it binds.
+
+Usage: regime-url-opener [--port 1456] [--log PATH]
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import http.server
+import os
+import shutil
+import subprocess
+import sys
+import urllib.parse
+from pathlib import Path
+
+# The sign-in hosts of the two seat routes: SIWC (`auth.openai.com`) and Claude Code's `claude auth login`
+# (`claude.com/cai/oauth/authorize`, measured 2026-10-24 with Claude Code 2.1.309) and its Console flow.
+ALLOWED_HOSTS = frozenset(
+    {"auth.openai.com", "claude.ai", "claude.com", "console.anthropic.com", "platform.claude.com"}
+)
+MAX_BODY = 8192
+HEADER = "X-Regime-Open"
+
+
+def utc_now() -> str:
+    # datetime.UTC is Python 3.11+; launchd runs /usr/bin/python3, which is 3.9 on this macOS.
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")  # noqa: UP017
+
+
+def check_url(text: str) -> tuple[str | None, str]:
+    """Return (reason it is refused or None, the scheme://host/path to log)."""
+    if not text or any(ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in text):
+        return "not one URL", ""
+    try:
+        parts = urllib.parse.urlsplit(text)
+        port = parts.port
+    except ValueError:
+        return "not a URL", ""
+    host = (parts.hostname or "").lower()
+    shown = f"{parts.scheme}://{host}{parts.path}"
+    if parts.scheme != "https":
+        return "not https", shown
+    if parts.username is not None or parts.password is not None:
+        return "user info in the URL", shown
+    if port not in (None, 443):
+        return f"port {port}", shown
+    if host not in ALLOWED_HOSTS:
+        return "host not on the allow-list", shown
+    return None, shown
+
+
+def opener() -> str | None:
+    return shutil.which("open" if sys.platform == "darwin" else "xdg-open")
+
+
+def append_log(path: Path, entry: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(path, "a", encoding="utf-8") as log:
+        log.write(f"{utc_now()} {entry}\n")
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    server_version = "regime-url-opener"
+    log_path: Path
+
+    def log_message(self, format: str, *args: object) -> None:
+        return None  # the decision log below is the only record
+
+    def record(self, decision: str, shown: str = "") -> None:
+        append_log(self.log_path, f"{decision}{' ' + shown if shown else ''}")
+
+    def reply(self, status: int, text: str) -> None:
+        body = (text + "\n").encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        self.record("refused method GET")
+        self.reply(405, "POST /open only")
+
+    def do_POST(self) -> None:
+        if self.path != "/open":  # lint-comparisons: allow an HTTP request target, not a filesystem path
+            self.record(f"refused path {self.path[:80]!r}")
+            self.reply(404, "POST /open only")
+            return
+        if self.headers.get(HEADER) != "1":
+            self.record(f"refused missing {HEADER} header")
+            self.reply(403, f"the {HEADER}: 1 header is required")
+            return
+        try:
+            length = int(self.headers.get("Content-Length", ""))
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_BODY:
+            self.record("refused body length")
+            self.reply(413, f"the body must be one URL of at most {MAX_BODY} bytes")
+            return
+        try:
+            url = self.rfile.read(length).decode("utf-8").strip()
+        except UnicodeDecodeError:
+            self.record("refused body not UTF-8")
+            self.reply(400, "the body must be one UTF-8 URL")
+            return
+        reason, shown = check_url(url)
+        if reason:
+            self.record(f"refused {reason}", shown)
+            self.reply(403 if shown else 400, f"refused: {reason}")
+            return
+        command = opener()
+        if command is None:
+            self.record("failed no opener on PATH", shown)
+            self.reply(502, "no `open` or `xdg-open` on PATH")
+            return
+        result = subprocess.run([command, url], stdin=subprocess.DEVNULL, capture_output=True, check=False)
+        if result.returncode != 0:
+            self.record(f"failed opener exit {result.returncode}", shown)
+            self.reply(502, f"the opener exited {result.returncode}")
+            return
+        self.record("opened", shown)
+        self.reply(200, "opened")
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="regime-url-opener")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("REGIME_URL_OPENER_PORT", "1456")))
+    parser.add_argument("--log", type=Path, default=Path.home() / ".local/state/hcom/url-opener.log")
+    args = parser.parse_args(argv)
+    Handler.log_path = args.log
+    try:
+        args.log.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    except OSError as error:
+        print(f"regime-url-opener: cannot create the log directory {args.log.parent}: {error}", file=sys.stderr)
+        return 1
+    try:
+        server = http.server.HTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError as error:
+        append_log(args.log, f"failed to bind 127.0.0.1:{args.port}: {error.strerror or error}")
+        print(f"regime-url-opener: cannot bind 127.0.0.1:{args.port}: {error}", file=sys.stderr)
+        return 1
+    host, port = server.server_address[:2]
+    append_log(args.log, f"listening on {host}:{port}")
+    print(f"regime-url-opener: listening on {host}:{port}", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

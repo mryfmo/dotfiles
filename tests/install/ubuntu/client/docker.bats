@@ -82,3 +82,44 @@ function teardown() {
         false
     fi
 }
+
+# uninstall_old_docker has no install_* counterpart: main calls it first, to remove the distribution's Docker
+# packages that conflict with Docker's own (docs.docker.com/engine/install/ubuntu, "Uninstall old versions").
+# The list below is that set; the cases check it is removed whole, one package per call, and never a package
+# install_docker_engine installs.
+@test "[ubuntu-client] uninstall_old_docker removes each installed legacy package and none of PACKAGES" {
+    local removed installed
+
+    run record_apt_calls "${SCRIPT_PATH}" uninstall_old_docker installed
+    [ "${status}" -eq 0 ]
+    [ "$(grep -c '^apt-get remove -y [^ ]*$' <<< "${output}")" -eq 5 ]
+    removed="$(apt_call_packages remove <<< "${output}")"
+    [ "${removed}" = "$(printf '%s\n' docker docker-engine docker.io containerd runc)" ]
+
+    run record_apt_calls "${SCRIPT_PATH}" install_docker_engine
+    [ "${status}" -eq 0 ]
+    installed="$(apt_call_packages install <<< "${output}")"
+    [ -n "${installed}" ]
+    run grep -xF -f <(printf '%s\n' "${installed}") <<< "${removed}"
+    [ "${status}" -eq 1 ]
+
+    run record_apt_calls "${SCRIPT_PATH}" uninstall_old_docker missing
+    [ "${status}" -eq 0 ]
+    [ -z "${output}" ]
+}
+
+@test "[ubuntu-client] the recorded uninstall_old_docker call catches an uninstaller that drops a package" {
+    local mutant="${BATS_TEST_TMPDIR}/docker-old.sh" removed
+    sed '/^        "runc"$/d' "${SCRIPT_PATH}" > "${mutant}"
+    if cmp -s "${SCRIPT_PATH}" "${mutant}"; then
+        false
+    fi
+
+    run record_apt_calls "${mutant}" uninstall_old_docker installed
+    [ "${status}" -eq 0 ]
+    removed="$(apt_call_packages remove <<< "${output}")"
+
+    # The recorder saw the mutant's calls, and the comparison above would refuse them.
+    [ "${removed}" = "$(printf '%s\n' docker docker-engine docker.io containerd)" ]
+    [ "${removed}" != "$(printf '%s\n' docker docker-engine docker.io containerd runc)" ]
+}

@@ -2,6 +2,8 @@
 
 readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
 
+load "../../helpers/apt_record"
+
 @test "[ubuntu-common] run_apt_get bootstraps sudo when missing" {
     local calls_path="${BATS_TEST_TMPDIR}/run_apt_get_calls.txt"
     : > "${calls_path}"
@@ -147,6 +149,43 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
     [ "${status}" -eq 0 ]
     [ "${actual_output}" = "${output}" ]
+}
+
+@test "[ubuntu-common] uninstall_apt_packages removes what install_apt_packages installs except sudo and git" {
+    local installed removed
+
+    run record_apt_calls "${SCRIPT_PATH}" install_apt_packages missing
+    [ "${status}" -eq 0 ]
+    installed="$(apt_call_packages install <<< "${output}")"
+    [ -n "${installed}" ]
+
+    run record_apt_calls "${SCRIPT_PATH}" uninstall_apt_packages
+    [ "${status}" -eq 0 ]
+    [ "$(grep -c '^apt-get remove ' <<< "${output}")" -eq 1 ]
+    removed="$(apt_call_packages remove <<< "${output}")"
+
+    # sudo and git stay: the session that runs the uninstall needs both.
+    [ "${removed}" = "$(grep -vxF -e sudo -e git <<< "${installed}")" ]
+}
+
+@test "[ubuntu-common] the recorded uninstall_apt_packages call catches an uninstaller that drops a package" {
+    local mutant="${BATS_TEST_TMPDIR}/dependencies.sh" installed removed
+    sed 's/run_apt_get remove -y "${removable_packages\[@\]}"/run_apt_get remove -y "${removable_packages[@]:1}"/' \
+        "${SCRIPT_PATH}" > "${mutant}"
+    if cmp -s "${SCRIPT_PATH}" "${mutant}"; then
+        false
+    fi
+
+    run record_apt_calls "${mutant}" install_apt_packages missing
+    [ "${status}" -eq 0 ]
+    installed="$(apt_call_packages install <<< "${output}")"
+    run record_apt_calls "${mutant}" uninstall_apt_packages
+    [ "${status}" -eq 0 ]
+    removed="$(apt_call_packages remove <<< "${output}")"
+
+    # The recorder saw the mutant's call, and the comparison above would refuse it.
+    [ -n "${removed}" ]
+    [ "${removed}" != "$(grep -vxF -e sudo -e git <<< "${installed}")" ]
 }
 
 @test "[ubuntu-common] script enables xtrace when DOTFILES_DEBUG is set" {

@@ -1,0 +1,9 @@
+task_id: dotfiles-T133-dispositions-a01
+round: 2
+previous_head: fa47987b408927c507bfadec6115ebdfceb0a110
+check:
+  - tests/unit/test_dispositions.py::test_test_refutation_is_verified_against_the_head_ci_log_and_needs_an_executed_test
+  - tests/unit/test_dispositions.py::test_diff_refutation_range_is_fixed_to_thread_commit_and_head_and_is_a_claim
+  - tests/unit/test_dispositions.py::test_upstream_only_hunk_changes_demand_not_applicable
+  - tests/unit/test_orch_gate_path.py::test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests
+reason: the task-level audit of fa47987 (.orchestration/validation/dotfiles-T133-dispositions-a01-audit-fa47987.md, Verdict incorrect, 2 P1 and 4 P2) and amendment 1 (task sha256 05ad23ef…); revise 1 of a01, its last round under INV-6 (amendments 1, revises 1)

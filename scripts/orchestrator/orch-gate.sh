@@ -20,7 +20,11 @@
 #   gate or the collector and gh it starts (the audits of a06c874e and 6847aa9f). A trap set before the private
 #   directory is made removes it whatever fails or the gate says, and once the head's checkout has started restores
 #   the review worktree to origin/main; a refusal before that leaves the review worktree as it was (the audit of
-#   a235637).
+#   a235637). Right before the gate, `dispositions.py <pr> <head> --feedback <sweep>` re-validates the sweep's
+#   dispositions from this checkout under the same `env -i` and private PATH (plan 024 P1-10; a `test:` refutation is
+#   read from the head's CI log through the private `gh`, never run on this host): with
+#   DISPOSITIONS_REQUIRE_REFUTATION=1 it runs with `--require-refutation` and any failure refuses; otherwise its lines
+#   are printed as a report.
 # @arg $1 string Task id.
 # @arg $2 path The PR's checkout (its HEAD is the gated head).
 # @arg $3 int PR number.
@@ -78,6 +82,16 @@ for f in "${evidence[@]}"; do
     mkdir -p "${review}/$(dirname -- "${f}")"
     cp -- "${f}" "${review}/${f}"
 done
+# Plan 024 P1-10: right before the gate, the saved dispositions are re-validated in this checkout (not the review
+# worktree) with the private PATH; under DISPOSITIONS_REQUIRE_REFUTATION=1 a failure refuses and the trap restores the
+# review worktree, otherwise the lines are a report.
+check=("${python}" -I "${root}/scripts/orchestrator/dispositions.py" "${pr}" "${head}" --feedback "${sweep}" --out /dev/null)
+if [[ ${DISPOSITIONS_REQUIRE_REFUTATION:-} == 1 ]]; then
+    env -i PATH="${bin}" HOME="${HOME}" "${check[@]}" --require-refutation ||
+        refuse "the dispositions of ${sweep} fail dispositions.py --require-refutation"
+else
+    env -i PATH="${bin}" HOME="${HOME}" "${check[@]}" || true
+fi
 rc=0
 (
     # errexit is off left of ||, so a failed cd exits here instead of gating another tree.

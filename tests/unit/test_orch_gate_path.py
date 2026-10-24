@@ -7,12 +7,15 @@ does), and `git` answers `rev-parse` with the root or the head and succeeds sile
 absolute and the stubs record with builtins or absolute paths, as the private PATH holds neither bash nor env.
 """
 
+import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 HEAD = "0123456789abcdef0123456789abcdef01234567"
@@ -24,7 +27,9 @@ STUBS = {
     "bin/gh": "",
     "bin/git": 'case "$*" in\n*"rev-parse --show-toplevel") printf "%s\\n" "{t}/repo" ;;\n'
     + '*"rev-parse HEAD") printf "%s\\n" {head} ;;\nesac\n',
-    "gate/python": '/usr/bin/env > "{t}/calls/gate-env"\n'
+    # The wrapper's interpreter also runs dispositions.py (plan 024 P1-10): that run is the real one, not a gate run.
+    "gate/python": f'case "$*" in *dispositions.py*) exec "{sys.executable}" "$@" ;; esac\n'
+    + '/usr/bin/env > "{t}/calls/gate-env"\n'
     + 'for f in "$PATH"/*; do printf "%s %s\\n" "$f" "$(/usr/bin/readlink "$f")"; done > "{t}/calls/gate-path"\n',
 }
 
@@ -37,10 +42,11 @@ class OrchGatePathTest(unittest.TestCase):
         self.root, self.review = self.t / "repo", self.t / "repo/.claude/worktrees/orchestrator-review"
         for directory in ("bin", "calls", "gate", "pr", "tmp", "repo/scripts/orchestrator", self.review):
             (self.t / directory).mkdir(parents=True, exist_ok=True)
-        shutil.copy(ROOT / "scripts/orchestrator/orch-gate.sh", self.root / "scripts/orchestrator")
+        for script in ("orch-gate.sh", "dispositions.py"):
+            shutil.copy(ROOT / "scripts/orchestrator" / script, self.root / "scripts/orchestrator")
         v = self.root / ".orchestration/validation"
         v.mkdir(parents=True)
-        (v / "t-a01-pr-feedback.json").write_text('{"pr": 9}\n')
+        (v / "t-a01-pr-feedback.json").write_text('{"pr": 9, "items": []}\n')
         for name in (f"audit-{HEAD[:7]}.md", f"audit-{HEAD[:7]}.md.last.md", "review-receipt.md", "crit.json"):
             (v / f"t-a01-{name}").write_text("x\n")
         (self.root / ".orchestration/acceptance").mkdir()
@@ -110,6 +116,48 @@ class OrchGatePathTest(unittest.TestCase):
         self.stub("bin/mise", 'printf "%s\\n" "{t}/mise/shims/$2"\n')
         self.run_gate(2)
         self.assertEqual([], os.listdir(self.t / "tmp"))
+
+    def test_orch_gate_revalidates_the_dispositions_before_the_gate(self):
+        # A thread's not-applicable without a refutation form (no line, so no commit or gh is needed).
+        url = "https://github.com/o/r/pull/9#discussion_r1"
+        item = {"source": "review_comment", "path": "a.py", "line": None, "url": url, "disposition": "not-applicable:x"}
+        sweep = self.root / ".orchestration/validation/t-a01-pr-feedback.json"
+        sweep.write_text(json.dumps({"pr": 9, "items": [item]}))
+        with mock.patch.dict(os.environ, {"DISPOSITIONS_REQUIRE_REFUTATION": "1"}):
+            log = self.run_gate(2)
+        self.assertIn(f"{url} refutation none FAIL: no refutation form", self.stderr)
+        self.assertIn("fail dispositions.py --require-refutation; refused", self.stderr)
+        self.assertFalse((self.t / "calls/gate-env").exists())  # the gate never ran
+        # The step runs from the trusted root right before the gate, and the trap puts the review worktree back.
+        step = next(i for i, (command, _) in enumerate(log) if "dispositions.py" in command)
+        self.assertEqual(str(self.root), log[step][1])
+        restore = log.index((f"git -C {self.review} checkout -qf --detach origin/main", str(self.root)))
+        self.assertLess(log.index((f"git -C {self.review} checkout -q --detach {HEAD}", str(self.root))), step)
+        self.assertLess(step, restore)
+        with mock.patch.dict(os.environ):
+            os.environ.pop("DISPOSITIONS_REQUIRE_REFUTATION", None)
+            self.run_gate(0)
+        self.assertIn(f"{url} refutation none unverified: no refutation form", self.stderr)
+        self.assertTrue((self.t / "calls/gate-env").exists())
+
+    def test_orch_gate_passes_the_head_to_dispositions_and_runs_no_tests(self):
+        # The audit of fa47987 (P1, orch-gate.sh:87): the step names the gated head, and a test: refutation is read from
+        # the head's CI log, never run in this trusted checkout (amendment 1 (a)); a local run would leave the marker.
+        (self.root / "tests/unit").mkdir(parents=True)
+        marker = "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_writes(self):\n        open('ran', 'w').close()\n"
+        (self.root / "tests/unit/test_marker.py").write_text(marker)
+        evidence = "test:tests/unit/test_marker.py::test_writes"
+        reason = f"not-applicable:the finding names a path the head never reaches; evidence={evidence}"
+        item = {"source": "review_comment", "path": "a.py", "line": None, "url": "u", "disposition": reason}
+        (self.root / ".orchestration/validation/t-a01-pr-feedback.json").write_text(
+            json.dumps({"pr": 9, "items": [item]})
+        )
+        with mock.patch.dict(os.environ):
+            os.environ.pop("DISPOSITIONS_REQUIRE_REFUTATION", None)
+            log = self.run_gate(0)
+        self.assertIn(HEAD, next(command for command, _ in log if "dispositions.py" in command).split())
+        self.assertFalse((self.root / "ran").exists())
+        self.assertIn("u refutation test unverified", self.stderr)
 
 
 if __name__ == "__main__":

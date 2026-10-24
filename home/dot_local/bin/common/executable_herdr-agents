@@ -38,7 +38,7 @@
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Retired: exits 2 naming --remove-worker then --add-worker.
-# @option --retire-agmsg Remove the checkout's agmsg hooks and leave its agmsg teams without changing Herdr panes.
+# @option --retire-agmsg Remove agmsg hooks and leave agmsg teams without changing Herdr panes: in DIR, or without DIR in every registered clone of this repository and then the current directory.
 # @option --bootstrap-agmsg Retired: exits 2 naming --retire-agmsg.
 # @option --audit <sha> Run the read-only `codex <audit profile args> exec` auditor for <sha> in the workspace's audit tab.
 # @option --out <path> Audit evidence path, relative to DIR. Defaults to
@@ -125,7 +125,11 @@ Retire mode turns the agmsg regime off for DIR (E1 of plan 025): it removes
 every agmsg hook from DIR/.claude/settings.local.json with delivery.sh set off,
 makes each claude-code agmsg identity registered at DIR leave its team, and
 prints one line per action, or `agmsg already retired for DIR` when there was
-nothing to do. It also removes the pre-push stub that earlier versions wrote
+nothing to do. Without DIR it first visits every project the agmsg team store
+registers whose root commits and origin owner/repo match the current
+directory's, retiring each the same way, then retires the current directory; a
+registered project of another repository is printed as skipped with its team
+and path and left untouched. It also removes the pre-push stub that earlier versions wrote
 for the retired main-push guard (any other pre-push hook is left alone); the
 GitHub ruleset on main is the boundary. --bootstrap-agmsg is retired: it exits
 2 and names --retire-agmsg.
@@ -1431,23 +1435,40 @@ function agmsg_hooks_or_fail() {
 #   Prints one line per action, or one `agmsg already retired` line. delivery.sh
 #   never touches permissions, so an agmsg allow rule it leaves is reported,
 #   never edited here.
-# @arg $1 workdir Repository path used for repo-scoped agmsg registration.
+# @arg $1 workdir Repository path used for repo-scoped agmsg registration; a
+#   registered path whose directory is gone skips the $HOME and pre-push steps.
+# @arg $2 string Optional `--registered <identity>`, the no-DIR form: before a
+#   leave.sh call, keep a membership whose member is also registered at a
+#   project that is not a clone of this repository (repository_identity equal
+#   to <identity>), since leave.sh drops the whole member (leave.sh:85-93)
+#   while join.sh appends one registration per project (join.sh:211-228).
+# @arg $4 string Optional `--report-skips` after `--registered <identity>`:
+#   print a line when DIR has no agmsg hook (each registered project visited).
 # @exitcode 1 When the settings file cannot be read as JSON, an agmsg hook
 #   survives `set off`, identities.sh fails, or leave.sh fails.
 function retire_agmsg() {
-    local workdir="$1"
+    local workdir="$1" registered=false identity="" report_skips="" other
 
-    if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
-        printf "Skipping agmsg retire for \$HOME; use a repository directory instead.\n" >&2
-        return 0
+    if [[ ${2:-} == --registered ]]; then
+        registered=true
+        identity="${3:-}"
+        report_skips="${4:-}"
     fi
-    remove_retired_pre_push_stub "$(cd -- "${workdir}" && pwd -P)"
+
+    if [[ -d ${workdir} ]]; then
+        if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
+            printf "Skipping agmsg retire for \$HOME; use a repository directory instead.\n" >&2
+            return 0
+        fi
+        remove_retired_pre_push_stub "$(cd -- "${workdir}" && pwd -P)"
+    fi
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
-    local acted=false rows team name rule hooks
+    local teams_dir="${HOME}/.agents/skills/agmsg/teams"
+    local acted=false rows team name rule hooks guard
 
     mkdir -p "${log_file%/*}"
     # The command substitution runs in a subshell, so a read error exits it and
@@ -1470,6 +1491,9 @@ function retire_agmsg() {
                 [[ -z ${rule} ]] || printf 'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n' "${claude_hooks_file}" "${rule}"
             done < <(jq -r '.permissions.allow[]? | select(contains("agmsg/scripts/"))' "${claude_hooks_file}" 2> /dev/null)
         fi
+    elif [[ ${report_skips} == --report-skips ]]; then
+        acted=true
+        printf 'agmsg retire: no agmsg hook in %s (missing or none); hook removal skipped\n' "${claude_hooks_file}"
     fi
 
     # A failed or missing lookup is not "no identity": never claim retired then.
@@ -1486,6 +1510,26 @@ function retire_agmsg() {
     while IFS=$'\t' read -r team name; do
         [[ -n ${team} && -n ${name} ]] || continue
         acted=true
+        if [[ ! -f ${teams_dir}/${team}/config.json ]]; then
+            printf 'agmsg retire: team %s of %s no longer exists; skipped\n' "${team}" "${name}"
+            continue
+        fi
+        if [[ ${registered} == true ]]; then
+            guard=0
+            other="$(agmsg_member_other_project "${teams_dir}/${team}/config.json" "${name}" "${workdir}" "${identity}")" || guard=$?
+            case "${guard}" in
+            0)
+                printf 'agmsg retire: %s in team %s is also registered at %s; membership kept\n' "${name}" "${team}" "${other}"
+                continue
+                ;;
+            1) ;;
+            *)
+                printf 'herdr-agents: cannot read the registrations of %s in %s, so what leave.sh would remove is unknown; nothing left (log: %s)\n' \
+                    "${name}" "${teams_dir}/${team}/config.json" "${log_file}" >&2
+                exit 1
+                ;;
+            esac
+        fi
         if [[ ! -x ${scripts}/leave.sh ]]; then
             printf 'agmsg leave script not found; skipping team leave for %s: %s\n' "${name}" "${scripts}/leave.sh" >&2
             continue
@@ -1498,6 +1542,141 @@ function retire_agmsg() {
     done <<< "${rows}"
 
     [[ ${acted} == true ]] || printf 'agmsg already retired for %s\n' "${workdir}"
+}
+
+# @description Print the first registration of a team member, of any agmsg
+#   type, that lies outside this repository, since leave.sh removes the whole
+#   member whatever the type (leave.sh:85-93) and join.sh keeps one registration
+#   per type/project pair (join.sh:211-228). Outside means a directory other
+#   than DIR whose repository_identity differs from <identity>, or a project
+#   that cannot be checked (absent, not a string, gone, or holding a newline).
+#   The registrations are read from the team config as JSON, so a tab in a path
+#   survives, and the read is checked: a failure is never "nothing outside".
+# @arg $1 path Team config.json.
+# @arg $2 string Member name.
+# @arg $3 path DIR, the project being retired.
+# @arg $4 string This repository's identity (empty when it has none).
+# @exitcode 0 When such a registration exists (its project printed on stdout).
+# @exitcode 1 When every registration is DIR or a clone of this repository.
+# @exitcode 2 When the member's registrations cannot be read.
+function agmsg_member_other_project() {
+    local config="$1" name="$2" project="$3" identity="$4" rows row other
+    local log_file="${HOME}/.config/herdr/herdr-agents.log"
+    local -a registrations=()
+
+    # An absent member is a read failure: identities.sh just named it here.
+    rows="$(jq -c --arg n "${name}" '.agents[$n] // error("member \($n) is not in the team config")
+        | if (.registrations | type) == "array" then .registrations[] else {type, project} end
+        | {type: (.type // null), project: (.project // null)}' "${config}" 2>> "${log_file}")" || return 2
+    while IFS= read -r row; do
+        [[ -n ${row} ]] && registrations+=("${row}")
+    done <<< "${rows}"
+    for row in ${registrations[@]+"${registrations[@]}"}; do
+        other="$(jq -r 'if (.project | type) == "string" then .project else "" end' <<< "${row}")" || return 2
+        if [[ -z ${other} ]]; then
+            # No project to check: what leave.sh would drop is not provably ours.
+            printf '%s\n' "${row}"
+            return 0
+        fi
+        if [[ ${other} != *$'\n'* && -d ${other} ]]; then
+            # The same directory (by device and inode), whatever path spells it.
+            [[ ! ${other} -ef ${project} ]] || continue
+            [[ -z ${identity} || "$(repository_identity "${other}")" != "${identity}" ]] || continue
+        fi
+        printf '%s\n' "${other}"
+        return 0
+    done
+    return 1
+}
+
+# @description List every claude-code registration the local agmsg team store
+#   holds as one compact JSON object per line, `{"project":…,"team":…}`. JSON
+#   keeps a path lossless: agmsg accepts a tab in a path (delivery.sh:12-17),
+#   and jq -c escapes it, and a newline, inside the line. It reads each
+#   teams/<team>/config.json with the schema identities.sh reads
+#   (identities.sh:31-58, team.sh:265-285: `.agents.<name>.registrations[]`,
+#   or the legacy `.type`/`.project` pair); the team name is the config's
+#   directory, as leave.sh resolves it. team.sh is not used: it probes delivery
+#   state and panes per member.
+# @exitcode 1 When a team config exists but cannot be read as JSON.
+function registered_agmsg_projects() {
+    local teams_dir="${HOME}/.agents/skills/agmsg/teams" config team
+
+    [[ -d ${teams_dir} ]] || return 0
+    for config in "${teams_dir}"/*/config.json; do
+        [[ -f ${config} ]] || continue
+        team="$(basename -- "$(dirname -- "${config}")")"
+        if ! jq -c --arg team "${team}" '.agents // {} | to_entries[] | .value
+            | (if (.registrations | type) == "array" then .registrations else [{type: .type, project: .project}] end)[]
+            | select(.type == "claude-code" and (.project | type) == "string" and .project != "") | {project, team: $team}' "${config}" 2> /dev/null; then
+            printf 'herdr-agents: cannot read %s as JSON, so its registered agmsg projects are unknown\n' "${config}" >&2
+            return 1
+        fi
+    done
+}
+
+# @description Print a checkout's repository identity on one line: its root
+#   commits and the host/owner/repo its origin fetch URL names, so two clones
+#   match whatever their URL spelling (https or ssh, with or without .git) and a
+#   fork, which shares the root but not the remote, does not (D-024-147).
+#   Prints nothing for a checkout without commits or an origin.
+#   shortcut: a shallow clone reports its shallow boundary, not the root, so it
+#   counts as another repository; upgrade to an explicit project list if a
+#   shallow agmsg project appears.
+# @arg $1 dir Directory.
+function repository_identity() {
+    local roots url
+
+    roots="$(git -C "$1" rev-list --max-parents=0 HEAD 2> /dev/null | sort | tr '\n' ' ')" || roots=""
+    url="$(git -C "$1" config --get remote.origin.url 2> /dev/null)" || url=""
+    [[ -n ${roots} && -n ${url} ]] || return 0
+    # https://host/owner/repo(.git) and git@host:owner/repo(.git) -> host/owner/repo
+    url="$(sed -E -e 's#^[a-z+]+://([^@/]*@)?##' -e 's#^[^@/]*@([^:/]+):#\1/#' -e 's#/+$##' -e 's#\.git$##' <<< "${url}" | tr '[:upper:]' '[:lower:]')"
+    printf '%s| %s\n' "${roots}" "${url}"
+}
+
+# @description Retire agmsg in every project the team store registers that is
+#   a clone of the repository in DIR (repository_identity, D-024-147), then in DIR
+#   itself. A registered project of another repository, one whose directory is
+#   gone, or one whose path holds a newline (agmsg refuses those,
+#   delivery.sh:12-17) is reported with its team and left alone: no delivery.sh
+#   or leave.sh call. A member also registered at a project outside this
+#   repository keeps its membership (retire_agmsg --registered). Paths travel as
+#   JSON from the store to each call, never cut at a tab.
+# @arg $1 clone Absolute path of the clone this runs in.
+# @exitcode 1 As retire_agmsg, or when a team config cannot be read.
+function retire_registered_agmsg_projects() {
+    local clone="$1" registrations row project team identity
+    local -a rows=()
+
+    registrations="$(registered_agmsg_projects)" || exit 1
+    identity="$(repository_identity "${clone}")"
+    # One visit per project, its teams joined; collected first so no command
+    # below reads the list as its stdin.
+    while IFS= read -r row; do
+        [[ -n ${row} ]] && rows+=("${row}")
+    done < <(jq -sc 'group_by(.project)[] | {project: .[0].project, teams: (map(.team) | unique | join(","))}' <<< "${registrations}")
+    for row in ${rows[@]+"${rows[@]}"}; do
+        project="$(jq -r '.project' <<< "${row}")"
+        team="$(jq -r '.teams' <<< "${row}")"
+        if [[ ${project} == *$'\n'* ]]; then
+            printf 'agmsg retire: registered project %q (team %s) holds a newline; skipped\n' "${project}" "${team}"
+            continue
+        fi
+        if [[ ! -d ${project} ]]; then
+            printf 'agmsg retire: registered project %s (team %s) is gone; skipped\n' "${project}" "${team}"
+            continue
+        fi
+        # The same directory (by device and inode), whatever path spells it.
+        [[ ! ${project} -ef ${clone} ]] || continue
+        if [[ -z ${identity} || "$(repository_identity "${project}")" != "${identity}" ]]; then
+            printf 'agmsg retire: registered project %s (team %s) is not a clone of this repository; skipped\n' "${project}" "${team}"
+            continue
+        fi
+        printf 'agmsg retire: registered project %s (team %s)\n' "${project}" "${team}"
+        retire_agmsg "${project}" --registered "${identity}" --report-skips
+    done
+    retire_agmsg "${clone}" --registered "${identity}"
 }
 
 # @description Return the first pane id without an attached agent.
@@ -1778,10 +1957,13 @@ fi
 
 if [[ ${retire_mode} == true ]]; then
     require_command jq
-    workdir="${1:-$PWD}"
-    cd -- "${workdir}"
-    workdir="$(pwd -P)"
-    retire_agmsg "${workdir}"
+    if [[ $# -gt 0 ]]; then
+        cd -- "$1"
+        retire_agmsg "$(pwd -P)"
+    else
+        require_command git
+        retire_registered_agmsg_projects "$(pwd -P)"
+    fi
     exit 0
 fi
 

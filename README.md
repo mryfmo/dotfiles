@@ -256,12 +256,17 @@ cannot be read or is unknown, it prints
 protocol mismatch after updating Herdr prints instructions to stop and restart
 the server (or recreate the Ghostty session), then continues successfully; run
 `herdr server reload-config` manually after restarting. Finally,
-`make agmsg-retire` turns the retired agmsg regime off for this checkout (E1
-of plan 025): it removes the agmsg hooks from `.claude/settings.local.json`
-and makes the checkout's agmsg identity leave its team, printing one
-`agmsg retired: …` line per action, or `agmsg already retired for <dir>` when
-nothing is left. It replaces the agmsg bootstrap, which put those hooks back
-on every run.
+`make agmsg-retire` turns the retired agmsg regime off (E1 of plan 025). It
+visits every project the agmsg team store registers that is a clone of this
+repository (the same root commits and an `origin` naming the same owner/repo,
+so a fork does not count), then the clone `make update` runs in. In each one it
+removes the agmsg hooks from `.claude/settings.local.json` and makes the
+project's agmsg identity leave its team. It prints one `agmsg retired: …` line
+per action, or `agmsg already retired for <dir>` when nothing is left. A
+registered project of another repository is reported as skipped, with its team
+and path, and left untouched. It replaces the agmsg bootstrap, which put those
+hooks back on every run; `herdr-agents --retire-agmsg <dir>` retires one
+project.
 
 Weekly model-usage measurement is informational and never changes
 `model_profiles`. Capture or report usage manually with:
@@ -561,7 +566,8 @@ domains, and protected paths.
 
 The agmsg regime is retired: the omp seats talk over the hcom bus
 ([scripts/orchestrator/README.md](scripts/orchestrator/README.md), "hcom bus"),
-and `make update` removes this checkout's agmsg hooks and identity (see
+and `make update` removes the agmsg hooks and identities of every registered
+clone of this repository (see
 Lifecycle). The installer, tooling and history below stay until their own
 removal lands.
 

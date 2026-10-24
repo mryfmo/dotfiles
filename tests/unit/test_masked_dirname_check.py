@@ -98,6 +98,78 @@ class MaskedDirnameCheckTest(unittest.TestCase):
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
                 self.assertIn("refused", result.stderr)
 
+    def test_a_substitution_split_across_lines_is_reported_where_the_dirname_opens(self) -> None:
+        shapes = {
+            "continued": 'dir=$(cd \\\n    "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)\n',
+            "multiline": 'dir=$(\n    cd "$(dirname "$0")" && pwd -P\n)\n',
+            "quoted": 'dir="$(cd "\n$(basename "$0")")"\n',
+        }
+        for name, body in shapes.items():
+            with self.subTest(shape=name):
+                lever = self.script(name, body)
+
+                result = self.run_check(lever)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertTrue(result.stdout.startswith(f"{lever}:3: a $(dirname) or $(basename)"), result.stdout)
+                self.assertEqual(1, result.stdout.count("\n"), result.stdout)
+
+    def test_an_unquoted_heredoc_body_is_read_as_expanded_text(self) -> None:
+        # The apostrophe is plain text in the body; a line scan read it as an open single quote.
+        lever = self.script("lever", "cat <<EOF\nit's $(cd \"$(dirname \"$0\")\" && pwd)\nEOF\n")
+        tabbed = self.script("tabbed", "\tcat <<-END\n\tsee $(cd \"$(dirname \"$0\")\")\n\tEND\n")
+
+        for path in (lever, tabbed):
+            with self.subTest(path=path.name):
+                result = self.run_check(path)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn(f"{path}:3: a $(dirname) or $(basename)", result.stdout)
+
+    def test_a_quoted_heredoc_body_and_a_multiline_single_quote_are_literal(self) -> None:
+        clean = self.script(
+            "clean",
+            "cat <<'EOF'\ndir=$(cd \"$(dirname \"$0\")\")\nEOF\n"
+            'cat <<"END"\n$(cd "$(dirname x)")\nEND\n'
+            "cat <<\\STOP\n$(cd \"$(basename x)\")\nSTOP\n"
+            "printf '%s\\n' 'line one\n$(cd \"$(dirname x)\")\n'\n"
+            'read -r a <<< "$(cat)"\n'
+            "x=$((1 << 2))\n",
+        )
+
+        result = self.run_check(clean)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_the_scan_resumes_after_a_heredoc_and_a_here_string(self) -> None:
+        lever = self.script(
+            "lever",
+            "cat <<'EOF'\nit's literal\nEOF\n"
+            'while read -r x; do :; done <<< "${list}"\n'
+            + U31_SHAPE,
+        )
+
+        result = self.run_check(lever)
+
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn(f"{lever}:6: a $(dirname) or $(basename)", result.stdout)
+
+    def test_a_file_that_ends_inside_a_substitution_string_or_heredoc_refuses_the_list(self) -> None:
+        bodies = {
+            "substitution": 'x=$(cd "$y"\n',
+            "single-quote": "echo 'never closed\n",
+            "heredoc": "cat <<EOF\nno terminator\n",
+        }
+        for name, body in bodies.items():
+            with self.subTest(shape=name):
+                broken = self.script(name, body)
+
+                result = self.run_check(broken)
+
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(f"{broken} ends inside a substitution", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

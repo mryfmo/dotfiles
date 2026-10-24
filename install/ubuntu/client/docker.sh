@@ -73,13 +73,6 @@ function install_docker_engine() {
 }
 
 #
-# @description Remove the configured Docker Engine packages.
-#
-function uninstall_docker_engine() {
-    sudo apt-get remove -y "${PACKAGES[@]}"
-}
-
-#
 # @description Add the current user to the docker group so docker can run without sudo.
 #
 function configure_docker_group() {

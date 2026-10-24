@@ -9,7 +9,7 @@ function setup() {
 }
 
 # Only a case that installed for real removes what it installed (U41): before, every case ran
-# uninstall_tailscale, and the array cases' teardown removed the runner image's own packages.
+# the installer's uninstall function (removed in U46), and the array cases' teardown removed the runner image's own packages.
 function teardown() {
     remove_real_packages
 }

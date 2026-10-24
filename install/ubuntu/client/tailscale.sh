@@ -42,13 +42,6 @@ function install_tailscale() {
 }
 
 #
-# @description Remove the tailscale package.
-#
-function uninstall_tailscale() {
-    sudo apt-get remove -y tailscale
-}
-
-#
 # @description Install Tailscale from its official Ubuntu apt repository.
 #
 function main() {

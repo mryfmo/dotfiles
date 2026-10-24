@@ -555,6 +555,35 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
         self.assertEqual(self.merge(managed, once), once)
 
+    def test_retired_update_keys_leave_settings_the_old_template_installed(self) -> None:
+        """The former managed defaults go; every other installed key stays; a second run is a no-op (U18, D-024-150)."""
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        self.assertNotIn("autoUpdatesChannel", managed, "the current template names no release channel")
+        old_template = {}
+        for key, value in managed.items():
+            old_template[key] = value
+            if key == "alwaysThinkingEnabled":
+                old_template |= {"autoUpdates": False, "autoUpdatesChannel": "stable"}
+        installed = json.loads(self.merge(old_template, ""))
+        self.assertEqual((installed["autoUpdates"], installed["autoUpdatesChannel"]), (False, "stable"))
+        installed |= {"operatorOnly": {"kept": True}, "enabledPlugins": {"crit@crit": True}}
+
+        after = self.merge(managed, json.dumps(installed))
+        merged = json.loads(after)
+        self.assertNotIn("autoUpdates", merged)
+        self.assertNotIn("autoUpdatesChannel", merged)
+        expected = {key: value for key, value in installed.items() if key not in ("autoUpdates", "autoUpdatesChannel")}
+        self.assertEqual(merged, expected, "only the two retired keys change")
+        self.assertEqual(self.merge(managed, after), after)
+
+    def test_an_update_value_the_operator_set_differently_is_kept(self) -> None:
+        for key, value in (("autoUpdatesChannel", "latest"), ("autoUpdates", True), ("autoUpdates", 0)):
+            with self.subTest(key=key, value=value):
+                output = self.merge({"model": "managed"}, json.dumps({"model": "runtime", key: value}))
+                self.assertEqual(json.loads(output), {"model": "managed", key: value})
+
     def test_modify_private_settings_renders_the_os_conditionals_for_the_host_os_before_merging(self) -> None:
         self.baseline_path.write_text((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
         command = "import platform,runpy,sys; platform.system=lambda:sys.argv[1]; runpy.run_path(sys.argv[2],run_name='__main__')"

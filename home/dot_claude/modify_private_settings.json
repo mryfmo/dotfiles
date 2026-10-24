@@ -23,6 +23,18 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # entry invoking this script is managed, whatever home path it was rendered with.
 MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
+# Keys the managed template used to set and no longer does (regime-cutover U18,
+# D-024-150): a current value still equal to the former managed default came from
+# the template, so the merge drops it; a different value is an operator override
+# and stays, like every other key the template does not manage.
+RETIRED_MANAGED_DEFAULTS: dict[str, Any] = {"autoUpdates": False, "autoUpdatesChannel": "stable"}
+
+
+def is_retired_managed_default(key: str, value: Any) -> bool:
+    if key not in RETIRED_MANAGED_DEFAULTS:
+        return False
+    default = RETIRED_MANAGED_DEFAULTS[key]
+    return type(value) is type(default) and value == default
 
 
 def managed_post_tool_use_paths() -> set[str]:
@@ -180,7 +192,7 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
                 merged[key] = value | managed_value
             else:
                 merged[key] = managed_value
-        else:
+        elif not is_retired_managed_default(key, value):
             merged[key] = value
 
     for key, value in managed.items():

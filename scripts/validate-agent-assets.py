@@ -15,6 +15,7 @@ from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 import tomllib
 
@@ -1604,6 +1605,235 @@ def validate_no_obvious_secrets() -> None:
             )
 
 
+AUTH_NAMES = r"ANTHROPIC_(?:API_KEY|OAUTH_TOKEN)"
+AUTH_REASON = "credential occurrence is not an allowed environment-reference assignment"
+AUTH_ALLOWED = re.compile(
+    r'\A(?:export )?(?:ANTHROPIC_API_KEY|ANTHROPIC_OAUTH_TOKEN)=(?P<q>"?)\$(?:\{(?!ANTHROPIC_(?:'
+    r"API_KEY|OAUTH_TOKEN)\})[A-Za-z_][A-Za-z0-9_]*\}|(?!ANTHROPIC_(?:API_KEY|OAUTH_TOKEN)(?![A-"
+    r"Za-z0-9_]))[A-Za-z_][A-Za-z0-9_]*)(?P=q)(?: (?!.*ANTHROPIC_(?:API_KEY|OAUTH_TOKEN))[A-Za-z"
+    r"0-9_./-]+(?: [A-Za-z0-9_./-]+)*)?\Z"
+)
+CHEZMOI_FILE_ATTRIBUTES = {
+    *("after", "before", "create", "dot", "empty", "encrypted", "executable", "literal"),
+    *("modify", "once", "onchange", "private", "readonly", "remove", "run", "symlink"),
+}
+
+
+def applied_file_format(name: str) -> str | None:
+    base = name.rsplit("/", 1)[-1]
+    while "_" in base and (attribute := base.split("_", 1)[0]) in CHEZMOI_FILE_ATTRIBUTES:
+        if attribute in {"encrypted", "modify", "run", "symlink"}:
+            return None
+        base = base.split("_", 1)[1]
+        if attribute == "literal":
+            break
+    return {".json": "json", ".toml": "toml", ".yaml": "yaml", ".yml": "yaml"}.get(Path(base).suffix)
+
+
+def parsed_entry(node: Any) -> tuple[str, Any]:
+    if yaml is not None and isinstance(node, yaml.Node):
+        if isinstance(node, yaml.MappingNode):
+            return "map", [
+                (key.value if isinstance(key, yaml.ScalarNode) else None, value) for key, value in node.value
+            ]
+        if isinstance(node, yaml.SequenceNode):
+            return "seq", node.value
+        tag = node.tag.rsplit(":", 1)[-1]
+        return ("str", node.value) if tag == "str" else ("null" if tag == "null" else "other", None)
+    if isinstance(node, (tuple, dict)):
+        return "map", list(node.items()) if isinstance(node, dict) else list(node)
+    if isinstance(node, list):
+        return "seq", node
+    return ("str", node) if isinstance(node, str) else ("null" if node is None else "other", None)
+
+
+def auth_decoded_views(text: str):
+    """Stateless spelling transforms with the original LF location of each character."""
+    view, locations = text, []
+    for number, line in enumerate(text.split("\n"), 1):
+        locations.extend([number] * (len(line) + 1))
+    locations.pop()
+
+    def escape(match: re.Match[str]) -> str:
+        value = match[1]
+        if value[0] in "01234567" or value[0] in "xuU" and len(value) > 1:
+            number = int(value, 8) % 256 if value[0] in "01234567" else int(value[1:], 16)
+            return chr(number) if number <= 0x10FFFF else match[0]
+        if value.startswith("c") and len(value) == 2:
+            return chr(127 if value[1] == "?" else ord(value[1].upper()) & 31)
+        controls = str.maketrans("abeEfnrtv", "\a\b\x1b\x1b\f\n\r\t\v")
+        return value.translate(controls) if value in "abeEfnrtv\\'\"?" else "\\" + value
+
+    transforms = (
+        (r"\\\n", lambda _: ""),
+        (r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|c.|.)", escape),
+        (r"(?:%[0-9a-fA-F]{2})+", lambda match: unquote(match[0])),
+    )
+
+    def spellings():
+        yield view, locations
+        kept = [(char, locations[index]) for index, char in enumerate(view) if char not in "'\"\\{}$"]
+        yield "".join(char for char, _ in kept), [number for _, number in kept]
+
+    yield from spellings()
+    while True:
+        previous = view
+        for pattern, decode in transforms:
+            parts, mapped, cursor = [], [], 0
+            for match in re.finditer(pattern, view, flags=re.DOTALL):
+                value = decode(match)
+                parts.extend((view[cursor : match.start()], value))
+                mapped.extend(locations[cursor : match.start()])
+                mapped.extend([locations[match.start()]] * len(value))
+                cursor = match.end()
+            parts.append(view[cursor:])
+            mapped.extend(locations[cursor:])
+            view, locations = "".join(parts), mapped
+            yield from spellings()
+        if view == previous:
+            break
+
+
+def auth_diagnostic_key(text: str) -> str:
+    redacted = ""
+    while True:
+        for view, _ in auth_decoded_views(text):
+            if boundary := re.search(r"[=:$]", view):
+                # Discard before decoding again: a later transform can erase the delimiter.
+                text, redacted = view[: boundary.start()], "<redacted>"
+                break
+        else:
+            return view + redacted
+
+
+def credential_occurrences(text: str) -> list[tuple[int, str, str]]:
+    # shortcut: runtime-assembled names are undetectable; revisit only with a new reviewed policy.
+    lines, found = text.split("\n"), []
+    for view, locations in auth_decoded_views(text):
+        for match in re.finditer(AUTH_NAMES, view):
+            number = locations[match.start()]
+            found.append((number, lines[number - 1], match[0]))
+    return list(dict.fromkeys(found))
+
+
+def allowed_assignment_line(line: str) -> bool:
+    return AUTH_ALLOWED.fullmatch(line) is not None
+
+
+def anthropic_text_findings(text: str, where: str, markdown: bool = False) -> list[tuple[str, str, str]]:
+    code_lines, fence, fence_depth = set(), "", 0
+    if markdown:
+        for number, line in enumerate(text.split("\n"), 1):
+            quote = re.match(r"^(?: {0,3}>[ \t]?)*", line)[0]
+            depth, content = quote.count(">"), line[len(quote) :]
+            if fence and depth < fence_depth:
+                fence = ""
+            marker = re.match(r"^ {0,3}(\x60{3,}|~{3,})(.*)$", content)
+            if fence:
+                code_lines.add(number)
+                if (
+                    marker
+                    and depth == fence_depth
+                    and marker[1][0] == fence[0]
+                    and len(marker[1]) >= len(fence)
+                    and not marker[2].strip(" \t")
+                ):
+                    fence = ""
+            elif marker:
+                code_lines.add(number)
+                fence, fence_depth = marker[1], depth
+            elif content.startswith(("    ", "\t")):
+                code_lines.add(number)
+    found = []
+    for number, line, name in credential_occurrences(text):
+        if allowed_assignment_line(line):
+            continue
+        note = line.startswith("#") or markdown and number not in code_lines and "=" not in line
+        rule = "note" if note else "R1" if name.endswith("OAUTH_TOKEN") else "R2"
+        reason = "credential name in a comment or Markdown prose" if note else AUTH_REASON
+        found.append((rule, where or str(number), reason))
+    return list(dict.fromkeys(found))
+
+
+def anthropic_parsed_findings(rel: str, fmt: str, text: str) -> list[tuple[str, str, str]]:
+    rel = rel.encode("unicode_escape").decode("ascii")
+    if fmt == "yaml" and yaml is None:
+        fail(f"{rel}: cannot be parsed as yaml (ImportError); PyYAML is required")
+    errors = (ValueError, RecursionError) + ((yaml.YAMLError,) if yaml is not None else ())
+    try:
+        if fmt == "json":
+            roots = [json.loads(text, object_pairs_hook=tuple)]  # Tuples preserve pairs; JSON arrays remain lists.
+        elif fmt == "toml":
+            roots = [tomllib.loads(text)]
+        else:
+            roots = list(yaml.compose_all(text, Loader=yaml.SafeLoader))
+    except errors as error:  # Parser messages may disclose a key; print only their type.
+        fail(f"{rel}: cannot be parsed as {fmt} ({type(error).__name__}); the Anthropic auth route check refuses it")
+    found, seen, stack = [], set(), [(root, "") for root in roots]
+    while stack:
+        node, where = stack.pop()
+        kind, payload = parsed_entry(node)
+        if id(node) in seen:  # Aliases share identities and cannot multiply the walk.
+            continue
+        seen.add(id(node))
+        if kind == "map":
+            for key, child in payload:
+                if key is None:
+                    fail(f"{rel}: unsupported YAML mapping key (ValueError); the Anthropic auth route check refuses it")
+                key_findings = anthropic_text_findings(str(key), "")
+                label = auth_diagnostic_key(str(key))
+                here = f"{where}.{label}" if where else label
+                found += [(rule, here, reason) for rule, _, reason in key_findings]
+                stack.append((child, here))
+        elif kind == "seq":
+            stack.extend((child, f"{where}[{index}]") for index, child in enumerate(payload))
+        elif kind == "str":
+            found += anthropic_text_findings(payload, where)
+    return found
+
+
+def validate_anthropic_auth_route() -> None:
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--", "home", "install"], capture_output=True, check=False
+    )
+    if listed.returncode != 0:
+        fail("git ls-files failed, so the Anthropic auth route check cannot run")
+    for name in filter(None, listed.stdout.split(b"\0")):
+        rel = os.fsdecode(name)
+        path = ROOT / rel
+        if path.is_symlink() or not path.is_file():  # Never follow PR-controlled symlinks.
+            continue
+        parsed = applied_file_format(rel)
+        try:
+            source = path.read_bytes().decode("utf-8", errors="strict" if parsed else "replace")
+        except UnicodeDecodeError:
+            fail(
+                f"{rel.encode('unicode_escape').decode('ascii')}: cannot be decoded as UTF-8 (UnicodeDecodeError); the Anthropic auth route check refuses it"
+            )
+        raw = anthropic_text_findings(source, "", markdown=path.suffix == ".md")
+        platforms = (
+            ("darwin", "linux")
+            if parsed
+            and os.path.normpath(rel).startswith(os.path.join("home", ".chezmoitemplates", ""))
+            and "{{" in source
+            else ()
+        )
+        texts = [render_template_text(path, os_name) for os_name in platforms] if platforms else [source]
+        found = []
+        for text in texts:
+            if text != source:
+                raw += anthropic_text_findings(text, "")
+            if parsed is not None:
+                found += anthropic_parsed_findings(rel, parsed, text)
+        for rule, where, reason in dict.fromkeys(found + raw):
+            location = f"{rel}:{where}: {rule}" if where.isdecimal() else f"{rel}: {rule}: {where}"
+            location = location.encode("unicode_escape").decode("ascii")
+            if rule == "note":
+                print(f"NOTE: {location}: {reason}", file=sys.stderr)
+            else:
+                fail(f"{location}: {reason}")
+
+
 def validate_compactiondb_project_copy() -> None:
     """The project's CompactionDB runtime and hook scripts must be byte-identical to the vendor tree."""
     vendor = ROOT / "vendor/compactiondb/.claude"
@@ -1679,6 +1909,7 @@ def main() -> None:
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()
+    validate_anthropic_auth_route()
     report_regime_boundary()
     print("agent asset validation ok")
 

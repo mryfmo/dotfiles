@@ -1,0 +1,5 @@
+task_id: dotfiles-T129-anthropic-auth-route-check-followup-a01
+round: 1
+revise: 1
+previous_head: dea816110ed58813c0812beee53a1b99588bce3f
+check: tests/unit/test_validate_agent_assets.py::test_anthropic_auth_route_check_refuses_malformed_utf8_in_a_structured_source

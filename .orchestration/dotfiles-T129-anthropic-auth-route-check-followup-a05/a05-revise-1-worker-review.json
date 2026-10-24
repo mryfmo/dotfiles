@@ -1,0 +1,10 @@
+[
+  {
+    "id": "security-eda0354-P1",
+    "body": "P1, high confidence, independent security-profile review at eda0354b: decoding can erase assignment delimiters before final-only diagnostic redaction, exposing audit_dummy in leaf and ancestor mapping keys. Source: .orchestration/validation/dotfiles-T129-anthropic-auth-route-check-followup-a05-security-eda0354.md in the orchestrator checkout. The exact requested test was added before the fix and failed 28 of 36 subcases on unchanged eda0354b. The authorized revise-1 correction discards every suffix before continuing to decode the remaining prefix, and appends the marker only after decoding. Both credential names, original/encoded/erased delimiters, nested percent encodings and ancestor paths now pass; all 425 corpus rows and all 123 module tests pass. This records the supplied independent review and its correction, not an additional independent worker review or final-head security approval.",
+    "scope": "line",
+    "path": "scripts/validate-agent-assets.py",
+    "line": 1774,
+    "resolved": true
+  }
+]

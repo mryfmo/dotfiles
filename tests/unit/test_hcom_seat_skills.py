@@ -42,6 +42,30 @@ FINDINGS_ONCE = (
     "and the required fix in one message"
 )
 
+# The five first-pass checks (U30 ADDENDUM 2): the worker's pre-RESULT self-check and the orchestrator's pre-audit gate.
+SELF_CHECK = (
+    (
+        "- (a) threat table: when the diff touches a trust boundary, every SCOPE path and non-path control has a "
+        'threat-table row (`AGENTS.md` "Orchestration records and trust-boundary code").'
+    ),
+    (
+        "- (b) fail closed: every safety decision reads its producer's exit status and has a failure-injection "
+        "test (`preferences.md` standing order 21)."
+    ),
+    "- (c) destructive scope: every destructive step is scoped to exactly what the brief authorizes and refuses the rest.",
+    "- (d) migration: a migration changes the installed state through the real path, not only the generated baseline.",
+    (
+        "- (e) local runs: `make unit-test` and the asset validators ran locally (omp seats have no sandbox) and "
+        "their summary lines are pasted."
+    ),
+)
+SELF_CHECK_HELD = "the orchestrator holds a RESULT without the pasted self-check"
+PRE_AUDIT_GATE = (
+    "Before any audit TASK, gate the RESULT on the same five checks as the `hcom-worker` SKILL's pre-RESULT "
+    "self-check (threat table, fail closed, destructive scope, migration, local runs)"
+)
+GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap before any audit TASK"
+
 
 def section(text: str, heading: str) -> str:
     """The body of a `## <heading>` section, up to the next `## ` heading."""
@@ -76,6 +100,19 @@ class HcomSeatSkillsTest(unittest.TestCase):
         reply = section(AUDIT.read_text(), "Reply")
         self.assertIn(FINDINGS_ONCE, reply)
         self.assertIn("Scope questions are answered by the orchestrator, not by you.", reply)
+
+    def test_the_worker_pastes_the_five_point_self_check_before_the_result(self):
+        reply = section(WORKER.read_text(), "Reply")
+        for point in SELF_CHECK:
+            self.assertIn(point, reply)
+        self.assertIn(SELF_CHECK_HELD, reply)
+        self.assertLess(reply.index(SELF_CHECK[-1]), reply.index("send one RESULT line"))
+
+    def test_the_orchestrator_gates_a_result_on_the_same_checks_before_any_audit(self):
+        gate = step(ORCHESTRATION.read_text(), "The loop", 3)
+        self.assertIn(PRE_AUDIT_GATE, gate)
+        self.assertIn(GATE_FIX_FIRST, gate)
+        self.assertIn("held with a HOLD line", gate)
 
     def test_the_policies_readme_records_the_measured_cases(self):
         text = section(POLICIES.read_text(), "Text that policies see")

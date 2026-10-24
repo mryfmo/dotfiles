@@ -4386,13 +4386,13 @@
 <span class="c1"># @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).</span>
 <span class="c1"># @option --limit &lt;n&gt; Newest rows to read (default 200, a positive integer).</span>
 <span class="c1"># @option --since &lt;ts&gt; Only rows after this time, hcom's `--after` (`YYYY-MM-DD[THH:MM:SS[Z]]`).</span>
-<span class="c1"># @option --kind &lt;kind&gt; Only rows of this kind, the first word of the line (e.g. AGMSG-RESULT).</span>
+<span class="c1"># @option --kind &lt;kind&gt; Only rows of this kind, the first word of the line (e.g. RESULT).</span>
 <span class="c1"># @env HCOM_DIR The private hcom store directory; default: the store derived from the checkout (regime-env).</span>
 <span class="c1"># @stdout TSV rows `id&lt;TAB&gt;at&lt;TAB&gt;from&lt;TAB&gt;to&lt;TAB&gt;kind&lt;TAB&gt;body`, possibly none.</span>
 <span class="c1"># @exitcode 0 Printed.</span>
 <span class="c1"># @exitcode 1 Usage error, store absent, or hcom failed (its error on stderr).</span>
 <span class="c1"># @example</span>
-<span class="c1">#   HCOM_DIR=/path/to/.hcom scripts/orchestrator/bus-history.sh dotfiles --limit 50 --kind AGMSG-RESULT</span>
+<span class="c1">#   HCOM_DIR=/path/to/.hcom scripts/orchestrator/bus-history.sh dotfiles --limit 50 --kind RESULT</span>
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
 <span class="c1"># @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):</span>

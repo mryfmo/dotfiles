@@ -4528,7 +4528,7 @@
 <table>
 <thead>
 <tr>
-<th>Row, by kind (an <code>AGMSG-</code> prefix is dropped) and sender</th>
+<th>Row, by kind (an older sender's <code>AGMSG-</code> prefix is ignored) and sender</th>
 <th>Effect on its <code>task_id</code></th>
 </tr>
 </thead>
@@ -4550,11 +4550,12 @@
 <td>closed: the audit seat's answer (U9b, U9c)</td>
 </tr>
 <tr>
-<td>anything else (PING, PONG, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat or on any other id, …)</td>
+<td>anything else (PING, every PONG, <code>status=measure-request</code>, <code>status=measured</code>, <code>status=measure-refused</code> and <code>status=question</code> included, another seat's TASK, MERGED or HOLD, a RESULT on a task the seat did not send to its author, a VERDICT from any other seat or on any other id, …)</td>
 <td>no effect; the previous moving row keeps the state</td>
 </tr>
 </tbody>
 </table>
+<p>The line kinds are the first word of a bus line: <code>TASK</code>, <code>RESULT</code>, <code>VERDICT</code>, <code>PONG</code>, <code>MERGED</code> and <code>HOLD</code> (plus <code>PING</code>, which moves nothing). A seat that still writes the retired <code>AGMSG-</code> prefix (<code>AGMSG-TASK</code> and so on) is read the same, because the gate strips the prefix before it looks the kind up (U35). Three <code>PONG</code> statuses belong to the audit loop: the audit seat's <code>status=measure-request</code> names one entry of a closed measurement menu (<code>measure=&lt;entry&gt;</code>, a runtime claim it may not run itself), and the orchestrator answers <code>status=measured</code> after running that entry's fixed command in a <code>git archive</code> copy of the head, or <code>status=measure-refused</code> for anything else, without running it (the <code>hcom-orchestration</code> skill, step 4); none of them moves a task, and the audit seat's VERDICT still closes it.</p>
 <p>Every seat loads the gate and shares the thread, so a row from another seat opens a debt only on a task this seat sent to that very seat (U33c): a worker or audit seat never owes anything for a peer's RESULT, and the orchestrator owes a verdict on the RESULTs of the TASKs it sent.</p>
 <p>One message lists the open items with their row ids and the ways out: answer them, wait with <code>hcom listen</code>, or send <code>HOLD v1 task_id=&lt;id&gt; note=&lt;why&gt;</code>, the auditable override that the skill names. <code>OMP_STOP_GATE_ALLOW_OPEN=1</code> ends the turn with the warning instead of the block.</p>
 <h3 id="the-seats-environment">The seat's environment<a class="headerlink" href="#the-seats-environment" title="Permanent link">&para;</a></h3>

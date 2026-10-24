@@ -141,11 +141,57 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(
             shlex.split(run.stdout), self.launch_line("worker", "worker", f"{self.seats}/worker", self.bridge)
         )
+        run = self.seat("audit", "--seats-root", self.seats, "--ext", str(self.bridge), "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(
+            shlex.split(run.stdout), self.launch_line("audit", "audit", f"{self.seats}/audit", self.bridge)
+        )
+
+    def test_an_extension_outside_the_allow_list_is_refused_before_launch(self):
+        """`--ext` loads only claude.levers.extensions directories (regime-cutover U31)."""
         mine = self.home / "mine"
         mine.mkdir()
-        run = self.seat("audit", "--seats-root", self.seats, "--ext", str(mine), "--dry-run")
+        (self.home / "link-to-mine").symlink_to(mine)
+        (self.home / "link-to-bridge").symlink_to(self.bridge)
+        for ext in (mine, self.home / "link-to-mine", Path(self.temp.name)):
+            with self.subTest(ext=ext.name):
+                run = self.seat("worker", "--seats-root", self.seats, "--ext", str(ext))
+                self.assertEqual(run.returncode, 2, run.stdout)
+                self.assertIn("is not in the allow-list (claude.levers.extensions)", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        self.assertFalse(Path(self.seats).exists())
+        run = self.seat("worker", "--ext", str(self.home / "link-to-bridge"), "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(shlex.split(run.stdout), self.launch_line("audit", "audit", f"{self.seats}/audit", mine))
+
+    def test_an_unreadable_or_missing_allow_list_is_a_refusal(self):
+        """A failed read of the allow-list refuses the launch instead of reading as an empty list (preferences 21)."""
+        bindir = Path(self.temp.name) / "bad-awk"
+        bindir.mkdir()
+        (bindir / "awk").write_text("#!/bin/sh\nexit 2\n")
+        (bindir / "awk").chmod(0o755)
+        run = self.seat("worker", "--dry-run", PATH=f"{bindir}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("cannot read the extension allow-list", run.stderr)
+
+        checkout = Path(self.temp.name) / "checkout"
+        (checkout / "scripts/orchestrator").mkdir(parents=True)
+        (checkout / "home/dot_agents").mkdir(parents=True)
+        shutil.copy2(SEAT, checkout / "scripts/orchestrator/hcom-seat")
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        listed = "    extensions:\n      - ~/.local/lib/omp-extensions/pi-claude-bridge\n      - ~/.agents/omp/extensions/openai-siwc\n"
+        self.assertIn(listed, manifest)
+        (checkout / "home/dot_agents/agent-config.yaml").write_text(manifest.replace(listed, ""))
+        run = subprocess.run(
+            [str(checkout / "scripts/orchestrator/hcom-seat"), "worker", "--dry-run"],
+            cwd=self.repo,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 2, run.stdout)
+        self.assertIn("no extension allow-list (claude.levers.extensions)", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
 
     def test_refusals_exit_2_before_anything_is_created_or_started(self):
         (self.policies / "audit.yml").unlink()

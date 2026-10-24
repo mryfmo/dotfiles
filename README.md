@@ -509,7 +509,9 @@ applies its permission rules to it, so the managed settings also allow
 first managed `permissions.allow` entry: every Claude session using the
 managed settings can run `agmsg-dispatch` without confirmation. The other
 allow rules, the coordinator's levers with their `env` and writable directories,
-are described in `scripts/orchestrator/README.md`, "Pre-authorized levers".
+are described in `scripts/orchestrator/README.md`, "Pre-authorized levers"; they
+name the copies chezmoi installs read-only under `~/.local/bin/common`, each of
+which checks its own sha256 against the manifest before it runs.
 Codex workers run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
 used: on a workstation with a `docker`-group user or a reachable
 `systemd --user` bus it turns the auto-approved sandbox into an escape (see the

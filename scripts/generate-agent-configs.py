@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -38,6 +39,47 @@ def parse_manifest(text: str) -> dict[str, Any]:
     if data.get("schema_version") != 1:
         fail(f"{MANIFEST_PATH} schema_version must be 1")
     return data
+
+
+# The coordinator's levers (regime-cutover U31): the checkout script is the source, the generated chezmoi file installs
+# the same bytes read-only under ~/.local/bin/common, and claude.levers.sha256 pins them for the lever's own self-check.
+LEVER_SOURCE_DIR = "scripts/orchestrator"
+LEVER_INSTALL_DIR = "home/dot_local/bin/common"
+LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
+
+
+def lever_names(manifest: dict[str, Any]) -> list[str]:
+    return sorted(manifest.get("claude", {}).get("levers", {}).get("sha256", {}))
+
+
+def lever_sha256(name: str) -> str:
+    source = ROOT / LEVER_SOURCE_DIR / name
+    if not source.is_file():
+        fail(f"claude.levers.sha256 names {name}, but {LEVER_SOURCE_DIR}/{name} is not a file")
+    return hashlib.sha256(source.read_bytes()).hexdigest()
+
+
+def refresh_lever_pins(text: str) -> str:
+    """Rewrite each `claude.levers.sha256.<name>` line with the checkout script's sha256, keeping every other line."""
+    lines = text.splitlines(keepends=True)
+    try:
+        start = lines.index("claude:\n")
+        levers = lines.index("  levers:\n", start)
+        block = lines.index("    sha256:\n", levers)
+    except ValueError:
+        return text
+    index = block + 1
+    while index < len(lines) and (pin := LEVER_PIN_LINE.match(lines[index].rstrip("\n"))):
+        lines[index] = f"{pin[1]}{pin[2]}: {lever_sha256(pin[2])}\n"
+        index += 1
+    return "".join(lines)
+
+
+def render_lever_installs(manifest: dict[str, Any]) -> dict[Path, str]:
+    return {
+        ROOT / LEVER_INSTALL_DIR / f"executable_{name}": (ROOT / LEVER_SOURCE_DIR / name).read_text()
+        for name in lever_names(manifest)
+    }
 
 
 def json_dumps(data: Any) -> str:
@@ -1449,6 +1491,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
+    outputs.update(render_lever_installs(manifest))
     return outputs
 
 
@@ -1474,7 +1517,9 @@ def write_outputs(outputs: dict[Path, str]) -> None:
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-        if path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_"):
+        if (path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_")) or (
+            path.parent == ROOT / LEVER_INSTALL_DIR and path.name.startswith("executable_")
+        ):
             path.chmod(path.stat().st_mode | 0o111)
 
 
@@ -1528,9 +1573,20 @@ def main() -> None:
         print("asset pins updated: " + ", ".join(f"{name}.{path}" for name, path, _ in updates))
         return
 
+    # The lever pins live in the manifest itself; refresh them first so the outputs below read current pins. A test
+    # ROOT without a manifest file has no pins to refresh (load_manifest fails on its own when the real one is absent).
+    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+    stale: list[Path] = []
+    if manifest_path.exists():
+        manifest_text = manifest_path.read_text()
+        pinned_text = refresh_lever_pins(manifest_text)
+        if pinned_text != manifest_text:
+            if args.check:
+                stale.append(manifest_path.relative_to(ROOT))
+            else:
+                manifest_path.write_text(pinned_text)
     manifest = load_manifest()
     outputs = expected_outputs(manifest)
-    stale: list[Path] = []
     stale_profiles = stale_profile_outputs(manifest)
     for path, content in outputs.items():
         if args.check:

@@ -462,8 +462,9 @@ Bash calls may write only the working directory, the session `$TMPDIR`, and
 `sandbox.filesystem.allowWrite`, which the generator renders from
 `codex.sandbox_workspace_write.writable_roots` so both agents share one list of
 agmsg store directories, followed by `claude.sandbox.filesystem.extra_allow_write`
-(currently only `~/.cache/uv`, so `uv run` targets such as `make unit-test`
-work from sandboxed Bash). Network access from sandboxed commands is limited to
+(the uv and mise caches, so `uv run` targets such as `make unit-test` work from
+sandboxed Bash, and the regime's hcom store and seat worktrees, see the levers
+below). Network access from sandboxed commands is limited to
 the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
 `sandbox.network.allowUnixSockets` lists the herdr socket
 (`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
@@ -478,9 +479,14 @@ denied, and outside the sandbox it delivered the T49 messages within seconds, so
 a Claude worker wakes a herdr-paned orchestrator without a failed sandboxed run.
 Claude Code matches an excluded entry against the command's first word and still
 applies its permission rules to it, so the managed settings also allow
-`Bash(agmsg-dispatch:*)` and the dispatch runs without a prompt. That is the
-first and only managed `permissions.allow` entry: every Claude session using the
-managed settings can run `agmsg-dispatch` without confirmation. Codex workers
+`Bash(agmsg-dispatch:*)` and the dispatch runs without a prompt. That was the
+first managed `permissions.allow` entry: every Claude session using the
+managed settings can run `agmsg-dispatch` without confirmation. The other
+entries are the coordinator levers, deterministic wrapper scripts under
+`scripts/orchestrator/` and the read-only `hcom list`, pre-authorized together
+with their input validation, the regime `env` (`HCOM_DIR`, `HCOM_TEAM`) and the
+two extra writable directories in `scripts/orchestrator/README.md`
+"Pre-authorized levers". Codex workers
 run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
 used: on a workstation with a `docker`-group user or a reachable
 `systemd --user` bus it turns the auto-approved sandbox into an escape (see the

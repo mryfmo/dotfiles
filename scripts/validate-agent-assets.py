@@ -354,10 +354,29 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
         fail(f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}")
 
 
+# The managed allow rules (regime-cutover U16): the agmsg wake, the read-only `hcom list`, and one coordinator lever per
+# `Bash(scripts/orchestrator/<lever> *)`, an executable file there whose name is not an interpreter's. Nothing else:
+# no `Bash(*)`, no `Bash(hcom *)` (hcom launches agents), no `Bash(git *)`, no interpreter or shell-wrapper prefix.
+FIXED_ALLOW_RULES = frozenset({"Bash(agmsg-dispatch:*)", "Bash(hcom list *)"})
+LEVER_ALLOW_RULE = re.compile(r"Bash\(scripts/orchestrator/([A-Za-z0-9][A-Za-z0-9_.-]*) \*\)")
+INTERPRETERS = frozenset("sh bash zsh dash fish env python python3 perl ruby node uv uvx npx xargs".split())
+
+
 def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
     allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
     if not isinstance(allow, list) or not all(isinstance(rule, str) and rule.strip() for rule in allow):
         fail(f"{label}.allow must be a list of non-empty permission rules")
+    for rule in allow:
+        if rule in FIXED_ALLOW_RULES:
+            continue
+        match = LEVER_ALLOW_RULE.fullmatch(rule)
+        if not match:
+            fail(f"{label}.allow rule {rule!r} is not a fixed rule or Bash(scripts/orchestrator/<lever> *)")
+        lever = ROOT / "scripts/orchestrator" / match[1]
+        if not lever.is_file() or not os.access(lever, os.X_OK):
+            fail(f"{label}.allow rule {rule!r} names a lever that is not an executable file: {lever}")
+        if any(name.split(".", 1)[0] in INTERPRETERS for name in (lever.name, lever.resolve().name)):
+            fail(f"{label}.allow rule {rule!r} names an interpreter, which would run arbitrary code")
 
 
 def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") -> None:

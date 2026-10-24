@@ -1,0 +1,33 @@
+# U32 The standing rules cut over to the hcom regime — brief
+
+GOAL
+Every Claude Code session on every host loads one short rule for the regime and none of the retired agmsg-era rules, so no agent has to reconcile two regimes before acting. The retired rules are deleted from the source and from the deployed home, the tests and fixtures that pinned their sentences go with them, and the one remaining rule points at the two living documents: the `hcom-orchestration` skill (the loop) and `AGENTS.md` "Audit" and "Code Review Rules" (the standard).
+
+SCOPE
+One branch `chore/rules-cutover` from `origin/main`. May write: `home/dot_config/claude/rules/` (delete `agmsg-orchestration.md`, `crit-review.md`, `pr-integration.md`; edit `model-selection.md`, `compactiondb.md`, `understand-anything.md`; add `regime.md`), `home/dot_claude/rules/` (delete the three `symlink_*.tmpl` of the deleted rules; add `symlink_regime.md.tmpl` in the existing form), `home/.chezmoiremove` (the three deployed rule paths under `.config/claude/rules/` and their symlinks under `.claude/rules/`), `home/dot_config/codex/AGENTS.md` (its agmsg sentences), `tests/unit/test_agmsg_orchestration_docs.py` (delete) and `tests/fixtures/regime/` (delete what only that test reads; `grep -rl 'fixtures/regime' tests/` first), `tests/unit/test_require_crit_review.py` and `tests/unit/test_pr_feedback.py` only if they pin the deleted rule text (otherwise leave them for U26), `README.md` (the sentences that name the three rules). Nothing else: `AGENTS.md` and the hcom skills are not in SCOPE; `scripts/require-crit-review.py` and `scripts/pr-feedback.py` stay until U26.
+
+CONTEXT (measured 2026-10-24T05:4xZ in the checkout)
+- 12 rule files, 144 lines, load into every session. Retired-regime references per file: `agmsg-orchestration.md` 7 of 13 lines, `crit-review.md` 5 of 6, `model-selection.md` 3 of 8, `pr-integration.md` 2 of 6, `compactiondb.md` 1 of 5, `understand-anything.md` 1 of 8. `pr-integration.md:3` still says "Before merging any pull request, MUST sweep … `scripts/pr-feedback.py`" and `crit-review.md:5` "run `make require-crit-review`", while `AGENTS.md` "Agent Review Evidence" calls that gate retired and names the hcom loop. `tests/unit/test_agmsg_orchestration_docs.py` pins the rule and skill sentences against `tests/fixtures/regime/*.md`.
+- The deployed copies: `~/.config/claude/rules/<name>.md` (chezmoi source `home/dot_config/claude/rules/`) and the symlinks `~/.claude/rules/<name>.md` (source `home/dot_claude/rules/symlink_<name>.md.tmpl`). chezmoi does not delete a target whose source disappears unless `home/.chezmoiremove` lists it (the file already lists `.claude/skills/agmsg/**`).
+- `model-selection.md` lines to rewrite: the worker/auditor roles are now the omp seats (`orchestrator` on `claude-bridge/claude-fable-5-1`, `worker` on `claude-bridge/claude-opus-5-5`, `audit` on `openai-siwc/gpt-6-astra`, the deployed overlays `~/.agents/omp/profiles/<role>.yml`); the "Codex worker on the security profile" sentence and the `herdr` manifest keys `worker_kind`/`orchestrator_kind` describe the retired seats; keep the sentences about `model_profiles` being the only place for model ids, the no-mid-session-switch rule and the permission sentence ("Model strength never justifies wider permissions").
+- `compactiondb.md`: drop "activating the agmsg orchestration regime is a standing install trigger"; keep the rest. `understand-anything.md`: drop the "under the agmsg regime they are worker tasks" clause; graph rebuilds are worker-seat units.
+
+ACCEPTANCE
+1. `home/dot_config/claude/rules/regime.md` (at most 15 lines, the same `##` heading style as the others): the loop is the `hcom-orchestration` skill and its two halves (`hcom-worker`, `hcom-audit`); the standard is `AGENTS.md` "Audit" and "Code Review Rules"; every repository change lands through a seat's pull request merged with `gh pr merge --squash --match-head-commit <audited head>`; a seat never edits the source of its own execution boundary (the Routing invariant, kept verbatim from the old rule); the program store is `.orchestration/orchestrate/<program>/` and `preferences.md` there is the standing order; the operator-only steps are logins and Keychain; everything else is a lever with an allow rule or a seat policy row, never an ad-hoc permission. Its symlink template beside the others.
+2. The three retired rules and their symlink templates deleted; `.chezmoiremove` gains `.config/claude/rules/agmsg-orchestration.md`, `.config/claude/rules/crit-review.md`, `.config/claude/rules/pr-integration.md`, `.claude/rules/agmsg-orchestration.md`, `.claude/rules/crit-review.md`, `.claude/rules/pr-integration.md`.
+3. The three edited rules carry no agmsg, crit or pr-feedback sentence (`grep -c -E 'agmsg|require-crit-review|pr-feedback|Crit' home/dot_config/claude/rules/*.md` prints 0 for every file; paste it).
+4. `test_agmsg_orchestration_docs.py` and the fixtures only it reads are deleted; a new `tests/unit/test_rules_cutover.py` asserts: the rules directory has no file named like a retired rule, `regime.md` is at most 15 lines and names `hcom-orchestration`, `AGENTS.md`, `--match-head-commit`, and the `.chezmoiremove` entries exist. `make unit-test`, `make validate-agent-assets`, `make render-check` green (paste); CI green.
+5. Dry run in a scratch HOME (`HOME=$TMPDIR/u32-home chezmoi apply --source <your clone>/home …`, the form the repo's tests use; find it in `tests/`): after apply, `~/.config/claude/rules/` holds `regime.md` and the kept files only; paste the listing. The live `make update` is the orchestrator's step 7.
+6. PR body `Program-Unit: regime-cutover/U32`, the measured table above, the footer; no threat table needed (prose and test files only).
+
+TIMEBOX
+90 minutes.
+
+FORBIDDEN
+No edit to `AGENTS.md`, the hcom skills, `scripts/`, the live `~/.config/claude` or `~/.claude`; no edits outside SCOPE; no merge, rebase, force-push, PR close.
+
+REPORT
+Per STANDING 12 plus the RESULT line.
+
+STANDING
+`~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` (lines 20 and 21).

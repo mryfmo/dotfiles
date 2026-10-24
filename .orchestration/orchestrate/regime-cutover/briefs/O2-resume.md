@@ -1,0 +1,7 @@
+# O2 resume (coordinator, 2026-10-24T06:2xZ): the orchestrator seat restarted; continue the loop from the store
+
+Your predecessor seat (orchestrator-zero) stalled at 06:03Z after spawning an omp Task subagent on the claude-bridge route: the subagent failed with "No API key for provider: claude-bridge" and every later hcom delivery into that seat failed, so it never read addenda 5 and 6. Never spawn a subagent (the Task tool) in this seat; do the reading yourself with the bash and read tools. U34 will deny that tool in the overlays.
+
+State to resume from (read, never recall): `units.tsv` (U30 in-flight with worker-2-nova, PR #487; U31 in-flight with worker-mugo, PR #488; U32, U33, U28, U26, U27, U21, U22, U23, U24, U19 pending), `ledger.tsv`, `decisions.tsv` (D-024-143 to the latest), and the briefs `O2-orchestrator-run-U17-U18-U25d-U30-U28.md`, `O2-addendum-2.md`, `O2-addendum-4.md`, `O2-addendum-5.md`, plus the U30 brief's three addenda (findings hand-off, first-pass gate, merge-retry rule). The current order is addendum 5's: lane A U31 → U33 → its pilot; lane B U30 → U28 → U32 → U26 → U27. The bus thread is `regime`; the workers' RESULTs for U30 and U31 may already be there when you read it (`bus-history.sh regime --kind AGMSG-RESULT --limit 10`); the stop gate counts only rows since your own start, so earlier debts are not yours, but the two in-flight units are.
+
+Then continue steps 3 to 7 for U30 and U31, send the next TASKs per the order, and report with `AGMSG-PONG v1 task_id=O2 status=progress …` per landed unit as before.

@@ -1,0 +1,38 @@
+# U18 Claude Code: one version policy, mise owns the binary — brief
+
+GOAL
+Claude Code's own updater is blocked on every host the dotfiles manage, including the manual `claude update` and `claude install` paths, and the managed settings stop claiming a release channel that the install method does not follow. After the change `claude update` on any host reports that updates are disabled instead of comparing the mise-installed build against the `stable` channel, and the only version policy is the mise entry.
+
+SCOPE
+One branch `fix/claude-update-policy` from `origin/main`. May write: `home/dot_zshenv`, the bash-side login environment file the dotfiles manage (find it: `home/dot_profile`, `home/dot_bash/**` or `home/symlink_dot_bashrc.tmpl`; choose the one every login shell on the server system reads, cite the line that proves it), `home/dot_agents/agent-config.yaml` (the `claude:` block only: `autoUpdates`, `autoUpdatesChannel`), `scripts/generate-agent-configs.py` (`render_claude_settings`), `home/.chezmoitemplates/claude-settings-managed.json` (regenerated), `tests/unit/test_generate_agent_configs.py`, `README.md` (the sentence about Claude Code updates, or the "### Claude Code sandbox" neighbourhood if none exists), `home/dot_agents/README.md`. Nothing else. If U17 (`fix/claude-secret-paths-sandbox`) has landed, branch from the new `origin/main`; if it is still open, wait for it (same files) and say so.
+
+CONTEXT (every fact with its source)
+1. The symptom (operator paste, Linux host, 2026-10-24 JST): `claude update` → `Current version: 2.1.309` / `Checking for updates to stable version...` / `You're running 2.1.309, which is newer than the stable channel's 2.1.308. Skipping update. To switch back to the channel version, run claude install 2.1.308.`
+2. How Claude Code is installed here: mise, `"npm:@anthropic-ai/claude-code" = { version = "latest", allow_builds = ["@anthropic-ai/claude-code"] }` (`~/.config/mise/config.toml` line 29 on this host; find the dotfiles source that renders it and cite it); `scripts/update-agent-assets.sh` `ensure_mise_npm_agent_cli` reinstalls through mise; `scripts/check-agent-runtime.py` `MISE_STEP_IDENTITIES` names `npm:@anthropic-ai/claude-code`. `home/dot_zshenv:9` exports `DISABLE_AUTOUPDATER=1` with the comment "Claude Code's built-in updater stays disabled so mise remains authoritative". No bash-side file exports it (grep of `home/` for `DISABLE_AUTOUPDATER` finds only `dot_zshenv`; the server system's default shell is bash, see `.github/workflows/remote.yaml` which checks `.bashrc` for `server`).
+3. The settings: the manifest's `claude.autoUpdates: false` and `claude.autoUpdatesChannel: stable` (agent-config.yaml:219-220) are rendered by `render_claude_settings` (generate-agent-configs.py:436-437) into the template (lines 7-8) and pinned by `tests/unit/test_generate_agent_configs.py:101-102`. `claude doctor` on this macOS host (2.1.309, 2026-10-23T22:3xZ): `Auto-updates: disabled (set by env: DISABLE_AUTOUPDATER)`, `Auto-update channel: stable`, `Last update attempt: failed (install_failed) — 2026-10-22`.
+4. The docs. Environment variables (code.claude.com/docs/en/env-vars): "`DISABLE_AUTOUPDATER` | Set to `1` to disable automatic background updates. Manual `claude update` still works. Use `DISABLE_UPDATES` to block both"; "`DISABLE_UPDATES` | Set to `1` to block all updates including manual `claude update` and `claude install`. Stricter than `DISABLE_AUTOUPDATER`. Use when distributing Claude Code through your own channels and users should not self-update". Setup (code.claude.com/docs/en/setup, "Configure release channel"): `autoUpdatesChannel` controls "which release channel Claude Code follows for auto-updates and `claude update`"; `"latest"` is the default; "Disable auto-updates": `DISABLE_AUTOUPDATER` "only stops the background check; `claude update` and `claude install` still work. To block all update paths, including manual updates, set `DISABLE_UPDATES` instead. Use this when you distribute Claude Code through your own channels". The settings reference index lists `autoUpdatesChannel` and `minimumVersion` under "Updates and versioning" and no `autoUpdates` key; the published JSON schema (schemastore, `claude-code-settings.json`) defines `autoUpdatesChannel` (enum stable|latest) and its top level has `additionalProperties: true`, so an unknown key is accepted silently.
+5. The root cause: two version policies (mise `latest` and the settings' `stable` channel) and an env var that stops only the background check, so `claude update` still runs, compares and prints the channel advice. `autoUpdates` is not a documented settings key.
+
+ACCEPTANCE
+1. Measure before removing: in a scratch `CLAUDE_CONFIG_DIR` whose `settings.json` holds only `{"autoUpdates": false}`, run `env -u DISABLE_AUTOUPDATER -u DISABLE_UPDATES claude doctor` and paste the `Auto-updates:` line. If it reports disabled by settings, the key still works: keep it, report that, and change the brief's plan to "keep `autoUpdates`, add `DISABLE_UPDATES`" (the rest stands). If it reports enabled, the key is dead and item 3 applies.
+2. `home/dot_zshenv` exports `DISABLE_UPDATES=1` beside `DISABLE_AUTOUPDATER=1`, the comment carrying the env-vars sentence; the bash-side login file the dotfiles manage exports both the same way, with a one-line comment; cite the line of `setup.sh` or `install/` that proves the server system reads that file.
+3. The manifest drops `claude.autoUpdates` and `claude.autoUpdatesChannel` (unless item 1 keeps `autoUpdates`); the generator stops rendering them; the template is regenerated; the test at `test_generate_agent_configs.py:101-102` and any other assertion on these keys updated.
+4. `make render-check`, `make validate-agent-assets`, `make unit-test` green (paste each summary line).
+5. On this host, paste `DISABLE_UPDATES=1 claude update` (expected: a line saying updates are disabled; paste whatever it prints) and `DISABLE_UPDATES=1 claude doctor | grep -i update`. Do not run `claude update` without the variable (it may install).
+6. Docs: one paragraph in `README.md` (where Claude Code installation or the mise tools are described; cite the section) and one sentence in `home/dot_agents/README.md`: mise is the only version channel; Claude Code's updater is blocked by `DISABLE_UPDATES` and `DISABLE_AUTOUPDATER` in the login environment; `claude update` is not a supported command here. State the operator's alternative in the README sentence: pin a version in the mise entry instead of `latest`.
+7. PR body: `Program-Unit: regime-cutover/U18`, the doc quotes, the measured `claude doctor` lines, the footer (STANDING 14). CI green.
+
+VERIFY
+The commands above with pasted output. Network: `api.github.com`, `github.com` only. No login or Keychain step. Never run a bare `claude update`.
+
+TIMEBOX
+90 minutes. On expiry, push what you have, report partial findings and stop.
+
+FORBIDDEN
+No change to the mise entry's version (the operator's call; name it in follow-ups); no edit to the real `~/.claude`, `~/.zshenv`, `~/.config/mise`; no hand edit of the rendered template; no edits outside SCOPE; no merge, rebase, force-push or PR close.
+
+REPORT
+Shape per STANDING 12, under 200 words: status, branch, head sha, PR link, CI state, the item 1 measurement, the `claude update` and `claude doctor` lines, the test summary lines, deviations, follow-ups. Then the RESULT line per the hcom-worker skill, with the `bus-history.sh` row as proof of delivery.
+
+STANDING
+Read and obey `~/Workspace/dotfiles/.orchestration/orchestrate/regime-cutover/preferences.md` before any command (its line 20 is this unit's regime: you are the omp worker seat).

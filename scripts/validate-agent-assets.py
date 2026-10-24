@@ -854,11 +854,11 @@ def validate_agent_manifest() -> dict[str, Any]:
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     # Operator pin (2026-09-27): worker claude launches carry --advisor fable. The pin read its profile from the
-    # manifest's worker_profile, standard, until U40 removed that key with the herdr-agents worker era; it stays
-    # on the profile it checked.
-    worker_profile = "standard"
-    if profiles.get(worker_profile, {}).get("claude", {}).get("advisor") != "fable":
-        fail(f"{manifest_path} worker profile {worker_profile!r} must set claude.advisor: fable (operator pin)")
+    # manifest's herdr-agents worker-profile key, standard, until U40 removed that key; it stays on the profile it
+    # checked.
+    advisor_profile = "standard"
+    if profiles.get(advisor_profile, {}).get("claude", {}).get("advisor") != "fable":
+        fail(f"{manifest_path} worker profile {advisor_profile!r} must set claude.advisor: fable (operator pin)")
     for name, profile in profiles.items():
         for agent, keys in (
             ("claude", ("model", "effort")),

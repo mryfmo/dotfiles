@@ -410,7 +410,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("model profile audit.omp.model must match", stderr.getvalue())
 
-    def test_agent_manifest_requires_fable_advisor_on_the_worker_profile(self) -> None:
+    def test_agent_manifest_requires_fable_advisor_on_the_standard_profile(self) -> None:
         for advisor in (None, "opus"):
             with self.subTest(advisor=advisor):
                 manifest = self.write_valid_agent_manifest()

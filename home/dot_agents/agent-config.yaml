@@ -326,6 +326,8 @@ claude:
       regime-env: d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba
       regime-init: 1364b631df108279fe473e8f2840ed2164c8f65096019dea8711bba003f0b4ad
       seat-login-preflight: 863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15
+      regime-start: e22a968488714825019cc1aeea6a1346b027377d3b0d21dcb6d3762ab518178a
+      regime-stop: 578db3f205077cff31951ccfd5fd0c0bd873e6a58687a3e665ac54d30f1dd26b
     # The only extension directories `hcom-seat` loads, by default or through
     # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
     # gate's directory, which every launch loads (regime-cutover U33c).

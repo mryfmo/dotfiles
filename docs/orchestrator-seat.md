@@ -63,6 +63,56 @@ The gate runs a repository script and `hcom` from the seat's environment and fee
 | the environment (`HCOM_NAME`, the override)    | residual: read once at load; an operator sets them, a seat's policy overlay cannot change its own environment; owner: the seat policies                                                                                                                                                                                                                                                                                                                                                                                      |
 | `tests/stop-gate.test.ts`                      | residual: runs with a fake `bus-history.sh`; the real script's TSV is pinned by `tests/unit/test_hcom_dispatch.py`; owner: the first live seat run (U11)                                                                                                                                                                                                                                                                                                                                                                     |
 
+## The supervisor
+
+A seat lives in a herdr pane, so it ends with its process or with the herdr server: the herdr restart of 2026-10-24
+at 07:13 JST ended all three seats (`exit:shutdown`), and the orchestrator seat that spawned a subagent at 06:03Z
+stopped answering. `regime-start` (`scripts/orchestrator/regime-start`, a pinned lever) starts the orchestrator seat
+and registers the checkout in `~/.local/state/regime-supervisor/<slug>-<first 12 hex of sha256(toplevel)>.conf`, one
+registration per checkout, so two checkouts with one basename never share one. `regime-start --supervise` is one pass
+over the registrations, which the launchd agent `com.mryfmo.dotfiles.regime-supervisor` (macOS) or the user units
+`regime-supervisor.service` and `.timer` (Linux) run at login and every 60 seconds once the operator enables them;
+both ship disabled (the plist carries `Disabled`, launchd.plist(5), and only the operator's `launchctl enable`, kept
+across logins and boots per launchctl(1), loads it; `make update` installs the systemd units without enabling them;
+README, "Start here: the omp seats"). The pass relaunches a registered orchestrator that is not alive, unless the
+newest stop event hcom recorded for the last seat (`hcom list --stopped <base name>`, the `(latest)` line) is
+`killed by:cli`, an `hcom kill`, which ends the supervision like `regime-stop` does. A failed launch waits 60 seconds,
+doubling by saturation to 30 minutes, and the failure counter stops at 9999. `regime-start`, the pass and `regime-stop`
+(which is `regime-start --stop`) take one host lock: the kernel's `flock(2)` on
+`~/.local/state/regime-supervisor/supervisor.lock`, held through a descriptor the script keeps open (perl takes it,
+because macOS ships no `flock` command). Start and stop wait for it, and a pass that finds it held skips. The kernel
+releases it only when its last holder exits or dies, so it is never taken over by age or by a pid, no other process can
+release it, and the file is never removed. A launch runs in subshells that keep the descriptor until the launch and its
+wait return, so killing `regime-start` cannot let a stop in while a launch is in flight; hcom-seat and every hcom call
+get the descriptor closed, so a seat never holds the lock after its launch (measured on this host on 2026-10-24: after
+`regime-start` returned, `lsof` showed no process with the lock open, the seat included, and `regime-stop` took it at
+once). So a stop that arrives during a relaunch runs after it and stops the seat it launched. A registration must hold each of its eight
+keys exactly once (`toplevel`, `hcom_dir`, `hcom_team`, `program`, `seat`, `base`, `fails`, `next`), its seat must be
+`orchestrator-<base>`, its file name must be the one its own toplevel derives, and a store with an `origin` file must
+name that toplevel; one that breaks any of these is skipped and logged and never launched, rewritten or stopped from.
+A registration that does not parse, an hcom read that fails, or a stop record it cannot read
+launches nothing. Only the orchestrator is supervised: it relaunches the other seats itself (the skill's step 0).
+
+Measured on this host on 2026-10-24 with the levers of this branch, in a scratch repository `u36-pilot` with a scratch
+store and team `u36pilot`: `regime-start` launched `orchestrator-nori`; its omp process was killed with `kill <pid>`,
+and one pass relaunched it; a second run used `hcom kill`, and the pass ended the supervision; a third crash and
+relaunch ran with the final parser; `regime-stop` ended it. `$T` is the scratch directory. The first relaunch line
+says `no stop record` because the first parser read the wrong form of `hcom list --stopped`, the gap this run found
+(the named form prints `(latest)` events); the third shows the record it reads now:
+
+```text
+2026-10-24T11:01:41Z regime-start launched orchestrator-nori from $T/u36-pilot
+2026-10-24T11:01:50Z regime-start found orchestrator-nori alive; registered for the supervisor
+2026-10-24T11:02:03Z no orchestrator alive (last seat orchestrator-nori: no stop record); relaunching from $T/u36-pilot
+2026-10-24T11:02:04Z relaunched orchestrator-rune
+2026-10-24T11:03:25Z orchestrator-rune was stopped with hcom kill; supervision of $T/u36-pilot ends (registration removed)
+2026-10-24T11:03:38Z regime-start launched orchestrator-nova from $T/u36-pilot
+2026-10-24T11:03:38Z no orchestrator alive (last seat orchestrator-nova: now ago  [process_exit by:system] (latest)); relaunching from $T/u36-pilot
+2026-10-24T11:03:39Z relaunched orchestrator-nene
+2026-10-24T11:03:46Z regime-stop: supervision of $T/u36-pilot ended
+2026-10-24T11:03:47Z regime-stop: stopped orchestrator-nene
+```
+
 ## The skill
 
 `home/dot_agents/skills/hcom-orchestration/SKILL.md` (36 lines), reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7) and the audit seat's the `hcom-audit` skill (U6b).

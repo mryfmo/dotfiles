@@ -1,0 +1,10 @@
+# regime-cutover U36: run the supervisor pass once the user manager starts (at login) and every 60 s after it.
+[Unit]
+Description=Supervise the regime orchestrator seats every 60 seconds
+
+[Timer]
+OnStartupSec=60
+OnUnitActiveSec=60
+
+[Install]
+WantedBy=timers.target

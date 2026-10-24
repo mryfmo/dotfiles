@@ -4356,7 +4356,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_bus-historysh">home/dot_local/bin/common/executable_bus-history.sh<a class="headerlink" href="#homedot_localbincommonexecutable_bus-historysh" title="Permanent link">&para;</a></h1>
-<p>Plan 025 W2b (C-1). Reads <code>hcom events --type message --thread &lt;team&gt; --full --last &lt;limit&gt; [--after &lt;since&gt;]</code> (<code>hcom events --help</code>; hcom 0.7.30 src/commands/events.rs:33 last, :39 full; <code>--last</code> is <code>ORDER BY id DESC LIMIT n</code>, events.rs:185, so the newest rows) and prints one row per message, ascending by id: <code>id&lt;TAB&gt;at&lt;TAB&gt;from&lt;TAB&gt;to&lt;TAB&gt;kind&lt;TAB&gt;body</code>. <code>at</code> is hcom's <code>ts</code> as printed, <code>to</code> the delivered_to names joined with commas (<code>-</code> when none), <code>kind</code> the first word of the text, and <code>body</code> the text with backslash, tab, CR and LF escaped as <code>\\</code>, <code>\t</code>, <code>\r</code> and <code>\n</code>, so every row is one line of five tabs. <code>--kind</code> keeps only the rows whose kind equals it. Never writes: the store <code>$HCOM_DIR/hcom.db</code> must already exist, because <code>hcom events</code> creates one on first use (observed with 0.7.30).</p>
+<p>Plan 025 W2b (C-1). Reads <code>hcom events --type message --thread &lt;team&gt; --full --last &lt;limit&gt; [--after &lt;since&gt;]</code> (<code>hcom events --help</code>; hcom 0.7.30 and 0.7.31, measured 2026-10-23 and 2026-10-24; at v0.7.30 src/commands/events.rs:33 last, :39 full; <code>--last</code> is <code>ORDER BY id DESC LIMIT n</code>, events.rs:185, so the newest rows) and prints one row per message, ascending by id: <code>id&lt;TAB&gt;at&lt;TAB&gt;from&lt;TAB&gt;to&lt;TAB&gt;kind&lt;TAB&gt;body</code>. <code>at</code> is hcom's <code>ts</code> as printed, <code>to</code> the delivered_to names joined with commas (<code>-</code> when none), <code>kind</code> the first word of the text, and <code>body</code> the text with backslash, tab, CR and LF escaped as <code>\\</code>, <code>\t</code>, <code>\r</code> and <code>\n</code>, so every row is one line of five tabs. <code>--kind</code> keeps only the rows whose kind equals it. Never writes: the store <code>$HCOM_DIR/hcom.db</code> must already exist, because <code>hcom events</code> creates one on first use (observed with 0.7.30 and 0.7.31).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_bus-history.sh</code></li>
@@ -4373,16 +4373,17 @@
 <span class="c1"># @brief Print a team's hcom bus history as TSV rows the records can paste.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Plan 025 W2b (C-1). Reads `hcom events --type message --thread &lt;team&gt; --full</span>
-<span class="c1">#   --last &lt;limit&gt; [--after &lt;since&gt;]` (`hcom events --help`; hcom 0.7.30</span>
-<span class="c1">#   src/commands/events.rs:33 last, :39 full; `--last` is `ORDER BY id DESC LIMIT</span>
-<span class="c1">#   n`, events.rs:185, so the newest rows) and prints one row per message,</span>
+<span class="c1">#   --last &lt;limit&gt; [--after &lt;since&gt;]` (`hcom events --help`; hcom 0.7.30 and 0.7.31,</span>
+<span class="c1">#   measured 2026-10-23 and 2026-10-24; at v0.7.30 src/commands/events.rs:33 last,</span>
+<span class="c1">#   :39 full; `--last` is `ORDER BY id DESC LIMIT n`, events.rs:185, so the newest</span>
+<span class="c1">#   rows) and prints one row per message,</span>
 <span class="c1">#   ascending by id: `id&lt;TAB&gt;at&lt;TAB&gt;from&lt;TAB&gt;to&lt;TAB&gt;kind&lt;TAB&gt;body`. `at` is hcom's</span>
 <span class="c1">#   `ts` as printed, `to` the delivered_to names joined with commas (`-` when</span>
 <span class="c1">#   none), `kind` the first word of the text, and `body` the text with backslash,</span>
 <span class="c1">#   tab, CR and LF escaped as `\\`, `\t`, `\r` and `\n`, so every row is one line</span>
 <span class="c1">#   of five tabs. `--kind` keeps only the rows whose kind equals it. Never writes:</span>
 <span class="c1">#   the store `$HCOM_DIR/hcom.db` must already exist, because `hcom events`</span>
-<span class="c1">#   creates one on first use (observed with 0.7.30).</span>
+<span class="c1">#   creates one on first use (observed with 0.7.30 and 0.7.31).</span>
 <span class="c1"># @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).</span>
 <span class="c1"># @option --limit &lt;n&gt; Newest rows to read (default 200, a positive integer).</span>
 <span class="c1"># @option --since &lt;ts&gt; Only rows after this time, hcom's `--after` (`YYYY-MM-DD[THH:MM:SS[Z]]`).</span>

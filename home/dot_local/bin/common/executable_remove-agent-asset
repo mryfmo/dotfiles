@@ -118,7 +118,7 @@ function path_is_in_safe_root() {
         "${CODEX_ASSET_ROOT}/herdr-agent-state.sh" \
         "${HOME}/.local/bin/hcom"; do
         root="$(normalize_action_path "${root}")" || return 1
-        [ "${candidate}" = "${root}" ] && return 0
+        [ "${candidate}" = "${root}" ] && return 0 # lint-comparisons: allow both sides are normalize_action_path forms
     done
     return 1
 }
@@ -227,7 +227,7 @@ function is_plugin_config_path() {
     candidate="$(normalize_action_path "$1")" || return 1
     settings_path="$(normalize_action_path "${HOME}/.claude/settings.json")" || return 1
     config_path="$(normalize_action_path "${CODEX_ASSET_ROOT}/config.toml")" || return 1
-    [ "${candidate}" = "${settings_path}" ] || [ "${candidate}" = "${config_path}" ]
+    [ "${candidate}" = "${settings_path}" ] || [ "${candidate}" = "${config_path}" ] # lint-comparisons: allow both sides are normalize_action_path forms
 }
 
 #

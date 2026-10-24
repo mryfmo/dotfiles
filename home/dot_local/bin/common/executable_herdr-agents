@@ -138,7 +138,7 @@ function retire_agmsg() {
             printf 'herdr-agents: cannot resolve %s or the home directory to a physical path; nothing retired from it\n' "${workdir}" >&2
             exit 1
         fi
-        if [[ ${real_workdir} == "${real_home}" ]]; then
+        if [[ ${real_workdir} == "${real_home}" ]]; then # lint-comparisons: allow both sides are pwd -P forms
             printf "Skipping agmsg retire for \$HOME; use a repository directory instead.\n" >&2
             return 0
         fi

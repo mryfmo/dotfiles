@@ -66,6 +66,14 @@ PRE_AUDIT_GATE = (
 )
 GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap before any audit TASK"
 
+# A merge error is not a merge failure (U30 ADDENDUM 3, ACCEPTANCE 8; measured on PR #484).
+MERGE_ERROR = (
+    "After any error from the merge command, re-read `gh pr view <n> --json state,mergeCommit` before anything "
+    "else; `MERGED` means the merge happened and its `mergeCommit` is the sha to record, so never run the merge "
+    "command twice for one head; the ledger row names the commit that carries the diff (verify with "
+    "`git diff <parent> <sha> --stat` non-empty)."
+)
+
 
 def section(text: str, heading: str) -> str:
     """The body of a `## <heading>` section, up to the next `## ` heading."""
@@ -113,6 +121,12 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(PRE_AUDIT_GATE, gate)
         self.assertIn(GATE_FIX_FIRST, gate)
         self.assertIn("held with a HOLD line", gate)
+
+    def test_a_merge_error_is_rechecked_and_never_retried(self):
+        merge = step(ORCHESTRATION.read_text(), "The loop", 6)
+        self.assertIn(MERGE_ERROR, merge)
+        # The re-read comes before the MERGED line is sent.
+        self.assertLess(merge.index(MERGE_ERROR), merge.index("Then `MERGED v1"))
 
     def test_the_policies_readme_records_the_measured_cases(self):
         text = section(POLICIES.read_text(), "Text that policies see")

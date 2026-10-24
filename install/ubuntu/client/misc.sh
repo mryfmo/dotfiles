@@ -39,11 +39,24 @@ function install_misc() {
 #   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a
 #   transitional snap wrapper). Google Chrome is not used instead because
 #   Google does not publish a linux-arm64 build. Skips gracefully when snap
-#   is unavailable (e.g. minimal or container images).
+#   is unavailable (e.g. minimal or container images). The Snap Store
+#   intermittently answers HTTP 408 while fetching assertions, so the install
+#   is tried up to 3 times before its failure is returned.
+# @env SNAP_RETRY_DELAY Seconds between attempts; tests set 0. Default: 10, then 30.
+# @exitcode The last `snap install` exit status after the final failed attempt.
 #
 function install_chromium() {
     command -v snap > /dev/null 2>&1 || return 0
-    sudo snap install chromium
+    local -a delays=("${SNAP_RETRY_DELAY:-10}" "${SNAP_RETRY_DELAY:-30}")
+    local attempt=1 status=0
+    while true; do
+        sudo snap install chromium && return 0 || status=$?
+        printf 'install_chromium: snap install chromium failed (attempt %d/3, exit %d)\n' \
+            "${attempt}" "${status}" >&2
+        [ "${attempt}" -lt 3 ] || return "${status}"
+        sleep "${delays[attempt - 1]}"
+        attempt=$((attempt + 1))
+    done
 }
 
 #

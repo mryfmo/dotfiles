@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -394,6 +395,51 @@ class DecisionTest(unittest.TestCase):
             "vendor": ([("vendor/compactiondb/x", "x\n")], "true"),
             "orchestration": ([(".orchestration/y.md", "y\n")], "false"),
             "empty": ([], "true"),
+            # U39: the render-only subtrees of home/ skip it; chezmoi-apply applies them on every diff.
+            "skill": ([("home/dot_agents/skills/x/SKILL.md", "x\n")], "false"),
+            "seat-policy": ([("home/dot_agents/omp/policies/worker.yml", "x\n")], "false"),
+            "claude-rule": ([("home/dot_claude/rules/symlink_x.md.tmpl", "x\n")], "false"),
+            "config-claude-rule": ([("home/dot_config/claude/rules/x.md", "x\n")], "false"),
+            "lever": ([("home/dot_local/bin/common/executable_x", "x\n")], "false"),
+            "server-lever": ([("home/dot_local/bin/server/x.sh", "x\n")], "false"),
+            "render-only-and-python": (
+                [("home/dot_agents/skills/x/SKILL.md", "x\n"), ("scripts/x.py", "x\n")],
+                "false",
+            ),
+            # Everything else under home/ still runs it: the installers read these targets.
+            "mise-config": ([("home/dot_mise/config.toml", "x\n")], "true"),
+            "manifest": ([("home/dot_agents/agent-config.yaml", "x\n")], "true"),
+            "omp-extension": ([("home/dot_agents/omp/extensions/x.ts", "x\n")], "true"),
+            "local-share": ([("home/dot_local/share/x", "x\n")], "true"),
+            "subtree-prefix": ([("home/dot_agents/skills-extra/x", "x\n")], "true"),
+            # Audit F1 of fed47ef6: a file directly in dot_local/bin renders to ~/.local/bin/<name>, which the
+            # installers execute (install/common/gh_extensions.sh MISE_BIN, update_omp), so it bootstraps.
+            "root-bin-mise": ([("home/dot_local/bin/executable_mise", "x\n")], "true"),
+            "root-bin-omp": ([("home/dot_local/bin/executable_omp", "x\n")], "true"),
+            "other-bin-subtree": ([("home/dot_local/bin/client/x.sh", "x\n")], "true"),
+            "lever-prefix": ([("home/dot_local/bin/common-extra/x", "x\n")], "true"),
+            "lever-and-root-bin": (
+                [("home/dot_local/bin/common/executable_x", "x\n"), ("home/dot_local/bin/executable_mise", "x\n")],
+                "true",
+            ),
+            "render-only-and-home": ([("home/dot_agents/skills/x/SKILL.md", "x\n"), ("home/dot_zshrc", "x\n")], "true"),
+            "render-only-and-install": (
+                [("home/dot_local/bin/common/executable_x", "x\n"), ("tests/install/x", "x\n")],
+                "true",
+            ),
+            # A chezmoi special file or script runs it at any depth, inside a render-only subtree too.
+            "chezmoiscripts": ([("home/.chezmoiscripts/common/run_x.sh.tmpl", "x\n")], "true"),
+            "chezmoiremove": ([("home/.chezmoiremove", "x\n")], "true"),
+            "chezmoitemplates": ([("home/.chezmoitemplates/x", "x\n")], "true"),
+            "chezmoiexternals": ([("home/.chezmoiexternals/x.toml", "x\n")], "true"),
+            "nested-external": ([("home/dot_agents/skills/x/.chezmoiexternal.toml", "x\n")], "true"),
+            "nested-script": ([("home/dot_local/bin/common/run_once_x.sh", "x\n")], "true"),
+            "private-workflow": ([(".github/workflows/private-bootstrap.yaml", "x\n")], "true"),
+            "remote-workflow": ([(".github/workflows/remote.yaml", "x\n")], "true"),
+            "update-agent-assets": ([("scripts/update-agent-assets.sh", "x\n")], "true"),
+            "gh-auth": ([("scripts/gh-auth.sh", "x\n")], "true"),
+            "scripts-lib": ([("scripts/lib/x.sh", "x\n")], "true"),
+            "setup": ([("setup.sh", "x\n")], "true"),
         }
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
@@ -405,11 +451,57 @@ class DecisionTest(unittest.TestCase):
             with self.subTest(case="push"):
                 self.assertEqual(run_decision(script, {"EVENT_NAME": "push"}, clone), "should_run=true\n")
 
+    def test_the_bootstrap_decision_fails_when_grep_fails(self) -> None:
+        # Standing order 21: grep's exit 2 (it could not read the path list) fails the required context instead
+        # of reading as "no bootstrap path changed", on each of the three reads.
+        script = decide_script(REMOTE, "public-bootstrap")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            head = pull_request_head(clone, git, "g-skill", [("home/dot_agents/skills/x/SKILL.md", "x\n")])
+            env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
+            self.assertEqual(run_decision(script, env, clone), "should_run=false\n")
+            for call in (1, 2, 3):
+                with self.subTest(failing_call=call):
+                    shim = Path(temp) / f"shim-{call}"
+                    shim.mkdir()
+                    counter = shim / "calls"
+                    (shim / "grep").write_text(
+                        "#!/bin/sh\n"
+                        f'n=$(($(cat "{counter}" 2>/dev/null || echo 0) + 1)); echo "$n" > "{counter}"\n'
+                        f'[ "$n" -eq {call} ] && exit 2\n'
+                        f'exec {shutil.which("grep")} "$@"\n'
+                    )
+                    (shim / "grep").chmod(0o755)
+                    with tempfile.TemporaryDirectory() as runner_temp:
+                        output = Path(runner_temp) / "github-output"
+                        output.touch()
+                        result = subprocess.run(
+                            ["bash", "-c", script],
+                            cwd=clone,
+                            env={
+                                **os.environ,
+                                **env,
+                                "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}",
+                                "GIT_CONFIG_GLOBAL": os.devnull,
+                                "GIT_CONFIG_NOSYSTEM": "1",
+                                "GITHUB_OUTPUT": str(output),
+                                "RUNNER_TEMP": runner_temp,
+                            },
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        self.assertNotEqual(result.returncode, 0, result.stdout)
+                        self.assertIn("failed with exit 2", result.stderr)
+                        self.assertNotIn("should_run=false", output.read_text())
+
     def test_the_bootstrap_decision_reads_paths_that_git_quotes(self) -> None:
         # audit:4fe2438:1: core.quotePath=false still quotes a name with a quote, backslash or control character.
         script = decide_script(REMOTE, "public-bootstrap")
         cases = {name: ([(f"home/a{char}b", "x\n")], "true") for name, char in QUOTED_CHARS.items()}
         cases["orchestration-quote"] = ([('.orchestration/a"b', "x\n")], "false")
+        cases["render-only-quote"] = ([('home/dot_agents/skills/a"b/SKILL.md', "x\n")], "false")
+        cases["render-only-newline-then-home"] = ([("home/dot_agents/skills/a\nhome/b", "x\n")], "false")
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
             for name, (writes, expected) in cases.items():
@@ -447,10 +539,34 @@ class WorkflowTriggerTest(unittest.TestCase):
     def test_the_matrices_do_not_fail_fast(self) -> None:
         # Amendment 1: a failing matrix job never cancels its siblings, so each required context reports its own
         # conclusion and ci-rerun.sh never meets a cancellation that only a sibling's failure caused.
-        for path, name in ((TEST, "test"), (REMOTE, "public-bootstrap"), (PRIVATE, "private-bootstrap")):
+        for path, name in (
+            (TEST, "test"),
+            (REMOTE, "public-bootstrap"),
+            (REMOTE, "chezmoi-apply"),
+            (PRIVATE, "private-bootstrap"),
+        ):
             with self.subTest(job=name):
                 block = path.read_text().split(f"\n  {name}:\n", 1)[1].split("\n    runs-on:", 1)[0]
                 self.assertIn("\n    strategy:\n      fail-fast: false\n      matrix:\n", block)
+
+    def test_chezmoi_apply_is_not_required_and_applies_on_every_diff_where_the_bootstrap_runs(self) -> None:
+        # U39: the bootstrap skips render-only home/ paths, so chezmoi-apply has to run on those diffs: no
+        # decision, no job-level if or needs, the bootstrap's own matrix, and no context the ruleset requires.
+        contexts = matrix_contexts(REMOTE, "chezmoi-apply")
+        bootstrap = matrix_contexts(REMOTE, "public-bootstrap")
+        self.assertEqual({context.replace("public-bootstrap", "chezmoi-apply") for context in bootstrap}, contexts)
+        self.assertFalse(contexts & REQUIRED_CONTEXTS)
+        job = jobs(REMOTE)["chezmoi-apply"]
+        for key in ("if", "needs", "continue-on-error"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, job["keys"])
+        for step in job["steps"]:
+            with self.subTest(step=step_name(step)):
+                self.assertNotIn("if", step)
+                self.assertNotIn("continue-on-error", step)
+        apply = next(step for step in job["steps"] if step_name(step) == "Apply home/ into a scratch HOME")
+        self.assertIn("apply --exclude=scripts,externals", apply["script"])
+        self.assertIn("verify --exclude=scripts,externals", apply["script"])
 
     def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
         for path in (TEST, REMOTE, AGENT_ASSETS):
@@ -466,7 +582,7 @@ class WorkflowTriggerTest(unittest.TestCase):
         self.assertEqual({"push", "schedule", "workflow_dispatch"}, set(re.findall(r"^  ([a-z_]+):", on, re.MULTILINE)))
         self.assertIn("  push:\n    branches: [main]\n", on)
         self.assertIn('    - cron: "0 0 * * 5"', on)
-        self.assertEqual(["public-bootstrap"], list(jobs(REMOTE)))
+        self.assertEqual(["public-bootstrap", "chezmoi-apply"], list(jobs(REMOTE)))
         self.assertEqual(["private-bootstrap"], list(jobs(PRIVATE)))
         self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(PRIVATE, "private-bootstrap"))
 

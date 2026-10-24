@@ -70,10 +70,33 @@ jobs:
           # even with core.quotePath off, Git quotes a name holding a quote, a
           # backslash or a control character, and "home/... would miss the pattern.
           # An empty diff runs the bootstrap, and so does a path that can change
-          # what setup.sh installs or how this job runs it.
+          # what setup.sh installs or how this job runs it: outside home/, the
+          # files setup.sh, its installers and this job read; anywhere, a chezmoi
+          # special file (.chezmoi*) or script (run_*); under home/, every path
+          # but the render-only subtrees that no installer executes or reads,
+          # whose apply the chezmoi-apply job checks on every diff (U39):
+          # managed skills, omp seat policies, Claude rules and the levers in
+          # dot_local/bin/common/ and dot_local/bin/server/. A file directly in
+          # dot_local/bin/ is not one: it renders to ~/.local/bin/<name>, where
+          # the installers run mise, omp and the other tools they install.
           changed="${RUNNER_TEMP}/changed-paths"
+          home_paths="${RUNNER_TEMP}/changed-home-paths"
           git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
-          if [ ! -s "${changed}" ] || grep -zEq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' "${changed}"; then
+          # grep exits 1 when no path matches and 2 when it fails: a failure fails
+          # the job instead of reading as "no bootstrap path changed".
+          paths_match() {
+            local status=0
+            grep -zE "$@" || status=$?
+            if [ "${status}" -gt 1 ]; then
+              echo "grep -zE $* failed with exit ${status}" >&2
+              exit 1
+            fi
+            return "${status}"
+          }
+          paths_match '^home/' "${changed}" > "${home_paths}" || true
+          if [ ! -s "${changed}" ] ||
+            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
+            paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"

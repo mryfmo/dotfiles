@@ -77,10 +77,33 @@ jobs:
           # even with core.quotePath off, Git quotes a name holding a quote, a
           # backslash or a control character, and "home/... would miss the pattern.
           # An empty diff runs the bootstrap, and so does a path that can change
-          # what setup.sh installs or how this job runs it.
+          # what setup.sh installs or how this job runs it: outside home/, the
+          # files setup.sh, its installers and this job read; anywhere, a chezmoi
+          # special file (.chezmoi*) or script (run_*); under home/, every path
+          # but the render-only subtrees that no installer executes or reads,
+          # whose apply the chezmoi-apply job checks on every diff (U39):
+          # managed skills, omp seat policies, Claude rules and the levers in
+          # dot_local/bin/common/ and dot_local/bin/server/. A file directly in
+          # dot_local/bin/ is not one: it renders to ~/.local/bin/<name>, where
+          # the installers run mise, omp and the other tools they install.
           changed="${RUNNER_TEMP}/changed-paths"
+          home_paths="${RUNNER_TEMP}/changed-home-paths"
           git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
-          if [ ! -s "${changed}" ] || grep -zEq '^(setup\.sh$|\.chezmoiroot$|vendor/|install/|home/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)' "${changed}"; then
+          # grep exits 1 when no path matches and 2 when it fails: a failure fails
+          # the job instead of reading as "no bootstrap path changed".
+          paths_match() {
+            local status=0
+            grep -zE "$@" || status=$?
+            if [ "${status}" -gt 1 ]; then
+              echo "grep -zE $* failed with exit ${status}" >&2
+              exit 1
+            fi
+            return "${status}"
+          }
+          paths_match '^home/' "${changed}" > "${home_paths}" || true
+          if [ ! -s "${changed}" ] ||
+            paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
+            paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"
@@ -142,3 +165,101 @@ jobs:
             test -e "${HOME}/.bashrc"
           fi
           printf 'Validated checkout SHA %s\n' "${GITHUB_SHA}"
+
+  chezmoi-apply:
+    # Not a required check. The public-bootstrap decision skips setup.sh when every changed path under home/ is
+    # render-only (managed skills, omp seat policies, Claude rules, levers); this job applies home/ into a scratch
+    # HOME on every diff, so such a change that does not render or apply still fails, in minutes instead of a
+    # bootstrap's ten (U39).
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            system: client
+          - os: ubuntu-24.04
+            system: server
+          - os: macos-14
+            system: client
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      CI: true
+      SYSTEM: ${{ matrix.system }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install chezmoi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The release setup.sh bootstraps: the newest one at least 72 hours old,
+          # resolved by scripts/lib/github-release.sh, checked against the release's
+          # checksums and its GitHub attestation before it runs.
+          source scripts/lib/github-release.sh
+          chezmoi_version="$(github_release_tag twpayne/chezmoi)"
+          chezmoi_version="${chezmoi_version#v}"
+          case "$(uname -s)/$(uname -m)" in
+            Darwin/arm64) chezmoi_platform=darwin_arm64 ;;
+            Darwin/x86_64) chezmoi_platform=darwin_amd64 ;;
+            Linux/x86_64) chezmoi_platform=linux_amd64 ;;
+            *) echo "no chezmoi release for $(uname -s)/$(uname -m)" >&2; exit 1 ;;
+          esac
+          artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
+          base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
+          sha256_check=(sha256sum --check --strict)
+          command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+          curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
+          curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
+            | grep "  ${artifact}$" \
+            | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
+          if ! github_release_attestation twpayne/chezmoi "v${chezmoi_version}" "${RUNNER_TEMP}/${artifact}"; then
+            echo "chezmoi v${chezmoi_version}: the GitHub release attestation did not verify (gh 2.93.0 or newer, authenticated, is required)" >&2
+            exit 1
+          fi
+          mkdir -p "${RUNNER_TEMP}/chezmoi-bin"
+          tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}/chezmoi-bin" chezmoi
+          "${RUNNER_TEMP}/chezmoi-bin/chezmoi" --version | grep -F "v${chezmoi_version}"
+          printf 'APPLY_CHEZMOI=%s\n' "${RUNNER_TEMP}/chezmoi-bin/chezmoi" >> "${GITHUB_ENV}"
+
+      - name: Apply home/ into a scratch HOME
+        shell: bash
+        run: |
+          set -euo pipefail
+          apply_home="${RUNNER_TEMP}/chezmoi-apply-home"
+          apply_source="${RUNNER_TEMP}/chezmoi-apply-source"
+          apply_config="${apply_home}/.config/chezmoi/chezmoi.yaml"
+          # A scratch HOME and a copy of the source: the runner's HOME and the checkout stay untouched.
+          cp -R "${GITHUB_WORKSPACE}/home" "${apply_source}"
+          # Externals are downloads and scripts are installers: both belong to the public-bootstrap job, which runs
+          # whenever a .chezmoi* or run_* path changes. As setup.sh does without a tty, age-encrypted targets
+          # leave the copy: CI holds no key.
+          rm -f "${apply_source}/.chezmoiexternal.yaml.tmpl"
+          rm -rf "${apply_source}/.chezmoitemplates/chezmoiexternal.d"
+          find "${apply_source}" -type f -name 'encrypted_*' -exec rm -f {} +
+          mkdir -p "${apply_home}" "$(dirname "${apply_config}")"
+          printf 'sourceDir: "%s"\ndata:\n  email: "ci@example.invalid"\n  system: "%s"\n' \
+            "${apply_source}" "${SYSTEM}" > "${apply_config}"
+          printf 'home-sentinel\n' > "${apply_home}/unmanaged-sentinel"
+          chezmoi=(
+            "${APPLY_CHEZMOI}" --source "${apply_source}" --destination "${apply_home}"
+            --config "${apply_config}" --no-tty
+          )
+          # init regenerates the config from home/.chezmoi.yaml.tmpl, as setup.sh's init does.
+          HOME="${apply_home}" "${chezmoi[@]}" init
+          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never apply --exclude=scripts,externals
+          # verify exits non-zero when any managed target differs from the source after the apply.
+          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never verify --exclude=scripts,externals
+          test "$(cat "${apply_home}/unmanaged-sentinel")" = home-sentinel
+          if [ "${SYSTEM}" = client ]; then
+            test -e "${apply_home}/.zshrc"
+          else
+            test -e "${apply_home}/.bashrc"
+          fi
+          printf 'Applied home/ of %s for %s on %s\n' "${GITHUB_SHA}" "${SYSTEM}" "${RUNNER_OS}"

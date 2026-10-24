@@ -250,6 +250,41 @@ jobs:
           "${claude_bin}" --version
           printf 'CLAUDE_DOCTOR_BIN=%s\n' "${claude_bin}" >> "${GITHUB_ENV}"
 
+      - name: Run the omp TypeScript tests
+        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && matrix.system == 'client' }}
+        run: |
+          set -euo pipefail
+          # The stop gate and the openai-siwc extension are TypeScript that omp loads; until this step their bun
+          # tests ran only on worker seats (U39 addendum 2). bun is the version mise resolves from the copied config
+          # and its minimum_release_age, as hosts get it (no literal here). One run per directory: bun exits 1 when
+          # a filter matches no test file, so a moved or emptied directory fails the step instead of passing it.
+          mise -C "${RUNNER_TEMP}/statusline-mise" install bun
+          bun_bin="$(mise -C "${RUNNER_TEMP}/statusline-mise" which bun)"
+          "${bun_bin}" --version
+          # openai-siwc's tests/requests.test.ts drives omp's own Responses transport from the installed omp package
+          # (OMP_PACKAGE_DIR). update_omp installs it as hosts get it: the pinned tarball, its sha256 checked, then
+          # npm, here into a scratch HOME. It skips without npm, so the package file is checked afterwards. It then
+          # runs `omp --version`, and omp's entry point is `#!/usr/bin/env bun`, so bun is on its PATH as on a host.
+          # Its download directory comes from mktemp under TMPDIR, else /tmp, so TMPDIR is a scratch directory too:
+          # the install writes under RUNNER_TEMP only (npm's cache and mise's reshim follow the scratch HOME).
+          omp_home="${RUNNER_TEMP}/omp-home"
+          omp_tmp="${RUNNER_TEMP}/omp-tmp"
+          mkdir -p "${omp_home}" "${omp_tmp}"
+          node_bin_dir="$(mise -C "${RUNNER_TEMP}/statusline-mise" where node)/bin"
+          bun_bin_dir="$(dirname "${bun_bin}")"
+          HOME="${omp_home}" TMPDIR="${omp_tmp}" PATH="${node_bin_dir}:${bun_bin_dir}:${PATH}" \
+            bash -c 'source ./scripts/update-agent-assets.sh && update_omp'
+          export OMP_PACKAGE_DIR="${omp_home}/.local/lib/node_modules/@oh-my-pi/pi-coding-agent"
+          test -f "${OMP_PACKAGE_DIR}/package.json"
+          # The suites and whatever they spawn run on this one bun: a test that starts a bare `bun` would otherwise
+          # resolve mise's bun shim, which this job's global config does not resolve ("bun is not a valid shim",
+          # exit 1; ADDENDUM 3). The Python tests that run stop-gate.ts under bun where bun is found
+          # (test_hcom_seat.py, U33c) get the real binary first on PATH too, so in this cell they run that half.
+          for tests in home/dot_agents/omp/hooks/tests home/dot_agents/omp/extensions/openai-siwc/tests; do
+            PATH="${bun_bin_dir}:${PATH}" "${bun_bin}" test "./${tests}"
+          done
+          printf '%s\n' "${bun_bin_dir}" >> "${GITHUB_PATH}"
+
       - name: Smoke-test statusline tools without network
         if: ${{ steps.decide.outputs.should_test == 'true' }}
         run: |
@@ -363,7 +398,12 @@ jobs:
             command -v zsh > /dev/null 2>&1 || brew install zsh
           fi
 
-          make unit-test
+          # The modules run in parallel shards with one combined summary that fails when any shard fails
+          # (scripts/ci/unittest-shards.py; UNIT_TEST_JOBS=1 is the serial run). Twice as many shards as CPUs:
+          # the tests wait on their subprocesses, and on PR #493 that took the step from 215 s to 170 s on
+          # macos-14 (3 CPUs) and from 111 s to 92 s on ubuntu-24.04 (4 CPUs) (U39).
+          cpus="$(getconf _NPROCESSORS_ONLN)"
+          UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test
 
       - name: Prepare public dotfiles fixture
         if: ${{ steps.decide.outputs.should_test == 'true' }}

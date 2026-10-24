@@ -153,6 +153,50 @@ class MaskedDirnameCheckTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn(f"{lever}:6: a $(dirname) or $(basename)", result.stdout)
 
+    def test_an_inner_opener_split_from_its_dirname_or_basename_is_reported_where_the_command_starts(self) -> None:
+        shapes = {
+            "newline": ('dir=$(cd "$(\n    dirname "$0")" && pwd -P)\n', 3),
+            "continuation": ('name=$(printf %s "$( \\\n    basename "$0")")\n', 3),
+            "blank line": ('dir=$(cd "$(\n\n  dirname -- "$0")")\n', 4),
+            "same-line blank": ('dir=$(cd "$( dirname "$0")")\n', 2),
+        }
+        for name, (body, line) in shapes.items():
+            with self.subTest(shape=name):
+                lever = self.script(name.replace(" ", "-"), body)
+
+                result = self.run_check(lever)
+
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(
+                    f"{lever}:{line}: a $(dirname) or $(basename) inside another command substitution loses its"
+                    " status; capture it first or split the path in the shell\n",
+                    result.stdout,
+                )
+
+    def test_every_quoted_delimiter_form_ends_its_heredoc_and_the_scan_resumes(self) -> None:
+        # Each body is literal (a nested dirname and an apostrophe that must not count), and the U31 shape after
+        # each heredoc must be reported: the delimiter was found, so the scan resumed as code.
+        forms = {
+            "ANSI-C": ("cat <<$'EOF'", "EOF"),
+            "ANSI-C escape": ("cat <<$'E\\'OF'", "E'OF"),
+            "locale": ('cat <<$"EOF"', "EOF"),
+            "single then unquoted": ("cat <<'E'OF", "EOF"),
+            "unquoted then double": ('cat <<E"O"F', "EOF"),
+            "double then single": ("cat <<\"E\"'O'F", "EOF"),
+            "backslash": ("cat <<\\EOF", "EOF"),
+        }
+        lines, expected = ["#!/usr/bin/env bash"], []
+        for operator, terminator in forms.values():
+            lines += [operator, 'it\'s $(cd "$(dirname "$0")")', terminator, U31_SHAPE.rstrip("\n"), "    exit 2", "}"]
+            expected.append(len(lines) - 2)
+        lever = self.temp_dir / "forms"
+        lever.write_text("\n".join(lines) + "\n")
+
+        result = self.run_check(lever)
+
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertEqual([f"{lever}:{n}" for n in expected], [x.split(": a ")[0] for x in result.stdout.splitlines()])
+
     def test_a_file_that_ends_inside_a_substitution_string_or_heredoc_refuses_the_list(self) -> None:
         bodies = {
             "substitution": 'x=$(cd "$y"\n',

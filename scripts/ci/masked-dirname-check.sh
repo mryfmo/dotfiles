@@ -7,10 +7,12 @@
 #   lost. This check reports every `$(dirname` or `$(basename` that opens while another `$(` is still
 #   open, as `file:line: …`; capture the path first or split it in the shell (`${path%/*}`,
 #   `${path##*/}`). The scan carries its quoting and nesting state across lines, so a substitution
-#   split over several lines is seen, and it reads a heredoc body the way the shell does: an unquoted
-#   delimiter's body expands `$(…)` (an apostrophe there is plain text), a quoted delimiter's body
-#   (`<<'EOF'`, `<<"EOF"`, `<<\EOF`) is literal and skipped. Single-quoted text and comments are
-#   skipped.
+#   split over several lines is seen: the command word of an inner `$(` is tested where it starts,
+#   after blanks, line continuations or newlines. It reads a heredoc body the way the shell does: the
+#   delimiter is one word after quote removal (unquoted text, `\x`, '…', "…", $'…' with its escapes
+#   and $"…" concatenate); an unquoted delimiter's body expands `$(…)` (an apostrophe there is plain
+#   text), a delimiter with any quoting (`<<'EOF'`, `<<$'EOF'`, `<<E"O"F`, `<<\EOF`) makes the body
+#   literal and skipped. Single-quoted text and comments are skipped.
 #   shortcut: a lexical scan, not a parse; a `case` pattern's unbalanced `)` inside a `$(…)` closes
 #   the substitution early (a missed finding, never a false one); upgrade to an AST walk
 #   (shfmt --to-json) if such a shape appears.
@@ -65,6 +67,16 @@ for file in "$@"; do
                     i += j - 1; sq = 0
                     continue
                 }
+                # The first word of a substitution opened inside another one may start after blanks, a line
+                # continuation or a newline; it is tested where it starts.
+                if (await[depth]) {
+                    if (c ~ /[ \t]/ || (c == "\\" && i == n)) continue
+                    await[depth] = 0
+                    if (substr(line, i) ~ /^(dirname|basename)([ \t)]|$)/) {
+                        printf "%s:%d: a $(dirname) or $(basename) inside another command substitution loses its status; capture it first or split the path in the shell\n", FILENAME, FNR
+                        found = 1
+                    }
+                }
                 # The top level of an unquoted heredoc body reads like double-quoted text, except that a
                 # double quote is plain text there too.
                 body_text = hd_active && depth == hd_base
@@ -78,11 +90,7 @@ for file in "$@"; do
                 if (!body_text && !dq[depth] && c == "#" && (i == 1 || substr(line, i - 1, 1) ~ /[ \t;]/)) break
                 if (!body_text && c == "\"") { dq[depth] = !dq[depth]; continue }
                 if (c == "$" && substr(line, i + 1, 1) == "(") {
-                    if (depth > 0 && substr(line, i + 2) ~ /^(dirname|basename)([ \t)]|$)/) {
-                        printf "%s:%d: a $(dirname) or $(basename) inside another command substitution loses its status; capture it first or split the path in the shell\n", FILENAME, FNR
-                        found = 1
-                    }
-                    depth++; dq[depth] = 0; paren[depth] = 0; i++
+                    depth++; dq[depth] = 0; paren[depth] = 0; await[depth] = depth > 1; i++
                     continue
                 }
                 if (dq[depth] || body_text) continue
@@ -99,28 +107,55 @@ for file in "$@"; do
             }
             if (!hd_active) start_heredoc()
         }
-        # Reads the delimiter after a `<<` at position p of s, queues the heredoc and returns the
-        # position of the delimiter`s last character.
-        function queue_heredoc(s, p,    strip, quoted, word, rest, q, k) {
-            strip = 0; quoted = 0
+        # Reads the delimiter word after a `<<` at position p of s, queues the heredoc and returns the
+        # position of the delimiter`s last character. The word is taken as the shell takes it, after quote
+        # removal: unquoted text, \x, single, double, $"…" and ANSI-C $`…` quoting concatenate, and any
+        # quoting at all makes the body literal.
+        function queue_heredoc(s, p,    strip, quoted, word, c, e, k, n) {
+            strip = 0; quoted = 0; word = ""; n = length(s)
             if (substr(s, p, 1) == "-") { strip = 1; p++ }
             while (substr(s, p, 1) ~ /[ \t]/) p++
-            rest = substr(s, p)
-            q = substr(rest, 1, 1)
-            if (q == "\047" || q == "\"") {
-                k = index(substr(rest, 2), q)
-                if (k == 0) return length(s)
-                word = substr(rest, 2, k - 1); quoted = 1; p += k
-            } else {
-                if (q == "\\") { quoted = 1; rest = substr(rest, 2); p++ }
-                if (!match(rest, /^[^ \t;&|<>()]+/)) return p - 1
-                word = substr(rest, 1, RLENGTH)
-                if (word ~ /["\047\\]/) { quoted = 1; gsub(/["\047\\]/, "", word) }
-                p += RLENGTH - 1
+            while (p <= n) {
+                c = substr(s, p, 1)
+                if (c ~ /[ \t;&|<>()]/) break
+                if (c == "\\") { quoted = 1; word = word substr(s, p + 1, 1); p += 2; continue }
+                if (c == "$" && substr(s, p + 1, 1) == "\047") {
+                    quoted = 1; p += 2
+                    while (p <= n && substr(s, p, 1) != "\047") {
+                        c = substr(s, p, 1)
+                        if (c == "\\") {
+                            p++; e = substr(s, p, 1)
+                            c = e == "n" ? "\n" : e == "t" ? "\t" : e
+                        }
+                        word = word c; p++
+                    }
+                    if (p > n) return n
+                    p++
+                    continue
+                }
+                if (c == "$" && substr(s, p + 1, 1) == "\"") { p++; c = "\"" }
+                if (c == "\047") {
+                    k = index(substr(s, p + 1), "\047")
+                    if (k == 0) return n
+                    quoted = 1; word = word substr(s, p + 1, k - 1); p += k + 1
+                    continue
+                }
+                if (c == "\"") {
+                    quoted = 1; p++
+                    while (p <= n && substr(s, p, 1) != "\"") {
+                        if (substr(s, p, 1) == "\\" && substr(s, p + 1, 1) ~ /[$`"\\]/) p++
+                        word = word substr(s, p, 1); p++
+                    }
+                    if (p > n) return n
+                    p++
+                    continue
+                }
+                word = word c; p++
             }
+            if (word == "" && !quoted) return p - 1
             npending++
             pend_word[npending] = word; pend_quoted[npending] = quoted; pend_strip[npending] = strip
-            return p
+            return p - 1
         }
         # Starts the body of the next queued heredoc, at the nesting depth where its operator stood.
         function start_heredoc() {

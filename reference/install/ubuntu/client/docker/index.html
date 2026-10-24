@@ -4367,7 +4367,6 @@
 <li><code>install_docker_engine</code></li>
 <li><code>main</code></li>
 <li><code>setup_repository</code></li>
-<li><code>uninstall_docker_engine</code></li>
 <li><code>uninstall_old_docker</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -4443,13 +4442,6 @@
 <span class="w">    </span><span class="c1"># Install Docker Engine, containerd, and Docker Compose.</span>
 <span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the configured Docker Engine packages.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_docker_engine<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

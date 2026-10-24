@@ -4366,7 +4366,6 @@
 <li><code>install_tailscale</code></li>
 <li><code>main</code></li>
 <li><code>setup_repository</code></li>
-<li><code>uninstall_tailscale</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4410,13 +4409,6 @@
 <span class="k">function</span><span class="w"> </span>install_tailscale<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
 <span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>tailscale
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the tailscale package.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_tailscale<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span>tailscale
 <span class="o">}</span>
 
 <span class="c1">#</span>

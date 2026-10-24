@@ -4354,7 +4354,7 @@
 
 
 <h1 id="installmacoscommondockersh">install/macos/common/docker.sh<a class="headerlink" href="#installmacoscommondockersh" title="Permanent link">&para;</a></h1>
-<p>Installs or removes the Docker Desktop cask through Homebrew.</p>
+<p>Installs the Docker Desktop cask through Homebrew.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/macos/common/docker.sh</code></li>
@@ -4365,7 +4365,6 @@
 <ul>
 <li><code>install_docker</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_docker</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4373,7 +4372,7 @@
 <span class="c1"># @file install/macos/common/docker.sh</span>
 <span class="c1"># @brief Install Docker Desktop on macOS.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Installs or removes the Docker Desktop cask through Homebrew.</span>
+<span class="c1">#   Installs the Docker Desktop cask through Homebrew.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4390,13 +4389,6 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>docker
 <span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the Docker Desktop Homebrew cask.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_docker<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>brew<span class="w"> </span>uninstall<span class="w"> </span>--cask<span class="w"> </span>docker<span class="w"> </span>--force
 <span class="o">}</span>
 
 <span class="c1">#</span>

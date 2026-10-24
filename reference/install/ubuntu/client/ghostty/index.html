@@ -4367,7 +4367,6 @@
 <li><code>install_ghostty</code></li>
 <li><code>install_ghostty_dependencies</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_ghostty</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4415,13 +4414,6 @@
 <span class="w">    </span>add_ghostty_ppa
 <span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update
 <span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove Ghostty without removing the configured PPA.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_ghostty<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

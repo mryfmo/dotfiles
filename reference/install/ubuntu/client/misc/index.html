@@ -4354,7 +4354,7 @@
 
 
 <h1 id="installubuntuclientmiscsh">install/ubuntu/client/misc.sh<a class="headerlink" href="#installubuntuclientmiscsh" title="Permanent link">&para;</a></h1>
-<p>Installs or removes a small set of GUI applications used on Ubuntu client machines.</p>
+<p>Installs a small set of GUI applications used on Ubuntu client machines.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/client/misc.sh</code></li>
@@ -4366,7 +4366,6 @@
 <li><code>install_chromium</code></li>
 <li><code>install_misc</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_misc</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4374,8 +4373,7 @@
 <span class="c1"># @file install/ubuntu/client/misc.sh</span>
 <span class="c1"># @brief Install optional Ubuntu client applications.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Installs or removes a small set of GUI applications used on Ubuntu client</span>
-<span class="c1">#   machines.</span>
+<span class="c1">#   Installs a small set of GUI applications used on Ubuntu client machines.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4403,13 +4401,6 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_misc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the optional Ubuntu client packages.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_misc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>apt-get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

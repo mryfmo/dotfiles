@@ -4363,7 +4363,6 @@
 <ul>
 <li><code>install_chezmoi_private</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_chezmoi_private</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4398,14 +4397,6 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Warning: Failed to initialize dotfiles-private. Skipping private dotfiles setup."</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the private chezmoi source and config paths.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_chezmoi_private<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

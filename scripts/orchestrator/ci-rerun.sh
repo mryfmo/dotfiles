@@ -31,7 +31,9 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 run_id=$1
-root="$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+# dirname is captured on its own line: inside the git call its status would be lost.
+script_dir=$(dirname -- "${BASH_SOURCE[0]}") || exit 1
+root="$(git -C "${script_dir}" rev-parse --show-toplevel)" || exit 1
 flakes="${root}/.github/flakes.yaml"
 ledger="${root}/.orchestration/validation/ci-reruns.tsv"
 reservation="${root}/.orchestration/validation/ci-reruns.lock.d/${run_id}"

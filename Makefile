@@ -220,6 +220,27 @@ codex-hook-trust:
 render-check:
 	$(UV_PYYAML) scripts/generate-agent-configs.py --check
 
+# ShellCheck groups (regime-cutover U38), git pathspecs; CI's ShellCheck step runs this target. The masked group's bash
+# scripts (by shebang) are linted with the root .shellcheckrc, which turns on check-extra-masked-returns (SC2312), and
+# with scripts/ci/masked-dirname-check.sh for the dirname/basename shape SC2312 exempts. The default group keeps
+# ShellCheck's default checks (--norc) until U38b fixes its SC2312 findings.
+SHELLCHECK_MASKED_GROUP := scripts/orchestrator/* home/dot_local/bin/common/executable_*
+SHELLCHECK_DEFAULT_GROUP := setup.sh install/*.sh install/**/*.sh scripts/*.sh
+SHELLCHECK_PATHSPECS = $(foreach group,$(1),'$(group)')
+
+.PHONY: shellcheck
+shellcheck:
+	@printf '==> ShellCheck --norc, default group: %s\n' "$(SHELLCHECK_DEFAULT_GROUP)"
+	bash -euo pipefail -c 'git ls-files -z -- "$$@" | xargs -0 shellcheck --norc -x' _ \
+		$(call SHELLCHECK_PATHSPECS,$(SHELLCHECK_DEFAULT_GROUP))
+	@printf '==> ShellCheck with .shellcheckrc and masked-dirname-check, bash scripts of: %s\n' "$(SHELLCHECK_MASKED_GROUP)"
+	bash -euo pipefail -c 'listed=$$(git ls-files -- "$$@"); [[ -n $$listed ]] || { echo "shellcheck: no file in $$*" >&2; exit 1; }; \
+		files=$$(awk '\''FNR == 1 && /^#!.*bash/ { print FILENAME } { nextfile }'\'' $$listed); \
+		[[ -n $$files ]] || { echo "shellcheck: no bash script in $$*" >&2; exit 1; }; \
+		printf "%s\n" $$files; status=0; shellcheck -x $$files || status=1; \
+		scripts/ci/masked-dirname-check.sh $$files || status=1; exit $$status' _ \
+		$(call SHELLCHECK_PATHSPECS,$(SHELLCHECK_MASKED_GROUP))
+
 #
 # Documentation
 #

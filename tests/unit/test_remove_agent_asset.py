@@ -120,6 +120,30 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.assertEqual(other, self.manifest()["steps"]["other"])
         self.assertEqual(0o600, stat.S_IMODE(self.manifest_path.stat().st_mode))
 
+    def test_a_failed_read_of_the_recorded_paths_removes_nothing_and_keeps_the_step(self) -> None:
+        target = self.home / ".agents/cache/demo"
+        target.mkdir(parents=True)
+        self.write_manifest({"demo": self.step("rsync", [target])})
+        before = self.manifest_path.read_bytes()
+        real_jq = (self.bin_dir / "jq").resolve()
+        (self.bin_dir / "jq").unlink()
+        self.executable(
+            "jq",
+            f"""
+            for arg in "$@"; do
+                [ "$arg" != '.paths[]' ] || exit 5
+            done
+            exec {real_jq} "$@"
+            """,
+        )
+
+        result = self.run_remover("demo", "--yes")
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("cannot read the recorded paths of manifest entry: demo", result.stderr)
+        self.assertTrue(target.is_dir())
+        self.assertEqual(before, self.manifest_path.read_bytes())
+
     def test_parameterized_step_removal_preserves_sibling_identity(self) -> None:
         claude = self.home / ".local/share/mise/installs/claude"
         codex = self.home / ".local/share/mise/installs/codex"

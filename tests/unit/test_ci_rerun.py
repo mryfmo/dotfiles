@@ -199,6 +199,17 @@ class CiRerunTest(unittest.TestCase):
         result = self.finish(self.start(run_id, GH_EXIT=gh_exit, GH_RERUN_EXIT=rerun_exit))
         return result, [entry["argv"] for entry in self.entries()]
 
+    def test_ci_rerun_outside_a_git_checkout_refuses_before_any_gh_call(self):
+        shutil.rmtree(self.repo / ".git")
+        self.reset()
+
+        result = self.finish(self.start("101", GIT_CEILING_DIRECTORIES=str(self.t)))
+
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertEqual([], self.entries())
+        self.assertFalse(self.ledger.exists())
+        self.assertFalse(self.reservation("101").exists())
+
     def test_ci_rerun_reruns_once_only_when_every_failed_job_matches_a_signature(self):
         result, calls = self.run_script("101")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)

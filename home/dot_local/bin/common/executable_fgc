@@ -9,9 +9,15 @@
 
 # @description Checkout a branch selected from the local branch list.
 function fgc() {
-    git checkout "$(git for-each-ref refs/heads/ --format='%(refname:short)' | fzf)"
+    local branches branch
+    if ! branches=$(git for-each-ref refs/heads/ --format='%(refname:short)'); then
+        echo "Cannot list the local branches." >&2
+        return 1
+    fi
+    branch=$(fzf <<< "$branches") || return 1
+    git checkout "$branch"
 }
 
-if [ -n "$($SHELL -c "echo ${ZSH_VERSION}")" ]; then
+if [ -n "${ZSH_VERSION:-}" ]; then
     fgc
 fi

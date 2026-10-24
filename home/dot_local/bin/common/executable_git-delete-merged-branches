@@ -14,15 +14,18 @@ function is_inside_git_repository() {
 }
 
 # @description Detect the default branch name from the `origin` remote.
+# @exitcode 1 When `git remote show origin` fails or names no HEAD branch.
 function get_default_branch() {
-    local default_branch
+    local remote_info default_branch
 
-    default_branch=$(LC_ALL=C git remote show origin)
-    default_branch=$(echo "${default_branch}" | sed -n '/HEAD branch/s/.*: //p')
+    remote_info=$(LC_ALL=C git remote show origin) || return 1
+    default_branch=$(sed -n '/HEAD branch/s/.*: //p' <<< "${remote_info}") || return 1
+    [[ -n ${default_branch} ]] || return 1
     echo -n "${default_branch}"
 }
 
 # @description Delete local branches whose content is already on the default branch.
+# @exitcode 1 When the default branch, the branch list or a branch's squash check cannot be read; nothing more is deleted.
 function git-delete-merged-branches() {
     # delete all git branches which have been "squash and merge" via GitHub
     # ref. https://stackoverflow.com/questions/43489303/how-can-i-delete-all-git-branches-which-have-been-squash-and-merge-via-github
@@ -31,18 +34,33 @@ function git-delete-merged-branches() {
         return 0
     fi
 
-    local default_branch
-    default_branch=$(get_default_branch)
+    local default_branch branches branch merge_base tree squashed cherry
+    if ! default_branch=$(get_default_branch); then
+        echo "git-delete-merged-branches: cannot read the HEAD branch of origin; nothing deleted" >&2
+        return 1
+    fi
 
-    git checkout -q "${default_branch}" &&
-        git for-each-ref refs/heads/ "--format=%(refname:short)" |
-        while read -r branch; do
-            merge_base=$(git merge-base "${default_branch}" "${branch}") &&
-                [[ $(git cherry "${default_branch}" "$(git commit-tree "$(git rev-parse "$branch^{tree}")" -p "${merge_base}" -m _)") == "-"* ]] &&
-                git branch -D "${branch}"
-        done
+    git checkout -q "${default_branch}" || return 1
+    if ! branches=$(git for-each-ref refs/heads/ "--format=%(refname:short)"); then
+        echo "git-delete-merged-branches: cannot list the local branches; nothing deleted" >&2
+        return 1
+    fi
+    while read -r branch; do
+        [[ -n ${branch} ]] || continue
+        # No common ancestor: the branch was never forked from the default branch.
+        merge_base=$(git merge-base "${default_branch}" "${branch}") || continue
+        if ! tree=$(git rev-parse "${branch}^{tree}") ||
+            ! squashed=$(git commit-tree "${tree}" -p "${merge_base}" -m _) ||
+            ! cherry=$(git cherry "${default_branch}" "${squashed}"); then
+            echo "git-delete-merged-branches: cannot check whether ${branch} was squash-merged; stopping" >&2
+            return 1
+        fi
+        if [[ ${cherry} == "-"* ]]; then
+            git branch -D "${branch}"
+        fi
+    done <<< "${branches}"
 }
 
-if [ -n "$($SHELL -c "echo ${ZSH_VERSION}")" ]; then
+if [ -n "${ZSH_VERSION:-}" ]; then
     git-delete-merged-branches
 fi

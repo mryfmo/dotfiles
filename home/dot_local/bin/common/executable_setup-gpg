@@ -20,7 +20,7 @@ function has_gpg_secret_key() {
 function generate_gpg_secret_key() {
     if [[ ! -t 0 ]]; then
         printf 'No local GnuPG secret key was found.\n' >&2
-        printf 'Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n' >&2
+        printf "Run \`gpg --full-generate-key\` interactively or restore keys from the private chezmoi source.\n" >&2
         return 1
     fi
 

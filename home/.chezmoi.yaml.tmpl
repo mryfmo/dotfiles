@@ -43,6 +43,9 @@
 {{- $homeDirName := base $homeDir -}}
 
 sourceDir: {{ .chezmoi.workingTree | quote }}
+# chezmoi defaults to the caller's umask, so a desktop session (002) and an ssh
+# login (022) disagree on every managed directory's mode; pin one.
+umask: 0o022
 
 data:
     email: {{ $email | quote }}

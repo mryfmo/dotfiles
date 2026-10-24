@@ -210,6 +210,8 @@ MANAGED_ALLOW = [
     "Bash(scripts/orchestrator/worktree-gc.sh *)",
     "Bash(hcom list *)",
 ]
+# The linux variant keeps only the rules that predate the levers (regime-cutover U31 part 1, D-024-144).
+LINUX_MANAGED_ALLOW = ["Bash(agmsg-dispatch:*)"]
 
 
 def load_manifest_fixture(temp_dir: Path) -> dict:
@@ -821,7 +823,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             [],
             settings["sandbox"]["excludedCommands"],
         )
-        self.assertEqual(MANAGED_ALLOW, settings["permissions"]["allow"])
+        self.assertEqual(LINUX_MANAGED_ALLOW, settings["permissions"]["allow"])
+        darwin = self.render_claude_template(self.module.render_claude_settings(manifest), "darwin")
+        self.assertEqual(MANAGED_ALLOW, darwin["permissions"]["allow"])
 
     def test_sandbox_exclusions_render_empty_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)

@@ -412,6 +412,19 @@ def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
             fail(f"{label}.allow rule {rule!r}: scripts/orchestrator/{lever.group(1)} {reason}")
 
 
+# The rendered Linux gate (regime-cutover U31 part 1, D-024-144): on Linux and WSL2 an allow rule approves a lever's
+# unsandboxed retry without a prompt, and the lever is rewritable in the checkout, so the linux variant carries only the
+# rules that predate the levers.
+LINUX_ALLOW_RULES = ("Bash(agmsg-dispatch:*)",)
+
+
+def validate_claude_os_allow(permissions: Any, label: str, os_name: str) -> None:
+    allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
+    extra = [rule for rule in allow if rule not in LINUX_ALLOW_RULES]
+    if os_name == "linux" and extra:
+        fail(f"{label}.allow must hold only {', '.join(LINUX_ALLOW_RULES)} on Linux and WSL2 (D-024-144): {extra}")
+
+
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
 # in Edit/Read rules will be ignored"); a trailing `/**` is the directory form and is enforced. Only the `.env` pair
 # keeps its glob, because `sandbox.filesystem.denyRead` covers it for subprocesses (regime-cutover U17).
@@ -452,6 +465,7 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
     validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
+    validate_claude_os_allow(settings.get("permissions"), f"{settings_path} {os_name} permissions", os_name)
     validate_claude_permissions_deny(settings.get("permissions"), f"{settings_path} permissions")
     validate_claude_sandbox(
         settings.get("sandbox"),

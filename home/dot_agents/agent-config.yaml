@@ -241,6 +241,12 @@ claude:
     # independently." (code.claude.com/docs/en/permissions)
     allow:
       - Bash(agmsg-dispatch:*)
+    # Rendered into the darwin variant of the template only (regime-cutover
+    # U31 part 1, D-024-144): on Linux and WSL2 the allow rule would approve a
+    # rewritten lever's unsandboxed retry without a prompt, so the gate the
+    # operator kept by hand is now a rendered rule; validate-agent-assets.py
+    # refuses a lever rule in the linux variant.
+    darwin_allow:
       - Bash(scripts/orchestrator/hcom-seat *)
       - Bash(scripts/orchestrator/hcom-dispatch *)
       - Bash(scripts/orchestrator/bus-history.sh *)

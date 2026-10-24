@@ -418,6 +418,12 @@ def render_claude_sandbox(manifest: dict[str, Any], os_name: str = "darwin") -> 
     }
 
 
+def render_claude_allow(manifest: dict[str, Any], os_name: str = "darwin") -> list[str]:
+    """Render `permissions.allow` for one OS: the shared rules, plus `darwin_allow` on macOS only (U31, D-024-144)."""
+    permissions = manifest["claude"]["permissions"]
+    return [*permissions.get("allow", []), *(permissions.get("darwin_allow", []) if os_name == "darwin" else [])]
+
+
 def render_claude_settings(manifest: dict[str, Any]) -> str:
     claude = manifest["claude"]
     hooks = claude.get("hooks", {})
@@ -446,7 +452,11 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {
-            **({"allow": claude["permissions"]["allow"]} if "allow" in claude["permissions"] else {}),
+            **(
+                {"allow": None if "darwin_allow" in claude["permissions"] else claude["permissions"]["allow"]}
+                if "allow" in claude["permissions"]
+                else {}
+            ),
             "deny": claude["permissions"]["deny"],
             "defaultMode": claude["permissions"]["defaultMode"],
             "ask": claude["permissions"]["ask"],
@@ -503,6 +513,12 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             '{{ if eq .chezmoi.os "darwin" }}\n' + variants[0] + "\n{{ else }}\n" + variants[1] + "\n{{ end }}"
         )
         text = text.replace('"sandbox": null', '"sandbox": ' + sandbox_template, 1)
+    if "darwin_allow" in claude["permissions"]:
+        variants = [json_dumps(render_claude_allow(manifest, os_name)).strip() for os_name in ("darwin", "linux")]
+        allow_template = (
+            '{{ if eq .chezmoi.os "darwin" }}\n' + variants[0] + "\n{{ else }}\n" + variants[1] + "\n{{ end }}"
+        )
+        text = text.replace('"allow": null', '"allow": ' + allow_template, 1)
     return text
 
 

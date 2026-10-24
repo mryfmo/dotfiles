@@ -6,14 +6,20 @@
   "alwaysThinkingEnabled": true,
   "plansDirectory": "./.agents/worklog/claude",
   "permissions": {
-    "allow": [
-      "Bash(agmsg-dispatch:*)",
-      "Bash(scripts/orchestrator/hcom-seat *)",
-      "Bash(scripts/orchestrator/hcom-dispatch *)",
-      "Bash(scripts/orchestrator/bus-history.sh *)",
-      "Bash(scripts/orchestrator/worktree-gc.sh *)",
-      "Bash(hcom list *)"
-    ],
+    "allow": {{ if eq .chezmoi.os "darwin" }}
+[
+  "Bash(agmsg-dispatch:*)",
+  "Bash(scripts/orchestrator/hcom-seat *)",
+  "Bash(scripts/orchestrator/hcom-dispatch *)",
+  "Bash(scripts/orchestrator/bus-history.sh *)",
+  "Bash(scripts/orchestrator/worktree-gc.sh *)",
+  "Bash(hcom list *)"
+]
+{{ else }}
+[
+  "Bash(agmsg-dispatch:*)"
+]
+{{ end }},
     "deny": [
       "Bash(sudo:*)",
       "Bash(rm -rf:*)",

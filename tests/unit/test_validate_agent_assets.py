@@ -1162,9 +1162,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertRegex(stderr.getvalue(), message)
 
         template = generator.render_claude_settings(manifest)
-        darwin, linux = template.split("{{ else }}", 1)
+        prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
         linux = linux.replace('"allowedDomains": [', '"allowedDomains": ["cafe.github.com",', 1)
-        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", darwin + "{{ else }}" + linux)
+        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", prefix + "{{ else }}" + linux)
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_claude_settings(manifest)
@@ -1250,8 +1250,44 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_the_managed_allow_rules_name_the_real_levers(self) -> None:
         self.module.ROOT = ROOT
         settings = load_manifest_fixture(self.temp_dir)
-        self.assertEqual(MANAGED_ALLOW, settings["claude"]["permissions"]["allow"])
-        self.module.validate_claude_permissions_allow(settings["claude"]["permissions"], "manifest permissions")
+        permissions = settings["claude"]["permissions"]
+        self.assertEqual(MANAGED_ALLOW, permissions["allow"] + permissions["darwin_allow"])
+        self.module.validate_claude_permissions_allow(
+            {"allow": permissions["allow"] + permissions["darwin_allow"]}, "manifest permissions"
+        )
+
+    def test_the_linux_variant_refuses_a_lever_allow_rule(self) -> None:
+        """The D-024-144 gate is rendered: a lever rule in the linux variant fails validation (regime-cutover U31)."""
+        self.module.validate_claude_os_allow({"allow": MANAGED_ALLOW}, "permissions", "darwin")
+        self.module.validate_claude_os_allow({"allow": ["Bash(agmsg-dispatch:*)"]}, "permissions", "linux")
+        for rule in MANAGED_ALLOW[1:]:
+            with self.subTest(rule=rule):
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_os_allow(
+                        {"allow": ["Bash(agmsg-dispatch:*)", rule]}, "permissions", "linux"
+                    )
+                self.assertIn("on Linux and WSL2 (D-024-144)", stderr.getvalue())
+
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        manifest = load_manifest_fixture(self.temp_dir)
+        self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
+        self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh")
+        flat = copy.deepcopy(manifest)
+        flat["claude"]["permissions"]["allow"] += flat["claude"]["permissions"].pop("darwin_allow")
+        self.write_text_file(
+            "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(flat)
+        )
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_settings(flat, "linux")
+        self.assertIn("linux permissions.allow must hold only", stderr.getvalue())
+        self.write_text_file(
+            "home/.chezmoitemplates/claude-settings-managed.json", generator.render_claude_settings(manifest)
+        )
+        self.module.validate_claude_settings(manifest, "linux")
 
     def test_claude_sandbox_requires_the_ssh_credential_deny_and_home_or_absolute_deny_read(self) -> None:
         cases = {

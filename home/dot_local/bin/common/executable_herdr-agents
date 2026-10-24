@@ -1468,7 +1468,7 @@ function retire_agmsg() {
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local teams_dir="${HOME}/.agents/skills/agmsg/teams"
-    local acted=false rows team name rule hooks
+    local acted=false rows team name rule hooks guard
 
     mkdir -p "${log_file%/*}"
     # The command substitution runs in a subshell, so a read error exits it and
@@ -1514,10 +1514,21 @@ function retire_agmsg() {
             printf 'agmsg retire: team %s of %s no longer exists; skipped\n' "${team}" "${name}"
             continue
         fi
-        if [[ ${registered} == true ]] &&
-            other="$(agmsg_member_other_project "${teams_dir}/${team}/config.json" "${name}" "${workdir}" "${identity}")"; then
-            printf 'agmsg retire: %s in team %s is also registered at %s; membership kept\n' "${name}" "${team}" "${other}"
-            continue
+        if [[ ${registered} == true ]]; then
+            guard=0
+            other="$(agmsg_member_other_project "${teams_dir}/${team}/config.json" "${name}" "${workdir}" "${identity}")" || guard=$?
+            case "${guard}" in
+            0)
+                printf 'agmsg retire: %s in team %s is also registered at %s; membership kept\n' "${name}" "${team}" "${other}"
+                continue
+                ;;
+            1) ;;
+            *)
+                printf 'herdr-agents: cannot read the registrations of %s in %s, so what leave.sh would remove is unknown; nothing left (log: %s)\n' \
+                    "${name}" "${teams_dir}/${team}/config.json" "${log_file}" >&2
+                exit 1
+                ;;
+            esac
         fi
         if [[ ! -x ${scripts}/leave.sh ]]; then
             printf 'agmsg leave script not found; skipping team leave for %s: %s\n' "${name}" "${scripts}/leave.sh" >&2
@@ -1533,28 +1544,40 @@ function retire_agmsg() {
     [[ ${acted} == true ]] || printf 'agmsg already retired for %s\n' "${workdir}"
 }
 
-# @description Print the first claude-code project a team member is registered
-#   at, besides DIR, that is not a clone of this repository: a different
-#   directory whose repository_identity differs from <identity>, or a path that
-#   is gone or holds a newline, which cannot be checked. The registrations are
-#   read from the team config as JSON strings, so a tab in a path survives.
+# @description Print the first registration of a team member, of any agmsg
+#   type, that lies outside this repository, since leave.sh removes the whole
+#   member whatever the type (leave.sh:85-93) and join.sh keeps one registration
+#   per type/project pair (join.sh:211-228). Outside means a directory other
+#   than DIR whose repository_identity differs from <identity>, or a project
+#   that cannot be checked (absent, not a string, gone, or holding a newline).
+#   The registrations are read from the team config as JSON, so a tab in a path
+#   survives, and the read is checked: a failure is never "nothing outside".
 # @arg $1 path Team config.json.
 # @arg $2 string Member name.
 # @arg $3 path DIR, the project being retired.
 # @arg $4 string This repository's identity (empty when it has none).
-# @exitcode 0 When such a project exists (printed on stdout).
-# @exitcode 1 When every other registration is a clone of this repository.
+# @exitcode 0 When such a registration exists (its project printed on stdout).
+# @exitcode 1 When every registration is DIR or a clone of this repository.
+# @exitcode 2 When the member's registrations cannot be read.
 function agmsg_member_other_project() {
-    local config="$1" name="$2" project="$3" identity="$4" row other
-    local -a others=()
+    local config="$1" name="$2" project="$3" identity="$4" rows row other
+    local log_file="${HOME}/.config/herdr/herdr-agents.log"
+    local -a registrations=()
 
+    # An absent member is a read failure: identities.sh just named it here.
+    rows="$(jq -c --arg n "${name}" '.agents[$n] // error("member \($n) is not in the team config")
+        | if (.registrations | type) == "array" then .registrations[] else {type, project} end
+        | {type: (.type // null), project: (.project // null)}' "${config}" 2>> "${log_file}")" || return 2
     while IFS= read -r row; do
-        [[ -n ${row} ]] && others+=("${row}")
-    done < <(jq -c --arg n "${name}" '.agents[$n] // {}
-        | (if (.registrations | type) == "array" then .registrations else [{type: .type, project: .project}] end)[]
-        | select(.type == "claude-code" and (.project | type) == "string") | .project' "${config}" 2> /dev/null)
-    for row in ${others[@]+"${others[@]}"}; do
-        other="$(jq -r '.' <<< "${row}")"
+        [[ -n ${row} ]] && registrations+=("${row}")
+    done <<< "${rows}"
+    for row in ${registrations[@]+"${registrations[@]}"}; do
+        other="$(jq -r 'if (.project | type) == "string" then .project else "" end' <<< "${row}")" || return 2
+        if [[ -z ${other} ]]; then
+            # No project to check: what leave.sh would drop is not provably ours.
+            printf '%s\n' "${row}"
+            return 0
+        fi
         if [[ ${other} != *$'\n'* && -d ${other} ]]; then
             # The same directory (by device and inode), whatever path spells it.
             [[ ! ${other} -ef ${project} ]] || continue

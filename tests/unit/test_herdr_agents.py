@@ -1338,6 +1338,69 @@ jq 'del(.hooks)' "$f" > "$f.new" && mv "$f.new" "$f"
         self.assertNotIn(f"registered project {prefix} ", result.stdout)
         self.assertEqual(prefix_settings.read_bytes(), before)
 
+    def test_retire_agmsg_without_dir_keeps_a_member_with_another_type_registered_outside_this_repository(
+        self,
+    ) -> None:
+        p = self.write_registered_agmsg_store()
+        # leave.sh drops the whole member whatever the type, so a codex registration counts too.
+        mixed = self.write_agmsg_team("mixed-type-ops", {"claude-mixed-type": [p["workspace"]]})
+        config = json.loads(mixed.read_text())
+        config["agents"]["claude-mixed-type"]["registrations"].append({"type": "codex", "project": str(p["reports"])})
+        mixed.write_text(json.dumps(config))
+        before = mixed.read_bytes()
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"agmsg retire: claude-mixed-type in team mixed-type-ops is also registered at {p['reports']};"
+            " membership kept\n",
+            result.stdout,
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertNotIn("leave mixed-type-ops claude-mixed-type", calls)
+        self.assertEqual(mixed.read_bytes(), before)
+        self.assertIn(f"delivery set off claude-code {p['workspace']}", calls)
+        self.assertNotIn("hooks", json.loads((p["workspace"] / ".claude/settings.local.json").read_text()))
+
+    def test_retire_agmsg_without_dir_exits_1_on_an_unreadable_team_config(self) -> None:
+        self.write_registered_agmsg_store()
+        broken = self.home_dir / ".agents/skills/agmsg/teams/dotfiles-conformance/config.json"
+        broken.write_text('{"agents": {')
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"cannot read {broken} as JSON", result.stderr)
+        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        self.assertFalse(any(c.startswith(("leave ", "delivery ")) for c in calls), calls)
+
+    def test_retire_agmsg_without_dir_leaves_nothing_when_the_membership_read_fails(self) -> None:
+        self.write_registered_agmsg_store()
+        # Fail only the membership guard's read (`.agents[$n] //`, in this and the earlier guard), after the
+        # store listing and identities.sh succeeded; the fake leave.sh's `del(.agents[$n])` is not matched.
+        jq = self.bin_dir / "jq"
+        real = os.path.realpath(jq)
+        jq.unlink()
+        self.write_executable(
+            "jq",
+            f"""#!/usr/bin/env bash
+for arg in "$@"; do
+    [[ $arg != *'.agents[$n] //'* ]] || {{ printf 'jq: injected read failure\\n' >&2; exit 2; }}
+done
+exec {real} "$@"
+""",
+        )
+        config = self.home_dir / ".agents/skills/agmsg/teams/dotfiles-conformance/config.json"
+
+        result = self.run_registered_retire()
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"cannot read the registrations of claude-bare-dot in {config}", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(c.startswith("leave ") for c in calls), calls)
+        self.assertNotIn("left team", result.stdout)
+
     RETIRED_STUB = (
         "#!/usr/bin/env bash\n"
         "# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.\n"

@@ -78,7 +78,9 @@ function collect_source_files() {
             ":(glob)home/dot_local/bin/**" \
             ":(glob)home/dot_claude/hooks/**" \
             ":(glob)home/dot_config/alias/*.sh" | while IFS= read -r source_path; do
-            [[ -f "${source_path}" ]] && printf '%s\n' "${source_path}"
+            if [[ -f "${source_path}" ]]; then
+                printf '%s\n' "${source_path}"
+            fi
         done
         return
     fi
@@ -448,7 +450,12 @@ function render_shell_page() {
     print_page_header "${source_path}" "${category}" "shell-fallback"
 
     local function_count=0
+    local function_names
 
+    function_names="$(extract_function_names "${source_path}")" || {
+        printf 'generate-docs: cannot read the function names of %s\n' "${source_path}" >&2
+        return 1
+    }
     while IFS= read -r function_name; do
         [[ -n "${function_name}" ]] || continue
 
@@ -458,7 +465,7 @@ function render_shell_page() {
 
         printf -- '- `%s`\n' "${function_name}"
         function_count=$((function_count + 1))
-    done < <(extract_function_names "${source_path}")
+    done <<< "${function_names}"
 
     if [[ "${function_count}" -gt 0 ]]; then
         printf "\n"
@@ -501,9 +508,41 @@ function render_alias_page() {
 }
 
 #
+# @description Print the collected source files in C-locale order.
+# @exitcode 1 The source list or its sort failed; the message names which.
+#
+function sorted_source_files() {
+    local source_files
+
+    source_files="$(collect_source_files)" || {
+        printf 'generate-docs: cannot list the tracked source files\n' >&2
+        return 1
+    }
+    [[ -n "${source_files}" ]] || return 0
+    LC_ALL=C sort <<< "${source_files}" || {
+        printf 'generate-docs: cannot sort the tracked source files\n' >&2
+        return 1
+    }
+}
+
+#
+# @description Print the collected template wrappers.
+# @exitcode 1 The template list failed.
+#
+function checked_template_files() {
+    collect_template_files || {
+        printf 'generate-docs: cannot list the chezmoi template wrappers\n' >&2
+        return 1
+    }
+}
+
+#
 # @description Generate Markdown reference pages for all collected source files.
 #
 function generate_reference_pages() {
+    local source_files
+
+    source_files="$(sorted_source_files)" || return 1
     while IFS= read -r source_path; do
         [[ -n "${source_path}" ]] || continue
 
@@ -520,7 +559,7 @@ function generate_reference_pages() {
         else
             render_shell_page "${source_path}" "${category}" > "${output_path}"
         fi
-    done < <(collect_source_files | LC_ALL=C sort)
+    done <<< "${source_files}"
 }
 
 #
@@ -550,7 +589,10 @@ function link_for_source_page() {
 # @arg $1 path Source file path.
 #
 function docs_link_for_source_page() {
-    printf "reference/%s\n" "$(link_for_source_page "$1")"
+    local link
+
+    link="$(link_for_source_page "$1")" || return 1
+    printf "reference/%s\n" "${link}"
 }
 
 #
@@ -559,6 +601,9 @@ function docs_link_for_source_page() {
 #
 function generate_template_mapping_page() {
     local found_template=false
+    local template_files
+
+    template_files="$(checked_template_files)" || return 1
 
     {
         printf '# home/.chezmoiscripts Template Mapping\n\n'
@@ -579,7 +624,7 @@ function generate_template_mapping_page() {
             target_link="$(link_for_source_page "${target_path}")"
             printf -- '- `%s` -> [`%s`](%s)\n' "${template_path}" "${target_path}" "${target_link}"
             found_template=true
-        done < <(collect_template_files)
+        done <<< "${template_files}"
 
         if [[ "${found_template}" == false ]]; then
             printf "No template wrappers were found.\n"
@@ -623,14 +668,18 @@ function count_source_files() {
 function count_sources_for_group() {
     local group="$1"
     local count=0
+    local source_files
+    local source_group
 
+    source_files="$(sorted_source_files)" || return 1
     while IFS= read -r source_path; do
         [[ -n "${source_path}" ]] || continue
 
-        if [[ "$(source_group_for_path "${source_path}")" == "${group}" ]]; then
+        source_group="$(source_group_for_path "${source_path}")" || return 1
+        if [[ "${source_group}" == "${group}" ]]; then
             count=$((count + 1))
         fi
-    done < <(collect_source_files | LC_ALL=C sort)
+    done <<< "${source_files}"
 
     printf "%s\n" "${count}"
 }
@@ -640,14 +689,18 @@ function count_sources_for_group() {
 #
 function count_mapped_templates() {
     local count=0
+    local template_files
+    local target_path
 
+    template_files="$(checked_template_files)" || return 1
     while IFS= read -r template_path; do
         [[ -n "${template_path}" ]] || continue
 
-        if [[ -n "$(resolve_template_target "${template_path}")" ]]; then
+        target_path="$(resolve_template_target "${template_path}")" || return 1
+        if [[ -n "${target_path}" ]]; then
             count=$((count + 1))
         fi
-    done < <(collect_template_files)
+    done <<< "${template_files}"
 
     printf "%s\n" "${count}"
 }
@@ -748,8 +801,11 @@ EOF
 function print_template_mapping_card() {
     local mapped_count
     local shown_count=0
+    local template_files
+    local target_link
 
-    mapped_count="$(count_mapped_templates)"
+    mapped_count="$(count_mapped_templates)" || return 1
+    template_files="$(checked_template_files)" || return 1
 
     printf '<div class="landing-card" markdown="1">\n\n'
     printf '<p class="landing-kicker">Chezmoi</p>\n\n'
@@ -770,12 +826,13 @@ function print_template_mapping_card() {
             continue
         fi
 
+        target_link="$(docs_link_for_source_page "${target_path}")" || return 1
         printf -- '- `%s` -> [`%s`](%s)\n' \
             "${template_path}" \
             "${target_path}" \
-            "$(docs_link_for_source_page "${target_path}")"
+            "${target_link}"
         shown_count=$((shown_count + 1))
-    done < <(collect_template_files)
+    done <<< "${template_files}"
 
     if [[ "${mapped_count}" -gt "${shown_count}" ]]; then
         printf '\n[%s more mappings](reference/chezmoi-templates.md)\n' "$((mapped_count - shown_count))"
@@ -797,10 +854,14 @@ function print_category_card() {
     local description
     local total_count
     local shown_count=0
+    local source_files
+    local source_group
+    local source_link
 
     title="$(source_group_title "${group}")"
     description="$(source_group_description "${group}")"
-    total_count="$(count_sources_for_group "${group}")"
+    total_count="$(count_sources_for_group "${group}")" || return 1
+    source_files="$(sorted_source_files)" || return 1
 
     if [[ "${total_count}" -eq 0 ]]; then
         return
@@ -815,7 +876,8 @@ function print_category_card() {
     while IFS= read -r source_path; do
         [[ -n "${source_path}" ]] || continue
 
-        if [[ "$(source_group_for_path "${source_path}")" != "${group}" ]]; then
+        source_group="$(source_group_for_path "${source_path}")" || return 1
+        if [[ "${source_group}" != "${group}" ]]; then
             continue
         fi
 
@@ -826,20 +888,21 @@ function print_category_card() {
         local summary
 
         summary="$(short_summary_for_source "${source_path}" 120)"
+        source_link="$(docs_link_for_source_page "${source_path}")" || return 1
 
         if [[ -n "${summary}" ]]; then
             printf -- '- [`%s`](%s): %s\n' \
                 "${source_path}" \
-                "$(docs_link_for_source_page "${source_path}")" \
+                "${source_link}" \
                 "${summary}"
         else
             printf -- '- [`%s`](%s)\n' \
                 "${source_path}" \
-                "$(docs_link_for_source_page "${source_path}")"
+                "${source_link}"
         fi
 
         shown_count=$((shown_count + 1))
-    done < <(collect_source_files | LC_ALL=C sort)
+    done <<< "${source_files}"
 
     if [[ "${total_count}" -gt "${shown_count}" ]]; then
         printf '\n[%s more entries in the full catalog](%s)\n' "$((total_count - shown_count))" "${CATALOG_HREF}"

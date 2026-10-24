@@ -4498,7 +4498,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or heals an agents workspace with the orchestrator pane only and never creates a second workspace for a directory that already has one; it never starts a worker. Attach mode, the SessionStart hook in the orchestrator pane, claims the orchestrator seat and prints the directive without starting or repairing any worker; outside a Herdr pane it only prints a bring-up summary line (and, in a regime repository, the directive line). Workers are seated on demand with --add-worker in their own tab of the orchestrator's workspace and removed with --remove-worker; --restart-worker is retired and exits 2. Audit mode runs the read-only Codex audit of one commit visibly in the workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker, then gates on the concluding <code>Verdict:</code> line of its <code>-o</code> last-message file; the auditor keeps no agmsg identity. Before the gate it masks the evidence with DIR/scripts/validate-agent-assets.py --mask-secrets. DIR must be the orchestrator's own checkout (the audited commit is only fetched): the masker is refused, and the audit fails as <code>unmasked</code>, when DIR is at the audited commit or the validator is missing though git tracks it, untracked, or changed, and a failed mask also fails. Masking is skipped only when git tracks no validator and none is on disk. Starting the orchestrator pane, and the SessionStart --attach hook inside it, claim the orchestrator's agmsg seat outside the sandbox under the composite <code>&lt;session_id&gt;.&lt;claude pid&gt;</code> instance id (<code>seat_claim=</code> line), followed in a regime repository by the <code>agmsg-orchestration:</code> directive line. agmsg bootstrap also removes the pre-push stub that earlier versions wrote for the retired main-push guard; the GitHub ruleset on <code>main</code> is the boundary. A codex worker (an --add-worker seat) is launched with <code>--ask-for-approval never</code> and <code>sandbox_workspace_write.network_access=true</code>, so it never prompts and out-of-sandbox actions fail instead of escalating. The orchestrator pane starts Claude with the <code>MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS</code> of the profile that MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</p>
+<p>Full mode creates or heals an agents workspace with the orchestrator pane only and never creates a second workspace for a directory that already has one; it never starts a worker. Attach mode, the SessionStart hook in the orchestrator pane, claims the orchestrator seat and prints the directive without starting or repairing any worker; outside a Herdr pane it only prints a bring-up summary line (and, in a regime repository, the directive line). Workers are seated on demand with --add-worker in their own tab of the orchestrator's workspace and removed with --remove-worker; --restart-worker is retired and exits 2. Audit mode runs the read-only Codex audit of one commit visibly in the workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker, then gates on the concluding <code>Verdict:</code> line of its <code>-o</code> last-message file; the auditor keeps no agmsg identity. Before the gate it masks the evidence with DIR/scripts/validate-agent-assets.py --mask-secrets. DIR must be the orchestrator's own checkout (the audited commit is only fetched): the masker is refused, and the audit fails as <code>unmasked</code>, when DIR is at the audited commit or the validator is missing though git tracks it, untracked, or changed, and a failed mask also fails. Masking is skipped only when git tracks no validator and none is on disk. Starting the orchestrator pane, and the SessionStart --attach hook inside it, claim the orchestrator's agmsg seat outside the sandbox under the composite <code>&lt;session_id&gt;.&lt;claude pid&gt;</code> instance id (<code>seat_claim=</code> line), followed in a regime repository by the <code>agmsg-orchestration:</code> directive line. Retire mode (--retire-agmsg, run by <code>make update</code>) turns the checkout's agmsg wiring off and also removes the pre-push stub that earlier versions wrote for the retired main-push guard; the GitHub ruleset on <code>main</code> is the boundary. A codex worker (an --add-worker seat) is launched with <code>--ask-for-approval never</code> and <code>sandbox_workspace_write.network_access=true</code>, so it never prompts and out-of-sandbox actions fail instead of escalating. The orchestrator pane starts Claude with the <code>MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS</code> of the profile that MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -4510,9 +4510,10 @@
 <li><code>accept_claude_workspace_trust_dialog</code></li>
 <li><code>accept_spawned_claude_trust_dialog</code></li>
 <li><code>agent_name_for_workspace</code></li>
+<li><code>agmsg_hook_state</code></li>
+<li><code>agmsg_hooks_or_fail</code></li>
 <li><code>audit_pane_id</code></li>
 <li><code>audit_tab_ids</code></li>
-<li><code>bootstrap_agmsg</code></li>
 <li><code>check_worker_linkage</code></li>
 <li><code>claim_orchestrator_seat</code></li>
 <li><code>claim_seat_and_print_directive</code></li>
@@ -4520,7 +4521,6 @@
 <li><code>close_worker_tab</code></li>
 <li><code>codex_worktree_writable_roots</code></li>
 <li><code>despawn_worker_seat</code></li>
-<li><code>distinct_agmsg_identity_count</code></li>
 <li><code>empty_pane_id</code></li>
 <li><code>ensure_worker_delivery</code></li>
 <li><code>ensure_worker_identity</code></li>
@@ -4550,6 +4550,7 @@
 <li><code>resolve_worker_kind</code></li>
 <li><code>resolve_worker_profile</code></li>
 <li><code>resolve_worker_worktree</code></li>
+<li><code>retire_agmsg</code></li>
 <li><code>seat_pane_state</code></li>
 <li><code>seat_record_path</code></li>
 <li><code>single_managed_workspace</code></li>
@@ -4593,9 +4594,10 @@
 <span class="c1">#   it, claim the orchestrator's agmsg seat outside the sandbox under the</span>
 <span class="c1">#   composite `&lt;session_id&gt;.&lt;claude pid&gt;` instance id (`seat_claim=` line),</span>
 <span class="c1">#   followed in a regime repository by the `agmsg-orchestration:` directive</span>
-<span class="c1">#   line. agmsg bootstrap also removes the pre-push stub that earlier versions</span>
-<span class="c1">#   wrote for the retired main-push guard; the GitHub ruleset on `main` is the</span>
-<span class="c1">#   boundary.</span>
+<span class="c1">#   line. Retire mode (--retire-agmsg, run by `make update`) turns the</span>
+<span class="c1">#   checkout's agmsg wiring off and also removes the pre-push stub that earlier</span>
+<span class="c1">#   versions wrote for the retired main-push guard; the GitHub ruleset on</span>
+<span class="c1">#   `main` is the boundary.</span>
 <span class="c1">#   A codex worker (an --add-worker seat) is launched with</span>
 <span class="c1">#   `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`,</span>
 <span class="c1">#   so it never prompts and out-of-sandbox actions fail instead of escalating.</span>
@@ -4604,7 +4606,8 @@
 <span class="c1">#   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --restart-worker Retired: exits 2 naming --remove-worker then --add-worker.</span>
-<span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
+<span class="c1"># @option --retire-agmsg Remove the checkout's agmsg hooks and leave its agmsg teams without changing Herdr panes.</span>
+<span class="c1"># @option --bootstrap-agmsg Retired: exits 2 naming --retire-agmsg.</span>
 <span class="c1"># @option --audit &lt;sha&gt; Run the read-only `codex &lt;audit profile args&gt; exec` auditor for &lt;sha&gt; in the workspace's audit tab.</span>
 <span class="c1"># @option --out &lt;path&gt; Audit evidence path, relative to DIR. Defaults to</span>
 <span class="c1">#   `.orchestration/validation/audit-&lt;sha&gt;.md`.</span>
@@ -4643,7 +4646,7 @@
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents --add-worker .claude/worktrees/worker-c --kind claude</span>
 <span class="c1"># @example</span>
-<span class="c1">#   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles</span>
+<span class="c1">#   herdr-agents --retire-agmsg ~/Workspace/dotfiles</span>
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents --audit 926d9f1 --out .orchestration/validation/T31-audit.md ~/Workspace/dotfiles</span>
 
@@ -4654,7 +4657,7 @@
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'USAGE'</span>
 <span class="s">Usage: herdr-agents [DIR]</span>
 <span class="s">       herdr-agents --attach</span>
-<span class="s">       herdr-agents --bootstrap-agmsg [DIR]</span>
+<span class="s">       herdr-agents --retire-agmsg [DIR]</span>
 <span class="s">       herdr-agents --audit &lt;sha&gt; [--task ID] [--out PATH] [--timeout SECONDS] [DIR]</span>
 <span class="s">       herdr-agents --add-worker [&lt;worktree&gt;] [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]</span>
 <span class="s">       herdr-agents --remove-worker &lt;worktree&gt; [--force] [--stale] [DIR]</span>
@@ -4686,9 +4689,14 @@
 <span class="s">codex), and nothing otherwise; it needs no Herdr server.</span>
 <span class="s">--restart-worker is retired: it exits 2 and names --remove-worker followed by</span>
 <span class="s">--add-worker, which apply new worker launch arguments.</span>
-<span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks and removes the</span>
-<span class="s">pre-push stub that earlier versions wrote for the retired main-push guard (any</span>
-<span class="s">other pre-push hook is left alone); the GitHub ruleset on main is the boundary.</span>
+<span class="s">Retire mode turns the agmsg regime off for DIR (E1 of plan 025): it removes</span>
+<span class="s">every agmsg hook from DIR/.claude/settings.local.json with delivery.sh set off,</span>
+<span class="s">makes each claude-code agmsg identity registered at DIR leave its team, and</span>
+<span class="s">prints one line per action, or `agmsg already retired for DIR` when there was</span>
+<span class="s">nothing to do. It also removes the pre-push stub that earlier versions wrote</span>
+<span class="s">for the retired main-push guard (any other pre-push hook is left alone); the</span>
+<span class="s">GitHub ruleset on main is the boundary. --bootstrap-agmsg is retired: it exits</span>
+<span class="s">2 and names --retire-agmsg.</span>
 <span class="s">Audit mode runs the read-only Codex audit of &lt;sha&gt; in the existing managed</span>
 <span class="s">workspace's audit tab (created once, then reused and left open), tees it to</span>
 <span class="s">PATH (default .orchestration/validation/audit-&lt;sha&gt;.md under DIR), and exits</span>
@@ -4873,8 +4881,7 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">seated</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worktree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">seated</span><span class="o">=</span><span class="s2">""</span>
-<span class="w">    </span><span class="c1"># One name in several teams is one seat (distinct names decide, as in</span>
-<span class="w">    </span><span class="c1"># distinct_agmsg_identity_count).</span>
+<span class="w">    </span><span class="c1"># One name in several teams is one seat (distinct names decide).</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seated</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="k">)</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: several agmsg %s identities are registered at %s (%s); refusing to pick one.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worktree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seated</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">'s/ $//'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
@@ -5793,7 +5800,7 @@
 
 <span class="w">    </span><span class="nv">seat_orchestrator_labels</span><span class="o">=</span><span class="s1">'[]'</span>
 <span class="w">    </span><span class="nv">seat_worker_labels</span><span class="o">=</span><span class="s1">'[]'</span>
-<span class="w">    </span><span class="c1"># $HOME is never an agmsg project (see bootstrap_agmsg).</span>
+<span class="w">    </span><span class="c1"># $HOME is never an agmsg project (see retire_agmsg).</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/identities.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">common</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
@@ -5922,24 +5929,6 @@
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Count the distinct agmsg identity names registered for a path and type.</span>
-<span class="c1">#   identities.sh is an exact (spelling-normalized only) lookup of the given</span>
-<span class="c1">#   path, so this counts registrations at DIR itself, never ones under a nested</span>
-<span class="c1">#   or sibling worktree. Upstream project resolution (#92: SessionStart marker,</span>
-<span class="c1">#   nearest registered ancestor, git common dir) lives in join.sh, whoami.sh,</span>
-<span class="c1">#   actas-claim.sh, reset.sh, and watch.sh instead; every worker pane this file</span>
-<span class="c1">#   creates exports AGMSG_RESOLVE_PROJECT=0 so those calls keep the worker's own</span>
-<span class="c1">#   path instead of resolving to the orchestrator's main checkout.</span>
-<span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
-<span class="c1"># @arg $2 string agmsg agent type.</span>
-<span class="k">function</span><span class="w"> </span>distinct_agmsg_identity_count<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts/identities.sh"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>count
-
-<span class="w">    </span><span class="nv">count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="k">:-</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span>
-<span class="o">}</span>
-
 <span class="c1"># @description Remove the pre-push stub that earlier `--bootstrap-agmsg` runs</span>
 <span class="c1">#   wrote for the retired main-push guard, and its decision log. The GitHub</span>
 <span class="c1">#   ruleset on `main` is the boundary now, and with the guard mode gone the</span>
@@ -5968,80 +5957,115 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks,</span>
-<span class="c1">#   after removing the retired main-push guard stub (remove_retired_pre_push_stub).</span>
+<span class="c1"># @description Report whether a Claude Code settings file carries an agmsg hook.</span>
+<span class="c1">#   jq -e exits 1 only for a false result; any other failure (an unreadable,</span>
+<span class="c1">#   empty or malformed file) is an inspection error, never "no hooks".</span>
+<span class="c1"># @arg $1 path Settings file.</span>
+<span class="c1"># @exitcode 0 When any hook command contains `agmsg/scripts/`.</span>
+<span class="c1"># @exitcode 1 When the file is absent or carries no agmsg hook.</span>
+<span class="c1"># @exitcode 2 When the file exists but cannot be read as JSON.</span>
+<span class="k">function</span><span class="w"> </span>agmsg_hook_state<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-L<span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">'any(.hooks[]?[]?.hooks[]?; (.command // "") | contains("agmsg/scripts/"))'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="o">((</span>status<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the agmsg hook state of a settings file, or exit 1 naming</span>
+<span class="c1">#   it when it cannot be inspected.</span>
+<span class="c1"># @arg $1 path Settings file.</span>
+<span class="c1"># @arg $2 string When the check runs: `before` or `after` delivery.sh set off.</span>
+<span class="c1"># @stdout `present` or `absent`.</span>
+<span class="k">function</span><span class="w"> </span>agmsg_hooks_or_fail<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+
+<span class="w">    </span>agmsg_hook_state<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'present\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'absent\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: cannot read %s as JSON %s delivery.sh set off; agmsg hooks unknown, nothing retired from it\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Skip $HOME or turn the checkout's agmsg wiring off: remove the</span>
+<span class="c1">#   agmsg hooks from DIR/.claude/settings.local.json with `delivery.sh set off`</span>
+<span class="c1">#   and make every claude-code identity registered at DIR leave its team, after</span>
+<span class="c1">#   removing the retired main-push guard stub (remove_retired_pre_push_stub).</span>
+<span class="c1">#   Prints one line per action, or one `agmsg already retired` line. delivery.sh</span>
+<span class="c1">#   never touches permissions, so an agmsg allow rule it leaves is reported,</span>
+<span class="c1">#   never edited here.</span>
 <span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
-<span class="k">function</span><span class="w"> </span>bootstrap_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="c1"># @exitcode 1 When the settings file cannot be read as JSON, an agmsg hook</span>
+<span class="c1">#   survives `set off`, identities.sh fails, or leave.sh fails.</span>
+<span class="k">function</span><span class="w"> </span>retire_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg retire for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>remove_retired_pre_push_stub<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">delivery</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/delivery.sh"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">doctor</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/doctor.sh"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">claude_hooks_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/.claude/settings.local.json"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>agent_type
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>agent_label
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent_types</span><span class="o">=(</span>claude-code<span class="o">)</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">acted</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>rows<span class="w"> </span>team<span class="w"> </span>name<span class="w"> </span>rule<span class="w"> </span>hooks
 
-<span class="w">    </span><span class="c1"># Workers are seated in linked worktrees with their own hooks there, so</span>
-<span class="w">    </span><span class="c1"># the main checkout only carries the orchestrator's claude-code identity.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg delivery script not found; skipping bootstrap: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="p">%/*</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s1">'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>both<span class="w"> </span>claude-code<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="c1"># The command substitution runs in a subshell, so a read error exits it and</span>
+<span class="w">    </span><span class="c1"># is turned into this function's exit here.</span>
+<span class="w">    </span><span class="nv">hooks</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>agmsg_hooks_or_fail<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>before<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>present<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg delivery script not found; skipping hook removal: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>off<span class="w"> </span>claude-code<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">            </span><span class="nv">hooks</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>agmsg_hooks_or_fail<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>after<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hooks</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>present<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: agmsg hooks remain in %s after delivery.sh set off claude-code %s (log: %s)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                    </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: removed the agmsg hooks from %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>rule<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">                </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: %s keeps the allow rule %s (delivery.sh set off leaves permissions alone)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rule</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.permissions.allow[]? | select(contains("agmsg/scripts/"))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">doctor</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg doctor script not found; skipping identity checks: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">doctor</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># A failed or missing lookup is not "no identity": never claim retired then.</span>
+<span class="w">    </span><span class="nv">rows</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/identities.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg identities script not found; skipping team leave: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>!<span class="w"> </span><span class="nv">rows</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="m">2</span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: identities.sh %s claude-code failed, so its agmsg identities are unknown (log: %s)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>agent_type<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_types</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span>doctor_output<span class="w"> </span>doctor_status<span class="w"> </span><span class="nv">has_registration</span><span class="o">=</span><span class="nb">true</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span>count
-
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">agent_label</span><span class="o">=</span>Codex
-<span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nv">agent_label</span><span class="o">=</span><span class="s2">"Claude Code"</span>
+<span class="w">    </span><span class="nv">rows</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sort<span class="w"> </span>-u<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>team<span class="w"> </span>name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">acted</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/leave.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg leave script not found; skipping team leave for %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/leave.sh"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-
-<span class="w">        </span><span class="c1"># doctor.sh reports general per-project health (registered, warnings);</span>
-<span class="w">        </span><span class="c1"># it does not treat multiple registrations for one type as a problem,</span>
-<span class="w">        </span><span class="c1"># so the ambiguity check below stays on the counting helper.</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">doctor_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">doctor</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--project<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--type<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>:
-<span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nv">doctor_status</span><span class="o">=</span><span class="nv">$?</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">doctor_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">doctor_output</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s2">"no registrations match this scope"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="nv">has_registration</span><span class="o">=</span><span class="nb">false</span>
-<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No agmsg %s identity for %s; run: AGMSG_RESOLVE_PROJECT=0 %s/join.sh &lt;team&gt; &lt;agent-name&gt; %s "%s"\n'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">                    </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="k">else</span>
-<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">doctor_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/leave.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: leave.sh %s %s failed (log: %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg retired: %s left team %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rows</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">has_registration</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>distinct_agmsg_identity_count<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>count<span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">                    </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">            </span><span class="k">fi</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">acted</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg already retired for %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Return the first pane id without an attached agent.</span>
@@ -6154,6 +6178,12 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="k">fi</span>
 
+<span class="c1"># The agmsg regime is retired (E1 of plan 025): make update retires it instead.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--bootstrap-agmsg"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: --bootstrap-agmsg is retired; run herdr-agents --retire-agmsg [DIR]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+
 <span class="c1"># The orchestrator's agmsg identity type: the leader the worker modes name,</span>
 <span class="c1"># link and despawn under, and the identity --directive looks up.</span>
 <span class="nv">orchestrator_kind</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_orchestrator_kind<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
@@ -6175,7 +6205,7 @@
 <span class="c1"># touching Herdr when the manifest names Codex. The manifest worker's own</span>
 <span class="c1"># SessionStart --attach keeps its quiet exit below.</span>
 <span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
---bootstrap-agmsg<span class="w"> </span><span class="p">|</span><span class="w"> </span>--add-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>--remove-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>--audit<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+--retire-agmsg<span class="w"> </span><span class="p">|</span><span class="w"> </span>--add-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>--remove-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>--audit<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 *<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">orchestrator_kind</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--attach<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>is_manifest_worker_seat<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -6185,7 +6215,7 @@
 <span class="k">esac</span>
 
 <span class="nv">attach_mode</span><span class="o">=</span><span class="nb">false</span>
-<span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">retire_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">audit_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">audit_out</span><span class="o">=</span><span class="s2">""</span>
 <span class="nv">audit_timeout</span><span class="o">=</span><span class="m">1800</span>
@@ -6232,8 +6262,8 @@
 <span class="w">        </span>claim_seat_and_print_directive<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_PANE_ID</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--bootstrap-agmsg"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">true</span>
+<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--retire-agmsg"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">retire_mode</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span><span class="nb">shift</span>
 <span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--add-worker"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--remove-worker"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--add-worker"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -6314,21 +6344,12 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">bootstrap_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">retire_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>require_command<span class="w"> </span>jq
 <span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">$PWD</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span><span class="nv">worker_worktree</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_worker_worktree<span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="c1"># Hooks only: an existing worker worktree gets its delivery hook; seating</span>
-<span class="w">    </span><span class="c1"># (worktree creation, identity) stays with the pane-managing modes.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span>/<span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">seat_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span><span class="nv">seat_kind</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_worker_kind<span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span>ensure_worker_delivery<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span>ensure_worker_merge_denials<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>retire_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
@@ -6794,7 +6815,6 @@ load_seat_labels<span class="w"> </span><span class="s2">"</span><span class="si
 <span class="w">        </span>rename_pane_unless_seat_named<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-orchestrator
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>claim_seat_and_print_directive<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents workspace: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
@@ -6824,7 +6844,6 @@ load_seat_labels<span class="w"> </span><span class="s2">"</span><span class="si
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span>start_claude_in_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_is_new</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="w">    </span>herdr<span class="w"> </span>workspace<span class="w"> </span>focus<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents workspace: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span>
@@ -6850,7 +6869,6 @@ load_seat_labels<span class="w"> </span><span class="s2">"</span><span class="si
 <span class="k">fi</span>
 
 start_claude_in_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">true</span>
-bootstrap_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>zed<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>zed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>

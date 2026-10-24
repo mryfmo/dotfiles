@@ -983,6 +983,8 @@ Test the shellscript for setup with [Bash Automated Testing System (bats)](https
 Agent sessions must not run Bats locally; push and use GitHub Actions for Bats validation.
 The scripts for the unit test can be found under [`./tests`](https://github.com/mryfmo/dotfiles/tree/main/tests/install) directory.
 
+An Ubuntu install test that needs a real install calls `install_real_packages` from [`tests/install/helpers/apt_record.bash`](tests/install/helpers/apt_record.bash), and its `teardown` calls `remove_real_packages`, which removes only the packages that case installed. A teardown that uninstalls the installer's whole package list also takes the runner image's own packages and their dependents with it: one array-only case spent 70 s removing the image's browsers and JDKs. A test that only checks the command an installer builds records it with `record_apt_calls` instead of running apt.
+
 ### 📦 Continuously monitor code coverage with Codecov [![codecov](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graph/badge.svg)](https://codecov.io/gh/mryfmo/dotfiles)
 
 The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) scripts is continuously monitored at [app.codecov.io/gh/mryfmo/dotfiles](https://app.codecov.io/gh/mryfmo/dotfiles). The following Icicle graph represents the code coverage of the scripts:

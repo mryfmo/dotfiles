@@ -2,16 +2,20 @@
 
 readonly SCRIPT_PATH="./install/ubuntu/client/tailscale.sh"
 
+load "../../helpers/apt_record"
+
 function setup() {
     source "${SCRIPT_PATH}"
 }
 
+# Only a case that installed for real removes what it installed (U41): before, every case ran
+# uninstall_tailscale, and the array cases' teardown removed the runner image's own packages.
 function teardown() {
-    run uninstall_tailscale
+    remove_real_packages
 }
 
 @test "[ubuntu-client] tailscale" {
-    DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
+    install_real_packages "${PACKAGES[@]}"
 
     run dpkg -s 'tailscale'
     [ "${status}" -eq 0 ]

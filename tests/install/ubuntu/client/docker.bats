@@ -2,16 +2,20 @@
 
 readonly SCRIPT_PATH="./install/ubuntu/client/docker.sh"
 
+load "../../helpers/apt_record"
+
 function setup() {
     source "${SCRIPT_PATH}"
 }
 
+# Only a case that installed for real removes what it installed (U41): before, every case ran
+# uninstall_docker_engine, and the array cases' teardown removed the runner image's own packages.
 function teardown() {
-    run uninstall_docker_engine
+    remove_real_packages
 }
 
 @test "[ubuntu-client] docker" {
-    DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
+    install_real_packages "${PACKAGES[@]}"
 
     run dpkg -s 'docker-ce'
     [ "${status}" -eq 0 ]
@@ -54,4 +58,27 @@ function teardown() {
 
     [ "${status}" -eq 0 ]
     [ "$(grep -c '^gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg$' "${calls_path}")" -eq 2 ]
+}
+
+@test "[ubuntu-client] install_docker_engine asks apt-get for every package in PACKAGES at once" {
+    run record_apt_calls "${SCRIPT_PATH}" install_docker_engine
+    [ "${status}" -eq 0 ]
+    [ "$(grep -c '^apt-get install ' <<< "${output}")" -eq 1 ]
+    grep -qxF "apt-get install -y ${PACKAGES[*]}" <<< "${output}"
+}
+
+@test "[ubuntu-client] the recorded install_docker_engine call catches an installer that drops a package" {
+    local mutant="${BATS_TEST_TMPDIR}/docker.sh" calls
+    sed 's/apt-get install -y "${PACKAGES\[@\]}"/apt-get install -y "${PACKAGES[@]:1}"/' "${SCRIPT_PATH}" > "${mutant}"
+    if cmp -s "${SCRIPT_PATH}" "${mutant}"; then
+        false
+    fi
+    run record_apt_calls "${mutant}" install_docker_engine
+    [ "${status}" -eq 0 ]
+    calls="${output}"
+    # The recorder saw the mutant's call, and the check above would refuse it.
+    grep -qxF "apt-get install -y ${PACKAGES[*]:1}" <<< "${calls}"
+    if grep -qxF "apt-get install -y ${PACKAGES[*]}" <<< "${calls}"; then
+        false
+    fi
 }

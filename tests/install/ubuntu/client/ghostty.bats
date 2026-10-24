@@ -2,12 +2,16 @@
 
 readonly SCRIPT_PATH="./install/ubuntu/client/ghostty.sh"
 
+load "../../helpers/apt_record"
+
 function setup() {
     source "${SCRIPT_PATH}"
 }
 
+# Only a case that installed for real removes what it installed (U41): before, every case ran
+# uninstall_ghostty, and the array cases' teardown removed the runner image's own packages.
 function teardown() {
-    run uninstall_ghostty
+    remove_real_packages
 }
 
 @test "[ubuntu-client] PACKAGES for ghostty" {
@@ -35,7 +39,7 @@ function teardown() {
 }
 
 @test "[ubuntu-client] ghostty" {
-    DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
+    install_real_packages "${PACKAGES[@]}"
 
     run dpkg -s ghostty
     [ "${status}" -eq 0 ]

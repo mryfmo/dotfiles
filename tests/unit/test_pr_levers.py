@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,18 +26,37 @@ SHA_B = "b" * 40
 BADGE = "**<sub><sub>![{} Badge](https://img.shields.io/badge/{}-yellow?style=flat)</sub></sub>  finding**"
 
 
+def jq_version(candidate):
+    """`jq-<version>` or `gojq <version>` when `candidate` is jq or gojq, else None (a clone such as jaq)."""
+    if not candidate or not os.access(candidate, os.X_OK):
+        return None
+    run = subprocess.run([candidate, "--version"], capture_output=True, text=True, check=False)
+    version = run.stdout.strip()
+    return version if run.returncode == 0 and version.startswith(("jq-", "gojq")) else None
+
+
 def find_jq():
-    """A jq that is jq or gojq (not a clone such as jaq, whose dialect gh does not speak)."""
+    """PR_LEVERS_JQ when set (it must be jq or gojq), else the first jq or gojq found; gh embeds gojq, and jq 1.8
+    refuses a null where 1.7 passed it through (U28: `split("\\n")[0]` of an empty body), so CI's jq is the one
+    that counts."""
+    forced = os.environ.get("PR_LEVERS_JQ")
+    if forced:
+        if not jq_version(forced):
+            raise RuntimeError(f"PR_LEVERS_JQ={forced} is not jq or gojq")
+        return forced
     for candidate in (shutil.which("gojq"), "/usr/bin/jq", shutil.which("jq")):
-        if not candidate or not os.access(candidate, os.X_OK):
-            continue
-        run = subprocess.run([candidate, "--version"], capture_output=True, text=True, check=False)
-        if run.returncode == 0 and run.stdout.startswith(("jq-", "gojq")):
+        if jq_version(candidate):
             return candidate
     return None
 
 
 JQ = find_jq()
+
+
+def setUpModule():
+    """Name the jq the fake runs, so a CI log shows the runner's version."""
+    if JQ:
+        sys.stderr.write(f"test_pr_levers: --jq runs through {JQ} ({jq_version(JQ)})\n")
 
 
 def thread(first_id, resolved=False, created="2026-10-24T01:00:00Z", severity="P2", replies=(), node="T"):

@@ -108,9 +108,9 @@ threads_jq='.data.repository.pullRequest
   | (["head", .headRefOid, (.reviewThreads.pageInfo.hasNextPage | tostring)] | @tsv),
     (.reviewThreads.nodes[] | .comments as $c | [($c.nodes[0].databaseId | tostring), (.isResolved | tostring),
       ($c.nodes[0].createdAt | fromdateiso8601 | tostring),
-      ([$c.nodes[0].body | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
+      ([($c.nodes[0].body // "") | capture("!\\[P(?<p>[0-3]) Badge\\]") | "P" + .p] | first // "-"),
       ($c.totalCount | tostring),
-      (($c.nodes[1:] | last | .body // "") | split("\n")[0] | rtrimstr("\r"))] | @tsv)'
+      (($c.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
 
 # @description Print the refusal on stderr and exit 2.
 # @arg $@ string The reason.

@@ -99,7 +99,7 @@ threads_jq='.data.repository.pullRequest.reviewThreads
   | (["page", (.pageInfo.hasNextPage | tostring)] | @tsv),
     (.nodes[] | [.id, (.isResolved | tostring), (.comments.nodes[0].databaseId | tostring),
       (.comments.totalCount | tostring),
-      ((.comments.nodes[1:] | last | .body // "") | split("\n")[0] | rtrimstr("\r"))] | @tsv)'
+      ((.comments.nodes[1:] | last | .body // "") | split("\n") | (.[0] // "") | rtrimstr("\r"))] | @tsv)'
 # shellcheck disable=SC2016 # GraphQL variables, not shell
 resolve_mutation='mutation($thread: ID!) { resolveReviewThread(input: {threadId: $thread}) { thread { id isResolved } } }'
 

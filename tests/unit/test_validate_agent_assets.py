@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture
+from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
 
 sys.dont_write_bytecode = True
 
@@ -1096,7 +1096,22 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         """U28: the committed orchestrator.yml and worker.yml pass; every other allow form is refused."""
         self.module.ROOT = ROOT
         manifest = load_manifest_fixture(self.temp_dir)
-        self.module.validate_omp_policies(manifest)
+        # The overlays parsed by chezmoi's fromYaml, as load_manifest_fixture parses the manifest: `make unit-test`
+        # gives the test process no PyYAML, and without it validate_omp_policies refuses to read the files.
+        policies = {
+            role: render_claude_template(
+                "{{ fromYaml "
+                + json.dumps((ROOT / f"home/dot_agents/omp/policies/{role}.yml").read_text())
+                + " | toJson }}",
+                self.temp_dir,
+            )
+            for role in self.module.OMP_WRITING_POLICIES
+        }
+        self.module.validate_omp_policies(manifest, policies)
+        if self.module.yaml is None:
+            with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                self.module.validate_omp_policies(manifest)
+            self.assertIn("PyYAML is required", stderr.getvalue())
         self.module.ROOT = self.temp_dir
         self.write_levers("pr-close.sh", "python3")
         pinned = {"pr-close.sh": "0" * 64, "python3": "0" * 64}

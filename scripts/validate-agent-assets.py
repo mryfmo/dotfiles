@@ -454,13 +454,15 @@ def validate_omp_policy_allow(
             fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
-def validate_omp_policies(manifest: dict[str, Any]) -> None:
-    if yaml is None:
+def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
+    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
     pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
     for role in OMP_WRITING_POLICIES:
         path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
-        validate_omp_policy_allow(yaml.safe_load(path.read_text()), str(path), pinned, merge=role == "orchestrator")
+        policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
+        validate_omp_policy_allow(policy, str(path), pinned, merge=role == "orchestrator")
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns

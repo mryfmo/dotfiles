@@ -80,6 +80,30 @@ names `./src/index.ts`) and resolves dependencies upward from the entry's real
 path, which is why the install directory carries its own `node_modules`.
 `--no-extensions` beside `-e` is optional and keeps other extensions out.
 
+## Plain launch
+
+A plain `omp` (default profile, no `-e`) loads the bridge through the top-level `extensions` key of
+`~/.omp/agent/config.yml` (omp 18.11.3 `src/extensibility/settings.ts:10`, joined with the `-e`
+paths in `src/sdk.ts:1076`). The manifest lists the directory under `omp.extensions`,
+`scripts/generate-agent-configs.py` renders it into `home/.chezmoitemplates/omp-config-managed.yml`,
+and `home/dot_omp/private_agent/modify_private_config.yml` writes it with `~` expanded. Without it,
+`findInitialModel` (`src/config/model-resolver.ts:2391-2407`) does not find the `modelRoles.default`
+`claude-bridge/claude-fable-5-1` and silently starts on another authenticated provider
+(`anthropic/claude-opus-5-5` on the macOS host) or exits with `No default model selected.` (the
+Ubuntu host). `scripts/validate-agent-assets.py` refuses an `interactive_profile` whose omp provider
+comes from an extension that `omp.extensions` does not list.
+
+- Measured 2026-10-25 on macOS: with an overlay holding only that `extensions` entry,
+  `omp --no-session --mode json -p "Reply with the single word PONG."` answers `PONG` on provider
+  `claude-bridge`, model `claude-fable-5-1`, stopReason `stop`.
+- The same directory passed again with `-e` loads once: `discoverExtensionPaths` keys each entry file
+  on its resolved path (`src/extensibility/extensions/loader.ts:572-659`); measured, the same answer
+  and no new warning.
+- Seats are unaffected: `--profile <role>` reads `~/.omp/profiles/<role>/agent/config.yml`, never this
+  file (pi-utils `src/dirs.ts:119-121`). Measured under a scratch `HOME` whose `config.yml` lists the
+  bridge, the default profile reaches it (`Not logged in`) and `--profile probe` reports
+  `Model "claude-bridge/claude-fable-5-1" not found`. The seat launcher keeps passing `-e`.
+
 ## Operator login
 
 The child Claude Code uses the host's claude.ai login: the Keychain on macOS,
@@ -154,6 +178,13 @@ Measured on 2026-10-24 at about 22:10Z (omp 18.11.3, macOS) with
 These are print-mode runs. The seat failure ran through hcom delivery into an interactive seat, which
 these runs do not cover, so the seat policies keep the deny until a seat measurement shows a Task
 subagent and the next hcom delivery both succeed.
+
+The plain launch (above) loads the bridge through `extensions` instead of `-e` and hit the same
+failure before patch 05: measured 2026-10-25 on macOS with patches 01-04, a plain print-mode session
+asked to spawn one Task subagent saw the subagent fail in 74 ms with
+`No API key found for claude-bridge.` and its own next turn end with
+`No API key for provider: claude-bridge` (exit 1). A plain session has no `task` deny, so the
+plain-launch `extensions` key depends on patch 05 being installed (`make update` installs both).
 
 ## Fallbacks
 

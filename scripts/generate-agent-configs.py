@@ -1385,13 +1385,31 @@ def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
     return roles
 
 
+def omp_extensions(manifest: dict[str, Any]) -> list[str]:
+    """Extension directories a plain omp launch loads through the top-level `extensions` setting; none when absent.
+
+    validate-agent-assets.py checks that they register the interactive profile's omp provider.
+    """
+    extensions = manifest.get("omp", {}).get("extensions", [])
+    if not isinstance(extensions, list):
+        fail("omp.extensions must be a list of extension directories")
+    for extension in extensions:
+        if not isinstance(extension, str) or not SKILLS_DIRECTORY_RE.fullmatch(extension):
+            fail(f"omp.extensions entries must be ~/ or absolute paths: {extension!r}")
+    return extensions
+
+
 def omp_config_yaml(model: str, directories: list[str]) -> str:
     entries = "".join(f"    - {directory}\n" for directory in directories)
     return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
 
 
 def render_omp_config(manifest: dict[str, Any]) -> str:
-    return omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
+    config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
+    extensions = omp_extensions(manifest)
+    if not extensions:
+        return config + "extensions: []\n"
+    return config + "extensions:\n" + "".join(f"  - {extension}\n" for extension in extensions)
 
 
 def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:

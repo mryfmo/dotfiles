@@ -19,10 +19,14 @@ MANAGED = (
     "skills:\n"
     "  customDirectories:\n"
     "    - ~/.agents/skills\n"
+    "extensions:\n"
+    "  - ~/.local/lib/omp-extensions/pi-claude-bridge\n"
+    "  - /srv/omp-ext\n"
 )
 # The real home: uv (the script's runtime) needs it, so the test cannot fake $HOME.
 HOME = os.path.expanduser("~")
 MANAGED_SKILLS = f"skills:\n  customDirectories:\n  - {HOME}/.agents/skills\n"
+MANAGED_EXTENSIONS = f"extensions:\n- {HOME}/.local/lib/omp-extensions/pi-claude-bridge\n- /srv/omp-ext\n"
 
 
 class OmpConfigMergeTest(unittest.TestCase):
@@ -61,17 +65,35 @@ class OmpConfigMergeTest(unittest.TestCase):
             "  - /old/skills\n"
             "theme:\n"
             "  dark: night\n"
+            "extensions:\n"
+            "- /old/ext\n"
+            "- /other/ext\n"
             "setupVersion: 3\n"
         )
 
         result = self.merge(current)
 
         expected = current.replace("anthropic/claude-old", "anthropic/claude-managed")
-        self.assertEqual(result.stdout, expected.replace("/old/skills", f"{HOME}/.agents/skills"))
+        expected = expected.replace("/old/skills", f"{HOME}/.agents/skills")
+        expected = expected.replace("extensions:\n- /old/ext\n- /other/ext\n", MANAGED_EXTENSIONS)
+        self.assertEqual(result.stdout, expected)
         self.assertEqual(result.stderr, "")
 
+    def test_extensions_are_added_after_the_keys_omp_wrote(self) -> None:
+        result = self.merge("theme:\n  dark: night\nmodelRoles:\n  default: anthropic/claude-old\n")
+
+        self.assertEqual(
+            result.stdout,
+            "theme:\n  dark: night\nmodelRoles:\n  default: anthropic/claude-managed\n"
+            + MANAGED_SKILLS
+            + MANAGED_EXTENSIONS,
+        )
+
     def test_empty_input_yields_the_managed_mapping_only(self) -> None:
-        self.assertEqual(self.merge("").stdout, "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_SKILLS)
+        self.assertEqual(
+            self.merge("").stdout,
+            "modelRoles:\n  default: anthropic/claude-managed\n" + MANAGED_SKILLS + MANAGED_EXTENSIONS,
+        )
 
     def test_input_that_is_not_a_yaml_mapping_passes_through_byte_for_byte(self) -> None:
         for current in ("modelRoles: [unclosed\n", "- a\n- b\n", "modelRoles: plain\n", "skills: plain\n"):

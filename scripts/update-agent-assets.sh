@@ -372,88 +372,133 @@ function plugin_pin() {
 }
 
 #
-# @description Print the installed version and enabled state of a Claude Code plugin as `<version> <enabled>`,
-#   or nothing when it is not installed.
+# @description Print every installation of a Claude Code plugin, one `<scope> <version> <enabled>` line each
+#   (all scopes and entries), or nothing when it is not installed. A copy counts as enabled when either
+#   `enabled` or `projectEnabled` is true, so an unclear record is never read as disabled.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 1 When `claude plugin list --json` fails or prints no JSON list: a failed read is never "not installed".
 #
-function claude_plugin_state() {
+function claude_plugin_installs() {
     local listing
 
     listing="$(claude plugin list --json 2> /dev/null)" || return 1
-    jq -er --arg id "$1" 'if type == "array" then (first(.[] | select(.id == $id) | "\(.version) \(.enabled == true)") // "") else error end' <<< "${listing}" 2> /dev/null
+    jq -er --arg id "$1" 'if type == "array" then ([.[] | select(.id == $id) | "\(.scope) \(.version) \(.enabled == true or .projectEnabled == true)"] | join("\n")) else error end' <<< "${listing}" 2> /dev/null
 }
 
 #
-# @description Disable a Claude Code plugin that is off its pin, then prove it is disabled.
-# @arg $1 string Fully qualified Claude Code plugin ID.
-# @exitcode 0 When the re-read plugin list shows the plugin disabled.
-# @exitcode 2 When the disable fails, the list cannot be re-read, or the plugin is still enabled.
+# @description Register the marketplace a pinned Claude Code plugin comes from (its `marketplace` in
+#   assets.claude-plugins), unless a marketplace of that name is already registered.
+# @arg $1 string Fully qualified Claude Code plugin ID (`<plugin>@<marketplace name>`).
+# @exitcode 1 When the marketplace list cannot be read, the pin records no source, or `marketplace add` fails.
 #
-function disable_off_pin_claude_plugin() {
+function ensure_claude_plugin_marketplace() {
     local plugin_id="$1"
-    local state
+    local name="${1#*@}" source listing
 
-    if ! claude plugin disable "${plugin_id}"; then
-        printf 'ERROR: claude plugin disable %s failed; the plugin stays enabled off its pin.\n' "${plugin_id}" >&2
-        return 2
+    if ! source="$(plugin_pin claude "${plugin_id}" marketplace)"; then
+        printf 'ERROR: %s records no marketplace for %s.\n' "${AGENT_PLUGIN_PINS}" "${plugin_id}" >&2
+        return 1
     fi
-    if ! state="$(claude_plugin_state "${plugin_id}")"; then
-        printf 'ERROR: claude plugin list --json failed after disabling %s; cannot prove it is disabled.\n' "${plugin_id}" >&2
-        return 2
+    if ! listing="$(claude plugin marketplace list --json 2> /dev/null)" ||
+        ! jq -e 'type == "array"' <<< "${listing}" > /dev/null 2>&1; then
+        printf 'ERROR: claude plugin marketplace list --json failed; cannot register %s for %s.\n' "${source}" "${plugin_id}" >&2
+        return 1
     fi
-    if [ "${state#* }" = "true" ]; then
-        printf 'ERROR: Claude Code plugin %s is still enabled off its pin after claude plugin disable.\n' "${plugin_id}" >&2
-        return 2
+    if jq -e --arg name "${name}" 'any(.[]; .name == $name)' <<< "${listing}" > /dev/null 2>&1; then
+        return 0
+    fi
+    if ! claude plugin marketplace add "${source}"; then
+        printf 'ERROR: claude plugin marketplace add %s failed; %s cannot be installed.\n' "${source}" "${plugin_id}" >&2
+        return 1
     fi
 }
 
 #
-# @description Keep a Claude Code plugin at its recorded pin (assets.claude-plugins in agent-config.yaml).
+# @description Print the installations of a plugin that are off its pin and enabled, one `<scope> <version>` each.
+# @arg $1 string Lines from claude_plugin_installs.
+# @arg $2 string The pin.
+#
+function off_pin_enabled_installs() {
+    awk -v pin="$2" '$2 != pin && $3 == "true" { print $1, $2 }' <<< "$1"
+}
+
+#
+# @description Keep every installation of a Claude Code plugin at its recorded pin (assets.claude-plugins).
 # @description
-#   Claude Code installs only a marketplace's current release and takes no version, so a plugin at its
-#   pin is left alone (and enabled), a missing one is installed and one at another version is updated.
-#   A plugin still off its pin afterwards is disabled and re-read: Claude Code runs a plugin's hooks with
-#   no trust step, so only the reviewed version may stay enabled. `make doctor` reports the difference.
+#   Claude Code installs only a marketplace's current release and takes no version. Each installation
+#   (every scope) is read: a missing plugin is installed from its recorded marketplace, registered first
+#   when absent; an installation at another version is updated in its scope. Every installation still
+#   off its pin afterwards is disabled in its scope, and the list is re-read: Claude Code runs a plugin's
+#   hooks with no trust step, so only the reviewed version may stay enabled. `make doctor` reports drift.
 # @arg $1 string Fully qualified Claude Code plugin ID.
-# @exitcode 0 When the plugin is at its pin, or is proven disabled because it is not.
+# @exitcode 0 When every installation is at its pin, or every one off it is proven disabled.
 # @exitcode 1 When the pin or the plugin list cannot be read first; the plugin is then not changed.
-# @exitcode 2 When a plugin off its pin, or one this run changed and cannot re-read, may still be enabled.
+# @exitcode 2 When the pinned plugin cannot be installed, or an installation off its pin may still be enabled.
 #
 function converge_claude_plugin() {
     local plugin_id="$1"
-    local pin state installed
+    local pin installs scope version enabled off failed=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s; the plugin was not changed.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
         return 1
     fi
-    if ! state="$(claude_plugin_state "${plugin_id}")"; then
+    if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
         printf 'claude plugin list --json failed; %s was not changed.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ -z "${state}" ]; then
-        claude plugin install "${plugin_id}" || true
-    elif [ "${state% *}" != "${pin}" ]; then
-        claude plugin update "${plugin_id}" || true
+    if [ -z "${installs}" ]; then
+        if ! ensure_claude_plugin_marketplace "${plugin_id}"; then
+            return 2
+        fi
+        if ! claude plugin install "${plugin_id}"; then
+            printf 'ERROR: claude plugin install %s failed; the pinned plugin is not installed.\n' "${plugin_id}" >&2
+            return 2
+        fi
+    else
+        while read -r scope version enabled; do
+            if [ "${version}" != "${pin}" ]; then
+                ensure_claude_plugin_marketplace "${plugin_id}" < /dev/null || true
+                claude plugin update "${plugin_id}" --scope "${scope}" < /dev/null || true
+            fi
+        done <<< "${installs}"
     fi
-    if ! state="$(claude_plugin_state "${plugin_id}")"; then
-        printf 'claude plugin list --json failed after installing %s; disabling it until make update can compare it with its pin.\n' "${plugin_id}" >&2
+    if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
+        printf 'ERROR: claude plugin list --json failed after changing %s; disabling it until make update can compare it with its pin.\n' "${plugin_id}" >&2
         claude plugin disable "${plugin_id}" || true
         return 2
     fi
-    installed="${state% *}"
-    if [ "${installed}" != "${pin}" ]; then
-        printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; it stays disabled until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${installed:-no version (not installed)}" "${pin}" >&2
-        if [ "${state#* }" = "true" ]; then
-            disable_off_pin_claude_plugin "${plugin_id}" || return 2
+    if [ -z "${installs}" ]; then
+        printf 'ERROR: %s is not installed after claude plugin install.\n' "${plugin_id}" >&2
+        return 2
+    fi
+    off="$(off_pin_enabled_installs "${installs}" "${pin}")"
+    if [ -n "${off}" ]; then
+        while read -r scope version; do
+            printf 'WARN: Claude Code plugin %s (%s scope) is at %s, not its pin %s; disabling it until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${scope}" "${version}" "${pin}" >&2
+            if ! claude plugin disable "${plugin_id}" --scope "${scope}" < /dev/null; then
+                printf 'ERROR: claude plugin disable %s --scope %s failed.\n' "${plugin_id}" "${scope}" >&2
+                failed=1
+            fi
+        done <<< "${off}"
+        if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
+            printf 'ERROR: claude plugin list --json failed after disabling %s; cannot prove it is disabled.\n' "${plugin_id}" >&2
+            return 2
         fi
-        return 0
+        off="$(off_pin_enabled_installs "${installs}" "${pin}")"
+        if [ -n "${off}" ] || [ "${failed}" -ne 0 ]; then
+            printf 'ERROR: Claude Code plugin %s is still enabled off its pin %s in: %s.\n' "${plugin_id}" "${pin}" "${off//$'\n'/, }" >&2
+            return 2
+        fi
     fi
-    printf 'Claude Code plugin %s is at its pin %s.\n' "${plugin_id}" "${pin}"
-    if [ "${state#* }" != "true" ]; then
-        claude plugin enable "${plugin_id}" || true
-    fi
+    while read -r scope version enabled; do
+        if [ "${version}" = "${pin}" ]; then
+            printf 'Claude Code plugin %s (%s scope) is at its pin %s.\n' "${plugin_id}" "${scope}" "${pin}"
+            if [ "${enabled}" != "true" ]; then
+                claude plugin enable "${plugin_id}" --scope "${scope}" < /dev/null || true
+            fi
+        fi
+    done <<< "${installs}"
 }
 
 # Plugin IDs converged in this run, space-delimited (bash 3.2 has no associative arrays), and the
@@ -511,7 +556,7 @@ function converge_claude_plugins() {
         case "${CLAUDE_CONVERGED}" in
         *" ${plugin_id} "*) continue ;;
         esac
-        converge_claude_step "${plugin_id}" || true
+        converge_claude_step "${plugin_id}" < /dev/null || true
     done <<< "${ids}"
 }
 

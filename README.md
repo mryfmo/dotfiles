@@ -1014,10 +1014,13 @@ Plugin and gh extension pins (`assets.claude-plugins`, `assets.codex-plugins`,
 `scripts/plugin-pins.json`. `make update` keeps each one there instead of
 taking the newest release:
 
-- Claude Code takes no plugin version, so a plugin at its pin is left alone; a
-  missing one is installed and one at another version is updated, and a plugin
-  still off its pin afterwards is disabled, because Claude Code runs a plugin's
-  hooks with no trust step.
+- Claude Code takes no plugin version, so every installation of a plugin (each
+  scope) at its pin is left alone; a missing plugin is installed from its
+  recorded marketplace (registered first when absent), and one at another
+  version is updated. Every installation still off its pin afterwards is
+  disabled, because Claude Code runs a plugin's hooks with no trust step. A
+  pinned plugin that cannot be installed, or an off-pin installation that
+  cannot be proven disabled, fails `make update`.
 - Codex fetches the Ponytail marketplace at the pinned commit (`ref` under
   `[marketplaces.ponytail]`, which the Codex modify script owns), and its hooks
   are trusted only at their `trusted_hash` pins. The OpenAI-curated Superpowers

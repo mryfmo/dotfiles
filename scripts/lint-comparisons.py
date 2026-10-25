@@ -53,8 +53,22 @@ ANSI_ESC = re.compile(
     r"\\(?:([0-7]{1,3})|x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|U([0-9A-Fa-f]{1,8})|c(.)|(.))", re.DOTALL
 )
 JQ_SKIP = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
-# env options whose value is the next word
-ENV_OPERAND = {"-u", "-C", "-P", "-S", "--unset", "--chdir", "--split-string"}
+# commands that run the rest of their words as a command, each with its options that take the next word as a value
+WRAPPERS = {
+    "command": set(),
+    "builtin": set(),
+    "exec": {"-a"},
+    "env": {"-u", "-C", "-P", "-S", "--unset", "--chdir", "--split-string"},
+    "nice": {"-n", "--adjustment"},
+    "nohup": set(),
+    "timeout": {"-s", "-k", "--signal", "--kill-after"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
+    "time": {"-f", "-o", "--format", "--output"},
+    "sudo": {"-u", "-g", "-h", "-p", "-r", "-t", "-C", "-D", "-T", "-U", "--user", "--group", "--host", "--prompt"},
+    "xargs": {"-I", "-a", "-d", "-E", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter", "--max-args"},
+}
+# a wrapper's positional operand before the command: env's and sudo's NAME=value, timeout's duration
+WRAPPER_OPERAND = re.compile(r"[A-Za-z_]\w*=.*|\d+(\.\d+)?[smhd]?", re.DOTALL)
 SHFMT = (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"])  # PATH's, else .github/workflows/test.yaml's pin
 PY_NORM = re.compile(
     r"^(os\.path\.(realpath|normpath|abspath)|(pathlib\.)?Path\(\)\.resolve|(urllib\.parse\.)?(urlsplit|urlparse|unquote)|canonical_path|normali[sz]e_\w+)$"
@@ -101,18 +115,19 @@ def shfmt_tree(rel, text):  # (AST, text as parsed): shfmt's JSON AST is the onl
     return tree, text
 
 
-def nodes(n):  # every node at or below n, iteratively (a long && chain nests deep); heredoc bodies are data
+def nodes(n):  # every node at or below n, iteratively (a long && chain nests deep), heredoc bodies included: an
+    # unquoted body's substitutions run, and shfmt parses them as the body word's parts
     todo = [n]
     while todo:
         n = todo.pop()
         if isinstance(n, dict):
             yield n
-            todo.extend(v for k, v in n.items() if k != "Hdoc")
+            todo.extend(n.values())
         elif isinstance(n, list):
             todo.extend(n)
 
 
-def stmts(tree):  # each statement with the outermost statement of its &&, || or | chain; heredoc bodies left out
+def stmts(tree):  # each statement with the outermost statement of its &&, || or | chain, also those in heredoc bodies
     todo = [(tree, None)]
     while todo:
         n, top = todo.pop()
@@ -123,7 +138,7 @@ def stmts(tree):  # each statement with the outermost statement of its &&, || or
                 top = top or n
                 yield n, top
             keep = ("X", "Y") if n.get("Type") == "BinaryCmd" else ("Cmd",)  # the chain goes on; elsewhere a new one
-            todo.extend((v, top if k in keep else None) for k, v in n.items() if k != "Hdoc")
+            todo.extend((v, top if k in keep else None) for k, v in n.items())
 
 
 def flat(word):  # a word's parts with its double quotes opened: (part, quoted)
@@ -171,17 +186,17 @@ def option(word):  # a literal option: the word's first part is literal text sta
     return bool(first) and "".join(c for c, _ in chars(*first))[:1] == "-"
 
 
-def command(call):  # a CallExpr's words and argument nodes from its command word on, past command, builtin, exec and
-    # env (its options, their operands and its NAME=value arguments)
+def command(call):  # a CallExpr's words and argument nodes from its command word on, past the WRAPPERS, their
+    # options, the values those options take and their positional operands
     args, i = call.get("Args") or [], 0
-    while i < len(args) and static(args[i]) in ("command", "builtin", "exec", "env"):
-        env, i = static(args[i]) == "env", i + 1
+    while i < len(args) and os.path.basename(static(args[i])) in WRAPPERS:
+        takes, i = WRAPPERS[os.path.basename(static(args[i]))], i + 1
         while i < len(args) and option(args[i]):
             flag, i = static(args[i]), i + 1
             if flag == "--":
                 break
-            i += env and flag in ENV_OPERAND  # -u NAME, -C DIR, -P PATH, -S STRING take the next word
-        while env and i < len(args) and re.match(r"[A-Za-z_]\w*=", static(args[i])):
+            i += flag in takes
+        while i < len(args) and WRAPPER_OPERAND.fullmatch(static(args[i])):
             i += 1
     return [static(a) for a in args[i:]], args[i:]
 
@@ -211,12 +226,13 @@ def expands(node):  # a parameter expansion below: a name, or a positional or sp
     return any(n.get("Type") == "ParamExp" for n in nodes(node))
 
 
-def operand(word):  # the word's leading expansion, a path-named variable (not its ${#length}), or a literal path piece
-    # beside any expansion; an empty literal ('' or "") adds nothing to the word, so it never leads it
-    lead = (p for p, q in flat(word) if p["Type"] not in ("Lit", "SglQuoted", "ExtGlob") or next(chars(p, q), None))
-    first = next(lead, {})
-    name = first.get("Type") == "ParamExp" and not first.get("Length") and (first.get("Param") or {}).get("Value")
-    return bool(name and TOKEN.search(name) or LITERAL.search(static(word)))
+def operand(word):  # any top-level part is a path-named variable (not its ${#length}), or the literal text holds a
+    # path piece; a substitution or an empty literal before it hides nothing
+    for part, _ in flat(word):
+        name = part["Type"] == "ParamExp" and not part.get("Length") and (part.get("Param") or {}).get("Value")
+        if name and TOKEN.search(name):
+            return True
+    return bool(LITERAL.search(static(word)))
 
 
 def program(word, src):  # the jq program one shell word hands over, its fragments in order: (text, line per character)
@@ -268,7 +284,8 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
     comments = [c for c in nodes(tree) if "Hash" in c and "Text" in c]
     note = {c["Hash"]["Line"]: "#" + c["Text"] for c in comments}
     code = bytearray(data)  # the source with its comments blanked: a normaliser counts in code only
-    for c in comments + [r["Hdoc"] for r in nodes(tree) if r.get("Hdoc")]:  # a heredoc body is data, not code
+    hdocs = [p for r in nodes(tree) if r.get("Hdoc") for p in r["Hdoc"].get("Parts") or [] if p["Type"] == "Lit"]
+    for c in comments + hdocs:  # a heredoc body's literal text is data; its substitutions are code
         code[c["Pos"]["Offset"] : c["End"]["Offset"]] = re.sub(
             rb"[^\n]", b" ", code[c["Pos"]["Offset"] : c["End"]["Offset"]]
         )
@@ -290,8 +307,11 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
         tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
         if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
             hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
-        if t == "CallExpr" and words[:1] in (["["], ["test"]):
-            pairs = [(args[i - 1], args[i + 1]) for i in range(2, len(args) - 1) if words[i] in ("==", "!=", "=")]
+        # a wrapper the lint does not know never hides the test: a [ word starts it wherever it stands
+        b = 0 if words[:1] in (["["], ["test"]) else next((i for i, w in enumerate(words) if w == "["), None)
+        if t == "CallExpr" and b is not None:
+            ops = range(b + 2, len(args) - 1)
+            pairs = [(args[i - 1], args[i + 1]) for i in ops if words[i] in ("==", "!=", "=")]
             if any(operand(x) or operand(y) for x, y in pairs):
                 hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
         if t == "CaseClause" and operand(cmd["Word"]):  # for this, the statement ends at its `in`
@@ -312,8 +332,9 @@ def shell_hits(rel, text):  # (hits, comments): the shell rules on shfmt's AST; 
             ere = name == "egrep" or any(re.match(r"-\w*E|--extended-regexp", f) for f in flags)
             if name != "pgrep" and ere and "-F" not in flags and expands(pattern):
                 hits.append((at, "R6", accepted(lo, hi, "escape_regex")))
-        if t == "CallExpr" and args and is_jq(args[0]):
-            i = 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
+        j = next((i for i, a in enumerate(args) if is_jq(a)), None)  # nor the jq word, for the same reason
+        if t == "CallExpr" and j is not None:
+            i = j + 1  # the program: past the options and their operands (jq 1.8 --help) and pure expansions
             while i < len(args) and words[i] not in ("-f", "--from-file"):
                 if option(args[i]) or not words[i] and expands(args[i]):
                     i += 1 + JQ_SKIP.get(words[i], 0)

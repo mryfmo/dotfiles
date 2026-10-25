@@ -545,10 +545,13 @@ class LintComparisonsTest(unittest.TestCase):
         )
 
     def test_heredoc_data_is_excluded_from_shell_rules(self):
-        # audit:b24d313:5: a heredoc body is data: no shell rule reads it, nor a command substitution inside it
+        # audit:b24d313:5: a heredoc body's literal text is data no shell rule reads; the substitutions of an unquoted
+        # body run, so they are code (audit of f366de80), comments in them included
         body = "[[ $path == /x ]]\n"  # no marker: read as code, it would be R1
         hu = f"cat <<EOF\n{body}$([[ $path == /y ]] && echo y)\n$(true # lint-comparisons: allow\n)\nEOF\n"
-        self.assert_hits([("hq.sh", f"cat <<'EOF'\n{body}EOF\n", []), ("hu.sh", hu, [])])
+        self.assert_hits(
+            [("hq.sh", f"cat <<'EOF'\n{body}$([[ $path == /y ]])\nEOF\n", []), ("hu.sh", hu, [("R1", 3), ("R0", 4)])]
+        )
 
     def test_ansi_c_quotes_preserve_following_marker_comments(self):
         # audit:b24d313:6: $'…' closes at its unescaped quote; the comment after the next statement is one
@@ -743,6 +746,34 @@ class LintComparisonsTest(unittest.TestCase):
                 ("rc.py", "re.search(f\"{f'{re.escape(prefix)}-'}\", text)\n", []),
                 ("rd.py", "re.search(f\"{re.escape(prefix) + '/' + name}\", text)\n", [("R6", 1)]),
                 ("re.py", "re.search(f\"{f'{prefix}-'}\", text)\n", [("R6", 1)]),
+            ]
+        )
+
+    def test_audit_531_round_2_heredoc_substitutions_any_wrapper_and_any_part(self):
+        # audit of f366de80: an unquoted heredoc's substitutions run, so every rule reads them
+        sub = "cat <<EOF\n$({})\nEOF\n"
+        self.assert_hits(
+            [
+                ("h3.sh", sub.format("jq -r 'select(.url == $p)' input.json"), [("R3", 2)]),
+                ("h5.sh", sub.format("ps aux | grep needle"), [("R5", 2)]),
+                ("h6.sh", sub.format('grep -E "$name" f'), [("R6", 2)]),
+                ("hn.sh", "cat <<'EOF'\n$(jq -r 'select(.url == $p)' input.json)\nEOF\n", []),
+            ]
+        )
+        # a wrapper, known or not, never hides the jq or [ command after it
+        wrapped = ("nice", "nice -n 5", "timeout 5", "timeout -k 2 5", "sudo -u root", "xargs -n 1", "stdbuf -oL")
+        self.assert_hits(
+            [(f"wj{i}.sh", f"{w} jq -r 'select(.url == $p)'\n", [("R3", 1)]) for i, w in enumerate(wrapped)]
+            + [(f"wb{i}.sh", f'{w} [ "$path" = /x ]\n', [("R1", 1)]) for i, w in enumerate(wrapped)]
+            + [("wu.sh", "unknownwrap --flag jq -r 'select(.url == $p)'\n", [("R3", 1)])]
+            + [("wt.sh", 'timeout 5 test "$path" = /x\n', [("R1", 1)])]
+        )
+        # a substitution before a path variable hides nothing: any part of the word counts
+        self.assert_hits(
+            [
+                ("lp.sh", '[[ "$(printf %s "$prefix")$path" == "$other" ]]\n', [("R1", 1)]),
+                ("lc.sh", 'case "$(printf %s "$prefix")$url" in foo) ;; esac\n', [("R2", 1)]),
+                ("ln.sh", '[[ "$(printf %s "$path")$count" == "$other" ]]\n', []),
             ]
         )
 

@@ -379,10 +379,27 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "{{- if $signing }}\n[commit]\n\tgpgsign = true\n",
                     "[commit]\n\tgpgsign = true\n{{- if $signing }}\n",
                 ),
-                "must not set [commit] gpgsign",
+                "without the signing key must not set commit.gpgsign",
             ),
-            "format dropped": (managed.replace("\tformat = ssh\n", ""), "[gpg] format = ssh"),
+            "format dropped": (managed.replace("\tformat = ssh\n", ""), "must set gpg.format exactly once"),
             "guard dropped": (managed.replace(guard, ""), "could not render"),
+            # Audit of 551f3439: git reads [Commit] as [commit], so an unconditional one signs without the key.
+            "unconditional [Commit]": (managed + "[Commit]\n\tgpgsign = true\n", "commit.gpgsign"),
+            "mixed-case section and key": (managed + "[COMMIT]\n\tGpgSign = true\n", "commit.gpgsign"),
+            "mixed-case format outside the guard": (managed + "[GPG]\n\tFormat = ssh\n", "gpg.format"),
+            "gpgsign false beside the guarded one": (
+                managed.replace("[pull]\n", "[Commit]\n\tgpgsign = false\n[pull]\n"),
+                "commit.gpgsign",
+            ),
+            "include directive": (managed + "[include]\n\tpath = ~/.gitconfig.local\n", "[include] or [includeIf]"),
+            "includeIf directive": (
+                managed + '[IncludeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig.work\n',
+                "[include] or [includeIf]",
+            ),
+            "include hidden from the text check": (
+                managed + '{{ "[" }}include]\n\tpath = ~/.gitconfig.local\n',
+                "must not include other config: include.path",
+            ),
         }
         for name, (template, message) in mutations.items():
             with self.subTest(mutation=name):

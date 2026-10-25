@@ -822,12 +822,12 @@ claude() {
         self.addCleanup(shutil.rmtree, work)
         body = (
             'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; [ "$1 $2" != "plugin remove" ] || : > "${WORK}/removed"; }; '
-            'codex_plugin_cache_versions() { [ -e "${WORK}/removed" ] || printf "5.3.2\\n"; }; '
+            'codex_plugin_copy() { if [ -e "${WORK}/removed" ]; then echo absent; else echo "copy 5.3.2"; fi; }; '
             "doctor_pin_check() { return 1; }; "
         )
         for name, extra, expected in (
             ("drift", "", ["plugin remove ponytail@ponytail"]),
-            ("remove leaves a copy", 'codex_plugin_cache_versions() { printf "5.3.2\\n"; }; ', None),
+            ("remove leaves a copy", 'codex_plugin_copy() { echo "copy 5.3.2"; }; ', None),
         ):
             with self.subTest(case=name):
                 for leftover in ("calls", "removed"):
@@ -1033,6 +1033,77 @@ claude() {
                 else:
                     self.assertNotIn("plugin add superpowers@openai-curated", calls)
 
+    def test_a_codex_copy_with_an_empty_version_is_removed_not_read_as_absent(self):
+        # U90: plugin.json `version: ""` printed a blank line, which disable_plugin took for "no copy", so the
+        # removal was skipped. The reader refuses it, and only its explicit `absent` skips the removal.
+        for version in ("", " ", "\u00a0"):
+            with self.subTest(version=repr(version)):
+                work = Path(tempfile.mkdtemp(prefix="codex-empty-"))
+                self.addCleanup(shutil.rmtree, work)
+                cache = work / "home/.codex/plugins/cache/ponytail/ponytail"
+                (cache / "5.3.2/.codex-plugin").mkdir(parents=True)
+                (cache / "5.3.2/.codex-plugin/plugin.json").write_text(
+                    json.dumps({"name": "ponytail", "version": version})
+                )
+                fake = 'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; [ "$1 $2" != "plugin remove" ] || rm -rf "${CACHE}"; }'
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; set +e; {fake}\ndisable_plugin codex ponytail@ponytail; echo "rc=$?"',
+                        "bash",
+                        str(UPDATER),
+                    ],
+                    env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "CACHE": str(cache)},
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(
+                    ["plugin remove ponytail@ponytail"],
+                    (work / "calls").read_text().splitlines() if (work / "calls").exists() else [],
+                )
+                self.assertIn("rc=0", result.stdout, result.stderr)
+                self.assertFalse(cache.exists())
+        # The explicit states the shell reads.
+        work = Path(tempfile.mkdtemp(prefix="codex-state-"))
+        self.addCleanup(shutil.rmtree, work)
+        states = []
+        for setup in (None, "5.3.2"):
+            if setup:
+                (work / "home/.codex/plugins/cache/ponytail/ponytail/5.3.2/.codex-plugin").mkdir(parents=True)
+                (work / "home/.codex/plugins/cache/ponytail/ponytail/5.3.2/.codex-plugin/plugin.json").write_text(
+                    json.dumps({"name": "ponytail", "version": setup})
+                )
+            states.append(
+                subprocess.run(
+                    ["bash", "-c", 'source "$1"; codex_plugin_copy ponytail@ponytail', "bash", str(UPDATER)],
+                    env=os.environ | scratch_env(work / "home"),
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                ).stdout
+            )
+        self.assertEqual(["absent\n", "copy 5.3.2\n"], states)
+
+    def test_the_claude_user_install_state_is_explicit(self):
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1"; claude_user_install "[]"; '
+                'claude_user_install \'[{"scope": "project", "version": "1"}]\'; '
+                'claude_user_install \'[{"scope": "user", "version": "1.8.14"}]\'',
+                "bash",
+                str(UPDATER),
+            ],
+            env=os.environ | scratch_env(Path(tempfile.mkdtemp(prefix="claude-state-"))),
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(["absent", "absent", "installed 1.8.14"], result.stdout.splitlines())
+
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.
         work = Path(tempfile.mkdtemp(prefix="ponytail-step-"))
@@ -1234,7 +1305,7 @@ claude() {
         for step, stubs in (
             (
                 "update_codex_superpowers",
-                "codex_plugin_cache_versions() { echo 6.3.0; }; doctor_pin_check() { :; }; "
+                "codex_plugin_copy() { echo 'copy 6.3.0'; }; doctor_pin_check() { :; }; "
                 "manifest_codex_plugin_version() { echo 6.3.0; }; ",
             ),
             ("ensure_herdr_integrations", 'herdr() { echo "herdr 1.0"; }; '),

@@ -231,9 +231,12 @@ until the new one succeeds (an offline or interrupted rebuild leaves the working
 tool in place), and then runs `mise install` once more. npm's window also
 refuses the exact version already installed while it is younger than three
 days, so before it moves anything the rebuild asks npm for `min-release-age` and
-the version's publish time (`npm view <package> time`). A younger version, or one
-whose age npm cannot tell, is skipped with the reason on a `skip:` line (for a
-younger one, the time from which it can be rebuilt), and its previous install
+the version's publish time (`npm view <package> time`). A version is old enough
+only from 60 seconds past the end of that window, compared to the fraction of a
+second, so a clock that differs a little from npm's never moves an install npm
+then refuses. A younger version, or one whose age cannot be told, is skipped with
+the reason on a `skip:` line (for a younger one, the time from which it can be
+rebuilt), and its previous install
 stays; an install npm still refuses (a dependency younger than the window) puts
 the previous install back the same way. The marker is written only after
 every tool is rebuilt and the final install succeeds, so a skipped tool is

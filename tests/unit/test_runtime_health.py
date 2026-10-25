@@ -1474,16 +1474,52 @@ EOF
                     self.assertEqual([], skips)
                     self.assertEqual("27.0.0\n", marker_file.read_text())
                     continue
-                clears = (young + datetime.timedelta(days=3)).strftime("%Y-%m-%dT%H:%MZ")
+                published = young.replace(microsecond=0)
+                clears = published + datetime.timedelta(days=3, seconds=60)
                 self.assertEqual(1, len(skips), result.stderr)
                 self.assertIn(
-                    f"younger than npm's min-release-age of 3 days; it can be rebuilt from {clears}); its previous"
+                    f"published {published:%Y-%m-%dT%H:%M:%S.%fZ}, younger than npm's min-release-age of 3 days and"
+                    f" a 60-second margin; it can be rebuilt from {clears:%Y-%m-%dT%H:%M:%S.%fZ}); its previous"
                     " install stays",
                     skips[0],
                 )
                 self.assertIn("optional warning: npm: tools were not all reinstalled on node 27.0.0", result.stderr)
                 # The marker stays, so the next make update tries again once the window has passed.
                 self.assertEqual("26.0.0\n", marker_file.read_text())
+
+    def test_release_age_is_compared_at_full_precision_with_a_minute_of_margin(self) -> None:
+        # Round-4 audit of 145fd568: the fraction of the publish time was dropped, so a release 540 ms inside npm's
+        # window passed while npm refused it. A frozen clock puts the boundary at publish + 3 days + 60 s, exactly.
+        published = datetime.datetime(2026, 10, 23, 21, 20, 46, 540000, tzinfo=datetime.UTC)
+        times = json.dumps({"2.1.310": "2026-10-23T21:20:46.540Z"})
+        edge = (published + datetime.timedelta(days=3, seconds=60)).timestamp()
+        window_end = (published + datetime.timedelta(days=3)).timestamp()
+        for name, now, expected in (
+            ("inside the margin by 0.3 s", f"{edge - 0.3:.6f}", 1),
+            ("past the margin by 0.3 s", f"{edge + 0.3:.6f}", 0),
+            # The whole-second reading of 21:20:46.540 would pass here (0.2 s past 46.000 + margin).
+            ("before the fraction of the edge", f"{int(edge) + 0.2:.6f}", 1),
+            ("past npm's window but inside the margin", f"{window_end + 30:.6f}", 1),
+            ("a minute short of npm's window", f"{window_end - 60:.6f}", 1),
+            ("the given time is not a number", "soon", 2),
+        ):
+            with self.subTest(name):
+                # The system python3, as the update's fixtures and a host run it (3.9 on macOS).
+                result = self.run_test_command(
+                    [
+                        "bash",
+                        "-c",
+                        'source scripts/upgrade-tools.sh; set +e; npm_release_age_verdict 2.1.310 3 "$1" <<< "$2"',
+                        "verdict",
+                        now,
+                        times,
+                    ],
+                    cwd=ROOT,
+                    env={**os.environ, "PATH": "/usr/bin:/bin"},
+                )
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+                if expected == 1:
+                    self.assertIn("it can be rebuilt from 2026-10-26T21:21:46.540000Z", result.stdout)
 
     def test_rebuild_skips_with_a_reason_when_the_release_age_cannot_be_told(self) -> None:
         # Fail closed: a failed or unreadable npm answer is "cannot tell", never "old enough", and is decided before

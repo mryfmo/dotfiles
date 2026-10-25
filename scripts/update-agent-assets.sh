@@ -1339,6 +1339,7 @@ function main() {
     update_hcom
     update_compactiondb
     ensure_herdr_integrations
+    manifest_prune_retired
     # After every plugin update above, so the trust hashes follow the plugin content of this run.
     refresh_codex_hook_trust
 }

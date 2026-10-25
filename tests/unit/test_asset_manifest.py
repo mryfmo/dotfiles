@@ -95,6 +95,46 @@ class AssetManifestTest(unittest.TestCase):
             result.stderr.splitlines(),
         )
 
+    def test_prune_drops_retired_steps_and_keeps_defined_ones(self) -> None:
+        result = self.run_bash(
+            f"""
+            source {LIBRARY}
+            manifest_record update_current plugin 1 "$HOME/current"
+            manifest_record "ensure_cli:claude" installer 1 "$HOME/claude"
+            manifest_record update_agmsg rsync 1 "$HOME/.agents/skills/agmsg"
+            update_current() {{ :; }}
+            ensure_cli() {{ :; }}
+            manifest_prune_retired
+            """
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr)
+        self.assertEqual(["Pruned retired asset manifest step update_agmsg."], result.stdout.splitlines())
+        data = self.manifest()
+        self.assertEqual(1, data["version"])
+        self.assertEqual({"update_current", "ensure_cli:claude"}, set(data["steps"]))
+        mode = stat.S_IMODE((self.home / ".agents/.installed-manifest.json").stat().st_mode)
+        self.assertEqual(0o600, mode)
+
+    def test_prune_without_manifest_is_a_no_op(self) -> None:
+        result = self.run_bash(f"source {LIBRARY}; manifest_prune_retired")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout + result.stderr)
+        self.assertFalse((self.home / ".agents").exists())
+
+    def test_prune_of_unreadable_manifest_warns_and_keeps_it(self) -> None:
+        manifest_path = self.home / ".agents/.installed-manifest.json"
+        manifest_path.parent.mkdir()
+        manifest_path.write_text("{truncated")
+
+        result = self.run_bash(f"source {LIBRARY}; manifest_prune_retired")
+
+        self.assertEqual(0, result.returncode)
+        self.assertEqual(["warning: failed to prune retired asset manifest steps"], result.stderr.splitlines())
+        self.assertEqual("{truncated", manifest_path.read_text())
+
     def test_two_real_install_steps_record_under_fake_home(self) -> None:
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir()

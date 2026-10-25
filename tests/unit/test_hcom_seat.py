@@ -675,26 +675,30 @@ class HcomSeatTest(unittest.TestCase):
         interpreter of hcom-seat itself, `#!/bin/bash`) included.
 
         The system tools hcom-seat and its children call by name (sed, awk, git's helpers, uname, mkdir, mv, ls)
-        and jq come from the fixed system directories; a tool resolved from the caller's PATH (git) inside a seat
-        write root is refused before it runs.
+        come from the fixed system directories; a tool resolved from the caller's PATH (git, and jq, which
+        seat-login-preflight reads with, U85 round 22) inside a seat write root is refused before it runs.
         """
         planted = self.repo / "bin"  # the checkout, which the orchestrator seat writes
         marker = self.plant(
-            planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink", "jq", "stat", "bash"
+            planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink", "stat", "bash"
         )
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
-        self.plant(planted, "git")
-        run = self.seat(
-            "worker", "--seats-root", self.seats, "--name", "worker-2", PATH=f"{planted}:{self.env['PATH']}"
-        )
-        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(
-            f"git {planted.resolve()}/git is or lies under the seat write root {self.repo.resolve()}", run.stderr
-        )
-        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
-        self.assertFalse(Path(self.seats, "worker-2").exists())
+        for tool in ("jq", "git"):
+            with self.subTest(tool=tool):
+                self.plant(planted, tool)
+                run = self.seat(
+                    "worker", "--seats-root", self.seats, "--name", "worker-2", PATH=f"{planted}:{self.env['PATH']}"
+                )
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(
+                    f"{tool} {planted.resolve()}/{tool} is or lies under the seat write root {self.repo.resolve()}",
+                    run.stderr,
+                )
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+                self.assertFalse(Path(self.seats, "worker-2").exists())
+                (planted / tool).unlink()
 
     def test_the_launch_path_never_inherits_a_caller_path_entry(self):
         """U85 round 4: a trailing `:` (the cwd) or any caller entry never reaches hcom, the shim or srt."""

@@ -773,6 +773,44 @@ class DriftWatchTest(unittest.TestCase):
                 self.assertIn(plugin, report.split("## Read failures", 1)[1])
                 self.assertNotIn(plugin, self.not_watched(report))
 
+    def test_a_catalog_or_tree_naming_an_entry_twice_is_a_read_failure(self):
+        # Round-9 audit: the first of two catalog entries was taken, while make update and make doctor refuse the
+        # catalog. Both sides read it with pin_records.parse_catalog_entry; listings and trees get the same rule.
+        catalog = f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"
+
+        def duplicate_entry(upstream):
+            plugins = upstream[catalog]["plugins"]
+            plugins.append({**plugins[-2], "lspServers": {"x": {"command": "x"}}, "strict": False})
+
+        def duplicate_key(upstream):
+            text = json.dumps(upstream[catalog])
+            upstream[catalog] = text.replace('"name": "frontend-design"', '"name": "frontend-design", "name": "x"', 1)
+
+        def duplicate_listing(upstream):
+            listing = upstream[f"{self.OFFICIAL}/contents/plugins"]
+            listing.append({**listing[0], "sha": "f" * 40})
+
+        def duplicate_tree_path(upstream):
+            tree = upstream[f"{self.OFFICIAL}/git/trees/{self.TREE_SHA}?recursive=1"]["tree"]
+            tree.append(dict(tree[-1]))
+
+        for name, change, where in (
+            ("the plugin listed twice", duplicate_entry, "listed 2 times, not once"),
+            ("a duplicate key in the catalog", duplicate_key, "not strict JSON"),
+            ("the plugin directory listed twice", duplicate_listing, "appears more than once"),
+            ("a path twice in the tree", duplicate_tree_path, "appears more than once"),
+        ):
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files())
+                change(upstream)
+                status, report = self.content_watch(upstream)
+                # A catalog that is no strict JSON is refused for every plugin it lists, so count is not checked.
+                self.assertEqual(4, status, report)
+                self.assertNotIn("No drift found", report)
+                failures = report.split("## Read failures", 1)[1]
+                self.assertIn("frontend-design", failures)
+                self.assertIn(where, failures)
+
     def test_every_tree_entry_is_validated(self):
         # Round-6 audit: directory entries skipped mode and SHA checks, so a malformed tree read as current.
         tree_path = f"/repos/anthropics/claude-plugins-official/git/trees/{self.TREE_SHA}"

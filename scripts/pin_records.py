@@ -346,15 +346,29 @@ def read_catalog_entry(marketplace_root: Path, plugin: str) -> Dict[str, Any]:
     finally:
         for opened in fds:
             os.close(opened)
+    entry = parse_catalog_entry(raw, where, plugin)
+    if entry is None:
+        raise RecordError(where, f"plugins[{plugin}]", "is listed 0 times, not once")
+    return entry
+
+
+def parse_catalog_entry(raw: bytes, where: object, plugin: str) -> Optional[Dict[str, Any]]:
+    """PLUGIN's entry in a marketplace catalog (.claude-plugin/marketplace.json bytes), or None when the catalog does
+    not list it. The one parser for catalog entries: read_catalog_entry gives it the installed clone's file,
+    scripts/drift-watch.py the bytes api.github.com serves. Strict UTF-8 JSON with no duplicate key and no NaN or
+    Infinity; `plugins` is a list of objects, each with a string `name`; a plugin listed more than once refuses, so
+    no reader can pick one of two entries."""
     try:
         data = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object, parse_constant=refuse_constant)
     except ValueError as error:
         raise RecordError(where, "(file)", f"not strict JSON: {error}") from None
     plugins = field(where, data, "plugins", list)
-    matches = [item for item in plugins if isinstance(item, dict) and item.get("name") == plugin]
-    if len(matches) != 1:
+    matches = [
+        item for index, item in enumerate(plugins) if field(where, item, "name", str, f"plugins[{index}].") == plugin
+    ]
+    if len(matches) > 1:
         raise RecordError(where, f"plugins[{plugin}]", f"is listed {len(matches)} times, not once")
-    return matches[0]
+    return matches[0] if matches else None
 
 
 def content_sha256(root: Path, entry: Any) -> str:

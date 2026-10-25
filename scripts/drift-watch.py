@@ -233,15 +233,34 @@ class Upstream:
 
     def get(self, url: str, raw: bool = False):
         """One response's decoded JSON body."""
+        if self.fixture is not None:
+            return self.fixture_entry(url)
+        body = self.get_bytes(url, raw)
+        try:
+            # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
+            # and a str that starts with a byte-order mark is refused by json.loads.
+            return json.loads(body.decode("utf-8"))
+        except ValueError as error:
+            raise ReadError(url, f"read failed ({type(error).__name__})") from None
+
+    def fixture_entry(self, url: str):
         if not allowed(url):
             raise ReadError(url, "not an allowed upstream host")
+        if url not in self.fixture:  # lint-comparisons: allow fixture keys are the exact URLs this script builds
+            raise ReadError(url, "not in the fixture")
+        entry = self.fixture[url]
+        if isinstance(entry, dict) and set(entry) == {"http_status"}:
+            raise ReadError(url, f"HTTP {entry['http_status']}")
+        return entry
+
+    def get_bytes(self, url: str, raw: bool = False) -> bytes:
+        """One response's body as bytes, for a parser that reads the JSON itself (pin_records.parse_catalog_entry).
+        In a fixture, a string entry is the body's text and any other entry is serialised as JSON."""
         if self.fixture is not None:
-            if url not in self.fixture:  # lint-comparisons: allow fixture keys are the exact URLs this script builds
-                raise ReadError(url, "not in the fixture")
-            entry = self.fixture[url]
-            if isinstance(entry, dict) and set(entry) == {"http_status"}:
-                raise ReadError(url, f"HTTP {entry['http_status']}")
-            return entry
+            entry = self.fixture_entry(url)
+            return entry.encode() if isinstance(entry, str) else json.dumps(entry).encode()
+        if not allowed(url):
+            raise ReadError(url, "not an allowed upstream host")
         try:
             request = urllib.request.Request(url, headers={"User-Agent": "mryfmo-dotfiles-drift-watch"})
             request.add_header("Accept", "application/vnd.github.raw+json" if raw else "application/vnd.github+json")
@@ -249,9 +268,7 @@ class Upstream:
             if self.token:
                 request.add_unredirected_header("Authorization", f"Bearer {self.token}")
             with OPENER.open(request, timeout=30) as response:
-                # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
-                # and a str that starts with a byte-order mark is refused by json.loads.
-                return json.loads(response.read().decode("utf-8"))
+                return response.read()
         except urllib.error.HTTPError as error:
             raise ReadError(url, f"HTTP {int(error.code)}") from None
         # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
@@ -310,6 +327,14 @@ def repo_path(text: str, shape: Shape, what: str) -> list[str]:
     if ".." in parts:
         raise shape.fail(f"{what} {text!r} leaves the repository")
     return parts
+
+
+def unique_names(shape: Shape, entries: list, key: str = "name") -> list[str]:
+    """Each entry's KEY, in order; an entry named twice is a read failure, so no lookup takes the first of two."""
+    names = [shape.key(entry, key, str, "an entry") for entry in entries]
+    if len(set(names)) != len(names):
+        raise shape.fail(f"an entry {key} appears more than once")
+    return names
 
 
 def not_printable(char: str) -> bool:
@@ -523,8 +548,14 @@ class Watch:
         """The plugin's catalog entry in the marketplace (None when the catalog does not list it) and its Shape."""
         url = contents_url(repo, marketplace_file.split("/"))
         shape = Shape(url)
-        items = shape.key(self.upstream.get(url, raw=True), "plugins", list)
-        return next((p for p in items if shape.key(p, "name", str, "a plugin") == plugin), None), shape
+        # The one catalog parser make update and make doctor read the installed clone with: strict JSON, and a
+        # plugin listed more than once is refused rather than its first entry taken.
+        try:
+            return pin_records.parse_catalog_entry(
+                self.upstream.get_bytes(url, raw=True), marketplace_file, plugin
+            ), shape
+        except pin_records.RecordError as error:
+            raise shape.fail(str(error)) from None
 
     @staticmethod
     def plugin_source(item, repo: str, plugin: str, shape: Shape) -> tuple[str, list[str], str, str]:
@@ -574,7 +605,7 @@ class Watch:
             listing_url = contents_url(source_repo, parts, ref)
             listing = Shape(listing_url)
             entries = listing.of(self.upstream.get(listing_url), list, "the directory listing")
-            names = {listing.key(e, "name", str, "an entry") for e in entries}
+            names = unique_names(listing, entries)
             if manifest_dir not in names:  # lint-comparisons: allow entry names, not paths
                 if not served:
                     # No value to compare the pin with is a read failure, never "not watched" and never current.
@@ -607,7 +638,7 @@ class Watch:
         listing_url = contents_url(source_repo, parts[:-1], ref)
         listing = Shape(listing_url)
         entries = listing.of(self.upstream.get(listing_url), list, "the directory listing")
-        entry = next((e for e in entries if listing.key(e, "name", str, "an entry") == parts[-1]), None)
+        entry = dict(zip(unique_names(listing, entries), entries)).get(parts[-1])
         if entry is None:
             return [(place, "absent")], ""
         if listing.key(entry, "type", str, parts[-1]) != "dir":
@@ -621,7 +652,9 @@ class Watch:
         if tree.key(doc, "truncated", bool):
             raise tree.fail("the tree is truncated")
         files = []
-        for node in tree.key(doc, "tree", list):
+        nodes = tree.key(doc, "tree", list)
+        unique_names(tree, nodes, "path")
+        for node in nodes:
             path = tree.key(node, "path", str, "a tree entry")
             kind, mode = tree.key(node, "type", str, path), tree.key(node, "mode", str, path)
             repo_path(path, tree, "a tree path")

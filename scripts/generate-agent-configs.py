@@ -359,7 +359,6 @@ def render_codex(manifest: dict[str, Any]) -> str:
     for key in (
         "model_reasoning_summary",
         "model_verbosity",
-        "personality",
         "approval_policy",
         "sandbox_mode",
         "web_search",
@@ -831,7 +830,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "model": profile_claude["model"],
         "effortLevel": profile_claude["effort"],
         **({"advisorModel": profile_claude["advisor"]} if "advisor" in profile_claude else {}),
-        "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {
             **(

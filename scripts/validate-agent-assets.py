@@ -811,7 +811,7 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} must render the interactive profile model")
     if data.get("model_reasoning_effort") != interactive.get("model_reasoning_effort"):
         fail(f"{codex_path} must render the interactive profile reasoning effort")
-    for key in ("model_reasoning_summary", "model_verbosity", "personality"):
+    for key in ("model_reasoning_summary", "model_verbosity"):
         if manifest_codex.get(key) != data.get(key):
             fail(f"{codex_path} must render codex.{key} from the shared manifest")
     if data.get("sandbox_mode") != "workspace-write":
@@ -826,9 +826,13 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         f"{codex_path} sandbox_workspace_write.writable_roots",
     )
     features = data.get("features", {})
-    for feature in ("plugins", "hooks", "plugin_hooks"):
+    for feature in ("plugins", "hooks"):
         if features.get(feature) is not True:
             fail(f"{codex_path} must enable Codex feature {feature} for Crit plugin hooks")
+    # Codex 0.163.0 lists both as removed (`codex features list`), and `friendly`/`pragmatic` "no longer select a
+    # style" (config-schema.json personality): a key that sets nothing is refused, not carried.
+    if "personality" in data or "plugin_hooks" in features:
+        fail(f"{codex_path} must not set personality or features.plugin_hooks, which Codex 0.163.0 removed")
     if data.get("shell_environment_policy") != manifest_codex.get("shell_environment_policy"):
         fail(f"{codex_path} must render codex.shell_environment_policy from the shared manifest")
     shell_path = data.get("shell_environment_policy", {}).get("set", {}).get("PATH", "")

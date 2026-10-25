@@ -44,7 +44,13 @@ MANAGED_PRE_TOOL_USE_SCRIPTS = ("enforce-uv.sh", "gh-merge-gate.sh")
 # D-024-150): a current value still equal to the former managed default came from
 # the template, so the merge drops it; a different value is an operator override
 # and stays, like every other key the template does not manage.
-RETIRED_MANAGED_DEFAULTS: dict[str, Any] = {"autoUpdates": False, "autoUpdatesChannel": "stable"}
+# U79 retired `alwaysThinkingEnabled: true`, Claude Code's own default ("`true` changes nothing",
+# code.claude.com/docs/en/settings-reference).
+RETIRED_MANAGED_DEFAULTS: dict[str, Any] = {
+    "autoUpdates": False,
+    "autoUpdatesChannel": "stable",
+    "alwaysThinkingEnabled": True,
+}
 
 
 def is_retired_managed_default(key: str, value: Any) -> bool:

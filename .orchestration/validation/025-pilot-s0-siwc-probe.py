@@ -13,7 +13,10 @@ models-and-inference,preview-limitations,token-reference}.
 import argparse, base64, hashlib, http.server, json, os, secrets, sys, threading, time, urllib.parse, urllib.request, uuid, webbrowser
 
 AUTHORIZE = "https://auth.openai.com/api/accounts/authorize"
-<redacted:secret-pattern>
+# The token endpoint (SIWC docs "Token endpoint"). Named TOKEN_URL because the records sync masks a string
+# assigned to a bare TOKEN name as a secret (validate-agent-assets.py SECRET_PATTERN), which had left this
+# line a syntax error (U79).
+TOKEN_URL = "https://auth.openai.com/api/accounts/oauth/token"
 API = "https://api.openai.com/v1"
 RESOURCE = API
 SCOPES = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
@@ -53,7 +56,7 @@ def wait_callback(port, timeout):
     class H(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             u = urllib.parse.urlparse(self.path)
-            if u.path != "/auth/callback":
+            if u.path != "/auth/callback":  # lint-comparisons: allow the request target's exact route, no filesystem path
                 self.send_response(404)
                 self.end_headers()
                 return
@@ -150,6 +153,18 @@ def http_error_summary(e):
     return f"HTTP {getattr(e, 'code', '?')}: {body}"
 
 
+def listed_models(body):
+    """The documented model list: a `models` array whose entries carry `slug` and `visibility`.
+
+    developers.openai.com/siwc/llms-full.txt, "Models and inference" step 1:
+    `jq '[.models[] | select(.visibility == "list") | {slug, display_name}]'`. #S0 read `data[].id`
+    (the platform API's shape), which this route does not return, and so counted 0 (U79).
+    """
+    models = body.get("models", []) if isinstance(body, dict) else []
+    listed = [m["slug"] for m in models if m.get("visibility") == "list"]
+    return listed, len(models)
+
+
 def selftest():
     v, c = pkce()
     assert len(v) >= 43 and c == b64url(hashlib.sha256(v.encode()).digest()), "pkce"
@@ -178,6 +193,13 @@ def selftest():
         "response.output_text.delta",
         "response.completed",
     ], "sse"
+    documented = {
+        "models": [
+            {"slug": "gpt-6.1-sol", "display_name": "GPT-6.1 Sol", "visibility": "list"},
+            {"slug": "gpt-reserve", "display_name": "Reserve", "visibility": "hide"},
+        ]
+    }
+    assert listed_models(documented) == (["gpt-6.1-sol"], 2), "models"
     print("selftest ok")
 
 
@@ -259,7 +281,7 @@ def main():
     report["issued_client_id_prefix"] = (client_id or "")[:6]
     try:
         status, tok = post_form(
-            TOKEN,
+            TOKEN_URL,
             {
                 "grant_type": "authorization_code",
                 "client_id": client_id,
@@ -285,11 +307,11 @@ def main():
     report["plan_usage_scope_granted"] = "chatgpt.tokens.use.direct" in granted
     try:
         _, models = get_json(API + "/models", access)
-        listed = [
-            m["id"] for m in models.get("data", []) if m.get("visibility") == "list"
-        ]
+        listed, total = listed_models(models)
         report["models_listed"] = listed
-        report["models_total"] = len(models.get("data", []))
+        report["models_total"] = total
+        # Top-level keys only, never values: the shape a parser change would need.
+        report["models_keys"] = sorted(models) if isinstance(models, dict) else type(models).__name__
     except urllib.error.HTTPError as e:
         report["models_error"] = http_error_summary(e)
         listed = []

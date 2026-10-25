@@ -185,6 +185,34 @@ class LintTest(unittest.TestCase):
         self.assertEqual(("", 2), (result.stdout, result.returncode))
         self.assertIn("cannot read docs/locked.md", result.stderr)
 
+    @unittest.skipIf(os.geteuid() == 0, "root reads through directory permissions")
+    def test_a_tracked_file_git_cannot_lstat_refuses_with_exit_2_never_reads_as_deleted(self) -> None:
+        # Audit 033c461f P2: `git ls-files --deleted` also lists a path whose lstat failed for another reason (here a
+        # directory without search permission), and the lint skipped it as deleted, so a hit in it read as clean.
+        self.write("docs/locked/a.md", "oldname\n")
+        self.write("scripts/retired-terms.tsv", TERM)
+        self.git("add", "-A")
+        locked = self.repo / "docs/locked"
+        locked.chmod(0)
+        self.addCleanup(locked.chmod, 0o755)
+        result = run_lint("--root", str(self.repo))
+        self.assertEqual(("", 2), (result.stdout, result.returncode), result.stderr)
+        self.assertIn("cannot check docs/locked/a.md", result.stderr)
+
+    def test_a_gone_path_that_cannot_be_checked_refuses_with_exit_2(self) -> None:
+        # Audit 033c461f P2: exists() and is_symlink() read a symlink loop on the way to a `gone` path as absent.
+        (self.repo / "loop").symlink_to("loop")
+        self.write(".gitignore", "loop\n")
+        result = self.lint("gone\tloop/old.sh\tdeleted\n")
+        self.assertEqual(("", 2), (result.stdout, result.returncode), result.stderr)
+        self.assertIn("cannot check loop/old.sh", result.stderr)
+        # A path that is a dangling symlink itself is present: lstat reads the link.
+        (self.repo / "dangling").symlink_to("nowhere")
+        self.write(".gitignore", "loop\ndangling\n")
+        result = self.lint("gone\tdangling\tdeleted\n")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("retired path dangling exists again", result.stdout)
+
     def test_an_absent_list_or_chezmoiremove_refuses_with_exit_2(self) -> None:
         result = run_lint("--root", str(self.repo))
         self.assertEqual(("", 2), (result.stdout, result.returncode))

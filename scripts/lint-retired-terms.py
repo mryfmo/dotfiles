@@ -14,7 +14,8 @@ list, a git failure, an unreadable file. The list's rows, tab-separated, `#` sta
   no longer contains its term is itself a hit, so the allow list never outlives what it allows.
 - `skip <dir>/ <reason>`: a directory of records or generated snapshots that is not scanned; <dir>/ is compared as an
   exact prefix of the git path.
-- `gone <path> <reason>`: a deleted source path; the path existing in the root is a hit.
+- `gone <path> <reason>`: a deleted source path; the path existing in the root is a hit. Every path probe reads absent
+  only from FileNotFoundError; any other failure (a symlink loop, a denied directory) is a failure to check (exit 2).
 - `removed <target> <reason>`: a deployed target the source no longer ships; `home/.chezmoiremove` must hold it as an
   exact line, so `chezmoi apply` removes the copy a host still has.
 
@@ -22,6 +23,8 @@ Hits on the list itself are reported at the list's own line.
 """
 
 import argparse
+import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -77,9 +80,26 @@ def git_paths(root: Path, *args: str) -> list[str]:
     return [path for path in run.stdout.decode("utf-8", errors="surrogateescape").split("\0") if path]
 
 
+def probe(root: Path, path: str) -> os.stat_result | None:
+    """Return the path's lstat, or None when it is absent; any other failure (a loop, a denied directory) refuses.
+
+    Absent means FileNotFoundError and nothing else, so "cannot tell" never reads as absent or as present.
+    """
+    try:
+        return os.lstat(root / path)
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise Refusal(f"cannot check {path}: {error}") from error
+
+
 def scanned_files(root: Path, list_path: str) -> list[str]:
-    """Return the tracked and untracked-not-ignored paths that exist in the worktree, the list itself excepted."""
-    deleted = set(git_paths(root, "--deleted"))
+    """Return the tracked and untracked-not-ignored paths that exist in the worktree, the list itself excepted.
+
+    `git ls-files --deleted` also lists a path whose lstat failed for another reason, so each one is probed here: only
+    an absent path is skipped as deleted, and any other failure refuses.
+    """
+    deleted = {p for p in git_paths(root, "--deleted") if probe(root, p) is None}
     listed = git_paths(root, "--cached", "--others", "--exclude-standard")
     return sorted({p for p in listed if p not in deleted and p != list_path})  # lint-comparisons: allow git paths
 
@@ -88,7 +108,7 @@ def file_lines(root: Path, path: str) -> list[bytes]:
     """Return a file's lines as bytes; a symlink is read as its target text, which is what git tracks."""
     full = root / path
     try:
-        data = str(full.readlink()).encode() if full.is_symlink() else full.read_bytes()
+        data = str(full.readlink()).encode() if stat.S_ISLNK(os.lstat(full).st_mode) else full.read_bytes()
     except OSError as error:
         raise Refusal(f"cannot read {path}: {error}") from error
     return data.split(b"\n")
@@ -121,7 +141,7 @@ def check(root: Path, list_path: Path) -> list[str]:
         if (file, term) not in used:
             hits.append(f"{rel_list}:{number}: allow row {file} {term!r} matches nothing; remove the row")
     for number, (path, _) in rows["gone"]:
-        if (root / path).exists() or (root / path).is_symlink():
+        if probe(root, path) is not None:
             hits.append(f"{rel_list}:{number}: retired path {path} exists again")
     removals = root / CHEZMOIREMOVE
     try:

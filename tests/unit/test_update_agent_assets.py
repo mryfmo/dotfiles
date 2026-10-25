@@ -564,7 +564,9 @@ claude() {
         jq --arg id "$3" --arg version "${INSTALL_VERSION}" --arg home "${HOME}" \
             '.plugins[$id] += [{scope: "user", version: $version, installPath: "\($home)/.claude/plugins/cache/\($id | split("@")[1])/\($id | split("@")[0])/\($version)"}]' \
             "${record}" > "${WORK}/next" && mv "${WORK}/next" "${record}"
-        jq --arg id "$3" '.enabledPlugins[$id] = true' "${user}" > "${WORK}/next" && mv "${WORK}/next" "${user}" ;;
+        jq --arg id "$3" '.enabledPlugins[$id] = true' "${user}" > "${WORK}/next" && mv "${WORK}/next" "${user}"
+        [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
+    "plugin update "*) [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS}" ] || return 1; [ -z "${DISABLE_NOOP}" ] || return 0
         settings="${user}"; [ "$5" = user ] || settings="${PWD}/.claude/settings.json"
         jq --arg id "$3" '.enabledPlugins[$id] = false' "${settings}" > "${WORK}/next" && mv "${WORK}/next" "${settings}" ;;
@@ -602,7 +604,15 @@ claude() {
         names = list(sources) if markets is None else markets
         listing = [{"name": name, "source": "github", "repo": sources[name]} for name in names]
         (work / "markets.json").write_text(json.dumps(listing))
-        variables = ("ADD_FAILS", "ADD_NAME", "INSTALL_FAILS", "INSTALL_VERSION", "DISABLE_FAILS", "DISABLE_NOOP")
+        variables = (
+            "ADD_FAILS",
+            "ADD_NAME",
+            "INSTALL_FAILS",
+            "INSTALL_VERSION",
+            "DISABLE_FAILS",
+            "DISABLE_NOOP",
+            "CORRUPT_AFTER",
+        )
         result = subprocess.run(
             [
                 "bash",
@@ -739,7 +749,7 @@ claude() {
         result, calls, _ = self.converge_listed('converge_claude_plugin "crit@crit"', installs, {"crit@crit": True})
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn("a second user-scope record", result.stderr)
-        self.assertEqual([], calls)
+        self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
 
     def test_any_drift_the_doctor_reports_after_a_step_fails_the_run(self):
         # The updater's own reading says "at the pin", but the doctor's check sees drift: the doctor wins.
@@ -756,6 +766,138 @@ claude() {
         # And with the real check, an at-pin plugin passes.
         result, _, _ = self.converge_listed('converge_claude_plugin "crit@crit"', installs, {"crit@crit": True})
         self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_a_record_unreadable_after_install_or_update_disables_the_plugin(self):
+        # Audit round 22: the re-read after the change failed and the step returned before any disable, so the
+        # release just installed or updated to (never reviewed) stayed enabled.
+        cases = (
+            ("install", {}, {}, {"INSTALL_VERSION": "999.0.0"}),
+            ("update", {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}, {"crit@crit": True}, {}),
+        )
+        step = 'converge_claude_step "crit@crit" || true; fail_on_claude_pin_failures'
+        for action, installs, enabled, flags in cases:
+            with self.subTest(action=action):
+                result, calls, state = self.converge_listed(step, installs, enabled, CORRUPT_AFTER="1", **flags)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("cannot re-read the installation records of crit@crit", result.stderr)
+                self.assertEqual(
+                    [
+                        f"plugin {action} crit@crit --scope user @neutral",
+                        "plugin disable crit@crit --scope user @neutral",
+                    ],
+                    calls,
+                )
+                self.assertIs(False, state["user"]["crit@crit"])
+
+    def test_every_way_out_of_a_step_disables_the_plugin(self):
+        # One rule: anything but a step and a doctor's check that both pass ends in the disable, including an
+        # `exit` or a set -u abort inside the step, and a pass of the step the doctor does not confirm.
+        pin = self.pin_of("crit@crit")
+        installs = {"crit@crit": [{"scope": "user", "version": pin}]}
+        for name, body in (
+            ("return", "step() { return 4; }"),
+            ("exit", "step() { exit 5; }"),
+            ("unbound", 'step() { printf "%s" "${NOT_SET_ANYWHERE}"; }'),
+            ("doctor", "step() { :; }; doctor_pin_check() { return 2; }"),
+        ):
+            with self.subTest(way=name):
+                gate = f'{body}; converge_or_disable claude crit@crit step; printf "rc=%s failures=%s\\n" "$?" "${{CLAUDE_PIN_FAILURES}}"'
+                result, calls, state = self.converge_listed(f"set +e; {gate}", installs, {"crit@crit": True})
+                self.assertIn("rc=1 failures=1", result.stdout, result.stderr)
+                self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
+                self.assertIs(False, state["user"]["crit@crit"])
+        # A step and a check that both pass leave the plugin as it is.
+        result, calls, state = self.converge_listed(
+            "step() { :; }; converge_or_disable claude crit@crit step", installs, {"crit@crit": True}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertIs(True, state["user"]["crit@crit"])
+
+    def test_a_codex_plugin_that_misses_its_pin_is_removed(self):
+        # Codex has no disable command and chezmoi keeps [plugins."<id>"] enabled, so the copy is removed.
+        work = Path(tempfile.mkdtemp(prefix="codex-disable-"))
+        self.addCleanup(shutil.rmtree, work)
+        body = (
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; [ "$1 $2" != "plugin remove" ] || : > "${WORK}/removed"; }; '
+            'codex_plugin_cache_versions() { [ -e "${WORK}/removed" ] || printf "5.3.2\\n"; }; '
+            "doctor_pin_check() { return 1; }; "
+        )
+        for name, extra, expected in (
+            ("drift", "", ["plugin remove ponytail@ponytail"]),
+            ("remove leaves a copy", 'codex_plugin_cache_versions() { printf "5.3.2\\n"; }; ', None),
+        ):
+            with self.subTest(case=name):
+                for leftover in ("calls", "removed"):
+                    (work / leftover).unlink(missing_ok=True)
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; set +e; {body}{extra}converge_or_disable codex ponytail@ponytail true; echo "rc=$?"',
+                        "bash",
+                        str(UPDATER),
+                    ],
+                    env=os.environ | scratch_env(work / "home") | {"WORK": str(work)},
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertEqual(["plugin remove ponytail@ponytail"], (work / "calls").read_text().splitlines())
+                if expected is None:
+                    self.assertIn("codex plugin remove left a copy", result.stderr)
+                else:
+                    self.assertIn("was removed", result.stderr)
+
+    def test_a_codex_copy_unreadable_after_install_removes_it_and_fails_the_run(self):
+        # The Codex side of round 22: `codex plugin add` leaves a copy whose plugin.json cannot be read, so the
+        # doctor's real check fails, the copy is removed, and the run fails.
+        work = Path(tempfile.mkdtemp(prefix="codex-unreadable-"))
+        self.addCleanup(shutil.rmtree, work)
+        cache = work / "home/.codex/plugins/cache/openai-curated/superpowers"
+        fake = (
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; case "$1 $2" in '
+            '"plugin add") mkdir -p "${CACHE}/6.3.0/.codex-plugin"; printf "{truncated" > "${CACHE}/6.3.0/.codex-plugin/plugin.json" ;; '
+            '"plugin remove") rm -rf "${CACHE}" ;; esac; }'
+        )
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_superpowers; fail_on_claude_pin_failures',
+                "bash",
+                str(UPDATER),
+            ],
+            env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "CACHE": str(cache)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertEqual(
+            ["plugin add superpowers@openai-curated", "plugin remove superpowers@openai-curated"],
+            (work / "calls").read_text().splitlines(),
+        )
+        self.assertFalse(cache.exists())
+
+    def test_every_plugin_install_or_update_runs_only_through_converge_or_disable(self):
+        # Structural guard: a function that installs, updates or upgrades a Claude Code or Codex plugin is
+        # called nowhere but as the step of converge_or_disable, so no path skips the disable.
+        text = UPDATER.read_text()
+        bodies = dict(re.findall(r"^function (\w+)\(\) \(?\{\n(.*?)^\}", text, re.M | re.S))
+        actions = re.compile(r"plugin (install|update) |codex plugin (add|marketplace upgrade) ")
+        # Code only: the manifest's command strings and comments name these actions without running them.
+        code = {name: re.sub(r'"[^"\n]*"|#.*', "", body) for name, body in bodies.items()}
+        movers = sorted(name for name, body in code.items() if actions.search(body))
+        self.assertEqual(["install_codex_ponytail", "install_codex_superpowers", "move_claude_plugin_to_pin"], movers)
+        for name in movers:
+            uses = [line.strip() for line in text.splitlines() if re.search(rf"\b{name}\b", line)]
+            calls = [line for line in uses if not line.startswith(("function ", "#"))]
+            self.assertTrue(calls, name)
+            self.assertEqual(
+                [], [line for line in calls if not re.search(rf"converge_or_disable \w+ \S+ {name}\b", line)]
+            )
 
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.
@@ -855,11 +997,13 @@ claude() {
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn(message, result.stderr)
 
-    def test_a_claude_plugin_is_not_changed_when_its_records_cannot_be_read(self):
-        # Failure injection: an unreadable installed_plugins.json is never read as "not installed".
-        result, calls, _ = self.converge_listed('converge_claude_plugin "crit@crit"', "{truncated", {})
+    def test_a_claude_plugin_is_disabled_when_its_records_cannot_be_read(self):
+        # Failure injection: an unreadable installed_plugins.json is never read as "not installed": nothing is
+        # installed or updated, and the plugin it may hold is disabled.
+        result, calls, state = self.converge_listed('converge_claude_plugin "crit@crit"', "{truncated", {})
         self.assertEqual(1, result.returncode)
-        self.assertEqual([], calls)
+        self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
+        self.assertIs(False, state["user"]["crit@crit"])
         self.assertIn("cannot read the installation records of crit@crit", result.stderr)
         # Unchecked is a failure of the run, through every caller: the named step and the manifest loop.
         for step in ("update_claude_crit", "converge_claude_plugins"):

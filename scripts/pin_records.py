@@ -107,7 +107,7 @@ def load_toml(path: Path) -> Any:
 
 def field(record: object, data: Any, name: str, kind: type, where: str = "", ascii: bool = False) -> Any:
     """DATA[NAME] with exactly type KIND (bool is never an int, an int never a str); a string is clean, and
-    ASCII only when ASCII (an id, version, tag, source or commit: the format is ASCII)."""
+    with ASCII (an id, version, tag, scope, source or commit: an identity value) ASCII and never empty."""
     label = f"{where}{name}"
     if not isinstance(data, dict):
         raise RecordError(record, where.rstrip(".") or "(top)", f"must be an object, not {type(data).__name__}")
@@ -144,12 +144,15 @@ def clean(record: object, label: str, value: str, ascii: bool = False) -> str:
     """VALUE exactly as recorded, else RecordError: it holds no control character (tab, newline, carriage
     return, NUL, ...), so no field can forge a row or a record boundary in any output; it has no leading or
     trailing whitespace of any kind (str.isspace: NBSP, U+2009, U+3000, ...), which a reader that stripped
-    it would have turned into another value; and with ASCII it holds ASCII only. Values are never stripped:
-    every comparison is of the exact string."""
+    it would have turned into another value; and with ASCII (an identity value: id, version, tag, scope,
+    source, commit) it is not empty and holds ASCII only, so an empty version never reads as "no version".
+    Values are never stripped: every comparison is of the exact string."""
     if CONTROL.search(value):
         raise RecordError(record, label, f"contains a control character: {value!r}")
     if value and (value[0].isspace() or value[-1].isspace()):
         raise RecordError(record, label, f"has leading or trailing whitespace: {value!r}")
+    if ascii and not value:
+        raise RecordError(record, label, "is empty")
     if ascii and not value.isascii():
         raise RecordError(record, label, f"must be ASCII: {value!r}")
     return value
@@ -299,6 +302,8 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
             if Path(install_path) != expected:
                 raise RecordError(path, f"{where}installPath", f"{install_path!r} is not {str(expected)!r}")
             project = field(path, entry, "projectPath", str, where) if scope in ("project", "local") else None
+            if project == "":
+                raise RecordError(path, f"{where}projectPath", "is empty")
             # One record per identity (scope, project): a second one would let a reader pick either version.
             if any((seen.scope, seen.project_path) == (scope, project) for seen in result[plugin_id]):
                 raise RecordError(
@@ -611,13 +616,12 @@ def main(argv: List[str]) -> int:
     elif command == "claude-marketplace":
         print(claude_marketplace_state(sys.stdin.read(), args[0], args[1]))
     elif command == "codex-copy":
+        # Explicit for the shell: `absent`, or `copy <version>`; an empty answer is never a state.
         copy = load_codex_copy(Path(args[0]), args[1], Path(args[2]))
-        if copy is not None:
-            print(copy.version)
+        print("absent" if copy is None else f"copy {copy.version}")
     elif command == "marketplace-install":
         install = load_marketplace_install(Path(args[0]), args[1])
-        if install is not None:
-            print(install.revision)
+        print("absent" if install is None else f"revision {install.revision}")
     elif command == "codex-marketplace":
         print(codex_marketplace_state(Path(args[0]), args[1], args[2]))
     elif command == "codex-marketplace-pinned":

@@ -373,6 +373,107 @@ class PinRecordsTest(unittest.TestCase):
         self.assertEqual("v0.18.5", cases["pins pin"]("v0.18.5")().claude["crit@crit"].pin)
         self.assertEqual("registered", cases["claude marketplace listing"]("tomasz-tomczyk/crit")())
 
+    def test_no_identity_value_may_be_empty(self) -> None:
+        # U90: an empty version was accepted and read downstream as "no version". Every id, version, tag,
+        # scope, source and commit refuses "" (whitespace-only is refused as leading whitespace).
+        cache = self.dir / "cache"
+        pins = {
+            "claude": {"crit@crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.14"}},
+            "codex": {},
+            "gh_extensions": {},
+        }
+        gh = self.dir / "data/gh"
+        binary = gh / "extensions/gh-poi/gh-poi"
+        manifest = {
+            "owner": "seachicken",
+            "name": "gh-poi",
+            "host": "github.com",
+            "tag": "v0.18.5",
+            "ispinned": "true",
+            "path": str(binary),
+        }
+
+        def gh_with(**change):
+            text = "".join(f"{k}: {v}\n" if v != "" else f"{k}:\n" for k, v in {**manifest, **change}.items())
+            self.write("data/gh/extensions/gh-poi/manifest.yml", text)
+            return lambda: records.load_gh_extension(gh, "seachicken/gh-poi")
+
+        def pins_with(**change):
+            self.write("pins.json", {**pins, "claude": {"crit@crit": {**pins["claude"]["crit@crit"], **change}}})
+            return lambda: records.load_plugin_pins(self.dir / "pins.json")
+
+        def codex_copy(version):
+            self.write("codex/tail/tail/5.0.0/.codex-plugin/plugin.json", {"name": "tail", "version": version})
+            return lambda: records.load_codex_copy(self.dir / "codex/tail/tail", "tail", MODIFY)
+
+        def install(**change):
+            entry = {"scope": "user", "version": "1.8.14", "installPath": str(cache / "crit/crit/1.8.14"), **change}
+            return lambda: records.load_claude_installs(self.write("i.json", {"plugins": {"crit@crit": [entry]}}))
+
+        def marketplace_install(**change):
+            data = {"source_type": "git", "source": "https://example.invalid/t.git", "revision": COMMIT, **change}
+            return lambda: records.load_marketplace_install(self.write("m.json", data), "https://example.invalid/t.git")
+
+        cases = {
+            "Codex copy version": lambda v: codex_copy(v),
+            "pins pin": lambda v: pins_with(pin=v),
+            "pins marketplace": lambda v: pins_with(marketplace=v),
+            "pins gh tag": lambda v: (
+                self.write("p2.json", {**pins, "gh_extensions": {"seachicken/gh-poi": v}}),
+                lambda: records.load_plugin_pins(self.dir / "p2.json"),
+            )[1],
+            "Claude install version": lambda v: install(version=v),
+            "Claude install scope": lambda v: install(scope=v),
+            "Claude projectPath": lambda v: install(scope="project", projectPath=v),
+            "marketplace install source": lambda v: marketplace_install(source=v),
+            "marketplace install revision": lambda v: marketplace_install(revision=v),
+            "gh manifest tag": lambda v: gh_with(tag=v),
+            "gh manifest owner": lambda v: gh_with(owner=v),
+            "Claude marketplace listing repo": lambda v: (
+                lambda: records.claude_marketplace_state(
+                    json.dumps([{"name": "crit", "source": "github", "repo": v}]), "crit", "tomasz-tomczyk/crit"
+                )
+            ),
+        }
+        for field_name, make in cases.items():
+            for value in ("", " ", "\u00a0"):
+                with self.subTest(field=field_name, value=repr(value)):
+                    with self.assertRaises(records.RecordError):
+                        make(value)()
+        self.assertEqual("5.0.0", codex_copy("5.0.0")().version)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "codex-copy",
+                str(self.dir / "codex/tail/tail"),
+                "tail",
+                str(MODIFY),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual("copy 5.0.0\n", result.stdout)
+        codex_copy("")
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "codex-copy",
+                str(self.dir / "codex/tail/tail"),
+                "tail",
+                str(MODIFY),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual((2, ""), (result.returncode, result.stdout))
+        self.assertIn("version: is empty", result.stderr)
+
     def test_mise_holds(self) -> None:
         good = '[tools]\n# Held: reason\nfd = "10.3.0"\njq = "latest"\n\n# Held: http\n[tools."http:bats"]\nversion = "1"\n'
         self.assertEqual(["fd", "http:bats"], records.load_mise_holds(self.write("mise.toml", good)))

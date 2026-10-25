@@ -491,8 +491,10 @@ pointer_value() {
 # @arg $1 string A label for the refusal.
 # @arg $2 string The executable's path.
 # @set pinned The argv.
+# @set pinned_spelled The interpreter as the `#!` line spells it (what the kernel follows), or empty.
 pin_exec() {
     local label=$1 file first magic interp name extra interp_path
+    pinned_spelled=''
     # The spelling the kernel will follow, every link hop, is held to the identity check too: a link in a write root
     # that points outside it passes the physical check today and can be retargeted before the next exec.
     refuse_if_link_chain_writable "${label}" "$2"
@@ -511,6 +513,7 @@ pin_exec() {
     '#!'*)
         extra=''
         read -r interp name extra <<< "${first#??}"
+        pinned_spelled=${interp}
         if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
             [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
                 refuse "${label}: unsupported interpreter line '${first}' in ${file}"
@@ -531,6 +534,25 @@ pin_exec() {
         pinned=("${interp}" "${file}")
         ;;
     esac
+}
+
+# @description Refuse (exit 2) an optional tool whose `#!` line spells its interpreter outside the trusted system
+#   directories (regime-cutover U85, a best-effort reduction of the G17 residual, README "Boundary"): the directory
+#   the line names, followed physically, must be or lie under `/bin`, `/usr/bin`, `/sbin`, `/usr/sbin` or
+#   `~/.local/share/mise/installs`, by (device, inode) identity (`trusted_ids`), however the spelling reaches it, so
+#   a directory alias into a seat write root (`alias -> $HCOM_DIR/subdir`) is refused. A binary passes.
+# @arg $1 string The tool's name, for the refusal.
+trusted_interpreter_check() {
+    local dir ids id
+    [[ -n ${pinned_spelled} ]] || return 0
+    dir=${pinned_spelled%/*}
+    dir=$(physical_path "${dir:-/}") || refuse "cannot resolve the interpreter directory of $1: ${pinned_spelled}"
+    ancestors_of "${dir}"
+    ids=$(/usr/bin/stat "${stat_args[@]}" -- "${ancestors[@]}") || refuse "cannot read the identity of ${dir}"
+    while IFS= read -r id; do
+        [[ ${trusted_ids} != *$'\n'"${id}"$'\n'* ]] || return 0 # lint-comparisons: allow compares (device, inode) identities, not paths
+    done <<< "${ids}"
+    refuse "$1: its interpreter ${pinned_spelled} lies outside /bin, /usr/bin, /sbin, /usr/sbin and ~/.local/share/mise/installs (${dir})"
 }
 
 # @description Refuse (exit 2) when any hop of the symlink chain `$2` (the spelling itself, then each link target in
@@ -692,11 +714,20 @@ for tool in "${required_tools[@]}" "${optional_tools[@]}"; do
     fi
 done
 PATH=${tools_dir}:${system_path}
+# The trusted interpreter directories of the optional tools (trusted_interpreter_check), by identity.
+trusted_dirs=(/bin /usr/bin /sbin /usr/sbin)
+if [[ -d ${HOME}/.local/share/mise/installs ]]; then trusted_dirs+=("${HOME}/.local/share/mise/installs"); fi
+trusted_ids=$(/usr/bin/stat "${stat_args[@]}" -- "${trusted_dirs[@]}") ||
+    refuse "cannot read the identity of the trusted interpreter directories ${trusted_dirs[*]}"
+trusted_ids=$'\n'${trusted_ids}$'\n'
 # Every linked tool's interpreter chain (`#!/abs/interp`, or `#!/usr/bin/env X` with X looked up on this PATH, as it
 # will be when the tool runs) passes the same identity check before anything runs it; git runs next (regime-env).
 for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
+    for tool in "${optional_tools[@]}"; do
+        if [[ ${tool} == "${link##*/}" ]]; then trusted_interpreter_check "${tool}"; fi
+    done
 done
 # Host git runs by the argv pin_exec checked (interpreter first when git is a script), never by a lookup.
 git_path=$(find_on_path git) || refuse 'git not found in the private tool directory'
@@ -1142,6 +1173,9 @@ if [[ -n ${mise_real} ]]; then PATH=${system_path} pin_exec mise "${mise_real}";
 for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
     pin_exec "${link##*/}" "${link}"
+    for tool in "${optional_tools[@]}"; do
+        if [[ ${tool} == "${link##*/}" ]]; then trusted_interpreter_check "${tool}"; fi
+    done
 done
 pin_exec git "${git_path}"
 git_cmd=("${pinned[@]}")

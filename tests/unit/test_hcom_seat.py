@@ -1170,6 +1170,29 @@ class HcomSeatTest(unittest.TestCase):
                 self.assertIn(f"the seat slot {seats / slot} is a symbolic link", run.stderr)
                 shutil.rmtree(seats)
 
+    def test_an_optional_tool_interpreter_outside_the_system_directories_is_refused(self):
+        """U85 round 24: an optional tool's `#!` interpreter must be spelled in /bin, /usr/bin, /sbin, /usr/sbin or
+        ~/.local/share/mise/installs once its directory is followed physically, so a directory alias into a seat
+        write root (`alias -> $HCOM_DIR/subdir`, `subdir/interp -> /bin/bash`, which the hop check passes) is
+        refused; the same tool with `#!/bin/sh` launches. A best-effort reduction of the accepted G17 residual."""
+        subdir = self.store / "u85-alias-target"
+        subdir.mkdir()
+        self.addCleanup(shutil.rmtree, subdir, True)
+        (subdir / "interp").symlink_to("/bin/bash")
+        outside = Path(self.temp.name).resolve() / "alias-bin"
+        outside.mkdir()
+        (outside / "alias").symlink_to(subdir)
+        tool = outside / "regime-open-url"
+        tool.write_text(f"#!{outside / 'alias/interp'}\nexit 0\n")
+        tool.chmod(0o755)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"regime-open-url: its interpreter {outside / 'alias/interp'} lies outside /bin", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+        tool.write_text("#!/bin/sh\nexit 0\n")
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_the_linux_reader_checks_jq_status_for_an_empty_list(self):
         """U85 round 16: jq's status for the entry read is checked unconditionally, so a jq that exits 7 or 127
         while the list is empty fails the read instead of reading as an empty list."""

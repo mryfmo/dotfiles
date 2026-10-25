@@ -34,7 +34,12 @@ ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
 MANAGED_POST_TOOL_USE_SCRIPTS = ("format-edited-files.py", "project-map-reload.sh")
 # Without a predicate a mixed entry (enforce-uv.sh next to an unmanaged hook)
 # differs from the managed entry, so the additive merge appended it again.
-MANAGED_PRE_TOOL_USE_SCRIPTS = ("enforce-uv.sh",)
+# gh-merge-gate.sh is a retired hook the template never renders (regime-cutover
+# U76, F033): it is managed here only so the merge drops it from an installed
+# settings.json. It returned `allow` for gated merges, which an ask rule
+# overrides (`Bash(gh *)` asks for every gh call), so dropping it changes no
+# decision.
+MANAGED_PRE_TOOL_USE_SCRIPTS = ("enforce-uv.sh", "gh-merge-gate.sh")
 # Keys the managed template used to set and no longer does (regime-cutover U18,
 # D-024-150): a current value still equal to the former managed default came from
 # the template, so the merge drops it; a different value is an operator override

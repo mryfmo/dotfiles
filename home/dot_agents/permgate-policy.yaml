@@ -63,7 +63,7 @@
       "id": "process-inspection",
       "tool": "Bash",
       "category": "read_only_inspection",
-      "regex": "\\s*(?:ps(?:\\s+[-A-Za-z0-9_,.=]+)*|pgrep\\s+-fl\\s+[-A-Za-z0-9_.]+|sysctl\\s+-n\\s+[-A-Za-z0-9_.]+)\\s*",
+      "regex": "\\s*(?:ps(?:\\s+(?:-[oO]\\s*(?:pid|ppid|pgid|sess|uid|ruid|user|ruser|uname|group|rgid|gid|comm|ucomm|command|args|etime|etimes|time|cputime|stat|state|%cpu|%mem|pcpu|pmem|rss|vsz|tty|tt|lstart|start|started|nice|ni|pri|wchan|flags|lwp|nlwp|psr)(?:=[A-Za-z0-9_%]*)?(?:,(?:pid|ppid|pgid|sess|uid|ruid|user|ruser|uname|group|rgid|gid|comm|ucomm|command|args|etime|etimes|time|cputime|stat|state|%cpu|%mem|pcpu|pmem|rss|vsz|tty|tt|lstart|start|started|nice|ni|pri|wchan|flags|lwp|nlwp|psr)(?:=[A-Za-z0-9_%]*)?)*|-?[A-DF-NP-Za-df-np-z0-9_,.=]+))*|pgrep\\s+-fl\\s+[-A-Za-z0-9_.]+|sysctl\\s+-n\\s+[-A-Za-z0-9_.]+)\\s*",
       "sources": [{"kind": "codex_approval_prefix", "count": 6}]
     },
     {

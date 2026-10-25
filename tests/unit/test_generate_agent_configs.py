@@ -129,6 +129,16 @@ def sample_manifest() -> dict:
             "marketplace_path": "home/dot_agents/plugins/create_marketplace.json",
             "marketplace": {"displayName": "Local", "name": "local"},
         },
+        "command_policy": [
+            {
+                "id": "sudo",
+                "patterns": [["sudo"]],
+                "claude": "deny",
+                "codex": "forbidden",
+                "reason": "Agents never escalate privileges.",
+                "examples": ["sudo true"],
+            }
+        ],
         "mcp_servers": {},
     }
 
@@ -745,46 +755,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_claude_sandbox_renders_per_os_from_the_manifest(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
-        expected_ask = [
-            f"Bash(gh {command}:*)"
-            for command in (
-                "pr merge",
-                "pr create",
-                "pr comment",
-                "pr review",
-                "pr close",
-                "pr edit",
-                "pr update-branch",
-                "issue",
-                "api -X POST",
-                "api --method POST",
-                "api -XPOST",
-                "api --method=POST",
-                "api -X PATCH",
-                "api --method PATCH",
-                "api -XPATCH",
-                "api --method=PATCH",
-                "api -X PUT",
-                "api --method PUT",
-                "api -XPUT",
-                "api --method=PUT",
-                "api -X DELETE",
-                "api --method DELETE",
-                "api -XDELETE",
-                "api --method=DELETE",
-                "api -f",
-                "api -F",
-                "api --raw-field",
-                "api --field",
-            )
-        ] + [
-            "Bash(gh api -f*)",
-            "Bash(gh api -F*)",
-            "Bash(gh api --raw-field=*)",
-            "Bash(gh api --field=*)",
-            "Bash(git push *)",
-            "Bash(gh *)",
-        ]
+        # The hand-written rules, then one rule per command_policy expansion (U76).
+        expected_ask = ["Bash(git push *)", "Bash(gh *)", *self.module.claude_command_rules(manifest, "ask")]
+        for rule in ("Bash(gh api *)", "Bash(gh pr merge *)", "Bash(gh secret set *)", "Bash(gh run rerun *)"):
+            self.assertIn(rule, expected_ask)
         template = self.module.render_claude_settings(manifest)
         for os_name in ("darwin", "linux"):
             with self.subTest(os=os_name):
@@ -829,7 +803,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertTrue(all(f"Bash({entry})" in ask for entry in sandbox["excludedCommands"]))
                 self.assertFalse(any("dangerouslyDisableSandbox" in rule for rule in ask))
                 self.assertEqual(expected_ask, settings["permissions"]["ask"])
-                self.assertEqual(manifest["claude"]["permissions"]["deny"], settings["permissions"]["deny"])
+                expected_deny = [
+                    *manifest["claude"]["permissions"]["deny"],
+                    *self.module.claude_command_rules(manifest, "deny"),
+                ]
+                self.assertEqual(expected_deny, settings["permissions"]["deny"])
                 self.assertEqual(
                     {
                         "GH_TELEMETRY": "false",
@@ -1855,17 +1833,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("~/.local/state/hcom-regime", claude["sandbox"]["filesystem"]["allowWrite"])
         self.assertIn("~/.local/state/omp-seats", claude["sandbox"]["filesystem"]["allowWrite"])
         manifest = load_manifest_fixture(self.temp_dir)
-        self.assertEqual(manifest["claude"]["permissions"]["ask"], claude["permissions"]["ask"])
         self.assertEqual(
-            [
-                "Bash(gh release:*)",
-                "Bash(npm publish:*)",
-                "Bash(uv publish:*)",
-                "Bash(terraform apply:*)",
-                "Bash(kubectl apply:*)",
-            ],
-            claude["permissions"]["deny"][-5:],
+            [*manifest["claude"]["permissions"]["ask"], *self.module.claude_command_rules(manifest, "ask")],
+            claude["permissions"]["ask"],
         )
+        deny = claude["permissions"]["deny"]
+        for rule in ("Bash(gh release *)", "Bash(pnpm publish *)", "Bash(terraform destroy *)", "Bash(/bin/rm -rf *)"):
+            self.assertIn(rule, deny)
 
     def test_managed_codex_path_includes_installed_common_bin(self) -> None:
         codex = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())

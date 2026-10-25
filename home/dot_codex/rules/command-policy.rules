@@ -1,0 +1,333 @@
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+#
+# The command_policy list (regime-cutover U76): `forbidden` refuses under every approval policy, `prompt`
+# asks the human before each matching command. Codex applies the strictest decision of every rule file
+# under ~/.codex/rules, so an allow rule an interactive session appends to default.rules never lifts one.
+# A rule matches the argument list from its first word, one position at a time, so it covers the listed
+# forms only: not a flag after the operands, another flag grouping (`rm -rvi -f`), or another spelling of
+# the program. Codex splits `bash -lc '<script>'` into its commands only when the script is plain words
+# joined by `&&`, `||`, `;` or `|`; a script with a redirect, a substitution, a variable, an assignment or
+# a glob is matched whole as `bash -lc ...`, so none of these prefix rules applies to the commands inside
+# it (learn.chatgpt.com/docs/agent-configuration/rules, "When Codex does not split the script"). The
+# sandbox (read-only, or workspace-write with network off) is the control for those forms, and for a
+# shell after a pipe (`curl ... | sh`), which no prefix rule can name without matching Codex's own shell.
+
+prefix_rule(
+    pattern=[["sudo", "/usr/bin/sudo", "/bin/sudo", "/usr/local/bin/sudo", "/run/wrappers/bin/sudo"]],
+    decision="forbidden",
+    justification="Agents never escalate privileges; ask the operator to run it.",
+    match=["sudo apt-get install jq", "/usr/bin/sudo -v", "/run/wrappers/bin/sudo true"],
+    not_match=["sudoku"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-rf", "-fr", "-rfv", "-rvf", "-frv", "-fvr", "-vrf", "-vfr", "-Rf", "-fR", "-Rfv", "-Rvf", "-fRv", "-fvR", "-vRf", "-vfR"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -rf build", "rm -fr build", "rm -Rf build", "rm -vrf build", "/bin/rm -rf build", "/usr/bin/rm -fr build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-r", "-R", "--recursive"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -r -f build", "rm --recursive --force build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-f", "--force"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -f -r build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-v", "--verbose"], ["-r", "-R", "--recursive"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -r -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-v", "--verbose"], ["-f", "--force"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -f -r build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-r", "-R", "--recursive"], ["-v", "--verbose"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -r -v -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-f", "--force"], ["-v", "--verbose"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -f -v -r build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-v", "--verbose"], ["-rf", "-fr", "-rfv", "-rvf", "-frv", "-fvr", "-vrf", "-vfr", "-Rf", "-fR", "-Rfv", "-Rvf", "-fRv", "-fvR", "-vRf", "-vfR"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -rf build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-rv", "-vr", "-Rv", "-vR"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -rv -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-f", "--force"], ["-rv", "-vr", "-Rv", "-vR"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -f -rv build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-fv", "-vf"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -fv -r build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-r", "-R", "--recursive"], ["-fv", "-vf"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -r -fv build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["sh", "bash", "zsh", "dash"], "-s"],
+    decision="forbidden",
+    justification="A shell reading its script from a pipe runs downloaded code; download, review and run the file instead.",
+    match=["bash -s -- -y", "sh -s"],
+    not_match=["bash -lc true", "sh script.sh"],
+)
+
+prefix_rule(
+    pattern=[["npm", "pnpm", "yarn", "bun", "uv", "cargo"], "publish"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["npm publish", "pnpm publish --access public", "yarn publish", "bun publish", "uv publish", "cargo publish --dry-run"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["yarn", "npm", "publish"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["yarn npm publish --tolerate-republish"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["twine", "upload"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["twine upload dist/x.whl"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["gem", "push"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["gem push x-1.0.gem"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["terraform", ["apply", "destroy"]],
+    decision="forbidden",
+    justification="Infrastructure changes are applied by the operator; use terraform plan to preview.",
+    match=["terraform apply", "terraform destroy -auto-approve"],
+    not_match=["terraform plan"],
+)
+
+prefix_rule(
+    pattern=["kubectl", ["apply", "delete"]],
+    decision="forbidden",
+    justification="Cluster changes are applied by the operator; use kubectl diff or get to inspect.",
+    match=["kubectl apply -f deploy.yaml", "kubectl delete --all pods"],
+    not_match=["kubectl diff -f deploy.yaml", "kubectl get pods"],
+)
+
+prefix_rule(
+    pattern=["gh", "release"],
+    decision="forbidden",
+    justification="Releases are published by the operator.",
+    match=["gh release create v1.0.0", "gh release delete v1.0.0"],
+    not_match=["gh pr create"],
+)
+
+prefix_rule(
+    pattern=["gh", "pr", "merge"],
+    decision="forbidden",
+    justification="Merging is the orchestrator's acceptance step; report the PR instead.",
+    match=["gh pr merge 1 --squash", "gh pr merge"],
+    not_match=["gh pr view 1"],
+)
+
+prefix_rule(
+    pattern=["gh", "api", ["-X", "--method"], "PUT"],
+    decision="forbidden",
+    justification="Merging and auto-merge are the orchestrator's acceptance step; report the PR instead.",
+    match=["gh api -X PUT repos/o/r/pulls/1/merge", "gh api --method PUT repos/o/r/pulls/1/merge"],
+    not_match=["gh api repos/o/r/pulls/1/reviews", "gh api -X GET repos/o/r/pulls/1"],
+)
+
+prefix_rule(
+    pattern=["gh", "api", ["-XPUT", "--method=PUT"]],
+    decision="forbidden",
+    justification="Merging and auto-merge are the orchestrator's acceptance step; report the PR instead.",
+    match=["gh api -XPUT repos/o/r/pulls/1/merge", "gh api --method=PUT repos/o/r/pulls/1/merge"],
+    not_match=["gh api repos/o/r/pulls/1/reviews", "gh api -X GET repos/o/r/pulls/1"],
+)
+
+prefix_rule(
+    pattern=["gh", "api", "graphql"],
+    decision="forbidden",
+    justification="Merging and auto-merge are the orchestrator's acceptance step; report the PR instead.",
+    match=["gh api graphql -f query=mutation"],
+    not_match=["gh api repos/o/r/pulls/1/reviews", "gh api -X GET repos/o/r/pulls/1"],
+)
+
+prefix_rule(
+    pattern=["gh", "api"],
+    decision="prompt",
+    justification="A gh api call with a method or a request body writes to GitHub; the human approves each one.",
+    match=["gh api repos/o/r/pulls/1/merge -X PUT", "gh api repos/o/r/issues -f title=x", "gh api -f title=x repos/o/r/issues", "gh api --method=DELETE repos/o/r/git/refs/heads/x", "gh api repos/o/r/issues --input body.json"],
+    not_match=["gh pr view 1"],
+)
+
+prefix_rule(
+    pattern=["gh", "pr", ["edit", "close", "review", "update-branch", "reopen", "lock", "unlock", "revert"]],
+    decision="prompt",
+    justification="Pull-request state changes are the orchestrator's levers; report the PR instead.",
+    match=["gh pr edit 1 --title x", "gh pr close 1", "gh pr review 1 --approve", "gh pr update-branch 1", "gh pr revert 1"],
+    not_match=["gh pr view 1", "gh pr checks 1", "gh pr diff 1"],
+)
+
+prefix_rule(
+    pattern=["gh", "issue"],
+    decision="prompt",
+    justification="Issues are the operator's; report the finding instead.",
+    match=["gh issue create --title x", "gh issue comment 1 --body x"],
+    not_match=["gh pr view 1"],
+)
+
+prefix_rule(
+    pattern=["gh", "repo", ["create", "delete", "edit", "rename", "archive", "unarchive", "fork", "sync", "deploy-key", "autolink"]],
+    decision="prompt",
+    justification="Repository settings and lifecycle are the operator's.",
+    match=["gh repo delete o/r --yes", "gh repo edit --visibility public", "gh repo create o/x", "gh repo deploy-key add k"],
+    not_match=["gh repo view o/r", "gh repo clone o/r"],
+)
+
+prefix_rule(
+    pattern=["gh", ["secret", "variable"], ["set", "delete"]],
+    decision="prompt",
+    justification="Secrets and variables are the operator's.",
+    match=["gh secret set TOKEN", "gh variable set NAME --body x", "gh secret delete TOKEN", "gh variable delete NAME"],
+    not_match=["gh secret list", "gh variable list"],
+)
+
+prefix_rule(
+    pattern=["gh", "workflow", ["run", "enable", "disable"]],
+    decision="prompt",
+    justification="Workflow runs are started, rerun and cancelled by the operator or the ci-rerun lever.",
+    match=["gh workflow run ci.yml", "gh workflow disable ci.yml"],
+    not_match=["gh run view 1 --log-failed", "gh run list", "gh workflow list"],
+)
+
+prefix_rule(
+    pattern=["gh", "run", ["rerun", "cancel", "delete"]],
+    decision="prompt",
+    justification="Workflow runs are started, rerun and cancelled by the operator or the ci-rerun lever.",
+    match=["gh run rerun 1 --failed", "gh run cancel 1"],
+    not_match=["gh run view 1 --log-failed", "gh run list", "gh workflow list"],
+)
+
+prefix_rule(
+    pattern=["gh", "cache", "delete"],
+    decision="prompt",
+    justification="Workflow runs are started, rerun and cancelled by the operator or the ci-rerun lever.",
+    match=["gh cache delete --all"],
+    not_match=["gh run view 1 --log-failed", "gh run list", "gh workflow list"],
+)
+
+prefix_rule(
+    pattern=["gh", "label", ["create", "edit", "delete", "clone"]],
+    decision="prompt",
+    justification="Labels, gists, keys, codespaces and projects are the operator's.",
+    match=["gh label create bug"],
+    not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", "gist", ["create", "edit", "delete", "rename"]],
+    decision="prompt",
+    justification="Labels, gists, keys, codespaces and projects are the operator's.",
+    match=["gh gist create f.txt"],
+    not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", ["ssh-key", "gpg-key"], ["add", "delete"]],
+    decision="prompt",
+    justification="Labels, gists, keys, codespaces and projects are the operator's.",
+    match=["gh ssh-key add k.pub"],
+    not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", "codespace", ["create", "delete", "edit", "rebuild", "stop"]],
+    decision="prompt",
+    justification="Labels, gists, keys, codespaces and projects are the operator's.",
+    match=["gh codespace delete --all"],
+    not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", "project", ["close", "copy", "create", "delete", "edit", "field-create", "field-delete", "item-add", "item-archive", "item-create", "item-delete", "item-edit", "link", "mark-template", "unlink"]],
+    decision="prompt",
+    justification="Labels, gists, keys, codespaces and projects are the operator's.",
+    match=["gh project item-add 1"],
+    not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", "codespace", "ports", "visibility"],
+    decision="forbidden",
+    justification="Codespace port visibility is the operator's; a public port exposes the codespace to the internet.",
+    match=["gh codespace ports visibility 8080:public -c x", "gh codespace ports visibility 3000:org"],
+    not_match=["gh codespace ports -c x", "gh codespace list"],
+)
+
+prefix_rule(
+    pattern=["gh", "alias", ["set", "import", "delete"]],
+    decision="prompt",
+    justification="A gh alias hides the command it runs from these rules; the operator manages aliases.",
+    match=["gh alias set m 'pr merge'", "gh alias import aliases.yml"],
+    not_match=["gh alias list"],
+)

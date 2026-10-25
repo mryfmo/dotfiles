@@ -588,18 +588,39 @@ OMP_GITHUB_ALLOWLIST = {
 }
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
+# The worker's own-branch pushes (regime-cutover U76): the only allow rows besides levers in a writing policy, worker.yml
+# only. Exact lines without a wildcard (omp patterns have no character class, so a branch word could not be limited to
+# a safe character set), followed by the catch-all push denies, in this order; omp takes the first matching rule.
+OMP_WORKER_PUSH_ALLOW = ("git push", "git push origin HEAD", "git push -u origin HEAD")
+OMP_WORKER_PUSH_CATCH = ("*git push*", "*git -* push*")
 
 
-def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | None = None) -> None:
+def validate_omp_worker_push(patterns: list[dict[str, Any]], label: str) -> None:
+    """The worker's push rows are exactly the three allows and the catch-all denies, contiguous and in that order; a
+    change to any of them is a reviewed change to these constants."""
+    expected = [
+        *({"match": match, "approval": "allow"} for match in OMP_WORKER_PUSH_ALLOW),
+        *({"match": match, "approval": "deny"} for match in OMP_WORKER_PUSH_CATCH),
+    ]
+    starts = [index for index, rule in enumerate(patterns) if rule == expected[0]]
+    if len(starts) != 1 or patterns[starts[0] : starts[0] + len(expected)] != expected:
+        fail(f"{label} must hold the worker push rows of validate-agent-assets.py exactly once, in order")
+
+
+def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | None = None, role: str = "") -> None:
     patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
     if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
         fail(f"{label} bash.patterns must be a list of rules")
+    if role == "worker":
+        validate_omp_worker_push(patterns, label)
     for rule in patterns:
         if rule.get("approval") != "allow":
             continue
         match = rule.get("match")
         if not isinstance(match, str):
             fail(f"{label} allow rule {match!r} is not a string")
+        if role == "worker" and match in OMP_WORKER_PUSH_ALLOW:
+            continue
         if OMP_CHECKOUT_LEVER.match(match):
             fail(
                 f"{label} allow rule {match!r} names a lever inside the rewritable checkout; "
@@ -654,7 +675,7 @@ def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | N
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
         validate_omp_github_allow(policy, str(path), role)
         if role in OMP_WRITING_POLICIES:
-            validate_omp_policy_allow(policy, str(path), pinned)
+            validate_omp_policy_allow(policy, str(path), pinned, role)
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns

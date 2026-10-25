@@ -760,13 +760,14 @@ class LintComparisonsTest(unittest.TestCase):
                 ("hn.sh", "cat <<'EOF'\n$(jq -r 'select(.url == $p)' input.json)\nEOF\n", []),
             ]
         )
-        # a wrapper, known or not, never hides the jq or [ command after it
+        # a known wrapper never hides the jq or [ command after it
         wrapped = ("nice", "nice -n 5", "timeout 5", "timeout -k 2 5", "sudo -u root", "xargs -n 1", "stdbuf -oL")
         self.assert_hits(
             [(f"wj{i}.sh", f"{w} jq -r 'select(.url == $p)'\n", [("R3", 1)]) for i, w in enumerate(wrapped)]
             + [(f"wb{i}.sh", f'{w} [ "$path" = /x ]\n', [("R1", 1)]) for i, w in enumerate(wrapped)]
-            + [("wu.sh", "unknownwrap --flag jq -r 'select(.url == $p)'\n", [("R3", 1)])]
             + [("wt.sh", 'timeout 5 test "$path" = /x\n', [("R1", 1)])]
+            # out of contract: a command is read at command position, so an unknown wrapper hides it (precision)
+            + [("wu.sh", "unknownwrap --flag jq -r 'select(.url == $p)'\n", [])]
         )
         # a substitution before a path variable hides nothing: any part of the word counts
         self.assert_hits(
@@ -774,6 +775,43 @@ class LintComparisonsTest(unittest.TestCase):
                 ("lp.sh", '[[ "$(printf %s "$prefix")$path" == "$other" ]]\n', [("R1", 1)]),
                 ("lc.sh", 'case "$(printf %s "$prefix")$url" in foo) ;; esac\n', [("R2", 1)]),
                 ("ln.sh", '[[ "$(printf %s "$path")$count" == "$other" ]]\n', []),
+            ]
+        )
+
+    def test_audit_531_round_3_shell_strings_jq_names_and_data_arguments(self):
+        # audit of 74a305c8: a shell's -c string and eval's arguments are parsed again and read by every rule
+        forms = (
+            ("bash -c 'grep -E \"$name\" f'\n", "R6"),
+            ("sh -c 'grep -E \"$name\" f'\n", "R6"),
+            ("zsh -c 'grep -E \"$name\" f'\n", "R6"),
+            ("dash -c 'grep -E \"$name\" f'\n", "R6"),
+            ("bash -ec 'pgrep -f \"$name\"'\n", "R5"),
+            ("bash -o pipefail -lc 'ps aux | grep x'\n", "R5"),
+            ("eval 'pgrep -f \"$name\"'\n", "R5"),
+            ('eval "[[ \\$path == /x ]]"\n', "R1"),
+            ("bash -c \"jq -r 'select(.url == \\$p)'\"\n", "R3"),
+            ("env A=1 bash -c 'bash -c \"grep -E \\$name f\"'\n", "R6"),
+        )
+        self.assert_hits([(f"sc{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(forms)])
+        self.assert_hits(
+            [
+                ("sl.sh", "bash -c '\ntrue\ngrep -E \"$name\" f'\n", [("R6", 3)]),  # the hit on its own outer line
+                ("sm.sh", "bash -c 'grep -E \"$name\" f' # lint-comparisons: allow the fixture\n", []),
+                ("sn.sh", 'bash -c \'grep -E "$(escape_regex "$name")" f\'\n', []),
+                ("so.sh", "bash -c 'echo hi' 'grep -E \"$name\" f'\n", []),  # $0, not code
+                ("sp.sh", "bash script.sh 'grep -E \"$name\" f'\n", []),  # no -c: arguments, not code
+            ]
+        )
+        # jq under a versioned or platform name
+        names = ("jq-1.7", "/opt/tools/jq-linux64", "jq.exe", '"$bin/jq-1.7"')
+        self.assert_hits([(f"jn{i}.sh", f"{n} -r 'select(.url == $p)'\n", [("R3", 1)]) for i, n in enumerate(names)])
+        # a data argument that spells a command is no command
+        self.assert_hits(
+            [
+                ("pd.sh", "printf '%s\\n' jq \"select(.url == \\$p)\"\n", []),
+                ("pe.sh", 'echo [ "$path" = /x ]\n', []),
+                ("pf.sh", "printf '%s\\n' grep -E \"$name\"\n", []),
+                ("pg.sh", "jqx -r 'select(.url == $p)'\n", []),
             ]
         )
 

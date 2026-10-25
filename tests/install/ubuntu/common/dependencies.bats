@@ -10,7 +10,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[0]}" -eq 18 ]
+    [ "${lines[0]}" -eq 19 ]
 
     expected_packages=(
         bubblewrap
@@ -25,6 +25,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         mosh
         perl
         pinentry-curses
+        ripgrep
         socat
         sudo
         unzip

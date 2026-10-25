@@ -8,7 +8,9 @@ does inside an AI tool, `src/commands/launch.rs:48` at v0.7.30) and its herdr te
 and HCOM_TAG set, the `--` itself dropped as hcom's `extract_launch_flags` drops it (`src/commands/launch.rs:572-581`
 at v0.7.30), HCOM_DIR inherited and HCOM_TEAM dropped, as the real hcom drops it (the U33 pilot's pane showed
 HCOM_TEAM unset after hcom-seat exported it). `herdr pane run` executes the command it is given. `omp` records and
-exits 0.
+exits 0. `srt --settings <file> -- <command...>` (regime-cutover U85) plays the sandbox without one: the seat shim's
+canary (`/bin/sh -c ...`) prints `$FAKE_SRT_CANARY` (default: all three probes denied, as the real sandbox answers) and
+any other command is executed. `bwrap`, `socat` and `rg` only exist on PATH for the Linux prerequisite check.
 """
 
 import json
@@ -48,5 +50,11 @@ if tool == "herdr" and argv[:2] == ["tab", "create"]:
     print("w1:p9")
 elif tool == "herdr" and argv[:2] == ["pane", "run"]:
     sys.exit(subprocess.run(argv[3:], check=False).returncode)
-elif tool not in ("herdr", "omp", "hcom"):
+elif tool == "srt":
+    command = argv[argv.index("--") + 1 :]
+    if command[:2] == ["/bin/sh", "-c"]:
+        print(os.environ.get("FAKE_SRT_CANARY", "write-denied read-denied ssh-denied"))
+        sys.exit(0)
+    os.execvp(command[0], command)
+elif tool not in ("herdr", "omp", "hcom", "bwrap", "socat", "rg"):
     sys.exit(f"fake-tool: unknown tool {tool}")

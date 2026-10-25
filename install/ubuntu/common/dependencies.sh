@@ -6,7 +6,8 @@
 #   Ensures the base command-line toolchain required by the repository is
 #   present, including `sudo` when starting from a minimal container.
 #   `bubblewrap` and `socat` are the Linux prerequisites of the Claude Code
-#   Bash sandbox.
+#   Bash sandbox; with `ripgrep` they are those of the sandbox-runtime `srt`
+#   that contains the omp seats (scripts/orchestrator/hcom-seat).
 
 set -Eeuo pipefail
 
@@ -27,6 +28,7 @@ readonly PACKAGES=(
     mosh
     perl
     pinentry-curses
+    ripgrep
     socat
     sudo
     unzip

@@ -51,7 +51,9 @@ class HcomSeatTest(unittest.TestCase):
         self.gate.mkdir(parents=True)
         bindir = root / "bin"
         bindir.mkdir()
-        for tool in ("hcom", "herdr", "omp"):
+        self.bindir = bindir
+        # srt plays the sandbox; bwrap, socat and rg only satisfy the Linux prerequisite check (U85).
+        for tool in ("hcom", "herdr", "omp", "srt", "bwrap", "socat", "rg"):
             (bindir / tool).symlink_to(FAKE)
         self.calls = root / "calls"
         self.calls.mkdir()
@@ -126,7 +128,8 @@ class HcomSeatTest(unittest.TestCase):
         common = Path(self.git("rev-parse", "--git-common-dir", cwd=clone)).resolve()
         self.assertEqual(common, (self.repo / ".git").resolve())
         (omp,) = self.calls_of("omp")
-        self.assertEqual(omp["argv"], expected[expected.index("--") + 1 :])
+        # The seat shim runs omp under srt with --no-extensions first (U85, U66).
+        self.assertEqual(omp["argv"], ["--no-extensions", *expected[expected.index("--") + 1 :]])
         self.assertEqual(Path(omp["cwd"]).resolve(), Path(clone).resolve())
         self.assertEqual(
             {key: omp["env"][key] for key in ("HCOM_LAUNCHED", "HCOM_TAG", "HCOM_DIR")},
@@ -397,6 +400,74 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"extension directory absent: {self.gate}", run.stderr, "--ext never drops the gate")
         self.assertEqual([self.calls_of(tool) for tool in ("hcom", "herdr", "omp")], [[], [], []])
+        self.assertFalse(Path(self.seats).exists())
+
+    def settings_of(self, name):
+        return json.loads(Path(self.seats, ".sandbox", name, "srt-settings.json").read_text())
+
+    def test_omp_runs_under_srt_behind_a_canary_with_the_seat_roots(self):
+        """U85: hcom pins the per-seat shim, which proves the sandbox with a canary and then runs omp under srt."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        shim = Path(self.seats, ".sandbox/worker/bin/omp")
+        settings = Path(self.seats, ".sandbox/worker/srt-settings.json")
+        canary, launch = self.calls_of("srt")
+        self.assertEqual(canary["argv"][:5], ["--settings", str(settings), "--", "/bin/sh", "-c"])
+        self.assertEqual(
+            canary["argv"][-3:], [str(shim.parent.parent / "canary"), str(settings), str(self.home / ".ssh")]
+        )
+        (omp,) = self.calls_of("omp")
+        self.assertEqual(launch["argv"], ["--settings", str(settings), "--", str(self.bindir / "omp"), *omp["argv"]])
+        worker = self.settings_of("worker")
+        clone = str(Path(self.seats, "worker"))
+        write, deny_read = worker["filesystem"]["allowWrite"], worker["filesystem"]["denyRead"]
+        self.assertIn(clone, write)
+        self.assertIn(str((self.repo / ".git").resolve()), write)
+        self.assertNotIn(str(self.repo), write, "a worker writes its clone and the git store, not the checkout")
+        self.assertNotIn(self.seats, write)
+        for path in (".ssh", ".aws", ".codex", ".omp/agent", "Workspace", ".local/share/chezmoi"):
+            self.assertIn(str(self.home / path), deny_read)
+        self.assertIn(self.seats, deny_read, "a worker reads no other seat")
+        self.assertIn(str(shim.parent.parent), worker["filesystem"]["denyWrite"])
+        self.assertIn(str((self.repo / ".git/config").resolve()), worker["filesystem"]["denyWrite"])
+        self.assertEqual(worker["network"]["allowUnixSockets"], [])
+        self.assertNotIn("example.com", worker["network"]["allowedDomains"])
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        orchestrator = self.settings_of("orchestrator")
+        self.assertIn(self.seats, orchestrator["filesystem"]["allowWrite"], "the orchestrator creates worker clones")
+        self.assertIn(str(Path(self.seats, ".sandbox/orchestrator")), orchestrator["filesystem"]["denyWrite"])
+        self.assertEqual(orchestrator["network"]["allowUnixSockets"], [str(self.home / ".config/herdr/herdr.sock")])
+
+    def test_a_canary_that_finds_the_sandbox_open_starts_no_omp(self):
+        """U85, failure injection: an srt that does not contain the canary's probes never reaches omp."""
+        for answer in ("write-open read-denied ssh-denied", "write-denied read-open ssh-denied",
+                       "write-denied read-denied ssh-open", ""):  # fmt: skip
+            with self.subTest(answer):
+                run = self.seat("worker", "--seats-root", self.seats, FAKE_SRT_CANARY=answer)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertIn("the sandbox does not hold", run.stderr)
+                self.assertEqual(self.calls_of("omp"), [])
+
+    def test_a_missing_or_seat_writable_srt_is_refused_before_anything_starts(self):
+        (self.bindir / "srt").unlink()
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("srt (@anthropic-ai/sandbox-runtime) not found on PATH", run.stderr)
+        self.assertFalse(Path(self.seats).exists())
+        # An srt the orchestrator could rewrite (inside its checkout) would run the next launch uncontained.
+        planted = self.repo / "tools"
+        planted.mkdir()
+        (planted / "srt").symlink_to(FAKE)
+        run = self.seat("orchestrator", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"lies under the seat write root {self.repo.resolve()}", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_a_dry_run_writes_no_sandbox(self):
+        run = self.seat("worker", "--seats-root", self.seats, "--dry-run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"hcom-seat: sandbox {self.seats}/.sandbox/worker", run.stderr)
         self.assertFalse(Path(self.seats).exists())
 
 

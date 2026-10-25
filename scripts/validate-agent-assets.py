@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections.abc import Iterable
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import tomllib
@@ -286,8 +286,72 @@ def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label:
 SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
 # Paths a sandboxed command must never write (U68): the directories holding executables on PATH (the uv tools, among
 # them the hcom binary, mise's installs and shims, ~/.local/bin) and mise's trusted-configs state, all of which a later
-# unsandboxed run would execute or trust. An allowWrite entry at, under or above one of them is refused.
+# unsandboxed run would execute or trust. Every write root the manifest renders (Claude allowWrite, which includes
+# the Codex writable_roots, the Codex writable_roots themselves, Claude additionalDirectories) is refused when it is
+# one of them, lies under one, or contains one (`/`, `~`, `~/.local`), compared after normalisation.
 SANDBOX_WRITE_FORBIDDEN = ("~/.local/bin", "~/.local/share/uv", "~/.local/share/mise", "~/.local/state/mise")
+HOME_ANCHORS = ("{{ .chezmoi.homeDir }}", "${HOME}", "$HOME", "~")
+# A home itself and the directories above every home contain the forbidden paths of some user.
+HOME_PARENTS = frozenset(PurePosixPath(path) for path in ("/", "/HOME", "/Users", "/home", "/var"))
+
+
+def canonical_write_root(path: str) -> PurePosixPath:
+    """Return `path` absolute and normalised, with any home directory spelled `/HOME` (U68).
+
+    `~`, `$HOME`, `${HOME}` and `{{ .chezmoi.homeDir }}` become `/HOME`, so does a literal `/Users/<name>`,
+    `/home/<name>`, `/root` or `/var/root` and this host's own home; `..`, `.`, repeated and trailing slashes are
+    folded by `posixpath.normpath`.
+    """
+    text = path.strip()
+    for anchor in HOME_ANCHORS:
+        # The anchors are template and shell tokens, not paths, so they are matched as text.
+        if text == anchor or text.startswith(anchor + "/"):  # lint-comparisons: allow template token text
+            text = "/HOME" + text[len(anchor) :]
+            break
+    canonical = PurePosixPath(posixpath.normpath(re.sub(r"^/+", "/", text)))
+    home = PurePosixPath(posixpath.normpath(str(Path.home())))
+    parts = canonical.parts
+    if canonical.is_relative_to(home):
+        return PurePosixPath("/HOME", canonical.relative_to(home))
+    if len(parts) >= 3 and parts[1] in {"Users", "home"}:
+        return PurePosixPath("/HOME", *parts[3:])
+    for root in (PurePosixPath("/root"), PurePosixPath("/var/root")):
+        if canonical.is_relative_to(root):
+            return PurePosixPath("/HOME", canonical.relative_to(root))
+    return canonical
+
+
+def validate_write_roots(roots: Any, label: str) -> None:
+    """Refuse a write root that is not an absolute or home path without globs, or that reaches a forbidden path."""
+    if not isinstance(roots, list):
+        fail(f"{label} must be a list: {roots!r}")
+    anchored = ("/", *(anchor + "/" for anchor in HOME_ANCHORS))
+    # The form check reads the settings text as written (an anchor token, a glob character), before normalisation.
+    invalid = []
+    for root in roots:
+        text = root.strip() if isinstance(root, str) else None
+        token = text in HOME_ANCHORS  # lint-comparisons: allow settings text
+        rooted = text is not None and text.startswith(anchored)  # lint-comparisons: allow settings text
+        anchored_text = token or rooted
+        if not anchored_text or any(char in text for char in "*?[]"):  # lint-comparisons: allow settings text
+            invalid.append(root)
+    if invalid:
+        fail(f"{label} entries must be absolute or home paths without globs: {invalid}")
+    forbidden = [canonical_write_root(path) for path in SANDBOX_WRITE_FORBIDDEN]
+    reaching = []
+    for root in roots:
+        canonical = canonical_write_root(root)
+        if canonical in HOME_PARENTS:  # lint-comparisons: allow PurePosixPath membership, already normalised
+            reaching.append(root)
+        elif any(canonical.is_relative_to(gone) or gone.is_relative_to(canonical) for gone in forbidden):
+            reaching.append(root)
+    if reaching:
+        fail(
+            f"{label} must not reach {list(SANDBOX_WRITE_FORBIDDEN)}, which hold executables on PATH or mise trust "
+            f"state: {reaching}"
+        )
+
+
 # Credential stores every sandboxed command is denied (U68): SSH keys, the agents' login stores, the age key.
 SANDBOX_CREDENTIAL_DENIES = (
     "~/.ssh",
@@ -301,6 +365,47 @@ SANDBOX_CREDENTIAL_DENIES = (
 GH_HOSTS_FILE = "~/.config/gh/hosts.yml"
 SANDBOX_ENV_DENIES = ("CLAUDE_CODE_OAUTH_TOKEN",)
 RETRY_ASK_RULE = "Bash(dangerouslyDisableSandbox:true)"
+# A synthetic gh hosts file in the layout `gh auth login` writes (a host block with a per-user entry, two token
+# shapes), never a real token. A hosts-file mask holds only when its `extract` group 1 is exactly each token value.
+GH_HOSTS_SAMPLE_TOKENS = ("gho_SyntheticToken0123456789AB", "github_pat_SYNTH_0123")
+GH_HOSTS_SAMPLE = (
+    "github.com:\n"
+    "    users:\n"
+    "        octocat:\n"
+    f"            oauth_token: {GH_HOSTS_SAMPLE_TOKENS[0]}\n"
+    "    git_protocol: https\n"
+    f"    oauth_token: {GH_HOSTS_SAMPLE_TOKENS[0]}\n"
+    "    user: octocat\n"
+    "ghe.example.com:\n"
+    f"    oauth_token: {GH_HOSTS_SAMPLE_TOKENS[1]}\n"
+    "    user: octocat\n"
+)
+
+
+def mask_extracts_every_token(extract: Any) -> bool:
+    """True when `extract` compiles, and on the sample hosts file its group 1 is exactly every token occurrence (U68).
+
+    A capture of whitespace, a prefix of the token or the `oauth_token:` key leaves the secret readable inside the
+    sandbox; so does a pattern that misses one token occurrence or one token shape.
+    """
+    if not isinstance(extract, str) or not extract:
+        return False
+    try:
+        pattern = re.compile(extract)
+    except re.error:
+        return False
+    if pattern.groups < 1:
+        return False
+    captured = []
+    for match in pattern.finditer(GH_HOSTS_SAMPLE):
+        if match.group(1) is not None:
+            captured.append(match.span(1))
+    expected = [
+        (match.start(), match.end())
+        for token in GH_HOSTS_SAMPLE_TOKENS
+        for match in re.finditer(re.escape(token), GH_HOSTS_SAMPLE)
+    ]
+    return sorted(captured) == sorted(expected)
 
 
 def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_name: str) -> None:
@@ -321,7 +426,8 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
         or (
             hosts.get("mode") == "mask"
             and (
-                not hosts.get("extract")
+                not mask_extracts_every_token(hosts.get("extract"))
+                or hosts.get("maskDuplicates") is not True
                 or hosts.get("onExtractNoMatch") != "deny"
                 or not hosts.get("injectHosts")
                 or not set(hosts.get("injectHosts", [])) <= set(domains)
@@ -329,8 +435,9 @@ def validate_claude_sandbox_credentials(sandbox: dict[str, Any], label: str, os_
         )
     ):
         fail(
-            f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with extract, onExtractNoMatch=deny and "
-            f"injectHosts inside allowedDomains: {hosts!r}"
+            f"{label}.credentials.files must deny {GH_HOSTS_FILE} or mask it with an extract whose group 1 captures "
+            f"each oauth_token value, maskDuplicates=true, onExtractNoMatch=deny and injectHosts inside "
+            f"allowedDomains: {hosts!r}"
         )
     env_vars = credentials.get("envVars", [])
     entries = env_vars if isinstance(env_vars, list) else []
@@ -366,17 +473,7 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str,
     ]
     if invalid:
         fail(f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}")
-    reaching = []
-    for path in extra:
-        for gone in SANDBOX_WRITE_FORBIDDEN:
-            under = path.startswith(gone + "/") or gone.startswith(path + "/")  # lint-comparisons: allow settings text
-            if under or path.rstrip("/") == gone:  # lint-comparisons: allow settings path text
-                reaching.append(path)
-    if reaching:
-        fail(
-            f"{label}.filesystem.allowWrite must not reach {list(SANDBOX_WRITE_FORBIDDEN)}, which hold executables "
-            f"on PATH or mise trust state: {reaching}"
-        )
+    validate_write_roots(allow_write, f"{label}.filesystem.allowWrite")
     deny_read = sandbox.get("filesystem", {}).get("denyRead")
     entries = deny_read if isinstance(deny_read, list) else []
     rooted = [entry for entry in entries if isinstance(entry, str) and entry.startswith(("/", "~/"))]
@@ -577,6 +674,11 @@ def validate_claude_settings(manifest: dict[str, Any], os_name: str = "darwin") 
     ask = (settings.get("permissions") or {}).get("ask") or []
     if settings["sandbox"].get("allowUnsandboxedCommands") is not False and RETRY_ASK_RULE not in ask:
         fail(f"{settings_path} {os_name} permissions.ask must contain {RETRY_ASK_RULE} while unsandboxed retries exist")
+    # additionalDirectories grant sandboxed commands write access like allowWrite (code.claude.com/docs/en/sandboxing).
+    validate_write_roots(
+        (settings.get("permissions") or {}).get("additionalDirectories", []),
+        f"{settings_path} {os_name} permissions.additionalDirectories",
+    )
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
@@ -668,6 +770,10 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should keep sandbox command network access disabled")
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
+    validate_write_roots(
+        data.get("sandbox_workspace_write", {}).get("writable_roots", []),
+        f"{codex_path} sandbox_workspace_write.writable_roots",
+    )
     features = data.get("features", {})
     for feature in ("plugins", "hooks", "plugin_hooks"):
         if features.get(feature) is not True:

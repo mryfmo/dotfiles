@@ -947,6 +947,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "path": "~/.config/gh/hosts.yml",
                 "mode": "mask",
                 "extract": "oauth_token:\\s*(\\S+)",
+                "maskDuplicates": True,
                 "onExtractNoMatch": "deny",
                 "injectHosts": ["api.github.com"],
             }
@@ -1027,6 +1028,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_claude_settings(candidate)
         self.assertIn("permissions.ask must contain Bash(dangerouslyDisableSandbox:true)", stderr.getvalue())
+
+        template = generator.render_claude_settings(manifest)
+        widened = template.replace(
+            '"defaultMode": "auto",', '"defaultMode": "auto", "additionalDirectories": ["~/"],', 1
+        )
+        self.assertNotEqual(template, widened)
+        self.write_text_file("home/.chezmoitemplates/claude-settings-managed.json", widened)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_claude_settings(manifest)
+        self.assertIn("permissions.additionalDirectories must not reach", stderr.getvalue())
 
         template = generator.render_claude_settings(manifest)
         prefix, linux = template.rsplit("{{ else }}", 1)  # the last OS conditional is the sandbox block
@@ -1434,6 +1446,104 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_every_write_root_list_refuses_a_path_that_reaches_path_or_trust_state(self) -> None:
+        """U68 audit: normalised containment both ways, on Claude allowWrite, Codex roots and additionalDirectories."""
+        reaching = [
+            "/",
+            "//",
+            "~",
+            "~/",
+            "~/.local",
+            "~/.local/",
+            "~/.local/share/uv/",
+            "~/.local/share/uv/tools/hcom",
+            "~/.cache/../.local/bin",
+            "~/./.local/state//mise",
+            "$HOME/.local/bin",
+            "{{ .chezmoi.homeDir }}/.local/share/mise",
+            "{{ .chezmoi.homeDir }}",
+            "/Users",
+            "/Users/someone/.local/bin",
+            "/home/someone",
+            "/home/someone/.local/state/mise/trusted-configs",
+            str(Path.home() / ".local/share/uv"),
+        ]
+        for root in reaching:
+            with self.subTest(list="claude allowWrite", root=root):
+                sandbox = self.valid_claude_sandbox()
+                sandbox["filesystem"]["allowWrite"].append(root)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_write_roots(sandbox["filesystem"]["allowWrite"], "allowWrite")
+                self.assertIn("must not reach", stderr.getvalue())
+            with self.subTest(list="shared Codex root via the Claude sandbox", root=root):
+                roots = [*self.codex_writable_roots, root]
+                sandbox = self.valid_claude_sandbox()
+                sandbox["filesystem"]["allowWrite"] = list(roots)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, roots, "sandbox")
+                self.assertIn("must not reach", stderr.getvalue())
+        for root in ("relative/root", "../escape", "~/.cache/*"):
+            with self.subTest(refused_form=root), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit):
+                    self.module.validate_write_roots([root], "roots")
+                self.assertIn("absolute or home paths without globs", stderr.getvalue())
+        self.module.validate_write_roots(
+            ["~/.cache/uv", "~/.local/state/hcom", "~/.local/statex", "/tmp/build", *self.codex_writable_roots], "ok"
+        )
+
+        roots = ["{{ .chezmoi.homeDir }}/.local/share/uv"]
+        self.write_codex_config(f"network_access = false\nwritable_roots = {json.dumps(roots)}")
+        manifest = {
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
+            "interactive_profile": "standard",
+            "codex": {
+                "sandbox_workspace_write": {"network_access": False, "writable_roots": roots},
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            },
+        }
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
+        self.assertIn("sandbox_workspace_write.writable_roots must not reach", stderr.getvalue())
+
+    def test_the_gh_hosts_mask_must_capture_each_token_value_and_mask_duplicates(self) -> None:
+        """U68 audit: an extract that captures whitespace, a key or part of a token exposes the secret."""
+        weak = {
+            "whitespace": "oauth_token:( )",
+            "the key": "(oauth_token):",
+            "a prefix": "oauth_token:\\s*(\\S{4})",
+            "one token shape": "oauth_token:\\s*(gho_\\S+)",
+            "the line": "(oauth_token:\\s*\\S+)",
+            "no group": "oauth_token:\\s*\\S+",
+            "invalid": "oauth_token:(",
+            "empty": "",
+        }
+        for name, extract in weak.items():
+            with self.subTest(extract=name):
+                self.assertFalse(self.module.mask_extracts_every_token(extract))
+                sandbox = self.valid_claude_sandbox()
+                sandbox["credentials"]["files"][-1]["extract"] = extract
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                self.assertIn("group 1 captures each oauth_token value", stderr.getvalue())
+        for change in ({"maskDuplicates": False}, {"maskDuplicates": None}):
+            with self.subTest(change=change):
+                sandbox = self.valid_claude_sandbox()
+                sandbox["credentials"]["files"][-1].update(change)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.codex_writable_roots, "sandbox")
+                self.assertIn("maskDuplicates=true", stderr.getvalue())
+        for extract in ("oauth_token:\\s*(\\S+)", "oauth_token: ([A-Za-z0-9_]+)"):
+            with self.subTest(accepts=extract):
+                self.assertTrue(self.module.mask_extracts_every_token(extract))
 
     def test_codex_command_hooks_accept_the_declared_tables(self) -> None:
         self.module.validate_codex_command_hooks(

@@ -508,10 +508,13 @@ followed by `claude.sandbox.filesystem.extra_allow_write`: the uv cache
 (`~/.cache/uv`, so `uv run` targets such as `make unit-test` work from
 sandboxed Bash), the hcom stores and the omp seat worktrees, plus mise's cache
 on macOS. Nothing on `PATH` and no trust state is writable:
-`validate-agent-assets.py` refuses an `allowWrite` entry at, under or above
-`~/.local/bin`, `~/.local/share/uv` (the uv tools, among them the `hcom`
-binary), `~/.local/share/mise` or `~/.local/state/mise` (mise's
-trusted-configs). Sandboxed `uv run` and `mise exec` work without them; in a
+`validate-agent-assets.py` refuses a write root (Claude `allowWrite`, the
+Codex `writable_roots` it shares, Claude `additionalDirectories`) that, after
+`~`, `$HOME`, `..` and trailing slashes are normalised, is, lies under or
+contains `~/.local/bin`, `~/.local/share/uv` (the uv tools, among them the
+`hcom` binary), `~/.local/share/mise` or `~/.local/state/mise` (mise's
+trusted-configs); `/`, `~` and `~/.local` are refused for that reason.
+Sandboxed `uv run` and `mise exec` work without them; in a
 checkout mise has not seen yet, mise prints `mise WARN tracking config:
 failed to ln -sf …` and carries on. `uv tool install`, `uv python install`
 and `mise trust` fail inside the sandbox and go through the retry prompt.
@@ -567,8 +570,10 @@ subprocess:
   only on requests to `api.github.com` (`network.tlsTerminate`, rendered on
   Linux only, lets the proxy do that). On macOS Claude Code applies a file mask
   as a deny, so the file is unreadable there; `gh` keeps its token in the
-  Keychain. The mask uses `onExtractNoMatch: deny`, so a file the pattern does
-  not match stays unreadable rather than exposed.
+  Keychain. The mask sets `maskDuplicates` and `onExtractNoMatch: deny`, so a
+  file the pattern does not match stays unreadable rather than exposed. The
+  validator runs the `extract` pattern over a synthetic hosts file and refuses
+  it unless group 1 is exactly every token value.
 - `sandbox.credentials.envVars` removes `CLAUDE_CODE_OAUTH_TOKEN` from the
   environment of sandboxed commands. `~/.zshenv` exports it to every zsh on a
   host with the token file (docs/remote-host-logins.md); a sandboxed zsh cannot
@@ -614,10 +619,13 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite`. A command that needs a Unix socket, a push, a uv tool or Python
-install, a `mise trust`, or the agents' login stores fails inside the sandbox,
-and its unsandboxed retry always prompts. Network hosts other than the listed
-domains prompt. Claude Code refuses to start when the sandbox cannot.
+`allowWrite`. A command that needs a push, a uv tool or Python install, a
+`mise trust`, or the agents' login stores fails inside the sandbox, and so
+does one that needs a Unix socket on macOS, or on Linux only where the
+seccomp filter is installed (without it, sandboxed commands reach every Unix
+socket). Each such command's unsandboxed retry always prompts. Network hosts
+other than the listed domains prompt. Claude Code refuses to start when the
+sandbox cannot.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

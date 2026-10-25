@@ -44,6 +44,12 @@ class EnforceUvTest(unittest.TestCase):
             ("echo a#b; python x.py", "uv run python x.py"),
             ("cat <<EOF > notes.txt\npython x.py\nEOF\npython y.py", "uv run python y.py"),
             ("cat <<'EOF'; python z.py\nbody\nEOF", "uv run python z.py"),
+            # U76 round 3: an `&` inside a redirection is no separator, so the suggestion keeps the redirection whole.
+            ("python3 script.py 2>&1", "uv run python3 script.py 2>&1\n"),
+            ("python3 script.py >&2", "uv run python3 script.py >&2\n"),
+            ("python3 a.py &>log.txt", "uv run python3 a.py &>log.txt\n"),
+            ("sleep 1 & python x.py", "uv run python x.py"),
+            ("make lint 2>&1 && python y.py", "uv run python y.py"),
         ):
             with self.subTest(command=command):
                 result = self.hook(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))

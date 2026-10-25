@@ -1030,25 +1030,59 @@ bash:
     - match: "*gh alias delete"
       approval: deny
     # <<< command_policy <<<
-    # A push that deletes a remote branch (`--delete`, `-d`, a `:<branch>` refspec) or rewrites the remote's branch
-    # set (`--prune`, `--mirror`) is the orchestrator's cleanup, never the worker's (F002).
-    - match: "*git *push* --delete*"
-      approval: deny
-    - match: "*git *push* -d *"
-      approval: deny
-    - match: "*git *push* :*"
-      approval: deny
-    - match: "*git *push* --prune*"
-      approval: deny
-    - match: "*git *push* --mirror*"
-      approval: deny
-    # main is PR-only: no push whose target branch is main, in the bare or the `git -c` spelling.
-    # shortcut: a push to `+main` or `refs/heads/main` passes here and stops at the GitHub ruleset; add the spelling when a seat uses it.
+    # The worker pushes its own branch by remote name only, `git push origin <branch>` or `git push -u origin <branch>`
+    # (hcom-worker SKILL step 3). A push carrying a refspec colon (`HEAD:x`, a `:x` or `+:x` deletion, a URL), a `+`
+    # (forced update), a force, delete, prune, mirror or --all flag is refused, bare or as `git -c …`/`git -C …`, wherever
+    # it sits on the line (regime-cutover U76, round-3 audit: `git push origin +:refs/heads/x` passed the old refspec
+    # list). The globs see the whole line, so a commit message that says `git push` and then holds a `:` or `+` is
+    # refused too; reword it. Not caught: a combined short-flag group other than the ones listed (`-nf`, `-qd`), and a
+    # push that git config or an alias shapes (`remote.origin.push`, `push.default`, `git -c alias.p=push p`); the GitHub
+    # ruleset keeps main, and srt and the seat GitHub identity (U88) the rest.
+    - {match: "*git push *:*", approval: deny}
+    - {match: "*git push *+*", approval: deny}
+    - {match: "*git push*--delete*", approval: deny}
+    - {match: "*git push*--prune*", approval: deny}
+    - {match: "*git push*--mirror*", approval: deny}
+    - {match: "*git push*--all*", approval: deny}
+    - {match: "*git push*--force*", approval: deny}
+    - {match: "*git push* -f", approval: deny}
+    - {match: "*git push* -f *", approval: deny}
+    - {match: "*git push* -d", approval: deny}
+    - {match: "*git push* -d *", approval: deny}
+    - {match: "*git push* -uf", approval: deny}
+    - {match: "*git push* -uf *", approval: deny}
+    - {match: "*git push* -fu", approval: deny}
+    - {match: "*git push* -fu *", approval: deny}
+    - {match: "*git push* -ud", approval: deny}
+    - {match: "*git push* -ud *", approval: deny}
+    - {match: "*git push* -du", approval: deny}
+    - {match: "*git push* -du *", approval: deny}
+    - {match: "*git -* push *:*", approval: deny}
+    - {match: "*git -* push *+*", approval: deny}
+    - {match: "*git -* push*--delete*", approval: deny}
+    - {match: "*git -* push*--prune*", approval: deny}
+    - {match: "*git -* push*--mirror*", approval: deny}
+    - {match: "*git -* push*--all*", approval: deny}
+    - {match: "*git -* push*--force*", approval: deny}
+    - {match: "*git -* push* -f", approval: deny}
+    - {match: "*git -* push* -f *", approval: deny}
+    - {match: "*git -* push* -d", approval: deny}
+    - {match: "*git -* push* -d *", approval: deny}
+    - {match: "*git -* push* -uf", approval: deny}
+    - {match: "*git -* push* -uf *", approval: deny}
+    - {match: "*git -* push* -fu", approval: deny}
+    - {match: "*git -* push* -fu *", approval: deny}
+    - {match: "*git -* push* -ud", approval: deny}
+    - {match: "*git -* push* -ud *", approval: deny}
+    - {match: "*git -* push* -du", approval: deny}
+    - {match: "*git -* push* -du *", approval: deny}
+    # main is PR-only: no push whose target branch is main, by name or by ref (`refs/heads/main`), bare or as
+    # `git -c …`; `HEAD:main` and `+main` already meet the colon and `+` rows above.
     - match: "*git *push* main"
       approval: deny
     - match: "*git *push* main *"
       approval: deny
-    - match: "*git *push*:main"
+    - match: "*git *push*/main"
       approval: deny
-    - match: "*git *push*:main *"
+    - match: "*git *push*/main *"
       approval: deny

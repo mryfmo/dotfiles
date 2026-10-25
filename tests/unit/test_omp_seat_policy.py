@@ -189,14 +189,25 @@ TABLE = {
         ("bash", "cd w && git push origin main", "deny"),
         ("bash", "git push origin feat/omp-seat-policy", "allow"),
         ("bash", "git push -u origin feat/x", "allow"),
-        ("bash", f"{PUSH_RECIPE} feat/omp-seat-policy", "allow"),
-        # F002: no push that deletes or prunes a remote branch.
+        ("bash", "git push", "allow"),
+        # U76 round 3: the worker pushes by remote name only; a URL carries a colon, so the recipe form is refused.
+        ("bash", f"{PUSH_RECIPE} feat/omp-seat-policy", "deny"),
+        # F002 and the round-3 audit: no push that deletes, forces, prunes or mirrors, in any refspec spelling.
+        ("bash", "git push origin +:refs/heads/feature/cleanup", "deny"),
         ("bash", "git push origin --delete feat/x", "deny"),
         ("bash", "git push origin -d feat/x", "deny"),
         ("bash", "git push origin :feat/x", "deny"),
+        ("bash", "git push origin +feat/x", "deny"),
+        ("bash", "git push -uf origin feat/x", "deny"),
+        ("bash", "git push -f origin feat/x", "deny"),
+        ("bash", "git push --force-with-lease origin feat/x", "deny"),
+        ("bash", "git push --all origin", "deny"),
         ("bash", "git push --prune origin", "deny"),
         ("bash", "git push --mirror origin", "deny"),
-        ("bash", "git push origin HEAD:feat/x", "allow"),
+        ("bash", "git push origin HEAD:feat/x", "deny"),
+        ("bash", "git push origin refs/heads/main", "deny"),
+        ("bash", "git -C w push origin +:x", "deny"),
+        ("bash", "cd w; git push origin :x", "deny"),
         ("bash", "rm -f build/out.txt", "allow"),
         ("bash", 'git commit -m "fix the main loop"', "allow"),
         ("bash", "gh pr create --title t --body b", "allow"),
@@ -514,6 +525,42 @@ class OmpSeatPolicyTest(unittest.TestCase):
         self.assertFalse(rule_matches("cmp a b && rm -f a", allow), "settings.md: an allow never rides a chain")
         self.assertTrue(rule_matches("rm  -f\ta", allow), "settings.md: whitespace runs collapse")
         self.assertTrue(pattern_regex("*a.b*").match("xa.by") and not pattern_regex("*a.b*").match("xaxby"))
+
+
+def installed_omp_package():
+    """The pi-coding-agent package the installed `omp` runs from, when its matcher source ships with it."""
+    if not OMP or not shutil.which("bun"):
+        return None
+    package = Path(OMP).resolve().parents[1]
+    return package if (package / "src/tools/bash.ts").is_file() else None
+
+
+@unittest.skipUnless(installed_omp_package(), "omp with its src/tools/bash.ts, or bun, is not installed")
+class OmpInstalledMatcherTest(unittest.TestCase):
+    """The installed omp's own bash.patterns matcher (copied out of src/tools/bash.ts at run time by
+    tests/fixtures/omp-seat-policy/installed-matcher.ts) decides every bash row of the table the way the mirror does,
+    so the mirror cannot drift from omp unseen (U76 round 3: the audit's `+:refs/heads/…` case)."""
+
+    def test_the_installed_matcher_agrees_with_the_mirror_on_every_bash_row(self):
+        harness = ROOT / "tests/fixtures/omp-seat-policy/installed-matcher.ts"
+        with tempfile.TemporaryDirectory() as temp:
+            for role, rows in TABLE.items():
+                commands = [command for tool, command, _ in rows if tool == "bash"]
+                listing = Path(temp) / f"{role}.json"
+                listing.write_text(json.dumps(commands))
+                ran = subprocess.run(
+                    ["bun", str(harness), str(installed_omp_package()), str(POLICIES / f"{role}.yml"), str(listing)],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                self.assertEqual(0, ran.returncode, ran.stderr)
+                installed = json.loads(ran.stdout)
+                policy = load_policy(POLICIES / f"{role}.yml")
+                for command, approval in zip(commands, installed, strict=True):
+                    with self.subTest(role=role, command=command):
+                        self.assertEqual(bash_decision(policy, command).get("policy"), approval)
 
 
 @unittest.skipUnless(OMP, "omp is not installed")

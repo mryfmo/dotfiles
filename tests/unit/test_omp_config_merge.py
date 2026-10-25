@@ -22,11 +22,17 @@ MANAGED = (
     "extensions:\n"
     "  - ~/.local/lib/omp-extensions/pi-claude-bridge\n"
     "  - /srv/omp-ext\n"
+    "disabledProviders:\n"
+    "  - agent-plugins\n"
+    "  - openai-codex\n"
 )
 # The real home: uv (the script's runtime) needs it, so the test cannot fake $HOME.
 HOME = os.path.expanduser("~")
 MANAGED_SKILLS = f"skills:\n  customDirectories:\n  - {HOME}/.agents/skills\n"
-MANAGED_EXTENSIONS = f"extensions:\n- {HOME}/.local/lib/omp-extensions/pi-claude-bridge\n- /srv/omp-ext\n"
+MANAGED_EXTENSIONS = (
+    f"extensions:\n- {HOME}/.local/lib/omp-extensions/pi-claude-bridge\n- /srv/omp-ext\n"
+    "disabledProviders:\n- agent-plugins\n- openai-codex\n"
+)
 
 
 class OmpConfigMergeTest(unittest.TestCase):
@@ -68,6 +74,8 @@ class OmpConfigMergeTest(unittest.TestCase):
             "extensions:\n"
             "- /old/ext\n"
             "- /other/ext\n"
+            "disabledProviders:\n"
+            "- mine\n"
             "setupVersion: 3\n"
         )
 
@@ -75,7 +83,9 @@ class OmpConfigMergeTest(unittest.TestCase):
 
         expected = current.replace("anthropic/claude-old", "anthropic/claude-managed")
         expected = expected.replace("/old/skills", f"{HOME}/.agents/skills")
-        expected = expected.replace("extensions:\n- /old/ext\n- /other/ext\n", MANAGED_EXTENSIONS)
+        expected = expected.replace(
+            "extensions:\n- /old/ext\n- /other/ext\ndisabledProviders:\n- mine\n", MANAGED_EXTENSIONS
+        )
         self.assertEqual(result.stdout, expected)
         self.assertEqual(result.stderr, "")
 

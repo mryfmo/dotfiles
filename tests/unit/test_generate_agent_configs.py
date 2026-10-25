@@ -1778,11 +1778,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(
             self.module.expected_outputs(manifest)[path],
-            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "extensions: []\n",
+            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "extensions: []\ndisabledProviders: []\n",
         )
         manifest["interactive_profile"] = "express"
         manifest["omp"]["skills_directories"] = ["~/.agents/skills", "/srv/skills"]
         manifest["omp"]["extensions"] = ["~/.agents/omp/extensions/openai-siwc", "/srv/omp-ext"]
+        manifest["omp"]["disabled_providers"] = ["agent-plugins", "openai-codex"]
         text = self.module.expected_outputs(manifest)[path]
         self.assertEqual(
             text,
@@ -1790,7 +1791,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n"
             + skills
             + "    - /srv/skills\n"
-            + "extensions:\n  - ~/.agents/omp/extensions/openai-siwc\n  - /srv/omp-ext\n",
+            + "extensions:\n  - ~/.agents/omp/extensions/openai-siwc\n  - /srv/omp-ext\n"
+            + "disabledProviders:\n  - agent-plugins\n  - openai-codex\n",
         )
         self.assertNotIn("ANTHROPIC", text)
         self.assertNotIn("OAUTH", text)

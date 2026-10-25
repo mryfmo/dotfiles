@@ -1355,7 +1355,7 @@ OMP_PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
 
 
 def omp_disabled_providers(manifest: dict[str, Any]) -> list[str]:
-    """omp providers the seat overlays switch off as `disabledProviders`; none when the key is absent.
+    """omp providers the seat overlays and the plain-launch config switch off as `disabledProviders`; none when absent.
 
     omp 18.11.3 reads one `disabledProviders` set for discovery providers (src/capability/index.ts:306-308)
     and for model providers (src/main.ts:1627), so a model route here would turn a seat's model off.
@@ -1406,10 +1406,18 @@ def omp_config_yaml(model: str, directories: list[str]) -> str:
 
 def render_omp_config(manifest: dict[str, Any]) -> str:
     config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
-    extensions = omp_extensions(manifest)
-    if not extensions:
-        return config + "extensions: []\n"
-    return config + "extensions:\n" + "".join(f"  - {extension}\n" for extension in extensions)
+    return (
+        config
+        + omp_list_yaml("extensions", omp_extensions(manifest))
+        + omp_list_yaml("disabledProviders", omp_disabled_providers(manifest))
+    )
+
+
+def omp_list_yaml(key: str, items: list[str]) -> str:
+    # An empty list still renders, so the merge script owns the key on every apply.
+    if not items:
+        return f"{key}: []\n"
+    return f"{key}:\n" + "".join(f"  - {item}\n" for item in items)
 
 
 def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:

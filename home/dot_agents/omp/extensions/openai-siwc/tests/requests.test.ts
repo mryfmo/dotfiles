@@ -162,12 +162,20 @@ test("the rewrite alone still cleans omp's default request (developer item, cach
 // omp's own error classifier; TurnRecovery retries a failed turn only when `retriable` holds.
 const AIError = await import(path.join(PI, "pi-ai/src/error/index.ts"));
 
-test("subscription_sharing_usage_unavailable on a 403 ends the turn after one request and is not retried", async () => {
-	const { last, calls } = await runTurn(SIWC_COMPAT, planError(403, "subscription_sharing_usage_unavailable"));
+test("subscription_sharing_user_not_eligible on a 403 ends the turn after one request and is not retried", async () => {
+	const { last, calls } = await runTurn(SIWC_COMPAT, planError(403, "subscription_sharing_user_not_eligible"));
 	expect(calls).toBe(1);
 	expect(last?.type).toBe("error");
-	expect(last?.error?.errorMessage).toContain("subscription_sharing_usage_unavailable");
+	expect(last?.error?.errorMessage).toContain("subscription_sharing_user_not_eligible");
 	expect(AIError.retriable(AIError.classifyMessage(last?.error ?? {}))).toBe(false);
+});
+
+test("subscription_sharing_usage_unavailable on a 503 is retried as a transient failure", async () => {
+	const { last, calls } = await runTurn(SIWC_COMPAT, planError(503, "subscription_sharing_usage_unavailable"));
+	expect(last?.type).toBe("error");
+	expect(last?.error?.errorMessage).toContain("subscription_sharing_usage_unavailable");
+	expect(AIError.isProviderRetryableError(new Error(last?.error?.errorMessage))).toBe(true);
+	expect(calls).toBe(6);
 });
 
 test("subscription_sharing_usage_limit_exceeded on a 429 is a usage limit, not a provider retry", async () => {

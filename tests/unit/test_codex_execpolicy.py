@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-RULES = ROOT / "home/dot_codex/rules/default.rules"
+# default.rules holds the Codex-only lifecycle rules; command-policy.rules is rendered from the manifest (U76).
+RULES = (ROOT / "home/dot_codex/rules/default.rules", ROOT / "home/dot_codex/rules/command-policy.rules")
 REQUIRED_PREFIXES = {
     ("sudo",),
     ("/usr/bin/sudo",),
@@ -28,9 +29,13 @@ REQUIRED_PREFIXES = {
     ("gh", "pr", "merge"),
     ("gh", "api", "-X", "PUT"),
     ("gh", "api", "--method", "PUT"),
+    ("gh", "api", "-XPUT"),
+    ("gh", "api", "--method=PUT"),
     ("gh", "api", "graphql"),
     ("gh", "release"),
     ("npm", "publish"),
+    ("pnpm", "publish"),
+    ("/bin/rm", "-rf"),
     ("uv", "publish"),
     ("terraform", "apply"),
     ("kubectl", "apply"),
@@ -56,6 +61,10 @@ def prefix_rules(text: str) -> list[dict[str, object]]:
     return rules
 
 
+def all_rules() -> list[dict[str, object]]:
+    return [rule for path in RULES for rule in prefix_rules(path.read_text())]
+
+
 def expand(pattern: list[object]) -> set[tuple[str, ...]]:
     """Every token sequence a pattern matches; a list element lists alternatives."""
     choices = [item if isinstance(item, list) else [item] for item in pattern]
@@ -64,11 +73,12 @@ def expand(pattern: list[object]) -> set[tuple[str, ...]]:
 
 class CodexExecpolicyTest(unittest.TestCase):
     def test_rules_are_forbidden_only_and_cover_the_declared_prefixes(self) -> None:
-        rules = prefix_rules(RULES.read_text())
+        rules = all_rules()
 
         self.assertTrue(rules)
-        self.assertEqual({rule["decision"] for rule in rules}, {"forbidden"})
-        covered = set().union(*(expand(rule["pattern"]) for rule in rules))
+        # An allow rule would run its command outside the sandbox; prompt asks the human each time.
+        self.assertLessEqual({rule["decision"] for rule in rules}, {"forbidden", "prompt"})
+        covered = set().union(*(expand(rule["pattern"]) for rule in rules if rule["decision"] == "forbidden"))
         self.assertLessEqual(REQUIRED_PREFIXES, covered)
         for rule in rules:
             with self.subTest(pattern=rule["pattern"]):
@@ -76,7 +86,7 @@ class CodexExecpolicyTest(unittest.TestCase):
 
     def test_rule_examples_agree_with_their_patterns(self) -> None:
         # Codex checks match/not_match at load time; a wrong example would make it reject the file.
-        for rule in prefix_rules(RULES.read_text()):
+        for rule in all_rules():
             prefixes = expand(rule["pattern"])
             for example in rule.get("match", []):
                 with self.subTest(pattern=rule["pattern"], match=example):
@@ -89,11 +99,14 @@ class CodexExecpolicyTest(unittest.TestCase):
 
     def test_worker_seats_cannot_merge_through_the_api(self) -> None:
         # One GitHub login per machine: denying merges in the seat replaces the account separation.
-        covered = set().union(*(expand(rule["pattern"]) for rule in prefix_rules(RULES.read_text())))
+        forbidden = [rule for rule in all_rules() if rule["decision"] == "forbidden"]
+        covered = set().union(*(expand(rule["pattern"]) for rule in forbidden))
         for prefix in (
             ("gh", "pr", "merge"),
             ("gh", "api", "-X", "PUT"),
             ("gh", "api", "--method", "PUT"),
+            ("gh", "api", "-XPUT"),
+            ("gh", "api", "--method=PUT"),
             ("gh", "api", "graphql"),
         ):
             with self.subTest(prefix=prefix):

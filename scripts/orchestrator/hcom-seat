@@ -46,11 +46,13 @@
 #   directory and reads of the settings and `~/.ssh` fail inside (seat_sandbox_write below). srt and omp
 #   run by their physical argv (pin_exec), and so do hcom (exec'd by it) and herdr (through wrappers in the
 #   shim directory); none of their files may be or lie under a write root of any seat.
-#   No caller PATH entry runs anything: the first statement sets PATH to the system directories, and the
-#   tools beyond them (jq, git, hcom, herdr, omp, srt, node, bun, claude; bwrap, socat and rg on Linux) are
-#   resolved through `mise which` under `env -i` from `/`, else `command -v` on the caller's PATH, checked
-#   (absolute, no control character, an executable regular file, no shim, outside every seat write root)
-#   and linked into `~/.local/state/hcom-seat/tools`; PATH is then that directory and the system
+#   No caller PATH entry runs anything: the first statement sets PATH to the system directories (jq is
+#   /usr/bin/jq), the complete protected set is built by (device, inode) identity before mise or any other
+#   tool runs, and the tools beyond them (git, hcom, herdr, omp, srt, node, bun, claude; bwrap, socat and
+#   rg on Linux) are resolved through `mise which` under `env -i` from `/`, else `command -v` on the
+#   caller's PATH, checked (absolute, no control character, an executable regular file, no shim, neither
+#   it nor a directory above it with the identity of a seat write root) and linked into
+#   `~/.local/state/hcom-seat/tools`; PATH is then that directory and the system
 #   directories, for hcom-seat, hcom, the shim and srt (whose Linux settings name bwrap, socat and rg).
 #   Inside the sandbox omp gets that PATH followed by the caller's absolute entries.
 #   No seat launches a seat: the orchestrator's sandbox, like the worker's, has no herdr socket and no
@@ -239,16 +241,63 @@ physical_file() {
     printf '%s\n' "${p}"
 }
 
-# @description Refuse (exit 2) when the physical path `$2` is, or lies under, any root in `all_roots`.
+# @description Refuse (exit 2) when the physical path `$2`, or any directory above it, has the identity of a
+#   protected write root (`root_ids`).
 # @arg $1 string A label for the refusal.
 # @arg $2 string A physical path.
 refuse_if_seat_writable() {
-    local root
-    for root in "${all_roots[@]}"; do
-        if [[ $2 == "${root}" || $2 == "${root}"/* ]]; then # lint-comparisons: allow both sides are physical forms
-            refuse "$1 $2 is or lies under the seat write root ${root}"
-        fi
+    local p=$2 ids id i named probe=()
+    # The physical file and every directory above it, up to /, each compared by (device, inode): a case alias on a
+    # case-insensitive file system or a hardlink of a writable file has the identity of what it aliases.
+    while :; do
+        probe+=("${p}")
+        [[ ${p} != / ]] || break # lint-comparisons: allow the walk ends at the root, no path compare
+        p=${p%/*}
+        [[ -n ${p} ]] || p=/
     done
+    ids=$(/usr/bin/stat "${stat_args[@]}" -- "${probe[@]}") || refuse "cannot read the identity of $1 $2 or a directory above it"
+    i=0
+    while IFS= read -r id; do
+        if [[ ${root_ids} == *$'\n'"${id}"$'\n'* ]]; then # lint-comparisons: allow compares (device, inode) identities, not paths
+            named=$(root_named "${id}") || named=${id}
+            refuse "$1 $2 is or lies under the seat write root ${named} (${probe[i]} has its identity ${id})"
+        fi
+        i=$((i + 1))
+    done <<< "${ids}"
+}
+
+# @description Print the write root whose identity is `$1`.
+# @arg $1 string A `<device>:<inode>` identity.
+root_named() {
+    local i
+    for ((i = 0; i < ${#root_id_list[@]}; i++)); do
+        [[ ${root_id_list[i]} != "$1" ]] || { # lint-comparisons: allow compares (device, inode) identities, not paths
+            printf '%s\n' "${root_path_list[i]}"
+            return 0
+        }
+    done
+}
+
+# @description Add the (device, inode) identity of every argument that exists, file or directory, every link
+#   followed, to the protected set (`root_ids`, `root_id_list`, `root_path_list`). A path that does not exist holds
+#   no executable; one that exists and cannot be read is a refusal.
+# @arg $@ string Absolute paths.
+add_roots() {
+    local present=() path ids id i=0
+    for path in "$@"; do
+        [[ ${path} == /* && ${path} != *[[:cntrl:]]* ]] || refuse "the seat write root '${path}' is not an absolute path" # lint-comparisons: allow an absolute-path and content test
+        [[ -e ${path} || -L ${path} ]] || continue
+        present+=("${path}")
+    done
+    ((${#present[@]})) || return 0
+    ids=$(/usr/bin/stat "${stat_args[@]}" -- "${present[@]}") || refuse "cannot read the identity of a seat write root among: ${present[*]}"
+    while IFS= read -r id; do
+        [[ ${id} =~ ^[0-9]+:[0-9]+$ ]] || refuse "unexpected identity '${id}' of ${present[i]}"
+        root_ids+=${id}$'\n'
+        root_id_list+=("${id}")
+        root_path_list+=("$(physical_path "${present[i]}" || printf '%s' "${present[i]}")")
+        i=$((i + 1))
+    done <<< "${ids}"
 }
 
 # @description Succeed when a tool is a shim, as scripts/orchestrator/ci-rerun.sh decides it (U61): its physical file
@@ -267,27 +316,36 @@ is_shim() {
     return 1
 }
 
-# The tools (regime-cutover U85, the pattern of scripts/orchestrator/ci-rerun.sh, U61). Every tool beyond the system
-# directories is what `mise which` answers under `env -i` from `/` (no project config, no caller environment), else
-# what `command -v` finds on the caller's PATH; an answer is only a name until it passes: absolute, no control
-# character, a regular executable file once every link is followed, no shim, and neither it nor its physical file
-# inside a coarse protected set computed with shell builtins alone (the write roots any seat may have: the seats
-# roots, the hcom stores, ~/Workspace, the checkout this runs in and its git directories, the omp profiles and
-# leases, the Claude Code state, srt's implicit write paths). A passing tool is linked into the private directory
+# The tools (regime-cutover U85, the pattern of scripts/orchestrator/ci-rerun.sh, U61). First the complete protected
+# set, by identity: the (device, inode) of every write root any seat may have that exists, files and directories,
+# computed with builtins, /usr/bin/stat, /usr/bin/readlink and the system jq only, before any tool outside the
+# system directories runs. It holds the seats roots and the hcom stores of every program, ~/Workspace, the checkout
+# this runs in and its git directories, the omp profiles and leases, the Claude Code state, srt's implicit write paths,
+# and every `allowWrite` entry of every existing seat settings file (another program's checkout outside ~/Workspace
+# included). Then mise's own physical file is held to it before mise runs. Every tool beyond the system directories
+# is what `mise which` answers under `env -i` from `/` (no project config, no caller environment), else what
+# `command -v` finds on the caller's PATH; an answer is only a name until it passes: absolute, no control character,
+# a regular executable file once every link is followed, no shim, and neither its physical file nor any directory
+# above it has the identity of a protected root. A passing tool is linked into the private directory
 # ~/.local/state/hcom-seat/tools (0700, this user's, outside every seat write root), and PATH becomes that directory
-# followed by the system directories; no caller entry is inherited. The full protected set below re-checks every
-# link once the write roots are exact.
-all_roots=()
-for root in "${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace" \
-    "${HOME}/.omp/profiles" "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" \
-    "${HOME}/.claude.json" "${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude ${HCOM_DIR:+"${HCOM_DIR}"} \
-    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"}; do
+# followed by the system directories; no caller entry is inherited.
+system_jq=/usr/bin/jq
+[[ -x ${system_jq} ]] || refuse "the system jq ${system_jq} is absent; it reads and writes the seat sandbox settings"
+os=$(/usr/bin/uname -s) || refuse 'cannot read the operating system name (uname -s)'
+case ${os} in
+Darwin) stat_args=(-L -f '%d:%i') ;;
+Linux) stat_args=(-L -c '%d:%i') ;;
+*) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
+esac
+root_ids=$'\n' root_id_list=() root_path_list=()
+roots=("${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace" "${HOME}/.omp/profiles"
+    "${HOME}/.omp/run" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${HOME}/.claude" "${HOME}/.claude.json"
+    "${HOME}/.npm/_logs" /tmp/claude /private/tmp/claude)
+for root in ${HCOM_DIR:+"${HCOM_DIR}"} ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT}"} ${seats_root:+"${seats_root}"}; do
     case ${root} in # lint-comparisons: allow a relative operand is made absolute against the cwd, no path compare
-    /*) ;;
-    *) root=${PWD}/${root} ;;
+    /*) roots+=("${root}") ;;
+    *) roots+=("${PWD}/${root}") ;;
     esac
-    root_real=$(physical_path "${root}") || refuse "cannot resolve the seat write root ${root}"
-    all_roots+=("${root}" "${root_real}")
 done
 # The checkout this runs in, found with builtins: the nearest ancestor with a `.git`, and for a worktree the git
 # directory its `.git` file names and that directory's common directory and main checkout.
@@ -296,7 +354,6 @@ top=${cwd_real}
 while [[ ! -e ${top}/.git && -n ${top} ]]; do top=${top%/*}; done
 if [[ -n ${top} || -e /.git ]]; then
     top=${top:-/}
-    all_roots+=("${top}")
     gitdir=${top}/.git
     if [[ -f ${gitdir} ]]; then
         IFS= read -r line < "${gitdir}" || [[ -n ${line:-} ]] || refuse "cannot read ${gitdir}"
@@ -314,11 +371,20 @@ if [[ -n ${top} || -e /.git ]]; then
         *) common_guess=${gitdir}/${line} ;;
         esac
     fi
-    for root in "${gitdir}" "${common_guess}" "${common_guess%/*}"; do
-        root_real=$(physical_path "${root}") || refuse "cannot resolve the git directory ${root}"
-        all_roots+=("${root_real}")
-    done
+    roots+=("${top}" "${gitdir}" "${common_guess}" "${common_guess%/*}")
 fi
+# Every existing seat settings file, read by the system jq; an entry that cannot be read is a refusal.
+for settings_file in ${seats_root:+"${seats_root%/}"/.sandbox/*/srt-settings.json} \
+    ${REGIME_SEATS_ROOT:+"${REGIME_SEATS_ROOT%/}"/.sandbox/*/srt-settings.json} \
+    "${HOME}"/.local/state/omp-seats/*/.sandbox/*/srt-settings.json; do
+    [[ -e ${settings_file} ]] || continue
+    listed=$(/usr/bin/jq -er '.filesystem.allowWrite[] | strings' "${settings_file}") ||
+        refuse "cannot read the allowWrite list of ${settings_file}"
+    while IFS= read -r root; do
+        if [[ -n ${root} ]]; then roots+=("${root}"); fi
+    done <<< "${listed}"
+done
+add_roots "${roots[@]}"
 tools_dir=${HOME}/.local/state/hcom-seat/tools
 /bin/mkdir -p "${tools_dir}" || refuse "cannot create the private tool directory ${tools_dir}"
 /bin/chmod 700 "${tools_dir%/*}" "${tools_dir}" || refuse "cannot restrict the private tool directory ${tools_dir}"
@@ -329,11 +395,14 @@ done
 tools_dir=$(physical_path "${tools_dir}") || refuse "cannot resolve the private tool directory ${tools_dir}"
 [[ ${tools_dir} != *:* ]] || refuse "the private tool directory ${tools_dir} holds a ':'" # lint-comparisons: allow a ':' content test
 refuse_if_seat_writable 'the private tool directory' "${tools_dir}"
+# mise runs only once its physical file has passed the complete protected set above.
 mise_real=''
 mise_found=$(PATH=${caller_path} && command -v mise && printf .) && mise_found=${mise_found%.} &&
     mise_found=${mise_found%$'\n'} && mise_real=$(physical_file "${mise_found}") || mise_real=''
 [[ -z ${mise_real} ]] || refuse_if_seat_writable 'mise' "${mise_real}"
-required_tools=(jq git hcom herdr omp srt)
+# jq is the system's (/usr/bin/jq), not a resolved tool, so a stale link of an earlier launch is dropped.
+/bin/rm -f "${tools_dir}/jq" || refuse "cannot clear ${tools_dir}/jq"
+required_tools=(git hcom herdr omp srt)
 optional_tools=(node bun claude)
 case ${OSTYPE} in
 linux*) required_tools+=(bwrap socat rg) ;;
@@ -349,8 +418,6 @@ for tool in "${required_tools[@]}" "${optional_tools[@]}"; do
     if [[ -n ${found} ]]; then
         real=$(physical_file "${found}") || refuse "${tool} is not an executable file ('${found}')"
         ! is_shim "${found}" "${real}" || refuse "no ${tool} outside a shims directory ('${found}')"
-        # The spelling and its physical file are both held to the protected set.
-        refuse_if_seat_writable "${tool}" "${found}"
         refuse_if_seat_writable "${tool}" "${real}"
     fi
     if [[ -z ${real} ]]; then
@@ -371,7 +438,7 @@ PATH=${tools_dir}:${system_path}
 seat_path=${PATH}
 IFS=: read -r -a caller_dirs <<< "${caller_path}"
 for caller_dir in "${caller_dirs[@]}"; do
-    [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]] && seat_path+=:${caller_dir} # lint-comparisons: allow an absolute-path and content test
+    if [[ ${caller_dir} == /* && ${caller_dir} != *[[:cntrl:]]* ]]; then seat_path+=:${caller_dir}; fi # lint-comparisons: allow an absolute-path and content test
 done
 # HCOM_DIR, HCOM_TEAM and the seats root come from the environment when set, else from this checkout (regime-env,
 # regime-cutover U33). hcom passes HCOM_DIR into the seat but not HCOM_TEAM, so the team rides --hcom-team below.
@@ -458,7 +525,7 @@ find_on_path() {
 
 # @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
 #   interpreter when it is a `#!` script (`#!/abs/interp` or `#!/usr/bin/env <name>`, no arguments; an interpreter
-#   that is itself a script is refused). No part may be, or lie under, a write root of any seat (`all_roots`), since
+#   that is itself a script is refused). No part may be, or lie under, a write root of any seat (`root_ids`), since
 #   a seat that could rewrite a file the launch runs would run uncontained on the next launch. A failure exits 2
 #   naming `$1`.
 # @arg $1 string A label for the refusal.
@@ -513,35 +580,26 @@ seat_write_roots() {
     done
 }
 
-# The protected set (regime-cutover U85): every path a seat may write, derived from the same function that writes the
-# settings, so the check and the sandbox cannot drift. It holds this seat's roots; the other role's roots and every
-# worker's under this seats root (the seats root as a whole); every `allowWrite` entry of every settings file under
-# the seats roots of any program (`~/.local/state/omp-seats/*` and this one), read fail-closed; and each entry's
-# spelling before symlinks are followed. A file that cannot be read is a refusal.
+# The exact roots (regime-cutover U85): this seat's `allowWrite` list, from the same function that writes the
+# settings, so the check and the sandbox cannot drift, and the other role's; the derived seats root and hcom store;
+# and every settings file under the derived seats root. Their identities join the set computed before any tool ran
+# (which already covers them by their parents); every link, mise included, is then checked again.
 seat_write=()
 seat_roots_out=$(seat_write_roots "${role}" "${name}" "${dir}") || refuse "cannot resolve the write roots of ${name}"
 while IFS= read -r root; do seat_write+=("${root}"); done <<< "${seat_roots_out}"
-all_roots+=("${seat_write[@]}")
 other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'cannot resolve the orchestrator write roots'
-while IFS= read -r root; do all_roots+=("${root}"); done <<< "${other_roots}"
-for root in "${seats_root}" "${HOME}/.local/state/omp-seats" "${HOME}/.local/state/hcom" "${HOME}/Workspace"; do
-    root_real=$(physical_path "${root}") || refuse "cannot resolve the seat write root ${root}"
-    all_roots+=("${root_real}")
-done
-for settings_file in "${seats_root%/}"/.sandbox/*/srt-settings.json "${HOME}"/.local/state/omp-seats/*/.sandbox/*/srt-settings.json; do
+roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
+while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
+for settings_file in "${seats_root%/}"/.sandbox/*/srt-settings.json; do
     [[ -e ${settings_file} ]] || continue
-    listed=$(jq -er '.filesystem.allowWrite[] | strings' "${settings_file}") ||
+    listed=$(/usr/bin/jq -er '.filesystem.allowWrite[] | strings' "${settings_file}") ||
         refuse "cannot read the allowWrite list of ${settings_file}"
     while IFS= read -r root; do
-        [[ -n ${root} ]] || continue
-        all_roots+=("${root}")
-        root_real=$(physical_path "${root}") || refuse "cannot resolve ${root} from ${settings_file}"
-        all_roots+=("${root_real}")
+        if [[ -n ${root} ]]; then roots+=("${root}"); fi
     done <<< "${listed}"
 done
-for root in "${HOME}/.claude.json" "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}" "${common}" "${HCOM_DIR}" "${dir}"; do
-    all_roots+=("${root}")
-done
+add_roots "${roots[@]}"
+[[ -z ${mise_real} ]] || refuse_if_seat_writable 'mise' "${mise_real}"
 
 # Every link in the private tool directory is re-checked against the exact set, and PATH is that directory and the
 # system directories, so hcom's own lookups (`herdr`, `node`) and srt's (`env`, the shell) find nothing a seat writes.
@@ -579,7 +637,7 @@ Linux)
     bwrap_real=$(physical_file "${tools_dir}/bwrap") || refuse 'bwrap not found; srt needs bubblewrap on Linux'
     socat_real=$(physical_file "${tools_dir}/socat") || refuse 'socat not found; srt needs socat on Linux'
     rg_real=$(physical_file "${tools_dir}/rg") || refuse 'rg not found; srt needs ripgrep on Linux'
-    linux_tools=$(jq -cn --arg bwrap "${bwrap_real}" --arg socat "${socat_real}" --arg rg "${rg_real}" \
+    linux_tools=$(/usr/bin/jq -cn --arg bwrap "${bwrap_real}" --arg socat "${socat_real}" --arg rg "${rg_real}" \
         '{bwrapPath: $bwrap, socatPath: $socat, ripgrep: {command: $rg}}') || refuse 'jq failed on the Linux tool paths'
     ;;
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
@@ -635,15 +693,15 @@ seat_sandbox_write() {
     # The orchestrator reads the worker clones it reviews; a worker reads no other seat.
     [[ ${role} == orchestrator ]] || deny_read+=("${seats_real}")
     settings=${sandbox_real}/srt-settings.json
-    write_json=$(jq -cn '$ARGS.positional' --args "${write[@]}") || refuse 'jq failed on the seat write roots'
-    deny_write_json=$(jq -cn '$ARGS.positional' --args "${deny_write[@]}") || refuse 'jq failed on the seat write denies'
-    deny_read_json=$(jq -cn '$ARGS.positional' --args "${deny_read[@]}") || refuse 'jq failed on the seat read denies'
-    allow_read_json=$(jq -cn '$ARGS.positional' --args "${allow_read[@]}") || refuse 'jq failed on the seat read roots'
+    write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${write[@]}") || refuse 'jq failed on the seat write roots'
+    deny_write_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${deny_write[@]}") || refuse 'jq failed on the seat write denies'
+    deny_read_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${deny_read[@]}") || refuse 'jq failed on the seat read denies'
+    allow_read_json=$(/usr/bin/jq -cn '$ARGS.positional' --args "${allow_read[@]}") || refuse 'jq failed on the seat read roots'
     # No unix socket for any seat: the herdr socket would let a seat open a pane outside every sandbox. No local
     # binding either: srt 0.0.81 grants it as bind and inbound on `*:*` (every interface); the one listener a seat
     # runs, the hcom plugin's notify server, falls back to polling every 5 s when its bind fails (hcom.ts
     # `startNotifyServer`, `FALLBACK_PENDING_POLL_MS`).
-    json=$(jq -n --argjson write "${write_json}" --argjson deny_write "${deny_write_json}" \
+    json=$(/usr/bin/jq -n --argjson write "${write_json}" --argjson deny_write "${deny_write_json}" \
         --argjson deny_read "${deny_read_json}" --argjson allow_read "${allow_read_json}" \
         --argjson linux "${linux_tools}" '{
         network: {
@@ -709,8 +767,12 @@ export UV_CACHE_DIR=${state}/uv-cache
 # deny ends omp at start (measured, omp 18.11.3); /dev/null reads as no AWS profile.
 export AWS_SHARED_CREDENTIALS_FILE=/dev/null AWS_CONFIG_FILE=/dev/null
 unset SSH_AUTH_SOCK
+# Seat commits and tags are unsigned (standing order 29): the signing key under ~/.ssh is unreadable inside, so a
+# host config with commit.gpgsign or tag.gpgsign true would fail every commit. GIT_CONFIG_* outranks every file.
+export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false \
+    GIT_CONFIG_KEY_1=tag.gpgsign GIT_CONFIG_VALUE_1=false
 if [[ -n ${push_url} ]]; then
-    export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.pushurl GIT_CONFIG_VALUE_0=${push_url}
+    export GIT_CONFIG_COUNT=3 GIT_CONFIG_KEY_2=remote.origin.pushurl GIT_CONFIG_VALUE_2=${push_url}
 fi
 # hcom-seat refuses to launch a seat where this is set.
 export HCOM_SEAT_SANDBOX=${sandbox}

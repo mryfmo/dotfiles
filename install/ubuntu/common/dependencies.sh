@@ -7,7 +7,8 @@
 #   present, including `sudo` when starting from a minimal container.
 #   `bubblewrap` and `socat` are the Linux prerequisites of the Claude Code
 #   Bash sandbox; with `ripgrep` they are those of the sandbox-runtime `srt`
-#   that contains the omp seats (scripts/orchestrator/hcom-seat).
+#   that contains the omp seats (scripts/orchestrator/hcom-seat), which reads
+#   and writes the seat sandbox settings with the system `/usr/bin/jq`.
 
 set -Eeuo pipefail
 
@@ -25,6 +26,7 @@ readonly PACKAGES=(
     htop
     iproute2
     iputils-ping
+    jq
     mosh
     perl
     pinentry-curses

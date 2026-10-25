@@ -22,20 +22,6 @@ GATE_DRIVER = ROOT / "home/dot_agents/omp/hooks/tests/launch-driver.ts"
 BUN = shutil.which("bun")
 
 
-def real_tool(name):
-    """The physical file of a host tool, past any mise shim: `mise which` when mise knows it, else PATH."""
-    mise = shutil.which("mise")
-    if mise:
-        found = subprocess.run([mise, "which", name], cwd="/", capture_output=True, text=True, check=False)
-        if found.returncode == 0 and found.stdout.strip():
-            return os.path.realpath(found.stdout.strip())
-    path = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if "shims" not in d.lower())
-    found = shutil.which(name, path=path)
-    if found is None:
-        raise unittest.SkipTest(f"{name} is not installed outside a shims directory")
-    return os.path.realpath(found)
-
-
 GIT_IDENTITY = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
     "GIT_CONFIG_NOSYSTEM": "1",
@@ -72,8 +58,6 @@ class HcomSeatTest(unittest.TestCase):
         # links: hcom-seat runs srt and omp by their physical file, and the fake reads its role from its own name.
         for tool in ("hcom", "herdr", "omp", "srt", "bwrap", "socat", "rg"):
             shutil.copy(FAKE, bindir / tool)
-        # hcom-seat refuses a jq that is a mise shim (U85 round 4); link the real file, wherever this host keeps it.
-        (bindir / "jq").symlink_to(real_tool("jq"))
         self.tools = (root / "home/.local/state/hcom-seat/tools").resolve()
         self.calls = root / "calls"
         self.calls.mkdir()
@@ -597,21 +581,23 @@ class HcomSeatTest(unittest.TestCase):
         """U85 round 4: helpers planted in a seat-writable directory on the caller's PATH never run.
 
         The system tools hcom-seat and its children call by name (sed, awk, git's helpers, uname, mkdir, mv, ls)
-        come from the fixed system directories; a tool resolved from the caller's PATH (jq) inside a seat write root
-        is refused before it runs.
+        and jq come from the fixed system directories; a tool resolved from the caller's PATH (git) inside a seat
+        write root is refused before it runs.
         """
         planted = self.repo / "bin"  # the checkout, which the orchestrator seat writes
-        marker = self.plant(planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink")
+        marker = self.plant(
+            planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink", "jq", "stat"
+        )
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
-        self.plant(planted, "jq")
+        self.plant(planted, "git")
         run = self.seat(
             "worker", "--seats-root", self.seats, "--name", "worker-2", PATH=f"{planted}:{self.env['PATH']}"
         )
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(
-            f"jq {planted.resolve()}/jq is or lies under the seat write root {self.repo.resolve()}", run.stderr
+            f"git {planted.resolve()}/git is or lies under the seat write root {self.repo.resolve()}", run.stderr
         )
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
         self.assertFalse(Path(self.seats, "worker-2").exists())
@@ -627,6 +613,61 @@ class HcomSeatTest(unittest.TestCase):
         for call in self.calls_of("srt"):
             self.assertEqual(call["path"], f"{sandbox_bin}:{fixed}")
         self.assertEqual(Path(self.seats, ".sandbox/worker/bin/omp").read_text().count(f"outer_path={sandbox_bin}:"), 1)
+
+    def test_a_case_alias_or_a_hardlink_of_a_writable_file_is_refused(self):
+        """U85 round 5: protection compares (device, inode), never path text, so neither alias passes."""
+        outside = Path(self.temp.name).resolve() / "alias-bin"
+        outside.mkdir()
+        claude_json = self.home / ".claude.json"  # a writable file root of every seat
+        shutil.copy(FAKE, claude_json)
+        (self.bindir / "srt").unlink()
+        os.link(claude_json, outside / "srt")
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"srt {outside}/srt is or lies under the seat write root {claude_json.resolve()}", run.stderr)
+        (outside / "srt").unlink()
+        alias = self.home / ".CLAUDE.JSON"
+        if not alias.exists():
+            self.skipTest("the file system is case-sensitive, so no case alias exists")
+        (outside / "srt").symlink_to(alias)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("/.CLAUDE.JSON is or lies under the seat write root", run.stderr)
+        self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_mise_in_another_seats_root_never_runs(self):
+        """U85 round 5: another program's seat roots (its checkout outside ~/Workspace) are protected before mise runs."""
+        other = Path(self.temp.name).resolve() / "elsewhere/checkout"
+        settings = self.home / ".local/state/omp-seats/other/.sandbox/orchestrator/srt-settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_text(json.dumps({"filesystem": {"allowWrite": [str(other)]}}))
+        marker = self.plant(other / "bin", "mise")
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{other}/bin:{self.env['PATH']}")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"mise {other}/bin/mise is or lies under the seat write root {other}", run.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertFalse(Path(self.seats).exists())
+
+    def test_a_seat_commits_unsigned_under_a_signing_host_config(self):
+        """U85 round 5: the shim turns signing off, so a host commit.gpgsign=true cannot fail the seat's commits."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (omp,) = self.calls_of("omp")
+        signing = Path(self.temp.name) / "signing.gitconfig"
+        signing.write_text("[commit]\n\tgpgsign = true\n[tag]\n\tgpgsign = true\n[gpg]\n\tprogram = /usr/bin/false\n")
+        clone = Path(self.seats, "worker")
+        host = {**self.env, "GIT_CONFIG_GLOBAL": str(signing)}
+
+        def commit(env, message):
+            argv = ["git", "-C", str(clone), "commit", "-q", "--allow-empty", "-m", message]
+            return subprocess.run(argv, env=env, capture_output=True, text=True, check=False)
+
+        self.assertNotEqual(commit(host, "host").returncode, 0, "the signing config fails a plain commit")
+        seat = commit({**host, **omp["git_config"]}, "seat")
+        self.assertEqual(seat.returncode, 0, seat.stderr)
+        tag = subprocess.run(["git", "-C", str(clone), "tag", "-a", "t1", "-m", "t"], env={**host, **omp["git_config"]},
+                             capture_output=True, text=True, check=False)  # fmt: skip
+        self.assertEqual(tag.returncode, 0, tag.stderr)
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

@@ -32,6 +32,7 @@ GOOD_SKILLS = {
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+from claude_plugin_fixture import install_reviewed
 
 
 def setUpModule() -> None:
@@ -1644,6 +1645,66 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertTrue(any("installed_plugins.json is missing" in finding for finding in findings), findings)
         self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
+
+    def test_doctor_accepts_the_plugins_spark_enabled_at_their_declared_pins(self) -> None:
+        # U91: spark-9e8d ran pyright-lsp (version 1.0.0) and frontend-design (commit-version d4226d062928) at
+        # user scope, enabled, without a pin. frontend-design carries a content pin over its files and its catalog
+        # entry in the installed marketplace clone: the reviewed pair at that older commit-version passes; one
+        # changed byte, an entry that adds runtime behaviour, or a symlink fails.
+        pins = ROOT / "scripts/plugin-pins.json"
+        frontend = "frontend-design@claude-plugins-official"
+        self.assertRegex(json.loads(pins.read_text())["claude"][frontend]["pin"], r"^sha256:[0-9a-f]{64}$")
+        copy = install_reviewed(self.target_root, frontend, "d4226d062928")
+        (self.target_root / ".claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0").mkdir(parents=True)
+        installs = {
+            "pyright-lsp@claude-plugins-official": [
+                {
+                    "scope": "user",
+                    "version": "1.0.0",
+                    "installPath": str(
+                        self.target_root / ".claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0"
+                    ),
+                }
+            ],
+            frontend: [{"scope": "user", "version": "d4226d062928", "installPath": str(copy)}],
+        }
+        (self.target_root / ".claude/plugins/installed_plugins.json").write_text(
+            json.dumps({"version": 2, "plugins": installs})
+        )
+        (self.target_root / ".claude/settings.json").write_text(
+            json.dumps({"enabledPlugins": dict.fromkeys(installs, True)})
+        )
+
+        def findings() -> list[str]:
+            found = self.module.claude_plugin_pin_findings(
+                self.target_root, self.module.records.load_plugin_pins(pins).claude
+            )
+            return [f for f in found if "pyright-lsp" in f or "frontend-design" in f]
+
+        self.assertEqual([], findings())
+        skill = copy / "skills/frontend-design/SKILL.md"
+        reviewed = skill.read_bytes()
+        skill.write_bytes(reviewed + b"!")
+        [changed] = findings()
+        self.assertFalse(self.module.is_warning(changed), changed)
+        self.assertIn("installed at d4226d062928 (sha256:", changed)
+        skill.write_bytes(reviewed)
+        catalog = (
+            self.target_root / ".claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json"
+        )
+        original = catalog.read_text()
+        data = json.loads(original)
+        data["plugins"][0].update(strict=False, lspServers={"x": {"command": "x"}})
+        catalog.write_text(json.dumps(data))
+        [widened] = findings()
+        self.assertFalse(self.module.is_warning(widened), widened)
+        self.assertIn("installed at d4226d062928 (sha256:", widened)
+        catalog.write_text(original)
+        self.assertEqual([], findings())
+        (skill.parent / "link").symlink_to(skill)
+        [linked] = findings()
+        self.assertFalse(self.module.is_warning(linked), linked)
+        self.assertIn("is a symlink or special file", linked)
 
     def test_doctor_compares_versions_by_type(self) -> None:
         # A version recorded as a JSON number never equals its string pin, even when it prints the same.

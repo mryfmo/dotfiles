@@ -9,7 +9,9 @@ none: a test that runs the script or reads the workflow skips without it; the re
 Fake tokens are built from parts at run time, so the committed-secret scan has no credential-shaped literal to flag.
 """
 
+import base64
 import copy
+import hashlib
 import http.client
 import importlib.util
 import json
@@ -28,6 +30,18 @@ except ModuleNotFoundError:
     yaml = None
 
 NO_YAML = "PyYAML is not installed: the script and the workflow parse need it"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    # The watch now loads scripts/pin_records.py (content pins), one of the scripts that resolve agent homes.
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
 
 
 def fake_token(fill: str) -> str:
@@ -591,6 +605,237 @@ class DriftWatchTest(unittest.TestCase):
                     self.assertEqual(make_status, run.returncode, run.stderr)
                     named = f"drift-watch.py exited {script_status} (3: drift, 4: an upstream read failed)"
                     self.assertEqual(script_status != "0", named in run.stderr, run.stderr)
+
+    # U91: a Claude plugin with no version is pinned by content (sha256:..., scripts/pin_records.py content_digest);
+    # a strict: false entry may have no plugin.json at all.
+    OFFICIAL = f"{GH}/anthropics/claude-plugins-official"
+    TREE_SHA = "d" * 40
+
+    @staticmethod
+    def git_blob_sha(data: bytes) -> str:
+        return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+    def content_upstream(self, files: dict, extra_nodes=(), truncated=False):
+        """CURRENT_UPSTREAM plus frontend-design served as FILES {relative path: bytes} (and pyright-lsp, a strict:
+        false entry with a version and no plugin.json), read through the tree and blob endpoints."""
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"] += [
+            self.reviewed_entry(),
+            {"name": "pyright-lsp", "source": "./plugins/pyright-lsp", "version": "1.0.0", "strict": False},
+        ]
+        upstream[f"{self.OFFICIAL}/contents/plugins"] = [
+            {"name": "frontend-design", "type": "dir", "sha": self.TREE_SHA}
+        ]
+        upstream[f"{self.OFFICIAL}/contents/plugins/pyright-lsp"] = [{"name": "LICENSE"}, {"name": "README.md"}]
+        nodes = []
+        for path, data in files.items():
+            sha = self.git_blob_sha(data)
+            nodes.append({"path": path, "mode": "100644", "type": "blob", "sha": sha})
+            upstream[f"{self.OFFICIAL}/git/blobs/{sha}"] = {
+                "encoding": "base64",
+                "content": base64.encodebytes(data).decode(),
+                "sha": sha,
+            }
+        tree = [{"path": "skills", "mode": "040000", "type": "tree", "sha": "e" * 40}, *nodes, *extra_nodes]
+        upstream[f"{self.OFFICIAL}/git/trees/{self.TREE_SHA}?recursive=1"] = {"tree": tree, "truncated": truncated}
+        return upstream
+
+    @staticmethod
+    def reviewed_files() -> dict:
+        reviewed = ROOT / "tests/fixtures/claude-plugins/frontend-design"
+        return {str(p.relative_to(reviewed)): p.read_bytes() for p in sorted(reviewed.rglob("*")) if p.is_file()}
+
+    def content_manifest(self, pin: str):
+        manifest = copy.deepcopy(CURRENT_MANIFEST)
+        manifest["assets"]["claude-plugins"]["plugins"].update(
+            {
+                "frontend-design@claude-plugins-official": {
+                    "marketplace": "anthropics/claude-plugins-official",
+                    "pin": pin,
+                },
+                "pyright-lsp@claude-plugins-official": {
+                    "marketplace": "anthropics/claude-plugins-official",
+                    "pin": "1.0.0",
+                },
+            }
+        )
+        return manifest
+
+    def content_watch(self, upstream, pin=None):
+        pin = (
+            pin
+            or json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"][
+                "frontend-design@claude-plugins-official"
+            ]["pin"]
+        )
+        return self.watch(["ubuntu-24.04", "macos-15"], CURRENT_MISE, self.content_manifest(pin), upstream)
+
+    def test_a_content_pin_is_compared_with_the_upstream_directory_content(self):
+        # The reviewed tree served upstream hashes to the recorded pin: the same definition as make update's.
+        status, report = self.content_watch(self.content_upstream(self.reviewed_files()))
+        self.assertEqual(0, status, report)
+        self.assertNotIn("Read failures", report)
+        self.assertEqual(set(), self.findings(report))
+        # One changed byte upstream is a plugin-pin finding with the hash served now.
+        changed = {**self.reviewed_files(), "README.md": self.reviewed_files()["README.md"] + b"!"}
+        status, report = self.content_watch(self.content_upstream(changed))
+        self.assertEqual(3, status, report)
+        self.assertEqual(
+            {("plugin-pin", "claude-plugins.frontend-design@claude-plugins-official")}, self.findings(report)
+        )
+        self.assertIn("(anthropics/claude-plugins-official/plugins/frontend-design)", report)
+        # A symlink in the served tree is no reviewable content: a finding, never a pass.
+        link = {"path": "skills/link", "mode": "120000", "type": "blob", "sha": "f" * 40}
+        status, report = self.content_watch(self.content_upstream(self.reviewed_files(), [link]))
+        self.assertEqual(3, status, report)
+        self.assertIn("skills/link is not a regular file (git mode 120000)", report)
+        # Round-8 audit: the catalog entry is part of what Claude Code loads, so an entry that adds an LSP server
+        # (strict: false) over the same files is a finding, never current.
+        upstream = self.content_upstream(self.reviewed_files())
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2].update(
+            strict=False, lspServers={"x": {"command": "x"}}
+        )
+        status, report = self.content_watch(upstream)
+        self.assertEqual(3, status, report)
+        self.assertEqual(
+            {("plugin-pin", "claude-plugins.frontend-design@claude-plugins-official")}, self.findings(report)
+        )
+
+    @staticmethod
+    def reviewed_entry() -> dict:
+        """frontend-design's reviewed catalog entry (tests/fixtures/claude-plugins/marketplaces), part of its pin."""
+        clone = ROOT / "tests/fixtures/claude-plugins/marketplaces/claude-plugins-official/.claude-plugin"
+        return json.loads((clone / "marketplace.json").read_text())["plugins"][0]
+
+    def test_a_content_read_that_cannot_be_trusted_is_a_read_failure(self):
+        files = self.reviewed_files()
+
+        def forged(upstream):
+            blob = next(url for url in upstream if "/git/blobs/" in url)  # lint-comparisons: allow a fixture key
+            upstream[blob]["content"] = base64.encodebytes(b"other bytes").decode()
+
+        def no_listing(upstream):
+            upstream[f"{self.OFFICIAL}/contents/plugins"] = {"http_status": 404}
+
+        for name, upstream in (
+            ("a truncated tree", self.content_upstream(files, truncated=True)),
+            ("blob bytes that are not its git SHA", self.content_upstream(files)),
+            ("the parent listing 404", self.content_upstream(files)),
+        ):
+            with self.subTest(case=name):
+                if name.startswith("blob"):
+                    forged(upstream)
+                elif name.startswith("the parent"):
+                    no_listing(upstream)
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertIn("frontend-design", report.split("## Read failures", 1)[1])
+
+    def test_a_strict_false_entry_without_a_plugin_json_reads_its_catalog_version(self):
+        # pyright-lsp: the catalog entry is the whole definition and the directory has no .claude-plugin.
+        upstream = self.content_upstream(self.reviewed_files())
+        status, report = self.content_watch(upstream)
+        self.assertEqual(0, status, report)
+        upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-1]["version"] = "1.1.0"
+        status, report = self.content_watch(upstream)
+        self.assertEqual(3, status, report)
+        self.assertIn("1.1.0 (anthropics/claude-plugins-official/.claude-plugin/marketplace.json)", report)
+        # A manifest directory in the listing means a plugin.json is read, and one not served is a read failure.
+        upstream[f"{self.OFFICIAL}/contents/plugins/pyright-lsp"].append({"name": ".claude-plugin"})
+        status, report = self.content_watch(upstream)
+        self.assert_read_failure(status, report)
+        self.assertIn("pyright-lsp/.claude-plugin/plugin.json: not in the fixture", report)
+
+    def test_a_pinned_plugin_with_no_upstream_value_is_a_read_failure_never_not_watched(self):
+        # Round-5 audit: a value that cannot be determined was listed as not watched and the run said "No drift".
+        def no_version(upstream):
+            entry = upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-1]
+            del entry["version"]  # pyright-lsp: strict: false, no catalog version, no plugin.json
+
+        def root_source(upstream):
+            upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2]["source"] = "./"
+
+        def npm_source(upstream):
+            entry = upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2]
+            entry["source"] = {"source": "npm", "package": "frontend-design"}
+
+        for name, change, plugin in (
+            ("strict: false with no version anywhere", no_version, "pyright-lsp"),
+            ("a content pin at the repository root", root_source, "frontend-design"),
+            ("a content pin from an npm source", npm_source, "frontend-design"),
+        ):
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files())
+                change(upstream)
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertNotIn("No drift found", report)
+                self.assertIn(plugin, report.split("## Read failures", 1)[1])
+                self.assertNotIn(plugin, self.not_watched(report))
+
+    def test_a_catalog_or_tree_naming_an_entry_twice_is_a_read_failure(self):
+        # Round-9 audit: the first of two catalog entries was taken, while make update and make doctor refuse the
+        # catalog. Both sides read it with pin_records.parse_catalog_entry; listings and trees get the same rule.
+        catalog = f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"
+
+        def duplicate_entry(upstream):
+            plugins = upstream[catalog]["plugins"]
+            plugins.append({**plugins[-2], "lspServers": {"x": {"command": "x"}}, "strict": False})
+
+        def duplicate_key(upstream):
+            text = json.dumps(upstream[catalog])
+            upstream[catalog] = text.replace('"name": "frontend-design"', '"name": "frontend-design", "name": "x"', 1)
+
+        def duplicate_listing(upstream):
+            listing = upstream[f"{self.OFFICIAL}/contents/plugins"]
+            listing.append({**listing[0], "sha": "f" * 40})
+
+        def duplicate_tree_path(upstream):
+            tree = upstream[f"{self.OFFICIAL}/git/trees/{self.TREE_SHA}?recursive=1"]["tree"]
+            tree.append(dict(tree[-1]))
+
+        for name, change, where in (
+            ("the plugin listed twice", duplicate_entry, "listed 2 times, not once"),
+            ("a duplicate key in the catalog", duplicate_key, "not strict JSON"),
+            ("the plugin directory listed twice", duplicate_listing, "appears more than once"),
+            ("a path twice in the tree", duplicate_tree_path, "appears more than once"),
+        ):
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files())
+                change(upstream)
+                status, report = self.content_watch(upstream)
+                # A catalog that is no strict JSON is refused for every plugin it lists, so count is not checked.
+                self.assertEqual(4, status, report)
+                self.assertNotIn("No drift found", report)
+                failures = report.split("## Read failures", 1)[1]
+                self.assertIn("frontend-design", failures)
+                self.assertIn(where, failures)
+
+    def test_every_tree_entry_is_validated(self):
+        # Round-6 audit: directory entries skipped mode and SHA checks, so a malformed tree read as current.
+        tree_path = f"/repos/anthropics/claude-plugins-official/git/trees/{self.TREE_SHA}"
+        findings = {
+            "a symlink typed as a tree": {"path": "skills/l", "mode": "120000", "type": "tree", "sha": "a" * 40},
+            "a submodule": {"path": "skills/m", "mode": "160000", "type": "commit", "sha": "b" * 40},
+        }
+        for name, node in findings.items():
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files(), [node])
+                status, report = self.content_watch(upstream)
+                self.assertEqual(3, status, report)
+                self.assertIn(f"{node['path']} is not a regular file (git mode {node['mode']})", report)
+        failures = {
+            "a directory with no sha": {"path": "skills/d", "mode": "040000", "type": "tree"},
+            "a directory with a short sha": {"path": "skills/d", "mode": "040000", "type": "tree", "sha": "abc"},
+            "a directory with a blob mode": {"path": "skills/d", "mode": "100644", "type": "tree", "sha": "c" * 40},
+            "an unknown mode": {"path": "skills/x", "mode": "100600", "type": "blob", "sha": "c" * 40},
+        }
+        for name, node in failures.items():
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files(), [node])
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertIn(tree_path, report.split("## Read failures", 1)[1])
 
 
 class UpstreamTokenTest(unittest.TestCase):

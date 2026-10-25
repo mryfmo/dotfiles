@@ -33,6 +33,9 @@ jobs:
             system: server
           - os: macos-14
             system: client
+          # Runs beside macos-14 until the ruleset's required context moves to it (U64).
+          - os: macos-15
+            system: client
 
     runs-on: ${{ matrix.os }}
     # Over twice the normal maximum of 13.6 min: a stalled apt mirror cancels the job instead of running it for hours.
@@ -80,12 +83,14 @@ jobs:
           # what setup.sh installs or how this job runs it: outside home/, the
           # files setup.sh, its installers and this job read; anywhere, a chezmoi
           # special file (.chezmoi*) or script (run_*); under home/, every path
-          # but the render-only subtrees that no installer executes or reads,
-          # whose apply the chezmoi-apply job checks on every diff (U39):
+          # but the render-only subtrees that no installer executes or reads:
           # managed skills, omp seat policies, Claude rules and the levers in
           # dot_local/bin/common/ and dot_local/bin/server/. A file directly in
           # dot_local/bin/ is not one: it renders to ~/.local/bin/<name>, where
           # the installers run mise, omp and the other tools they install.
+          # A diff that skips the bootstrap but changes a render-only path still
+          # applies home/ in this job (should_apply), so this required context
+          # fails when such a change does not render or apply (F052).
           changed="${RUNNER_TEMP}/changed-paths"
           home_paths="${RUNNER_TEMP}/changed-home-paths"
           git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
@@ -101,17 +106,35 @@ jobs:
             return "${status}"
           }
           paths_match '^home/' "${changed}" > "${home_paths}" || true
-          if [ ! -s "${changed}" ] ||
+          # BSD grep -z (the macOS rows) anchors ^ and $ at a newline inside a name, so a path holding a control
+          # character could read as render-only there: such a path always bootstraps.
+          control=false
+          while IFS= read -r -d '' path; do
+            case "${path}" in *[[:cntrl:]]*) control=true ;; esac
+          done < "${changed}"
+          if [ ! -s "${changed}" ] || [ "${control}" = true ] ||
             paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
             paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
+          elif [ -s "${home_paths}" ]; then
+            echo "should_run=false" >> "${GITHUB_OUTPUT}"
+            echo "should_apply=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Skip the bootstrap when no bootstrap path changed
         if: ${{ steps.decide.outputs.should_run != 'true' }}
-        run: echo "No path the bootstrap reads changed; the job reports success without bootstrapping."
+        env:
+          SHOULD_APPLY: ${{ steps.decide.outputs.should_apply }}
+        run: |
+          if [ "${SHOULD_APPLY}" = true ]; then
+            message="Only render-only paths under home/ changed: the bootstrap is skipped and home/ is applied into a scratch HOME instead."
+          else
+            message="No path the bootstrap reads changed and no path under home/ changed: the job reports success without bootstrapping."
+          fi
+          echo "${message}"
+          printf '### public-bootstrap skipped\n\n%s\n' "${message}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Drop the Azure apt mirror from the runner image
         if: ${{ steps.decide.outputs.should_run == 'true' && runner.os == 'Linux' }}
@@ -166,34 +189,10 @@ jobs:
           fi
           printf 'Validated checkout SHA %s\n' "${GITHUB_SHA}"
 
-  chezmoi-apply:
-    # Not a required check. The public-bootstrap decision skips setup.sh when every changed path under home/ is
-    # render-only (managed skills, omp seat policies, Claude rules, levers); this job applies home/ into a scratch
-    # HOME on every diff, so such a change that does not render or apply still fails, in minutes instead of a
-    # bootstrap's ten (U39).
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            system: client
-          - os: ubuntu-24.04
-            system: server
-          - os: macos-14
-            system: client
-
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    env:
-      CI: true
-      SYSTEM: ${{ matrix.system }}
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - name: Install chezmoi
+      # The render-only paths the bootstrap skips are applied here, in this required context (F052; the separate,
+      # non-required chezmoi-apply job of U39 left such a change mergeable while it failed to apply).
+      - name: Install chezmoi for the scratch apply
+        if: ${{ steps.decide.outputs.should_apply == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -213,8 +212,9 @@ jobs:
           esac
           artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
           base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-          sha256_check=(sha256sum --check --strict)
-          command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
+          sha256_check=(shasum -a 256 --check --strict)
+          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
           curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
           curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \
@@ -229,15 +229,16 @@ jobs:
           printf 'APPLY_CHEZMOI=%s\n' "${RUNNER_TEMP}/chezmoi-bin/chezmoi" >> "${GITHUB_ENV}"
 
       - name: Apply home/ into a scratch HOME
+        if: ${{ steps.decide.outputs.should_apply == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           apply_home="${RUNNER_TEMP}/chezmoi-apply-home"
           apply_source="${RUNNER_TEMP}/chezmoi-apply-source"
           apply_config="${apply_home}/.config/chezmoi/chezmoi.yaml"
-          # A scratch HOME and a copy of the source: the runner's HOME and the checkout stay untouched.
+          # A scratch HOME and a copy of the source: the job's HOME and the checkout stay untouched.
           cp -R "${GITHUB_WORKSPACE}/home" "${apply_source}"
-          # Externals are downloads and scripts are installers: both belong to the public-bootstrap job, which runs
+          # Externals are downloads and scripts are installers: both belong to the bootstrap, which runs
           # whenever a .chezmoi* or run_* path changes. As setup.sh does without a tty, age-encrypted targets
           # leave the copy: CI holds no key.
           rm -f "${apply_source}/.chezmoiexternal.yaml.tmpl"

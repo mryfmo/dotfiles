@@ -9,6 +9,7 @@ import io
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -472,7 +473,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         different = self.write_target("different.json", "runtime\n")
         executable = self.write_target("hook.sh", "#!/bin/sh\n")
         failures = [
-            f"Claude MCP config differs or is missing: {missing}",
+            f"model profile fragment differs or is missing: {missing}",
             f"shared skill directory differs: {different}",
             f"Claude enforce-uv hook is not executable: {executable}",
             "Claude shared-skill symlink tree is missing: ~/.claude/skills",
@@ -553,7 +554,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         missing = self.target_root / "missing.json"
         different = self.write_target("different.json", "runtime\n")
         failures = [
-            f"Claude MCP config differs or is missing: {missing}",
+            f"model profile fragment differs or is missing: {missing}",
             f"shared skill directory differs: {different}",
             "shared skill directory is missing files: example/scripts/history.sh",
             "Claude shared-skill symlink tree is missing: ~/.claude/skills",
@@ -808,7 +809,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_mode_converges_once_and_reports_each_action(self) -> None:
         target = self.target_root / "missing.json"
-        initial = [f"Claude MCP config differs or is missing: {target}"]
+        initial = [f"model profile fragment differs or is missing: {target}"]
         scans = iter((initial, []))
         calls: list[object] = []
         action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
@@ -840,7 +841,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_mode_fails_after_one_non_convergent_round(self) -> None:
         target = self.target_root / "missing.json"
-        failure = f"Claude MCP config differs or is missing: {target}"
+        failure = f"model profile fragment differs or is missing: {target}"
         scan_count = 0
         action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
 
@@ -872,7 +873,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_unset_is_byte_identical_and_never_mutates(self) -> None:
         warning = "WARN: orphaned agent asset: /tmp/orphan; manual review required"
-        failure = "Claude MCP config differs or is missing: /tmp/mcp.json"
+        failure = "model profile fragment differs or is missing: /tmp/mcp.json"
         original_check = self.module.check
         original_execute = self.module.execute_repair
         try:
@@ -988,6 +989,49 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
         ):
             self.assertIn("WARN: ua-core sentinel", self.module.check())
+
+    def test_doctor_warns_for_a_plugin_hook_that_differs_from_its_pin(self) -> None:
+        # The real base modify script and manifest pins, with a fixture Ponytail release nobody reviewed.
+        key = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        hook_file = self.target_root / ".codex/plugins/cache/ponytail/ponytail/99.0.0/hooks/claude-codex-hooks.json"
+        hook_file.parent.mkdir(parents=True)
+        handler = {"type": "command", "command": "ponytail-unreviewed session-start"}
+        hook_file.write_text(json.dumps({"hooks": {"SessionStart": [{"matcher": "startup", "hooks": [handler]}]}}))
+
+        warnings = self.module.codex_hook_trust_warnings(self.target_root)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertTrue(warnings[0].startswith("WARN: "), warnings)
+        self.assertIn(key, warnings[0])
+        self.assertIn("/hooks", warnings[0])
+        # No plugin cache at all: every pin is written as is, so there is nothing to review.
+        shutil.rmtree(self.target_root / ".codex")
+        self.assertEqual([], self.module.codex_hook_trust_warnings(self.target_root))
+
+    def test_doctor_reports_an_unreadable_hook_trust_block(self) -> None:
+        script = self.temp_dir / "modify_private_config.toml"
+        script.write_text("#!/usr/bin/env python3\n")
+
+        warnings = self.module.codex_hook_trust_warnings(self.target_root, script)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertTrue(warnings[0].startswith(f"WARN: Codex hook trust: cannot evaluate {script}"), warnings)
+
+    def test_doctor_reports_a_hook_trust_block_that_refuses_without_tomllib(self) -> None:
+        # Failure injection: tomllib cannot be imported, so the block's guarded import refuses (SystemExit).
+        with mock.patch.dict(sys.modules, {"tomllib": None}):
+            warnings = self.module.codex_hook_trust_warnings(self.target_root)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertIn("cannot evaluate", warnings[0])
+        self.assertIn("ERROR: codex config merge:", warnings[0])
+
+    def test_check_includes_codex_hook_trust_warnings(self) -> None:
+        with (
+            mock.patch.object(self.module, "codex_hook_trust_warnings", return_value=["WARN: hook-trust sentinel"]),
+            mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
+        ):
+            self.assertIn("WARN: hook-trust sentinel", self.module.check())
 
     def fake_gh_status(self, accounts: list[dict]) -> str:
         """A fake gh whose `auth status --json hosts` reports ACCOUNTS; it fails if a token variable leaks."""

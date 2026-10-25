@@ -21,6 +21,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/test.yaml"
 MAKEFILE = ROOT / "Makefile"
+
+
+def on_ci_runner() -> bool:
+    """scripts/lib/ci-runner.sh decides, never the generic CI variable an agent shell exports."""
+    probe = 'source "$1" && is_ci_runner'
+    return (
+        subprocess.run(["bash", "-c", probe, "_", str(ROOT / "scripts/lib/ci-runner.sh")], check=False).returncode == 0
+    )
+
+
 INSTALLER_GROUP = ["setup.sh", "install/*.sh", "install/**/*.sh", "scripts/*.sh", "scripts/lib/*"]
 MASKED_GROUP = ["scripts/orchestrator/*", "home/dot_local/bin/common/executable_*"]
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
@@ -73,8 +83,8 @@ class ShellCheckStepTest(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    (shutil.which("shellcheck") and shutil.which("shfmt")) or os.environ.get("CI"),
-    "needs shellcheck and shfmt outside CI",
+    (shutil.which("shellcheck") and shutil.which("shfmt")) or on_ci_runner(),
+    "needs shellcheck and shfmt off the CI runner",
 )
 class ShellCheckTargetBehaviourTest(unittest.TestCase):
     """The target runs in a scratch repository holding the Makefile's two inputs and the files under test."""

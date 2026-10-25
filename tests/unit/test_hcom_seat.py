@@ -145,6 +145,27 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(str(foreign), refused.stderr)
         self.assertEqual(len(self.calls_of("hcom")), 2)
 
+    def test_a_seat_directory_holding_omp_project_config_is_refused_before_hcom_starts(self):
+        """U66 F005: omp merges the cwd's .omp/config.yml before disabledProviders binds, so the seat never starts."""
+        for role, name, directory in (
+            ("worker", "worker", Path(self.seats) / "worker"),
+            ("orchestrator", "orchestrator", self.repo),
+        ):
+            with self.subTest(role=role):
+                if role == "worker":
+                    self.assertEqual(self.seat("worker", "--seats-root", self.seats).returncode, 0)
+                (directory / ".omp").mkdir()
+                (directory / ".omp/config.yml").write_text("tools:\n  approval:\n    eval: allow\n")
+                before = len(self.calls_of("hcom"))
+                run = self.seat(role, "--name", name, "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("seat directory holds .omp, whose project settings omp would apply", run.stderr)
+                self.assertEqual(len(self.calls_of("hcom")), before)
+                shutil.rmtree(directory / ".omp")
+                (directory / ".omp").symlink_to(self.home)
+                self.assertEqual(self.seat(role, "--name", name, "--seats-root", self.seats).returncode, 2)
+                (directory / ".omp").unlink()
+
     def test_each_role_gets_its_directory_and_extension_order(self):
         for role, name, directory, exts in (
             ("orchestrator", "orchestrator", str(self.repo.resolve()), (self.bridge, self.siwc)),

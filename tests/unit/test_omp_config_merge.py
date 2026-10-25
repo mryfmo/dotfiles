@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.unit.test_omp_seat_policy import decide, load_policy
+
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_omp/private_agent/modify_private_config.yml"
 MANAGED = (
@@ -127,6 +129,63 @@ class OmpConfigMergeTest(unittest.TestCase):
 
         self.assertEqual(result.stdout, current)
         self.assertIn("uv", result.stderr)
+
+    def test_the_managed_denies_join_omps_policy_and_the_approval_mode_is_kept(self) -> None:
+        """U66 F043: a plain launch keeps its approval mode and every rule the operator wrote, and gains the managed
+        tool and bash denies ahead of them, so a managed deny wins over a user allow for the same command."""
+        policy = (
+            "tools:\n  approval:\n    debug: deny\n    AskClaude: deny\n"
+            'bash:\n  patterns:\n    - match: "*sudo *"\n      approval: deny\n'
+            '    - match: "*rm -rf *"\n      approval: deny\n'
+        )
+        (self.source_dir / ".chezmoitemplates/omp-config-managed.yml").write_text(MANAGED + policy)
+        current = (
+            "tools:\n  approvalMode: yolo\n  approval:\n    read: allow\n    debug: allow\n    ast_edit: deny\n"
+            "bash:\n  allowCompoundCommands: false\n  patterns:\n"
+            "  - match: 'ssh *'\n    approval: deny\n"
+            "  - match: 'sudo *'\n    approval: allow\n"
+            "  - match: '*sudo *'\n    approval: deny\n"
+            "  - match: '*'\n    approval: allow\n"
+        )
+        result = self.merge(current)
+        merged = self.source_dir / "merged.yml"
+        merged.write_text(result.stdout)
+        data = load_policy(merged)
+        self.assertEqual(
+            data["tools"],
+            {
+                "approvalMode": "yolo",
+                "approval": {"read": "allow", "debug": "deny", "ast_edit": "deny", "AskClaude": "deny"},
+            },
+        )
+        self.assertFalse(data["bash"]["allowCompoundCommands"])
+        self.assertEqual(
+            data["bash"]["patterns"],
+            [
+                {"match": "*sudo *", "approval": "deny"},
+                {"match": "*rm -rf *", "approval": "deny"},
+                {"match": "ssh *", "approval": "deny"},
+                {"match": "sudo *", "approval": "allow"},
+                {"match": "*", "approval": "allow"},
+            ],
+        )
+        for tool, command, expected in (
+            ("bash", "sudo ls", "deny"),  # the managed deny wins over the user's `sudo *` allow
+            ("bash", "ssh example.invalid", "deny"),  # the user's own deny stays
+            ("bash", "cd /tmp && rm -rf build", "deny"),
+            ("bash", "git status", "allow"),
+            ("debug", None, "deny"),
+            ("ast_edit", None, "deny"),  # the user's own tool deny stays
+        ):
+            with self.subTest(command=command or tool):
+                self.assertEqual(decide(data, tool, command), expected)
+        self.assertEqual(self.merge(result.stdout).stdout, result.stdout)
+        self.assertNotIn("approvalMode", self.merge("theme:\n  dark: night\n").stdout)
+        for current in ("tools: plain\n", "tools:\n  approval: [a]\n", "bash: [a]\n", "bash:\n  patterns: plain\n"):
+            with self.subTest(current=current):
+                passed = self.merge(current)
+                self.assertEqual(passed.stdout, current)
+                self.assertEqual(len(passed.stderr.splitlines()), 1)
 
 
 if __name__ == "__main__":

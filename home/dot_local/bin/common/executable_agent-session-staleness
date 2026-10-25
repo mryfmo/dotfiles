@@ -22,7 +22,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-WALL_LIMIT_S = 5
+# The SessionStart hook runs synchronously with a 3 s timeout (agent-config.yaml); the
+# scan stops here first and exits 0 without output. Measured runtime: about 0.04 s.
+WALL_LIMIT_S = 2
 MAX_SCAN_ENTRIES = 10_000
 MAX_HOOK_PAYLOAD_BYTES = 64 * 1024
 MAX_STATE_FILES = 1_000
@@ -226,7 +228,23 @@ def run_hook(home: Path, deadline: float) -> int:
                 baseline_file.write(f"{time.time()}\n")
                 baseline_file.flush()
                 return 0
-        return run(["check", "--since", baseline], home, deadline)
+        lines = stale_lines(home, parse_since(baseline), deadline)
+        if lines:
+            # systemMessage is shown to the user and additionalContext reaches Claude; both only
+            # from a synchronous hook (https://code.claude.com/docs/en/hooks).
+            message = "\n".join(lines)
+            print(
+                json.dumps(
+                    {
+                        "systemMessage": message,
+                        "hookSpecificOutput": {
+                            "hookEventName": "SessionStart",
+                            "additionalContext": message,
+                        },
+                    }
+                )
+            )
+        return 0
     except Exception:
         return 0
 
@@ -251,20 +269,31 @@ def run(argv: list[str], home: Path, deadline: float) -> int:
     check = subparsers.add_parser("check")
     check.add_argument("--since", required=True)
     args = parser.parse_args(argv)
-    since = float(args.since)
+    for line in stale_lines(home, parse_since(args.since), deadline):
+        print(line)
+    return 0
+
+
+def parse_since(value: str) -> float:
+    since = float(value)
     if not math.isfinite(since) or since < 0:
         raise ValueError("--since must be a finite non-negative epoch")
+    return since
 
+
+def stale_lines(home: Path, since: float, deadline: float) -> list[str]:
+    """One `restart recommended:` line per asset label updated after since, newest first."""
     latest_by_label: dict[str, Update] = {}
     for update in collect_updates(home, since, deadline):
         current = latest_by_label.get(update[1])
         if current is None or update[0] > current[0]:
             latest_by_label[update[1]] = update
-    for _mtime, label, path in sorted(latest_by_label.values(), reverse=True)[
-        :MAX_OUTPUT_LINES
-    ]:
-        print(f"restart recommended: {label} ({display_path(path, home)})")
-    return 0
+    return [
+        f"restart recommended: {label} ({display_path(path, home)})"
+        for _mtime, label, path in sorted(latest_by_label.values(), reverse=True)[
+            :MAX_OUTPUT_LINES
+        ]
+    ]
 
 
 def guarded_main(argv: list[str] | None = None, *, home: Path | None = None) -> int:

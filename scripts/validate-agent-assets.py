@@ -666,21 +666,6 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
-def validate_claude_mcp_config() -> dict[str, Any]:
-    path = ROOT / "home/dot_claude/private_mcp.json.tmpl"
-    data = json.loads(render_template_text(path))
-    servers = data.get("mcpServers")
-    # An empty map is valid: servers are declared only when one is enabled.
-    if not isinstance(servers, dict):
-        fail(f"{path} must define mcpServers as a mapping")
-    for name, server in servers.items():
-        if server.get("disabled") is not True:
-            fail(f"Claude MCP server {name} should be disabled by default")
-        if server.get("type") == "stdio" and not server.get("command"):
-            fail(f"Claude stdio MCP server {name} must define command")
-    return data
-
-
 ASSET_VERIFY_BY_SOURCE = {
     "github-release": {"sha256", "release-shasums", "release-sha256", "gpg", "github-release-attestation"},
     "https-download": {"sha256", "gpg"},
@@ -910,9 +895,10 @@ def validate_agent_manifest() -> dict[str, Any]:
     if set(profiles) != required_profiles:
         fail(f"{manifest_path} must define the six base profiles and no others")
     # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
-    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth.
+    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth. It audits pending
+    # changes without editing them, so it is read-only like the audit profile (U70).
     security_codex = profiles["security"].get("codex", {})
-    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high")):
+    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high"), ("sandbox_mode", "read-only")):
         if security_codex.get(key) != expected:
             fail(
                 f"{manifest_path} security profile must set codex.{key}: {expected} "
@@ -963,8 +949,11 @@ def validate_agent_manifest() -> dict[str, Any]:
         if server.get("enabled", False) is not False:
             fail(f"MCP server {name} must be disabled by default in the shared manifest")
         agents = server.get("agents", {})
-        if set(agent for agent, enabled in agents.items() if enabled) != targets:
-            fail(f"MCP server {name} must be exposed to every target agent")
+        if agents.get("claude"):
+            # Claude Code reads user-scope MCP servers from ~/.claude.json, which this repo does not manage.
+            fail(f"MCP server {name} cannot target claude: add it with `claude mcp add --scope user`")
+        if {agent for agent, enabled in agents.items() if enabled} != targets - {"claude"}:
+            fail(f"MCP server {name} must be exposed to every target agent except claude")
         transport = server.get("transport")
         if transport == "stdio":
             if not server.get("command"):
@@ -983,16 +972,11 @@ def validate_agent_manifest() -> dict[str, Any]:
     return manifest
 
 
-def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]) -> None:
+def validate_mcp_parity(codex: dict[str, Any], manifest: dict[str, Any]) -> None:
     manifest_names = set(manifest.get("mcp_servers", {}))
     codex_names = set(codex.get("mcp_servers", {}))
-    claude_names = set(claude.get("mcpServers", {}))
-    if not (manifest_names == codex_names == claude_names):
-        fail(
-            "MCP server names differ: "
-            f"manifest={sorted(manifest_names)} codex={sorted(codex_names)} "
-            f"claude={sorted(claude_names)}"
-        )
+    if manifest_names != codex_names:
+        fail(f"MCP server names differ: manifest={sorted(manifest_names)} codex={sorted(codex_names)}")
 
 
 def validate_codex_modify_script() -> None:
@@ -1692,8 +1676,7 @@ def main() -> None:
     validate_codex_plugins()
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)
-    claude = validate_claude_mcp_config()
-    validate_mcp_parity(codex, claude, manifest)
+    validate_mcp_parity(codex, manifest)
     validate_crit_install_assets(manifest)
     validate_ponytail_assets(manifest, codex)
     validate_understand_anything_assets(manifest)

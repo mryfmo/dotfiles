@@ -11,6 +11,12 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+# The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.
+if ! declare -F is_ci_runner > /dev/null; then
+    # shellcheck source=scripts/lib/ci-runner.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/ci-runner.sh"
+fi
+
 readonly BREW_PACKAGES=(
     htop
     tailscale
@@ -47,7 +53,7 @@ function install_brew_packages() {
     done
 
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if [[ "${CI:-}" == "true" ]]; then
+        if is_ci_runner; then
             brew info "${missing_packages[@]}"
         else
             brew install --force "${missing_packages[@]}"
@@ -68,7 +74,7 @@ function install_brew_cask_packages() {
     done
 
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if [[ "${CI:-}" == "true" ]]; then
+        if is_ci_runner; then
             brew info --cask "${missing_packages[@]}"
         else
             brew install --cask --force "${missing_packages[@]}"

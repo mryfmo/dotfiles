@@ -1,0 +1,561 @@
+{
+  "generated_by": "Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.",
+  "outputs": [
+    {
+      "source": "home/.chezmoitemplates/claude-settings-managed.json",
+      "target": null
+    },
+    {
+      "source": "home/.chezmoitemplates/codex-config-managed.toml",
+      "target": null
+    },
+    {
+      "source": "home/.chezmoitemplates/omp-config-managed.yml",
+      "target": null
+    },
+    {
+      "source": "home/dot_agents/model-profiles.env",
+      "target": ".agents/model-profiles.env",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/policies/audit.yml",
+      "target": ".agents/omp/policies/audit.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/policies/orchestrator.yml",
+      "target": ".agents/omp/policies/orchestrator.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/policies/worker.yml",
+      "target": ".agents/omp/policies/worker.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/profiles/audit.yml.tmpl",
+      "target": ".agents/omp/profiles/audit.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/profiles/orchestrator.yml.tmpl",
+      "target": ".agents/omp/profiles/orchestrator.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/profiles/review.yml.tmpl",
+      "target": ".agents/omp/profiles/review.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/profiles/security.yml.tmpl",
+      "target": ".agents/omp/profiles/security.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/profiles/worker.yml.tmpl",
+      "target": ".agents/omp/profiles/worker.yml",
+      "kind": "template",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/plugins/create_marketplace.json",
+      "target": ".agents/plugins/marketplace.json",
+      "kind": "create",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/plugins/mryfmo-dev-workflows/dot_codex-plugin/plugin.json",
+      "target": ".agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/agents/express-explorer.md",
+      "target": ".claude/agents/express-explorer.md",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/agents/project-map.md",
+      "target": ".claude/agents/project-map.md",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/convert-to-transformers/references/symlink_common-pitfalls.md.tmpl",
+      "target": ".claude/skills/convert-to-transformers/references/common-pitfalls.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/convert-to-transformers/references/symlink_learnings.md.tmpl",
+      "target": ".claude/skills/convert-to-transformers/references/learnings.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/convert-to-transformers/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/convert-to-transformers/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-comment-attach-files/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/gh-comment-attach-files/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-comment-attach-files/scripts/symlink_attach_comment_files.py.tmpl",
+      "target": ".claude/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-comment-attach-files/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/gh-comment-attach-files/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-first-workflow/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/gh-first-workflow/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-first-workflow/references/symlink_gh-git-rules.md.tmpl",
+      "target": ".claude/skills/gh-first-workflow/references/gh-git-rules.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/gh-first-workflow/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/gh-first-workflow/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/hcom-orchestration/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/hcom-orchestration/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/hcom-worker/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/hcom-worker/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/humanizer-ja/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/humanizer-ja/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/humanizer-ja/references/symlink_ai-patterns-ja.md.tmpl",
+      "target": ".claude/skills/humanizer-ja/references/ai-patterns-ja.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/humanizer-ja/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/humanizer-ja/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/project-map/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/project-map/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/project-map/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/project-map/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/python-uv-workflow/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/python-uv-workflow/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/python-uv-workflow/references/symlink_python-uv-rules.md.tmpl",
+      "target": ".claude/skills/python-uv-workflow/references/python-uv-rules.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/python-uv-workflow/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/python-uv-workflow/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/shdoc-shell-docs/agents/symlink_openai.yaml.tmpl",
+      "target": ".claude/skills/shdoc-shell-docs/agents/openai.yaml",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/shdoc-shell-docs/references/symlink_shdoc-rules.md.tmpl",
+      "target": ".claude/skills/shdoc-shell-docs/references/shdoc-rules.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_claude/skills/shdoc-shell-docs/symlink_SKILL.md.tmpl",
+      "target": ".claude/skills/shdoc-shell-docs/SKILL.md",
+      "kind": "symlink",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_audit.config.toml",
+      "target": ".codex/audit.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_config.toml",
+      "target": ".codex/config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_deep.config.toml",
+      "target": ".codex/deep.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_express.config.toml",
+      "target": ".codex/express.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_review.config.toml",
+      "target": ".codex/review.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_security.config.toml",
+      "target": ".codex/security.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/modify_private_standard.config.toml",
+      "target": ".codex/standard.config.toml",
+      "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/rules/command-policy.rules",
+      "target": ".codex/rules/command-policy.rules",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_bus-history.sh",
+      "target": ".local/bin/common/bus-history.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_hcom-dispatch",
+      "target": ".local/bin/common/hcom-dispatch",
+      "kind": "file",
+      "executable": true,
+      "sha256": "b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_hcom-seat",
+      "target": ".local/bin/common/hcom-seat",
+      "kind": "file",
+      "executable": true,
+      "sha256": "43f5f617ecac078bb62cfd0a1d77686e80f4fc486a2d40a689f94439b8092309"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_omp-run.sh",
+      "target": ".local/bin/common/omp-run.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-body-edit.sh",
+      "target": ".local/bin/common/pr-body-edit.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "23b3b595c6af815731d0a8a76c10394716dd3cfaf0d2824db1b9986d348b88ee"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-close.sh",
+      "target": ".local/bin/common/pr-close.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "113fff0163e77ad57f05b031962d46d6f7886da7ff47b4779acfd752985e996a"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-merge.sh",
+      "target": ".local/bin/common/pr-merge.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
+      "target": ".local/bin/common/pr-thread-reply.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "5782b2d7fc35f8d07bfd7286f7f7998d5661c9dcf754b0b1b78dbf439d250037"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-thread-resolve.sh",
+      "target": ".local/bin/common/pr-thread-resolve.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "382dbe41f7b4e494c27a62650cb40bfecbbe3b31502f1d6c1beab787d3073123"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-threads-check.sh",
+      "target": ".local/bin/common/pr-threads-check.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_pr-update-branch.sh",
+      "target": ".local/bin/common/pr-update-branch.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_records-sync.sh",
+      "target": ".local/bin/common/records-sync.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-env",
+      "target": ".local/bin/common/regime-env",
+      "kind": "file",
+      "executable": true,
+      "sha256": "d0d516db313b272a019ac565abd248da6eea6f7b9ec49f39293d111ad99e6dba"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-init",
+      "target": ".local/bin/common/regime-init",
+      "kind": "file",
+      "executable": true,
+      "sha256": "f6b9443069d7d9b0a195a8bd1a3b0562e54a73effe3fb2b2f587c68bb4789324"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-start",
+      "target": ".local/bin/common/regime-start",
+      "kind": "file",
+      "executable": true,
+      "sha256": "531ec6fed3531fc7b09ebbef43d51e78b80c68cf89c6c3683a87d562603af142"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_regime-stop",
+      "target": ".local/bin/common/regime-stop",
+      "kind": "file",
+      "executable": true,
+      "sha256": "be35aa95f6cccc36f26ac95a8952daf9f1f647365107cd13802eeebdbf555e96"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_seat-login-preflight",
+      "target": ".local/bin/common/seat-login-preflight",
+      "kind": "file",
+      "executable": true,
+      "sha256": "863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15"
+    },
+    {
+      "source": "home/dot_local/bin/common/executable_worktree-gc.sh",
+      "target": ".local/bin/common/worktree-gc.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293"
+    },
+    {
+      "source": "install/common/aws_cli.sh",
+      "target": null
+    },
+    {
+      "source": "install/common/mise.sh",
+      "target": null
+    },
+    {
+      "source": "install/macos/common/brew.sh",
+      "target": null
+    },
+    {
+      "source": "install/ubuntu/server/starship.sh",
+      "target": null
+    },
+    {
+      "source": "scripts/lib/installer-pins.sh",
+      "target": null
+    },
+    {
+      "source": "scripts/update-agent-assets.sh",
+      "target": null
+    },
+    {
+      "source": "setup.sh",
+      "target": null
+    }
+  ],
+  "scopes": [
+    {
+      "source": "home/dot_agents/omp/profiles",
+      "target": ".agents/omp/profiles",
+      "glob": "*"
+    },
+    {
+      "source": "home/dot_agents/plugins",
+      "target": ".agents/plugins",
+      "glob": "**/*"
+    },
+    {
+      "source": "home/dot_claude/agents",
+      "target": ".claude/agents",
+      "glob": "*"
+    },
+    {
+      "source": "home/dot_claude/skills",
+      "target": ".claude/skills",
+      "glob": "**/*"
+    },
+    {
+      "source": "home/dot_codex",
+      "target": ".codex",
+      "glob": "*.config.toml"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "README.md"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "bus-history.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "ci-rerun.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "hcom-dispatch"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "hcom-seat"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "omp-run.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-body-edit.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-close.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-merge.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-thread-reply.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-thread-resolve.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-threads-check.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "pr-update-branch.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "records-sync.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-ci.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-env"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-init"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-start"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "regime-stop"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "seat-login-preflight"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "worktree-gc.sh"
+    }
+  ]
+}

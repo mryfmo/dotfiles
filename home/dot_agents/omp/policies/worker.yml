@@ -1054,59 +1054,32 @@ bash:
     - match: "*gh alias delete"
       approval: deny
     # <<< command_policy <<<
-    # The worker pushes its own branch by remote name only, `git push origin <branch>` or `git push -u origin <branch>`
-    # (hcom-worker SKILL step 3). A push carrying a refspec colon (`HEAD:x`, a `:x` or `+:x` deletion, a URL), a `+`
-    # (forced update), a force, delete, prune, mirror or --all flag is refused, bare or as `git -c …`/`git -C …`, wherever
-    # it sits on the line (regime-cutover U76, round-3 audit: `git push origin +:refs/heads/x` passed the old refspec
-    # list). The globs see the whole line, so a commit message that says `git push` and then holds a `:` or `+` is
-    # refused too; reword it. Not caught: a combined short-flag group other than the ones listed (`-nf`, `-qd`), and a
-    # push that git config or an alias shapes (`remote.origin.push`, `push.default`, `git -c alias.p=push p`); the GitHub
-    # ruleset keeps main, and srt and the seat GitHub identity (U88) the rest.
-    - {match: "*git push *:*", approval: deny}
-    - {match: "*git push *+*", approval: deny}
-    - {match: "*git push*--delete*", approval: deny}
-    - {match: "*git push*--prune*", approval: deny}
-    - {match: "*git push*--mirror*", approval: deny}
-    - {match: "*git push*--all*", approval: deny}
-    - {match: "*git push*--force*", approval: deny}
-    - {match: "*git push* -f", approval: deny}
-    - {match: "*git push* -f *", approval: deny}
-    - {match: "*git push* -d", approval: deny}
-    - {match: "*git push* -d *", approval: deny}
-    - {match: "*git push* -uf", approval: deny}
-    - {match: "*git push* -uf *", approval: deny}
-    - {match: "*git push* -fu", approval: deny}
-    - {match: "*git push* -fu *", approval: deny}
-    - {match: "*git push* -ud", approval: deny}
-    - {match: "*git push* -ud *", approval: deny}
-    - {match: "*git push* -du", approval: deny}
-    - {match: "*git push* -du *", approval: deny}
-    - {match: "*git -* push *:*", approval: deny}
-    - {match: "*git -* push *+*", approval: deny}
-    - {match: "*git -* push*--delete*", approval: deny}
-    - {match: "*git -* push*--prune*", approval: deny}
-    - {match: "*git -* push*--mirror*", approval: deny}
-    - {match: "*git -* push*--all*", approval: deny}
-    - {match: "*git -* push*--force*", approval: deny}
-    - {match: "*git -* push* -f", approval: deny}
-    - {match: "*git -* push* -f *", approval: deny}
-    - {match: "*git -* push* -d", approval: deny}
-    - {match: "*git -* push* -d *", approval: deny}
-    - {match: "*git -* push* -uf", approval: deny}
-    - {match: "*git -* push* -uf *", approval: deny}
-    - {match: "*git -* push* -fu", approval: deny}
-    - {match: "*git -* push* -fu *", approval: deny}
-    - {match: "*git -* push* -ud", approval: deny}
-    - {match: "*git -* push* -ud *", approval: deny}
-    - {match: "*git -* push* -du", approval: deny}
-    - {match: "*git -* push* -du *", approval: deny}
-    # main is PR-only: no push whose target branch is main, by name or by ref (`refs/heads/main`), bare or as
-    # `git -c …`; `HEAD:main` and `+main` already meet the colon and `+` rows above.
-    - match: "*git *push* main"
-      approval: deny
-    - match: "*git *push* main *"
-      approval: deny
-    - match: "*git *push*/main"
-      approval: deny
-    - match: "*git *push*/main *"
-      approval: deny
+    # The worker pushes its own branch by remote name only (hcom-worker SKILL step 3), so its pushes are an allowlist
+    # (regime-cutover U76, round-5 audit: `git push origin --tags` passed the flag list before it). omp takes the first
+    # rule that matches; an allow vouches only for a whole simple command (no `;`, `&`, `|`, `<`, `>`, `$`, backtick or
+    # parenthesis), a deny for the whole line or any segment of it (src/tools/bash.ts:301-307 of 18.11.3). A glob's `*`
+    # matches anything, spaces included, so the branch word of `git push [-u] origin <branch>` is carved first: a
+    # branch starting with `-`, a second word (flag, tag, refspec), a `:` or a `+` is denied, and so is `main` by name or
+    # as `refs/heads/main`. Then the three allowed shapes, then a deny for every other line holding `git push` or
+    # `git -<option> … push`, compound lines with an allowed shape included. Over-match: a line that merely says
+    # `git push` (a commit message) is refused; reword it. Not caught: a push that git config or an alias shapes
+    # (`remote.origin.push`, `push.default`, `git -c alias.p=push p`, an alias in ~/.gitconfig); the GitHub ruleset keeps
+    # main, and srt and the seat GitHub identity (U88) the rest. validate-agent-assets.py allows these three allow rows
+    # in worker.yml only (OMP_WORKER_PUSH_ALLOW).
+    - {match: "*git *push* main", approval: deny}
+    - {match: "*git *push* main *", approval: deny}
+    - {match: "*git *push*/main", approval: deny}
+    - {match: "*git *push*/main *", approval: deny}
+    - {match: "git push origin -*", approval: deny}
+    - {match: "git push origin * *", approval: deny}
+    - {match: "git push origin *:*", approval: deny}
+    - {match: "git push origin *+*", approval: deny}
+    - {match: "git push -u origin -*", approval: deny}
+    - {match: "git push -u origin * *", approval: deny}
+    - {match: "git push -u origin *:*", approval: deny}
+    - {match: "git push -u origin *+*", approval: deny}
+    - {match: "git push", approval: allow}
+    - {match: "git push origin *", approval: allow}
+    - {match: "git push -u origin *", approval: allow}
+    - {match: "*git push*", approval: deny}
+    - {match: "*git -* push*", approval: deny}

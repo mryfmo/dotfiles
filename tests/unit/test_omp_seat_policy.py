@@ -50,6 +50,8 @@ POLICIES_VALUES = ("allow", "deny", "prompt")  # approval.ts:99
 # The plain launch's bash denies are the command_policy block every seat policy carries (U76); setUpClass reads them
 # from the rendered plain-launch config, and tests/unit/test_command_policy.py checks them against the manifest.
 PLAIN_LAUNCH = ROOT / "home/.chezmoitemplates/omp-config-managed.yml"
+# The worker's own-branch push shapes, its only allows besides the body lever (U76 round 5).
+WORKER_PUSH_ALLOW = ("git push", "git push origin *", "git push -u origin *")
 
 MERGE = "gh pr merge 1 --squash --match-head-commit abc"
 PUSH_RECIPE = "GIT_CONFIG_GLOBAL=/dev/null git -c credential.helper= push https://github.com/mryfmo/dotfiles.git"
@@ -208,6 +210,20 @@ TABLE = {
         ("bash", "git push origin refs/heads/main", "deny"),
         ("bash", "git -C w push origin +:x", "deny"),
         ("bash", "cd w; git push origin :x", "deny"),
+        # U76 round 5: the push rows are an allowlist, so any other shape is refused.
+        ("bash", "git push origin --tags", "deny"),
+        ("bash", "git push --tags origin", "deny"),
+        ("bash", "git push origin feat/x --follow-tags", "deny"),
+        ("bash", "git push -o ci.skip origin feat/x", "deny"),
+        ("bash", "git push origin feat/x --push-option=ci.skip", "deny"),
+        ("bash", "git push --repo=origin feat/x", "deny"),
+        ("bash", "git push origin feat/x feat/y", "deny"),
+        ("bash", "git push -u origin feat/x v1.0", "deny"),
+        ("bash", "git push -u origin --tags", "deny"),
+        ("bash", "git push upstream feat/x", "deny"),
+        ("bash", "git push origin feat/x && echo done", "deny"),
+        ("bash", 'git push origin "$BRANCH"', "deny"),
+        ("bash", "git --no-pager push origin feat/x", "deny"),
         ("bash", "rm -f build/out.txt", "allow"),
         ("bash", 'git commit -m "fix the main loop"', "allow"),
         ("bash", "gh pr create --title t --body b", "allow"),
@@ -464,7 +480,7 @@ class OmpSeatPolicyTest(unittest.TestCase):
             rules = self.policies[role]["bash"]["patterns"]
             first_common = next(index for index, rule in enumerate(rules) if rule["match"] in self.common)
             for index, rule in enumerate(rules):
-                if rule["approval"] != "allow":
+                if rule["approval"] != "allow" or rule["match"] in WORKER_PUSH_ALLOW:
                     continue
                 with self.subTest(role=role, rule=rule["match"]):
                     lever = rule["match"].removeprefix("~/.local/bin/common/").split(" ", 1)[0]
@@ -482,9 +498,10 @@ class OmpSeatPolicyTest(unittest.TestCase):
         self.assertIn("*records-sync.sh", matches)
 
     def test_the_worker_allows_only_its_body_lever_and_the_audit_ends_in_a_catch_all_deny(self):
+        """The worker's allows: its body lever, and its own-branch push shapes after the common block (U76 round 5)."""
         self.assertEqual(
-            [rule for rule in self.policies["worker"]["bash"]["patterns"] if rule["approval"] != "deny"],
-            [{"match": "~/.local/bin/common/pr-body-edit.sh --body-file *", "approval": "allow"}],
+            [rule["match"] for rule in self.policies["worker"]["bash"]["patterns"] if rule["approval"] != "deny"],
+            ["~/.local/bin/common/pr-body-edit.sh --body-file *", *WORKER_PUSH_ALLOW],
         )
         self.assertEqual(self.policies["audit"]["bash"]["patterns"][-1], {"match": "*", "approval": "deny"})
         self.assertEqual(self.policies["audit"]["tools"]["approvalMode"], "always-ask")

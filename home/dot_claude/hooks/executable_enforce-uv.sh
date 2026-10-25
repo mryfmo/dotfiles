@@ -200,8 +200,9 @@ function add_segment() {
 
 # @description Split a command line into its simple commands at the unquoted separators `&&`, `||`, `;`, `|`,
 #   `&` and newlines, the way Claude Code splits a compound command before matching it, so `cd x && python y.py`
-#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text, and an `&` that is
-#   part of a redirection (`2>&1`, `>&2`, `<&3`, `&>file`) stays in it. A comment (an unquoted `#` that starts a word)
+#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text, and an `&` or `|`
+#   that is part of a redirection (`2>&1`, `>&2`, `<&3`, `&>file`, `>|file`) stays in it. A comment (an unquoted `#`
+#   that starts a word)
 #   runs to the end of its line, and a here-document body (`<<WORD`, `<<-WORD`, `<<'WORD'`, `<<"WORD"`, up to its
 #   terminator line) is data: neither yields a segment.
 # @arg $1 string The command line.
@@ -292,7 +293,16 @@ function split_segments() {
                 current=""
             fi
             ;;
-        ';' | '|' | $'\n')
+        '|')
+            if [[ "$prev" == ">" ]]; then
+                # `>|file` is the clobbering redirection, not a pipe.
+                current+=$char
+            else
+                add_segment "$current"
+                current=""
+            fi
+            ;;
+        ';' | $'\n')
             add_segment "$current"
             current=""
             if [[ "$char" == $'\n' && ${#delimiters[@]} -gt 0 ]]; then

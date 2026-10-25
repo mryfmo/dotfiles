@@ -48,6 +48,8 @@ class EnforceUvTest(unittest.TestCase):
             ("python3 script.py 2>&1", "uv run python3 script.py 2>&1\n"),
             ("python3 script.py >&2", "uv run python3 script.py >&2\n"),
             ("python3 a.py &>log.txt", "uv run python3 a.py &>log.txt\n"),
+            ("python3 script.py >| out", "uv run python3 script.py >| out\n"),
+            ("echo a >| f | python x.py", "uv run python x.py"),
             ("sleep 1 & python x.py", "uv run python x.py"),
             ("make lint 2>&1 && python y.py", "uv run python y.py"),
         ):

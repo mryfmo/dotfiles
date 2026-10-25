@@ -1,3 +1,0 @@
-No findings. Hash, diff scope, design wording, landed mechanisms, owner-task closure, front matter, and fresh premise outputs all check out. `gh` was attempted first; saved evidence was used because GitHub was unreachable ([PR #328](https://github.com/mryfmo/dotfiles/pull/328)).
-Amendment verdict: dotfiles-T128-playbook-rules-a04: confirm
-Task-file verdict: dotfiles-T128-playbook-rules-followup-a01: confirm

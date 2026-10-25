@@ -1,5 +1,0 @@
-P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a02.md:64`: The environment-input row is incomplete: it omits the Python interpreter used by the Python tools and `uv run … python`, and omits item 4’s `agmsg-dispatch`/history-provider dependencies, so stop-condition item 4 is unmet.
-
-P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a02.md:113`: The named dispatch test covers tab tokenization, concurrent recording, and capped history only; it does not enumerate the rejection cases promised by item 4’s input-grammar table (duplicate/invalid prefix, duplicate or empty `task_id`, missing TASK fields, malformed or ambiguous hash-source fields), leaving that trust-boundary grammar without the required test coverage.
-
-Task-file verdict: dotfiles-T128-orchestrator-tools-a02: revise

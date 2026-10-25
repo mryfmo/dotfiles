@@ -17,7 +17,6 @@ Generated files include:
 - `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/.chezmoitemplates/omp-config-managed.yml`
-- `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/agents/project-map.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
@@ -27,8 +26,8 @@ Generated files include:
 
 ## Parity policy
 
-1. Every MCP server in `agent-config.yaml` must target both agents: Codex and Claude Code.
-2. Every generated agent-native MCP config must contain the same server names.
+1. Every MCP server in `agent-config.yaml` targets Codex only, and `validate-agent-assets.py` rejects `agents.claude: true`. Claude Code reads user-scope MCP servers from `~/.claude.json`, which this repository does not manage; add a Claude server with `claude mcp add --scope user`.
+2. The generated Codex config must contain exactly the server names declared in `agent-config.yaml`.
 3. MCP servers remain disabled by default. Enable them locally only after confirming credentials, filesystem scope, and network behavior.
 4. GitHub MCP must use the maintained official GitHub server (`ghcr.io/github/github-mcp-server`), not deprecated `@modelcontextprotocol/server-github`.
 5. Public dotfiles must not contain token literals. Credential-bearing servers inherit environment variables or refer to private configuration only.

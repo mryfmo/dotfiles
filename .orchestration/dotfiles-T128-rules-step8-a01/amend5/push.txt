@@ -1,2 +1,0 @@
-To https://github.com/mryfmo/dotfiles
-   4d3d639f..61dbd68e  fix/regime-rules-step8 -> fix/regime-rules-step8

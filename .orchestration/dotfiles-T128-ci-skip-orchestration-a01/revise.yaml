@@ -1,5 +1,0 @@
-round: 1
-previous_head: d6343494f08b14e5d33be01ed24029baef34d206
-checks:
-  - tests/unit/test_workflow_orchestration_skip.py::DecisionTest::test_the_unit_test_decision_ignores_renames
-  - tests/unit/test_workflow_orchestration_skip.py::RequiredContextsTest::test_structural_tests_see_quoted_keys

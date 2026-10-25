@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-followup-a01.md:25 The review-worktree control and disposition are rewritten instead of being kept verbatim from the lineage task as stop condition 1 requires.
-Task-file verdict: dotfiles-T128-chain-review-scripts-followup-a01: revise

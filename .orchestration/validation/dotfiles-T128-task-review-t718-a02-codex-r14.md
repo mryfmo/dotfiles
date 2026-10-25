@@ -1,3 +1,0 @@
-P2 high — `.orchestration/tasks/dotfiles-T128-orchestrator-tools-a02.md:64`: The environment-input row does not satisfy stop condition 4’s requirement to name every host binary; attached inputs invoke omitted binaries including `dirname`, `find`, `head`, `tail`, `tee`, and `wc`, while “whatever else the scripts call” is not an enumeration.
-
-Task-file verdict: dotfiles-T128-orchestrator-tools-a02: revise

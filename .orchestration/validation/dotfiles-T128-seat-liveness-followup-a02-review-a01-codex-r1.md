@@ -1,8 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md:13 C-60:2 consumes scripts/orchestrator/seat-args.sh, which is absent from origin/main, so add the seat-launch-args task as a dependency and verify its landing before dispatch.
-[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md:32 The environment row misstates existing behavior: agmsg scripts execute from fixed HOME paths and model-profiles.env is sourced, so its trust-boundary description needs correction.
-[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md:68 Completion lacks the first-review-only P2 rule, P3 routing to a named next owner created before disposition, the C-59 S1 sentence, and C-61’s round-counting, audit-inheritance, split-verdict and second-finding readings.
-[P2] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md:59 The task omits C-61’s constraint requiring normalization functions or structured data for path, URL, process and text comparisons.
-[P3] high .orchestration/tasks/dotfiles-T128-seat-liveness-followup-a02.md:20 Lineage coverage names only the module rather than test_remove_worker_stale_prepares_the_archive_before_cleanup_and_refuses_without_identity_rows, contrary to stop condition 2’s requirement to name that coverage.
-
-Hash matched; checker OK; masked 0 matches; both premises present; implementation tests were not run, and DNS failure prevented verifying remote freshness beyond local origin/main a0e8b8ad.
-Task-file verdict: dotfiles-T128-seat-liveness-followup-a02: revise

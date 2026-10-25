@@ -1,3 +1,0 @@
-uv run --offline --with pyyaml scripts/validate-agent-assets.py
-ERROR: possible committed secret in .orchestration/dotfiles-T133-python-pin-a01/validation.md
-make: *** [validate-agent-assets] Error 1

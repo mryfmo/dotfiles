@@ -1,3 +1,7 @@
+{{- /* A GitHub Actions runner, never the generic CI variable an agent shell exports: the same
+       test as is_ci_runner in scripts/lib/ci-runner.sh (tests/unit/test_ci_runner.py keeps them equal). */ -}}
+{{- $ciRunner := and (eq (env "GITHUB_ACTIONS") "true") (ne (env "RUNNER_TEMP") "") -}}
+
 {{- $email := "" -}}
 {{- if hasKey . "email" -}}
 {{-   $email = .email -}}
@@ -8,7 +12,7 @@
 {{- $name := "" -}}
 {{- if hasKey . "name" -}}
 {{-   $name = .name -}}
-{{- else if eq (env "CI") "true" -}}
+{{- else if $ciRunner -}}
 {{-   $name = "CI" -}}
 {{- else -}}
 {{-   $name = promptString "Full name" -}}
@@ -30,7 +34,7 @@
 {{- $usePrivate := false -}}
 {{- if hasKey . "usePrivate" -}}
 {{-   $usePrivate = .usePrivate -}}
-{{- else if eq (env "CI") "true" -}}
+{{- else if $ciRunner -}}
 {{-   $usePrivate = false -}}
 {{- /* Default to the private layer on the MacOS default system, like $system */ -}}
 {{- else if eq .chezmoi.os "darwin" -}}
@@ -55,7 +59,7 @@ data:
     homeDir: {{ $homeDir | quote }}
     homeDirName: {{ $homeDirName | quote }}
     username: {{ $homeDirName | quote }}
-{{ if ne (env "CI") "true" -}}
+{{ if not $ciRunner -}}
 encryption: "age"
 age:
     identity: "~/.config/age/key.txt"

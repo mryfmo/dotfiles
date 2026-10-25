@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:93 The fake `uv` merely runs isolated system Python and explicitly provides no PyYAML, so the duplicate-refusing YAML parse cannot positively identify the valid `kind: review` case; it instead runs the failing stub checker, making the required exemption test impossible as specified.
-Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

@@ -16,6 +16,12 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+# The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.
+if ! declare -F is_ci_runner > /dev/null; then
+    # shellcheck source=scripts/lib/ci-runner.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/ci-runner.sh"
+fi
+
 #
 # @description Check whether Homebrew is already available on `PATH`.
 #
@@ -62,10 +68,11 @@ function opt_out_of_analytics() {
 #   https://github.com/mryfmo/dotfiles/actions/runs/37030239884/job/110914945531),
 #   item-level trust alone cleared azure/bicep and hashicorp/tap but the
 #   warning persisted for aws/tap, so only such taps get whole-tap trust.
-#   Does nothing unless `CI` is exactly `true`.
+#   Does nothing outside a GitHub Actions runner (is_ci_runner): an agent
+#   shell's `CI=true` on an operator's Mac never trusts a tap.
 #
 function handle_ci_untrusted_taps() {
-    [ "${CI:-}" = "true" ] || return 0
+    is_ci_runner || return 0
 
     local listing taps installed tap name formulae="" casks="" with_items="" whole_taps=""
     if ! listing="$(brew untrust --tap 2> /dev/null)"; then

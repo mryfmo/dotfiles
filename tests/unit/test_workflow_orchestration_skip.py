@@ -36,6 +36,10 @@ REQUIRED_CONTEXTS = frozenset(
         "public-bootstrap (macos-14, client)",
     }
 )
+# The macos-15 jobs that run beside the macos-14 required contexts, so the
+# operator can swap the ruleset to them before GitHub retires macos-14 on
+# 2026-11-02 (U64). When the ruleset moves, these join REQUIRED_CONTEXTS.
+SUCCESSOR_CONTEXTS = frozenset({"test (macos-15, client)", "public-bootstrap (macos-15, client)"})
 BOOTSTRAP_DECISION = "Decide whether the diff needs a bootstrap"
 QUOTED_CHARS = {"double-quote": '"', "backslash": "\\", "tab": "\t", "newline": "\n"}
 TEST_DECISION = "Decide whether the diff needs the unit tests"
@@ -224,7 +228,7 @@ class RequiredContextsTest(unittest.TestCase):
     def test_the_required_contexts_are_the_workflows_jobs(self) -> None:
         actual = {"validate"} if "validate" in jobs(AGENT_ASSETS) else set()
         actual |= matrix_contexts(TEST, "test") | matrix_contexts(REMOTE, "public-bootstrap")
-        self.assertEqual(actual, REQUIRED_CONTEXTS)
+        self.assertEqual(actual, REQUIRED_CONTEXTS | SUCCESSOR_CONTEXTS)
 
     def test_no_required_contexts_job_has_a_job_level_if_or_needs(self) -> None:
         # A skipped job reports Success even as a required check, and so does a job skipped because
@@ -525,14 +529,17 @@ class DecisionTest(unittest.TestCase):
                 head = pull_request_head(clone, git, f"m-{name}", writes)
                 for event, os_name, expected in (
                     ("pull_request", "macos-14", macos),
+                    ("pull_request", "macos-15", macos),
                     ("pull_request", "ubuntu-24.04", "true"),
                     ("push", "macos-14", "true"),
+                    ("push", "macos-15", "true"),
                 ):
                     with self.subTest(case=name, event=event, os=os_name):
                         env = {"EVENT_NAME": event, "BASE_REF": "main", "BEFORE_SHA": base, "HEAD_SHA": head}
                         output = run_decision(script, env | {"OS": os_name}, clone)
                         self.assertIn(f"should_test={expected}\n", output)
-                        self.assertEqual(expected == "false", "skip_reason=os-independent on macos-14\n" in output)
+                        skipped = f"skip_reason=os-independent on {os_name}\n" in output
+                        self.assertEqual(expected == "false", skipped)
 
 
 class WorkflowTriggerTest(unittest.TestCase):

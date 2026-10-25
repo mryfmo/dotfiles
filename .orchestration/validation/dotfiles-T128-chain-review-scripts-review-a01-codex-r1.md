@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01.md:59 The premise expects 8 matches for “next tools task,” but rerunning its command returns 9, so stop conditions 1 and 4 fail.
-[P1] high .orchestration/tasks/dotfiles-T128-chain-review-scripts-a01.md:76 The item says sandbox-scan reads `<task>.md`, but the attached script reads `${task%-fixtures}.md`, silently changing behavior beyond the two declared changes.
-Task-file verdict: dotfiles-T128-chain-review-scripts-a01: revise

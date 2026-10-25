@@ -33,6 +33,9 @@ jobs:
             system: server
           - os: macos-14
             system: client
+          # Runs beside macos-14 until the ruleset's required context moves to it (U64).
+          - os: macos-15
+            system: client
 
     runs-on: ${{ matrix.os }}
     # Over twice the normal maximum of 13.6 min: a stalled apt mirror cancels the job instead of running it for hours.
@@ -181,6 +184,8 @@ jobs:
             system: server
           - os: macos-14
             system: client
+          - os: macos-15
+            system: client
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -213,8 +218,9 @@ jobs:
           esac
           artifact="chezmoi_${chezmoi_version}_${chezmoi_platform}.tar.gz"
           base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-          sha256_check=(sha256sum --check --strict)
-          command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+          # By capability, not presence: macOS 15 ships a BSD sha256sum that has no --strict (U64).
+          sha256_check=(shasum -a 256 --check --strict)
+          [[ "$(sha256sum --version 2> /dev/null)" == *"GNU coreutils"* ]] && sha256_check=(sha256sum --check --strict)
           curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
           curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
             | grep "  ${artifact}$" \

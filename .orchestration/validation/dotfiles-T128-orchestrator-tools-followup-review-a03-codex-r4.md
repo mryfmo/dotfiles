@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:80 Matching the anchor by timestamp, sender, recipient, and text and choosing its last occurrence misidentifies a newly sent identical row as the anchor when both share the same second-resolution timestamp, leaving no “new” rows and falsely refusing an already-completed send; require an unambiguous sequence/window comparison and a collision test.
-Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

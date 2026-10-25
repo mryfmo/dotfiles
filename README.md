@@ -41,7 +41,7 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on MacOS Client machine](.github/screenshot-macos-client.png)
 
-On CI runners (`CI=true`), the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; outside CI it leaves your taps alone.
+On a GitHub Actions runner, the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; anywhere else, an agent shell that exports `CI=true` included, it leaves your taps alone.
 
 ### 🖥️ `Ubuntu` [![Ubuntu](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml)
 
@@ -290,12 +290,28 @@ changes reach the host only through a merged pull request; git-ignored untracked
 files are not checked. `make update` then runs `scripts/upgrade-tools.sh`, which
 installs missing mise tools and upgrades outdated ones from the applied
 `~/.config/mise/config.toml`, then Homebrew packages, uv tools and GitHub CLI
-extensions (apt with `SYSTEM=1`); it exits 0 without changes when `CI=true`.
+extensions (apt with `SYSTEM=1`); it exits 0 without changes on a GitHub Actions
+runner.
 The network-only phases (Homebrew, `mise self-update`, uv tools, GitHub CLI
 extensions) only warn when they fail, so an offline host with its tools
 installed still converges; `make update` stops before the asset refresh only
 when a declared mise tool cannot be installed, or apt fails with `SYSTEM=1`.
 `make apply` is the same target.
+Every CI-only path (the guard skip above, `brew info` instead of `brew install`
+in the macOS installers, the runner's tap trust, the `upgrade-tools.sh` skip,
+the chezmoi config without age encryption) is taken only on a GitHub Actions
+runner: `GITHUB_ACTIONS=true` with `RUNNER_TEMP` set, as decided by
+`scripts/lib/ci-runner.sh`, never by `CI`. An agent shell does not count: omp's
+bash tool exports `CI=true`, `npm_config_yes=true`, `GIT_EDITOR=true` (and
+`EDITOR`/`VISUAL=true`) and `GIT_TERMINAL_PROMPT=0` into every command, so
+`make update` or `chezmoi apply` run from it behaves as on the host. The other
+variables change nothing these targets do: none runs `npx` or `npm exec`, the
+pull is `--ff-only`, and a fetch that would need credentials fails instead of
+prompting, which `make update` reports and continues with the local source.
+`chezmoi apply` retries what an apply without a terminal could not finish: the
+age identity restore asks for its passphrase on the next interactive apply, and
+on Ubuntu the bwrap AppArmor profile installs on the next apply with cached
+`sudo`.
 The asset refresh also converges configured GitHub CLI extensions, and syncs the
 vendored CompactionDB tree. It then reloads a
 running Herdr server, skips reload
@@ -423,7 +439,7 @@ and task texts run on the `review` profile, the same model and effort as
 `deep` in a fresh context (INV-7). The auditor uses the
 `audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
 sandbox)
-for one independent task-level audit of each final head, run as one fresh `scripts/orchestrator/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
+for one independent task-level audit of each final head, run as one fresh `~/.local/bin/common/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/regime.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
@@ -441,9 +457,12 @@ probes `bwrap` to confirm it works. Without cached sudo credentials the
 installer never prompts: it leaves the profile pending, and `make doctor`
 reports it missing. Install it with
 `sudo -v && bash install/ubuntu/common/apparmor_userns.sh` from the repository
-root; `make update` does not retry it. To remove it, run
+root, or run `sudo -v` before the next `make update`: every `chezmoi apply`
+loads it again until the installed copy equals the repository's and `bwrap`
+can create a user namespace (the `make doctor` probe). To remove it, run
 `sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns` and then
-`sudo rm /etc/apparmor.d/bwrap-userns`.
+`sudo rm /etc/apparmor.d/bwrap-userns`; a later apply with cached `sudo` installs
+it again while the host still needs it.
 
 `permgate` handles Claude Code and Codex PermissionRequest hooks from the
 repo-owned policy at `~/.agents/permgate-policy.yaml` and is deterministic
@@ -462,8 +481,8 @@ make update
 
 # Ponytail is installed from the upstream marketplace.
 # Claude Code and Codex use DietrichGebert/ponytail as the marketplace source.
-# make update also trusts the Ponytail lifecycle hooks it installs (see the
-# hook trust paragraph below), so no /hooks step is needed for them.
+# make update trusts the Ponytail lifecycle hooks only at their reviewed pins
+# (see the hook trust paragraph below); a new release waits for review in /hooks.
 
 # A fresh Codex install needs authentication before its OpenAI-curated catalog
 # is available. If Superpowers is skipped, complete these commands:
@@ -480,19 +499,33 @@ which run `contextdb-codex-notify`, and the permgate `PermissionRequest` hook)
 plus the Crit and Ponytail plugin hooks. The Codex modify scripts hash each
 declared hook at apply time with Codex's own algorithm: a config hook from its
 manifest definition embedded in the modify script, a plugin hook from the
-installed plugin file under `~/.codex/plugins/cache/`. The result replaces any
-existing entry for that key, and keys the manifest does not declare are kept.
-Config-hook trust follows the manifest definition, so a hook hand-edited in
+installed plugin file under `~/.codex/plugins/cache/`. A config hook is trusted
+at that hash. A plugin hook is trusted only when that hash equals the
+`trusted_hash` pin the manifest records for it (the renderer refuses a plugin
+key without one). `make update` upgrades plugins, so a release whose hook
+differs from its pin is left untrusted: the apply and `make doctor` print a
+warning naming the installed hash and the pin, and Codex lists the hook in
+`/hooks`. Review it there, then record the reviewed hash as its
+`trusted_hash` so the next apply trusts it; a trust granted only in `/hooks`
+is replaced at the next apply. The result replaces any existing entry for a
+declared key in whatever TOML form it is written (a table, an inline table or
+dotted keys under `[hooks.state]`, `[hooks]` or the root; the modify scripts
+rewrite hook state as one table per entry first), and keys the manifest does
+not declare are kept. A Codex config that is not valid TOML, whose hook state
+cannot be rewritten without changing another setting, or whose merged result
+does not hold exactly the managed entry for every declared key, stops the apply
+of that file with an `ERROR: codex config merge:` line: `chezmoi apply` fails
+and `make doctor` reports the Codex config as differing until the file is
+fixed; it is never rewritten with trust the merge could not verify. Config-hook
+trust follows the manifest definition, so a hook hand-edited in
 `~/.codex/config.toml` deliberately stops matching and stays untrusted. As its
 last step, after every plugin update, `scripts/update-agent-assets.sh`
 re-applies only the Codex config files (`make codex-hook-trust` runs the same
-step on its own), so a plugin whose hooks changed in the same `make update` is
-trusted at once.
+step on its own), so the trust always reflects the plugin just installed.
 A hook anyone else writes into `config.toml` or a plugin stays untrusted until
-you review and trust it in `/hooks`. For a plugin, trusting the installed
-content means a plugin upgrade by `make update` is trusted by the same
-`make update`. When a plugin's hook file is missing, the manifest's pinned
-`trusted_hash` is used and the apply prints a warning.
+you review and trust it in `/hooks`. When a plugin's hook file is missing, the
+pin is written as is (Codex trusts only content with that hash) and the apply
+prints a warning.
 
 ### Claude Code sandbox
 
@@ -516,8 +549,11 @@ the keyring over D-Bus) run through the normal unsandboxed retry prompt on
 Linux. `sandbox.excludedCommands` is empty. The managed `permissions.allow`
 rules, the coordinator's levers with their `env` and writable directories,
 are described in `scripts/orchestrator/README.md`, "Pre-authorized levers"; they
-name the copies chezmoi installs read-only under `~/.local/bin/common`, each of
-which checks its own sha256 against the manifest before it runs.
+name the copies chezmoi installs under `~/.local/bin/common` (mode 0755, outside
+every sandbox write root), each of which checks its own sha256 against the
+manifest before it runs: a rewritten copy is detected and refuses to run, but
+the same user can rewrite both the copy and the manifest, so the pin is
+tamper detection, not write protection.
 Codex workers run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
 used: on a workstation with a `docker`-group user or a reachable
 `systemd --user` bus it turns the auto-approved sandbox into an escape (see the

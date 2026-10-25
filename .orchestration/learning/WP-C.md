@@ -1,3 +1,0 @@
-# WP-C Learning
-
-none

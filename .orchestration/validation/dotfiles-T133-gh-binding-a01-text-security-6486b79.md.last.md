@@ -1,8 +1,0 @@
-- [P1] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:76` — Forbidding descendant edits and wrappers prevents the promised fixed-repository binding: `scripts/require-crit-review.py:519` removes `GH_REPO`, then discovers the repository from local Git context and passes that result to `gh pr view`; `scripts/pr-feedback.py:84` also omits `--hostname`. A pinned executable does not bind these decisions to `github.com/mryfmo/dotfiles`; authorize the descendant changes and test hostile repository configuration through the real gate. [GitHub CLI environment](https://cli.github.com/manual/gh_help_environment)
-
-- [P2] High confidence `.orchestration/tasks/dotfiles-T133-gh-binding-a01.md:83` — Applying item 9 to every descendant conflicts with the excluded gate’s collector launch at `scripts/require-crit-review.py:615`, which starts `[sys.executable, collector, …]` without `-I`; the parent’s isolation flags do not propagate, and `PYTHONSAFEPATH` alone does not disable user-site startup code. Authorize this launch change and require a real-descendant startup-hook test before claiming the isolation contract is satisfied. [Python isolation options](https://docs.python.org/3/using/cmdline.html#cmdoption-I)
-
-📝 まとめ: Reviewed all 37 threat rows, existing consumer paths, and cited acceptance/review history. Two findings remain for orchestrator disposition; no files changed.
-
-Not checked: future implementation, CI, or live Linux/race behavior; same-user replacement and credential separation remain acknowledged residual risks.
-Verdict: incorrect

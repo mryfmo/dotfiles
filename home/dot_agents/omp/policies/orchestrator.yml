@@ -16,10 +16,14 @@ tools:
     # then on every hcom delivery into the seat failed (`Extension sendUserMessage failed`), so the seat was
     # dead to the loop. A seat does its reading with its own tools.
     task: deny
+    # A DAP launch starts any program outside bash.patterns, and the bridge's AskClaude runs a Claude Code child
+    # with its own tools outside this overlay (U66, findings F040 and F006).
+    debug: deny
+    AskClaude: deny
 bash:
   patterns:
     # The seat's GitHub-write levers (U28, scripts/orchestrator/README.md "Seat levers for GitHub writes"): each runs
-    # alone, as one simple command, by the read-only copy chezmoi installs, and checks its own arguments before any
+    # alone, as one simple command, by the sha256-pinned copy chezmoi installs, and checks its own arguments before any
     # `gh` call. The deny after each allow catches every other spelling of that lever with arguments (the checkout
     # path, an expanded HOME, a missing `--from-table`) and the lever chained to anything, before the gh denies below.
     # No `gh pr merge` line is allowed (U71, F010; the common deny below): the seat's merge path is pr-merge.sh, which

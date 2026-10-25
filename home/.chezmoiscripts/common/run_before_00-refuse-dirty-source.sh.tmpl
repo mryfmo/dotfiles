@@ -9,8 +9,9 @@
 #   that ref applies; uncommitted, untracked, unmerged or not yet pulled changes
 #   stop the apply, and so does a pushed but unmerged feature branch,
 #   so changes reach the host only through a merged pull request. The guard
-#   never touches the network. It is skipped for a non-git source, when CI=true,
-#   and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
+#   never touches the network. It is skipped for a non-git source, on a GitHub
+#   Actions runner (is_ci_runner from scripts/lib/ci-runner.sh; an agent shell's
+#   CI=true does not count), and when CHEZMOI_ALLOW_DIRTY_SOURCE=1.
 #   Git-ignored untracked files are out of scope: they never travel by pull
 #   request, are the operator's local additions, and chezmoi's own ignore rules
 #   govern whether they apply.
@@ -20,6 +21,8 @@ set -Eeuo pipefail
 if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
+
+{{ include "../scripts/lib/ci-runner.sh" }}
 
 # @description Print the ref the source tree must equal: origin/main, else @{upstream}, else HEAD.
 # @arg $1 path Source repository.
@@ -47,7 +50,7 @@ function refuse_dirty_source() {
     local changes
 
     repo="$(dirname -- "{{ .chezmoi.sourceDir }}")"
-    if [ "${CI:-false}" = true ] || [ "${CHEZMOI_ALLOW_DIRTY_SOURCE:-0}" = 1 ]; then
+    if is_ci_runner || [ "${CHEZMOI_ALLOW_DIRTY_SOURCE:-0}" = 1 ]; then
         return 0
     fi
     if ! git -C "${repo}" rev-parse --is-inside-work-tree > /dev/null 2>&1; then

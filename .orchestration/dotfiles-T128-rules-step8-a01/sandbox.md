@@ -1,3 +1,0 @@
-# T13 amendment6 sandbox
-
-All actions use the existing managed sandbox and allowed task/source/Git paths. No escalation, policy change, local bats, installed apply/restart, graph update, merge, thread write or review publication. Source is prose/test-fixture only; Python tests read repository documents. uv cache uses /tmp. Branch switch printed nonfatal packed-refs.lock denials and succeeded at61dbd68e. Commit stays inside sandbox; GitHub push, description and requested Bot review use permitted in-sandbox CLI. New-head proof is collected after publication. Main-checkout CompactionDB consolidation remains orchestrator-owned.

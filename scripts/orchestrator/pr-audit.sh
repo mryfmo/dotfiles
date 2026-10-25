@@ -3,9 +3,9 @@
 # @brief Audit one pull request head with a fresh `codex exec` that keeps the ChatGPT login and cannot read credentials, the Codex audit route.
 # @description
 #   Regime-cutover U71b, operator decision G18 (2026-10-26): keep the ChatGPT login, keep the auditor from reading
-#   credentials. Run it from the repository checkout. Every `GIT_*` variable the caller exports is removed first (only
-#   GIT_NO_REPLACE_OBJECTS=1 and GIT_TERMINAL_PROMPT=0 are set), so none reaches any git this lever runs, the fetch
-#   included. `<pr>` is decimal and checked before the first `gh` call. The
+#   credentials. Run it from the repository checkout. Every `GIT_*` and `PERL*` variable the caller exports is removed
+#   first (only GIT_NO_REPLACE_OBJECTS=1 and GIT_TERMINAL_PROMPT=0 are set), so none reaches any git or perl this
+#   lever runs, the fetch included. `<pr>` is decimal and checked before the first `gh` call. The
 #   lever reads `gh pr view <pr> --json state,baseRefName,headRefOid,url` (any state: a merged pull request can be
 #   re-read) and refuses unless the base is `main`. Everything the lever writes lives in one run directory
 #   `$TMPDIR/pr-audit-<pr>.XXXXXX`; nothing in the checkout, its git directory or the caller's HOME is written, with
@@ -79,7 +79,8 @@
 # @exitcode 1 A read, the fetch, the repack or the codex run failed, or the run left no `Verdict:` last line.
 # @exitcode 2 Refused: usage, a base other than `main`, a moved head, no `## Contract` or `## Audit` section, the
 #   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
-#   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run.
+#   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could
+#   not be given a process group of its own.
 # @exitcode 129 130 143 Stopped by HUP, INT or TERM; codex's process group was stopped and no verdict was written.
 # @example
 #   ~/.local/bin/common/pr-audit.sh 547
@@ -142,8 +143,9 @@ lever_self_check
 
 # No git variable of the caller reaches any git this lever runs (U71b audit round 7: an inherited GIT_GRAFT_FILE
 # rewrote the ancestry, so merge-base(main, head) was the head and the audited range was empty). Rather than name
-# the variables git reads (a list that misses the next one), every exported `GIT_*` name is removed; a failed listing
-# or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
+# the variables git reads (a list that misses the next one), every exported `GIT_*` name is removed, and every `PERL*`
+# name (PERL5OPT, PERL5LIB and the rest would load code into the perl that supervises codex and resolves paths, U71b
+# audit round 9); a failed listing or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
 # named from the cwd alone, and the audited repository is created fresh with no template, so it holds no grafts file
 # (checked before its first read, below) and no refs but the two it fetches.
 git_names=$(compgen -e) || {
@@ -151,7 +153,7 @@ git_names=$(compgen -e) || {
     exit 2
 }
 while IFS= read -r git_name; do
-    [[ ${git_name} == GIT_* ]] || continue
+    [[ ${git_name} == GIT_* || ${git_name} == PERL* ]] || continue
     unset "${git_name}" 2> /dev/null || {
         echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
         exit 2
@@ -227,18 +229,24 @@ git_tree() {
 # TERM or HUP to the supervisor (U71b audit round 4: those signals used to kill the supervisor and leave the group
 # running), the whole group gets TERM, then KILL once the leader has exited or after 5 seconds, and the supervisor
 # exits 124 (deadline) or 128 + the signal's number. The handlers are set before the fork, so no signal finds the
-# group unsupervised. After a normal exit any process the group left behind gets KILL.
+# group unsupervised. After a normal exit any process the group left behind gets KILL. The child runs the command only
+# in a process group of its own (U71b audit round 9: setpgrp's result was ignored): it checks setpgrp's result and
+# that getpgrp is its own pid, then reports `ok` through a pipe before exec; without that report the command never
+# starts, the supervisor writes `no process group` to the mark file (its second argument) and exits 125. The stop
+# signals both the group and the child, so a signal before the group exists still reaches the child.
 # The single quotes keep the perl variables for perl, never this shell.
 # shellcheck disable=SC2016
 group_supervisor='
     use POSIX ":sys_wait_h";
     my $seconds = shift;
+    my $group_mark = shift;
     my $pid;
     my $stop = sub {
         my ($code) = @_;
         alarm 0;
         exit $code unless $pid;
         kill "TERM", -$pid;
+        kill "TERM", $pid;
         for (1 .. 50) { last if waitpid($pid, WNOHANG) != 0; select(undef, undef, undef, 0.1); }
         kill "KILL", -$pid;
         waitpid($pid, 0);
@@ -248,13 +256,27 @@ group_supervisor='
     $SIG{HUP} = sub { $stop->(129) };
     $SIG{INT} = sub { $stop->(130) };
     $SIG{TERM} = sub { $stop->(143) };
+    pipe(my $ready_r, my $ready_w) or die "pipe: $!\n";
     defined($pid = fork) or die "fork: $!\n";
     if ($pid == 0) {
         $SIG{$_} = "DEFAULT" for qw(ALRM HUP INT TERM);
-        setpgrp(0, 0);
+        close $ready_r;
+        # The command runs only in a process group of its own: setpgrp must succeed and the group must be this pid.
+        setpgrp(0, 0) or exit 125;
+        getpgrp(0) == $$ or exit 125;
+        syswrite($ready_w, "ok") == 2 or exit 125;
         exec @ARGV or die "exec $ARGV[0]: $!\n";
     }
-    setpgrp($pid, $pid);
+    close $ready_w;
+    my $ready = "";
+    sysread($ready_r, $ready, 2);
+    close $ready_r;
+    if ($ready ne "ok") {
+        waitpid($pid, 0);
+        my $mark;
+        print {$mark} "no process group\n" if open($mark, ">", $group_mark);
+        exit 125;
+    }
     alarm $seconds;
     waitpid($pid, 0);
     my $status = $?;
@@ -264,7 +286,8 @@ group_supervisor='
 '
 
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
-#   no XDG base directories, under the group supervisor bounded by $1 seconds. The supervisor runs in the background
+#   no XDG base directories, under the group supervisor bounded by $1 seconds; a supervisor that could not create the
+#   group is a refusal (exit 2, codex never ran). The supervisor runs in the background
 #   and the shell waits for it, so the INT, TERM and HUP traps of the lever run while it is running and stop it.
 # @arg $1 int Seconds the run may take.
 # @arg $2 path The file codex reads as stdin.
@@ -272,17 +295,23 @@ group_supervisor='
 # @arg $@ string The codex arguments.
 # @set codex_pid The supervisor's pid while it runs, empty after.
 codex_scratch() {
-    local seconds=$1 input=$2 output=$3 status=0
+    local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark
     shift 3
+    rm -f -- "${mark}" || fail "cannot remove ${mark}"
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
         HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir \
-            exec perl -e "${group_supervisor}" "${seconds}" codex "$@" < "${input}" > "${output}" 2>&1
+            exec perl -e "${group_supervisor}" "${seconds}" "${mark}" codex "$@" < "${input}" > "${output}" 2>&1
     ) &
     codex_pid=$!
     wait "${codex_pid}" || status=$?
     codex_pid=''
+    # A supervisor that could not give codex a process group of its own ran nothing; a status of 125 without the mark
+    # is codex's own.
+    if ((status == 125)) && [[ -s ${mark} ]]; then
+        refuse "cannot run codex in a process group of its own, so its deadline could not stop it; codex did not run"
+    fi
     return "${status}"
 }
 
@@ -391,7 +420,7 @@ login_home=${CODEX_HOME:-${HOME}/.codex}
 login=${login_home}/auth.json
 [[ -f ${login} && -r ${login} ]] ||
     refuse "the Codex login ${login} is missing or not a readable regular file (run codex login as the operator)"
-login_real=$(perl -MCwd=realpath -e 'my $p = realpath($ARGV[0]); defined $p or exit 1; print $p' "${login}") ||
+login_real=$(physical "${login}") ||
     refuse "cannot resolve the Codex login ${login}"
 
 # The one config source, generated from codex.audit: it must select the `audit` profile and name no sandbox mode. It

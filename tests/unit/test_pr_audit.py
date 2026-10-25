@@ -34,6 +34,7 @@ TEMPLATE = ROOT / "home/dot_agents/codex-audit/config.toml"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FAKE_CODEX = ROOT / "tests/fixtures/pr-audit/fake-codex.py"
+PERL_FIXTURES = ROOT / "tests/fixtures/pr-audit/perl"
 RULES = "## Audit\n\nThe standing audit rules.\n"
 BODY = "First paragraph.\n\nProgram-Unit: regime-cutover/U7\n\n## Contract\n\nIt guarantees one thing.\n"
 
@@ -357,6 +358,52 @@ class PrAuditTest(unittest.TestCase):
         self.assertIn(f"{self.repo}/../stores/gh", reads)
         self.assertEqual(sandbox["probe_output"], "pr-audit-probe: all denied\n")
 
+    def test_a_store_that_cannot_be_resolved_refuses_before_the_probes(self):
+        store = self.root / "stores/claude-unresolvable"
+        store.mkdir(parents=True)
+        path = self.failing_tool("perl", "*realpath*claude-unresolvable", "exit 1")
+        run = self.run_lever("7", PATH=path, CLAUDE_CONFIG_DIR=str(store))
+        self.assert_stopped(run, 2, "cannot resolve CLAUDE_CONFIG_DIR")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+
+    def test_a_current_directory_that_cannot_be_resolved_refuses(self):
+        gone = self.root / "gone"
+        gone.mkdir()
+        run = subprocess.run(
+            ["/bin/sh", "-c", 'cd "$1" && rmdir "$1" && exec "$2" 7', "sh", str(gone), str(LEVER)],
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assert_stopped(run, 2, "cannot resolve the current directory")
+        self.assertFalse((self.rec / "gh-calls").exists())
+
+    def test_codex_never_runs_without_a_process_group_of_its_own(self):
+        """U71b audit round 9: setpgrp's result was ignored, so a failed group creation left codex outside the group
+        the deadline signals. A failing setpgrp, or a group that is not the child's own, now refuses before codex."""
+        for module in ("NoPgrp", "WrongPgrp"):
+            with self.subTest(module=module):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                action = f'exec "$REAL" -I{PERL_FIXTURES} -M{module} "$@"'
+                path = self.failing_tool("perl", "*setpgrp*", action)
+                run = self.run_lever("7", PATH=path)
+                self.assert_stopped(run, 2, "cannot run codex in a process group of its own")
+                self.assertEqual(self.codex_calls(), [], "codex never started")
+
+    def test_no_codex_on_path_refuses_before_any_call(self):
+        run = self.run_lever("7", PATH="/usr/bin:/bin")
+        self.assert_stopped(run, 2, "no codex on PATH")
+        self.assertFalse((self.rec / "gh-calls").exists())
+
+    def test_the_callers_perl_variables_are_removed(self):
+        """PERL5OPT and PERL5LIB would load code into the supervisor; the lever removes every PERL* first."""
+        run = self.run_lever("7", PERL5LIB=str(PERL_FIXTURES), PERL5OPT="-MNoPgrp")
+        self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_a_config_that_does_not_select_the_audit_profile_is_refused(self):
         cases = (
             (lambda text: text.replace('default_permissions = "audit"\n', ""), "does not make the permission profile"),
@@ -661,6 +708,7 @@ class PrAuditTest(unittest.TestCase):
         """Each producer a safety decision reads (preferences 21): its failure is a stop, never an empty answer."""
         grep = lambda pattern: {"PATH": self.failing_tool("grep", pattern)}
         git = lambda pattern: {"PATH": self.failing_tool("git", pattern, "exit 128")}
+        perl = lambda pattern: {"PATH": self.failing_tool("perl", pattern, "exit 1")}
         cases = (
             ("profile default", grep("*default_permissions*"), 1, "cannot search"),
             ("sandbox_mode", grep("*sandbox_mode*"), 1, "cannot search"),
@@ -679,6 +727,18 @@ class PrAuditTest(unittest.TestCase):
             ("alternates removal", {"PATH": self.failing_tool("rm", "*alternates*", "exit 1")}, 1, "alternates"),
             ("checkout", git("*checkout*"), 1, "git checkout"),
             ("probe output", {"PATH": self.failing_tool("cat", "*probe.out*", "exit 1")}, 1, "cannot read"),
+            ("allowed root realpath", perl("*realpath*/work/repo"), 2, "cannot resolve the allowed path"),
+            ("git init", git("*init\\ -q*"), 1, "git init"),
+            ("run directory", {"PATH": self.failing_tool("mktemp", "*pr-audit-7*", "exit 1")}, 1, "mktemp failed"),
+            ("scratch tree", {"PATH": self.failing_tool("mkdir", "*scratch-tmpdir*", "exit 1")}, 1, "scratch tree"),
+            (
+                "login link",
+                {"PATH": self.failing_tool("ln", "*auth.json*", "exit 1")},
+                1,
+                "cannot link the Codex login",
+            ),
+            ("body removal", {"PATH": self.failing_tool("rm", "*body.md*", "exit 1")}, 1, "cannot remove"),
+            ("group mark removal", {"PATH": self.failing_tool("rm", "*group-mark*", "exit 1")}, 1, "group-mark"),
             ("canary removal", {"PATH": self.failing_tool("rm", "*canary*", "exit 1")}, 1, "cannot remove the canary"),
             ("login realpath", {"PATH": self.failing_tool("perl", "*realpath*")}, 2, "cannot resolve the Codex login"),
             ("gh repository", {"FAIL": "^repo view"}, 1, "cannot read the repository"),

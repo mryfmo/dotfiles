@@ -1510,8 +1510,9 @@ def standing_rules(manifest: dict[str, Any]) -> tuple[str, dict[str, list[str]]]
     if not isinstance(section, dict):
         fail("standing_rules must be a mapping")
     source_dir = section.get("source_dir")
-    if not isinstance(source_dir, str) or not source_dir.startswith("home/"):
-        fail("standing_rules.source_dir must be a path under home/")
+    parts = Path(source_dir).parts if isinstance(source_dir, str) else ()
+    if parts[:1] != ("home",) or len(parts) < 2 or any(part in ("..", ".") for part in parts):
+        fail("standing_rules.source_dir must be a relative path under home/")
     rules = section.get("rules")
     if not isinstance(rules, dict) or not rules:
         fail("standing_rules.rules must be a non-empty mapping")
@@ -1703,7 +1704,8 @@ def stale_standing_rule_outputs(outputs: dict[Path, str]) -> list[Path]:
     stale: list[Path] = []
     for root in (ROOT / CLAUDE_RULES_DIR, ROOT / OMP_PROFILES_DIR):
         if root.is_dir():
-            stale += [path for path in sorted(root.rglob("*")) if path.is_file() and path not in outputs]
+            files = [path for path in sorted(root.rglob("*")) if path.is_file()]
+            stale += [path for path in files if path not in outputs]  # lint-comparisons: allow Path-object keys
     codex = ROOT / CODEX_RULES_FILE
     if codex.is_file() and codex not in outputs:
         stale.append(codex)

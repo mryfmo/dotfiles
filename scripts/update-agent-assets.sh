@@ -415,18 +415,50 @@ function claude_user_install() {
 }
 
 #
-# @description Print the user-scope installed version of a Claude Code plugin for the asset manifest, or
-#   `unknown` when installed_plugins.json does not record one.
+# @description Print the user-scope installed version of a Claude Code plugin for the asset manifest. A
+#   failure is never a version: nothing is printed for it, and `unknown` is never produced.
 # @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 4 When installed_plugins.json names no user-scope installation (`absent`): nothing to record.
+# @exitcode 1 When the record cannot be read or parsed, or names an unexpected state.
 #
 function claude_user_plugin_version() {
     local installs user_install
 
-    installs="$(claude_plugin_installs "$1")" || installs="[]"
-    user_install="$(claude_user_install "${installs}")" || user_install=""
+    if ! installs="$(claude_plugin_installs "$1")"; then
+        printf 'ERROR: cannot read the installation records of %s for the asset manifest.\n' "$1" >&2
+        return 1
+    fi
+    user_install="$(claude_user_install "${installs}")" || return 1
     case "${user_install}" in
     "installed "?*) printf '%s\n' "${user_install#installed }" ;;
-    *) printf 'unknown\n' ;;
+    absent) return 4 ;;
+    *)
+        printf 'ERROR: unexpected installation state of %s: %s\n' "$1" "${user_install}" >&2
+        return 1
+        ;;
+    esac
+}
+
+#
+# @description Record a converged Claude Code plugin step in the installed asset manifest with the version
+#   installed_plugins.json records. A version that cannot be read is a counted failure, never `unknown`; a
+#   plugin with no user-scope installation has nothing to record (a WARN).
+# @arg $1 string Install step name.
+# @arg $2 string Fully qualified Claude Code plugin ID.
+# @arg $@ string The manifest paths, `--`, and the command lines (manifest_record after its version).
+#
+function record_claude_plugin_step() {
+    local step="$1" plugin_id="$2" plugin_version status=0
+    shift 2
+
+    plugin_version="$(claude_user_plugin_version "${plugin_id}")" || status=$?
+    case "${status}" in
+    0)
+        manifest_record "${step}" plugin "${plugin_version}" "$@" ||
+            record_claude_failure "recording ${step} in the installed asset manifest"
+        ;;
+    4) printf 'WARN: %s has no user-scope installation; %s is not recorded in the installed asset manifest.\n' "${plugin_id}" "${step}" >&2 ;;
+    *) record_claude_failure "reading the installed version of ${plugin_id} for the asset manifest" ;;
     esac
 }
 
@@ -612,15 +644,21 @@ function disable_plugin() {
 
     case "${agent}" in
     claude)
-        # Nothing to disable only on the readers' explicit `absent`; an unreadable record or any other answer
-        # goes on to the disable.
-        if installs="$(claude_plugin_installs "${plugin_id}" 2> /dev/null)" &&
-            user_install="$(claude_user_install "${installs}" 2> /dev/null)"; then
-            case "${user_install}" in
-            absent) return 0 ;;
-            *) ;; # installed, or anything unexpected: disable it
-            esac
+        # Nothing to disable only on the readers' explicit `absent`. A state that cannot be read is still
+        # disabled (best effort), and fails: it cannot be proven.
+        user_install="unreadable"
+        if installs="$(claude_plugin_installs "${plugin_id}" 2> /dev/null)"; then
+            user_install="$(claude_user_install "${installs}" 2> /dev/null)" || user_install="unreadable"
         fi
+        case "${user_install}" in
+        absent) return 0 ;;
+        "installed "?*) ;;
+        *)
+            printf 'ERROR: cannot tell whether Claude Code plugin %s is installed (%s); disabling it anyway.\n' "${plugin_id}" "${user_install}" >&2
+            claude_outside_projects plugin disable "${plugin_id}" --scope user < /dev/null || true
+            return 1
+            ;;
+        esac
         # Idempotent: a plugin already disabled may make the command fail; the settings file shows the result.
         claude_outside_projects plugin disable "${plugin_id}" --scope user < /dev/null || true
         if ! enabled="$(claude_user_enabled "${plugin_id}")" || [ "${enabled}" != "disabled" ]; then
@@ -630,12 +668,18 @@ function disable_plugin() {
         printf 'WARN: Claude Code plugin %s is disabled at user scope; once make update passes, re-enable it with: claude plugin enable %s --scope user\n' "${plugin_id}" "${plugin_id}" >&2
         ;;
     codex)
-        if codex_copy="$(codex_plugin_copy "${plugin_id}" 2> /dev/null)"; then
-            case "${codex_copy}" in
-            absent) return 0 ;;
-            *) ;; # a copy, or anything unexpected: remove it
-            esac
-        fi
+        # Nothing to remove only on the reader's explicit `absent`. A state that cannot be read is still removed
+        # (best effort), and fails: it cannot be proven.
+        codex_copy="$(codex_plugin_copy "${plugin_id}" 2> /dev/null)" || codex_copy="unreadable"
+        case "${codex_copy}" in
+        absent) return 0 ;;
+        "copy "?*) ;;
+        *)
+            printf 'ERROR: cannot tell whether Codex plugin %s is cached (%s); removing it anyway.\n' "${plugin_id}" "${codex_copy}" >&2
+            codex plugin remove "${plugin_id}" < /dev/null || true
+            return 1
+            ;;
+        esac
         codex plugin remove "${plugin_id}" < /dev/null || true
         codex_copy="$(codex_plugin_copy "${plugin_id}")" || codex_copy="unreadable"
         case "${codex_copy}" in
@@ -855,10 +899,7 @@ function update_claude_superpowers() {
         claude_outside_projects plugin marketplace update claude-plugins-official || true
     fi
     converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")"
-    manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/claude-plugins-official/superpowers" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}" ||
-        record_claude_failure "recording update_claude_superpowers in the installed asset manifest"
+    record_claude_plugin_step "update_claude_superpowers" "${CLAUDE_SUPERPOWERS_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/claude-plugins-official/superpowers" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -879,10 +920,7 @@ function update_claude_crit() {
         claude_outside_projects plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_CRIT_PLUGIN}")"
-    manifest_record "update_claude_crit" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/crit/crit" "${AGENT_CLAUDE_DIR}/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" ||
-        record_claude_failure "recording update_claude_crit in the installed asset manifest"
+    record_claude_plugin_step "update_claude_crit" "${CLAUDE_CRIT_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/crit/crit" "${AGENT_CLAUDE_DIR}/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -902,10 +940,7 @@ function update_claude_ponytail() {
     fi
     converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")"
-    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" ||
-        record_claude_failure "recording update_claude_ponytail in the installed asset manifest"
+    record_claude_plugin_step "update_claude_ponytail" "${CLAUDE_PONYTAIL_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -924,10 +959,7 @@ function update_claude_understand_anything() {
         claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")"
-    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" ||
-        record_claude_failure "recording update_claude_understand_anything in the installed asset manifest"
+    record_claude_plugin_step "update_claude_understand_anything" "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #

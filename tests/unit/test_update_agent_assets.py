@@ -1063,7 +1063,9 @@ claude() {
                     ["plugin remove ponytail@ponytail"],
                     (work / "calls").read_text().splitlines() if (work / "calls").exists() else [],
                 )
-                self.assertIn("rc=0", result.stdout, result.stderr)
+                # Removed anyway, and still a failure: the state before the removal could not be read.
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertIn("cannot tell whether Codex plugin ponytail@ponytail is cached", result.stderr)
                 self.assertFalse(cache.exists())
         # The explicit states the shell reads.
         work = Path(tempfile.mkdtemp(prefix="codex-state-"))
@@ -1200,6 +1202,58 @@ claude() {
             for name, body in bodies.items():
                 if f'{variable}="$({parser} ' in body:
                     self.assertIn(f'case "${{{variable}}}" in', body, name)
+        # Every case on a state (and each parser's own case on the reader's reply) has a `*)` default that returns
+        # non-zero: an unexpected state is never a success, a version or `unknown`.
+        blocks = re.findall(r'^( *)case "\$\{(codex_copy|user_install|reply)\}" in\n(.*?)^\1esac', text, re.M | re.S)
+        self.assertGreaterEqual(len(blocks), 9)
+        for indent, variable, block in blocks:
+            default = re.search(rf"^{indent}\*\)(.*?);;", block, re.M | re.S)
+            with self.subTest(variable=variable, block=block[:60]):
+                self.assertIsNotNone(default)
+                self.assertRegex(default.group(1), r"\b(return|exit) [1-9]")
+        # No record read falls back to a made-up value: no `|| printf 'unknown'`-style default in the record readers.
+        for function in (
+            "claude_user_plugin_version",
+            "claude_user_install",
+            "codex_plugin_copy",
+            "record_claude_plugin_step",
+        ):
+            self.assertNotIn("unknown", bodies[function], function)
+
+    def test_a_claude_version_that_cannot_be_read_is_never_recorded_as_unknown(self):
+        # Audit of 1b93aad9: claude_user_plugin_version turned a read failure, a parser failure and an unexpected
+        # state into a successful `unknown`, and manifest_record recorded it.
+        for name, stubs in (
+            ("read failure", "claude_plugin_installs() { return 1; }"),
+            ("parser failure", 'claude_plugin_installs() { printf \'[{"scope": "user", "version": "a b"}]\\n\'; }'),
+            ("unexpected state", "claude_user_install() { printf 'garbage\\n'; }"),
+        ):
+            with self.subTest(case=name):
+                step = (
+                    f'{stubs}; set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
+                    'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
+                    'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; '
+                    '[ ! -e "${HOME}/.agents/.installed-manifest.json" ] || echo recorded'
+                )
+                result, _, _ = self.converge_listed(step, {}, {})
+                lines = result.stdout.splitlines()
+                self.assertEqual(["rc=1", "failures=1"], lines, result.stderr)
+                self.assertNotIn("unknown", result.stdout)
+                self.assertIn("reading the installed version of crit@crit for the asset manifest", result.stderr)
+        # Absent is its own result: nothing is recorded and nothing is counted.
+        step = (
+            'set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
+            'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
+            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        )
+        result, _, _ = self.converge_listed(step, {}, {})
+        self.assertEqual(["rc=4", "failures=0"], result.stdout.splitlines(), result.stderr)
+        self.assertIn("is not recorded in the installed asset manifest", result.stderr)
+        # And an installed version is recorded as itself.
+        pin = self.pin_of("crit@crit")
+        installs = {"crit@crit": [{"scope": "user", "version": pin}]}
+        result, _, _ = self.converge_listed('claude_user_plugin_version crit@crit; echo "rc=$?"', installs, {})
+        self.assertEqual([pin, "rc=0"], result.stdout.splitlines(), result.stderr)
 
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.

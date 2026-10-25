@@ -1551,6 +1551,12 @@ STANDING_RULE_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 STANDING_RULE_AGENTS = ("claude", "codex")
 # Generated roots that hold nothing but rendered standing rules, so a file there outside the expected outputs is stale.
 CLAUDE_RULES_DIR = "home/dot_claude/rules"
+# The omp seats' rules: ~/.agents/omp/rules/<role>.md, which the seat launchers pass as --append-system-prompt. No
+# discovery provider reads that path, and the explicit flag wins over every discovered APPEND_SYSTEM.md, a project's
+# included (omp docs system-prompt-customization.md). The seat overlays disable the native provider (U66), so a
+# profile's ~/.omp/profiles/<role>/agent/AGENTS.md, this unit's first delivery, never loaded; that root is retired
+# and still scanned so a leftover file there is swept and its target removed from hosts.
+OMP_RULES_DIR = "home/dot_agents/omp/rules"
 OMP_PROFILES_DIR = "home/dot_omp/private_profiles"
 CODEX_RULES_FILE = "home/dot_codex/AGENTS.md.tmpl"
 CHEZMOIREMOVE = "home/.chezmoiremove"
@@ -1628,8 +1634,7 @@ def render_standing_rules(manifest: dict[str, Any]) -> dict[Path, str]:
     for role in omp_roles(manifest):
         names = [name for name, audience in rules.items() if f"omp-{role}" in audience]
         if names:
-            path = ROOT / OMP_PROFILES_DIR / f"private_{role}/private_agent/AGENTS.md.tmpl"
-            outputs[path] = render_rule_includes(source_dir, names)
+            outputs[ROOT / OMP_RULES_DIR / f"{role}.md.tmpl"] = render_rule_includes(source_dir, names)
     return outputs
 
 
@@ -1725,6 +1730,7 @@ GENERATED_RULE_TARGETS = (
     (re.compile(r"dot_claude/rules/([a-z][a-z0-9-]*)\.md\.tmpl"), r".claude/rules/\1.md"),
     (re.compile(r"dot_claude/rules/(pstack-models)\.md"), r".claude/rules/\1.md"),
     (re.compile(r"dot_codex/AGENTS\.md\.tmpl"), ".codex/AGENTS.md"),
+    (re.compile(r"dot_agents/omp/rules/([a-z][a-z0-9_-]*)\.md\.tmpl"), r".agents/omp/rules/\1.md"),
     (
         re.compile(r"dot_omp/private_profiles/private_([a-z][a-z0-9_-]*)/private_agent/AGENTS\.md\.tmpl"),
         r".omp/profiles/\1/agent/AGENTS.md",
@@ -1761,6 +1767,7 @@ def standing_rule_removals(
     _, declared = standing_rules(manifest)
     candidates = {f".claude/rules/{name}.md" for name in declared}
     candidates.add(".codex/AGENTS.md")
+    candidates |= {f".agents/omp/rules/{role}.md" for role in omp_roles(manifest)}
     candidates |= {f".omp/profiles/{role}/agent/AGENTS.md" for role in omp_roles(manifest)}
     rendered = {generated_rule_target(path) for path in rules if path.name != ".chezmoiremove"}
     if None in rendered:
@@ -1780,13 +1787,13 @@ def render_chezmoiremove(text: str, removals: list[str]) -> str:
 def stale_standing_rule_outputs(outputs: dict[Path, str]) -> list[Path]:
     """Generator-named files in the rule roots that no expected output names; any other file there is refused.
 
-    Every file under the Claude rules and omp profile roots, and the Codex AGENTS.md template, is the generator's. One
-    no output names is stale when its name is one the generator emits (GENERATED_RULE_TARGETS, so its target is
-    known); a file with any other name (a chezmoi attribute such as readonly_ or empty_, a hand-added file) fails
-    the run, check or not, before anything is written or removed.
+    Every file under the Claude rules, omp seat rules and retired omp profile roots, and the Codex AGENTS.md template,
+    is the generator's. One no output names is stale when its name is one the generator emits (GENERATED_RULE_TARGETS,
+    so its target is known); a file with any other name (a chezmoi attribute such as readonly_ or empty_, a hand-added
+    file) fails the run, check or not, before anything is written or removed.
     """
     candidates: list[Path] = []
-    for root in (ROOT / CLAUDE_RULES_DIR, ROOT / OMP_PROFILES_DIR):
+    for root in (ROOT / CLAUDE_RULES_DIR, ROOT / OMP_RULES_DIR, ROOT / OMP_PROFILES_DIR):
         if root.is_dir():
             candidates += [path for path in sorted(root.rglob("*")) if path.is_file()]
     codex = ROOT / CODEX_RULES_FILE

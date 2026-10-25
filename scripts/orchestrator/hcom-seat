@@ -8,7 +8,7 @@
 #   HCOM_LAUNCHED=1, HCOM_TAG and HCOM_DIR). For `<role>` the launch line is
 #   `hcom omp --tag <name> --dir <dir> --terminal herdr --go -- --profile <role>
 #   --config ~/.agents/omp/policies/<role>.yml --config ~/.agents/omp/profiles/<role>.yml
-#   -e <ext>...`; hcom drops the `--` and forwards what follows to omp verbatim
+#   --append-system-prompt ~/.agents/omp/rules/<role>.md -e <ext>...`; hcom drops the `--` and forwards what follows to omp verbatim
 #   (hcom 0.7.30 and 0.7.31, measured 2026-10-23 and 2026-10-24; `extract_launch_flags`,
 #   `src/commands/launch.rs:572-581` at v0.7.30). `--go`
 #   is hcom's launch gate: inside an AI tool, hcom without it prints `== LAUNCH
@@ -19,7 +19,10 @@
 #   (pi-utils `src/dirs.ts:312-315`, U10),
 #   so the manifest's `modelRoles.default` and `skills.customDirectories` reach the
 #   seat only through the second overlay, rendered per role (U14); the first overlay
-#   owns the approval mode (U6). Both are required. The extensions default to the
+#   owns the approval mode (U6). Both are required. The seat's standing rules, rendered per role from the manifest's
+#   standing_rules (U75), ride `--append-system-prompt`: the overlays disable the native provider (U66), so no profile
+#   context file loads, and the explicit flag also wins over any project APPEND_SYSTEM.md. The rules file is required
+#   and must be non-empty, since omp reads a missing path as literal text. The extensions default to the
 #   pi-claude-bridge, which the role's model route needs, plus the openai-siwc when it
 #   is present; `--ext` replaces that list. There is no audit seat: every audit is one
 #   fresh `omp-run.sh --role audit` run (regime-cutover U57, U58). The stop gate's directory
@@ -168,6 +171,8 @@ policy=${HOME}/.agents/omp/policies/${role}.yml
 profile=${HOME}/.agents/omp/profiles/${role}.yml
 [[ -f ${policy} ]] || refuse "policy overlay absent: ${policy}"
 [[ -f ${profile} ]] || refuse "profile overlay absent: ${profile}"
+rules=${HOME}/.agents/omp/rules/${role}.md
+[[ -f ${rules} && -s ${rules} ]] || refuse "standing rules absent or empty: ${rules}"
 if ((${#user_exts[@]})); then
     exts=("${user_exts[@]}")
 elif [[ ! -d ${exts[1]} ]]; then
@@ -212,7 +217,7 @@ orchestrator) dir=${repo} ;;
 *) dir=${seats_root}/${name} ;;
 esac
 
-argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}")
+argv=(hcom omp --tag "${name}" --dir "${dir}" --terminal herdr --go -- --profile "${role}" --config "${policy}" --config "${profile}" --append-system-prompt "${rules}")
 for ext in "${exts[@]}"; do
     argv+=(-e "${ext}")
 done

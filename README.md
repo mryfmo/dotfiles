@@ -690,12 +690,14 @@ under `home/dot_config/claude/rules/` and the agents it is for, and
 `scripts/generate-agent-configs.py` renders each agent's copy as a chezmoi
 template that includes the source at apply time. Claude Code gets
 `~/.claude/rules/<name>.md`, Codex gets one `~/.codex/AGENTS.md`, and the omp
-orchestrator and worker seats get `~/.omp/profiles/<role>/agent/AGENTS.md`,
-the user context file of the named profile a seat launches with (omp reads no
-`~/.claude` rule and no `~/.codex` file). No rule reaches an agent its
-audience does not name, and the audit takes none: its rules are `AGENTS.md` at
-`origin/main`. All of these are regular files, so a checkout changes no
-agent's instructions until `chezmoi apply`. `~/.claude/rules/pstack-models.md`,
+orchestrator and worker seats get `~/.agents/omp/rules/<role>.md`, which
+`hcom-seat` and `omp-run.sh` pass as `--append-system-prompt` (the seat
+overlays disable omp's native provider, so a profile context file never
+loads, and omp reads no `~/.claude` rule and no `~/.codex` file). No rule
+reaches an agent its audience does not name, and the audit takes none: its
+rules are `AGENTS.md` at `origin/main`. All of these are regular files, so a
+checkout changes no agent's instructions until `chezmoi apply`.
+`~/.claude/rules/pstack-models.md`,
 pstack's per-role models in Claude Code, renders from
 `standing_rules.pstack_models` and the `model_profiles` it names; a write by
 `setup-pstack` is replaced at the next apply.

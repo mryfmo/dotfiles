@@ -2891,7 +2891,7 @@ class StandingRulesTest(unittest.TestCase):
                 "dot_claude/rules/shared.md.tmpl": self.SHARED,
                 "dot_claude/rules/claude-only.md.tmpl": self.CLAUDE_ONLY,
                 "dot_codex/AGENTS.md.tmpl": self.CODEX_ONLY + "\n" + self.SHARED,
-                "dot_omp/private_profiles/private_worker/private_agent/AGENTS.md.tmpl": self.SHARED,
+                "dot_agents/omp/rules/worker.md.tmpl": self.SHARED,
             },
         )
 
@@ -2990,15 +2990,16 @@ class StandingRulesTest(unittest.TestCase):
         ]
         subprocess.run(apply, check=True, capture_output=True)
         self.assertTrue((dest / ".claude/rules/shared.md").is_file())
+        self.assertTrue((dest / ".agents/omp/rules/worker.md").is_file())
 
         self.manifest["standing_rules"]["rules"]["shared"] = ["codex"]
         stale = self.module.render_standing_rule_outputs(self.manifest)
         self.assertNotEqual(stale[remove], remove.read_text(), "--check must report the missing removal")
         self.generate()
-        self.assertLessEqual({".claude/rules/shared.md", ".omp/profiles/worker/agent/AGENTS.md"}, self.removals())
+        self.assertLessEqual({".claude/rules/shared.md", ".agents/omp/rules/worker.md"}, self.removals())
         subprocess.run(apply, check=True, capture_output=True)
         self.assertFalse((dest / ".claude/rules/shared.md").exists())
-        self.assertFalse((dest / ".omp/profiles/worker/agent/AGENTS.md").exists())
+        self.assertFalse((dest / ".agents/omp/rules/worker.md").exists())
         self.assertTrue((dest / ".codex/AGENTS.md").is_file())
 
         del self.manifest["standing_rules"]["rules"]["claude-only"]

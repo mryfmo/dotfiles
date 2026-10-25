@@ -574,7 +574,10 @@ class Watch:
             names = {listing.key(e, "name", str, "an entry") for e in entries}
             if manifest_dir not in names:  # lint-comparisons: allow entry names, not paths
                 if not served:
-                    return served, "neither its strict: false catalog entry nor a plugin.json sets a version"
+                    # No value to compare the pin with is a read failure, never "not watched" and never current.
+                    raise listing.fail(
+                        f"neither the strict: false catalog entry of {plugin} nor a plugin.json sets a version"
+                    )
                 return served, ""
         parts = [*parts, manifest_dir, manifest_name]
         manifest_url = contents_url(source_repo, parts, ref)
@@ -584,17 +587,19 @@ class Watch:
 
     def plugin_content(self, repo: str, plugin: str, marketplace_file: str) -> tuple[list[tuple[str, str]], str]:
         """The content pin the marketplace serves for plugin now (pin_records.content_digest over its directory), with
-        where it was read, and why it cannot be read ("" when it was). Every URL is built here: the directory's tree
-        SHA comes from its parent's contents listing, each blob's from that tree, and a blob whose bytes do not hash
-        to its git SHA-1 is a read failure. A symlink or submodule in the tree is reported as the upstream value."""
+        where it was read. Every URL is built here: the directory's tree SHA comes from its parent's contents listing,
+        each blob's from that tree, and a blob whose bytes do not hash to its git SHA-1 is a read failure. A symlink
+        or submodule in the tree is reported as the upstream value. A content that cannot be determined (a source
+        outside GitHub or of another kind, a plugin at its repository's root) is a read failure, never "not
+        watched"."""
         item, shape = self.catalog_item(repo, plugin, marketplace_file)
         if item is None:
             return [(f"{repo}/{marketplace_file}", "absent")], ""
         source_repo, parts, ref, unreadable = self.plugin_source(item, repo, plugin, shape)
         if unreadable:
-            return [], unreadable
+            raise shape.fail(f"the content of {plugin} cannot be read: {unreadable}")
         if not parts:
-            return [], "a content pin of a plugin at its repository's root: no directory tree to hash"
+            raise shape.fail(f"{plugin} sits at its repository's root: no directory tree to hash for its content pin")
         place = f"{source_repo}/{'/'.join(parts)}"
         listing_url = contents_url(source_repo, parts[:-1], ref)
         listing = Shape(listing_url)
@@ -713,6 +718,9 @@ def report(watch: Watch) -> str:
             f"| {f.check} | {cell(f.subject)} | {cell(f.recorded)} | {cell(f.upstream)} | {cell(f.where)} |"
             for f in watch.findings
         ]
+    elif watch.failures:
+        # Some pins have no upstream value to compare: the run is not clean, so it never says so.
+        lines.append("Not clean: the read failures below are unchecked; the pins that were read show no drift.")
     else:
         lines.append("No drift found.")
     if watch.failures:

@@ -161,6 +161,49 @@ class AgmsgRemovedTest(unittest.TestCase):
             self.assertEqual(0, self.retire_shim(home).returncode)
             self.assertEqual(["mine"], os.listdir(home / ".agents/bin"))
 
+    SWAP_POINT = "# Verified: from here on, nothing is removed by name."
+
+    def retire_shim_with_swap(self, home: Path, swap: str) -> subprocess.CompletedProcess[str]:
+        """Run the step with SWAP (Python) injected right after verification, before anything is moved or removed:
+        python3 is wrapped so the step's own program is run with SWAP inserted at SWAP_POINT."""
+        wrapper = (
+            'python3() { local program; program="$(cat)"; '
+            'case "${program}" in *"${SWAP_POINT}"*) ;; *) echo "no swap point" >&2; return 99 ;; esac; '
+            'command python3 "$@" <<< "${program/"${SWAP_POINT}"/${SWAP}}"; }'
+        )
+        return subprocess.run(
+            ["bash", "-c", f"source {ROOT / 'scripts/update-agent-assets.sh'}; {wrapper}; retire_agmsg_shim"],
+            cwd=ROOT,
+            env={**os.environ, "HOME": str(home), "SWAP_POINT": self.SWAP_POINT, "SWAP": swap},
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+
+    def test_a_file_swapped_in_after_verification_is_kept(self):
+        # Round-5 audit: removal by name deleted whatever held the name by then. Removal is by the verified inode.
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.write_shim(home)
+            swap = (
+                'replacement = os.path.join(bin_dir, "replacement")\n'
+                'with open(replacement, "w") as out:\n'
+                '    out.write("operator file\\n")\n'
+                "os.replace(replacement, shim)"
+            )
+            result = self.retire_shim_with_swap(home, swap)
+            self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+            self.assertIn("changed before its removal", result.stderr)
+            self.assertEqual("operator file\n", (home / ".agents/bin/agy-tui").read_text())
+            self.assertEqual(["agy-tui"], os.listdir(home / ".agents/bin"), "the quarantine directory is gone")
+            # The same harness with no swap removes the shim, so the injection point is the one the step runs.
+            home2 = home / "control"
+            self.write_shim(home2)
+            result = self.retire_shim_with_swap(home2, "pass")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertFalse((home2 / ".agents/bin").exists())
+
     def test_a_newline_named_entry_keeps_the_bin_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp)

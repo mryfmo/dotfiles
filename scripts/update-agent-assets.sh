@@ -1999,19 +1999,24 @@ PY
 # @description
 #   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
 #   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. The file goes only on
-#   positive proof: ~/.agents and ~/.agents/bin are real directories (lstat), the shim opens without following a
-#   symlink as a regular file and is read completely, it holds the exact line
+#   positive proof: ~/.agents and ~/.agents/bin are real directories (lstat; ~/.agents/bin is then held open as a
+#   directory fd and every later step works relative to it), the shim opens without following a symlink as a regular
+#   file and is read completely, it holds the exact line
 #   `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and lstat of that
 #   owner fails with ENOENT. Every other outcome (another file, the owner present, any other lstat, open or read
-#   error) keeps the file and fails the step with the reason. After removing the shim, ~/.agents/bin goes through
-#   rmdir, and ENOTEMPTY or EEXIST keeps it: another entry, whatever its name, keeps the directory. A missing shim
-#   (ENOENT) is nothing to do, so a second run changes nothing.
+#   error) keeps the file and fails the step with the reason. Removal is by the verified inode, never by name: the
+#   entry is renamed (atomic) into a private quarantine directory created for this run under ~/.agents/bin, and
+#   unlinked there only when its device and inode are the verified ones; anything else that was swapped in is linked
+#   back under its name (never over a newer entry) and the step fails. After removing the shim, ~/.agents/bin goes
+#   through rmdir, and ENOTEMPTY or EEXIST keeps it: another entry, whatever its name, keeps the directory. A missing
+#   shim (ENOENT) is nothing to do, so a second run changes nothing.
 # @exitcode 1 No positive proof for an existing ~/.agents/bin/agy-tui, or a removal failed; the reason is printed.
 #
 function retire_agmsg_shim() {
     python3 - "${HOME}" << 'PY'
 import errno
 import os
+import secrets
 import stat
 import sys
 
@@ -2040,21 +2045,24 @@ for directory in (agents, bin_dir):
         refuse(f"cannot lstat {directory} ({error})")
     if not stat.S_ISDIR(mode):
         refuse(f"{directory} is not a real directory")
+try:
+    bin_fd = os.open(bin_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    shim_status = os.stat("agy-tui", dir_fd=bin_fd, follow_symlinks=False)
+except OSError as error:
+    refuse(f"cannot hold {bin_dir} open ({error})")
 # Only a regular file is opened (a FIFO would block the open), without following a symlink swapped in and without
 # blocking; fstat must then show the same regular file lstat saw.
 if not stat.S_ISREG(shim_status.st_mode):
     refuse("it is not a regular file")
+verified = (shim_status.st_dev, shim_status.st_ino)
 try:
-    fd = os.open(shim, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    fd = os.open("agy-tui", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=bin_fd)
 except OSError as error:
     refuse(f"cannot open it without following a symlink ({error})")
 with os.fdopen(fd, "rb") as handle:
     try:
         opened = os.fstat(handle.fileno())
-        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
-            shim_status.st_dev,
-            shim_status.st_ino,
-        ):
+        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != verified:
             refuse("it changed while it was read")
         data = handle.read()
     except OSError as error:
@@ -2069,10 +2077,33 @@ except OSError as error:
     refuse(f"cannot prove its owner {owner} is gone ({error})")
 else:
     refuse(f"its owner {owner} still exists")
+# Verified: from here on, nothing is removed by name.
+quarantine = f".agmsg-retire-{secrets.token_hex(8)}"
 try:
-    os.unlink(shim)
+    os.mkdir(quarantine, 0o700, dir_fd=bin_fd)
+    quarantine_fd = os.open(quarantine, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=bin_fd)
+    os.rename("agy-tui", "agy-tui", src_dir_fd=bin_fd, dst_dir_fd=quarantine_fd)
+    moved = os.stat("agy-tui", dir_fd=quarantine_fd, follow_symlinks=False)
 except OSError as error:
-    sys.exit(f"agmsg: cannot remove the retired shim {shim} ({error}).")
+    try:
+        os.rmdir(quarantine, dir_fd=bin_fd)  # only when the move did not happen: rmdir keeps a non-empty one
+    except OSError:
+        pass
+    sys.exit(f"agmsg: cannot move the retired shim {shim} aside to remove it ({error}).")
+if (moved.st_dev, moved.st_ino) != verified:
+    try:
+        # link never replaces an entry that appeared under the name meanwhile; rename would.
+        os.link("agy-tui", "agy-tui", src_dir_fd=quarantine_fd, dst_dir_fd=bin_fd, follow_symlinks=False)
+        os.unlink("agy-tui", dir_fd=quarantine_fd)
+        os.rmdir(quarantine, dir_fd=bin_fd)
+    except OSError as error:
+        sys.exit(f"agmsg: {shim} changed before its removal; the entry moved aside stays in {bin_dir}/{quarantine} ({error}).")
+    refuse("it changed before its removal (another file took its name); the replacement is back in place")
+try:
+    os.unlink("agy-tui", dir_fd=quarantine_fd)
+    os.rmdir(quarantine, dir_fd=bin_fd)
+except OSError as error:
+    sys.exit(f"agmsg: cannot remove the retired shim moved to {bin_dir}/{quarantine} ({error}).")
 print(f"agmsg: removed the retired shim {shim}.")
 try:
     os.rmdir(bin_dir)

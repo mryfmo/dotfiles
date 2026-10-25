@@ -729,6 +729,33 @@ class DriftWatchTest(unittest.TestCase):
         self.assert_read_failure(status, report)
         self.assertIn("pyright-lsp/.claude-plugin/plugin.json: not in the fixture", report)
 
+    def test_a_pinned_plugin_with_no_upstream_value_is_a_read_failure_never_not_watched(self):
+        # Round-5 audit: a value that cannot be determined was listed as not watched and the run said "No drift".
+        def no_version(upstream):
+            entry = upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-1]
+            del entry["version"]  # pyright-lsp: strict: false, no catalog version, no plugin.json
+
+        def root_source(upstream):
+            upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2]["source"] = "./"
+
+        def npm_source(upstream):
+            entry = upstream[f"{self.OFFICIAL}/contents/.claude-plugin/marketplace.json"]["plugins"][-2]
+            entry["source"] = {"source": "npm", "package": "frontend-design"}
+
+        for name, change, plugin in (
+            ("strict: false with no version anywhere", no_version, "pyright-lsp"),
+            ("a content pin at the repository root", root_source, "frontend-design"),
+            ("a content pin from an npm source", npm_source, "frontend-design"),
+        ):
+            with self.subTest(case=name):
+                upstream = self.content_upstream(self.reviewed_files())
+                change(upstream)
+                status, report = self.content_watch(upstream)
+                self.assert_read_failure(status, report)
+                self.assertNotIn("No drift found", report)
+                self.assertIn(plugin, report.split("## Read failures", 1)[1])
+                self.assertNotIn(plugin, self.not_watched(report))
+
 
 class UpstreamTokenTest(unittest.TestCase):
     def setUp(self):

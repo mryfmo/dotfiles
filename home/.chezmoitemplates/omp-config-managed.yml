@@ -6,3 +6,6 @@ skills:
     - ~/.agents/skills
 extensions:
   - ~/.local/lib/omp-extensions/pi-claude-bridge
+disabledProviders:
+  - agent-plugins
+  - openai-codex

@@ -32,7 +32,9 @@ omp:
   # file; hcom-seat passes their extensions with -e (docs/pi-claude-bridge.md).
   extensions:
     - ~/.local/lib/omp-extensions/pi-claude-bridge
-  # omp providers each seat overlay switches off as disabledProviders (regime-cutover U22).
+  # omp providers each seat overlay and the plain-launch config switch off as disabledProviders
+  # (regime-cutover U22). openai-codex is the retired route: disabled, no stored OAuth session
+  # makes it selectable (omp docs/providers.md).
   # agent-plugins reads the Claude Code marketplace registry, where pstack is installed as
   # a plugin too: its copy of the skills ~/.agents/skills already lists is refused with one
   # warning per skill (56 on omp 18.11.3, measured). The seats load no Agent Plugin (the
@@ -40,6 +42,7 @@ omp:
   # omp reads the same key for model providers, so the generator refuses a model route here.
   disabled_providers:
     - agent-plugins
+    - openai-codex
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the

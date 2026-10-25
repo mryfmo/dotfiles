@@ -193,6 +193,46 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         session_hooks = json.loads(output)["hooks"]["SessionStart"]
         self.assertEqual(session_hooks, [state_hook])
 
+    def test_session_start_hook_that_only_mentions_a_managed_script_survives(self) -> None:
+        """Only the invoked executable (or the script an interpreter runs) makes a hook managed, never an argument."""
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [
+                {"type": "command", "command": f"{self.home_dir}/.local/bin/common/agent-session-staleness hook"},
+                {"type": "command", "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session"},
+            ],
+        }
+        mentions = [
+            "logger -t agent-session-staleness started",
+            "echo herdr-agent-state.sh",
+            "logger herdr-agents",
+            "bash ~/bin/wrap.sh agent-session-staleness",
+        ]
+        for command in mentions:
+            unrelated = {"matcher": "*", "hooks": [{"type": "command", "command": command}]}
+            with self.subTest(command=command):
+                output = self.merge(
+                    {"hooks": {"SessionStart": [managed_hook]}},
+                    json.dumps({"hooks": {"SessionStart": [unrelated]}}),
+                )
+                commands = [h["command"] for e in json.loads(output)["hooks"]["SessionStart"] for h in e["hooks"]]
+                self.assertIn(command, commands)
+
+        invocations = [
+            "/Users/someone-else/.local/bin/common/agent-session-staleness hook",
+            "FOO=1 /Users/someone-else/.local/bin/common/agent-session-staleness hook",
+            "sh '/Users/someone-else/.claude/hooks/herdr-agent-state.sh' session",
+            'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+        ]
+        for command in invocations:
+            stale = {"matcher": "*", "hooks": [{"type": "command", "command": command, "async": True}]}
+            with self.subTest(command=command):
+                output = self.merge(
+                    {"hooks": {"SessionStart": [managed_hook]}},
+                    json.dumps({"hooks": {"SessionStart": [stale]}}),
+                )
+                self.assertEqual(json.loads(output)["hooks"]["SessionStart"], [managed_hook])
+
     def test_managed_permgate_replaces_stale_current_ccgate_hook(self) -> None:
         managed_hook = {
             "matcher": "*",

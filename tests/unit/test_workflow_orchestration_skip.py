@@ -303,8 +303,13 @@ class DecisionStepTest(unittest.TestCase):
         apply = next(step for step in steps if step_name(step) == "Apply home/ into a scratch HOME")
         self.assertEqual("${{ steps.decide.outputs.should_apply == 'true' }}", apply["if"])
         self.assertNotIn("continue-on-error", apply)
-        self.assertIn("apply --exclude=scripts,externals", apply["script"])
-        self.assertIn("verify --exclude=scripts,externals", apply["script"])
+        # U82: the step is scripts/apply-check.sh, the one implementation make apply-check also runs.
+        self.assertEqual(
+            'scripts/apply-check.sh --system "${SYSTEM}" --chezmoi "${APPLY_CHEZMOI}"', apply["script"].strip()
+        )
+        script = (ROOT / "scripts/apply-check.sh").read_text()
+        self.assertIn("apply --exclude=scripts,externals", script)
+        self.assertIn("verify --exclude=scripts,externals", script)
 
     def test_each_deciding_job_decides_after_its_checkout_and_fails_closed(self) -> None:
         for path, name, decide, _ in DECIDING_JOBS:

@@ -15,8 +15,8 @@
 #   chezmoi config renders without age encryption (home/.chezmoi.yaml.tmpl), and,
 #   as setup.sh does without a tty, the encrypted_* targets leave the copy.
 #   Externals are downloads and scripts are installers, so neither is applied;
-#   the public-bootstrap CI job runs both. The apply steps are those of the
-#   scratch apply in .github/workflows/remote.yaml, on the clone's layout.
+#   the public-bootstrap CI job runs both. That required job also runs this
+#   script, on the runner, for a diff whose home/ paths are all render-only.
 #   After `chezmoi init`, `apply` and `verify` it runs the parts of `make doctor`
 #   that judge the applied files and need no installed tool and no login:
 #   `chezmoi doctor --no-network` and scripts/check-agent-runtime.py (its GitHub

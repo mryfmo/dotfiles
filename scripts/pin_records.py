@@ -105,8 +105,9 @@ def load_toml(path: Path) -> Any:
         raise RecordError(path, "(file)", f"not TOML: {error}") from error
 
 
-def field(record: object, data: Any, name: str, kind: type, where: str = "") -> Any:
-    """DATA[NAME] with exactly type KIND (bool is never an int, an int never a str)."""
+def field(record: object, data: Any, name: str, kind: type, where: str = "", ascii: bool = False) -> Any:
+    """DATA[NAME] with exactly type KIND (bool is never an int, an int never a str); a string is clean, and
+    ASCII only when ASCII (an id, version, tag, source or commit: the format is ASCII)."""
     label = f"{where}{name}"
     if not isinstance(data, dict):
         raise RecordError(record, where.rstrip(".") or "(top)", f"must be an object, not {type(data).__name__}")
@@ -116,7 +117,7 @@ def field(record: object, data: Any, name: str, kind: type, where: str = "") -> 
     if type(value) is not kind:
         raise RecordError(record, label, f"must be {kind.__name__}, not {type(value).__name__}")
     if kind is str:
-        clean(record, label, value)
+        clean(record, label, value, ascii)
     return value
 
 
@@ -139,20 +140,27 @@ def record_lines(record: object, text: str, tab: bool = False) -> List[str]:
     return lines[:-1] if lines and lines[-1] == "" else lines
 
 
-def clean(record: object, label: str, value: str) -> str:
-    """VALUE when it holds no control character (tab, newline, carriage return, NUL, ...), else RecordError:
-    no field can then forge a row or a record boundary in any output."""
+def clean(record: object, label: str, value: str, ascii: bool = False) -> str:
+    """VALUE exactly as recorded, else RecordError: it holds no control character (tab, newline, carriage
+    return, NUL, ...), so no field can forge a row or a record boundary in any output; it has no leading or
+    trailing whitespace of any kind (str.isspace: NBSP, U+2009, U+3000, ...), which a reader that stripped
+    it would have turned into another value; and with ASCII it holds ASCII only. Values are never stripped:
+    every comparison is of the exact string."""
     if CONTROL.search(value):
         raise RecordError(record, label, f"contains a control character: {value!r}")
+    if value and (value[0].isspace() or value[-1].isspace()):
+        raise RecordError(record, label, f"has leading or trailing whitespace: {value!r}")
+    if ascii and not value.isascii():
+        raise RecordError(record, label, f"must be ASCII: {value!r}")
     return value
 
 
-def optional(record: object, data: Dict[str, Any], name: str, kind: type, where: str = "") -> Any:
+def optional(record: object, data: Dict[str, Any], name: str, kind: type, where: str = "", ascii: bool = False) -> Any:
     """DATA[NAME] when the key is there, None only when it is missing: a present key, explicit null
     included, must have type KIND, so null never stands in for "not recorded"."""
     if not isinstance(data, dict):
         raise RecordError(record, where.rstrip(".") or "(top)", f"must be an object, not {type(data).__name__}")
-    return field(record, data, name, kind, where) if name in data else None
+    return field(record, data, name, kind, where, ascii) if name in data else None
 
 
 def plugin_parts(record: object, label: str, plugin_id: str) -> Tuple[str, str]:
@@ -234,11 +242,13 @@ def load_plugin_pins(path: Path) -> PluginPins:
             allowed = {"marketplace", "pin", "ref"} if agent == "codex" else {"marketplace", "pin"}
             if not isinstance(entry, dict) or not set(entry) <= allowed:
                 raise RecordError(path, where.rstrip("."), f"may hold only {sorted(allowed)}")
-            ref = optional(path, entry, "ref", str, where)
+            ref = optional(path, entry, "ref", str, where, ascii=True)
             if ref is not None and not COMMIT.fullmatch(ref):
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
             agents[agent][plugin_id] = Pin(
-                field(path, entry, "marketplace", str, where), field(path, entry, "pin", str, where), ref
+                field(path, entry, "marketplace", str, where, ascii=True),
+                field(path, entry, "pin", str, where, ascii=True),
+                ref,
             )
     extensions = field(path, data, "gh_extensions", dict)
     for repository, tag in extensions.items():
@@ -246,7 +256,7 @@ def load_plugin_pins(path: Path) -> PluginPins:
             raise RecordError(path, f"gh_extensions.{repository}", "must be <owner>/<repository>")
         if type(tag) is not str or not tag or re.search(r"\s", tag):
             raise RecordError(path, f"gh_extensions.{repository}", "must be one tag string")
-        clean(path, f"gh_extensions.{repository}", tag)
+        clean(path, f"gh_extensions.{repository}", tag, ascii=True)
     return PluginPins(agents["claude"], agents["codex"], dict(extensions))
 
 
@@ -279,10 +289,10 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
         result[plugin_id] = []
         for index, entry in enumerate(entries):
             where = f"plugins.{plugin_id}[{index}]."
-            scope = field(path, entry, "scope", str, where)
+            scope = field(path, entry, "scope", str, where, ascii=True)
             if scope not in CLAUDE_SCOPES:
                 raise RecordError(path, f"{where}scope", f"{scope!r} is not one of {CLAUDE_SCOPES}")
-            version = field(path, entry, "version", str, where)
+            version = field(path, entry, "version", str, where, ascii=True)
             install_path = field(path, entry, "installPath", str, where)
             plugin_dir = confined(path, f"plugins.{plugin_id}", path.parent / "cache", marketplace, plugin)
             expected = confined(path, f"{where}version", plugin_dir, version)
@@ -334,11 +344,11 @@ def claude_marketplace_state(listing: str, name: str, recorded: str) -> str:
     if type(data) is not list:
         raise RecordError(record, "(output)", "must be a list")
     for index, entry in enumerate(data):
-        if field(record, entry, "name", str, f"[{index}].") != name:
+        if field(record, entry, "name", str, f"[{index}].", ascii=True) != name:
             continue
-        if field(record, entry, "source", str, f"[{index}].") != "github":
+        if field(record, entry, "source", str, f"[{index}].", ascii=True) != "github":
             return "foreign"
-        return "registered" if field(record, entry, "repo", str, f"[{index}].") == recorded else "foreign"
+        return "registered" if field(record, entry, "repo", str, f"[{index}].", ascii=True) == recorded else "foreign"
     return "absent"
 
 
@@ -399,10 +409,10 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
     manifest = load_json(manifest_path)
     if manifest is ABSENT:
         raise RecordError(manifest_path, "(file)", "is missing")
-    name = field(manifest_path, manifest, "name", str)
+    name = field(manifest_path, manifest, "name", str, ascii=True)
     if name != plugin:
         raise RecordError(manifest_path, "name", f"{name!r} is not {plugin!r}")
-    return CodexCopy(active, name, field(manifest_path, manifest, "version", str))
+    return CodexCopy(active, name, field(manifest_path, manifest, "version", str, ascii=True))
 
 
 @dataclass(frozen=True)
@@ -416,12 +426,12 @@ def load_marketplace_install(path: Path, expected_source: str) -> Optional[Marke
     data = load_json(path)
     if data is ABSENT:
         return None
-    if field(path, data, "source_type", str) != "git":
+    if field(path, data, "source_type", str, ascii=True) != "git":
         raise RecordError(path, "source_type", "must be git")
-    source = field(path, data, "source", str)
+    source = field(path, data, "source", str, ascii=True)
     if source != expected_source:
         raise RecordError(path, "source", f"{source!r} is not the pinned {expected_source!r}")
-    revision = field(path, data, "revision", str)
+    revision = field(path, data, "revision", str, ascii=True)
     if not COMMIT.fullmatch(revision):
         raise RecordError(path, "revision", "must be a 40-hex commit")
     return MarketplaceInstall(source, revision)
@@ -449,10 +459,10 @@ def load_codex_config(path: Path) -> Optional[CodexConfig]:
     if not isinstance(marketplaces, dict):
         raise RecordError(path, "marketplaces", "must be a table")
     for name, table in marketplaces.items():
-        clean(path, f"marketplaces.{name!r}", name)
-        field(path, table, "source_type", str, f"marketplaces.{name}.")
-        field(path, table, "source", str, f"marketplaces.{name}.")
-        optional(path, table, "ref", str, f"marketplaces.{name}.")
+        clean(path, f"marketplaces.{name!r}", name, ascii=True)
+        field(path, table, "source_type", str, f"marketplaces.{name}.", ascii=True)
+        field(path, table, "source", str, f"marketplaces.{name}.", ascii=True)
+        optional(path, table, "ref", str, f"marketplaces.{name}.", ascii=True)
     return CodexConfig(enabled, dict(marketplaces))
 
 
@@ -497,12 +507,15 @@ def load_gh_extension(gh_dir: Path, repository: str) -> Optional[GhExtension]:
         raise RecordError(manifest, "(file)", "is missing beside an installed extension; cannot verify its pin")
     values: Dict[str, str] = {}
     for number, line in enumerate(record_lines(manifest, text), 1):
-        if not line.strip():
+        if line == "":
             continue
-        match = re.fullmatch(r"([a-z]+): ?(.*)", line)
+        # gh writes `key: value` with one space; the value is taken exactly, never stripped (clean refuses
+        # leading or trailing whitespace of any kind).
+        match = re.fullmatch(r"([a-z]+):(?: (.*))?", line)
         if not match or match.group(1) in values:
             raise RecordError(manifest, f"line {number}", f"is not one `key: value` line: {line!r}")
-        values[match.group(1)] = clean(manifest, match.group(1), match.group(2).strip())
+        key, value = match.group(1), match.group(2) or ""
+        values[key] = clean(manifest, key, value, ascii=key != "path")
     for key in ("owner", "name", "host", "tag", "ispinned", "path"):
         if not values.get(key):
             raise RecordError(manifest, key, "is missing")
@@ -536,12 +549,13 @@ def load_mise_holds(path: Path) -> List[str]:
     section, held, names = None, None, []
     # TOML allows a tab as whitespace; nothing else.
     for number, line in enumerate(record_lines(path, text, tab=True), 1):
-        stripped = line.strip()
+        # TOML whitespace is a space or a tab, nothing else (a no-break space is part of the line).
+        stripped = line.strip(" \t")
         if stripped.startswith("#"):
             held = held or (number if "Held" in stripped else None)
             continue
         header = re.fullmatch(r"\[([^\]]+)\]", stripped)
-        key = re.match(r'^("[^"]+"|[A-Za-z0-9_.:@/-]+)\s*=', stripped)
+        key = re.match(r'^("[^"]+"|[A-Za-z0-9_.:@/-]+)[ \t]*=', stripped)
         name = None
         if header:
             section = header.group(1)
@@ -551,7 +565,7 @@ def load_mise_holds(path: Path) -> List[str]:
             name = key.group(1).strip('"')
         if held is not None:
             if name is not None:
-                clean(path, f"line {number}", name)
+                clean(path, f"line {number}", name, ascii=True)
             if name is None:
                 raise RecordError(path, f"line {held}", "a Held comment must sit directly above a [tools] entry")
             names.append(name)

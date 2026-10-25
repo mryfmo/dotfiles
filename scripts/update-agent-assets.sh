@@ -413,21 +413,27 @@ function claude_user_plugin_version() {
 # @description Register the marketplace a pinned Claude Code plugin comes from (its `marketplace` in
 #   assets.claude-plugins), unless a marketplace of that name is already registered.
 # @arg $1 string Fully qualified Claude Code plugin ID (`<plugin>@<marketplace name>`).
-# @exitcode 1 When the marketplace list cannot be read, the pin records no source, or `marketplace add` fails.
+# @exitcode 1 When the pin records no source, the list cannot be parsed, or `marketplace add` fails.
 # @exitcode 3 When a marketplace of that name is registered from another source: a foreign identity.
+# @exitcode 4 When `claude plugin marketplace list --json` itself fails; its exit status and stderr are printed.
 #
 function ensure_claude_plugin_marketplace() {
     local plugin_id="$1"
-    local name="${1#*@}" source listing state
+    local name="${1#*@}" source listing state errors status=0
 
     if ! source="$(plugin_pin claude "${plugin_id}" marketplace)"; then
         printf 'ERROR: %s records no marketplace for %s.\n' "${AGENT_PLUGIN_PINS}" "${plugin_id}" >&2
         return 1
     fi
-    if ! listing="$(claude_outside_projects plugin marketplace list --json 2> /dev/null)"; then
-        printf 'ERROR: claude plugin marketplace list --json failed; cannot register %s for %s.\n' "${source}" "${plugin_id}" >&2
-        return 1
+    errors="$(mktemp)" || return 1
+    listing="$(claude_outside_projects plugin marketplace list --json 2> "${errors}")" || status=$?
+    if [ "${status}" -ne 0 ]; then
+        printf 'claude plugin marketplace list --json failed (exit %s), so %s cannot be verified for %s; its stderr:\n' "${status}" "${source}" "${plugin_id}" >&2
+        sed -n '1,20s/^/    /p' "${errors}" >&2 || true
+        rm -f "${errors}"
+        return 4
     fi
+    rm -f "${errors}"
     if ! state="$(pin_record claude-marketplace "${name}" "${source}" <<< "${listing}")"; then
         return 1
     fi
@@ -469,12 +475,16 @@ function doctor_pin_check() {
 #   project settings take part. The enabled state is never changed here.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 0 When the re-read user-scope installation is at the pin.
+# @exitcode 10 (CLAUDE_PLUGIN_SKIPPED) When the marketplace list cannot be read and the records show the plugin
+#   neither installed at any scope nor enabled: nothing to verify, nothing changed.
+# @exitcode 11 (CLAUDE_PLUGIN_FRESH_OFF_PIN) When a fresh install (no installation at any scope, not enabled
+#   before) landed on a release other than the pin; converge_or_disable disables it and proves it off.
 # @exitcode 1 Otherwise: the pin or a record cannot be read, the marketplace is foreign or cannot be
 #   registered, the install fails, or the installation is still off its pin.
 #
 function move_claude_plugin_to_pin() {
     local plugin_id="$1"
-    local pin installs version
+    local pin installs version marketplace enabled fresh=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -490,7 +500,18 @@ function move_claude_plugin_to_pin() {
     version="$(claude_user_install "${installs}")" || return 1
     # The marketplace identity is verified before anything is installed or updated from it; a foreign one may
     # serve a release under the pinned version, so its plugin fails (and is disabled) at any version.
-    if ! ensure_claude_plugin_marketplace "${plugin_id}"; then
+    # Fresh: no installation at any scope and not enabled in the user settings (as the doctor's readers see it),
+    # so nothing of this plugin can be running before this step.
+    if [ "${installs}" = "[]" ] && enabled="$(claude_user_enabled "${plugin_id}")" && [ "${enabled}" != "enabled" ]; then
+        fresh=1
+    fi
+    marketplace=0
+    ensure_claude_plugin_marketplace "${plugin_id}" || marketplace=$?
+    if [ "${marketplace}" -eq 4 ] && [ "${fresh}" -eq 1 ]; then
+        # A failure to verify matters only when something could run; here nothing can, so the step is skipped.
+        return "${CLAUDE_PLUGIN_SKIPPED}"
+    fi
+    if [ "${marketplace}" -ne 0 ]; then
         printf 'ERROR: %s is not installed or updated from an unverified marketplace.\n' "${plugin_id}" >&2
         return 1
     fi
@@ -512,7 +533,10 @@ function move_claude_plugin_to_pin() {
         return 1
     fi
     if [ "${version}" != "${pin}" ]; then
-        printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; review that release and record its version in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${version}" "${pin}" >&2
+        printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; the pin needs a review bump: review that release and record its version in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${version}" "${pin}" >&2
+        if [ "${fresh}" -eq 1 ]; then
+            return "${CLAUDE_PLUGIN_FRESH_OFF_PIN}"
+        fi
         return 1
     fi
 }
@@ -570,11 +594,18 @@ function disable_plugin() {
 #   doctor's pin check for the plugin (doctor_pin_check). The plugin stays as the step left it only when both
 #   exit 0; on every other outcome (an error or early return of the step, drift, a record that cannot be
 #   read, a check that cannot run) it is disabled (disable_plugin) before the failure is returned and counted.
+#   One rule decides what fails the run: unreviewed code that could be active, or an active state that cannot
+#   be verified. So two outcomes are a WARN, not a failure: a step that could not verify a plugin that was
+#   neither installed nor enabled (CLAUDE_PLUGIN_SKIPPED), and a fresh install that landed off its pin and is
+#   proven disabled (CLAUDE_PLUGIN_FRESH_OFF_PIN; make doctor still reports it as drift).
 #   The step runs in a subshell, so an `exit` or a `set -u` abort inside it comes back here too.
 # @arg $1 string Agent: claude or codex.
 # @arg $2 string Fully qualified plugin ID.
 # @arg $@ string The step's command and arguments.
 # @exitcode 0 When the step and the doctor's pin check both pass.
+# @exitcode 2 When the step skipped the plugin (CLAUDE_PLUGIN_SKIPPED: nothing installed or enabled to verify)
+#   and the doctor's check passes, or a fresh off-pin install is proven disabled: a WARN, not counted, and the
+#   caller records nothing.
 # @exitcode 1 Otherwise, after the disable; counted in CLAUDE_PIN_FAILURES, so the run fails.
 #
 function converge_or_disable() {
@@ -587,6 +618,20 @@ function converge_or_disable() {
     if [ "${status}" -eq 0 ] && [ "${check}" -eq 0 ]; then
         printf '%s plugin %s is at its pin (make doctor agrees).\n' "${agent}" "${plugin_id}"
         return 0
+    fi
+    if [ "${status}" -eq "${CLAUDE_PLUGIN_FRESH_OFF_PIN}" ]; then
+        # make doctor keeps reporting this copy as drift: that is the signal for the review bump.
+        if disable_plugin "${agent}" "${plugin_id}"; then
+            printf 'WARN: %s plugin %s landed off its pin on a fresh install and is proven disabled, so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n' "${agent}" "${plugin_id}" >&2
+            return 2
+        fi
+        printf 'ERROR: %s plugin %s landed off its pin and cannot be proven disabled.\n' "${agent}" "${plugin_id}" >&2
+        CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
+        return 1
+    fi
+    if [ "${status}" -eq "${CLAUDE_PLUGIN_SKIPPED}" ] && [ "${check}" -eq 0 ]; then
+        printf 'WARN: %s plugin %s was not installed: its marketplace cannot be verified on this host, and it is neither installed nor enabled, so nothing unreviewed is active. Run make update once "%s plugin marketplace list" works.\n' "${agent}" "${plugin_id}" "${agent}" >&2
+        return 2
     fi
     if [ "${check}" -ne 0 ]; then
         printf 'ERROR: make doctor still reports %s off its pin after this step.\n' "${plugin_id}" >&2
@@ -610,6 +655,11 @@ function converge_claude_plugin() {
 # count of plugins whose convergence failed for any reason; main fails the run when it is not zero.
 CLAUDE_CONVERGED=" "
 CLAUDE_PIN_FAILURES=0
+# The exit statuses a plugin step returns for the two outcomes converge_or_disable reports as a WARN: a plugin
+# it could not verify and found neither installed nor enabled, and a fresh install that landed off its pin.
+# Any other non-zero status is a failure.
+readonly CLAUDE_PLUGIN_SKIPPED=10
+readonly CLAUDE_PLUGIN_FRESH_OFF_PIN=11
 
 #
 # @description Count a failed step (a plugin setup step, a pin check, an asset manifest record) and keep
@@ -733,8 +783,9 @@ function update_claude_superpowers() {
     fi
 
     section "Claude Code plugins"
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and counts a failure.
-    if ensure_claude_plugin_marketplace "${CLAUDE_SUPERPOWERS_PLUGIN}"; then
+    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
+    # any failure, so this call\'s own messages are not repeated.
+    if ensure_claude_plugin_marketplace "${CLAUDE_SUPERPOWERS_PLUGIN}" 2> /dev/null; then
         claude_outside_projects plugin marketplace update claude-plugins-official || true
     fi
     converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
@@ -756,8 +807,9 @@ function update_claude_crit() {
     section "Claude Code Crit plugin"
     # The Crit CLI is optional for the plugin; its failure never skips the pin check below.
     ensure_crit_cli || printf 'WARN: the Crit CLI is not installed; the Claude Code Crit plugin is still checked against its pin.\n' >&2
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and counts a failure.
-    if ensure_claude_plugin_marketplace "${CLAUDE_CRIT_PLUGIN}"; then
+    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
+    # any failure, so this call\'s own messages are not repeated.
+    if ensure_claude_plugin_marketplace "${CLAUDE_CRIT_PLUGIN}" 2> /dev/null; then
         claude_outside_projects plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
@@ -777,8 +829,9 @@ function update_claude_ponytail() {
     fi
 
     section "Claude Code Ponytail plugin"
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and counts a failure.
-    if ensure_claude_plugin_marketplace "${CLAUDE_PONYTAIL_PLUGIN}"; then
+    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
+    # any failure, so this call\'s own messages are not repeated.
+    if ensure_claude_plugin_marketplace "${CLAUDE_PONYTAIL_PLUGIN}" 2> /dev/null; then
         claude_outside_projects plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
@@ -799,8 +852,9 @@ function update_claude_understand_anything() {
     fi
 
     section "Claude Code Understand-Anything plugin"
-    # Refreshed only once its identity is verified; converge_claude_step verifies again and counts a failure.
-    if ensure_claude_plugin_marketplace "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"; then
+    # Refreshed only once its identity is verified; converge_claude_step verifies again and reports and judges
+    # any failure, so this call\'s own messages are not repeated.
+    if ensure_claude_plugin_marketplace "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" 2> /dev/null; then
         claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0

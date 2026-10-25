@@ -557,7 +557,8 @@ claude() {
             '[.plugins | to_entries[] | .key as $id | .value[] | {id: $id, scope, version,
               enabled: (($here[0].enabledPlugins // {}) as $p | ($user[0].enabledPlugins // {}) as $u
                 | if ($p | has($id)) then $p[$id] else ($u[$id] == true) end)}]' "${record}" ;;
-    "plugin marketplace list") cat "${WORK}/markets.json" ;;
+    "plugin marketplace list") if [ -n "${LIST_FAILS}" ]; then printf 'Error: %s\n' "${LIST_FAILS}" >&2; return 1; fi
+        cat "${WORK}/markets.json" ;;
     "plugin marketplace add") [ -z "${ADD_FAILS}" ] || return 1
         jq --arg name "${ADD_NAME}" --arg repo "$4" '. + [{name: $name, source: "github", repo: $repo}]' "${WORK}/markets.json" > "${WORK}/next" && mv "${WORK}/next" "${WORK}/markets.json" ;;
     "plugin install "*) [ -z "${INSTALL_FAILS}" ] || return 1
@@ -612,6 +613,7 @@ claude() {
             "DISABLE_FAILS",
             "DISABLE_NOOP",
             "CORRUPT_AFTER",
+            "LIST_FAILS",
         )
         result = subprocess.run(
             [
@@ -898,6 +900,79 @@ claude() {
             self.assertEqual(
                 [], [line for line in calls if not re.search(rf"converge_or_disable \w+ \S+ {name}\b", line)]
             )
+
+    # Round 27: the run fails only when unreviewed code could be active or the active state cannot be verified.
+    ALL_CLAUDE_STEPS = (
+        "ensure_crit_cli() { :; }; update_claude_superpowers; update_claude_crit; update_claude_ponytail; "
+        'update_claude_understand_anything; converge_claude_plugins; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; '
+        "fail_on_claude_pin_failures"
+    )
+
+    def test_a_fresh_host_whose_marketplace_list_fails_skips_every_plugin_with_a_warning(self):
+        # CI public-bootstrap (ubuntu-24.04): `claude plugin marketplace list --json` failed on a fresh HOME, so
+        # every plugin was disabled and counted and the bootstrap failed, with nothing installed or enabled.
+        pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+        result, calls, _ = self.converge_listed(self.ALL_CLAUDE_STEPS, {}, {}, LIST_FAILS="sandbox unavailable")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual([], calls)  # nothing added, installed, updated or disabled
+        self.assertIn("Error: sandbox unavailable", result.stderr)  # the CLI's own stderr is shown
+        for plugin_id in pins:
+            self.assertIn(f"WARN: claude plugin {plugin_id} was not installed", result.stderr)
+        # An installed or enabled plugin that cannot be verified still fails, and an installed one is disabled.
+        for name, installs, enabled in (
+            (
+                "installed at its pin",
+                {"crit@crit": [{"scope": "user", "version": pins["crit@crit"]["pin"]}]},
+                {"crit@crit": True},
+            ),
+            ("enabled, not installed", {}, {"crit@crit": True}),
+            (
+                "project scope only",
+                {"crit@crit": [{"scope": "project", "version": "9.9.9", "projectPath": "PROJECT"}]},
+                {},
+            ),
+        ):
+            with self.subTest(case=name):
+                step = "converge_claude_step crit@crit || true; fail_on_claude_pin_failures"
+                result, calls, _ = self.converge_listed(step, installs, enabled, LIST_FAILS="sandbox unavailable")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("not installed or updated from an unverified marketplace", result.stderr)
+                if name == "installed at its pin":
+                    self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
+
+    def test_a_fresh_install_that_lands_off_its_pin_is_disabled_and_warned_not_failed(self):
+        # CI public-bootstrap (macos-15): pstack's marketplace had moved to 0.15.32 past the 0.15.30 pin, and
+        # Claude Code installs only the current release.
+        pin = self.pin_of("pstack@cursor-plugins")
+        step = 'converge_claude_step pstack@cursor-plugins || true; printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures'
+        result, calls, state = self.converge_listed(step, {}, {}, INSTALL_VERSION="99.0.0")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("failures=0", result.stdout)
+        self.assertEqual(
+            [
+                "plugin install pstack@cursor-plugins --scope user @neutral",
+                "plugin disable pstack@cursor-plugins --scope user @neutral",
+            ],
+            calls,
+        )
+        self.assertIs(False, state["user"]["pstack@cursor-plugins"])
+        self.assertIn(
+            f"pstack@cursor-plugins is at 99.0.0, not its pin {pin}; the pin needs a review bump", result.stderr
+        )
+        self.assertIn("landed off its pin on a fresh install and is proven disabled", result.stderr)
+        # The doctor still reports the copy as drift: that is the signal for the bump.
+        self.assertIn("installed at 99.0.0, not its pin", result.stderr)
+        # Still a failure: a disable that cannot be proven, an earlier enable, or an installation that was there.
+        for name, installs, enabled, flags in (
+            ("disable not proven", {}, {}, {"DISABLE_NOOP": "1"}),
+            ("enabled before", {}, {"pstack@cursor-plugins": True}, {}),
+            ("installed before", {"pstack@cursor-plugins": [{"scope": "user", "version": "98.0.0"}]}, {}, {}),
+        ):
+            with self.subTest(case=name):
+                result, _, _ = self.converge_listed(step, installs, enabled, INSTALL_VERSION="99.0.0", **flags)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("failures=1", result.stdout)
 
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.

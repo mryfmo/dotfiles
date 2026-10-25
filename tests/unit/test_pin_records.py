@@ -303,6 +303,76 @@ class PinRecordsTest(unittest.TestCase):
             self.write("data/gh/extensions/gh-poi/manifest.yml", base + "tag: v0.18.5\tx\nispinned: true\n")
             self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), "line 5")
 
+    def test_no_record_value_is_stripped_into_another_value(self) -> None:
+        # Audit round 26: `.strip()` turned `v0.18.5\u00a0` into the pin. Values are compared exactly, and one
+        # with leading or trailing whitespace of any kind is refused; ASCII formats refuse non-ASCII.
+        data = self.dir / "data/gh"
+        binary = data / "extensions/gh-poi/gh-poi"
+        gh = f"owner: seachicken\nname: gh-poi\nhost: github.com\ntag: {{tag}}\nispinned: true\npath: {binary}\n"
+        pins = {
+            "claude": {"crit@crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.14"}},
+            "codex": {},
+            "gh_extensions": {},
+        }
+        cache = self.dir / "cache/crit/crit/1.8.14"
+        install = {"plugins": {"crit@crit": [{"scope": "user", "version": "1.8.14", "installPath": str(cache)}]}}
+        listing = [{"name": "crit", "source": "github", "repo": "tomasz-tomczyk/crit"}]
+        root = self.dir / "codex/tail/tail"
+        cases = {
+            "gh manifest tag": lambda v: (
+                self.write("data/gh/extensions/gh-poi/manifest.yml", gh.format(tag=v)),
+                lambda: records.load_gh_extension(data, "seachicken/gh-poi"),
+            )[1],
+            "pins pin": lambda v: (
+                pins["claude"]["crit@crit"].update(pin=v),
+                self.write("pins.json", pins),
+                lambda: records.load_plugin_pins(self.dir / "pins.json"),
+            )[2],
+            "pins gh tag": lambda v: (
+                self.write("pins2.json", {**pins, "claude": {}, "gh_extensions": {"seachicken/gh-poi": v}}),
+                lambda: records.load_plugin_pins(self.dir / "pins2.json"),
+            )[1],
+            "claude marketplace listing": lambda v: (
+                lambda: records.claude_marketplace_state(
+                    json.dumps([{**listing[0], "repo": v}]), "crit", "tomasz-tomczyk/crit"
+                )
+            ),
+            "codex copy version": lambda v: (
+                self.write("codex/tail/tail/5.0.0/.codex-plugin/plugin.json", {"name": "tail", "version": v}),
+                lambda: records.load_codex_copy(root, "tail", MODIFY),
+            )[1],
+            "mise held tool": lambda v: (
+                self.write("mise.toml", f'# Held: reason\n[tools."{v}"]\nversion = "1"\n'),
+                lambda: records.load_mise_holds(self.dir / "mise.toml"),
+            )[1],
+        }
+        for field_name, make in cases.items():
+            for value in ("v0.18.5\u00a0", "\u2009v0.18.5", "v0.18.5\u3000", "v0.18.5\t", "v0.18.\u0665"):
+                if field_name == "claude marketplace listing":
+                    value = value.replace("v0.18.5", "tomasz-tomczyk/crit").replace("v0.18.", "tomasz-tomczyk/cri")
+                with self.subTest(field=field_name, value=repr(value)):
+                    with self.assertRaises(records.RecordError):
+                        make(value)()
+        # Claude's install record version (also a path component) refuses them too.
+        for value in ("1.8.14\u00a0", "\u20091.8.14"):
+            with self.subTest(field="installed_plugins.json version", value=repr(value)):
+                entry = {
+                    **install["plugins"]["crit@crit"][0],
+                    "version": value,
+                    "installPath": str(self.dir / "cache/crit/crit" / value),
+                }
+                self.refused(
+                    lambda: records.load_claude_installs(self.write("i.json", {"plugins": {"crit@crit": [entry]}})),
+                    "version",
+                )
+        # An exact value still parses.
+        self.write("data/gh/extensions/gh-poi/manifest.yml", gh.format(tag="v0.18.5"))
+        self.assertEqual("v0.18.5", records.load_gh_extension(data, "seachicken/gh-poi").tag)
+        self.assertEqual(["v0.18.5"], cases["mise held tool"]("v0.18.5")())
+        self.assertEqual("v0.18.5", cases["codex copy version"]("v0.18.5")().version)
+        self.assertEqual("v0.18.5", cases["pins pin"]("v0.18.5")().claude["crit@crit"].pin)
+        self.assertEqual("registered", cases["claude marketplace listing"]("tomasz-tomczyk/crit")())
+
     def test_mise_holds(self) -> None:
         good = '[tools]\n# Held: reason\nfd = "10.3.0"\njq = "latest"\n\n# Held: http\n[tools."http:bats"]\nversion = "1"\n'
         self.assertEqual(["fd", "http:bats"], records.load_mise_holds(self.write("mise.toml", good)))

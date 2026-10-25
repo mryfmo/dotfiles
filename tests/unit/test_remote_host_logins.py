@@ -558,27 +558,17 @@ mkdir -p "$HOME/.claude" && printf '{{}}\\n' > "$HOME/.claude/.credentials.json"
         self.assertEqual((check.returncode, check.stdout), (1, f"audit: unreadable ({overlay})\n"))
         self.assertEqual(self.calls_text(), "")
 
-    def test_every_seat_profile_is_accepted_and_security_logs_in_with_its_own_profile(self) -> None:
+    def test_the_retired_review_and_security_seat_profiles_are_refused_even_with_a_deployed_overlay(self) -> None:
         remote = "100.64.0.2 50000 100.64.0.3 22"
         profiles = self.home / ".agents/omp/profiles"
         (profiles / "security.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
         (profiles / "review.yml").write_text("modelRoles:\n  default: claude-bridge/claude-fable-5-1\n")
-        status, output = self.run_tty("security", SSH_CONNECTION=remote)
-        self.assertEqual(status, 0, output)
-        self.assertIn("omp --profile security login openai-siwc\nOPENAI_SIWC_CALLBACK_PORT=1455\n", self.calls_text())
-        self.assertIn(f"seat-login-preflight: security openai-siwc: registered (host {HOST_ID}", output)
-        script = self.home / ".agents/omp/extensions/openai-siwc/src/credentials.ts"
-        self.assertEqual(self.bun_calls_text(), f"bun {script} --profile security\n")
-        review = self.run_lever("review", SSH_CONNECTION=remote)
-        self.assertEqual(review.returncode, 2)
-        self.assertIn("review claude-bridge: absent; a login is the operator's step", review.stderr)
-        unknown = self.run_lever("reviewer", SSH_CONNECTION=remote)
-        self.assertEqual(unknown.returncode, 2)
-        self.assertIn(
-            "unknown seat profile 'reviewer'; expected one of: orchestrator worker audit review security",
-            unknown.stderr,
-        )
-        self.assertIn("<orchestrator|worker|audit|review|security>", self.run_lever().stderr)
+        for profile in ("review", "security", "reviewer"):
+            with self.subTest(profile=profile):
+                refused = self.run_lever(profile, SSH_CONNECTION=remote)
+                self.assertEqual(refused.returncode, 2)
+                self.assertIn(f"unknown seat profile '{profile}'", refused.stderr)
+        self.assertEqual(self.calls_text() + self.bun_calls_text(), "")
 
     def test_a_record_that_breaks_the_store_schema_is_unreadable_not_registered(self) -> None:
         remote = "100.64.0.2 50000 100.64.0.3 22"

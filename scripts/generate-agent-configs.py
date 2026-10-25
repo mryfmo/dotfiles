@@ -151,7 +151,7 @@ PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
 # The levels omp's `defaultThinkingLevel` setting accepts besides `auto` (omp 18.11.3 src/session/settings.ts:196-201,
 # values THINKING_EFFORTS from @oh-my-pi/pi-catalog src/effort.ts:11-18). A seat's level is stated, never `auto`.
 OMP_THINKING_LEVELS = ("minimal", "low", "medium", "high", "xhigh", "max")
-# Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
+# omp roles on a Claude model route through the pi-claude-bridge provider, on an OpenAI model through openai-siwc
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
@@ -546,7 +546,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "SessionStart": hooks.get("session_start", []),
             "PostToolUse": [
                 {
-                    "matcher": "Write|Edit|MultiEdit",
+                    "matcher": "Write|Edit",
                     "hooks": post_hooks,
                 }
             ],
@@ -692,6 +692,7 @@ CODEX_CONFIG_HOOK_SOURCE = "{{ .chezmoi.homeDir }}/.codex/config.toml"
 HOOK_TRUST_CODE = """import functools
 import hashlib
 import json
+import os
 import re
 
 HOOK_TRUST_HOME = "{{ .chezmoi.homeDir }}"
@@ -1004,14 +1005,14 @@ def defines_hook_state(path: list) -> bool:
     return bool(path) and path[0] == "hooks" and (len(path) == 1 or path[1] == "state")
 
 
-def drop_hook_state_assignments(chunk: str, scope: list):
-    \"\"\"The chunk without its assignments that write hook state, and whether it had any.\"\"\"
+def drop_hook_state_assignments(chunk: str, scope: list, defines=defines_hook_state):
+    \"\"\"The chunk without its assignments that `defines` reads as its own (hook state by default), and whether it had any.\"\"\"
     kept, found = [], False
     string = None
     for line in chunk.splitlines(keepends=True):
         if string is None:
             match = DOTTED_KEY_ASSIGNMENT.match(line)
-            if match and defines_hook_state(scope + (key_path(match.group(1)) or [""])):
+            if match and defines(scope + (key_path(match.group(1)) or [""])):
                 # TOML 1.0 keeps an inline table on one line, so the assignment is this line.
                 found = True
                 continue
@@ -1020,8 +1021,8 @@ def drop_hook_state_assignments(chunk: str, scope: list):
     return "".join(kept), found
 
 
-def toml_value(value, label: str) -> str:
-    \"\"\"A parsed TOML value written back as TOML; a date or time refuses (nothing hook state holds).\"\"\"
+def toml_value(value, label: str, table: str = "hooks.state") -> str:
+    \"\"\"A parsed TOML value written back as TOML; a date or time refuses (nothing hook state or a project holds).\"\"\"
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
@@ -1029,10 +1030,10 @@ def toml_value(value, label: str) -> str:
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False).replace("\\x7f", "\\\\u007f")
     if isinstance(value, list):
-        return "[" + ", ".join(toml_value(item, label) for item in value) + "]"
+        return "[" + ", ".join(toml_value(item, label, table) for item in value) + "]"
     if isinstance(value, dict):
-        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item, label)}" for key, item in value.items()) + " }"
-    refuse(f"cannot rewrite a {type(value).__name__} value in hooks.state of {label}")
+        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item, label, table)}" for key, item in value.items()) + " }"
+    refuse(f"cannot rewrite a {type(value).__name__} value in {table} of {label}")
 
 
 def normalize_hook_state(text: str, label: str = "the current file") -> str:
@@ -1075,6 +1076,56 @@ def normalize_hook_state(text: str, label: str = "the current file") -> str:
     return normalized
 
 
+def defines_projects(path: list) -> bool:
+    \"\"\"An assignment at this key path writes project trust: `projects = {…}` or anything below it.\"\"\"
+    return bool(path) and path[0] == "projects"
+
+
+def normalize_projects(text: str, label: str = "the current file") -> str:
+    \"\"\"The config with every project entry in its own [projects.<path>] table, whatever valid TOML form held it.
+
+    Inline tables and dotted keys (under [projects] or at the root) are rewritten from the parsed data as tables, so
+    drop_missing_path_state reads every trusted project by its table name. Text already in table form is returned
+    unchanged. Invalid TOML, or projects that cannot be rewritten without changing any other setting, stops the apply:
+    the merge never keeps trust it could not read.
+    \"\"\"
+    if not text.strip():
+        return text
+    data = parse_config(text, label)
+    projects = data.get("projects", {})
+    if not isinstance(projects, dict):
+        refuse(f"projects in {label} is not a table")
+    chunks, inline = [], False
+    for name, chunk in split_chunks(text):
+        scope = [] if name is None else key_path(name)
+        if scope is None:
+            refuse(f"cannot read the table name [{name}] in {label}")
+        if scope in ([], ["projects"]):
+            chunk, found = drop_hook_state_assignments(chunk, scope, defines_projects)
+            inline = inline or found
+        chunks.append((scope, chunk))
+    if not inline:
+        return text
+    body = "".join(chunk for scope, chunk in chunks if scope[:1] != ["projects"]).rstrip("\\n")
+    header = ["[projects]"] + [
+        f"{toml_key(key)} = {toml_value(value, label, 'projects')}" for key, value in projects.items() if not isinstance(value, dict)
+    ]
+    tables = ["\\n".join(header)] if len(header) > 1 else []
+    for key, fields in projects.items():
+        if isinstance(fields, dict):
+            lines = [f"[projects.{toml_key(key)}]"]
+            lines.extend(f"{toml_key(field)} = {toml_value(value, label, 'projects')}" for field, value in fields.items())
+            tables.append("\\n".join(lines))
+    normalized = "\\n\\n".join(([body] if body.strip() else []) + tables) + "\\n"
+    try:
+        same = hook_trust_toml.loads(normalized) == data
+    except ValueError:
+        same = False
+    if not same:
+        refuse(f"cannot rewrite projects in {label} without changing its other settings")
+    return normalized
+
+
 def declared_trusted_hash(chunk: str):
     match = re.search(r'^trusted_hash = "([^"]+)"$', chunk, re.MULTILINE)
     return match.group(1) if match else None
@@ -1091,6 +1142,45 @@ def drop_declared_hook_state(chunks: list, declared: list) -> list:
         key = hook_state_key(name)
         if key is not None and key in by_key:
             report_divergence(name, declared_trusted_hash(chunk), declared_trusted_hash(by_key[key][1]))
+            continue
+        kept.append((name, chunk))
+    return kept
+
+
+# Codex keys trust by absolute path: a project by its directory, a config-layer hook by the hooks.json or
+# config.toml that holds it (codex-rs hooks/src/lib.rs hook_key, rust-v0.160.0: "<source>:<event>:<group>:<handler>").
+HOOK_SOURCE_NAMES = ("hooks.json", "config.toml")
+
+
+def path_is_gone(path: str, entry: str) -> bool:
+    \"\"\"True only when nothing exists at the path; any other failed check keeps the entry and says so.\"\"\"
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return True
+    except OSError as error:
+        print(f"warning: cannot check {path} ({error}); keeping {entry}", file=sys.stderr)
+    return False
+
+
+def trusted_path(name):
+    \"\"\"The absolute path a [projects.<path>] table or a hooks.json/config.toml [hooks.state.<key>] trusts, else None.\"\"\"
+    path = key_path(name) if name else None
+    if path and len(path) >= 2 and path[0] == "projects":
+        return path[1] if os.path.isabs(path[1]) else None
+    key = hook_state_key(name)
+    parts = key.rsplit(":", 3) if key else []
+    if len(parts) == 4 and os.path.isabs(parts[0]) and os.path.basename(parts[0]) in HOOK_SOURCE_NAMES:
+        return parts[0]
+    return None
+
+
+def drop_missing_path_state(chunks: list) -> list:
+    \"\"\"Drop project and hook trust whose absolute path no longer exists on this host; plugin keys stay.\"\"\"
+    kept = []
+    for name, chunk in chunks:
+        path = trusted_path(name)
+        if path is not None and path_is_gone(path, f"[{name}]"):
             continue
         kept.append((name, chunk))
     return kept
@@ -1300,7 +1390,7 @@ def base_hook_state() -> list[tuple[str, str]]:
         return []
     return [
         (name, chunk)
-        for name, chunk in split_chunks(normalize_hook_state(path.read_text(), str(path)))
+        for name, chunk in drop_missing_path_state(split_chunks(normalize_hook_state(path.read_text(), str(path))))
         if runtime_prefix(name) == "hooks.state"
     ]
 
@@ -1316,7 +1406,8 @@ def merge_config(current: str) -> str:
     managed_chunks = split_chunks({managed_source})
     declared = declared_hook_state(str(Path.home()))
     declared_keys = {{hook_state_key(name) for name, _ in declared}}
-    current_chunks = drop_declared_hook_state(split_chunks(normalize_hook_state(current)) if current.strip() else [], declared)
+    current_chunks = drop_declared_hook_state(split_chunks(normalize_projects(normalize_hook_state(current))) if current.strip() else [], declared)
+    current_chunks = drop_missing_path_state(current_chunks)
     current_by_name: dict[str, list[str]] = {{}}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {{}}
     managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {{}}
@@ -1397,7 +1488,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
     lines = [
-        "# Shell fragment sourced by agent launchers (herdr-agents).",
+        "# Shell fragment of the model profiles for agent launchers.",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
     ]

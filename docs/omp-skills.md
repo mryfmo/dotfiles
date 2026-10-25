@@ -13,7 +13,7 @@ omp 18.11.3 (`@oh-my-pi/pi-coding-agent`, installed under `~/.local/lib/node_mod
 
 ## Per-role overlays
 
-`~/.agents/omp/profiles/<role>.yml`, one file per key of `omp.roles` in the manifest (`orchestrator: deep`, `worker: standard`, `audit: audit`, `review: review`, `security: security`). Each holds `modelRoles.default` from the mapped profile's `omp.model` and `skills.customDirectories` from `omp.skills_directories`; the seat launcher passes the role's file as a second `--config` beside the policy overlay (`home/dot_agents/omp/policies/<role>.yml`), so a named profile gets its model route and skill roots without a hand edit of `~/.omp/profiles/<role>/agent/config.yml`.
+`~/.agents/omp/profiles/<role>.yml`, one file per key of `omp.roles` in the manifest (`orchestrator: deep`, `worker: standard`, `audit: audit`). Each holds `modelRoles.default` from the mapped profile's `omp.model` and `skills.customDirectories` from `omp.skills_directories`; the seat launcher passes the role's file as a second `--config` beside the policy overlay (`home/dot_agents/omp/policies/<role>.yml`), so a named profile gets its model route and skill roots without a hand edit of `~/.omp/profiles/<role>/agent/config.yml`. The `review` and `security` roles, which no launcher started, were removed (U72); `home/.chezmoiremove` deletes their deployed overlays.
 
 - `scripts/generate-agent-configs.py` renders them as `home/dot_agents/omp/profiles/<role>.yml.tmpl`; `make render-check` fails when a file is stale, and the generator fails when `omp.roles` is missing, names an unknown profile, or carries a role name that is not launcher-safe. `tests/unit/test_generate_agent_configs.py` holds the cases and checks that every policy file has an overlay.
 - The committed file is a chezmoi template so that the deployed file carries the absolute home (`{{ .chezmoi.homeDir }}/.agents/skills`) while the repository stays machine-independent. The absolute form is needed because omp expands `~` in `skills.customDirectories` only on the session route (`loadSkills`, `src/extensibility/skills.ts:471-473`); `omp skill list` resolves a non-absolute entry against the inspected directory first (`src/cli/skill-list.ts:58-64`), and measured, the `~` form lists nothing there. `modelRoles.default` is a plain string copied from the layer (`src/config/model-settings.ts:109`, `src/config/settings.ts:1626-1638`) and gets no path handling.
@@ -47,8 +47,6 @@ Measured 2026-10-25 under a scratch `HOME` holding a copy of the deployed `~/.ag
 | plain launch | 79, 23 (`hcom-*`, `project-map`, `setup-pstack` listed) | 75, 19 (none of those four)                      |
 | orchestrator | 79, 23                                                  | 76, 20 (`hcom-orchestration`, not `hcom-worker`) |
 | worker       | 79, 23                                                  | 76, 20 (`hcom-worker`, not `hcom-orchestration`) |
-| review       | 79, 23                                                  | 75, 19                                           |
-| security     | 79, 23                                                  | 75, 19                                           |
 | audit        | 79, 23                                                  | 0, 0                                             |
 
 ## The directory

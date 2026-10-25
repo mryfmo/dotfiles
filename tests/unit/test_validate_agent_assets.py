@@ -353,24 +353,56 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             return stderr.getvalue()
         return None
 
-    def test_git_config_accepts_the_managed_template_with_its_signing_guard(self) -> None:
-        # The template's whole-line actions ({{- if $signing }}) used to raise configparser.ParsingError.
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_accepts_the_managed_template_rendered_with_and_without_the_key(self) -> None:
         self.assertIsNone(self.git_config_failure((ROOT / "home/dot_config/git/config.tmpl").read_text()))
 
-    def test_git_config_refuses_unguarded_or_misplaced_signing(self) -> None:
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_refuses_templates_that_render_the_wrong_signing(self) -> None:
         managed = (ROOT / "home/dot_config/git/config.tmpl").read_text()
         guard = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}\n'
+        if_line = "{{- if $signing }}\n"
         self.assertIn(guard, managed)
-        unguarded = managed.replace(guard, "")
-        self.assertIn("must gate commit signing", self.git_config_failure(unguarded) or "")
-        # gpgsign moved out of the if block: signing would be on without the key.
-        outside = managed.replace(
-            "{{- if $signing }}\n[commit]\n\tgpgsign = true\n", "[commit]\n\tgpgsign = true\n{{- if $signing }}\n"
-        )
-        self.assertNotEqual(managed, outside)
-        self.assertIn("'gpgsign =' only inside", self.git_config_failure(outside) or "")
-        dropped = managed.replace("\tformat = ssh\n", "")
-        self.assertIn("[gpg] format = ssh", self.git_config_failure(dropped) or "")
+        self.assertEqual(2, managed.count(if_line))
+        mutations = {
+            # Audit of 52e28100: an else right after each guard signs only when the key is absent.
+            "else after the guard": (
+                managed.replace(if_line, if_line + "{{- else }}\n"),
+                "rendered with the signing key present",
+            ),
+            "unconditional signing": (
+                managed.replace(guard, "{{- $signing := true }}\n"),
+                "rendered without the signing key",
+            ),
+            "gpgsign outside the guard": (
+                managed.replace(
+                    "{{- if $signing }}\n[commit]\n\tgpgsign = true\n",
+                    "[commit]\n\tgpgsign = true\n{{- if $signing }}\n",
+                ),
+                "must not set [commit] gpgsign",
+            ),
+            "format dropped": (managed.replace("\tformat = ssh\n", ""), "[gpg] format = ssh"),
+            "guard dropped": (managed.replace(guard, ""), "could not render"),
+        }
+        for name, (template, message) in mutations.items():
+            with self.subTest(mutation=name):
+                self.assertNotEqual(managed, template)
+                self.assertIn(message, self.git_config_failure(template) or "")
+
+    def test_git_config_names_a_missing_chezmoi(self) -> None:
+        self.write_text_file("home/dot_config/git/config.tmpl", "[user]\n")
+        old_path = os.environ.get("PATH", "")
+        old_override = os.environ.pop("DOTFILES_CHEZMOI", None)
+        os.environ["PATH"] = str(self.temp_dir / "no-bin")
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_git_config()
+        finally:
+            os.environ["PATH"] = old_path
+            if old_override is not None:
+                os.environ["DOTFILES_CHEZMOI"] = old_override
+        self.assertIn("chezmoi is required", stderr.getvalue())
 
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():

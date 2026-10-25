@@ -8,8 +8,10 @@ import json
 import os
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -1291,44 +1293,86 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
             fail(f"{claude_rule} must document model profile token {token!r}")
 
 
-GIT_SIGNING_GUARD = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}'
-GIT_SIGNING_IF = "{{- if $signing }}"
-TEMPLATE_ACTION_LINE = re.compile(r"^\s*\{\{.*\}\}\s*$")
+GIT_SIGNING_KEYS = (("user", "signingkey"), ("gpg", "format"), ("commit", "gpgsign"))
+
+
+def render_git_config(template: Path, with_key: bool) -> tuple[configparser.ConfigParser, str]:
+    """Render the git config template with chezmoi in a scratch HOME and parse the output as INI.
+
+    The scratch HOME holds `~/.ssh/id_ed25519.pub` only when `with_key` is set, so the two renders
+    show what the template does on a host with and without the signing key.
+    """
+    chezmoi = os.environ.get("DOTFILES_CHEZMOI") or shutil.which("chezmoi")
+    if not chezmoi:
+        fail("chezmoi is required to render home/dot_config/git/config.tmpl; install it or set DOTFILES_CHEZMOI")
+    with tempfile.TemporaryDirectory(prefix="validate-git-config-") as temporary:
+        home = Path(temporary)
+        if with_key:
+            (home / ".ssh").mkdir()
+            (home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA validate-agent-assets\n")
+        config = home / "chezmoi.toml"
+        config.write_text('[data]\nemail = "validate@example.invalid"\n')
+        try:
+            result = subprocess.run(
+                [
+                    chezmoi,
+                    "execute-template",
+                    "--config",
+                    str(config),
+                    "--persistent-state",
+                    str(home / "chezmoistate.boltdb"),
+                    "--source",
+                    str(ROOT / "home"),
+                    "--destination",
+                    str(home),
+                    "--file",
+                    str(template),
+                ],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(home)},
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            fail(f"chezmoi could not render {template.relative_to(ROOT)}: {error}")
+        if result.returncode != 0:
+            fail(f"chezmoi could not render {template.relative_to(ROOT)}: {result.stderr.strip()}")
+        parsed = configparser.ConfigParser(strict=False, interpolation=None)
+        try:
+            parsed.read_string(result.stdout)
+        except configparser.Error as error:
+            fail(f"{template.relative_to(ROOT)} does not render to a valid git config: {error}")
+        return parsed, str(home)
 
 
 def validate_git_config() -> None:
-    """Validate managed Git commit signing configuration.
+    """Validate managed Git commit signing by rendering the template on a host with and without the key.
 
-    The template renders the signing keys only when the SSH key exists at apply time, so its
-    whole-line template actions are dropped before the INI parse, and each signing key must sit
-    inside an `if $signing` block whose condition stats that key.
+    With `~/.ssh/id_ed25519.pub` present the rendered config signs commits with that key over SSH;
+    without it none of the three signing settings is rendered, so commits are unsigned instead of failing.
     """
     path = ROOT / "home/dot_config/git/config.tmpl"
-    text = path.read_text()
-    if "signingkey = D55D775A7951407C" in text:
-        fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    lines = text.splitlines()
-    config = configparser.ConfigParser(strict=False, interpolation=None)
-    config.read_string("\n".join(line for line in lines if not TEMPLATE_ACTION_LINE.match(line)) + "\n")
+    relative = path.relative_to(ROOT)
+    if "signingkey = D55D775A7951407C" in path.read_text():
+        fail(f"{relative} must not reference the removed GPG signing key")
+    rendered, home = render_git_config(path, with_key=True)
     expected = {
-        ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
+        ("user", "signingkey"): f"{home}/.ssh/id_ed25519.pub",
         ("gpg", "format"): "ssh",
         ("commit", "gpgsign"): "true",
     }
     for (section, key), expected_value in expected.items():
-        actual_value = config.get(section, key, fallback="").strip()
+        actual_value = rendered.get(section, key, fallback="").strip()
         if actual_value != expected_value:
             fail(
-                f"{path.relative_to(ROOT)} must configure SSH commit signing with [{section}] {key} = {expected_value}"
+                f"{relative} rendered with the signing key present must set [{section}] {key} = {expected_value}, "
+                f"not {actual_value!r}"
             )
-    if GIT_SIGNING_GUARD not in (line.strip() for line in lines):
-        fail(f"{path.relative_to(ROOT)} must gate commit signing on the key existing: {GIT_SIGNING_GUARD}")
-    for key_line in ("\tsigningkey = ", "\tgpgsign = ", "\tformat = ssh"):
-        index = next((i for i, line in enumerate(lines) if line.startswith(key_line)), None)
-        actions = [line.strip() for line in lines[:index] if TEMPLATE_ACTION_LINE.match(line)] if index else []
-        opened = [action for action in actions if action.startswith(("{{- if", "{{ if", "{{- end", "{{ end"))]
-        if not opened or opened[-1] != GIT_SIGNING_IF:
-            fail(f"{path.relative_to(ROOT)} must render {key_line.strip()!r} only inside {GIT_SIGNING_IF}")
+    rendered, _home = render_git_config(path, with_key=False)
+    for section, key in GIT_SIGNING_KEYS:
+        if rendered.has_option(section, key):
+            fail(f"{relative} rendered without the signing key must not set [{section}] {key}")
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

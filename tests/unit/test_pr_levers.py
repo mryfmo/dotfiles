@@ -158,7 +158,7 @@ class PrLeverTestCase(unittest.TestCase):
         return [
             call
             for call in self.gh_calls()
-            if call[:2] in (["pr", "close"], ["pr", "edit"], ["pr", "update-branch"], ["pr", "create"])
+            if call[:2] in (["pr", "close"], ["pr", "edit"], ["pr", "update-branch"], ["pr", "create"], ["pr", "merge"])
             or "POST" in call
             or any(arg.startswith("query=mutation") for arg in call)
         ]
@@ -589,6 +589,10 @@ class PrBodyEditTest(PrLeverTestCase):
     def setUp(self):
         super().setUp()
         self.git("switch", "-q", "-c", "feat/x")
+        for program in ("regime-cutover", "other-program"):  # the program stores the checkout holds (U71)
+            store = self.repo / ".orchestration/orchestrate" / program
+            store.mkdir(parents=True)
+            (store / "units.tsv").write_text("id\n")
 
     def github(self, current=CURRENT, head="feat/x", state="OPEN"):
         self.answer(
@@ -605,13 +609,23 @@ class PrBodyEditTest(PrLeverTestCase):
         body = self.body(self.NEW)
         run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertRegex(run.stdout, r"^edited pr=9 branch=feat/x unit=U41 sha256=[0-9a-f]{64}\n$")
+        self.assertRegex(
+            run.stdout, r"^edited pr=9 branch=feat/x program=regime-cutover unit=U41 sha256=[0-9a-f]{64}\n$"
+        )
         self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]])
 
     def test_a_body_in_the_checkout_is_accepted_and_crlf_is_read_as_lf(self):
         self.github(current=self.CURRENT.replace("\n", "\r\n"))
         body = self.body(self.NEW, self.repo / "pr")
         self.assertEqual(self.run_lever("pr-body-edit.sh", "--body-file", str(body)).returncode, 0)
+
+    def test_any_program_whose_store_the_checkout_holds_is_accepted(self):
+        # U71 (F063): the program is not fixed to regime-cutover
+        self.github(current=self.CURRENT.replace("regime-cutover/U41b", "other-program/U41"))
+        body = self.body(self.NEW.replace("regime-cutover/U41", "other-program/U41"))
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(" program=other-program unit=U41 ", run.stdout)
 
     def test_local_refusals_come_before_any_gh_call(self):
         self.github()
@@ -626,7 +640,11 @@ class PrBodyEditTest(PrLeverTestCase):
                 "--body-file",
                 str(self.body(self.NEW.replace("Program-Unit: regime-cutover/U41\n", ""))),
             ): "exactly one line",
-            ("--body-file", str(self.body(self.NEW.replace("regime-cutover/U41", "other/U41")))): "exactly one line",
+            ("--body-file", str(self.body(self.NEW.replace("regime-cutover/U41", "Other/U41")))): "exactly one line",
+            (
+                "--body-file",
+                str(self.body(self.NEW.replace("regime-cutover/U41", "other/U41"))),
+            ): "names other, but the checkout holds no .orchestration/orchestrate/other/units.tsv",
         }
         for args, message in cases.items():
             with self.subTest(args=args):
@@ -647,7 +665,11 @@ class PrBodyEditTest(PrLeverTestCase):
         for kwargs, message in (
             ({"head": "feat/y"}, "is the pull request of feat/y, not of the current branch feat/x"),
             ({"state": "MERGED"}, "is MERGED, not OPEN"),
-            ({"current": self.CURRENT.replace("U41b", "U28")}, "the current body names U28"),
+            ({"current": self.CURRENT.replace("U41b", "U28")}, "the current body names regime-cutover/U28"),
+            (
+                {"current": self.CURRENT.replace("regime-cutover/U41b", "other-program/U41")},
+                "the current body names other-program/U41",
+            ),
             (
                 {"current": self.CURRENT.replace("U41b", "U41") + "## Verify\n"},
                 "drops the line of the current body: ## Verify",
@@ -775,6 +797,253 @@ class PrThreadsCheckTest(ThreadsFixture):
         run = self.run_lever("pr-threads-check.sh", "480", "--head", self.head)
         self.assertEqual(run.returncode, 1)
         self.assertNotIn("summary", run.stdout)
+
+
+LEDGER_HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+
+
+def ledger_row(head, verdict="correct (fresh-context audit, findings=0)", pr=7, ts="2026-10-25T09:00:00Z"):
+    return f"{ts}\tU71\t{pr}\t{head}\t{verdict}\tcodex exec\thttps://github.com/acme/widgets/pull/{pr}\n"
+
+
+class PrMergeTest(PrLeverTestCase):
+    """U71 (F010): the merge lever merges only a head with a `correct` ledger row for its full sha and green CI."""
+
+    def setUp(self):
+        super().setUp()
+        # The checkout's own store (U71, bot P1 4370212009), kept out of the fixture's commits.
+        self.records = self.repo / ".orchestration/orchestrate/regime-cutover"
+        self.records.mkdir(parents=True)
+        (self.repo / ".git/info/exclude").write_text(".orchestration/\n")
+        self.ledger(ledger_row(SHA_A))
+        self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
+
+    def ledger(self, *rows):
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
+
+    def github(
+        self,
+        head=SHA_A,
+        checks=None,
+        checks_exit=0,
+        again=None,
+        draft=False,
+        merge_exit=0,
+        after="MERGED",
+        again_base="main",
+        merged_base="main",
+        merged_head=None,
+    ):
+        if checks is None:
+            checks = [{"bucket": "pass", "name": "test"}, {"bucket": "skipping", "name": "docs"}]
+        listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
+        if checks_exit:
+            listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}
+        self.answer(
+            {
+                "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
+                "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": draft},
+            },
+            {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            listing,
+            {
+                "match": r"^pr view 7 --json headRefOid,baseRefName$",
+                "json": {"headRefOid": again or head, "baseRefName": again_base},
+            },
+            {"match": rf"^pr merge 7 --squash --match-head-commit {head}$", "exit": merge_exit, "stderr": "x"},
+            {
+                "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
+                "json": {
+                    "state": after,
+                    "mergeCommit": {"oid": SHA_B} if after == "MERGED" else None,
+                    "baseRefName": merged_base,
+                    "headRefOid": merged_head or head,
+                },
+            },
+        )
+
+    def merge(self, *extra):
+        return self.run_lever("pr-merge.sh", "7", "--records", str(self.records), *extra)
+
+    def test_a_correct_row_for_the_head_and_green_ci_merge_at_that_head(self):
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
+    def test_the_ledger_decides(self):
+        cases = {
+            "missing row": ((ledger_row(SHA_B),), "has no row for pull request 7 at head " + SHA_A),
+            "short sha": ((ledger_row(SHA_A[:8]),), "has no row for pull request 7 at head"),
+            "other pull request": ((ledger_row(SHA_A, pr=8),), "has no row for pull request 7"),
+            "incorrect verdict": ((ledger_row(SHA_A, "incorrect (round 1, P2)"),), "is not correct: incorrect"),
+            "blocked verdict": ((ledger_row(SHA_A, "blocked"),), "is not correct: blocked"),
+            "newer incorrect row": (
+                (ledger_row(SHA_A), ledger_row(SHA_A, "incorrect (re-audit)", ts="2026-10-25T10:00:00Z")),
+                "(2026-10-25T10:00:00Z) is not correct",
+            ),
+        }
+        for name, (rows, message) in cases.items():
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.ledger(*rows)
+                self.github()
+                self.assert_refused(self.merge(), message)
+        self.ledger(ledger_row(SHA_A, "incorrect"), ledger_row(SHA_A, "correct", ts="2026-10-25T11:00:00Z"))
+        self.calls.unlink(missing_ok=True)
+        self.assertEqual(self.merge().returncode, 0, "the newest row decides")
+        self.calls.unlink()
+        (self.records / "ledger.tsv").write_text("ts\tunit\n" + ledger_row(SHA_A))
+        self.assert_refused(self.merge(), "does not start with the ledger header")
+
+    def test_an_all_digit_sha_matches_only_itself(self):
+        # U71 audit round 1 (P2): awk compared two numeric-looking shas as numbers, so these two matched.
+        head, other = "1" * 40, "1" * 39 + "2"
+        self.ledger(ledger_row(other))
+        self.github(head=head)
+        self.assert_refused(self.merge(), f"has no row for pull request 7 at head {head}")
+        self.calls.unlink()
+        self.ledger(ledger_row(other), ledger_row(head))
+        self.github(head=head)
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_ci_that_is_not_green_on_the_head_refuses(self):
+        for kwargs, message in (
+            ({"checks": [{"bucket": "pass", "name": "a"}, {"bucket": "fail", "name": "test"}]}, "test=fail"),
+            ({"checks": [{"bucket": "pending", "name": "test"}]}, "test=pending"),
+            ({"checks": [{"bucket": "cancel", "name": "test"}]}, "test=cancel"),
+            ({"checks": []}, "no check is reported"),
+            ({"again": SHA_B}, f"moved from {SHA_A} to {SHA_B}"),
+            # U71 audit round 7 (P2): a pull request retargeted from main with the same head never merges
+            ({"again_base": "release"}, "was retargeted from main to release during the checks"),
+            ({"draft": True}, "is a draft"),
+        ):
+            with self.subTest(kwargs=kwargs):
+                self.calls.unlink(missing_ok=True)
+                self.github(**kwargs)
+                self.assert_refused(self.merge(), message)
+        self.calls.unlink(missing_ok=True)
+        self.github(checks_exit=1)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("gh pr checks 7 failed", run.stderr)
+        self.assertEqual(self.writes(), [])
+
+    def test_local_refusals_come_before_any_gh_call(self):
+        self.github()
+        for args, message in (
+            ((), "usage:"),
+            (("7",), "usage:"),
+            (("x7", "--records", str(self.records)), "not a decimal number"),
+            (("7", "--records", str(self.records), "--carry-from", SHA_A[:8]), "usage:"),
+            (("7", "--records", str(self.records), "--auto"), "usage:"),
+        ):
+            with self.subTest(args=args):
+                self.assert_refused(self.run_lever("pr-merge.sh", *args), message)
+        self.assertEqual(self.gh_calls(), [])
+
+    def test_only_the_checkout_s_own_store_named_by_the_body_is_read(self):
+        # U71, bot P1 4370212009: `--records` took any directory, so a fabricated ledger elsewhere passed.
+        fake = self.root / "fabricated"
+        fake.mkdir()
+        (fake / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.ledger()  # the real store holds no verdict for the head
+        self.github()
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(fake)), "is not the program's store")
+        other = self.repo / ".orchestration/orchestrate/other-program"
+        other.mkdir()
+        (other / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.assert_refused(self.run_lever("pr-merge.sh", "7", "--records", str(other)), "is not the program's store")
+        self.assertEqual(self.writes(), [])
+        # the program comes from the body, and the body must name exactly one
+        self.ledger(ledger_row(SHA_A))
+        for body, message in (
+            ("no marker\n", "exactly one line 'Program-Unit: <program>/U<n>'; it holds: none"),
+            ("Program-Unit: regime-cutover/U71\nProgram-Unit: other-program/U1\n", "exactly one line"),
+            ("Program-Unit: other-program/U71\n", "is not the program's store"),
+            ("Program-Unit: no-store/U71\n", "a symlink or a missing store"),
+        ):
+            with self.subTest(body=body):
+                self.body = body
+                self.github()
+                self.assert_refused(self.merge(), message)
+        self.body = "Program-Unit: regime-cutover/U71\r\n"  # a body edited on github.com carries CRLF
+        self.calls.unlink(missing_ok=True)
+        self.github()
+        self.assertEqual(self.merge().returncode, 0)
+
+    def test_a_symlinked_store_or_ledger_and_a_linked_worktree_are_refused(self):
+        real = self.root / "elsewhere"
+        real.mkdir()
+        (real / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        shutil.rmtree(self.records)
+        self.records.symlink_to(real)
+        self.github()
+        self.assert_refused(self.merge(), "a symlink or a missing store")
+        self.records.unlink()
+        self.records.mkdir()
+        (self.records / "ledger.tsv").symlink_to(real / "ledger.tsv")
+        self.assert_refused(self.merge(), "is not a readable regular file of this user")
+        (self.records / "ledger.tsv").unlink()
+        self.ledger(ledger_row(SHA_A))
+        linked = self.root / "linked"
+        self.git("worktree", "add", "-q", "--detach", str(linked))
+        store = linked / ".orchestration/orchestrate/regime-cutover"
+        store.mkdir(parents=True)
+        (store / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        run = self.run_lever("pr-merge.sh", "7", "--records", str(store), cwd=linked)
+        self.assert_refused(run, "is a linked worktree")
+        self.assertEqual(self.writes(), [])
+
+    def test_a_retarget_after_the_last_read_is_reported_as_a_failure(self):
+        # gh pr merge takes no base; a retarget in the last window is caught on the read after the merge
+        self.github(merged_base="release")
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("merged into release, not main", run.stderr)
+        self.assertEqual(run.stdout, "")
+
+    def test_a_merge_at_another_head_is_never_credited_to_the_verdict(self):
+        # U71 audit round 9 (P2): the pinned merge failed and someone else merged a later head; MERGED alone gave a
+        # receipt for the audited head.
+        self.github(merge_exit=1, merged_head=SHA_B)
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(run.stdout, "", "no receipt")
+        self.assertIn(f"merged at head {SHA_B}", run.stderr)
+        self.assertIn(f"not at the audited head {SHA_A}", run.stderr)
+
+    def test_a_merge_error_reads_the_state_and_never_merges_twice(self):
+        self.github(merge_exit=1)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("exited 1, but the pull request is MERGED", run.stderr)
+        self.assertEqual(len(self.writes()), 1)
+        self.calls.unlink()
+        self.github(merge_exit=1, after="OPEN")
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("is OPEN after the merge command (exit 1)", run.stderr)
+
+    def test_a_head_moved_by_update_branch_needs_its_own_row(self):
+        # U71 audit round 10: no carry-over from an earlier audited head; the moved head gets a fresh audit.
+        self.ledger(ledger_row(SHA_A))
+        self.github(head=SHA_B)
+        self.assert_refused(self.merge(), f"has no row for pull request 7 at head {SHA_B}")
+        self.assert_refused(self.merge("--carry-from", SHA_A), "usage:")
+        self.assertEqual(self.writes(), [])
+
+    def test_the_lever_reads_no_local_git_objects(self):
+        # Only gh and the ledger decide: a planted replace ref, grafts or a broken object store change nothing.
+        common = self.repo / ".git"
+        (common / "info").mkdir(exist_ok=True)
+        (common / "info/grafts").write_text(f"{SHA_A}\n")
+        (common / "objects/info/alternates").write_text("/nonexistent/objects\n")
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
 
 
 class DispositionDriftTest(unittest.TestCase):

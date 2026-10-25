@@ -960,7 +960,9 @@ claude() {
         self.assertIn(
             f"pstack@cursor-plugins is at 99.0.0, not its pin {pin}; the pin needs a review bump", result.stderr
         )
-        self.assertIn("landed off its pin on a fresh install and is proven disabled", result.stderr)
+        self.assertIn(
+            "landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex)", result.stderr
+        )
         # The doctor still reports the copy as drift: that is the signal for the bump.
         self.assertIn("installed at 99.0.0, not its pin", result.stderr)
         # Still a failure: a disable that cannot be proven, an earlier enable, or an installation that was there.
@@ -973,6 +975,63 @@ claude() {
                 result, _, _ = self.converge_listed(step, installs, enabled, INSTALL_VERSION="99.0.0", **flags)
                 self.assertEqual(1, result.returncode, result.stderr)
                 self.assertIn("failures=1", result.stdout)
+
+    def test_a_fresh_codex_install_that_lands_off_its_pin_is_removed_and_warned_not_failed(self):
+        # Audit round 28: the round-27 rule covered Claude only. A fresh Codex copy off its pin is removed
+        # (Codex has no disable) and proven gone, through the same converge_or_disable decision.
+        pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["codex"]["superpowers@openai-curated"]["pin"]
+        for name, before, expected_rc, failures in (
+            ("fresh", None, 0, "0"),
+            ("copy cached before", "98.0.0", 1, "1"),
+        ):
+            with self.subTest(case=name):
+                work = Path(tempfile.mkdtemp(prefix="codex-fresh-"))
+                self.addCleanup(shutil.rmtree, work)
+                cache = work / "home/.codex/plugins/cache/openai-curated/superpowers"
+                if before:
+                    (cache / before / ".codex-plugin").mkdir(parents=True)
+                    (cache / before / ".codex-plugin/plugin.json").write_text(
+                        json.dumps({"name": "superpowers", "version": before})
+                    )
+                fake = (
+                    'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; case "$1 $2" in '
+                    '"plugin add") mkdir -p "${CACHE}/99.0.0/.codex-plugin"; '
+                    'printf \'{"name": "superpowers", "version": "99.0.0"}\' > "${CACHE}/99.0.0/.codex-plugin/plugin.json" ;; '
+                    '"plugin remove") rm -rf "${CACHE}" ;; esac; }'
+                )
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; has_command() {{ return 0; }}; {fake}\nupdate_codex_superpowers; '
+                        'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; fail_on_claude_pin_failures',
+                        "bash",
+                        str(UPDATER),
+                    ],
+                    env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "CACHE": str(cache)},
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+                self.assertEqual(expected_rc, result.returncode, result.stderr)
+                self.assertIn(f"failures={failures}", result.stdout)
+                self.assertIn("plugin remove superpowers@openai-curated", calls)
+                self.assertFalse(cache.exists())
+                if before is None:
+                    self.assertEqual(
+                        ["plugin add superpowers@openai-curated", "plugin remove superpowers@openai-curated"], calls
+                    )
+                    self.assertIn(
+                        f"superpowers@openai-curated is at 99.0.0, not its pin {pin}; the pin needs a review bump",
+                        result.stderr,
+                    )
+                    self.assertIn(
+                        "landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex)",
+                        result.stderr,
+                    )
+                else:
+                    self.assertNotIn("plugin add superpowers@openai-curated", calls)
 
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.

@@ -463,6 +463,31 @@ function doctor_pin_check() {
 }
 
 #
+# @description Judge the version a plugin step left installed against its pin, for Claude Code and Codex alike.
+#   Off its pin, a WARN names the plugin, both versions and the review bump the pin needs.
+# @arg $1 string Agent: claude or codex.
+# @arg $2 string Fully qualified plugin ID.
+# @arg $3 string The installed version.
+# @arg $4 string The pin.
+# @arg $5 number 1 when the step installed it fresh (nothing of it was installed or enabled before), else 0.
+# @exitcode 0 At the pin.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) Off its pin after a fresh install; converge_or_disable disables it.
+# @exitcode 1 Off its pin otherwise.
+#
+function judge_installed_version() {
+    local agent="$1" plugin_id="$2" version="$3" pin="$4" fresh="$5"
+
+    if [ "${version}" = "${pin}" ]; then
+        return 0
+    fi
+    printf 'WARN: %s plugin %s is at %s, not its pin %s; the pin needs a review bump: review that release and record its version in assets.%s-plugins (home/dot_agents/agent-config.yaml).\n' "${agent}" "${plugin_id}" "${version}" "${pin}" "${agent}" >&2
+    if [ "${fresh}" -eq 1 ]; then
+        return "${PLUGIN_FRESH_OFF_PIN}"
+    fi
+    return 1
+}
+
+#
 # @description Move the user-scope installation of a Claude Code plugin towards its recorded pin (assets.claude-plugins).
 # @description
 #   Only ever called through converge_or_disable, which decides the outcome and disables the plugin on any
@@ -475,10 +500,10 @@ function doctor_pin_check() {
 #   project settings take part. The enabled state is never changed here.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 0 When the re-read user-scope installation is at the pin.
-# @exitcode 10 (CLAUDE_PLUGIN_SKIPPED) When the marketplace list cannot be read and the records show the plugin
+# @exitcode 10 (PLUGIN_SKIPPED) When the marketplace list cannot be read and the records show the plugin
 #   neither installed at any scope nor enabled: nothing to verify, nothing changed.
-# @exitcode 11 (CLAUDE_PLUGIN_FRESH_OFF_PIN) When a fresh install (no installation at any scope, not enabled
-#   before) landed on a release other than the pin; converge_or_disable disables it and proves it off.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When a fresh install (no installation at any scope, not enabled
+#   before) landed on a release other than the pin (judge_installed_version); converge_or_disable disables it.
 # @exitcode 1 Otherwise: the pin or a record cannot be read, the marketplace is foreign or cannot be
 #   registered, the install fails, or the installation is still off its pin.
 #
@@ -509,7 +534,7 @@ function move_claude_plugin_to_pin() {
     ensure_claude_plugin_marketplace "${plugin_id}" || marketplace=$?
     if [ "${marketplace}" -eq 4 ] && [ "${fresh}" -eq 1 ]; then
         # A failure to verify matters only when something could run; here nothing can, so the step is skipped.
-        return "${CLAUDE_PLUGIN_SKIPPED}"
+        return "${PLUGIN_SKIPPED}"
     fi
     if [ "${marketplace}" -ne 0 ]; then
         printf 'ERROR: %s is not installed or updated from an unverified marketplace.\n' "${plugin_id}" >&2
@@ -532,13 +557,7 @@ function move_claude_plugin_to_pin() {
         printf 'ERROR: %s has no user-scope installation after claude plugin install.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ "${version}" != "${pin}" ]; then
-        printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; the pin needs a review bump: review that release and record its version in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${version}" "${pin}" >&2
-        if [ "${fresh}" -eq 1 ]; then
-            return "${CLAUDE_PLUGIN_FRESH_OFF_PIN}"
-        fi
-        return 1
-    fi
+    judge_installed_version claude "${plugin_id}" "${version}" "${pin}" "${fresh}"
 }
 
 #
@@ -596,14 +615,15 @@ function disable_plugin() {
 #   read, a check that cannot run) it is disabled (disable_plugin) before the failure is returned and counted.
 #   One rule decides what fails the run: unreviewed code that could be active, or an active state that cannot
 #   be verified. So two outcomes are a WARN, not a failure: a step that could not verify a plugin that was
-#   neither installed nor enabled (CLAUDE_PLUGIN_SKIPPED), and a fresh install that landed off its pin and is
-#   proven disabled (CLAUDE_PLUGIN_FRESH_OFF_PIN; make doctor still reports it as drift).
+#   neither installed nor enabled (PLUGIN_SKIPPED), and a fresh install that landed off its pin and is
+#   proven disabled (PLUGIN_FRESH_OFF_PIN; make doctor still reports it as drift). Both agents take the same
+#   path: a Claude plugin is disabled at user scope, a Codex copy removed (disable_plugin), and either is proven.
 #   The step runs in a subshell, so an `exit` or a `set -u` abort inside it comes back here too.
 # @arg $1 string Agent: claude or codex.
 # @arg $2 string Fully qualified plugin ID.
 # @arg $@ string The step's command and arguments.
 # @exitcode 0 When the step and the doctor's pin check both pass.
-# @exitcode 2 When the step skipped the plugin (CLAUDE_PLUGIN_SKIPPED: nothing installed or enabled to verify)
+# @exitcode 2 When the step skipped the plugin (PLUGIN_SKIPPED: nothing installed or enabled to verify)
 #   and the doctor's check passes, or a fresh off-pin install is proven disabled: a WARN, not counted, and the
 #   caller records nothing.
 # @exitcode 1 Otherwise, after the disable; counted in CLAUDE_PIN_FAILURES, so the run fails.
@@ -619,17 +639,17 @@ function converge_or_disable() {
         printf '%s plugin %s is at its pin (make doctor agrees).\n' "${agent}" "${plugin_id}"
         return 0
     fi
-    if [ "${status}" -eq "${CLAUDE_PLUGIN_FRESH_OFF_PIN}" ]; then
+    if [ "${status}" -eq "${PLUGIN_FRESH_OFF_PIN}" ]; then
         # make doctor keeps reporting this copy as drift: that is the signal for the review bump.
         if disable_plugin "${agent}" "${plugin_id}"; then
-            printf 'WARN: %s plugin %s landed off its pin on a fresh install and is proven disabled, so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n' "${agent}" "${plugin_id}" >&2
+            printf 'WARN: %s plugin %s landed off its pin on a fresh install and is proven disabled (Claude) or removed (Codex), so nothing unreviewed is active; not a run failure. make doctor reports it until its pin gets a review bump.\n' "${agent}" "${plugin_id}" >&2
             return 2
         fi
         printf 'ERROR: %s plugin %s landed off its pin and cannot be proven disabled.\n' "${agent}" "${plugin_id}" >&2
         CLAUDE_PIN_FAILURES=$((CLAUDE_PIN_FAILURES + 1))
         return 1
     fi
-    if [ "${status}" -eq "${CLAUDE_PLUGIN_SKIPPED}" ] && [ "${check}" -eq 0 ]; then
+    if [ "${status}" -eq "${PLUGIN_SKIPPED}" ] && [ "${check}" -eq 0 ]; then
         printf 'WARN: %s plugin %s was not installed: its marketplace cannot be verified on this host, and it is neither installed nor enabled, so nothing unreviewed is active. Run make update once "%s plugin marketplace list" works.\n' "${agent}" "${plugin_id}" "${agent}" >&2
         return 2
     fi
@@ -658,8 +678,8 @@ CLAUDE_PIN_FAILURES=0
 # The exit statuses a plugin step returns for the two outcomes converge_or_disable reports as a WARN: a plugin
 # it could not verify and found neither installed nor enabled, and a fresh install that landed off its pin.
 # Any other non-zero status is a failure.
-readonly CLAUDE_PLUGIN_SKIPPED=10
-readonly CLAUDE_PLUGIN_FRESH_OFF_PIN=11
+readonly PLUGIN_SKIPPED=10
+readonly PLUGIN_FRESH_OFF_PIN=11
 
 #
 # @description Count a failed step (a plugin setup step, a pin check, an asset manifest record) and keep
@@ -881,6 +901,28 @@ function codex_plugin_cache_versions() {
 }
 
 #
+# @description After a Codex plugin step installed a copy where none was cached, judge its version against
+#   the pin (judge_installed_version); an already cached copy is left to make doctor's check alone.
+# @arg $1 string Fully qualified Codex plugin ID.
+# @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When the fresh copy is off its pin; 1 when it or the pin cannot be read.
+#
+function judge_fresh_codex_copy() {
+    local plugin_id="$1" pin version
+
+    if ! pin="$(plugin_pin codex "${plugin_id}" pin)"; then
+        printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
+        return 1
+    fi
+    if ! version="$(codex_plugin_cache_versions "${plugin_id}")"; then
+        printf 'ERROR: cannot read the cached copy of %s after installing it.\n' "${plugin_id}" >&2
+        return 1
+    fi
+    # Nothing installed (no catalog, no login): make doctor reports it as a warning only.
+    [ -n "${version}" ] || return 0
+    judge_installed_version codex "${plugin_id}" "${version}" "${pin}" 1
+}
+
+#
 # @description Install the Codex Superpowers plugin from the OpenAI-curated catalog when no copy is cached.
 #   Only ever called through converge_or_disable. A catalog that is unavailable (no `codex login`) leaves it
 #   missing, which make doctor reports as a warning only.
@@ -900,6 +942,7 @@ function install_codex_superpowers() {
             printf '%s\n' "${codex_output}" >&2
         fi
         printf 'Codex Superpowers plugin installed.\n'
+        judge_fresh_codex_copy "${CODEX_SUPERPOWERS_PLUGIN}"
     else
         if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
             printf '%s\n' "${codex_output}" >&2
@@ -1006,6 +1049,7 @@ function install_codex_ponytail() {
         printf 'Codex Ponytail plugin is already installed.\n'
     else
         codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
+        judge_fresh_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
     fi
 }
 

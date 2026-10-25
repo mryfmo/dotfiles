@@ -1223,7 +1223,10 @@ installed" and never a pass.
 `make update` never judges its own result: after each plugin and extension step
 it runs `make doctor`'s own pin check for that asset
 (`check-agent-runtime.py --pin-check <agent> <id>`), and any error there fails
-the run. A Claude plugin still off its pin is disabled and still fails the run;
+the run. A plugin off its pin is disabled (Claude) or removed (Codex), and the run
+fails only when unreviewed code could be active or the active state cannot be
+verified, so a fresh install that lands off its pin and is proven disabled or
+removed is a warning (its pin needs a review bump) and `make doctor` reports it;
 the Codex Ponytail marketplace is upgraded only when the Codex config pins it to
 the manifest commit (run `chezmoi apply` first otherwise).
 

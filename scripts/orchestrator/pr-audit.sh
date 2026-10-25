@@ -26,7 +26,9 @@
 #   PR_AUDIT_TIMEOUT seconds; read-only runs the auditor's commands without network
 #   (https://developers.openai.com/codex/agent-approvals-security: "By default, the agent runs with network access
 #   turned off"), but it still reads the login through the link (U71, bot P1 4370212012). So codex's output goes to the
-#   scratch directory first, and the credential scan (`credential_scan`, below) reads it against the login: a hit, or
+#   scratch directory first, and the credential scan (`credential_scan`, below) reads it against the union of a 0600
+#   snapshot of the login taken before codex starts and the login as it stands after the run (codex refreshes its
+#   tokens through the link, so a token rotated during the run is still scanned for, U71 audit round 7): a hit, or
 #   a scan that fails, records the round as `blocked (credential echoed; output withheld; …)`, stores none of the
 #   output, and exits 3; only a clean output reaches the verdict file and the round's own log
 #   `<log dir>/<program>-<unit>-<head8>-r<k>.log`. A login the scan cannot read a credential from is a refusal before
@@ -209,17 +211,25 @@ def leaves(value):
             yield from leaves(item)
 
 def main():
-    mode, login, *files = sys.argv[1:]
-    with open(login, "rb") as handle:
-        data = json.load(handle)
-    secrets = []
-    if isinstance(data, dict):
-        for key in ("OPENAI_API_KEY", "tokens"):
-            secrets += [s.encode() for s in leaves(data.get(key)) if len(s) >= 16]
+    mode, *rest = sys.argv[1:]
+    if "--" in rest:
+        at = rest.index("--")
+        logins, files = rest[:at], rest[at + 1 :]
+    else:
+        logins, files = rest, []
+    if not logins:
+        return 2
+    secrets = set()
+    for login in logins:
+        with open(login, "rb") as handle:
+            data = json.load(handle)
+        if isinstance(data, dict):
+            for key in ("OPENAI_API_KEY", "tokens"):
+                secrets.update(s.encode() for s in leaves(data.get(key)) if len(s) >= 16)
     if not secrets:
         return 2
     if mode == "check":
-        return 0
+        return 0 if not files else 2
     if mode != "scan" or not files:
         return 2
     width = 24
@@ -255,7 +265,7 @@ sys.exit(code)
 '
 
 # @description Run the credential scan (above) with its wait bounded; its stdout and stderr are discarded.
-# @arg $@ string `check <login>` or `scan <login> <file>...`.
+# @arg $@ string `check <login>...` or `scan <login>... -- <file>...`.
 credential_scan() {
     bounded "${gh_timeout}" uv run --no-config --no-project python -I -c "${credential_scan_py}" "$@" > /dev/null 2>&1
 }
@@ -375,6 +385,15 @@ git -C "${repo}" worktree add -q --detach "${worktree}" "${head}" || {
 }
 mkdir "${scratch}/cwd" "${scratch}/home" "${scratch}/codex-home" || fail 'cannot make the scratch cwd, HOME and CODEX_HOME'
 ln -s "${login}" "${scratch}/codex-home/auth.json" || fail 'cannot link the Codex login'
+# The credential set before the run (U71 audit round 7): codex refreshes its tokens through the link while it runs,
+# so a scan of the login after the run alone would miss a token that was valid when the auditor read it. The copy
+# is mode 0600 inside the 0700 scratch directory, which the exit trap removes; it is checked to hold a credential
+# before codex starts, and the scan reads the union of this copy and the login as it stands after the run.
+mkdir "${scratch}/login-before" || fail 'cannot make the credential snapshot directory'
+(umask 077 && cat -- "${login}" > "${scratch}/login-before/auth.json") 2> /dev/null ||
+    refuse "cannot snapshot the Codex login ${login} before the audit"
+credential_scan check "${scratch}/login-before/auth.json" ||
+    refuse "the snapshot of the Codex login ${login} holds no credential to scan the output for; no audit runs unscanned"
 printf 'model = "%s"\nmodel_reasoning_effort = "%s"\nweb_search = "disabled"\n\n[skills]\ninclude_instructions = false\n\n[skills.bundled]\nenabled = false\n\n[shell_environment_policy]\nset = { GIT_NO_REPLACE_OBJECTS = "1", GIT_GRAFT_FILE = "/dev/null", GIT_CONFIG_COUNT = "1", GIT_CONFIG_KEY_0 = "core.commitGraph", GIT_CONFIG_VALUE_0 = "false" }\n' \
     "${model}" "${effort}" > "${scratch}/codex-home/config.toml" || fail 'cannot write the model pin'
 (umask 077 && mkdir -p "${log_dir}") || fail "cannot create the log directory ${log_dir}"
@@ -424,7 +443,7 @@ else
     scan_files=("${scratch}/codex.log")
     [[ ! -e ${scratch}/verdict.md ]] || scan_files+=("${scratch}/verdict.md")
     scan_status=0
-    credential_scan scan "${login}" "${scan_files[@]}" || scan_status=$?
+    credential_scan scan "${scratch}/login-before/auth.json" "${login}" -- "${scan_files[@]}" || scan_status=$?
     if ((scan_status != 0)); then
         if ((scan_status == 1)); then
             note='credential echoed; output withheld; '

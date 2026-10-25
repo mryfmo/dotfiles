@@ -825,7 +825,18 @@ class PrMergeTest(PrLeverTestCase):
     def ledger(self, *rows):
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
 
-    def github(self, head=SHA_A, checks=None, checks_exit=0, again=None, draft=False, merge_exit=0, after="MERGED"):
+    def github(
+        self,
+        head=SHA_A,
+        checks=None,
+        checks_exit=0,
+        again=None,
+        draft=False,
+        merge_exit=0,
+        after="MERGED",
+        again_base="main",
+        merged_base="main",
+    ):
         if checks is None:
             checks = [{"bucket": "pass", "name": "test"}, {"bucket": "skipping", "name": "docs"}]
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
@@ -838,11 +849,18 @@ class PrMergeTest(PrLeverTestCase):
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             listing,
-            {"match": r"^pr view 7 --json headRefOid$", "json": {"headRefOid": again or head}},
+            {
+                "match": r"^pr view 7 --json headRefOid,baseRefName$",
+                "json": {"headRefOid": again or head, "baseRefName": again_base},
+            },
             {"match": rf"^pr merge 7 --squash --match-head-commit {head}$", "exit": merge_exit, "stderr": "x"},
             {
-                "match": r"^pr view 7 --json state,mergeCommit$",
-                "json": {"state": after, "mergeCommit": {"oid": SHA_B} if after == "MERGED" else None},
+                "match": r"^pr view 7 --json state,mergeCommit,baseRefName$",
+                "json": {
+                    "state": after,
+                    "mergeCommit": {"oid": SHA_B} if after == "MERGED" else None,
+                    "baseRefName": merged_base,
+                },
             },
         )
 
@@ -901,6 +919,8 @@ class PrMergeTest(PrLeverTestCase):
             ({"checks": [{"bucket": "cancel", "name": "test"}]}, "test=cancel"),
             ({"checks": []}, "no check is reported"),
             ({"again": SHA_B}, f"moved from {SHA_A} to {SHA_B}"),
+            # U71 audit round 7 (P2): a pull request retargeted from main with the same head never merges
+            ({"again_base": "release"}, "was retargeted from main to release during the checks"),
             ({"draft": True}, "is a draft"),
         ):
             with self.subTest(kwargs=kwargs):
@@ -979,6 +999,14 @@ class PrMergeTest(PrLeverTestCase):
         run = self.run_lever("pr-merge.sh", "7", "--records", str(store), cwd=linked)
         self.assert_refused(run, "is a linked worktree")
         self.assertEqual(self.writes(), [])
+
+    def test_a_retarget_after_the_last_read_is_reported_as_a_failure(self):
+        # gh pr merge takes no base; a retarget in the last window is caught on the read after the merge
+        self.github(merged_base="release")
+        run = self.merge()
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("merged into release, not main", run.stderr)
+        self.assertEqual(run.stdout, "")
 
     def test_a_merge_error_reads_the_state_and_never_merges_twice(self):
         self.github(merge_exit=1)
@@ -1113,6 +1141,8 @@ git -C "$wt" show HEAD:AGENTS.md > "$FAKE_CODEX_LOG/wt-git"
 env | grep '^GIT_NO_REPLACE_OBJECTS=' > "$FAKE_CODEX_LOG/git-env"
 echo "codex log ${FAKE_CODEX_TAG:-}"
 [ -n "$FAKE_CODEX_VERDICT" ] && printf '%s\\n' "$FAKE_CODEX_VERDICT" > "$out"
+# a token refresh during the run: codex rewrites the login through the CODEX_HOME link
+[ -z "${FAKE_CODEX_ROTATE:-}" ] || printf '%s' "$FAKE_CODEX_ROTATE" > "$(readlink "$CODEX_HOME/auth.json")"
 exit "${FAKE_CODEX_EXIT:-0}"
 """
 
@@ -1353,6 +1383,28 @@ class PrAuditTest(PrLeverTestCase):
         self.env["PR_AUDIT_CODEX_LOGIN"] = str(empty)
         self.assert_refused(self.audit(unit="U72"), "cannot read a credential to scan the output for")
         self.assertFalse((self.seen / "argv").exists())
+
+    def test_a_token_rotated_during_the_run_is_still_scanned_for(self):
+        # U71 audit round 7 (P1): the scan reread auth.json after the run, so the token the auditor read before a
+        # refresh passed. Both the old and the new token are scanned for.
+        rotated = "eyJnew.Um90YXRlZEFjY2Vzc1Rva2VuRm9yVGVzdA.sig-fedcba9876543210ABC"
+        login = json.dumps({"OPENAI_API_KEY": None, "tokens": {"access_token": rotated, "account_id": "acct"}})
+        self.github()
+        for index, echoed in enumerate((LOGIN_CREDENTIAL, rotated)):
+            with self.subTest(echoed=echoed[:6]):
+                self.login.write_text(json.dumps({"tokens": {"access_token": LOGIN_CREDENTIAL, "account_id": "acct"}}))
+                unit = f"U{60 + index}"
+                encoded = base64.b64encode(echoed.encode()).decode()
+                self.env |= {"FAKE_CODEX_VERDICT": f"{encoded}\nVerdict: correct", "FAKE_CODEX_ROTATE": login}
+                run = self.audit(unit=unit)
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                self.assertEqual(self.login.read_text(), login, "the fake rotated the login")
+                self.assertTrue(self.rows()[-1][4].startswith("blocked (credential echoed; output withheld;"))
+                verdict = (self.records / f"verdicts/{unit}-{self.head[:8]}.md").read_text()
+                self.assertNotIn(encoded, verdict)
+        self.env.pop("FAKE_CODEX_ROTATE")
+        self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1)
+        self.assertEqual(list(self.tmp.glob("pr-audit.*")), [], "the scratch directory with the snapshot is removed")
 
     def test_an_echoed_credential_blocks_the_round_and_is_never_stored(self):
         # U71, bot P1 4370212012: a steered auditor can read the login through the CODEX_HOME link and echo it.

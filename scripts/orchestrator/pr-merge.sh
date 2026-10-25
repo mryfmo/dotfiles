@@ -21,7 +21,8 @@
 #   run at the top level with `--no-relative` and the other settings-sensitive options pinned) of each commit against
 #   its merge base with main: any byte of difference is a refusal, whatever the caller's cwd or git configuration.
 #   CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
-#   the head: at least one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
+#   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
+#   one check, every bucket `pass` or `skipping`, and `gh` exiting 0; a pending, failed or
 #   cancelled check is a refusal. The one write is `gh pr merge <pr> --squash --match-head-commit <head>`, so GitHub
 #   refuses the merge if the head moved after these reads; it never passes `--admin`, `--auto` or
 #   `--delete-branch`. After the merge, or after a merge error, `gh pr view <pr> --json state,mergeCommit` decides:
@@ -317,8 +318,13 @@ fi
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?
-again=$(gh_bounded pr view "${pr}" --json headRefOid --jq .headRefOid) || fail "cannot read the head of ${pr} again"
+# The second read checks the base as well as the head (U71 audit round 7): `--match-head-commit` pins only the head,
+# and a pull request retargeted from main with the same head would otherwise merge into the new base.
+again=$(gh_bounded pr view "${pr}" --json headRefOid,baseRefName --jq '[.headRefOid, .baseRefName] | @tsv') ||
+    fail "cannot read the head and base of ${pr} again"
+IFS=$'\t' read -r again again_base <<< "${again}"
 [[ ${again} == "${head}" ]] || refuse "the head of pull request ${pr} moved from ${head} to ${again:-unreadable} during the checks"
+[[ ${again_base} == main ]] || refuse "pull request ${pr} was retargeted from main to ${again_base:-unreadable} during the checks"
 [[ -n ${checks} ]] || {
     ((status == 0)) && refuse "no check is reported on the head ${head}"
     fail "gh pr checks ${pr} failed (exit ${status}) and printed nothing"
@@ -335,10 +341,15 @@ done <<< "${checks}"
 
 merge_status=0
 gh_bounded pr merge "${pr}" --squash --match-head-commit "${head}" >&2 || merge_status=$?
-after=$(gh_bounded pr view "${pr}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | @tsv') ||
+after=$(gh_bounded pr view "${pr}" --json state,mergeCommit,baseRefName \
+    --jq '[.state, (.mergeCommit.oid // ""), .baseRefName] | @tsv') ||
     fail "cannot read pull request ${pr} after the merge command (exit ${merge_status}); read it before anything else"
-IFS=$'\t' read -r state commit <<< "${after}"
+IFS=$'\t' read -r state commit merged_base <<< "${after}"
 [[ ${state} == MERGED && ${commit} =~ ^[0-9a-f]{40}$ ]] ||
     fail "pull request ${pr} is ${state:-unreadable} after the merge command (exit ${merge_status})"
+# gh pr merge takes no base (`gh pr merge --help`), so a retarget between the second read and the merge call is
+# reported here, loudly, with the base it landed on; it cannot be undone by the lever.
+[[ ${merged_base} == main ]] ||
+    fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
 ((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2
 echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts} carried-from=${carry:--}"

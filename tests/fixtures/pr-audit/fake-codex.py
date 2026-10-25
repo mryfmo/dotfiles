@@ -7,7 +7,9 @@ XDG base-directory variables it saw, the text of `$CODEX_HOME/config.toml` and t
 `readable` (the read probe finds its first path readable and exits 3), `curl<n>` (curl exits n, e.g. `curl0` for a
 reachable network or `curl127` for a curl that could not run) or `nocurl`. `exec`
 reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
-`Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0).
+`Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
+`exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
+codex-cli 0.163.0 saves the login) with that value.
 """
 
 import json
@@ -52,6 +54,10 @@ if argv[:1] == ["sandbox"]:
             print(f"pr-audit-probe: curl {mode[4:] if mode.startswith('curl') else 6}")
 elif argv[:1] == ["exec"]:
     record["prompt"] = sys.stdin.read()
+    refreshed = os.environ.get("FAKE_CODEX_REFRESH")
+    if refreshed is not None:
+        with open(auth, "w", encoding="utf-8") as handle:
+            handle.write(refreshed)
     out = argv[argv.index("-o") + 1]
     with open(out, "w", encoding="utf-8") as handle:
         handle.write(

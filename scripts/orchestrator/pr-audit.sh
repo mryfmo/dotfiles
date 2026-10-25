@@ -5,8 +5,16 @@
 #   Regime-cutover U71b, operator decision G18 (2026-10-26): keep the ChatGPT login, keep the auditor from reading
 #   credentials. Run it from the repository checkout. `<pr>` is decimal and checked before the first `gh` call. The
 #   lever reads `gh pr view <pr> --json state,baseRefName,headRefOid,url` (any state: a merged pull request can be
-#   re-read) and refuses unless the base is `main`. Everything it writes lives in one run directory
-#   `$TMPDIR/pr-audit-<pr>.XXXXXX`; nothing in the checkout, its git directory or the caller's HOME is written. In it
+#   re-read) and refuses unless the base is `main`. Everything the lever writes lives in one run directory
+#   `$TMPDIR/pr-audit-<pr>.XXXXXX`; nothing in the checkout, its git directory or the caller's HOME is written, with
+#   one exception that is Codex's, not the lever's: the Codex process (unsandboxed; the permission profile binds only
+#   the commands it runs) refreshes a stale ChatGPT session in place through the login link, so the caller's
+#   `${CODEX_HOME:-~/.codex}/auth.json` may be rewritten. That is the supported pattern
+#   (https://learn.chatgpt.com/docs/auth/ci-cd-auth.md: "Keep the refreshed `auth.json` for the next run"; "only one
+#   machine or serialized job stream will use a given `auth.json` copy"): a copy in the run directory would rotate the
+#   refresh token on refresh and leave the caller's file with a token that refresh may have rotated out, and two
+#   copies would be two job streams on one login. The commands the auditor runs can neither read nor write that file
+#   (a deny entry in a profile that extends `:read-only`; the read probe below measures the read). In the run directory
 #   a fresh repository borrows the checkout's objects (`objects/info/alternates`, no refs, no hooks) and fetches
 #   `refs/pull/<pr>/head` and `main` from the checkout's `origin` URL; the fetched head must equal `headRefOid`
 #   (PR_AUDIT_WAIT_TRIES fetches, PR_AUDIT_WAIT_SECONDS apart), else the head moved and the run is refused. That

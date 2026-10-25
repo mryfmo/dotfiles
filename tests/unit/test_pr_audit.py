@@ -206,6 +206,21 @@ class PrAuditTest(unittest.TestCase):
         self.assertIn("It guarantees one thing.", prompt)
         self.assertIn(f"diff {self.main}..{self.head}", prompt)
 
+    def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
+        """The one write outside the run directory: Codex's own token refresh through the login link lands on the
+        caller's auth.json (learn.chatgpt.com/docs/auth/ci-cd-auth.md: keep the refreshed file; one copy per serialized
+        job stream), never on a copy in the run directory, and changes no other file."""
+        before = tree_state(self.root, (self.tmp, self.rec))
+        run = self.run_lever("7", FAKE_CODEX_REFRESH='{"tokens": {"refreshed": true}}\n')
+        self.assertEqual(run.returncode, 0, run.stderr)
+        after = tree_state(self.root, (self.tmp, self.rec))
+        changed = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
+        self.assertEqual(changed, [str(self.auth)])
+        self.assertEqual(self.auth.read_text(), '{"tokens": {"refreshed": true}}\n')
+        self.assertFalse(self.auth.is_symlink())
+        (rundir,) = self.tmp.iterdir()
+        self.assertFalse((rundir / "work").exists(), "the scratch CODEX_HOME and its link are gone")
+
     def test_the_config_is_the_generated_source_with_every_deny_resolved(self):
         link = self.root / "homelink"
         link.symlink_to(self.home)

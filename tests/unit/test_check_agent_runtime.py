@@ -473,7 +473,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         different = self.write_target("different.json", "runtime\n")
         executable = self.write_target("hook.sh", "#!/bin/sh\n")
         failures = [
-            f"Claude MCP config differs or is missing: {missing}",
+            f"model profile fragment differs or is missing: {missing}",
             f"shared skill directory differs: {different}",
             f"Claude enforce-uv hook is not executable: {executable}",
             "Claude shared-skill symlink tree is missing: ~/.claude/skills",
@@ -554,7 +554,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         missing = self.target_root / "missing.json"
         different = self.write_target("different.json", "runtime\n")
         failures = [
-            f"Claude MCP config differs or is missing: {missing}",
+            f"model profile fragment differs or is missing: {missing}",
             f"shared skill directory differs: {different}",
             "shared skill directory is missing files: example/scripts/history.sh",
             "Claude shared-skill symlink tree is missing: ~/.claude/skills",
@@ -809,7 +809,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_mode_converges_once_and_reports_each_action(self) -> None:
         target = self.target_root / "missing.json"
-        initial = [f"Claude MCP config differs or is missing: {target}"]
+        initial = [f"model profile fragment differs or is missing: {target}"]
         scans = iter((initial, []))
         calls: list[object] = []
         action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
@@ -841,7 +841,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_mode_fails_after_one_non_convergent_round(self) -> None:
         target = self.target_root / "missing.json"
-        failure = f"Claude MCP config differs or is missing: {target}"
+        failure = f"model profile fragment differs or is missing: {target}"
         scan_count = 0
         action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
 
@@ -873,7 +873,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_repair_unset_is_byte_identical_and_never_mutates(self) -> None:
         warning = "WARN: orphaned agent asset: /tmp/orphan; manual review required"
-        failure = "Claude MCP config differs or is missing: /tmp/mcp.json"
+        failure = "model profile fragment differs or is missing: /tmp/mcp.json"
         original_check = self.module.check
         original_execute = self.module.execute_repair
         try:

@@ -207,7 +207,6 @@ codex:
 
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
-  mcp_config_path: home/dot_claude/private_mcp.json.tmpl
   schema: https://json.schemastore.org/claude-code-settings.json
   # No effect on Fable 5 (thinking cannot be disabled there); applies when the
   # interactive profile maps to Sonnet or below.
@@ -443,10 +442,12 @@ claude:
             timeout: 10
       - matcher: "*"
         hooks:
+          # Synchronous so the restart notice's systemMessage is shown to the user (an async
+          # hook's output reaches only Claude). The scan stops at its own 2 s wall limit and
+          # exits 0 silently, so it returns before this timeout; a timeout is non-blocking.
           - type: command
             command: "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook"
-            async: true
-            timeout: 5
+            timeout: 3
   statusLine:
     type: command
     command: ccstatusline

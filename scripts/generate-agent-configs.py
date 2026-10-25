@@ -538,38 +538,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
     return text
 
 
-def claude_mcp_entry(server: dict[str, Any]) -> dict[str, Any]:
-    entry: dict[str, Any] = {
-        "disabled": not bool(server.get("enabled", False)),
-        "timeout": server.get("timeout"),
-    }
-    if server["transport"] == "stdio":
-        entry["type"] = "stdio"
-        entry["command"] = server["command"]
-        entry["args"] = server.get("args", [])
-        if server.get("env"):
-            entry["env"] = server["env"]
-    elif server["transport"] == "http":
-        entry["type"] = "http"
-        entry["url"] = server["url"]
-        if server.get("headers"):
-            entry["headers"] = server["headers"]
-    else:
-        fail(f"unsupported MCP transport: {server['transport']}")
-    return {key: value for key, value in entry.items() if value is not None}
-
-
-def render_claude_mcp(manifest: dict[str, Any]) -> str:
-    data = {
-        "mcpServers": {
-            name: claude_mcp_entry(server)
-            for name, server in manifest.get("mcp_servers", {}).items()
-            if enabled_for(server, "claude")
-        }
-    }
-    return "{{/* " + GENERATED_HEADER + " */}}\n" + json_dumps(data)
-
-
 def render_marketplace(manifest: dict[str, Any]) -> str:
     plugins = manifest["plugins"]
     data = {
@@ -1543,7 +1511,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
         ROOT / manifest["claude"]["settings_path"]: render_claude_settings(manifest),
-        ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):

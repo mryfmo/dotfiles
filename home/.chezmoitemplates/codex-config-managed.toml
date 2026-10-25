@@ -8,7 +8,6 @@ model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 model_reasoning_summary = "concise"
 model_verbosity = "low"
-personality = "pragmatic"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "cached"
@@ -18,9 +17,6 @@ project_doc_fallback_filenames = ["CLAUDE.md"]
 
 [tui]
 status_line = ["model-with-reasoning", "context-remaining", "used-tokens", "total-input-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit", "git-branch"]
-
-[tui.model_availability_nux]
-"gpt-5.6-sol" = 2
 
 [sandbox_workspace_write]
 network_access = false
@@ -33,7 +29,6 @@ set = { PATH = "{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeD
 [features]
 plugins = true
 hooks = true
-plugin_hooks = true
 
 [plugins."superpowers@openai-curated"]
 enabled = true

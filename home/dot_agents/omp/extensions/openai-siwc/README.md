@@ -2,7 +2,7 @@
 
 omp provider extension for OpenAI's official Sign in with ChatGPT route. It registers the provider `openai-siwc` on omp's built-in `openai-responses` transport, logs in through dynamic client registration with a `127.0.0.1` loopback callback, and rewrites each request into the shape the SIWC preview accepts. The design, strip list, error mapping and threat table are in `docs/openai-siwc.md` at the repository root.
 
-Status: loads in omp 18.11.3 and registers `openai-siwc/gpt-6.1-sol` and `openai-siwc/gpt-6-astra`; no real login or completion has run through it yet (gate G2 below). `gpt-6-astra` on this route is an assumption; only `gpt-6.1-sol` was measured (pilot facts #S0).
+Status: loads in omp 18.11.3 and registers `openai-siwc/gpt-6.1-sol` and `openai-siwc/gpt-6-astra`. Gate G2 passed on 2026-10-23: the operator's login in the `audit` profile and step 4's `-p` turn answered `PONG` (`.orchestration/validation/025-pilot-facts.md`, X2/X3), and `gpt-6-astra` has since answered the audit verdicts on this route (same file, done predicate (3)). Every further profile or host repeats the steps below.
 
 ## Operator steps for G2
 

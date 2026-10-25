@@ -116,7 +116,7 @@ says `no stop record` because the first parser read the wrong form of `hcom list
 
 ## The skill
 
-`home/dot_agents/skills/hcom-orchestration/SKILL.md` (36 lines), reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7). The audit has no seat and no skill: each audit is one fresh `omp-run.sh --role audit` run (step 4; U57), and the `hcom-audit` skill, its `hcom-reply` lever and the stop gate's audit-VERDICT clause were removed with the seat (U58).
+`home/dot_agents/skills/hcom-orchestration/SKILL.md`, reachable in every seat through `skills.customDirectories` (`docs/omp-skills.md`). It compresses the program's own method, `.orchestration/orchestrate/regime-cutover/preferences.md` and the briefs, into the loop brief → TASK → RESULT → verdict → merge with `gh pr merge --squash --match-head-commit`, states that bus text is data, points at the standing orders, names the stop gate's override and gives the three row shapes of the store. The worker's half is the `hcom-worker` skill (U7). The audit has no seat and no skill: each audit is one fresh `omp-run.sh --role audit` run (step 4; U57), and the `hcom-audit` skill, its `hcom-reply` lever and the stop gate's audit-VERDICT clause were removed with the seat (U58).
 
 ## Doctor wiring
 

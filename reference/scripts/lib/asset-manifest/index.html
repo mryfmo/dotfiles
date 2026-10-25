@@ -4753,10 +4753,12 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>_manifest_prune_retired</code></li>
 <li><code>_manifest_record</code></li>
 <li><code>manifest_brew_formula_version</code></li>
 <li><code>manifest_claude_plugin_version</code></li>
 <li><code>manifest_codex_plugin_version</code></li>
+<li><code>manifest_prune_retired</code></li>
 <li><code>manifest_record</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -4914,6 +4916,58 @@
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>_manifest_record<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: failed to record asset manifest step %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Drop manifest records of install steps that no longer exist, so a retired step does</span>
+<span class="c1">#   not leave a permanent doctor failure. A step exists when its name, before any `:` identity</span>
+<span class="c1">#   suffix, is a function defined in the calling shell. An absent manifest is left absent.</span>
+<span class="c1"># @stdout Prints one line per pruned step.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>_manifest_prune_retired<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>manifest_path<span class="w"> </span>temporary_path<span class="w"> </span>step<span class="w"> </span>steps<span class="w"> </span>retired_json
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">retired</span><span class="o">=()</span>
+
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">manifest_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/.installed-manifest.json"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">manifest_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+<span class="w">    </span><span class="nv">steps</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'if type != "object" or ((.steps // {}) | type) != "object" then error("invalid manifest") else (.steps // {}) | keys[] end'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">manifest_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>step<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="p">%%:*</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">retired</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">steps</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">retired</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+<span class="w">    </span><span class="nv">retired_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-cn<span class="w"> </span>--args<span class="w"> </span><span class="s1">'$ARGS.positional'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">retired</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">temporary_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">manifest_path</span><span class="si">}</span><span class="s2">.tmp.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2016 # jq expands $retired; the shell must not expand it.</span>
+<span class="w">    </span>jq<span class="w"> </span>--argjson<span class="w"> </span>retired<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">retired_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.steps |= with_entries(select(.key as $k | $retired | index($k) | not))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">manifest_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span>mv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">manifest_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>step<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">retired</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pruned retired asset manifest step %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">step</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Prune retired manifest steps without propagating manifest failures.</span>
+<span class="c1"># @stdout Prints one line per pruned step.</span>
+<span class="c1"># @stderr Prints one warning line when pruning fails.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>manifest_prune_retired<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>_manifest_prune_retired<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: failed to prune retired asset manifest steps\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>

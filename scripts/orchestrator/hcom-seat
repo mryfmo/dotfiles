@@ -254,7 +254,11 @@ allow_write_list() {
         n=$(/usr/bin/plutil -extract filesystem.allowWrite raw -expect array -o - "$2") || return 1
         [[ ${n} =~ ^[0-9]+$ ]] || return 1
         for ((i = 0; i < n; i++)); do
-            entry=$(/usr/bin/plutil -extract "filesystem.allowWrite.${i}" raw -expect string -o - "$2") || return 1
+            # -n prints no newline of plutil's own, and the 'x' keeps an entry's trailing newlines from the command
+            # substitution, so "/tmp/root\n" reaches clean_path whole and is refused.
+            entry=$(/usr/bin/plutil -extract "filesystem.allowWrite.${i}" raw -expect string -n -o - "$2" && printf x) ||
+                return 1
+            entry=${entry%x}
             clean_path "${entry}" || return 1
             printf '%s\n' "${entry}"
         done
@@ -539,7 +543,12 @@ if [[ -n ${top} || -e /.git ]]; then
         *) common_guess=${gitdir}/${line} ;;
         esac
     fi
-    roots+=("${top}" "${gitdir}" "${common_guess}" "${common_guess%/*}")
+    roots+=("${top}" "${gitdir}" "${common_guess}")
+    # The main checkout is the common directory's parent only for a `.git` directory; a separate git directory
+    # (`git init --separate-git-dir`) has no checkout above it, and its checkout is `top`.
+    case ${common_guess} in # lint-comparisons: allow a name test on the git directory, no path compare
+    */.git) roots+=("${common_guess%/*}") ;;
+    esac
 fi
 # Every existing seat settings file, read by the system's reader (allow_write_list); an entry that cannot be read, or
 # that is not a clean path, is a refusal.
@@ -704,6 +713,11 @@ git() {
 if [[ -n ${top} || -e /.git ]]; then
     early_common=$(physical_path "${common_guess}") || refuse "cannot resolve the git common directory ${common_guess}"
     [[ -d ${early_common} ]] || refuse "the git common directory ${early_common} is not a directory"
+    # The checkout and its git directories reach the srt settings: clean before anything (metadata included) is made.
+    for root in "${top}" "${gitdir}" "${early_common}"; do
+        root=$(physical_path "${root}") || refuse "cannot resolve ${root}"
+        require_clean_path 'the checkout or its git directory' "${root}"
+    done
     git_state_check "${early_common}" ''
 fi
 
@@ -790,26 +804,9 @@ within() {
     [[ $'\n'${ids}$'\n' == *$'\n'"${outer_id}"$'\n'* ]] # lint-comparisons: allow compares (device, inode) identities, not paths
 }
 
-# The seats' write regions must not overlap (regime-cutover U85): the main checkout (with its git directory), the
-# seats root, the hcom store, omp's state and Claude Code's. A seats root inside the checkout would put every
-# worker's clone inside the orchestrator's write grant, and a checkout inside a seats root the checkout inside every
-# worker's; any such nesting, either way, is refused.
+# The main checkout: the parent of a `.git` common directory, else the toplevel git names (a separate git directory).
 checkout=$(physical_path "${common%/.git}") || refuse "cannot resolve the main checkout of ${common}"
 [[ ${common} == */.git ]] || checkout=$(physical_path "${repo}") || refuse "cannot resolve the checkout ${repo}" # lint-comparisons: allow a name test on the git directory, no path compare
-regions=("the main checkout" "${checkout}")
-for pair in "the seats root=${seats_root}" "the hcom store=${HCOM_DIR}" "omp's state=${HOME}/.omp" \
-    "the Claude Code state=${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"; do
-    region=$(physical_path "${pair#*=}") || refuse "cannot resolve ${pair%%=*} ${pair#*=}"
-    regions+=("${pair%%=*}" "${region}")
-done
-for ((i = 1; i < ${#regions[@]}; i += 2)); do
-    for ((j = 1; j < ${#regions[@]}; j += 2)); do
-        ((i != j)) || continue
-        if within "${regions[i]}" "${regions[j]}"; then
-            refuse "${regions[j - 1]} ${regions[j]} lies inside ${regions[i - 1]} ${regions[i]}; seat write roots must not overlap (choose another --seats-root or HCOM_DIR)"
-        fi
-    done
-done
 
 # OS containment (regime-cutover U85): the seat's omp runs under Anthropic's sandbox-runtime (`srt`, sandbox-exec on
 # macOS, bubblewrap on Linux). hcom pins the `omp` it finds first on this process's PATH as the runner's
@@ -847,6 +844,66 @@ seat_write=()
 seat_roots_out=$(seat_write_roots "${role}" "${name}" "${dir}") || refuse "cannot resolve the write roots of ${name}"
 while IFS= read -r root; do seat_write+=("${root}"); done <<< "${seat_roots_out}"
 other_roots=$(seat_write_roots orchestrator orchestrator "${repo}") || refuse 'cannot resolve the orchestrator write roots'
+
+# @description Refuse (exit 2) unless the final `allowWrite` list of one seat keeps clear of every protected path
+#   (regime-cutover U85), one invariant instead of a list of cases: for every granted root R and every protected
+#   path P, R must not be or contain P, and R must not lie inside P unless R is the seat's own slot there. The
+#   protected paths are defined once: the main checkout, the seats root, its `.sandbox`, every other seat directory
+#   under the seats root and every other worktree of this repository; the seat's own directory is not protected for
+#   it. The own slots are `<seats-root>/<name>` and `<seats-root>/.state/<name>` inside the seats root, and the
+#   checkout's own `.git` (the common directory of a plain checkout) inside the checkout. Both sides are physical
+#   paths, and every one must be clean (clean_path) before anything is created, so this runs in a dry run too.
+# @arg $1 string The role.
+# @arg $2 string The seat name.
+# @arg $3 string The seat directory, physical.
+# @arg $@ string The seat's allowWrite roots after them, physical.
+seat_overlap_check() {
+    local own_role=$1 own_name=$2 own_dir=$3 r p i wt line target seats_phys labels=() protected=()
+    shift 3
+    seats_phys=$(physical_path "${seats_root}") || refuse "cannot resolve the seats root ${seats_root}"
+    labels+=("the main checkout" "the seats root" "the seats' sandbox directory")
+    protected+=("${checkout}" "${seats_phys}" "${seats_phys}/.sandbox")
+    for p in "${seats_phys}"/*/; do
+        [[ -d ${p} ]] || continue
+        target=$(physical_path "${p%/}") || refuse "cannot resolve the seat directory ${p%/}"
+        labels+=("the seat directory")
+        protected+=("${target}")
+    done
+    for wt in "${common}"/worktrees/*/gitdir; do
+        [[ -f ${wt} ]] || continue
+        IFS= read -r line < "${wt}" || [[ -n ${line:-} ]] || refuse "cannot read ${wt}"
+        target=$(physical_path "${line%/.git}") || refuse "cannot resolve the worktree ${line%/.git} named in ${wt}"
+        labels+=("the worktree")
+        protected+=("${target}")
+    done
+    for p in "${protected[@]}"; do
+        require_clean_path 'a protected seat path' "${p}"
+    done
+    for r in "$@"; do
+        require_clean_path "a write root of the ${own_role} seat" "${r}"
+        for ((i = 0; i < ${#protected[@]}; i++)); do
+            p=${protected[i]}
+            # The seat's own directory is its to write.
+            if within "${p}" "${own_dir}" && within "${own_dir}" "${p}"; then continue; fi
+            if within "${r}" "${p}"; then
+                refuse "the ${own_role} seat's write root ${r} contains ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
+            fi
+            if within "${p}" "${r}"; then
+                case ${labels[i]}:${r} in # lint-comparisons: allow the own slots are exact physical paths, compared as such
+                "the seats root:${seats_phys}/${own_name}" | "the seats root:${seats_phys}/.state/${own_name}") continue ;;
+                "the main checkout:${checkout}/.git") continue ;;
+                esac
+                refuse "the ${own_role} seat's write root ${r} lies inside ${labels[i]} ${p}; seat write roots must not overlap (choose another --seats-root, HCOM_DIR or git directory)"
+            fi
+        done
+    done
+}
+
+dir_phys=$(physical_path "${dir}") || refuse "cannot resolve the seat directory ${dir}"
+seat_overlap_check "${role}" "${name}" "${dir_phys}" "${seat_write[@]}"
+orchestrator_write=()
+while IFS= read -r root; do orchestrator_write+=("${root}"); done <<< "${other_roots}"
+seat_overlap_check orchestrator orchestrator "${checkout}" "${orchestrator_write[@]}"
 roots=("${seat_write[@]}" "${seats_root}" "${HCOM_DIR}" "${common}")
 while IFS= read -r root; do roots+=("${root}"); done <<< "${other_roots}"
 for settings_file in "${seats_root}"/.sandbox/*/srt-settings.json; do

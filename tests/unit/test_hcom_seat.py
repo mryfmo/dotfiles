@@ -809,13 +809,48 @@ class HcomSeatTest(unittest.TestCase):
         run = self.seat("worker", "--seats-root", str(inside))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(
-            f"the seats root {inside.resolve()} lies inside the main checkout {self.repo.resolve()}", run.stderr
+            f"write root {inside.resolve()}/worker lies inside the main checkout {self.repo.resolve()}", run.stderr
         )
         self.assertFalse(inside.exists())
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("seat write roots must not overlap", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
+        """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout
+        (`--separate-git-dir`) that holds the seats root would grant every worker its siblings, so it is refused."""
+        root = Path(self.temp.name).resolve()
+        gitdir, checkout = root / "g", root / "sep"
+        subprocess.run(["git", "init", "-q", f"--separate-git-dir={gitdir}", str(checkout)], env=self.env, check=True)
+        for args in (
+            ["commit", "-q", "--allow-empty", "-m", "init"],
+            ["update-ref", "refs/remotes/origin/main", "HEAD"],
+        ):
+            subprocess.run(["git", *args], cwd=checkout, env=self.env, check=True)
+        seats = gitdir / "seats"
+        run = self.seat("worker", "--seats-root", str(seats), cwd=checkout)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"write root {gitdir} contains the seats root {seats}", run.stderr)
+        self.assertFalse(seats.exists())
+        run = self.seat("worker", "--seats-root", self.seats, cwd=checkout)
+        self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_checkout_path_srt_could_misread_creates_nothing(self):
+        """U85 round 12: the checkout's physical path is checked clean before any git metadata or worktree is made,
+        in a dry run as well."""
+        checkout = Path(self.temp.name).resolve() / "has space" / "repo"
+        checkout.mkdir(parents=True)
+        for args in (["init", "-q"], ["commit", "-q", "--allow-empty", "-m", "init"]):
+            subprocess.run(["git", *args], cwd=checkout, env=self.env, check=True)
+        before = sorted(str(path) for path in (checkout / ".git").rglob("*"))
+        for extra in ([], ["--dry-run"]):
+            with self.subTest(extra=extra):
+                run = self.seat("worker", "--seats-root", self.seats, *extra, cwd=checkout)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("is not a clean absolute path", run.stderr)
+                self.assertEqual(sorted(str(path) for path in (checkout / ".git").rglob("*")), before)
+                self.assertFalse(Path(self.seats).exists())
 
     def test_a_worker_reads_only_the_records_of_a_checkout_outside_workspace(self):
         """U85 round 8: the worker's read deny is the main checkout itself, wherever it lives (here outside
@@ -914,16 +949,17 @@ class HcomSeatTest(unittest.TestCase):
                 )  # fmt: skip
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertEqual(run.stdout.splitlines(), expected)
-        fixture.write_text(json.dumps({"filesystem": {"allowWrite": ["/tmp/hcom*"]}}))
-        for system, tool in readers:
-            with self.subTest(reader=tool.name, entry="pattern"):
-                if not tool.exists():
-                    self.skipTest(f"{tool} is not installed here")
-                run = subprocess.run(
-                    ["/bin/bash", "-c", f'{functions}\nallow_write_list "$1" "$2"', "_", system, str(fixture)],
-                    capture_output=True, text=True, check=False,
-                )  # fmt: skip
-                self.assertEqual(run.returncode, 1, run.stdout)
+        for label, entries in (("pattern", ["/tmp/hcom*"]), ("trailing newline", ["/tmp/root\n"])):
+            fixture.write_text(json.dumps({"filesystem": {"allowWrite": entries}}))
+            for system, tool in readers:
+                with self.subTest(reader=tool.name, entry=label):
+                    if not tool.exists():
+                        self.skipTest(f"{tool} is not installed here")
+                    run = subprocess.run(
+                        ["/bin/bash", "-c", f'{functions}\nallow_write_list "$1" "$2"', "_", system, str(fixture)],
+                        capture_output=True, text=True, check=False,
+                    )  # fmt: skip
+                    self.assertEqual(run.returncode, 1, run.stdout)
 
     def test_git_runs_by_its_checked_argv_and_no_link_hop_lies_in_a_write_root(self):
         """U85 round 10: a script-based git whose interpreter is a symlink inside a seat write root (pointing outside,

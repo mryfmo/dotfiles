@@ -149,7 +149,7 @@ class WorkerRoot:
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.reads, self.errors = [], []
+        self.reads, self.errors, self.replaced, self.attempts = [], [], [], 0
         os.mkfifo(self.input, 0o600)
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
@@ -188,18 +188,34 @@ class WorkerRoot:
             os.close(fd)
             raise RuntimeError(f"{self.input} still has a reader after the self-test closed its own")
 
+    def _not_sentinel(self, error=None, fd=None):
+        """Whether the input is not the probe's FIFO at this moment, recorded: once it was not, the check fails,
+        even if the FIFO is put back later. ENOENT is a removal and ELOOP a link put in its place."""
+        if error is not None:
+            if error.errno in (errno.ENOENT, errno.ELOOP):
+                self.replaced.append(f"{self.input} was {'removed' if error.errno == errno.ENOENT else 'a link'}")
+                return True
+            raise error
+        st = os.fstat(fd)
+        if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]:
+            return False
+        self.replaced.append(f"{self.input} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
+        return True
+
     def _attempt(self):
         """One attempt while the consumer runs: record a reader, then release any writer waiting for a reader."""
+        self.attempts += 1
         try:
             fd = self._open_writer()
         except OSError as error:
             if error.errno not in (errno.ENOENT, errno.ELOOP):
                 self.errors.append(f"cannot tell whether {self.input} is being read: {error!r}")
+                return
+            self._not_sentinel(error=error)
             return
         if fd is not None:
             try:
-                st = os.fstat(fd)
-                if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]:
+                if not self._not_sentinel(fd=fd):
                     self.reads.append(f"{self.input} opened for reading")
             finally:
                 os.close(fd)  # the reader now sees EOF
@@ -208,8 +224,13 @@ class WorkerRoot:
         except OSError as error:
             if error.errno not in (errno.ENOENT, errno.ELOOP):
                 self.errors.append(f"cannot release a writer of {self.input}: {error!r}")
+                return
+            self._not_sentinel(error=error)
             return
-        os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
+        try:
+            self._not_sentinel(fd=fd)
+        finally:
+            os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
 
     def consume(self, target, deadline=None):
         """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
@@ -217,16 +238,18 @@ class WorkerRoot:
         outcome = {}
         worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
         _CONSUMER_ERRORS[worker] = outcome
-        end = time.monotonic() + (self.DEADLINE_S if deadline is None else deadline)
-        worker.start()
-        while worker.is_alive():
-            if time.monotonic() > end:
-                self._attempt()  # releases a reader blocked on the sentinel, at least
-                raise AssertionError("worker root: the consumer was still running after its deadline: it hung")
+        try:
+            end = time.monotonic() + (self.DEADLINE_S if deadline is None else deadline)
+            worker.start()
+            while worker.is_alive():
+                if time.monotonic() > end:
+                    self._attempt()  # releases a reader blocked on the sentinel, at least
+                    raise AssertionError("worker root: the consumer was still running after its deadline: it hung")
+                self._attempt()
+                worker.join(self.POLL_S)
             self._attempt()
-            worker.join(self.POLL_S)
-        self._attempt()
-        _CONSUMER_ERRORS.pop(worker, None)
+        finally:
+            _CONSUMER_ERRORS.pop(worker, None)
         if "error" in outcome:
             raise outcome["error"]
         return outcome.get("value")
@@ -248,6 +271,7 @@ class WorkerRoot:
             if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
+        found += [f"wrote {entry} (replaced)" for entry in self.replaced]
         found = [f"read {entry}" for entry in self.reads] + found + self.errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))

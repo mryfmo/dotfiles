@@ -88,6 +88,18 @@ def read_relative(path):
         os.chdir(here)
 
 
+def swap_and_restore(probe, swap_in):
+    """Move the input FIFO aside, put SWAP_IN's file in its place until the probe made two attempts, put it back."""
+    aside = probe.base / "aside"
+    os.rename(probe.input, aside)
+    swap_in(probe.input)
+    seen = probe.attempts
+    while probe.attempts < seen + 2:
+        time.sleep(0.001)
+    os.unlink(probe.input)
+    os.rename(aside, probe.input)
+
+
 def naive_io(probe):
     """Noncompliant: reads its input and writes its outputs wherever they are."""
     data = Path(probe.input).read_text()
@@ -370,16 +382,41 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         probe.assert_untouched()
         probe.assert_untouched()
 
+    def assert_eof(self, result):
+        """A reader of the sentinel exits 0 and reads nothing: EOF, never content."""
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(b"", result.stdout)
+
     def test_a_blocking_reader_never_hangs_and_gets_eof(self):
-        for name, consumer in (
-            ("subprocess", lambda p: run(["/bin/cat", str(p.input)], ALLOWED_ENV)),
-            ("thread", lambda p: in_thread(lambda: Path(p.input).read_bytes())),
+        probe = self.worker_root_probe()
+        self.assert_eof(probe.consume(lambda: run(["/bin/cat", str(probe.input)], ALLOWED_ENV)))
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+        probe = self.worker_root_probe()
+        self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+        # Injected: a reader that gets EOF and still exits non-zero, or exits 0 with output, fails the EOF check.
+        for line, why in (('cat "$0"; exit 7', "exit"), ('cat "$0"; echo leaked', "output")):
+            with self.subTest(injected=why):
+                probe = self.worker_root_probe()
+                result = probe.consume(functools.partial(run, ["/bin/sh", "-c", line, str(probe.input)], ALLOWED_ENV))
+                with self.assertRaises(AssertionError):
+                    self.assert_eof(result)
+
+    def test_an_input_that_was_ever_not_the_probes_fifo_fails_even_when_restored(self):
+        # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
+        # and back during the step passed. Held until the probe has made two attempts on the swapped-in file.
+        for name, swap_in in (
+            ("regular file", lambda path: path.write_text(tec.LEGIT)),
+            ("another FIFO", lambda path: os.mkfifo(path)),
+            ("symlink", lambda path: path.symlink_to("/dev/null")),
         ):
             with self.subTest(name):
                 probe = self.worker_root_probe()
-                result = probe.consume(functools.partial(consumer, probe))
-                self.assertEqual(b"", result.stdout if name == "subprocess" else result)  # EOF: never content
-                with self.assertRaisesRegex(AssertionError, "worker root: read "):
+                probe.consume(functools.partial(swap_and_restore, probe, swap_in))
+                self.assertEqual(probe._identity[probe.input][0], os.lstat(probe.input).st_ino)  # restored
+                with self.assertRaisesRegex(AssertionError, r"wrote .* \(replaced\)"):
                     probe.assert_untouched()
 
     def test_a_writer_to_the_input_never_hangs(self):
@@ -397,6 +434,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "still running after its deadline: it hung"):
             probe.consume(forever.wait, deadline=1)
         self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual({}, tec._CONSUMER_ERRORS)  # the timed-out worker is not left registered
 
     def test_an_errno_other_than_enxio_fails_the_probe(self):
         # No except-all: the only answers the probe reads are ENXIO (no reader) and ENOENT/ELOOP (removed, replaced).

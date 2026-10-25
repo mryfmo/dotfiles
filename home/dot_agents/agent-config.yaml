@@ -1286,8 +1286,28 @@ assets:
       assets.pstack deploys its skills). make doctor fails when a user-scope installed version
       differs from its pin and warns for a plugin the user settings enable without a pin here.
       To move a plugin, review the upstream release, set its pin here, regenerate, then make update.
+      pyright-lsp and frontend-design are the exception to the first sentence: their pins are the
+      marketplace's listing on 2026-10-26 (spark-9e8d ran both, macOS neither). pyright-lsp ships
+      no hooks, commands or servers of its own, only an lspServers entry that starts
+      pyright-langserver --stdio, the binary mise installs (npm:pyright). frontend-design ships one
+      skill (skills/frontend-design/SKILL.md, prompt text) and nothing that runs. Its listing and
+      manifest have no version, so Claude Code records the marketplace commit it installed from
+      (12 hex digits), which moves with every marketplace commit while the files stay the same; a
+      marketplace source takes a ref only as a branch or tag, not a commit (code.claude.com
+      marketplace reference, marketplace sources), and anthropics/claude-plugins-official has no
+      tags. Such a plugin is pinned by content instead: pin sha256:<hex>, the hash
+      scripts/pin_records.py content_digest takes over what Claude Code loads for it, its catalog
+      entry in the marketplace's .claude-plugin/marketplace.json (which can itself define hooks or
+      servers) and the files of its plugin directory. make update and make doctor compare it, from
+      the installed copy and the installed marketplace clone, in place of the version, and make
+      drift from the upstream catalog and tree (equal at 58267944f921, d4226d062928 and the seven
+      other versions spark-9e8d cached, and upstream, on 2026-10-26). The reviewed tree and entry
+      are kept at tests/fixtures/claude-plugins/<plugin> and
+      tests/fixtures/claude-plugins/marketplaces/<marketplace>; moving such a pin replaces both.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
+      pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}
+      frontend-design@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 'sha256:a0625c75cf136cb5008e19640134229e6a35daf1c907eadce3271ca0ff4401c0'}
       crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
       ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
       understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}

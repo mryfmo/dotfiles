@@ -18,7 +18,11 @@ The watch reads api.github.com only, and only these four things:
   minimum_release_age old (the window home/dot_mise/config.toml sets, 72h today).
 - plugin-pin: every Claude and Codex plugin pin in that manifest against each version its marketplace serves now:
   the catalog entry's `version` when it has one and, always, its plugin.json (a marketplace serves its default
-  branch, so no release window applies).
+  branch, so no release window applies); only an entry with `strict: false` whose directory listing holds no
+  manifest directory has no plugin.json, and then its catalog version alone is read. A content pin (`sha256:...`, a Claude plugin with no version, U91) is
+  compared with the content hash (scripts/pin_records.py content_digest, the definition make update and make doctor
+  use) of the plugin's catalog entry and its directory as the marketplace serves them now: its git tree (recursive, never truncated) and
+  each blob, read by the SHA this script took from that tree and checked against the blob's own git SHA-1.
 - retired-term: the retired-term lint (RETIRED_TERM_LINT, owned by U72) when this tree has it; each line it prints is
   a finding.
 A `pin: unknown` is a finding (unrecorded). Every other pin (npm, PyPI, nodejs.org, python.org, gcloud, git commits,
@@ -34,8 +38,11 @@ is sent to api.github.com and never follows a redirect.
 """
 
 import argparse
+import base64
 import datetime
+import hashlib
 import http.client
+import importlib.util
 import json
 import os
 import posixpath
@@ -86,6 +93,26 @@ ISO_TIME = re.compile(
 REPO_PART = re.compile(r"[A-Za-z0-9_.-]+")
 GIT_REF = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*")
 MISSING = object()
+GIT_SHA = re.compile(r"[0-9a-f]{40}")
+# The git modes of a regular file; a symlink (120000) or a submodule (160000) is no reviewable content.
+REGULAR_MODES = ("100644", "100755")
+TREE_MODE = "040000"
+# A symlink and a submodule (gitlink): reported as a finding, since neither is reviewable content.
+NOT_CONTENT_MODES = ("120000", "160000")
+
+
+def load_pin_records():
+    """scripts/pin_records.py next to this script: the one definition of a content pin (content_digest)."""
+    spec = importlib.util.spec_from_file_location("pin_records", Path(__file__).resolve().parent / "pin_records.py")
+    if spec is None or spec.loader is None:
+        raise ImportError("cannot load scripts/pin_records.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["pin_records"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+pin_records = load_pin_records()
 
 
 class ReadError(Exception):
@@ -206,15 +233,34 @@ class Upstream:
 
     def get(self, url: str, raw: bool = False):
         """One response's decoded JSON body."""
+        if self.fixture is not None:
+            return self.fixture_entry(url)
+        body = self.get_bytes(url, raw)
+        try:
+            # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
+            # and a str that starts with a byte-order mark is refused by json.loads.
+            return json.loads(body.decode("utf-8"))
+        except ValueError as error:
+            raise ReadError(url, f"read failed ({type(error).__name__})") from None
+
+    def fixture_entry(self, url: str):
         if not allowed(url):
             raise ReadError(url, "not an allowed upstream host")
+        if url not in self.fixture:  # lint-comparisons: allow fixture keys are the exact URLs this script builds
+            raise ReadError(url, "not in the fixture")
+        entry = self.fixture[url]
+        if isinstance(entry, dict) and set(entry) == {"http_status"}:
+            raise ReadError(url, f"HTTP {entry['http_status']}")
+        return entry
+
+    def get_bytes(self, url: str, raw: bool = False) -> bytes:
+        """One response's body as bytes, for a parser that reads the JSON itself (pin_records.parse_catalog_entry).
+        In a fixture, a string entry is the body's text and any other entry is serialised as JSON."""
         if self.fixture is not None:
-            if url not in self.fixture:  # lint-comparisons: allow fixture keys are the exact URLs this script builds
-                raise ReadError(url, "not in the fixture")
-            entry = self.fixture[url]
-            if isinstance(entry, dict) and set(entry) == {"http_status"}:
-                raise ReadError(url, f"HTTP {entry['http_status']}")
-            return entry
+            entry = self.fixture_entry(url)
+            return entry.encode() if isinstance(entry, str) else json.dumps(entry).encode()
+        if not allowed(url):
+            raise ReadError(url, "not an allowed upstream host")
         try:
             request = urllib.request.Request(url, headers={"User-Agent": "mryfmo-dotfiles-drift-watch"})
             request.add_header("Accept", "application/vnd.github.raw+json" if raw else "application/vnd.github+json")
@@ -222,9 +268,7 @@ class Upstream:
             if self.token:
                 request.add_unredirected_header("Authorization", f"Bearer {self.token}")
             with OPENER.open(request, timeout=30) as response:
-                # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
-                # and a str that starts with a byte-order mark is refused by json.loads.
-                return json.loads(response.read().decode("utf-8"))
+                return response.read()
         except urllib.error.HTTPError as error:
             raise ReadError(url, f"HTTP {int(error.code)}") from None
         # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
@@ -283,6 +327,14 @@ def repo_path(text: str, shape: Shape, what: str) -> list[str]:
     if ".." in parts:
         raise shape.fail(f"{what} {text!r} leaves the repository")
     return parts
+
+
+def unique_names(shape: Shape, entries: list, key: str = "name") -> list[str]:
+    """Each entry's KEY, in order; an entry named twice is a read failure, so no lookup takes the first of two."""
+    names = [shape.key(entry, key, str, "an entry") for entry in entries]
+    if len(set(names)) != len(names):
+        raise shape.fail(f"an entry {key} appears more than once")
+    return names
 
 
 def not_printable(char: str) -> bool:
@@ -477,8 +529,12 @@ class Watch:
             if repo is None:
                 self.unwatched.append(f"plugin-pin {subject} {pin} ({where}): marketplace is no GitHub repository")
                 continue
+            content = asset["source"] == "claude-plugin" and pin_records.CONTENT_PIN.fullmatch(pin)
             try:
-                served, unreadable = self.plugin_versions(repo, plugin, marketplace_file, manifest_file)
+                if content:
+                    served, unreadable = self.plugin_content(repo, plugin, marketplace_file)
+                else:
+                    served, unreadable = self.plugin_versions(repo, plugin, marketplace_file, manifest_file)
             except ReadError as error:
                 self.failures.append(f"plugin-pin {subject}: {error}")
                 continue
@@ -488,21 +544,23 @@ class Watch:
             if differing:
                 self.findings.append(Finding("plugin-pin", subject, pin, ", ".join(differing), where))
 
-    def plugin_versions(
-        self, repo: str, plugin: str, marketplace_file: str, manifest_file: str
-    ) -> tuple[list[tuple[str, str]], str]:
-        """Every version the marketplace serves for plugin (its catalog entry's and its plugin.json's, each with where
-        it was read), and why the plugin.json could not be read ("" when it was). A catalog version never stands in
-        for plugin.json."""
+    def catalog_item(self, repo: str, plugin: str, marketplace_file: str):
+        """The plugin's catalog entry in the marketplace (None when the catalog does not list it) and its Shape."""
         url = contents_url(repo, marketplace_file.split("/"))
         shape = Shape(url)
-        items = shape.key(self.upstream.get(url, raw=True), "plugins", list)
-        item = next((p for p in items if shape.key(p, "name", str, "a plugin") == plugin), None)
-        if item is None:
-            return [(f"{repo}/{marketplace_file}", "absent")], ""
-        served = []
-        if (version := shape.key(item, "version", str, plugin, default=None)) is not None:
-            served.append((f"{repo}/{marketplace_file}", version))
+        # The one catalog parser make update and make doctor read the installed clone with: strict JSON, and a
+        # plugin listed more than once is refused rather than its first entry taken.
+        try:
+            return pin_records.parse_catalog_entry(
+                self.upstream.get_bytes(url, raw=True), marketplace_file, plugin
+            ), shape
+        except pin_records.RecordError as error:
+            raise shape.fail(str(error)) from None
+
+    @staticmethod
+    def plugin_source(item, repo: str, plugin: str, shape: Shape) -> tuple[str, list[str], str, str]:
+        """Where a catalog entry's plugin directory lives: (repository, path components, ref, why it cannot be read
+        or "")."""
         source, ref = shape.key(item, "source", (str, dict), plugin), ""
         if isinstance(source, dict):
             kind = shape.key(source, "source", str, f"{plugin}.source")
@@ -514,7 +572,7 @@ class Watch:
                 location = shape.key(source, "url" if kind == "url" else "repo", str, f"{plugin}.source")
                 repo = github_repo(location)
                 if repo is None:
-                    return served, f"source {kind} is no GitHub repository"
+                    return "", [], "", f"source {kind} is no GitHub repository"
                 ref = shape.key(source, "sha", str, f"{plugin}.source", default="") or shape.key(
                     source, "ref", str, f"{plugin}.source", default=""
                 )
@@ -522,12 +580,113 @@ class Watch:
                     raise shape.fail(f"{plugin}.source ref {ref!r} is no plain git ref")
                 source = ""
             else:
-                return served, f"source kind {kind}: {OUT_OF_SCOPE}"
-        parts = repo_path(source, shape, f"{plugin}.source") + manifest_file.split("/")
-        manifest_url = contents_url(repo, parts, ref)
+                return "", [], "", f"source kind {kind}: {OUT_OF_SCOPE}"
+        return repo, repo_path(source, shape, f"{plugin}.source"), ref, ""
+
+    def plugin_versions(
+        self, repo: str, plugin: str, marketplace_file: str, manifest_file: str
+    ) -> tuple[list[tuple[str, str]], str]:
+        """Every version the marketplace serves for plugin (its catalog entry's and its plugin.json's, each with where
+        it was read), and why the plugin.json could not be read ("" when it was). A catalog version never stands in
+        for plugin.json. Only a catalog entry with `strict: false` (the entry is the plugin's whole definition) may
+        have no plugin.json, and only a listing of the plugin's directory with no manifest directory in it proves
+        that; a plugin.json that is not served there is still a read failure."""
+        item, shape = self.catalog_item(repo, plugin, marketplace_file)
+        if item is None:
+            return [(f"{repo}/{marketplace_file}", "absent")], ""
+        served = []
+        if (version := shape.key(item, "version", str, plugin, default=None)) is not None:
+            served.append((f"{repo}/{marketplace_file}", version))
+        source_repo, parts, ref, unreadable = self.plugin_source(item, repo, plugin, shape)
+        if unreadable:
+            return served, unreadable
+        manifest_dir, manifest_name = manifest_file.split("/")
+        if shape.key(item, "strict", bool, plugin, default=True) is False:
+            listing_url = contents_url(source_repo, parts, ref)
+            listing = Shape(listing_url)
+            entries = listing.of(self.upstream.get(listing_url), list, "the directory listing")
+            names = unique_names(listing, entries)
+            if manifest_dir not in names:  # lint-comparisons: allow entry names, not paths
+                if not served:
+                    # No value to compare the pin with is a read failure, never "not watched" and never current.
+                    raise listing.fail(
+                        f"neither the strict: false catalog entry of {plugin} nor a plugin.json sets a version"
+                    )
+                return served, ""
+        parts = [*parts, manifest_dir, manifest_name]
+        manifest_url = contents_url(source_repo, parts, ref)
         version = Shape(manifest_url).key(self.upstream.get(manifest_url, raw=True), "version", str)
-        served.append((f"{repo}/{'/'.join(parts)}", version))
+        served.append((f"{source_repo}/{'/'.join(parts)}", version))
         return served, ""
+
+    def plugin_content(self, repo: str, plugin: str, marketplace_file: str) -> tuple[list[tuple[str, str]], str]:
+        """The content pin the marketplace serves for plugin now (pin_records.content_digest over its directory), with
+        where it was read. Every URL is built here: the directory's tree SHA comes from its parent's contents listing,
+        each blob's from that tree, and a blob whose bytes do not hash to its git SHA-1 is a read failure. A symlink
+        or submodule in the tree is reported as the upstream value. A content that cannot be determined (a source
+        outside GitHub or of another kind, a plugin at its repository's root) is a read failure, never "not
+        watched"."""
+        item, shape = self.catalog_item(repo, plugin, marketplace_file)
+        if item is None:
+            return [(f"{repo}/{marketplace_file}", "absent")], ""
+        source_repo, parts, ref, unreadable = self.plugin_source(item, repo, plugin, shape)
+        if unreadable:
+            raise shape.fail(f"the content of {plugin} cannot be read: {unreadable}")
+        if not parts:
+            raise shape.fail(f"{plugin} sits at its repository's root: no directory tree to hash for its content pin")
+        place = f"{source_repo}/{'/'.join(parts)}"
+        listing_url = contents_url(source_repo, parts[:-1], ref)
+        listing = Shape(listing_url)
+        entries = listing.of(self.upstream.get(listing_url), list, "the directory listing")
+        entry = dict(zip(unique_names(listing, entries), entries)).get(parts[-1])
+        if entry is None:
+            return [(place, "absent")], ""
+        if listing.key(entry, "type", str, parts[-1]) != "dir":
+            return [(place, "not a directory")], ""
+        tree_sha = listing.key(entry, "sha", str, parts[-1])
+        if not GIT_SHA.fullmatch(tree_sha):
+            raise listing.fail(f"{parts[-1]}.sha {tree_sha!r} is no git SHA")
+        tree_url = f"{GITHUB_API}/repos/{source_repo}/git/trees/{tree_sha}?recursive=1"
+        tree = Shape(tree_url)
+        doc = self.upstream.get(tree_url)
+        if tree.key(doc, "truncated", bool):
+            raise tree.fail("the tree is truncated")
+        files = []
+        nodes = tree.key(doc, "tree", list)
+        unique_names(tree, nodes, "path")
+        for node in nodes:
+            path = tree.key(node, "path", str, "a tree entry")
+            kind, mode = tree.key(node, "type", str, path), tree.key(node, "mode", str, path)
+            repo_path(path, tree, "a tree path")
+            # Every entry, a directory included, carries its git object SHA and a mode git defines for its type.
+            sha = tree.key(node, "sha", str, path)
+            if not GIT_SHA.fullmatch(sha):
+                raise tree.fail(f"{path}.sha {sha!r} is no git SHA")
+            if mode in NOT_CONTENT_MODES:
+                # A symlink or a submodule is no reviewable content: reported as the value served, never current.
+                return [(place, f"{path} is not a regular file (git mode {mode})")], ""
+            if (kind, mode) == ("tree", TREE_MODE):
+                continue
+            if kind != "blob" or mode not in REGULAR_MODES:
+                raise tree.fail(f"{path} has type {kind!r} with mode {mode!r}, no git tree entry shape")
+            files.append((path.encode(), self.blob(source_repo, sha)))
+        # The catalog entry is part of what Claude Code loads (strict: false can define servers or hooks in it).
+        return [(place, pin_records.content_digest(files, item))], ""
+
+    def blob(self, repo: str, sha: str) -> bytes:
+        """A git blob's bytes, proven by its own git SHA-1."""
+        url = f"{GITHUB_API}/repos/{repo}/git/blobs/{sha}"
+        shape = Shape(url)
+        doc = self.upstream.get(url)
+        if shape.key(doc, "encoding", str) != "base64":
+            raise shape.fail("the blob is not base64")
+        try:
+            data = base64.b64decode(shape.key(doc, "content", str).replace("\n", ""), validate=True)
+        except ValueError:
+            raise shape.fail("the blob content is no base64") from None
+        if hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest() != sha:  # git's own object id, not a security hash
+            raise shape.fail("the blob bytes do not hash to its git SHA")
+        return data
 
     def retired_terms(self) -> None:
         lint = self.root / RETIRED_TERM_LINT
@@ -600,6 +759,9 @@ def report(watch: Watch) -> str:
             f"| {f.check} | {cell(f.subject)} | {cell(f.recorded)} | {cell(f.upstream)} | {cell(f.where)} |"
             for f in watch.findings
         ]
+    elif watch.failures:
+        # Some pins have no upstream value to compare: the run is not clean, so it never says so.
+        lines.append("Not clean: the read failures below are unchecked; the pins that were read show no drift.")
     else:
         lines.append("No drift found.")
     if watch.failures:

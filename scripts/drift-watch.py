@@ -250,13 +250,20 @@ class Watch:
         return datetime.timedelta(**{"hours" if match[2] == "h" else "days": int(match[1])})
 
     def compare_release(self, check: str, subject: str, pin: str, kind: str, name: str, where: str) -> None:
+        if version_key(pin) is None:
+            self.unwatched.append(f"{check} {subject} {pin} ({where}): the pin carries no version number")
+            return
         try:
-            newest = newest_eligible(releases_of(self.upstream, kind, name), self.cutoff)
+            releases = releases_of(self.upstream, kind, name)
+            newest = newest_eligible(releases, self.cutoff)
         except ReadError as error:
             self.failures.append(f"{check} {subject}: {error}")
             return
         except SHAPE_ERRORS as error:
             self.failures.append(f"{check} {subject}: unexpected {kind} response ({error!r})")
+            return
+        if not releases:
+            self.unwatched.append(f"{check} {subject} {pin} ({where}): {kind} {name} lists no release")
             return
         if newest and newer(newest.version, pin):
             published = newest.published.strftime("%Y-%m-%d")

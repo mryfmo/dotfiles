@@ -303,6 +303,13 @@ class DriftWatchTest(unittest.TestCase):
         self.assertEqual(3, status, report)
         self.assertEqual({("manifest-pin", "homebrew-installer.pin")}, self.findings(report))
 
+    def test_an_upstream_with_no_release_is_listed_as_not_watched_not_current(self):
+        upstream = copy.deepcopy(CURRENT_UPSTREAM)
+        upstream[f"{GH}/starship/starship/releases?per_page=100"] = []
+        status, report = self.watch(["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, upstream)
+        self.assertEqual(0, status, report)
+        self.assertIn("manifest-pin starship.pin v1.27.0", report.split("## Not watched", 1)[1])
+
     def test_the_retired_term_lint_is_run_when_the_tree_has_it(self):
         current = (["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, CURRENT_UPSTREAM)
         status, report = self.watch(*current)
@@ -381,6 +388,85 @@ class UpstreamTokenTest(unittest.TestCase):
         ):
             self.module.Upstream(None, "").get("https://api.github.com/x")
         self.assertEqual(500, raised.exception.status)
+
+
+WORKFLOW = ROOT / ".github/workflows/drift-watch.yml"
+# A stub gh: logs its argv, and answers `issue list` by running the step's own --jq filter over GH_LIST_JSON.
+GH_STUB = """#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$GH_LOG"
+if [ "$1 $2" = "issue list" ]; then
+    [ -z "${GH_LIST_FAIL:-}" ] || exit 1
+    while [ $# -gt 0 ]; do [ "$1" != --jq ] || filter="$2"; shift; done
+    printf '%s' "$GH_LIST_JSON" | jq -r "$filter"
+fi
+"""
+BOT = {"login": "app/github-actions", "is_bot": True}
+
+
+class TrackingIssueStepTest(unittest.TestCase):
+    """The workflow's issue step, run with a stub gh: which issue it writes, and that a failed lookup writes none."""
+
+    def step(self, status, issues, list_fails=False):
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        script = next(
+            s["run"] for s in doc["jobs"]["drift"]["steps"] if s.get("name") == "Keep the tracking issue current"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            (temp / "bin").mkdir()
+            (temp / "bin/gh").write_text(GH_STUB)
+            (temp / "bin/gh").chmod(0o755)
+            (temp / "drift.md").write_text("# Drift watch\n")
+            env = {
+                "PATH": f"{temp / 'bin'}:{os.environ['PATH']}",
+                "GH_LOG": str(temp / "gh.log"),
+                "GH_LIST_JSON": json.dumps(issues),
+                "RUNNER_TEMP": str(temp),
+                "STATUS": status,
+                "RUN_URL": "https://github.com/o/r/actions/runs/1",
+            }
+            if list_fails:
+                env["GH_LIST_FAIL"] = "1"
+            run = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, check=False)
+            calls = (temp / "gh.log").read_text().splitlines()
+        return run.returncode, [call for call in calls if not call.startswith("issue list")]
+
+    def test_the_workflow_runs_only_on_schedule_and_by_hand(self):
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        self.assertEqual({"schedule", "workflow_dispatch"}, set(doc[True]))
+
+    def test_drift_opens_one_issue_and_never_rewrites_an_issue_someone_else_opened(self):
+        human = {"number": 5, "title": "Drift watch", "author": {"login": "someone", "is_bot": False}}
+        self.assertEqual(
+            (0, ["issue create --title Drift watch --body-file " + "{}"]), self.normalised(self.step("3", [human]))
+        )
+        bot = {"number": 7, "title": "Drift watch", "author": BOT}
+        self.assertEqual((0, ["issue edit 7 --body-file {}"]), self.normalised(self.step("4", [human, bot])))
+
+    def test_a_clean_run_closes_the_open_issue_and_otherwise_writes_nothing(self):
+        bot = {"number": 7, "title": "Drift watch", "author": BOT}
+        status, calls = self.normalised(self.step("0", [bot]))
+        self.assertEqual(0, status)
+        self.assertEqual(
+            [
+                "issue edit 7 --body-file {}",
+                "issue close 7 --comment No drift found: https://github.com/o/r/actions/runs/1",
+            ],
+            calls,
+        )
+        self.assertEqual((0, []), self.step("0", []))
+
+    def test_a_failed_issue_lookup_fails_the_step_and_writes_no_issue(self):
+        status, calls = self.step("3", [], list_fails=True)
+        self.assertNotEqual(0, status)
+        self.assertEqual([], calls)
+
+    @staticmethod
+    def normalised(result):
+        status, calls = result
+        return status, [
+            " ".join("{}" if word.endswith("/drift.md") else word for word in call.split(" ")) for call in calls
+        ]
 
 
 if __name__ == "__main__":

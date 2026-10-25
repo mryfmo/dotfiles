@@ -187,9 +187,10 @@ class PstackAssetTest(unittest.TestCase):
         self.assertLessEqual(source_skills, declared)
         self.assertEqual(set(), declared & PSTACK_SKILLS_AT_PIN, f"declared skills: {sorted(declared)}")
 
-    def retire(self, home: Path) -> subprocess.CompletedProcess[str]:
+    def retire(self, home: Path, prelude: str = "") -> subprocess.CompletedProcess[str]:
+        """Run retire_shared_pstack_copies under `home`; `prelude` is shell run after sourcing, to inject a failure."""
         return subprocess.run(
-            ["bash", "-c", f"source {UPDATER}; retire_shared_pstack_copies"],
+            ["bash", "-c", f"source {UPDATER}; {prelude}\nretire_shared_pstack_copies"],
             cwd=ROOT,
             env={**os.environ, "HOME": str(home)},
             text=True,
@@ -263,6 +264,42 @@ class PstackAssetTest(unittest.TestCase):
                 self.assertIn(f"{home / link} is a symlink", failed.stderr)
                 self.assertTrue(copy.is_dir(), "nothing in the referent is removed")
 
+    def test_retire_refuses_when_a_physical_path_cannot_be_read_or_differs(self) -> None:
+        """The pwd -P reads that gate removal: a failure or an unexpected answer exits 1 with nothing deleted."""
+        shared = {"identical": "identical\n", "zz-last": "zz-last\n"}
+        # Each prelude overrides a builtin the gate's command substitutions call, for one path only.
+        cases = {
+            "home unreadable": (
+                'pwd() { case "$PWD" in */.agents/*) builtin pwd "$@" ;; *) return 1 ;; esac; }',
+                "cannot resolve the physical path of",
+            ),
+            "skill unreadable": (
+                'pwd() { case "$PWD" in */zz-last) return 1 ;; *) builtin pwd "$@" ;; esac; }',
+                "cannot resolve the physical path of",
+            ),
+            "cd fails": (
+                'cd() { case "$1$2$3" in *zz-last) return 1 ;; *) builtin cd "$@" ;; esac; }',
+                "cannot resolve the physical path of",
+            ),
+            "skill resolves elsewhere": (
+                'pwd() { case "$PWD" in */zz-last) printf "/elsewhere/zz-last\\n" ;; *) builtin pwd "$@" ;; esac; }',
+                "resolves to /elsewhere/zz-last",
+            ),
+        }
+        for label, (prelude, message) in cases.items():
+            with self.subTest(case=label):
+                home = self.pstack_home(f"physical-{label.replace(' ', '-')}", shared)
+                failed = self.retire(home, prelude)
+                self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+                self.assertIn(message, failed.stderr)
+                self.assertEqual(
+                    ["identical", "zz-last"], sorted(os.listdir(home / ".agents/skills")), "nothing removed"
+                )
+        # The same harness without an injected failure removes both copies, so each case above failed at its gate.
+        home = self.pstack_home("physical-control", shared)
+        self.assertEqual(0, self.retire(home).returncode)
+        self.assertEqual([], os.listdir(home / ".agents/skills"))
+
     def retire_marketplace(self, home: Path) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["bash", "-c", f"source {UPDATER}; retire_marketplace_dev_workflows"],
@@ -311,6 +348,25 @@ class PstackAssetTest(unittest.TestCase):
                 self.assertNotEqual(0, failed.returncode)
                 self.assertIn("left unchanged", failed.stderr)
                 self.assertEqual(broken, marketplace.read_text())
+
+        # Numbers: an exact int survives the rewrite; one a float cannot hold, either way, refuses with the file kept.
+        big = {"name": "big", "weight": 123456789012345678901234567890, "ratio": 0.25}
+        marketplace.write_text(json.dumps({"name": "m", "plugins": [retired, big]}) + "\n")
+        exact = self.retire_marketplace(home)
+        self.assertEqual(0, exact.returncode, exact.stderr)
+        self.assertEqual([big], json.loads(marketplace.read_text())["plugins"])
+        self.assertIn("123456789012345678901234567890", marketplace.read_text())
+        for number in ("1e400", "-1e400", "1e-400"):
+            with self.subTest(number=number):
+                lossy = (
+                    '{"name": "m", "plugins": [{"name": "mryfmo-dev-workflows", "source": {"path": '
+                    f'"./plugins/mryfmo-dev-workflows", "source": "local"}}}}, {{"name": "x", "n": {number}}}]}}\n'
+                )
+                marketplace.write_text(lossy)
+                failed = self.retire_marketplace(home)
+                self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+                self.assertIn("left unchanged", failed.stderr)
+                self.assertEqual(lossy, marketplace.read_text())
         self.assertEqual(0, self.retire_marketplace(self.temp_dir / "fresh-host").returncode, "no marketplace yet")
 
     def check_pstack(self, home: Path, omp_listing: str | None) -> subprocess.CompletedProcess[str]:

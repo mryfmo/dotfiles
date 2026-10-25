@@ -1365,12 +1365,16 @@ function retire_shared_pstack_copies() {
 # @description
 #   The marketplace is a create_ seed: chezmoi writes it once and never again, so a host that has it keeps the entry
 #   U87 retired while .chezmoiremove deletes the plugin directory it points at. The step parses the file strictly
-#   (JSON only, no duplicate keys, no NaN or Infinity, a top-level object whose plugins is a list), removes exactly the
-#   entry named mryfmo-dev-workflows whose source is the local ./plugins/mryfmo-dev-workflows, keeps every other
-#   entry and key in its order, and replaces the file atomically with its mode kept. A file without that entry is
-#   not rewritten, so a second run changes nothing. An entry with that name and another source is kept and named.
-#   A missing file is nothing to do.
-# @exitcode 1 The file is a symlink, is not valid JSON of that shape, or cannot be rewritten; it is left unchanged.
+#   (JSON only, no duplicate keys, no NaN or Infinity, no number that overflows or underflows a float, a top-level
+#   object whose plugins is a list), removes exactly the entry named mryfmo-dev-workflows whose source is the local
+#   ./plugins/mryfmo-dev-workflows, keeps every other entry and key in its order, and replaces the file atomically
+#   with its mode kept. Before the replace, the new text is parsed again with every number read exactly
+#   (decimal.Decimal for fractions and exponents) and must equal the old file's exact parse minus the removed entry;
+#   any difference (a number the rewrite would change) refuses. A file without that entry is not rewritten, so a
+#   second run changes nothing. An entry with that name and another source is kept and named. A missing file is
+#   nothing to do.
+# @exitcode 1 The file is a symlink, is not valid JSON of that shape, holds a number the rewrite would change, or
+#   cannot be rewritten; it is left unchanged.
 #
 function retire_marketplace_dev_workflows() {
     local marketplace="${HOME}/.agents/plugins/marketplace.json"
@@ -1380,7 +1384,9 @@ function retire_marketplace_dev_workflows() {
         return 1
     fi
     python3 - "${marketplace}" << 'PY'
+import decimal
 import json
+import math
 import os
 import shutil
 import sys
@@ -1401,27 +1407,48 @@ def no_constant(name):
     raise ValueError(f"{name} is not JSON")
 
 
+def finite_float(text):
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError(f"{text} overflows a float")
+    return value
+
+
+def load(text, parse_float):
+    return json.loads(text, object_pairs_hook=unique_keys, parse_constant=no_constant, parse_float=parse_float)
+
+
 try:
     with open(path, encoding="utf-8") as handle:
-        data = json.loads(handle.read(), object_pairs_hook=unique_keys, parse_constant=no_constant)
+        text = handle.read()
+    data = load(text, finite_float)
+    exact = load(text, decimal.Decimal)
 except (OSError, UnicodeDecodeError, ValueError) as error:
     sys.exit(f"marketplace: cannot read {path} ({error}); left unchanged.")
 if not isinstance(data, dict) or not isinstance(data.get("plugins"), list):
     sys.exit(f"marketplace: {path} is not an object with a plugins list; left unchanged.")
-kept = []
-for entry in data["plugins"]:
+removed = set()
+for index, entry in enumerate(data["plugins"]):
     if isinstance(entry, dict) and entry.get("name") == RETIRED["name"]:
         if entry.get("source") == RETIRED["source"]:
+            removed.add(index)
             continue
         print(f"marketplace: kept {RETIRED['name']} in {path}: its source is not {RETIRED['source']}", file=sys.stderr)
-    kept.append(entry)
-if len(kept) == len(data["plugins"]):
+if not removed:
     sys.exit(0)
-data["plugins"] = kept
+data["plugins"] = [entry for index, entry in enumerate(data["plugins"]) if index not in removed]
+exact["plugins"] = [entry for index, entry in enumerate(exact["plugins"]) if index not in removed]
+new_text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+try:
+    same = load(new_text, decimal.Decimal) == exact
+except ValueError:
+    same = False
+if not same:
+    sys.exit(f"marketplace: removing the entry would change other values in {path}; left unchanged.")
 handle = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=os.path.dirname(path), delete=False)
 try:
     with handle:
-        handle.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        handle.write(new_text)
     shutil.copymode(path, handle.name)
     os.replace(handle.name, path)
 except OSError as error:

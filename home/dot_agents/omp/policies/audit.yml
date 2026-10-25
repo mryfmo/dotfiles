@@ -1,4 +1,4 @@
-# omp seat policy for the audit seat; the seat launcher passes it as
+# omp policy for the audit role; `scripts/orchestrator/omp-run.sh --role audit` passes it as
 # `--config ~/.agents/omp/policies/audit.yml`. Schema: `tools.approvalMode`
 # (src/tools/settings.ts:311-318), `tools.approval` (src/tools/settings.ts:295-305)
 # and `bash.patterns` (src/exec/settings.ts:134-145) of @oh-my-pi/pi-coding-agent
@@ -96,7 +96,7 @@ bash:
     - match: "*gh api* --input*"
       approval: deny
     # U6d (D-024-136): `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form
-    # included; the seat replies through `hcom-reply` below, which takes the identity from the launch.
+    # included; the audit writes its verdict to stdout and has no bus reply (U58).
     - match: "*hcom send*"
       approval: deny
     # The read-only git and gh commands an audit needs; an allow never rides a pipe or a redirect.
@@ -125,13 +125,6 @@ bash:
     - match: "gh run view *"
       approval: allow
     - match: "gh api repos/*"
-      approval: allow
-    # The one bus reply (hcom-audit SKILL): `hcom-reply <team> -- <line>` runs `hcom send` with the
-    # identity from `hcom list self name` and refuses any word but the team before `--`, so no `--name`,
-    # `--from` or `-b` comes from the model (README "Threat table"). An env prefix or a path is not this
-    # form and meets the catch-all. Quotes do not break the allow, but a `$` or a backtick inside double
-    # quotes does (src/tools/bash.ts:94-136), so the seat pastes the sha and never writes `$(...)`.
-    - match: "hcom-reply * -- *"
       approval: allow
     # Everything else is denied.
     - match: "*"

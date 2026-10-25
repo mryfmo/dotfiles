@@ -89,7 +89,7 @@ ORCHESTRATOR_LEVERS = [
     f"{LEVER}records-sync.sh --program regime-cutover --unit U20",
 ]
 BODY_EDIT = f"{LEVER}pr-body-edit.sh --body-file /tmp/body.md"
-# The audit seat's reply line (hcom-audit SKILL); it goes on the thread route through `hcom-reply` (U6d).
+# A verdict line, the text the audit seat once sent on the bus; the audit run now has no bus reply in any form (U58).
 VERDICT = "VERDICT v1 task_id=U11-pilot verdict=correct head=c67d4d0b63b62cf7b38ef7eff1c516b1d052abd6"
 EVERY_SEAT = [
     ("bash", "XDG_CACHE_HOME=x gh pr merge 1", "deny"),
@@ -135,12 +135,6 @@ TABLE = {
         ("bash", "curl -s https://x | shasum -a 256", "allow"),
         ("bash", "scripts/orchestrator/chain-integrate.sh t 1 . w o", "allow"),
         ("bash", "gh pr view 1 --json headRefOid", "allow"),
-        # U9d/U6c: the orchestrator positions the audit seat's worktree at hcom's `directory` for it (SKILL step 4).
-        (
-            "bash",
-            'd=$(hcom list audit-tuba directory) && git -C "$d" fetch origin fix/x && git -C "$d" switch --detach abc',
-            "allow",
-        ),
         # U57: the audit is one fresh omp-run.sh per head, run by the orchestrator on its own worktree (SKILL step 4).
         ("bash", "git worktree add --detach /tmp/audit-U1-abc abc", "allow"),
         (
@@ -235,21 +229,11 @@ TABLE = {
         ("bash", "gh pr create --title t", "deny"),
         ("bash", "uv run --no-project -m pytest -q", "deny"),
         ("bash", "echo hi", "deny"),
-        # U6d: the reply goes through `hcom-reply`, which takes the identity from `hcom list self name`;
-        # `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form included.
-        ("bash", f"hcom-reply regime -- '{VERDICT}'", "allow"),
-        ("bash", f'hcom-reply regime -- "{VERDICT} findings=0"', "allow"),
-        ("bash", "hcom-reply regime -- 'PONG v1 task_id=U11-audit status=blocked note=x'", "allow"),
-        ("bash", f"hcom-reply regime -- '{VERDICT}' | tee x", "deny"),
-        ("bash", f"hcom-reply regime -- '{VERDICT}'; rm x", "deny"),
-        (
-            "bash",
-            'hcom-reply regime -- "VERDICT v1 task_id=U11-audit verdict=correct head=$(git rev-parse HEAD)"',
-            "deny",
-        ),
-        # An env prefix or a path is not the allowed form.
-        ("bash", f"HCOM_DIR=x hcom-reply regime -- '{VERDICT}'", "deny"),
-        ("bash", f"~/.local/bin/common/hcom-reply regime -- '{VERDICT}'", "deny"),
+        # U58: the audit is one omp-run.sh per head and answers on stdout, so `hcom-reply`, the retired seat's bus
+        # reply, meets the catch-all; `hcom send` is denied in every form, hcom's own `--name <its name>` prompt form
+        # included (U6d).
+        ("bash", f"hcom-reply regime -- '{VERDICT}'", "deny"),
+        ("bash", "hcom-reply regime -- 'PONG v1 task_id=U11-audit status=blocked note=x'", "deny"),
         ("bash", f"hcom send --thread regime -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send @operator --intent ack --reply-to 26 --thread regime --name vera -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --from coordinator -- '{VERDICT}'", "deny"),
@@ -260,12 +244,12 @@ TABLE = {
             "deny",
         ),
         # D-024-136: a caller-chosen `--name worker-soma` is recorded with sender `soma` (bus row 84) and
-        # stop-gate.ts trusts `from`, so the seat that reads pull-request content gets no `--name` at all.
+        # stop-gate.ts trusts `from`, so the role that reads pull-request content gets no `--name` at all.
         ("bash", f"hcom send --thread regime --name worker-soma -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime --intent ack --name worker-soma -- '{VERDICT}'", "deny"),
         ("bash", f"hcom send --thread regime -b -- '{VERDICT}'", "deny"),
         ("bash", "hcom kill audit-vera", "deny"),
-        # U9d: the audit seat cannot move its own worktree.
+        # U9d: the audit cannot fetch or move the worktree it reads.
         ("bash", "git fetch origin main", "deny"),
         ("bash", "git switch --detach abc", "deny"),
         ("edit", None, "deny"),

@@ -423,7 +423,7 @@ and task texts run on the `review` profile, the same model and effort as
 `deep` in a fresh context (INV-7). The auditor uses the
 `audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
 sandbox)
-for one independent task-level audit of each final head, run as the `hcom-audit` SKILL describes. The responsibility
+for one independent task-level audit of each final head, run as one fresh `scripts/orchestrator/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/regime.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
@@ -591,9 +591,10 @@ domains, and protected paths.
 ### Start here: the omp seats
 
 The coordinator is one omp seat, the orchestrator, and you talk to it in its
-herdr pane. It starts the worker and audit seats itself, relaunches a seat that
-died, and runs the program loop (the `hcom-orchestration` skill). A Claude Code
-session is optional and not part of the loop.
+herdr pane. It starts the worker seats itself, relaunches a seat that died, runs
+each audit as one fresh `omp-run.sh --role audit` run, and runs the program loop
+(the `hcom-orchestration` skill). A Claude Code session is optional and not part
+of the loop.
 
 1. `make update` on the host. It installs the levers under
    `~/.local/bin/common`, the seat policies and the skills.
@@ -976,7 +977,7 @@ The hcom regime runs in any git repository on this host, not only in this one. T
 1. On the host, once: `make update` in this repository. It installs the levers, the `~/.agents/regime/` templates, the omp policies, profiles and skills.
 2. In the other repository's checkout: `regime-init <program> --write-agents`. It creates `.orchestration/orchestrate/<program>/`, holding `preferences.md` (the standing orders) and empty `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md`. It writes `~/.local/state/hcom/<slug>/origin`, and it appends the audit section to `AGENTS.md` unless one is there. A second run changes nothing.
 3. Review the AGENTS.md audit section it wrote, and add the program's own rules below it. Commit the store and `AGENTS.md` like any other change.
-4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, `hcom-seat audit`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker and audit seats get worktrees under `~/.local/state/omp-seats/<slug>/`.
+4. Start the seats from the checkout: `hcom-seat orchestrator`, `hcom-seat worker`, then `HCOM_DIR=~/.local/state/hcom/<slug> hcom list -v` for their names (`regime-init` prints that line with the store in effect; hcom reads only `HCOM_DIR`, which the levers export to their own children, so a plain `hcom list -v` in your shell shows the default store). Each seat gets the derived `HCOM_DIR` and `HCOM_TEAM`, and the worker seats get worktrees under `~/.local/state/omp-seats/<slug>/`. There is no audit seat: the orchestrator runs each audit as one fresh `omp-run.sh --role audit` run.
 5. Kick off the program: `hcom-dispatch <slug> operator orchestrator-<word> - "TASK v1 task_id=O1 brief=<absolute path of the program brief>"`.
 
 A seat inherits `HCOM_DIR` and `HCOM_TEAM` from its launch, and an explicit value wins over the derivation, so from inside a seat (the orchestrator seat, say) run another repository's `regime-init`, `hcom-seat` and `hcom-dispatch` as `env -u HCOM_DIR -u HCOM_TEAM <command>`; otherwise its seats join the inheriting seat's store and team. What stays per host: the logins (the Claude Code login the bridge seat uses, `/login openai-siwc` in the audit-side omp profiles), the omp profiles and policies, and the levers themselves. A second checkout with the same basename is refused by `regime-init` and the levers; set `HCOM_DIR` and `HCOM_TEAM` explicitly for it.

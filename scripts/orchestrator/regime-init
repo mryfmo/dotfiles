@@ -189,7 +189,7 @@ listing=$(printf 'HCOM_DIR=%q hcom list -v' "${HCOM_DIR}") || refuse 'cannot for
 cat << EOF
 
 Next, in ${checkout}:
-  hcom-seat orchestrator; hcom-seat worker; hcom-seat audit
+  hcom-seat orchestrator; hcom-seat worker
   ${listing}
   hcom-dispatch ${HCOM_TEAM} operator orchestrator-<word> - "TASK v1 task_id=O1 brief=<absolute path of the program brief>"
 From inside a seat, which inherits HCOM_DIR and HCOM_TEAM from its launch, unset both first

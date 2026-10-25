@@ -46,7 +46,7 @@ class RegimeStartTest(unittest.TestCase):
         self.temp = Path(tempfile.mkdtemp(prefix="regime-start-")).resolve()
         self.addCleanup(shutil.rmtree, self.temp, True)
         self.home = self.temp / "home"
-        for role in ("orchestrator", "worker", "audit"):
+        for role in ("orchestrator", "worker"):
             for kind, body in (("policies", "tools: {}\n"), ("profiles", "modelRoles: {}\n")):
                 path = self.home / f".agents/omp/{kind}/{role}.yml"
                 path.parent.mkdir(parents=True, exist_ok=True)

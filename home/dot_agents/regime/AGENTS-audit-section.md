@@ -1,6 +1,6 @@
 ## Audit
 
-Standing review rules for the auditor: the audit seat's review of a unit's final head (`hcom-audit` skill, read-only, a fresh context). The program's standing orders are `.orchestration/orchestrate/<program>/preferences.md`; its records are `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md` beside it.
+Standing review rules for the auditor: one fresh `omp-run.sh --role audit` run per unit's final head (`hcom-orchestration` skill, step 4; read-only). The auditor's rules are this file as it stands on `origin/main`, which `omp-run.sh` puts in the prompt; the head's own copy is part of the changeset under review and never binds its audit. The program's standing orders are `.orchestration/orchestrate/<program>/preferences.md`; its records are `units.tsv`, `ledger.tsv`, `decisions.tsv` and `gates.md` beside it.
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
 - Cover:

@@ -149,7 +149,6 @@ class HcomSeatTest(unittest.TestCase):
         for role, name, directory, exts in (
             ("orchestrator", "orchestrator", str(self.repo.resolve()), (self.bridge, self.siwc)),
             ("worker", "worker-2", f"{self.seats}/worker-2", (self.bridge, self.siwc)),
-            ("audit", "audit", f"{self.seats}/audit", (self.siwc, self.bridge)),
         ):
             with self.subTest(role=role):
                 run = self.seat(role, "--name", name, "--seats-root", self.seats, "--dry-run")
@@ -165,10 +164,11 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(
             shlex.split(run.stdout), self.launch_line("worker", "worker", f"{self.seats}/worker", self.bridge)
         )
-        run = self.seat("audit", "--seats-root", self.seats, "--ext", str(self.bridge), "--dry-run")
+        self.siwc.mkdir(parents=True)
+        run = self.seat("worker", "--seats-root", self.seats, "--ext", str(self.siwc), "--dry-run")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(
-            shlex.split(run.stdout), self.launch_line("audit", "audit", f"{self.seats}/audit", self.bridge)
+            shlex.split(run.stdout), self.launch_line("worker", "worker", f"{self.seats}/worker", self.siwc)
         )
 
     def test_an_extension_outside_the_allow_list_is_refused_before_launch(self):
@@ -359,12 +359,13 @@ class HcomSeatTest(unittest.TestCase):
         self.assertEqual(self.calls_of("hcom"), [])
 
     def test_refusals_exit_2_before_anything_is_created_or_started(self):
-        (self.policies / "audit.yml").unlink()
-        (self.profiles / "orchestrator.yml").unlink()
+        (self.policies / "orchestrator.yml").unlink()
         outside = Path(self.temp.name) / "outside"
         outside.mkdir()
         for label, args, overrides, cwd in (
             ("unknown role", ["reviewer"], {}, None),
+            # U58: the audit is one omp-run.sh per head, never a seat, though its overlays stay installed for omp-run.
+            ("the audit is no seat", ["audit"], {}, None),
             ("no role", [], {}, None),
             ("bad name", ["worker", "--name", "Worker/1"], {}, None),
             ("bad team", ["worker"], {"HCOM_TEAM": "Bad Team"}, None),
@@ -372,15 +373,20 @@ class HcomSeatTest(unittest.TestCase):
             ("unknown flag", ["worker", "--pane", "w1"], {}, None),
             ("HCOM_DIR unset outside a checkout", ["worker"], {"HCOM_DIR": None}, outside),
             ("hcom absent", ["worker"], {"PATH": "/usr/bin:/bin"}, None),
-            ("policy overlay absent", ["audit"], {}, None),
-            ("profile overlay absent", ["orchestrator"], {}, None),
-            ("required extension absent", ["audit", "--ext", str(self.home / "nowhere")], {}, None),
+            ("policy overlay absent", ["orchestrator"], {}, None),
+            ("required extension absent", ["worker", "--ext", str(self.home / "nowhere")], {}, None),
             ("outside a checkout", ["worker"], {}, outside),
         ):
             with self.subTest(label):
                 run = self.seat(*args, "--seats-root", self.seats, cwd=cwd, **overrides)
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertTrue(run.stderr.startswith("hcom-seat: "), run.stderr)
+        self.assertIn("unknown role 'audit'; expected orchestrator or worker", self.seat("audit", "--dry-run").stderr)
+        (self.policies / "orchestrator.yml").write_text("tools: {}\n")
+        (self.profiles / "orchestrator.yml").unlink()
+        run = self.seat("orchestrator", "--seats-root", self.seats)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("profile overlay absent", run.stderr)
         shutil.rmtree(self.bridge)
         run = self.seat("worker", "--seats-root", self.seats)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)

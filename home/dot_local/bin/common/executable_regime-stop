@@ -11,7 +11,7 @@
 #   the store regime-start would choose (an explicit HCOM_DIR and HCOM_TEAM, the dotfiles pre-move pair, else
 #   regime-env), and a store whose `origin` names another checkout is refused. A seat's worktree and branch stay; a
 #   later `regime-start` starts the program again.
-# @option --all Also stop the workers and the audit seat of the store.
+# @option --all Also stop the worker seats of the store.
 # @stdout One line per seat stopped, or that none was alive.
 # @exitcode 0 Stopped, or nothing was alive.
 # @exitcode 1 An hcom kill failed (the registration is already removed).

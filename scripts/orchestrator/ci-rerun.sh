@@ -22,8 +22,9 @@
 #   directory named shims in any letter case, as found or as resolved. An answer (captured with its own trailing
 #   newlines), link or directory whose path holds a control character is refused too; otherwise the script exits 1.
 #   Only the checked physical file is ever run: all but python3 are linked by it into a private directory, created
-#   under TMPDIR when it is absolute and has no ':', else /tmp, then used only by its physical path, which must be this
-#   user's with mode 0700 (removed on exit and on HUP, INT or TERM), and PATH becomes those links then /usr/bin:/bin.
+#   under TMPDIR when it is absolute and has no ':', else /tmp, then used only by its physical path, which must have no
+#   ':' either (else exit 1) and be this user's with mode 0700 (removed on exit and on HUP, INT or TERM), and PATH
+#   becomes those links then /usr/bin:/bin.
 #   python3 is always started by its physical path, never a link (CPython reads a pyvenv.cfg beside and above the
 #   path it starts by), as `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i
 #   from the root, so no checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or
@@ -113,12 +114,14 @@ function is_shim() {
 }
 
 # The caller's spelling of TMPDIR may pass through a link it can retarget once mktemp is done, so PATH, the links and
-# the cleanup use only the physical directory.
-if ! physical_bin=$(physical_dir "${bin}"); then
-    echo "ci-rerun: cannot resolve the private directory ${bin}" >&2
+# the cleanup use only the physical directory; a colon-free spelling can still resolve to a path with a ':', which
+# would split PATH again, so the rule is applied to the physical path.
+physical_bin=$(physical_dir "${bin}") || physical_bin=''
+[[ -z ${physical_bin} ]] || bin=${physical_bin}
+if [[ ${physical_bin} != /* || ${physical_bin} == *:* ]]; then # lint-comparisons: allow an absolute-path and ':' content test
+    echo "ci-rerun: the private directory ${bin} has no physical path that is absolute, without ':' or control characters" >&2
     exit 1
 fi
-bin=${physical_bin}
 private=$(/usr/bin/find "${bin}" -maxdepth 0 -perm 0700) || private=''
 if ! [[ -n ${private} && -d ${bin} && ! -L ${bin} && -O ${bin} ]]; then
     trap - EXIT # not this run's directory: leave it alone

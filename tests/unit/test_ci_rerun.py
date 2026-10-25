@@ -526,6 +526,19 @@ class CiRerunTest(unittest.TestCase):
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
                 self.assertEqual(1, len(self.reruns()))
+        # Audit on 04cb7e2b: a colon-free TMPDIR that is a link can resolve to a physical path with '::', which split
+        # PATH into the planted directory and the cwd once the private directory was used by its physical path.
+        resolved = Path(f"{planted}::x")
+        resolved.mkdir()
+        (self.t / "tmplink").symlink_to(resolved)
+        self.reset()
+        marker.unlink(missing_ok=True)
+        result = self.finish(self.start("101", cwd=checkout, TMPDIR=str(self.t / "tmplink")))
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("has no physical path that is absolute, without ':'", result.stderr)
+        self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertEqual([], self.entries())
+        self.assertEqual([], list(resolved.iterdir()))
 
     def test_ci_rerun_removes_its_private_directory_when_signalled(self):
         # Audit P3 on d6521941: an EXIT-only trap is skipped when the shell dies of a signal.

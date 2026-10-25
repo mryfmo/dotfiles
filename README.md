@@ -1107,16 +1107,15 @@ The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/m
 
 ### 🔭 Drift watch [![drift-watch](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml)
 
-[`scripts/drift-watch.py`](scripts/drift-watch.py) reports what has aged in this tree against public upstream metadata. No LLM and no host state are involved:
+[`scripts/drift-watch.py`](scripts/drift-watch.py) reports what has aged in this tree. It reads only GitHub's public API (api.github.com); no LLM and no host state are involved:
 
 - **runner-image**: a runner label in `.github/workflows` whose image an [actions/runner-images](https://github.com/actions/runner-images/issues?q=label%3AAnnouncement) announcement deprecates or retires.
-- **mise-pin**: an exact version in `home/dot_mise/config.toml` behind the newest stable release that is at least `minimum_release_age` old (72h, read from the same file).
-- **manifest-pin**: a `pin` or `fallback.pin` in `home/dot_agents/agent-config.yaml` behind upstream under the same window. A git-commit pin counts as behind when the default branch has commits past it that are older than the window.
-- **plugin-pin**: a Claude or Codex plugin pin that differs from the `plugin.json` version its marketplace serves now.
+- **mise-pin** and **manifest-pin**: an exact version in `home/dot_mise/config.toml`, or a `pin` or `fallback.pin` in `home/dot_agents/agent-config.yaml`, whose releases are on GitHub and that is behind the newest stable GitHub release at least `minimum_release_age` old (72h, read from the mise config).
+- **plugin-pin**: a Claude or Codex plugin pin that differs from the version its marketplace serves now, both its catalog entry and its `plugin.json`.
 - **unrecorded**: a `pin: unknown`.
 - **retired-term**: each hit of the retired-term lint, `scripts/lint-retired-terms.py`, once the tree has it.
 
-A pin whose upstream it cannot read is listed under "Not watched". A failed upstream read is listed under "Read failures" and never counts as current.
+Every other pin is listed under "Not watched" with the reason `no strict upstream parser in scope`. That covers npm, PyPI, nodejs.org, python.org, gcloud, git-commit, installer-script and vendored pins. A failed or malformed upstream read is listed under "Read failures" and never counts as current.
 
 ```shell
 # Print the report: exit 0 means no drift, 3 means drift, 4 means an upstream read failed.

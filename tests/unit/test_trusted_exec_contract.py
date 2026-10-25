@@ -338,25 +338,58 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         return base
 
     def test_a_consumer_thread_reading_during_the_probe_check_is_recorded(self):
-        # The probe's own content read is excluded for its thread and that read only: a consumer thread opening the
-        # input while the check runs is a read.
         import threading
 
         probe = self.worker_root_probe()
-        real = Path.read_bytes
+        real = os.pread
 
-        def read_bytes_with_a_consumer_thread(path):
-            if path == probe.input:
-                consumer = threading.Thread(target=lambda: Path(probe.input).read_text(), name="consumer")
-                consumer.start()
-                consumer.join()
-            return real(path)
+        def pread_with_a_consumer_thread(fd, length, offset):
+            consumer = threading.Thread(target=lambda: Path(probe.input).read_text(), name="consumer")
+            consumer.start()
+            consumer.join()
+            return real(fd, length, offset)
 
-        with mock.patch.object(Path, "read_bytes", read_bytes_with_a_consumer_thread):
+        with mock.patch.object(tec.os, "pread", pread_with_a_consumer_thread):
             with self.assertRaisesRegex(AssertionError, r"worker root: read .* in thread consumer"):
                 probe.assert_untouched()
-        probe.reads.clear()
-        probe.assert_untouched()  # and the check's own reads, in its own thread, are not reads
+
+    def test_a_read_nested_in_another_audit_callback_is_recorded(self):
+        # Audit of 6c74c57c: a thread-local self-exclusion hid every open nested in the probe's own read. There is no
+        # exclusion now: a hook that reads the input from inside another open's audit callback is a read.
+        probe, armed = self.worker_root_probe(), {"on": True}
+        output = os.fspath(probe.output)
+
+        def reentrant(event, args):
+            if armed["on"] and event == "open" and os.fspath(args[0]) == output:
+                armed["on"] = False
+                Path(probe.input).read_bytes()
+
+        sys.addaudithook(reentrant)  # permanent; inert once disarmed
+        self.addCleanup(armed.update, on=False)
+        Path(probe.output).read_bytes()
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+
+    def test_the_probe_check_itself_opens_nothing(self):
+        # So there is nothing to exclude: every open of the input while the watch is armed is a consumer's.
+        probe, opens, armed = self.worker_root_probe(), [], {"on": False}
+        sys.addaudithook(lambda event, args: opens.append(args[0]) if armed["on"] and event == "open" else None)
+        armed["on"] = True
+        try:
+            probe.assert_untouched()
+            probe.assert_untouched()
+        finally:
+            armed["on"] = False
+        self.assertEqual([], opens)
+
+    def test_a_failed_setup_leaves_no_watch_and_no_descriptor(self):
+        fds = lambda: len(os.listdir("/dev/fd"))
+        before_watch, before_fds = dict(tec._WATCHED), fds()
+        with mock.patch.object(tec, "open", side_effect=PermissionError(13, "denied"), create=True):
+            with self.assertRaises(PermissionError):
+                tec.WorkerRoot(self.scratch("trusted-exec-selftest-"))
+        self.assertEqual(before_watch, tec._WATCHED)
+        self.assertEqual(before_fds, fds())
 
     def test_an_open_that_cannot_be_classified_fails_the_probe(self):
         # Only a missing path means "not the input" (a create); any other stat failure is not a pass.

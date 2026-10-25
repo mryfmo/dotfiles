@@ -19,7 +19,6 @@ SAFE_PATH = "/usr/bin:/bin"
 LEGIT, ATTACKER = "legitimate\n", "attacker\n"
 BASELINE_NS, NFS = 10**18, "NFSHomeDirectory:"  # a fixed past mtime (2001): a write at any later clock tick moves it
 _WATCHED = {}  # (st_dev, st_ino) -> the WorkerRoot whose input it is, while that probe is alive
-_OWN = threading.local()  # .probe: the WorkerRoot whose own content read this thread is making, for that read only
 QUIET = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 HOSTILE_GIT_ENV = ("GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CEILING_DIRECTORIES")
 HOSTILE_GIT_ENV += ("GIT_ALTERNATE_OBJECT_DIRECTORIES",)
@@ -124,7 +123,7 @@ def _open_audit(event, args):
             probe.errors.append(f"cannot tell whether an open of {path!r} read the input: os.stat failed: {error!r}")
         return
     probe = _WATCHED.get((st.st_dev, st.st_ino))
-    if probe is not None and getattr(_OWN, "probe", None) is not probe:
+    if probe is not None:  # no exceptions: the probe itself never opens its input once the watch is armed
         probe.reads.append(f"{os.fsdecode(path)} in thread {threading.current_thread().name}")
 
 
@@ -154,46 +153,59 @@ class WorkerRoot:
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.reads, self.errors = [], []
+        self.reads, self.errors, self._fds, self._key = [], [], {}, None
         if _HOOK_ERROR is not None:
             raise RuntimeError(f"the open audit hook could not be added ({_HOOK_ERROR!r}), so reads are not observable")
         for path in (self.input, self.output):
             path.write_text(LEGIT)
             os.utime(path, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
-        st = os.stat(self.input)
-        self._key = (st.st_dev, st.st_ino)
-        _WATCHED[self._key] = self
-        # Self-test: the hook must record a read of the input made here, or no read is observable at all.
-        with open(self.input, "rb"):
-            pass
-        recorded, self.reads[:] = list(self.reads), []
-        if len(recorded) != 1:
+        try:
+            # The probe's own descriptors, opened before the watch is armed: the check reads through them (os.pread
+            # and os.fstat raise no `open` event), so every open of the input once armed is a consumer read.
+            for path in (self.input, self.output):
+                self._fds[path] = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            st = os.fstat(self._fds[self.input])
+            self._key = (st.st_dev, st.st_ino)
+            _WATCHED[self._key] = self
+            # Self-test: the hook must record a read of the input made here, or no read is observable at all.
+            with open(self.input, "rb"):
+                pass
+            recorded, self.reads[:] = list(self.reads), []
+            if len(recorded) != 1:
+                raise RuntimeError(f"the open audit hook did not record the probe's self-test read ({recorded!r})")
+        except BaseException:
             self.close()
-            raise RuntimeError(f"the open audit hook did not record the probe's self-test read ({recorded!r})")
+            raise
 
     def close(self):
-        if _WATCHED.get(self._key) is self:
+        """Disarm the watch and close the probe's descriptors; safe to call more than once."""
+        if self._key is not None and _WATCHED.get(self._key) is self:
             del _WATCHED[self._key]
+        while self._fds:
+            os.close(self._fds.popitem()[1])
+
+    def _content(self, path):
+        fd, chunks, offset = self._fds[path], [], 0
+        while chunk := os.pread(fd, 1 << 16, offset):
+            chunks.append(chunk)
+            offset += len(chunk)
+        return b"".join(chunks)
 
     def assert_untouched(self):
         """Nothing in this process opened the input for reading; nothing wrote, replaced or removed either file, or
         created the new output's directory. The content is compared too, since a write in place can keep the inode,
-        the size and a coarse clock's mtime. Reads are collected last, so one another thread makes during this check
-        is reported; only this thread's own content read is excluded, and only while it is being made."""
+        the size and a coarse clock's mtime. The probe reads through the descriptors it opened before arming, so the
+        check itself opens nothing and a read anyone makes during it, in any thread or nested hook, is reported."""
         found = []
         for path, identity in self._identity.items():
             if not os.path.lexists(path):
                 found.append(f"removed {path}")
                 continue
             st = os.lstat(path)
-            content = b""
-            if (st.st_ino, st.st_mode) == identity:  # the same regular file only
-                _OWN.probe = self
-                try:
-                    content = path.read_bytes()
-                finally:
-                    _OWN.probe = None
+            held = os.fstat(self._fds[path])
+            same = (st.st_ino, st.st_mode) == identity and (st.st_dev, st.st_ino) == (held.st_dev, held.st_ino)
+            content = self._content(path) if same else b""  # the same regular file only
             if ((st.st_ino, st.st_mode), st.st_mtime_ns, content) != (identity, BASELINE_NS, LEGIT.encode()):
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []

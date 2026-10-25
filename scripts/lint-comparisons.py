@@ -7,12 +7,15 @@ accepts; paths as git ls-files prints). In an unchanged file both are warnings. 
 `git diff --name-only --no-renames origin/main...HEAD`'s (a rename changes both paths); --all prints every hit and
 stale row and exits 0. Shell is read only from shfmt's JSON AST (`-ln zsh` for zsh, else bash): a missing shfmt, a parse
 failure or output that is no JSON refuses, and nothing stands in for the parser. A command is read at command position,
-after its leading assignments and the known WRAPPERS (their options, option values, `--` and operands): an unknown
-wrapper hides the command after it, accepted for precision, so a data argument (`printf '%s' jq "…"`) is never read as
-a command. A shell's -c string and eval's arguments are shell code: they are parsed again, every rule reads them, and
-their hits are reported on the outer lines; an expansion the outer shell performs is an unknown value there, whatever
-quoting the nested text puts around it. Options and command names are read from a word's literal text after the
-shell joins its fragments (`''-i` is `-i`)."""
+after its leading assignments and the known WRAPPERS, whose option grammar is not modelled (resolve): past a wrapper,
+option words, a word after one and NAME=value or duration operands are skipped up to the first word that names a
+command a rule reads, a wrapper or a DATA command. An unknown wrapper hides the command after it, accepted for
+precision, so a data argument (`printf '%s' jq "…"`, `command -v jq`) is never read as a command; the residual is an
+unrecognised command right after a wrapper option (`nice -n5 cat jq …`), read as that option's value. A shell's -c
+string, eval's arguments and env -S's string are shell code: they are parsed again, every rule reads them, and their
+hits are reported on the outer lines; an expansion the outer shell performs is an unknown value there, whatever quoting
+the nested text puts around it. Options and command names are read from a word's literal text after the shell joins its
+fragments (`''-i` is `-i`)."""
 
 import argparse
 import ast
@@ -59,25 +62,17 @@ ANSI_ESC = re.compile(
     r"\\(?:([0-7]{1,3})|x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|U([0-9A-Fa-f]{1,8})|c(.)|(.))", re.DOTALL
 )
 JQ_SKIP = {"--arg": 2, "--argjson": 2, "--slurpfile": 2, "--rawfile": 2, "--indent": 1, "-L": 1, "--library-path": 1}
-# commands that run the rest of their words as a command, each with its options that take the next word as a value
-WRAPPERS = {
-    "command": set(),
-    "builtin": set(),
-    "exec": {"-a"},
-    "env": {"-u", "-C", "-P", "-S", "--unset", "--chdir", "--split-string"},
-    "nice": {"-n", "--adjustment"},
-    "nohup": set(),
-    "timeout": {"-s", "-k", "--signal", "--kill-after"},
-    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
-    "time": {"-f", "-o", "--format", "--output"},
-    "sudo": {"-u", "-g", "-h", "-p", "-r", "-t", "-C", "-D", "-T", "-U", "--user", "--group", "--host", "--prompt"},
-    "xargs": {"-I", "-a", "-d", "-E", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter", "--max-args"},
-}
-# a wrapper's positional operand before the command: env's and sudo's NAME=value, timeout's duration
+# commands that run the rest of their words as a command; their option grammar is not modelled (see resolve)
+WRAPPERS = ("command", "builtin", "exec", "env", "nice", "nohup", "timeout", "stdbuf", "time", "sudo", "xargs")
+# a wrapper's operand before the command that follows no option: env's and sudo's NAME=value, timeout's duration
 WRAPPER_OPERAND = re.compile(r"[A-Za-z_]\w*=.*|\d+(\.\d+)?[smhd]?", re.DOTALL)
 JQ_NAME = re.compile(r"jq([-._][A-Za-z0-9._-]*)?(\.exe)?")  # jq, jq-1.7, jq-linux64, jq.exe
 GREPS = ("pgrep", "grep", "egrep")
 SHELLS = ("bash", "sh", "zsh", "dash", "ksh", "mksh")
+SHELL_VALUE = ("--rcfile", "--init-file", "--emulate")  # a shell's long options that take the next word
+COMMANDS = ("[", "test", "fgrep", "ps", "eval", *GREPS, *SHELLS)  # the commands a rule reads, besides jq
+# commands whose arguments are data (printed, or names looked up), never a command: a wrapper's words end there
+DATA = ("echo", "printf", "print", "type", "which", "hash", "whence")
 NORM = {"R1": SH_NORM, "R2": SH_NORM, "R6": "escape_regex"}  # the normaliser that accepts a rule's hit, if any
 LITS = ("Lit", "SglQuoted", "ExtGlob")  # the word parts that are literal text
 OUTER = re.compile(r"lintcmpX(\w*?)Xpmctnil")  # spelled()'s token: an outer expansion inside a nested string
@@ -205,18 +200,38 @@ def option(word, signs="-"):  # a literal option: the word's text starts with on
     return bool(first) and first[0]["Type"] in LITS and static(word)[:1] in signs
 
 
-def command(call):  # a CallExpr's words and argument nodes from its command word on, past the WRAPPERS, their
-    # options, the values those options take and their positional operands
-    args, i = call.get("Args") or [], 0
-    while i < len(args) and os.path.basename(static(args[i])) in WRAPPERS:
-        takes, i = WRAPPERS[os.path.basename(static(args[i]))], i + 1
-        while i < len(args) and option(args[i]):
-            flag, i = static(args[i]), i + 1
-            if flag == "--":
+def resolve(args):  # (index of the command word, env -S's command line as (word, literal prefix length) or None).
+    # Past a known wrapper, its option grammar is not modelled: an option word is skipped, and so is a word after one
+    # (its value, as in env -iu HOME or sudo --chdir /x) or an operand (NAME=value, a duration), unless the word names
+    # a command a rule reads, a wrapper or a DATA command; command -v and -V only look names up, so they run nothing
+    i = 0
+    while i < len(args) and (wrapper := os.path.basename(static(args[i]))) in WRAPPERS:
+        at, i, value = i, i + 1, False
+        while i < len(args):
+            word = static(args[i])
+            if option(args[i]):
+                if wrapper == "command" and re.fullmatch(r"-[A-Za-z]*[vV][A-Za-z]*", word):
+                    return at, None  # the words from `command` on: no rule reads them
+                split = wrapper == "env" and re.fullmatch(r"--split-string(?:=(.*))?|-[A-Za-z]*S(.*)", word, re.DOTALL)
+                if split:  # env -S STRING, -iS STRING, -SSTRING, --split-string[=]STRING: a command line
+                    rest = split[1] if word.startswith("--") else split[2]
+                    if rest:
+                        return len(args), (args[i], len(word) - len(rest))
+                    return len(args), ((args[i + 1], 0) if i + 1 < len(args) else None)
+                i, value = i + 1, word != "--"
+                continue
+            name = os.path.basename(word)
+            if name in WRAPPERS or name in COMMANDS or name in DATA or is_jq(args[i]):
                 break
-            i += flag in takes
-        while i < len(args) and WRAPPER_OPERAND.fullmatch(static(args[i])):
-            i += 1
+            if not (value or WRAPPER_OPERAND.fullmatch(word)):
+                break
+            i, value = i + 1, False
+    return i, None
+
+
+def command(call):  # a CallExpr's words and argument nodes from its command word on, past the known WRAPPERS
+    args = call.get("Args") or []
+    i = resolve(args)[0]
     return [static(a) for a in args[i:]], args[i:]
 
 
@@ -349,7 +364,9 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
         cmd, lo, hi = stmt["Cmd"], top["Pos"]["Line"], top["End"]["Line"]
         if not isinstance(cmd, dict):
             continue
-        t, (words, args), at = cmd.get("Type"), command(cmd), cmd["Pos"]["Line"]
+        call = (cmd.get("Args") or []) if cmd.get("Type") == "CallExpr" else []
+        start, split = resolve(call)
+        t, words, args, at = cmd.get("Type"), [static(a) for a in call[start:]], call[start:], cmd["Pos"]["Line"]
         tests = [n for n in nodes(cmd) if n.get("Type") == "BinaryTest" and n["Op"] in ("==", "!=", "=")]
         if t == "TestClause" and any(operand(n["X"]) or operand(n["Y"]) for n in tests):
             hits.append((at, "R1", accepted(lo, hi, SH_NORM)))
@@ -393,8 +410,10 @@ def shell_hits(rel, text, zsh=None, label=None):  # (hits, comments): the shell 
                 hits.extend((lines[p], "R3", ok or accepted(lo, hi)) for p, ok in found)
                 break
         nested, nested_zsh = executed(words, args) if t == "CallExpr" else ([], False)
+        if split:  # env -S: its string is a command line, read past its option prefix when attached (-SSTRING)
+            nested, nested_zsh = [split[0]], False
         if nested:  # the nested hits land on the outer lines their text came from
-            text_lines = shell_text(nested)
+            text_lines = shell_text(nested)[split[1] if split else 0 :]
             starts = [0] + [k + 1 for k, (c, _) in enumerate(text_lines) if c == "\n"]
             where = [text_lines[min(s, len(text_lines) - 1)][1] if text_lines else at for s in starts]
             inner, inner_note = shell_hits(rel, "".join(c for c, _ in text_lines), nested_zsh, f"{rel}:{at}")
@@ -415,14 +434,15 @@ def executed(words, args):  # (the words a command runs as shell code, zsh): a s
     if name not in SHELLS:
         return [], False
     i, string = 1, False
-    while i < len(args) and option(args[i], "-+"):
-        flag, i = words[i], i + 1
+    while i < len(args) and option(args[i], "-+"):  # options run until the first operand: the string after -c,
+        flag, i = words[i], i + 1  # else a script path
         if flag == "--":
             break
-        if flag in ("-o", "+o", "-O", "+O"):  # set and shopt options take the next word
-            i += 1
-        elif not flag.startswith("--") and "c" in flag[1:]:  # -c, also combined: -ec, -lc
-            string = True
+        if flag.startswith("--"):  # a long option: --rcfile FILE and the like take the next word, --rcfile=FILE not
+            i += flag in SHELL_VALUE
+            continue
+        i += flag.count("o") + flag.count("O")  # -o NAME and -O NAME (set, shopt), also clustered: -eo pipefail
+        string = string or "c" in flag[1:]  # -c, also clustered: -ec, -lc
     return (args[i : i + 1] if string else []), name == "zsh"
 
 

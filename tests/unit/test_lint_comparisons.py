@@ -849,6 +849,48 @@ class LintComparisonsTest(unittest.TestCase):
         )
         self.assert_hits([(f"fj{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(joined)])
 
+    def test_audit_531_round_5_wrapper_words_env_split_string_shell_long_options_and_name_queries(self):
+        # audit of fdf87266: past a wrapper, words are skipped to the first recognised command, no option tables
+        jq = "jq 'select(.url == 1)'"
+        wrappers = (
+            "env -iu HOME",
+            "sudo --chdir /x",
+            "sudo -u root -g wheel",
+            "nice -n5",
+            "timeout -k 2 5",
+            "timeout -s KILL 5",
+            "xargs -I{}",
+            "stdbuf -oL -eL",
+            "sudo env -i nice -n 5",
+        )
+        self.assert_hits([(f"ww{i}.sh", f"{w} {jq}\n", [("R3", 1)]) for i, w in enumerate(wrappers)])
+        # env -S's string is a command line, parsed like a shell's -c string
+        split = (
+            (f'env -S "{jq}"\n', "R3"),
+            (f'env -iS "{jq}"\n', "R3"),
+            (f'env --split-string="{jq}"\n', "R3"),
+            ('env --split-string "grep -E \\$name f"\n', "R6"),
+            ('env -S"pgrep -f \\$name"\n', "R5"),
+            ("env -S \"grep -E '$name' f\"\n", "R6"),
+        )
+        self.assert_hits([(f"es{i}.sh", f, [(rule, 1)]) for i, (f, rule) in enumerate(split)])
+        # a shell's long options come before -c; a script path ends the options, so no string follows
+        shells = (
+            "bash --rcfile /dev/null -c",
+            "bash --rcfile=/dev/null -c",
+            "bash --norc --noprofile -c",
+            "bash --init-file x -eo pipefail -c",
+        )
+        pgrep = "'pgrep -f \"$name\"'"
+        self.assert_hits([(f"sl{i}.sh", f"{s} {pgrep}\n", [("R5", 1)]) for i, s in enumerate(shells)])
+        self.assert_hits(
+            [("sm.sh", f"bash script.sh -c {pgrep}\n", []), ("sn.sh", f"bash -o pipefail x.sh {pgrep}\n", [])]
+        )
+        # a name query or a printer runs nothing: its arguments are data, behind a wrapper too
+        data = ("command -v", "command -V", "command -pv", "type", "hash", "sudo which", "env -i printf '%s'")
+        sel = 'jq "select(.url == \\$p)"'
+        self.assert_hits([(f"nq{i}.sh", f"{d} {sel}\n", []) for i, d in enumerate(data)])
+
     def test_the_job_log_records_the_shfmt_probes(self):  # amendment 1: validation.md quotes these lines from CI
         runs = []
         for cmd in (["shfmt"], ["mise", "x", "shfmt@3.14.1", "--", "shfmt"]):  # the lint's order

@@ -128,23 +128,30 @@ class OmpConfigMergeTest(unittest.TestCase):
         self.assertEqual(result.stdout, current)
         self.assertIn("uv", result.stderr)
 
-    def test_the_managed_approval_mode_and_denies_replace_omps_and_keep_its_tool_policies(self) -> None:
-        """U66 F043: a plain launch leaves omp's default yolo mode for the managed mode and deny patterns."""
-        policy = 'tools:\n  approvalMode: write\nbash:\n  patterns:\n    - match: "*sudo *"\n      approval: deny\n'
+    def test_the_managed_denies_join_omps_policy_and_the_approval_mode_is_kept(self) -> None:
+        """U66 F043: a plain launch keeps its approval mode and gains the managed tool and bash denies."""
+        policy = (
+            "tools:\n  approval:\n    debug: deny\n    AskClaude: deny\n"
+            'bash:\n  patterns:\n    - match: "*sudo *"\n      approval: deny\n'
+        )
         (self.source_dir / ".chezmoitemplates/omp-config-managed.yml").write_text(MANAGED + policy)
         current = (
-            "tools:\n  approvalMode: yolo\n  approval:\n    read: allow\n"
+            "tools:\n  approvalMode: yolo\n  approval:\n    read: allow\n    debug: allow\n"
             "bash:\n  allowCompoundCommands: false\n  patterns:\n  - match: '*'\n    approval: allow\n"
         )
         result = self.merge(current)
-        self.assertIn("tools:\n  approvalMode: write\n  approval:\n    read: allow\n", result.stdout)
+        self.assertIn(
+            "tools:\n  approvalMode: yolo\n  approval:\n    read: allow\n    debug: deny\n    AskClaude: deny\n",
+            result.stdout,
+        )
         self.assertIn(
             "bash:\n  allowCompoundCommands: false\n  patterns:\n  - match: '*sudo *'\n    approval: deny\n",
             result.stdout,
         )
         self.assertNotIn("approval: allow\n", result.stdout.split("bash:")[1])
         self.assertEqual(self.merge(result.stdout).stdout, result.stdout)
-        for current in ("tools: plain\n", "bash: [a]\n"):
+        self.assertNotIn("approvalMode", self.merge("theme:\n  dark: night\n").stdout)
+        for current in ("tools: plain\n", "tools:\n  approval: [a]\n", "bash: [a]\n"):
             with self.subTest(current=current):
                 passed = self.merge(current)
                 self.assertEqual(passed.stdout, current)

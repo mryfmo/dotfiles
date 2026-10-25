@@ -387,15 +387,17 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 denies = [rule["match"] for rule in policy["bash"]["patterns"] if rule["approval"] == "deny"]
                 self.assertEqual([match for match in denies if match in COMMON_DENIES], COMMON_DENIES)
 
-    def test_a_plain_launch_prompts_for_bash_and_denies_the_common_list(self):
-        """U66 F043: the managed plain-launch config leaves omp's default yolo; bash prompts, the common list is denied."""
+    def test_a_plain_launch_keeps_its_mode_and_denies_the_common_list(self):
+        """U66 F043: the plain-launch config sets no approval mode (omp's default yolo stays, operator-driven sessions
+        are gate-free by design) and denies the common bash list, `debug` and `AskClaude` outright."""
         managed = load_policy(ROOT / "home/.chezmoitemplates/omp-config-managed.yml")
-        policy = {"tools": managed["tools"], "bash": managed["bash"]}
-        self.assertEqual(policy["tools"]["approvalMode"], "write")
+        self.assertNotIn("approvalMode", managed["tools"])
+        self.assertEqual(managed["tools"]["approval"], {"debug": "deny", "AskClaude": "deny"})
+        policy = {"tools": {"approvalMode": "yolo", **managed["tools"]}, "bash": managed["bash"]}
         self.assertEqual([rule["match"] for rule in policy["bash"]["patterns"]], COMMON_DENIES)
         self.assertTrue(all(rule["approval"] == "deny" for rule in policy["bash"]["patterns"]))
         for command, expected in (
-            ("git status", "prompt"),
+            ("git status", "allow"),
             ("sudo rm /x", "deny"),
             ("cd /tmp && rm -rf build", "deny"),
             ("gh pr merge 1 --squash", "deny"),
@@ -403,7 +405,9 @@ class OmpSeatPolicyTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(decide(policy, "bash", command), expected)
         self.assertEqual(decide(policy, "edit", None), "allow")
-        self.assertEqual(decide(policy, "debug", None), "prompt")
+        self.assertEqual(decide(policy, "eval", None), "allow")
+        self.assertEqual(decide(policy, "debug", None), "deny")
+        self.assertEqual(decide(policy, "AskClaude", None), "deny")
 
     def test_the_orchestrator_allow_follows_the_admin_deny(self):
         rules = self.policies["orchestrator"]["bash"]["patterns"]

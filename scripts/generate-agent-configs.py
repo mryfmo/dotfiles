@@ -1415,29 +1415,32 @@ def omp_config_yaml(model: str, directories: list[str]) -> str:
     return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
 
 
-OMP_APPROVAL_MODES = ("always-ask", "write")  # omp 18.11.3 src/tools/settings.ts:311-318, yolo excluded on purpose
+OMP_TOOL_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
 def omp_interactive_policy(manifest: dict[str, Any]) -> str:
-    """`tools.approvalMode` and the `bash.patterns` denies of a plain omp launch; empty when the key is absent.
+    """The `tools.approval` and `bash.patterns` denies of a plain omp launch; empty when the key is absent.
 
-    omp's default mode is yolo (src/tools/settings.ts:311-318), which auto-approves every bash call; a plain launch
-    therefore names a mode that prompts for exec-tier tools and denies the listed commands outright (U66, F043).
+    The approval mode is left to omp and the operator (U66 F043, coordinator decision): an operator-driven session
+    keeps omp's default `yolo` and gets only outright denies, which omp honours in every mode
+    (src/tools/approval.ts:240-257).
     """
     policy = manifest.get("omp", {}).get("interactive_policy")
     if policy is None:
         return ""
-    if not isinstance(policy, dict) or sorted(policy) != ["approval_mode", "bash_deny"]:
-        fail("omp.interactive_policy must be a mapping of exactly approval_mode and bash_deny")
-    if policy["approval_mode"] not in OMP_APPROVAL_MODES:
-        fail(f"omp.interactive_policy.approval_mode must be one of {', '.join(OMP_APPROVAL_MODES)}")
+    if not isinstance(policy, dict) or sorted(policy) != ["bash_deny", "tool_deny"]:
+        fail("omp.interactive_policy must be a mapping of exactly tool_deny and bash_deny")
+    tools = policy["tool_deny"]
+    if not isinstance(tools, list) or not all(isinstance(t, str) and OMP_TOOL_NAME_RE.fullmatch(t) for t in tools):
+        fail("omp.interactive_policy.tool_deny must be a list of omp tool names")
     denies = policy["bash_deny"]
     if not isinstance(denies, list) or not denies or not all(isinstance(d, str) and d.strip() for d in denies):
         fail("omp.interactive_policy.bash_deny must be a non-empty list of bash.patterns match strings")
-    if len(set(denies)) != len(denies):
-        fail("omp.interactive_policy.bash_deny repeats a pattern")
+    if len(set(denies)) != len(denies) or len(set(tools)) != len(tools):
+        fail("omp.interactive_policy repeats an entry")
+    approval = "".join(f"    {tool}: deny\n" for tool in tools)
     rules = "".join(f"    - match: {json.dumps(deny)}\n      approval: deny\n" for deny in denies)
-    return f"tools:\n  approvalMode: {policy['approval_mode']}\nbash:\n  patterns:\n{rules}"
+    return (f"tools:\n  approval:\n{approval}" if approval else "") + f"bash:\n  patterns:\n{rules}"
 
 
 def render_omp_config(manifest: dict[str, Any]) -> str:

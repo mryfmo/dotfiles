@@ -63,15 +63,19 @@ omp:
     - windsurf
     - vscode
     - mcp-json
-  # A plain `omp` launch (~/.omp/agent/config.yml, merged by modify_private_config.yml). omp's default
-  # approval mode is yolo, which runs every bash command unasked; `write` lets read and edit tools run
-  # and prompts for bash, eval and every other exec-tier tool, and the denies below refuse outright
-  # even when the operator would approve (regime-cutover U66, F043). The list is the seat policies'
-  # common deny list (home/dot_agents/omp/policies/README.md), so a plain launch refuses the same
-  # commands a seat does; tests/unit/test_omp_seat_policy.py fails when the copies drift. The seats
-  # use named profiles and their own --config policy, never this file.
+  # A plain `omp` launch (~/.omp/agent/config.yml, merged by modify_private_config.yml) keeps omp's
+  # approval mode (default yolo): the operator drives those sessions, the coordinator among them, and
+  # they run gate-free by design (coordinator decision on U66 F043). It gets only outright denies,
+  # which omp honours in every mode: the debug tool and the bridge's AskClaude (both run programs
+  # outside bash.patterns), and the seat policies' common bash deny list
+  # (home/dot_agents/omp/policies/README.md), so a plain launch refuses the same commands a seat
+  # does; tests/unit/test_omp_seat_policy.py fails when the copies drift. eval stays allowed here
+  # (the operator's sessions use it), so a shell started through eval bypasses the bash list. The
+  # seats use named profiles and their own --config policy, never this file.
   interactive_policy:
-    approval_mode: write
+    tool_deny:
+      - debug
+      - AskClaude
     bash_deny:
       - "*sudo *"
       - "*rm -rf *"

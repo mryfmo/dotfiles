@@ -10,7 +10,9 @@ disabledProviders:
   - agent-plugins
   - openai-codex
 tools:
-  approvalMode: write
+  approval:
+    debug: deny
+    AskClaude: deny
 bash:
   patterns:
     - match: "*sudo *"

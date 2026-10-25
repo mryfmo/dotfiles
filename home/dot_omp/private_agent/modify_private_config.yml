@@ -1,12 +1,13 @@
 #!/bin/sh
 # @file home/dot_omp/private_agent/modify_private_config.yml
-# @brief Carry the managed omp model role, skill roots, extensions, disabled providers and approval policy into ~/.omp/agent/config.yml.
+# @brief Carry the managed omp model role, skill roots, extensions, disabled providers and denies into ~/.omp/agent/config.yml.
 # @description
 #   chezmoi passes the live config on stdin. The merge sets modelRoles.default,
 #   skills.customDirectories, extensions and disabledProviders from
 #   home/.chezmoitemplates/omp-config-managed.yml (a leading ~ expanded to
-#   $HOME, see docs/omp-skills.md), and tools.approvalMode and bash.patterns
-#   when the managed file carries them (U66), and keeps every other
+#   $HOME, see docs/omp-skills.md), and the managed tools.approval entries and
+#   bash.patterns when the managed file carries them (U66; tools.approvalMode is
+#   never touched), and keeps every other
 #   key and role omp wrote. It runs under `uv run --with pyyaml`, so the system
 #   python3 needs no PyYAML. Without uv, or when the live file is not a YAML
 #   mapping, it prints its input unchanged with one warning on stderr and
@@ -57,13 +58,17 @@ def main():
     data["extensions"] = [os.path.expanduser(d) for d in managed["extensions"]]
     # A disabled provider stays unselectable even with a stored OAuth session (omp docs/providers.md).
     data["disabledProviders"] = managed["disabledProviders"]
-    # omp's default mode is yolo; the managed mode prompts for exec-tier tools and the patterns deny outright (U66).
+    # Outright denies only (U66): tools.approvalMode and every other tools.approval entry stay as omp or the operator set them.
     if "tools" in managed:
         if data.get("tools") is None:
             data["tools"] = {}
         if not isinstance(data["tools"], dict):
             return keep(current, "tools is not a mapping")
-        data["tools"]["approvalMode"] = managed["tools"]["approvalMode"]
+        if data["tools"].get("approval") is None:
+            data["tools"]["approval"] = {}
+        if not isinstance(data["tools"]["approval"], dict):
+            return keep(current, "tools.approval is not a mapping")
+        data["tools"]["approval"].update(managed["tools"]["approval"])
     if "bash" in managed:
         if data.get("bash") is None:
             data["bash"] = {}

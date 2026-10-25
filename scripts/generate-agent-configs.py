@@ -42,7 +42,8 @@ def parse_manifest(text: str) -> dict[str, Any]:
 
 
 # The coordinator's levers (regime-cutover U31): the checkout script is the source, the generated chezmoi file installs
-# the same bytes read-only under ~/.local/bin/common, and claude.levers.sha256 pins them for the lever's own self-check.
+# the same bytes (mode 0755, owner-writable) under ~/.local/bin/common, and claude.levers.sha256 pins them for the
+# lever's own self-check, which detects a rewritten copy rather than preventing one.
 LEVER_SOURCE_DIR = "scripts/orchestrator"
 LEVER_INSTALL_DIR = "home/dot_local/bin/common"
 LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{64})$")
@@ -1354,21 +1355,31 @@ def omp_skills_directories(manifest: dict[str, Any]) -> list[str]:
 OMP_PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
 
 
-def omp_disabled_providers(manifest: dict[str, Any]) -> list[str]:
-    """omp providers the seat overlays and the plain-launch config switch off as `disabledProviders`; none when absent.
+def omp_disabled_providers(manifest: dict[str, Any], key: str = "disabled_providers") -> list[str]:
+    """omp providers listed under `omp.<key>`, switched off as `disabledProviders`; none when absent.
 
-    omp 18.11.3 reads one `disabledProviders` set for discovery providers (src/capability/index.ts:306-308)
-    and for model providers (src/main.ts:1627), so a model route here would turn a seat's model off.
+    `disabled_providers` goes to the seat overlays and the plain-launch config, `seat_disabled_providers` to the seat
+    overlays only. omp 18.11.3 reads one `disabledProviders` set for discovery providers
+    (src/capability/index.ts:306-308) and for model providers (src/main.ts:1627), so a model route here would turn a
+    seat's model off.
     """
-    providers = manifest.get("omp", {}).get("disabled_providers", [])
+    providers = manifest.get("omp", {}).get(key, [])
     if not isinstance(providers, list):
-        fail("omp.disabled_providers must be a list of omp provider ids")
+        fail(f"omp.{key} must be a list of omp provider ids")
     for provider in providers:
         if not isinstance(provider, str) or not OMP_PROVIDER_ID_RE.fullmatch(provider):
-            fail(f"omp.disabled_providers entries must be omp provider ids: {provider!r}")
+            fail(f"omp.{key} entries must be omp provider ids: {provider!r}")
         if provider in OMP_MODEL_ROUTES:
-            fail(f"omp.disabled_providers must not name the model route {provider}; disabledProviders turns it off")
+            fail(f"omp.{key} must not name the model route {provider}; disabledProviders turns it off")
     return providers
+
+
+def omp_seat_disabled_providers(manifest: dict[str, Any]) -> list[str]:
+    """The seat overlays' `disabledProviders`: the shared list, then the seat-only entries it lacks."""
+    shared = omp_disabled_providers(manifest)
+    return shared + [
+        provider for provider in omp_disabled_providers(manifest, "seat_disabled_providers") if provider not in shared
+    ]
 
 
 def omp_roles(manifest: dict[str, Any]) -> dict[str, str]:
@@ -1404,12 +1415,38 @@ def omp_config_yaml(model: str, directories: list[str]) -> str:
     return f"# {GENERATED_HEADER}\nmodelRoles:\n  default: {model}\nskills:\n  customDirectories:\n{entries}"
 
 
+OMP_APPROVAL_MODES = ("always-ask", "write")  # omp 18.11.3 src/tools/settings.ts:311-318, yolo excluded on purpose
+
+
+def omp_interactive_policy(manifest: dict[str, Any]) -> str:
+    """`tools.approvalMode` and the `bash.patterns` denies of a plain omp launch; empty when the key is absent.
+
+    omp's default mode is yolo (src/tools/settings.ts:311-318), which auto-approves every bash call; a plain launch
+    therefore names a mode that prompts for exec-tier tools and denies the listed commands outright (U66, F043).
+    """
+    policy = manifest.get("omp", {}).get("interactive_policy")
+    if policy is None:
+        return ""
+    if not isinstance(policy, dict) or sorted(policy) != ["approval_mode", "bash_deny"]:
+        fail("omp.interactive_policy must be a mapping of exactly approval_mode and bash_deny")
+    if policy["approval_mode"] not in OMP_APPROVAL_MODES:
+        fail(f"omp.interactive_policy.approval_mode must be one of {', '.join(OMP_APPROVAL_MODES)}")
+    denies = policy["bash_deny"]
+    if not isinstance(denies, list) or not denies or not all(isinstance(d, str) and d.strip() for d in denies):
+        fail("omp.interactive_policy.bash_deny must be a non-empty list of bash.patterns match strings")
+    if len(set(denies)) != len(denies):
+        fail("omp.interactive_policy.bash_deny repeats a pattern")
+    rules = "".join(f"    - match: {json.dumps(deny)}\n      approval: deny\n" for deny in denies)
+    return f"tools:\n  approvalMode: {policy['approval_mode']}\nbash:\n  patterns:\n{rules}"
+
+
 def render_omp_config(manifest: dict[str, Any]) -> str:
     config = omp_config_yaml(interactive_profile(manifest)["omp"]["model"], omp_skills_directories(manifest))
     return (
         config
         + omp_list_yaml("extensions", omp_extensions(manifest))
         + omp_list_yaml("disabledProviders", omp_disabled_providers(manifest))
+        + omp_interactive_policy(manifest)
     )
 
 
@@ -1429,7 +1466,7 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     ]
     model = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"]
     overlay = omp_config_yaml(model, directories)
-    disabled = "".join(f"  - {provider}\n" for provider in omp_disabled_providers(manifest))
+    disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
     if disabled:
         overlay += f"disabledProviders:\n{disabled}"
     # A seat profile has no setup record, so omp's cold-launch gate (src/main.ts:668-677) would open the

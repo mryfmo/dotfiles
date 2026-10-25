@@ -423,7 +423,7 @@ and task texts run on the `review` profile, the same model and effort as
 `deep` in a fresh context (INV-7). The auditor uses the
 `audit` profile (Codex `gpt-6-astra`, xhigh reasoning effort, read-only
 sandbox)
-for one independent task-level audit of each final head, run as one fresh `scripts/orchestrator/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
+for one independent task-level audit of each final head, run as one fresh `~/.local/bin/common/omp-run.sh --role audit` per head (`hcom-orchestration` SKILL, step 4). The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/regime.md`, and the `## Audit`
 section of `AGENTS.md`. Neither Codex model needs API-key authentication: both
@@ -516,8 +516,11 @@ the keyring over D-Bus) run through the normal unsandboxed retry prompt on
 Linux. `sandbox.excludedCommands` is empty. The managed `permissions.allow`
 rules, the coordinator's levers with their `env` and writable directories,
 are described in `scripts/orchestrator/README.md`, "Pre-authorized levers"; they
-name the copies chezmoi installs read-only under `~/.local/bin/common`, each of
-which checks its own sha256 against the manifest before it runs.
+name the copies chezmoi installs under `~/.local/bin/common` (mode 0755, outside
+every sandbox write root), each of which checks its own sha256 against the
+manifest before it runs: a rewritten copy is detected and refuses to run, but
+the same user can rewrite both the copy and the manifest, so the pin is
+tamper detection, not write protection.
 Codex workers run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
 used: on a workstation with a `docker`-group user or a reachable
 `systemd --user` bus it turns the auto-approved sandbox into an escape (see the

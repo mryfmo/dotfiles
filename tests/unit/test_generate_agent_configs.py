@@ -216,6 +216,7 @@ LEVERS = (
     "bus-history.sh",
     "hcom-dispatch",
     "hcom-seat",
+    "omp-run.sh",
     "pr-body-edit.sh",
     "pr-close.sh",
     "pr-thread-reply.sh",
@@ -1865,6 +1866,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "disabledProviders:\n  - agent-plugins\n"
             "setupVersion: 2\nstartup:\n  setupWizard: false\n",
         )
+
+    def test_only_the_seat_overlays_switch_off_the_seat_providers(self) -> None:
+        """U66 F005: seat_disabled_providers reach every role overlay after the shared list, never the plain config."""
+        manifest = sample_manifest()
+        manifest["omp"]["disabled_providers"] = ["agent-plugins"]
+        manifest["omp"]["seat_disabled_providers"] = ["native", "agent-plugins", "mcp-json"]
+        outputs = self.module.expected_outputs(manifest)
+
+        for role in manifest["omp"]["roles"]:
+            with self.subTest(role=role):
+                overlay = outputs[self.temp_dir / f"home/dot_agents/omp/profiles/{role}.yml.tmpl"]
+                self.assertIn("disabledProviders:\n  - agent-plugins\n  - native\n  - mcp-json\nsetupVersion", overlay)
+        plain = outputs[self.temp_dir / "home/.chezmoitemplates/omp-config-managed.yml"]
+        self.assertIn("disabledProviders:\n  - agent-plugins\n", plain)
+        self.assertNotIn("native", plain)
+        manifest["omp"]["seat_disabled_providers"] = ["claude-bridge"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.expected_outputs(manifest)
+        self.assertIn("omp.seat_disabled_providers must not name the model route claude-bridge", stderr.getvalue())
 
     def test_omp_disabled_providers_refuse_non_ids_and_model_routes(self) -> None:
         for value, message in (

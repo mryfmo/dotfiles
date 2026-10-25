@@ -38,6 +38,8 @@ TOOL_TIER = {
     "manage_skill": "write",  # tools/manage-skill.ts:42
     "eval": "exec",  # tools/eval.ts:347
     "task": "exec",  # task/index.ts:583
+    "debug": "exec",  # tools/debug.ts:53-56: every action but the read-only ones (launch, evaluate) is exec
+    "AskClaude": "exec",  # the bridge's tool declares no approval, so approval.ts:199 defaults it to exec
 }
 MODE_MAX_TIER = {"always-ask": "read", "write": "write", "yolo": "exec"}  # approval.ts:124-128
 TIER_RANK = {"read": 0, "write": 1, "exec": 2}  # approval.ts:103-107
@@ -139,7 +141,7 @@ TABLE = {
         ("bash", "git worktree add --detach /tmp/audit-U1-abc abc", "allow"),
         (
             "bash",
-            "scripts/orchestrator/omp-run.sh --role audit --prompt-file /tmp/U1.md --cwd /tmp/audit-U1-abc "
+            "~/.local/bin/common/omp-run.sh --role audit --prompt-file /tmp/U1.md --cwd /tmp/audit-U1-abc "
             "--max-time 1800 > .orchestration/orchestrate/p/verdicts/U1-abc.md",
             "allow",
         ),
@@ -367,9 +369,12 @@ class OmpSeatPolicyTest(unittest.TestCase):
                 self.assertEqual(sorted(policy), ["bash", "tools"])
                 self.assertIn(policy["tools"]["approvalMode"], APPROVAL_MODES)
                 for tool, value in policy["tools"].get("approval", {}).items():
-                    self.assertRegex(tool, r"^[a-z_]+$")
+                    self.assertRegex(tool, r"^[A-Za-z_]+$")
                     self.assertIn(value, POLICIES_VALUES)
                 self.assertEqual(policy["tools"]["approval"]["eval"], "deny")
+                # U66 (F040, F006): a DAP launch and the bridge's AskClaude child run outside bash.patterns.
+                for tool in ("debug", "AskClaude"):
+                    self.assertEqual(decide(policy, tool, None), "deny", tool)
                 rules = policy["bash"]["patterns"]
                 self.assertEqual([sorted(rule) for rule in rules], [["approval", "match"]] * len(rules))
                 self.assertTrue(all(rule["approval"] in ("allow", "deny") for rule in rules), "prompt fails headless")
@@ -381,6 +386,24 @@ class OmpSeatPolicyTest(unittest.TestCase):
             with self.subTest(role=role):
                 denies = [rule["match"] for rule in policy["bash"]["patterns"] if rule["approval"] == "deny"]
                 self.assertEqual([match for match in denies if match in COMMON_DENIES], COMMON_DENIES)
+
+    def test_a_plain_launch_prompts_for_bash_and_denies_the_common_list(self):
+        """U66 F043: the managed plain-launch config leaves omp's default yolo; bash prompts, the common list is denied."""
+        managed = load_policy(ROOT / "home/.chezmoitemplates/omp-config-managed.yml")
+        policy = {"tools": managed["tools"], "bash": managed["bash"]}
+        self.assertEqual(policy["tools"]["approvalMode"], "write")
+        self.assertEqual([rule["match"] for rule in policy["bash"]["patterns"]], COMMON_DENIES)
+        self.assertTrue(all(rule["approval"] == "deny" for rule in policy["bash"]["patterns"]))
+        for command, expected in (
+            ("git status", "prompt"),
+            ("sudo rm /x", "deny"),
+            ("cd /tmp && rm -rf build", "deny"),
+            ("gh pr merge 1 --squash", "deny"),
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(decide(policy, "bash", command), expected)
+        self.assertEqual(decide(policy, "edit", None), "allow")
+        self.assertEqual(decide(policy, "debug", None), "prompt")
 
     def test_the_orchestrator_allow_follows_the_admin_deny(self):
         rules = self.policies["orchestrator"]["bash"]["patterns"]

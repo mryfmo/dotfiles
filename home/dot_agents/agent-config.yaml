@@ -764,17 +764,20 @@ assets:
     verify: installed-version
     note: >-
       each pin is the version both hosts ran on 2026-10-25 (~/.claude/plugins/installed_plugins.json
-      on macOS and spark-9e8d). Claude Code installs a plugin only at its marketplace's current
-      release and takes no version, so scripts/update-agent-assets.sh reads every installation
-      (every scope, from installed_plugins.json; every claude call runs outside any project), leaves one at its pin alone, installs a missing plugin from the marketplace
-      recorded here (registering it first), updates one that is not at its pin, and disables every
-      installation still off its pin afterwards in its own scope, proven from that scope's settings file, failing the run when a pinned plugin cannot be
-      installed, cannot be checked, or has an off-pin installation it cannot prove disabled; it never
-      changes the enabled state of an installation at its pin: Claude Code runs a
-      plugin's hooks with no trust step, so only a reviewed version stays enabled. This list drives
-      that loop, so every plugin here is converged, pstack included (installed by hand from the
-      cursor/plugins marketplace; assets.pstack deploys its skills). make doctor fails when an
-      installed version differs from its pin and warns for an enabled plugin this list does not name.
+      on macOS and spark-9e8d). Only the user-scope installation is managed, the scope this
+      repository installs; a project- or local-scope installation belongs to its project, and make
+      update and make doctor report it as not managed. Claude Code installs a plugin only at its
+      marketplace's current release and takes no version, so scripts/update-agent-assets.sh leaves
+      a user-scope installation at its pin alone (its enabled state included), installs a missing
+      one from the marketplace recorded here (registering it first), updates one that is not at
+      its pin, and disables it at user scope when it is still off its pin afterwards, proven by an
+      explicit false in ~/.claude/settings.json: Claude Code runs a plugin's hooks with no trust
+      step, so only a reviewed version stays enabled. Every claude call runs from an empty
+      directory. Any failure (records unreadable, marketplace not registered, install failed,
+      disable not proven) fails the run. This list drives that loop, so every plugin here is
+      converged, pstack included (installed by hand from the cursor/plugins marketplace;
+      assets.pstack deploys its skills). make doctor fails when a user-scope installed version
+      differs from its pin and warns for a plugin the user settings enable without a pin here.
       To move a plugin, review the upstream release, set its pin here, regenerate, then make update.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}

@@ -387,62 +387,25 @@ function claude_outside_projects() {
 }
 
 #
-# @description Run `claude` for one installation scope: from an empty directory for user scope, from the
-#   project the installation belongs to for project and local scope.
-# @arg $1 string Scope: user, project or local.
-# @arg $2 string Project directory (empty for user scope).
-# @arg $@ string Arguments for `claude`.
-#
-function claude_in_scope() {
-    local scope="$1" project="$2"
-    shift 2
-
-    if [ "${scope}" = "user" ]; then
-        claude_outside_projects "$@"
-    else
-        (cd "${project}" && claude "$@")
-    fi
-}
-
-#
-# @description Print the path of the settings file that holds a scope's `enabledPlugins`.
-# @arg $1 string Scope: user, project or local.
-# @arg $2 string Project directory (empty for user scope).
-# @exitcode 1 For a scope this script cannot write (managed) or a project scope without a project path.
-#
-function claude_scope_settings() {
-    case "$1" in
-    user) printf '%s\n' "${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/settings.json" ;;
-    project) [ -n "$2" ] && printf '%s\n' "$2/.claude/settings.json" ;;
-    local) [ -n "$2" ] && printf '%s\n' "$2/.claude/settings.local.json" ;;
-    *) return 1 ;;
-    esac
-}
-
-#
-# @description Print `true` when a scope's settings file enables a plugin, else `false` (a missing file
-#   enables nothing). The file is read directly, never through `claude plugin list`, whose flags follow the
-#   current directory's project settings.
+# @description Print `true` when ~/.claude/settings.json (user scope) enables a plugin explicitly, `false`
+#   when it disables it explicitly, and `unset` when it names neither (Claude Code then applies the
+#   plugin's default, which may be enabled). A missing file names nothing.
 # @arg $1 string Fully qualified Claude Code plugin ID.
-# @arg $2 string Scope.
-# @arg $3 string Project directory (empty for user scope).
-# @exitcode 1 When the settings file exists but cannot be parsed, or the scope has no settings file.
+# @exitcode 1 When the settings file exists but is not a readable JSON object.
 #
-function claude_scope_enabled() {
-    local settings
+function claude_user_enabled() {
+    local settings="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/settings.json"
 
-    settings="$(claude_scope_settings "$2" "$3")" || return 1
     if [ ! -e "${settings}" ]; then
-        printf 'false\n'
+        printf 'unset\n'
         return 0
     fi
-    # Not -e: a `false` answer is a successful read; a file that is not a JSON object is an error.
-    jq -r --arg id "$1" 'if type == "object" then (.enabledPlugins[$id] == true) else error("not an object") end' "${settings}" 2> /dev/null
+    jq -r --arg id "$1" 'if type == "object" then ((.enabledPlugins // {})[$id] | if . == null then "unset" else tostring end) else error("not an object") end' "${settings}" 2> /dev/null
 }
 
 #
 # @description Print every installation of a Claude Code plugin from installed_plugins.json, one
-#   `<scope>\t<version>\t<project path>` line each (all scopes and entries), or nothing when it is not installed.
+#   `<scope>\t<version>\t<project path>` line each, or nothing when it is not installed.
 # @arg $1 string Fully qualified Claude Code plugin ID.
 # @exitcode 1 When installed_plugins.json exists but cannot be parsed: a failed read is never "not installed".
 #
@@ -450,7 +413,15 @@ function claude_plugin_installs() {
     local record="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/plugins/installed_plugins.json"
 
     [ -e "${record}" ] || return 0
-    jq -er --arg id "$1" 'if (.plugins | type) == "object" then ([(.plugins[$id] // [])[] | [.scope, .version, (.projectPath // "")] | @tsv] | join("\n")) else error end' "${record}" 2> /dev/null
+    jq -er --arg id "$1" 'if (.plugins | type) == "object" then ([(.plugins[$id] // [])[] | [(.scope // "user"), .version, (.projectPath // "")] | @tsv] | join("\n")) else error end' "${record}" 2> /dev/null
+}
+
+#
+# @description Print the user-scope installed version of a Claude Code plugin, or nothing when there is none.
+# @arg $1 string Lines from claude_plugin_installs.
+#
+function claude_user_install() {
+    awk -F '\t' '$1 == "user" { print $2; exit }' <<< "$1"
 }
 
 #
@@ -462,7 +433,7 @@ function claude_user_plugin_version() {
     local installs version
 
     installs="$(claude_plugin_installs "$1")" || installs=""
-    version="$(awk -F '\t' '$1 == "user" { print $2; exit }' <<< "${installs}")" || version=""
+    version="$(claude_user_install "${installs}")"
     printf '%s\n' "${version:-unknown}"
 }
 
@@ -495,26 +466,27 @@ function ensure_claude_plugin_marketplace() {
 }
 
 #
-# @description Keep every installation of a Claude Code plugin at its recorded pin (assets.claude-plugins).
+# @description Keep the user-scope installation of a Claude Code plugin at its recorded pin (assets.claude-plugins).
 # @description
-#   Claude Code installs only a marketplace's current release and takes no version. Every installation
-#   record in installed_plugins.json (every scope) is read: a missing plugin is installed at user scope from
-#   its recorded marketplace, registered first when absent; an installation at another version is updated
-#   in its scope. Every installation still off its pin afterwards is disabled in its own scope, whatever
-#   its state (idempotent), and the scope's settings file is read to prove `enabledPlugins` no longer
-#   enables it: Claude Code runs a plugin's hooks with no trust step, so only the reviewed version may stay
-#   enabled. No decision reads `claude plugin list`, whose enabled flags follow the current directory.
-#   The enabled state of an installation at its pin is never changed (an operator's disable stays); a
-#   plugin this run installs fresh is left as `claude plugin install` leaves it. `make doctor` reports drift.
+#   This repository installs plugins at user scope only, so only that installation is managed; a project- or
+#   local-scope installation belongs to its project and is reported as not managed, never converged.
+#   Claude Code installs only a marketplace's current release and takes no version: a missing plugin is
+#   installed at user scope from its recorded marketplace (registered first when absent); a user-scope
+#   installation at another version is updated. One still off its pin afterwards is disabled at user scope
+#   (idempotent), and ~/.claude/settings.json must then disable it explicitly: Claude Code runs a plugin's
+#   hooks with no trust step, so only the reviewed version may stay enabled. Every `claude` call runs from
+#   an empty directory, so no project settings take part. The enabled state of a user-scope installation at
+#   its pin is never changed (an operator's disable stays); a fresh install is left as `claude plugin install`
+#   leaves it. `make doctor` reports drift.
 # @arg $1 string Fully qualified Claude Code plugin ID.
-# @exitcode 0 When every installation is at its pin, or every one off it is proven disabled.
-# @exitcode 1 Otherwise: the pin, installed_plugins.json or a settings file cannot be read (the plugin is
-#   then not checked), the pinned plugin cannot be installed, or an installation off its pin may still be
-#   enabled. Every caller counts it as a run failure.
+# @exitcode 0 When the user-scope installation is at its pin, or off it and proven disabled.
+# @exitcode 1 Otherwise: the pin, installed_plugins.json or ~/.claude/settings.json cannot be read, the
+#   marketplace cannot be registered, the pinned plugin cannot be installed, or a user-scope installation off
+#   its pin may still be enabled. Every caller counts it as a run failure.
 #
 function converge_claude_plugin() {
     local plugin_id="$1"
-    local pin installs scope version project enabled state failed=0
+    local pin installs version scope project enabled failed=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s; the plugin was not changed.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -524,48 +496,48 @@ function converge_claude_plugin() {
         printf 'ERROR: cannot read the installation records of %s (installed_plugins.json); it was not changed.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ -z "${installs}" ]; then
-        if ! ensure_claude_plugin_marketplace "${plugin_id}"; then
-            return 1
+    while IFS=$'\t' read -r scope version project; do
+        if [ -n "${scope}" ] && [ "${scope}" != "user" ]; then
+            printf 'WARN: plugin %s installed in %s scope at %s: not managed (make update manages user scope only).\n' "${plugin_id}" "${scope}" "${project:-an unrecorded path}" >&2
         fi
-        if ! claude_outside_projects plugin install "${plugin_id}" < /dev/null; then
+    done <<< "${installs}"
+    version="$(claude_user_install "${installs}")"
+    if [ "${version}" != "${pin}" ] && ! ensure_claude_plugin_marketplace "${plugin_id}"; then
+        failed=1
+    fi
+    if [ -z "${version}" ]; then
+        [ "${failed}" -eq 0 ] || return 1
+        if ! claude_outside_projects plugin install "${plugin_id}" --scope user < /dev/null; then
             printf 'ERROR: claude plugin install %s failed; the pinned plugin is not installed.\n' "${plugin_id}" >&2
             return 1
         fi
-    else
-        while IFS=$'\t' read -r scope version project; do
-            if [ "${version}" != "${pin}" ]; then
-                ensure_claude_plugin_marketplace "${plugin_id}" < /dev/null || true
-                claude_in_scope "${scope}" "${project}" plugin update "${plugin_id}" --scope "${scope}" < /dev/null || true
-            fi
-        done <<< "${installs}"
+    elif [ "${version}" != "${pin}" ]; then
+        claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true
     fi
     if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
         printf 'ERROR: cannot re-read the installation records of %s after changing it.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ -z "${installs}" ]; then
-        printf 'ERROR: %s is not installed after claude plugin install.\n' "${plugin_id}" >&2
+    version="$(claude_user_install "${installs}")"
+    if [ -z "${version}" ]; then
+        printf 'ERROR: %s has no user-scope installation after claude plugin install.\n' "${plugin_id}" >&2
         return 1
     fi
-    while IFS=$'\t' read -r scope version project; do
-        if [ "${version}" = "${pin}" ]; then
-            state="its settings file is unreadable"
-            enabled="$(claude_scope_enabled "${plugin_id}" "${scope}" "${project}")" && state="enabled=${enabled}, left as is"
-            printf 'Claude Code plugin %s (%s scope) is at its pin %s (%s).\n' "${plugin_id}" "${scope}" "${pin}" "${state}"
-            continue
-        fi
-        printf 'WARN: Claude Code plugin %s (%s scope%s) is at %s, not its pin %s; disabling it until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${scope}" "${project:+ in ${project}}" "${version}" "${pin}" >&2
-        # Idempotent: a plugin already disabled may make the command fail; the settings file decides.
-        claude_in_scope "${scope}" "${project}" plugin disable "${plugin_id}" --scope "${scope}" < /dev/null || true
-        if ! enabled="$(claude_scope_enabled "${plugin_id}" "${scope}" "${project}")"; then
-            printf 'ERROR: cannot read the %s-scope settings of %s; cannot prove it is disabled.\n' "${scope}" "${plugin_id}" >&2
-            failed=1
-        elif [ "${enabled}" != "false" ]; then
-            printf 'ERROR: Claude Code plugin %s is still enabled off its pin %s in its %s-scope settings.\n' "${plugin_id}" "${pin}" "${scope}" >&2
-            failed=1
-        fi
-    done <<< "${installs}"
+    if [ "${version}" = "${pin}" ]; then
+        printf 'Claude Code plugin %s is at its pin %s (enabled state left as is).\n' "${plugin_id}" "${pin}"
+        return "${failed}"
+    fi
+    printf 'WARN: Claude Code plugin %s is at %s, not its pin %s; disabling it until that release is reviewed and its version recorded in assets.claude-plugins (home/dot_agents/agent-config.yaml).\n' "${plugin_id}" "${version}" "${pin}" >&2
+    # Idempotent: a plugin already disabled may make the command fail; the settings file decides.
+    claude_outside_projects plugin disable "${plugin_id}" --scope user < /dev/null || true
+    if ! enabled="$(claude_user_enabled "${plugin_id}")"; then
+        printf 'ERROR: cannot read ~/.claude/settings.json; cannot prove %s is disabled.\n' "${plugin_id}" >&2
+        return 1
+    fi
+    if [ "${enabled}" != "false" ]; then
+        printf 'ERROR: Claude Code plugin %s is off its pin %s and ~/.claude/settings.json does not disable it (enabledPlugins: %s).\n' "${plugin_id}" "${pin}" "${enabled}" >&2
+        return 1
+    fi
     return "${failed}"
 }
 

@@ -1110,6 +1110,26 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([], [finding for finding in findings if not self.module.is_warning(finding)], findings)
         self.assertTrue(any("tail@tail is not installed" in finding for finding in findings), findings)
 
+    def test_doctor_reports_project_scope_plugins_as_not_managed(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        record = self.target_root / ".claude/plugins/installed_plugins.json"
+        project = {"scope": "project", "version": "9.9.9", "projectPath": "/work/app"}
+        record.write_text(json.dumps({"plugins": {"demo@market": [{"scope": "user", "version": "2.0.0"}, project]}}))
+
+        findings = self.plugin_findings(pins)
+
+        # The user-scope copy passes; the project copy is reported, not judged and not a pass.
+        self.assertEqual([], [finding for finding in findings if not self.module.is_warning(finding)], findings)
+        self.assertIn("WARN: plugin demo@market installed in project scope at /work/app: not managed", findings)
+
+        # Only a project copy: the pinned plugin is not installed where make update manages it.
+        record.write_text(json.dumps({"plugins": {"demo@market": [project], "other@elsewhere": [project]}}))
+        findings = self.plugin_findings(pins)
+        self.assertTrue(all(self.module.is_warning(finding) for finding in findings), findings)
+        self.assertTrue(any("demo@market is not installed" in finding for finding in findings), findings)
+        self.assertIn("WARN: plugin other@elsewhere installed in project scope at /work/app: not managed", findings)
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

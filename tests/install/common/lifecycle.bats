@@ -309,7 +309,7 @@ herdr server reload-config" ]
     grep -q 'crit-darwin-arm64' scripts/update-agent-assets.sh
     run ! grep -q 'brew install crit' scripts/update-agent-assets.sh
     grep -q 'converge_claude_step "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
-    grep -q 'claude plugin disable "${plugin_id}"' scripts/update-agent-assets.sh
+    grep -q 'claude_outside_projects plugin disable "${plugin_id}" --scope user' scripts/update-agent-assets.sh
     run ! grep -q 'claude plugin enable' scripts/update-agent-assets.sh
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh

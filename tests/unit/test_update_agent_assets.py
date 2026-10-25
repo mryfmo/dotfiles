@@ -651,10 +651,10 @@ claude() {
         self.assertTrue(all(call.endswith("@neutral") for call in calls), calls)
         self.assertIs(False, state["user"]["crit@crit"])
 
-    def test_every_installation_of_a_claude_plugin_is_converged(self):
+    def test_only_the_user_scope_installation_is_managed(self):
         pin = self.pin_of("crit@crit")
         step = 'converge_claude_plugin "crit@crit"'
-        # A user copy at the pin must not hide an enabled project copy off it; the project copy is handled in its project.
+        # A project-scope copy belongs to its project: reported as not managed, never converged.
         installs = {
             "crit@crit": [
                 {"scope": "user", "version": pin},
@@ -663,25 +663,38 @@ claude() {
         }
         result, calls, state = self.converge_listed(step, installs, {"crit@crit": True}, project={"crit@crit": True})
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(
-            ["plugin update crit@crit --scope project @project", "plugin disable crit@crit --scope project @project"],
-            calls,
-        )
-        self.assertEqual({"user": True, "project": False}, {scope: state[scope]["crit@crit"] for scope in state})
+        self.assertEqual([], calls)
+        self.assertIn("installed in project scope at", result.stderr)
+        self.assertIn(": not managed", result.stderr)
+        self.assertIs(True, state["project"]["crit@crit"])
 
-        # A disable that changes nothing leaves the project copy enabled: the settings file decides, so the run fails.
-        installs = {
-            "crit@crit": [
-                {"scope": "user", "version": "999.0.0"},
-                {"scope": "project", "version": "999.0.0", "projectPath": "PROJECT"},
-            ]
-        }
-        result, calls, _ = self.converge_listed(
-            step, installs, {"crit@crit": False}, project={"crit@crit": True}, DISABLE_NOOP="1"
+        # A project-only installation is not the user-scope one this repository installs: that is installed.
+        installs = {"crit@crit": [{"scope": "project", "version": pin, "projectPath": "PROJECT"}]}
+        result, calls, _ = self.converge_listed(step, installs, {}, INSTALL_VERSION=pin)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["plugin install crit@crit --scope user @neutral"], calls)
+
+    def test_an_off_pin_plugin_counts_as_disabled_only_when_the_user_settings_disable_it(self):
+        step = 'converge_claude_plugin "crit@crit"'
+        installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
+        # A disable that changes nothing: still enabled, or not named at all (the plugin's default applies).
+        for enabled in ({"crit@crit": True}, {}):
+            with self.subTest(enabled=enabled):
+                result, calls, _ = self.converge_listed(step, installs, enabled, DISABLE_NOOP="1")
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertIn("plugin disable crit@crit --scope user @neutral", calls)
+                self.assertIn("does not disable it", result.stderr)
+
+    def test_a_marketplace_that_cannot_be_registered_fails_an_off_pin_plugin(self):
+        # Failure injection: the existing off-pin installation is still disabled, and the run fails.
+        installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
+        result, calls, state = self.converge_listed(
+            'converge_claude_plugin "crit@crit"', installs, {"crit@crit": True}, markets=[], ADD_FAILS="1"
         )
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertIn("plugin disable crit@crit --scope project @project", calls)
-        self.assertIn("still enabled off its pin", result.stderr)
+        self.assertIn("claude plugin marketplace add tomasz-tomczyk/crit failed", result.stderr)
+        self.assertIn("plugin disable crit@crit --scope user @neutral", calls)
+        self.assertIs(False, state["user"]["crit@crit"])
 
     def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
         installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
@@ -708,7 +721,7 @@ claude() {
         self.assertEqual(
             [
                 f"plugin marketplace add {pstack['marketplace']} @neutral",
-                "plugin install pstack@cursor-plugins @neutral",
+                "plugin install pstack@cursor-plugins --scope user @neutral",
             ],
             calls,
         )

@@ -611,7 +611,12 @@ def read_json(path: Path) -> object:
 
 
 def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> list[str]:
-    """Fail for a Claude Code plugin installed at another version than its pin; warn for unpinned enabled ones."""
+    """Fail for a user-scope Claude Code plugin at another version than its pin; warn for unpinned enabled ones.
+
+    make update manages user scope only, the scope this repository installs: the pins are checked against the
+    user-scope installations, and "enabled" is read from the user settings it manages. A project- or
+    local-scope installation belongs to its project and is reported as not managed, never as a pass.
+    """
     installed_path = home / ".claude/plugins/installed_plugins.json"
     if not installed_path.exists():
         return [
@@ -622,9 +627,22 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
     except (OSError, ValueError, KeyError, TypeError) as error:
         return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
     findings = []
+    for plugin_id, entries in sorted(installed.items()):
+        for entry in entries if isinstance(entries, list) else []:
+            scope = entry.get("scope", "user") if isinstance(entry, dict) else "user"
+            if scope != "user":
+                findings.append(
+                    f"WARN: plugin {plugin_id} installed in {scope} scope at "
+                    f"{entry.get('projectPath') or 'an unrecorded path'}: not managed"
+                )
     for plugin_id, pin in sorted(pins.items()):
+        entries = installed.get(plugin_id, [])
         versions = sorted(
-            {str(entry.get("version")) for entry in installed.get(plugin_id, []) if isinstance(entry, dict)}
+            {
+                str(entry.get("version"))
+                for entry in (entries if isinstance(entries, list) else [])
+                if isinstance(entry, dict) and entry.get("scope", "user") == "user"
+            }
         )
         if not versions:
             findings.append(f"WARN: Claude Code plugin {plugin_id} is not installed (pin {pin['pin']})")
@@ -643,6 +661,7 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
                 *findings,
                 f"Claude Code plugins: cannot read {settings_path} ({error!r}); unpinned plugins not checked",
             ]
+        # The user settings this repository manages; an enable only in a project is that project's own.
         for plugin_id in sorted(enabled):
             if enabled[plugin_id] is True and plugin_id not in pins:
                 findings.append(

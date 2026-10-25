@@ -715,8 +715,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "source": "claude-plugin",
                     "upstream": "marketplaces",
                     "pin": "per-plugin",
-                    "verify": "none",
-                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
+                    "verify": "installed-version",
+                    "plugins": {"crit@crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
                 },
             }
         }
@@ -736,7 +736,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing install_path": lambda assets: assets["brew"].pop("install_path"),
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
-            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(pin=1.1),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit@crit"].update(pin=1.1),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):

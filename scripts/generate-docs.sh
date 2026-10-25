@@ -765,7 +765,7 @@ The site is rebuilt from tracked shell sources every time.
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
 - `mkdocs-toc-md` writes the full navigation tree to [catalog/](catalog/)
-- `uv run --with` keeps the MkDocs toolchain ephemeral
+- `uv run --with-requirements` keeps the MkDocs toolchain ephemeral, at the exact versions in `scripts/mkdocs-requirements.txt`
 
 </div>
 EOF

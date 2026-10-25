@@ -32,13 +32,13 @@ claude-update() {
     local claude_prefix
     local claude_version
 
-    # Update claude-code via mise, bypassing npm's `min-release-age` cooldown
-    # for THIS install only; mise's own minimum_release_age still applies, and
-    # tool versions are not committed.
-    npm_config_min_release_age=0 mise upgrade "npm:@anthropic-ai/claude-code"
+    # Update claude-code via mise under both cooldowns: mise's 72h
+    # minimum_release_age picks the version and npm's 3-day min-release-age
+    # (~/.npmrc) still covers its dependencies; tool versions are not committed.
+    mise upgrade "npm:@anthropic-ai/claude-code"
     claude_prefix="$(mise where "npm:@anthropic-ai/claude-code")"
     claude_version="$(mise current "npm:@anthropic-ai/claude-code")"
-    npm_config_min_release_age=0 npm install -g \
+    npm install -g \
         --prefix "${claude_prefix}" \
         --ignore-scripts=false \
         --allow-scripts=@anthropic-ai/claude-code \

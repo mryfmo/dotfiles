@@ -11,6 +11,26 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+# The reviewed starship release, as rendered from assets.starship into its installer.
+STARSHIP_PIN = re.search(
+    r'^readonly STARSHIP_PIN_VERSION="v([^"]+)"$',
+    (ROOT / "install/ubuntu/server/starship.sh").read_text(),
+    re.MULTILINE,
+).group(1)
+
+
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
 
 
 class SupplyChainPolicyTest(unittest.TestCase):
@@ -204,7 +224,7 @@ main
                         True,
                         {"DOWNLOAD_FAIL": "1"},
                         0,
-                        "warning: could not download Starship v1.26.0; Starship 1.25.0 stays.",
+                        f"warning: could not download Starship v{STARSHIP_PIN}; Starship 1.25.0 stays.",
                     ),
                     ("download fails, nothing installed", False, {"DOWNLOAD_FAIL": "1"}, 3, ""),
                     ("checksum mismatch, older starship installed", True, {}, 1, "Checksum mismatch"),
@@ -255,7 +275,7 @@ main
 
     def test_every_apply_installers_skip_when_current_and_keep_the_tool_offline(self):
         # starship and sheldon run on every chezmoi apply (run_after_*) and install only when not current:
-        # starship against its pin (v1.26.0 in assets.starship), sheldon against the newest crate.
+        # starship against its pin (assets.starship), sheldon against the newest crate.
         starship = (
             "install/ubuntu/server/starship.sh",
             "starship",
@@ -270,10 +290,10 @@ main
         )
         # The installed binary's script (None: not installed); a non-zero exit is broken whatever it printed.
         for (relative, tool, lookup, install), name, binary_body, newest, lookup_fail, expect_install in (
-            (starship, "pinned release installed", "printf 'starship 1.26.0\\nbranch:\\n'", "", "", False),
+            (starship, "pinned release installed", f"printf 'starship {STARSHIP_PIN}\\nbranch:\\n'", "", "", False),
             (starship, "older release (a pin bump)", "printf 'starship 1.25.0\\n'", "", "", True),
             (starship, "not installed", None, "", "", True),
-            (starship, "pinned banner, exits 42", "printf 'starship 1.26.0\\n'\nexit 42", "", "", True),
+            (starship, "pinned banner, exits 42", f"printf 'starship {STARSHIP_PIN}\\n'\nexit 42", "", "", True),
             (sheldon, "current", "printf 'sheldon 0.8.5\\n'", "0.8.5", "", False),
             (sheldon, "newer release", "printf 'sheldon 0.8.5\\n'", "9.9.9", "", True),
             (sheldon, "not installed", None, "0.8.5", "", True),
@@ -383,10 +403,7 @@ main
         self.assertIn(".config/mise/mise.lock", (ROOT / "home/.chezmoiremove").read_text().splitlines())
 
         lines = text.splitlines()
-        held = {"fd": "fd = ", "npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
-        held["node"] = "node = "
-        held["python"] = "python = "
-        held["uv"] = "uv = "
+        held = {"npm:pnpm": '"npm:pnpm" = ', "http:bats": '[tools."http:bats"]'}
         held["http:gcloud"] = '[tools."http:gcloud"]'
         # U42: ccusage 20.0.38 lost its linux-x64 native binary; both statusline tools are held.
         held["npm:ccusage"] = '"npm:ccusage" = '
@@ -503,25 +520,20 @@ main
         self.assertIn(f"/v{bats['version']}.tar.gz", bats["url"])
         gcloud = config["tools"]["http:gcloud"]
         self.assertEqual("google-cloud-sdk/bin", gcloud["bin_path"])
-        expected_gcloud = {
-            "linux-x64": {
-                "url": "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-x86_64.tar.gz",
-                "checksum": "sha256:38198fa76b1aa64a332fadca7dba45f96c6dbb5cd9e77f173f9d6a65443e37ab",
-            },
-            "linux-arm64": {
-                "url": "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-arm.tar.gz",
-                "checksum": "sha256:e5c3a354d4c5775eccede626746547d6d3dc3f59db350f62f05dbc604eec5e3f",
-            },
-            "macos-x64": {
-                "url": "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-x86_64.tar.gz",
-                "checksum": "sha256:0f9b0f45e5dff30d8c67c0f9ceb4d64b03497efa9135849b80ecf0cd0706009c",
-            },
-            "macos-arm64": {
-                "url": "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-arm.tar.gz",
-                "checksum": "sha256:055892517a1101903938bbc1006c02feb639ec7efff8b25509c72e9a20351b3c",
-            },
+        assets = {
+            "linux-x64": "linux-x86_64",
+            "linux-arm64": "linux-arm",
+            "macos-x64": "darwin-x86_64",
+            "macos-arm64": "darwin-arm",
         }
-        self.assertEqual(expected_gcloud, gcloud["platforms"])
+        self.assertEqual(set(assets), set(gcloud["platforms"]))
+        for platform, asset in assets.items():
+            entry = gcloud["platforms"][platform]
+            self.assertEqual(
+                f"https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-{gcloud['version']}-{asset}.tar.gz",
+                entry["url"],
+            )
+            self.assertRegex(entry["checksum"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         # The bootstrap takes the newest cooled-down mise release instead of a pin;
         # test_rolling_installers_resolve_through_the_release_helper covers it.
@@ -696,7 +708,7 @@ main
 
     def test_renovate_configuration_covers_mise_and_the_manifest_pins(self):
         config = json.loads((ROOT / "renovate.json").read_text())
-        self.assertEqual({"github-actions", "mise", "custom.regex"}, set(config["enabledManagers"]))
+        self.assertEqual({"mise", "custom.regex"}, set(config["enabledManagers"]))
         self.assertTrue(
             any(
                 re.search(pattern.strip("/"), "home/dot_mise/config.toml")
@@ -707,12 +719,11 @@ main
         self.assertEqual(1, len(manifest_rules))
         self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
         self.assertNotIn("automerge", json.dumps(config))
-        # No mise.lock is left to regenerate, so no mise rule waits on lock fidelity; fd stays held like config.toml.
+        # No mise.lock is left to regenerate, so no mise rule waits on lock fidelity; fd is no longer held in
+        # config.toml, so Renovate does not hold it either.
         mise_rules = [rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]]
         self.assertFalse([rule for rule in mise_rules if "mise.lock" in rule.get("description", "")])
-        self.assertTrue(
-            any(rule.get("matchDepNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
-        )
+        self.assertFalse([rule for rule in mise_rules if "fd" in rule.get("matchDepNames", [])])
         # The held npm:pnpm must not come back through a Renovate PR either.
         self.assertTrue(
             any(rule.get("matchDepNames") == ["npm:pnpm"] and rule.get("enabled") is False for rule in mise_rules)

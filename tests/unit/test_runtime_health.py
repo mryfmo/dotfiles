@@ -17,12 +17,63 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import complete_env, isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
+def install_pinned_claude_plugins(home: Path) -> None:
+    """A host whose Claude Code runs every pinned plugin at its pin (installed_plugins.json, the file the
+    updater reads), so the plugin convergence has nothing to change."""
+    pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
+    record = home / ".claude/plugins/installed_plugins.json"
+    record.parent.mkdir(parents=True, exist_ok=True)
+    plugins = {
+        plugin_id: [
+            {
+                "scope": "user",
+                "version": pin["pin"],
+                "installPath": f"{home}/.claude/plugins/cache/{plugin_id.split('@')[1]}/{plugin_id.split('@')[0]}/{pin['pin']}",
+            }
+        ]
+        for plugin_id, pin in pins.items()
+    }
+    record.write_text(json.dumps({"version": 2, "plugins": plugins}))
+    # What `claude plugin marketplace list --json` prints on that host: every recorded marketplace, registered.
+    listing = [
+        {"name": plugin_id.split("@")[1], "source": "github", "repo": pin["marketplace"]}
+        for plugin_id, pin in pins.items()
+    ]
+    (home / ".fixture-marketplaces.json").write_text(json.dumps(listing))
+
+
+# The fake claude's answer to `plugin marketplace list --json` (install_pinned_claude_plugins writes it).
+FAKE_MARKETPLACE_LIST = '[ "$1 $2 $3" != "plugin marketplace list" ] || cat "$HOME/.fixture-marketplaces.json"'
+
+
 class RuntimeHealthTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="runtime-health-test-"))
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
+
+    def link_real_jq(self, bin_dir: Path) -> None:
+        """Put the host's jq on a hermetic PATH: the updater parses every record with it, and /usr/bin has no jq
+        on every runner (macOS 14), so without it a step fails for a reason the test is not about."""
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq)
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        (bin_dir / "jq").symlink_to(jq)
 
     def executable(self, path: Path, body: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +92,7 @@ class RuntimeHealthTest(unittest.TestCase):
         return subprocess.run(
             command,
             cwd=cwd,
-            env=env,
+            env=complete_env(os.environ if env is None else env),
             text=True,
             capture_output=True,
             check=check,
@@ -99,6 +150,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_claude_crit() { :; }
                     update_claude_ponytail() { :; }
                     update_claude_understand_anything() { :; }
+                    converge_claude_plugins() { :; }
                     update_codex_superpowers() { :; }
                     update_codex_crit() { :; }
                     update_codex_ponytail() { :; }
@@ -132,11 +184,14 @@ class RuntimeHealthTest(unittest.TestCase):
         (repo / "scripts").mkdir(parents=True)
         (repo / "install/common").mkdir(parents=True)
         home.mkdir()
+        install_pinned_claude_plugins(home)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
         )
         (repo / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
@@ -168,15 +223,20 @@ class RuntimeHealthTest(unittest.TestCase):
                 bin_dir / command,
                 f"""
                 printf '{command} %s\\n' "$*" >> "$TEST_LOG"
+                {FAKE_MARKETPLACE_LIST if command == "claude" else ""}
                 """,
             )
+        self.link_real_jq(bin_dir)
         log = repo / "commands.log"
 
         result = self.run_test_command(
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; main",
+                # The subject is the order of the CLI repair steps; the pin verdicts (doctor_pin_check, the Ponytail
+                # ref gate) need a fully converged fixture host and are covered in test_update_agent_assets.
+                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; "
+                "doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
             ],
             cwd=repo,
             env={
@@ -201,11 +261,14 @@ class RuntimeHealthTest(unittest.TestCase):
         (repo / "scripts").mkdir(parents=True)
         (repo / "install/common").mkdir(parents=True)
         home.mkdir()
+        install_pinned_claude_plugins(home)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
         )
         (repo / "scripts/lib").mkdir()
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
@@ -247,22 +310,33 @@ class RuntimeHealthTest(unittest.TestCase):
                 "${MISE_NPM_PACKAGE_MANAGER:-}" \
                 "${npm_config_min_release_age:-}" \
                 "$*" >> "$TEST_LOG"
+            # As the real mise: `where` prints the tool's install directory (the manifest records it).
+            if [ "$1" = where ]; then
+                printf '%s\n' "$HOME/.local/share/mise/installs/claude"
+            fi
             if [ "$*" = "install --force npm:@anthropic-ai/claude-code" ]; then
                 cat > "$BROKEN_CLAUDE" <<'EOF'
 #!/bin/bash
 printf 'claude %s\n' "$*" >> "$TEST_LOG"
+"""
+            + FAKE_MARKETPLACE_LIST
+            + """
 EOF
                 chmod +x "$BROKEN_CLAUDE"
             fi
             """,
         )
+        self.link_real_jq(bin_dir)
         log = repo / "commands.log"
 
         result = self.run_test_command(
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; main",
+                # The subject is the order of the CLI repair steps; the pin verdicts (doctor_pin_check, the Ponytail
+                # ref gate) need a fully converged fixture host and are covered in test_update_agent_assets.
+                "source scripts/update-agent-assets.sh; update_omp() { :; }; update_hcom() { :; }; "
+                "doctor_pin_check() { :; }; update_codex_ponytail() { :; }; main",
             ],
             cwd=repo,
             env={
@@ -276,10 +350,11 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = "mise npm 0 install --force npm:@anthropic-ai/claude-code"
+        # The repair keeps npm's own cooldown: it no longer sets npm_config_min_release_age (logged empty here).
+        repair = "mise npm  install --force npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
-        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list --json"))
 
     def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
         self,
@@ -292,7 +367,6 @@ EOF
                     """
                     source "$1"
                     has_command() { return 0; }
-                    command_output_contains() { return 1; }
                     codex() {
                         if [ "$*" = "plugin add superpowers@openai-curated" ]; then
                             printf 'Error: plugin superpowers@openai-curated was not found\n' >&2
@@ -367,6 +441,8 @@ EOF
         home = self.temp_dir / "crit-home"
         bin_dir = repo / "bin"
         (repo / "scripts/lib").mkdir(parents=True)
+        # Sourcing the updater resolves the agent homes through pin_records.py.
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         (home / ".local/bin").mkdir(parents=True)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
@@ -443,9 +519,7 @@ EOF
             esac
             """,
         )
-        jq = shutil.which("jq")
-        self.assertIsNotNone(jq)
-        (bin_dir / "jq").symlink_to(jq)
+        self.link_real_jq(bin_dir)
         if installed_version is not None:
             self.executable(
                 home / ".local/bin/crit",
@@ -719,9 +793,7 @@ EOF
             repo / "scripts/update-agent-assets.sh",
             "printf 'assets\\n' >> \"$TEST_LOG\"\n",
         )
-        jq = shutil.which("jq")
-        self.assertIsNotNone(jq)
-        (bin_dir / "jq").symlink_to(jq)
+        self.link_real_jq(bin_dir)
         log = repo / "calls"
         result = self.run_test_command(
             ["make", "update"],
@@ -957,9 +1029,14 @@ EOF
         home = repo / "home"
         (repo / "scripts").mkdir(parents=True)
         home.mkdir()
+        # The applied mise config is the repository's (home/dot_config/mise/config.toml.tmpl includes it).
+        (home / ".config/mise").mkdir(parents=True)
+        shutil.copy(ROOT / "home/dot_mise/config.toml", home / ".config/mise/config.toml")
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
         self.executable(
             bin_dir / "brew",
@@ -1175,7 +1252,79 @@ EOF
                 self.assertIn("required failures:", result.stdout)
                 log = (repo / "commands.log").read_text()
                 if phase != "apt":
-                    self.assertIn("gh extension upgrade --all", log)
+                    self.assertIn("gh extension list", log)
+                    self.assertNotIn("gh extension upgrade --all", log)
+
+    def test_upgrade_never_moves_a_pinned_gh_extension(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        # gh lists the pinned gh-poi and an extension this repository does not pin.
+        self.executable(
+            repo / "bin/gh",
+            """
+            printf 'gh %s\\n' "$*" >> "$TEST_LOG"
+            if [ "$1 $2" = "extension list" ]; then
+                printf 'gh poi\\tseachicken/gh-poi\\tv0.18.5\\ngh dash\\tdlvhdr/gh-dash\\tv4.0.0\\n'
+            fi
+            """,
+        )
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertIn("gh extension upgrade gh-dash", log)
+        self.assertFalse([line for line in log if line.startswith("gh extension upgrade") and "poi" in line], log)
+        self.assertNotIn("gh extension upgrade --all", log)
+        self.assertIn("Skipping gh extension seachicken/gh-poi: pinned", result.stdout)
+
+    def test_upgrade_never_reads_a_failed_hold_or_pin_check_as_no(self) -> None:
+        # Failure injection: a hold or pin question that cannot be answered never upgrades the tool or extension.
+        for case in ("mise config with a stray Held comment", "unreadable plugin pins"):
+            with self.subTest(case=case):
+                repo, env = self.upgrade_fixture("hold-" + case.split()[0])
+                self.executable(
+                    repo / "bin/gh",
+                    """
+                    printf 'gh %s\\n' "$*" >> "$TEST_LOG"
+                    if [ "$1 $2" = "extension list" ]; then printf 'gh poi\\tseachicken/gh-poi\\tv0.18.5\\n'; fi
+                    """,
+                )
+                if case.startswith("mise"):
+                    config = repo / "home/.config/mise/config.toml"
+                    config.write_text(config.read_text() + "\n# Held: dangling\n")
+                else:
+                    (repo / "scripts/plugin-pins.json").write_text("{truncated")
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+                log = (repo / "commands.log").read_text().splitlines()
+                output = result.stdout + result.stderr
+                if case.startswith("mise"):
+                    self.assertNotIn("mise upgrade --yes npm:ccusage", log)
+                    self.assertFalse([line for line in log if line.startswith("mise upgrade --yes ")], log)
+                    self.assertIn("unable to read the held tools", output)
+                    self.assertNotEqual(0, result.returncode, output)
+                else:
+                    self.assertFalse([line for line in log if line.startswith("gh extension upgrade")], log)
+                    self.assertIn("cannot tell whether gh extension seachicken/gh-poi is pinned", output)
+                    self.assertIn("optional warning", output)
+
+    def test_upgrade_holds_exactly_the_tools_the_config_marks_held(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        config = repo / "home/.config/mise/config.toml"
+        # A hold added in the config is the only thing that holds fd; removing it releases fd again.
+        config.write_text(config.read_text().replace('\nfd = "latest"', '\n# Held: fixture hold\nfd = "10.3.0"', 1))
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertNotIn("mise upgrade --yes fd", log)
+        self.assertIn("Skipping mise upgrade for held tool: fd", result.stdout)
+        self.assertIn("mise upgrade --yes python", log)
+
+        # Failure injection: an unreadable config upgrades nothing rather than guessing the holds.
+        (repo / "commands.log").unlink()
+        (repo / "home/.config/mise/config.toml").unlink()
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertFalse([line for line in log if line.startswith("mise upgrade --yes ")], log)
+        self.assertIn("unable to read the held tools", result.stdout + result.stderr)
 
     def test_upgrade_skips_unavailable_mise_self_update(self) -> None:
         repo, env = self.upgrade_fixture("none")
@@ -1199,7 +1348,10 @@ EOF
         # Only exact versions (the npm rebuild) are installed per tool; a per-tool "latest" install needs the network.
         self.assertFalse([line for line in log if line.startswith("mise install --yes ") and "@" not in line])
         self.assertIn("mise upgrade --yes python", log)
-        self.assertNotIn("mise upgrade --yes fd", log)
+        # fd's hold is released in the config, so it moves; npm:ccusage's hold comment keeps it.
+        self.assertIn("mise upgrade --yes fd", log)
+        self.assertNotIn("mise upgrade --yes npm:ccusage", log)
+        self.assertIn("Skipping mise upgrade for held tool: npm:ccusage", result.stdout)
         self.assertFalse([line for line in log if line.startswith("mise upgrade --yes http:")])
         # The config's minimum_release_age is the cooldown; nothing bumps or rewrites a request.
         for flag in ("--bump", "--before", "--pin", " use "):

@@ -40,6 +40,18 @@ BOOTSTRAP_READERS = (
 )
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def target_of(source: str) -> str:
     """The target path chezmoi gives a source path relative to home/: attributes stripped, dot_ to a dot, .tmpl off."""
     parts = []

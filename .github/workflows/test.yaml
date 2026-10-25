@@ -60,7 +60,6 @@ jobs:
       # upload sessions in Codecov API/UI and avoids accidental session overlap.
       CODECOV_FLAGS: ${{ matrix.os }}-${{ matrix.system }}
       CODECOV_NAME: codecov-dotfiles-${{ matrix.os }}-${{ matrix.system }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Configure Git defaults
@@ -167,6 +166,9 @@ jobs:
 
       - name: Install tools
         if: ${{ steps.decide.outputs.should_test == 'true' }}
+        # gh and scripts/lib/github-release.sh authenticate with this token; no other step needs it.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           if [[ "${OS}" == macos-* ]]; then
             # The macOS runner images ship third-party taps tapped but
@@ -540,4 +542,6 @@ jobs:
           # Use the PyPI-distributed CLI in CI to avoid non-actionable GPG trust
           # warnings emitted by the standalone binary signature verifier.
           use_pypi: true
+          # The CLI pip installs: codecov-cli 11.3.1 (PyPI, 2026-07-09), not the newest at run time.
+          version: 11.3.1
           verbose: false

@@ -15,6 +15,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
 UPSTREAM_INDEX = 'import { keyHint } from "@earendil-works/pi-coding-agent";\nexport const bridge = 1;\n'
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 PATCH = """--- a/src/index.ts
 +++ b/src/index.ts
 @@ -1,2 +1,2 @@

@@ -1,4 +1,7 @@
+import json
 import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,13 +23,8 @@ EXPECTED_PERMISSIONS = {
     "test.yaml": {"contents": "read"},
     "ubuntu.yaml": {"contents": "read"},
 }
-CHECKOUT_CREDENTIAL_EXEMPTIONS = {
-    (
-        "docs.yml",
-        "deploy",
-        "Checkout repository",
-    ): "make deploy pushes the generated documentation",
-}
+# The docs deploy pushes with a token handed to its deploy step only, so no checkout keeps credentials.
+CHECKOUT_CREDENTIAL_EXEMPTIONS: dict[tuple[str, str, str], str] = {}
 
 
 def top_level_permissions(text: str) -> dict[str, str]:
@@ -104,7 +102,34 @@ def checkout_step_disables_credentials(block: str) -> bool:
     return values == ["false"]
 
 
+def load_workflow(name: str) -> dict:
+    """The workflow parsed by PyYAML, which uv provides as for regime.yml's tests."""
+    read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])), default=str))"
+    uv = [shutil.which("uv") or "uv", "run", "--no-config", "--no-project", "--with", "pyyaml", "python", "-I"]
+    result = subprocess.run([*uv, "-c", read, str(WORKFLOWS / name)], capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+
 class WorkflowSecurityTest(unittest.TestCase):
+    def test_tokens_reach_only_the_steps_that_use_them(self):
+        # A job-wide token reaches every step and every tool a step installs; each one goes to its users only.
+        for workflow, job_name, holders in (
+            ("test.yaml", "test", {"Install tools": "GITHUB_TOKEN", "Upload coverage to Codecov": "CODECOV_TOKEN"}),
+            ("docs.yml", "deploy", {"Deploy docs": "GH_TOKEN"}),
+        ):
+            with self.subTest(workflow=workflow):
+                job = load_workflow(workflow)["jobs"][job_name]
+                self.assertEqual([], [key for key in job.get("env", {}) if "TOKEN" in key])
+                self.assertEqual(
+                    holders,
+                    {step["name"]: key for step in job["steps"] for key in step.get("env", {}) if "TOKEN" in key},
+                )
+
+    def test_codecov_upload_installs_a_pinned_cli(self):
+        steps = load_workflow("test.yaml")["jobs"]["test"]["steps"]
+        (upload,) = [step for step in steps if step.get("uses", "").startswith("codecov/codecov-action@")]
+        self.assertRegex(upload["with"].get("version", "latest"), r"^\d+\.\d+\.\d+$")
+
     def test_external_actions_use_full_commit_shas(self):
         mutable = []
         for path in sorted(WORKFLOWS.glob("*.y*ml")):

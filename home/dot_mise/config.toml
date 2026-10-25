@@ -1,22 +1,18 @@
 [tools]
 # Tools track "latest" behind minimum_release_age; make update upgrades them. A held tool keeps an exact version and says why.
-# Held: trusted entrypoints require these exact uv, Python, and Node versions.
-node = "26.12.0"
+node = "latest"
 rust = "latest"
-# Held: the trusted interpreter resolver binds to this exact Python version.
-python = "3.15.0"
+python = "latest"
 
 age = "latest"
 bun = "latest"
 chezmoi = "latest"
 dotenvx = "latest"
 "cargo:eza" = "latest"
-# Held: newer fd releases lack a macOS x64 asset.
-fd = "10.3.0"
+fd = "latest"
 jq = "latest"
 hugo-extended = "latest"
-# Held: the trusted entrypoint binds to this exact uv version.
-uv = "0.13.1"
+uv = "latest"
 yazi = "latest"
 "aqua:micro-editor/micro" = "latest"
 "aqua:mikefarah/yq" = "latest"
@@ -48,24 +44,24 @@ ruff = "latest"
 
 # http backend: bumped by hand with its checksum.
 [tools."http:bats"]
-version = "1.13.0"
-url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
-checksum = "sha256:a85e12b8828271a152b338ca8109aa23493b57950987c8e6dff97ba492772ff3"
+version = "1.14.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
+checksum = "sha256:bb537b70b15b732f6d8827dd6578e3d8ce166636ce1f18ea9a074184fcce9177"
 strip_components = 1
 bin_path = "bin"
 
 # http backend: bumped by hand with its checksum.
 [tools."http:gcloud"]
-version = "575.0.1"
+version = "590.0.0"
 bin_path = "google-cloud-sdk/bin"
 
-# Provenance: https://docs.cloud.google.com/sdk/docs/downloads-versioned-archives publishes the current digests;
-# these versioned wrappers have byte-identical decompressed tar streams and are pinned by their wrapper SHA-256.
+# Provenance: SHA-256 of each versioned tarball as downloaded from storage.googleapis.com/cloud-sdk-release;
+# the downloads-versioned-archives page publishes digests only for the current release, not for this one.
 [tools."http:gcloud".platforms]
-linux-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-x86_64.tar.gz", checksum = "sha256:38198fa76b1aa64a332fadca7dba45f96c6dbb5cd9e77f173f9d6a65443e37ab" }
-linux-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-arm.tar.gz", checksum = "sha256:e5c3a354d4c5775eccede626746547d6d3dc3f59db350f62f05dbc604eec5e3f" }
-macos-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-x86_64.tar.gz", checksum = "sha256:0f9b0f45e5dff30d8c67c0f9ceb4d64b03497efa9135849b80ecf0cd0706009c" }
-macos-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-arm.tar.gz", checksum = "sha256:055892517a1101903938bbc1006c02feb639ec7efff8b25509c72e9a20351b3c" }
+linux-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-590.0.0-linux-x86_64.tar.gz", checksum = "sha256:1503a6fcda689d1e1013a421e2c85850e7f58382c0be7064877b5e1a1038bc64" }
+linux-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-590.0.0-linux-arm.tar.gz", checksum = "sha256:547c5c28ae449a862339edbe73e4254073b33072a364463f581adebf894c5cfa" }
+macos-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-590.0.0-darwin-x86_64.tar.gz", checksum = "sha256:3b1380b3118e9bb89dc108b6eb291e41468289415dcd2a33cdfc55e2570d3ede" }
+macos-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-590.0.0-darwin-arm.tar.gz", checksum = "sha256:a3327108b808f3cc42aa57912bb1b175ccae16fe6cedb90fdd05cd84f8b89b49" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]

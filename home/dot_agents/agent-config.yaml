@@ -619,7 +619,7 @@ codex:
     ponytail@ponytail:
       enabled: true
   marketplaces:
-    # last_updated/last_revision render from assets.codex-plugins.
+    # ref renders from assets.codex-plugins (the reviewed commit); a marketplace with a ref is managed, not runtime state.
     ponytail:
       source_type: git
       source: https://github.com/DietrichGebert/ponytail.git
@@ -646,8 +646,8 @@ codex:
     # The hooks this repository ships or installs. The modify scripts hash each one at apply time: a config
     # hook from its manifest definition embedded in the modify script is trusted at that hash; a plugin hook
     # from the installed plugin file is trusted only when that hash equals its trusted_hash pin, so a plugin
-    # release `make update` installed stays untrusted (apply and `make doctor` warn) until it is reviewed in
-    # /hooks and its hash is recorded here. The pin is written as is when the plugin file is absent.
+    # copy whose hook is not the reviewed one stays untrusted (apply and `make doctor` warn) until it is reviewed
+    # in /hooks and its hash is recorded here. The pin is written as is when the plugin file is absent.
     state:
       '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':
         enabled: true
@@ -660,14 +660,16 @@ codex:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
         enabled: true
+      # Ponytail 5.3.2 at 09c434a (both hosts, 2026-10-25): each hook runs `node -e` on the plugin's own
+      # hooks/ponytail-{activate,mode-tracker,subagent}.js with a 15 s timeout, the same three scripts as before.
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
-        trusted_hash: sha256:7ee5d5ae1f4a9e55f1f429f2960c2f9f32293f198c0e8e2e42b2fb3b4eeda142
+        trusted_hash: sha256:defea43402fc8edba23234c694a1117cf80efc2da38968a40a1004cd9d63f725
         enabled: true
       ponytail@ponytail:hooks/claude-codex-hooks.json:user_prompt_submit:0:0:
-        trusted_hash: sha256:8c9efc5a5e649c8cdca3f0b7bf4cba81d9717d1bc930c7dbc18b6efd66c7c58c
+        trusted_hash: sha256:5aa5ec474e0bb546f207794993b37fdf7507e54a64e09216be164c5b7b42a197
         enabled: true
       ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0:
-        trusted_hash: sha256:7954d675ef3bafd5e5a6073ae51d7de57a08f21340f241c332f99078e955675d
+        trusted_hash: sha256:5b2c1dfa8c7ecc5e8881c8e69479f65d46ed727e0bc5b8e7b4553cee9e5c3daf
         enabled: true
   projects:
     "{{ .chezmoi.workingTree }}":
@@ -682,7 +684,7 @@ claude:
   # Haiku 5.5). The settings merge drops the `true` the template used to set.
   # No update keys (regime-cutover U18): mise's `npm:@anthropic-ai/claude-code`
   # entry is the only version channel, and DISABLE_UPDATES/DISABLE_AUTOUPDATER in
-  # home/dot_zshenv and home/dot_profile block Claude Code's own updater.
+  # claude.settings env (below), home/dot_zshenv and home/dot_profile block Claude Code's own updater.
   # `autoUpdatesChannel` would name a channel the mise install never follows,
   # and `autoUpdates` is not a settings key (`{"autoUpdates": false}` alone:
   # `claude doctor` 2.1.309 reports `Auto-updates: enabled`).
@@ -752,6 +754,12 @@ claude:
     DO_NOT_TRACK: "1"
     CHECKPOINT_DISABLE: "1"
     AWS_EC2_METADATA_DISABLED: "true"
+    # Also in home/dot_zshenv and home/dot_profile; here they hold for a claude started outside a login
+    # shell too (an IDE, launchd, a seat), so Claude Code's own updater never installs a release mise's
+    # 72h cooldown has not passed. DISABLE_AUTOUPDATER also stops plugin auto-updates, so a plugin moves
+    # only through make update at its pin (assets.claude-plugins).
+    DISABLE_AUTOUPDATER: "1"
+    DISABLE_UPDATES: "1"
   # The coordinator's levers (regime-cutover U31). The generator renders
   # home/dot_local/bin/common/executable_<name> from scripts/orchestrator/<name>
   # (same bytes; chezmoi installs it as ~/.local/bin/common/<name>, mode 0755,
@@ -1037,12 +1045,12 @@ assets:
   starship:
     source: github-release
     upstream: starship/starship
-    pin: v1.26.0
+    pin: v1.27.0
     verify: sha256
     sha256:
-      linux-x86_64: b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3
-      linux-aarch64: dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b
-    reason: starship's releases are mutable and carry only .sha256 sidecars, with no signature or attestation (immutable=false, attestations API 404 at v1.26.0); a sidecar from the same release checks the download, not the publisher, so the reviewed sha256 is the check and the sidecar stays as a second one.
+      linux-x86_64: 10c8eb4cb3b761d9bf59ea828444c2dab36c900b7d69a69e08814b286969df89
+      linux-aarch64: 341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d
+    reason: starship's releases are mutable and carry only .sha256 sidecars, with no signature or attestation (immutable=false, attestations API 404 at v1.27.0); a sidecar from the same release checks the download, not the publisher, so the reviewed sha256 is the check and the sidecar stays as a second one.
     install_path: ~/.local/bin/starship
     installer: install/ubuntu/server/starship.sh
     render:
@@ -1065,9 +1073,9 @@ assets:
   homebrew-installer:
     source: git-commit
     upstream: Homebrew/install
-    pin: c7952e40b7957268f61643152f4db725379b292e
+    pin: 09c62fc577ec170172b0a184060f141a2c622dc1
     verify: sha256
-    sha256: 99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d
+    sha256: 5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148
     reason: Homebrew publishes its install script without a signature, checksum or release; the commit and script hash are the only check (bootstrap only).
     install_path: Homebrew default prefix (/opt/homebrew or /usr/local)
     installer: install/macos/common/brew.sh
@@ -1133,8 +1141,8 @@ assets:
     pin: 18.11.3
     verify: sha256
     sha256: b4a4eaf8057a7591f4ca83be293780489fd72b174e6a629d4704320165177f09
-    note: npm published 2026-10-16T21:52:39.004Z; bin omp is dist/cli.js; integrity sha512-7MdQBaj/zGHG7uV0mJSrYGHsjX3xthYgXUxTxLeJeFFL15UAnyE99kAfDE66c8LdXU0dN34eTyw6lfM7K5ouCg==; shasum a187bd1b0ef31c17e18b456846309f64fe92cf87; tarball fetched 2026-10-17T10:44:00Z (14684952 bytes), its sha512 equals the registry integrity.
-    reason: the npm registry serves an integrity hash from the same registry and no signature or attestation; the reviewed sha256 of the exact tarball is the check.
+    note: npm published 2026-10-16T21:52:39.004Z; bin omp is dist/cli.js; integrity sha512-7MdQBaj/zGHG7uV0mJSrYGHsjX3xthYgXUxTxLeJeFFL15UAnyE99kAfDE66c8LdXU0dN34eTyw6lfM7K5ouCg==; shasum a187bd1b0ef31c17e18b456846309f64fe92cf87; tarball fetched 2026-10-17T10:44:00Z (14684952 bytes), its sha512 equals the registry integrity. Re-read 2026-10-25, `npm audit signatures` in a scratch project with 18.11.3 installed reports 142 packages with verified registry signatures and 73 with verified attestations, this package's own SLSA provenance among them. The tarball ships no npm-shrinkwrap.json, so its dependencies resolve at install time under npm's min-release-age (~/.npmrc, three days).
+    reason: held at 18.11.3 although 18.12.6 is past the cooldown, because the seat policies (home/dot_agents/omp/policies) and tests/unit/test_omp_seat_policy.py model this release's approval resolver (src/tools/approval.ts), which 18.12.x rewrote with approval grants and a grant cache (diff of the two tarballs, 2026-10-25); bump with a re-read of that resolver. The registry signs the tarball and the release carries SLSA provenance, but the provenance names a CI workflow, not a reviewed build, so the reviewed sha256 of the exact tarball pins what runs as omp.
     install_path: ~/.local/bin/omp
     installer: scripts/update-agent-assets.sh#update_omp
     render:
@@ -1246,41 +1254,73 @@ assets:
         CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256: sha256
   compactiondb:
     source: vendored
-    upstream: unknown
+    upstream: this repository (vendor/compactiondb)
     pin: 2.0.0+dotfiles.9
     verify: manifest-sha256
     manifest: vendor/compactiondb/MANIFEST.sha256
-    note: local-fork-vendored-under-vendor/compactiondb
+    note: >-
+      a clean-room implementation kept in this repository (vendor/compactiondb/NOTICE.md), so
+      there is no external upstream to follow: the tree in this repository is the source of
+      truth, and MANIFEST.sha256 checks that the installed copy is that tree.
     install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
   claude-plugins:
     source: claude-plugin
     upstream: marketplaces
     pin: per-plugin
-    verify: none
-    note: plugin pins are the installed versions; make update does not enforce them until L.2
+    verify: installed-version
+    note: >-
+      each pin is the version both hosts ran on 2026-10-25 (~/.claude/plugins/installed_plugins.json
+      on macOS and spark-9e8d). Only the user-scope installation is managed, the scope this
+      repository installs; a project- or local-scope installation belongs to its project, and make
+      update and make doctor report it as not managed. Claude Code installs a plugin only at its
+      marketplace's current release and takes no version, so scripts/update-agent-assets.sh leaves
+      a user-scope installation at its pin alone (its enabled state included), installs a missing
+      one from the marketplace recorded here (registering it first), updates one that is not at
+      its pin, and disables it at user scope when it is still off its pin afterwards, proven by an
+      explicit false in ~/.claude/settings.json: Claude Code runs a plugin's hooks with no trust
+      step, so only a reviewed version stays enabled. Every claude call runs from an empty
+      directory. Any failure (records unreadable, marketplace not registered, install failed,
+      disable not proven) fails the run. This list drives that loop, so every plugin here is
+      converged, pstack included (installed by hand from the cursor/plugins marketplace;
+      assets.pstack deploys its skills). make doctor fails when a user-scope installed version
+      differs from its pin and warns for a plugin the user settings enable without a pin here.
+      To move a plugin, review the upstream release, set its pin here, regenerate, then make update.
     plugins:
-      superpowers: {marketplace: anthropics/claude-plugins-official, pin: 6.4.1}
-      crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.10}
-      ponytail: {marketplace: DietrichGebert/ponytail, pin: 4.10.0}
-      understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
+      superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
+      crit@crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.14}
+      ponytail@ponytail: {marketplace: DietrichGebert/ponytail, pin: 5.3.2}
+      understand-anything@understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
+      pstack@cursor-plugins: {marketplace: cursor/plugins, pin: 0.15.30}
   codex-plugins:
     source: codex-plugin
     upstream: marketplaces
     pin: per-plugin
-    verify: none
-    note: plugin pins are the installed versions; make update does not enforce them until L.2
+    verify: installed-version
+    note: >-
+      each pin is the version both hosts ran on 2026-10-25 (the plugin.json of the copy under
+      ~/.codex/plugins/cache that Codex loads, on macOS and spark-9e8d). A plugin with a ref comes
+      from a git marketplace that the Codex config fetches at that commit (`ref` under
+      [marketplaces.<name>], rendered from here; `codex plugin marketplace upgrade` stays on it),
+      and ponytail's hooks are trusted only at the trusted_hash pins under codex.hooks.state.
+      superpowers comes from the OpenAI-curated catalog, which takes no version, so make update
+      only compares it. make doctor fails when an installed version or a marketplace revision
+      differs from its pin. The crit plugin is the local copy `crit install codex-plugin` writes
+      for the pinned crit release (assets.crit).
     plugins:
-      superpowers: {marketplace: openai-curated, pin: unknown}
-      ponytail:
+      superpowers@openai-curated: {marketplace: openai-curated, pin: 6.3.0}
+      ponytail@ponytail:
         marketplace: https://github.com/DietrichGebert/ponytail.git
-        pin: 4.10.0
-        last_updated: "2026-06-30T01:47:41Z"
-        last_revision: 16f6cbf4b87792938e47b0f8c650b6d80fcbc98c
+        pin: 5.3.2
+        ref: 09c434ab73ca43761c5d8b0c5d341926c2fba710
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi
-    pin: unknown
-    verify: none
+    pin: v0.18.5
+    verify: installed-version
+    reason: gh-poi's releases are mutable and carry only a checksums.txt from the same release, with no signature or attestation (immutable=false, attestations API 404 at v0.18.5); `gh extension install --pin` installs exactly this reviewed tag, and make doctor fails when the installed tag differs.
     installer: install/common/gh_extensions.sh
-    note: install/common/gh_extensions.sh installs seachicken/gh-poi unpinned
+    note: the version both hosts ran on 2026-10-25 (gh extension list).
+    render:
+      file: install/common/gh_extensions.sh
+      constants: {GH_POI_PIN_VERSION: pin}

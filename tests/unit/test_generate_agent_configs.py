@@ -812,6 +812,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                         "DO_NOT_TRACK": "1",
                         "CHECKPOINT_DISABLE": "1",
                         "AWS_EC2_METADATA_DISABLED": "true",
+                        # Claude Code's own updater stays off for a claude started outside a login shell too.
+                        "DISABLE_AUTOUPDATER": "1",
+                        "DISABLE_UPDATES": "1",
                     },
                     settings["env"],
                 )
@@ -1755,14 +1758,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn('[projects."{{ .chezmoi.workingTree }}"]', config)
         self.assertNotIn("/Users/mryfmo/", config)
-
-    def test_trusted_entrypoint_mise_versions_are_exact(self) -> None:
-        tools = tomllib.loads((ROOT / "home/dot_mise/config.toml").read_text())["tools"]
-
-        self.assertEqual(
-            {name: tools[name] for name in ("uv", "python", "node")},
-            {"uv": "0.13.1", "python": "3.15.0", "node": "26.12.0"},
-        )
 
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
         codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()

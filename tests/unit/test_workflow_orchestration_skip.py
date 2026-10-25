@@ -85,6 +85,20 @@ UNGATED_STEPS = frozenset(
 PLAIN_KEY = re.compile(r"([a-z0-9_-]+):(?:[ \t](.*))?")
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 def plain_key(text: str, line: str) -> tuple[str, str]:
     """A `name: value` pair in the plain form, or ValueError: a form the reader does not parse must not read as absent."""
     match = PLAIN_KEY.fullmatch(text)

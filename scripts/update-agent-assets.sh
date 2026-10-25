@@ -1850,44 +1850,83 @@ PY
 # @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.
 # @description
 #   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)
-#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. The file goes only
-#   when it is a regular file (not a symlink) holding the exact line
-#   `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh` and that owner no
-#   longer exists; any other file is kept and named. After removing the shim, ~/.agents/bin is removed only when it is
-#   then empty (rmdir), so an unrelated file keeps the directory. A missing shim is nothing to do, so a second run
-#   changes nothing.
-# @exitcode 1 ~/.agents or ~/.agents/bin is a symlink, or a removal failed; nothing else is touched.
+#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. The file goes only on
+#   positive proof: ~/.agents and ~/.agents/bin are real directories (lstat), the shim opens without following a
+#   symlink as a regular file and is read completely, it holds the exact line
+#   `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and lstat of that
+#   owner fails with ENOENT. Every other outcome (another file, the owner present, any other lstat, open or read
+#   error) keeps the file and fails the step with the reason. After removing the shim, ~/.agents/bin goes through
+#   rmdir, and ENOTEMPTY or EEXIST keeps it: another entry, whatever its name, keeps the directory. A missing shim
+#   (ENOENT) is nothing to do, so a second run changes nothing.
+# @exitcode 1 No positive proof for an existing ~/.agents/bin/agy-tui, or a removal failed; the reason is printed.
 #
 function retire_agmsg_shim() {
-    local bin="${HOME}/.agents/bin" shim owner
-    shim="${bin}/agy-tui"
-    owner="${HOME}/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"
-    if [ -L "${HOME}/.agents" ] || [ -L "${bin}" ]; then
-        printf 'agmsg: %s or %s is a symlink; refusing to remove anything under it.\n' "${HOME}/.agents" "${bin}" >&2
-        return 1
-    fi
-    [ -e "${shim}" ] || [ -L "${shim}" ] || return 0
-    if [ -L "${shim}" ] || [ ! -f "${shim}" ] || [ -e "${owner}" ] || ! grep -qxF -- "# agmsg-shim-owner: ${owner}" "${shim}"; then
-        printf 'agmsg: kept %s: it is not the retired agmsg shim.\n' "${shim}" >&2
-        return 0
-    fi
-    rm -- "${shim}" || {
-        printf 'agmsg: cannot remove the retired shim %s.\n' "${shim}" >&2
-        return 1
-    }
-    printf 'agmsg: removed the retired shim %s.\n' "${shim}"
-    local left
-    left="$(ls -A -- "${bin}")" || {
-        printf 'agmsg: cannot list %s.\n' "${bin}" >&2
-        return 1
-    }
-    if [ -z "${left}" ]; then
-        rmdir -- "${bin}" || {
-            printf 'agmsg: cannot remove the empty %s.\n' "${bin}" >&2
-            return 1
-        }
-        printf 'agmsg: removed the empty %s.\n' "${bin}"
-    fi
+    python3 - "${HOME}" << 'PY'
+import errno
+import os
+import stat
+import sys
+
+home = sys.argv[1]
+agents = os.path.join(home, ".agents")
+bin_dir = os.path.join(agents, "bin")
+shim = os.path.join(bin_dir, "agy-tui")
+owner = os.path.join(agents, "skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh")
+marker = f"# agmsg-shim-owner: {owner}"
+
+
+def refuse(reason):
+    sys.exit(f"agmsg: kept {shim}: {reason}.")
+
+
+try:
+    os.lstat(shim)
+except FileNotFoundError:
+    sys.exit(0)
+except OSError as error:
+    refuse(f"cannot lstat it ({error})")
+for directory in (agents, bin_dir):
+    try:
+        mode = os.lstat(directory).st_mode
+    except OSError as error:
+        refuse(f"cannot lstat {directory} ({error})")
+    if not stat.S_ISDIR(mode):
+        refuse(f"{directory} is not a real directory")
+try:
+    fd = os.open(shim, os.O_RDONLY | os.O_NOFOLLOW)
+except OSError as error:
+    refuse(f"cannot open it without following a symlink ({error})")
+with os.fdopen(fd, "rb") as handle:
+    try:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            refuse("it is not a regular file")
+        data = handle.read()
+    except OSError as error:
+        refuse(f"cannot read it ({error})")
+if marker.encode() not in data.split(b"\n"):
+    refuse(f"it does not hold the line {marker!r}, so it is not the retired agmsg shim")
+try:
+    os.lstat(owner)
+except FileNotFoundError:
+    pass
+except OSError as error:
+    refuse(f"cannot prove its owner {owner} is gone ({error})")
+else:
+    refuse(f"its owner {owner} still exists")
+try:
+    os.unlink(shim)
+except OSError as error:
+    sys.exit(f"agmsg: cannot remove the retired shim {shim} ({error}).")
+print(f"agmsg: removed the retired shim {shim}.")
+try:
+    os.rmdir(bin_dir)
+except OSError as error:
+    if error.errno in (errno.ENOTEMPTY, errno.EEXIST):
+        print(f"agmsg: kept {bin_dir}: it holds other entries.")
+        sys.exit(0)
+    sys.exit(f"agmsg: cannot remove the empty {bin_dir} ({error}).")
+print(f"agmsg: removed the empty {bin_dir}.")
+PY
 }
 
 #

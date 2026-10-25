@@ -1293,7 +1293,10 @@ assets:
       skill (skills/frontend-design/SKILL.md, prompt text) and nothing that runs. Its listing has
       no version, so Claude Code records the marketplace commit it installed from (12 hex digits);
       any later marketplace commit moves that version with the content unchanged, so a fresh
-      install then lands off the pin and is disabled until the pin is reviewed again.
+      install then lands off the pin and is disabled until the pin is reviewed again. A marketplace
+      source takes a ref only as a branch or tag, not a commit (code.claude.com marketplace reference,
+      marketplace sources), and anthropics/claude-plugins-official has no tags, so the commit cannot
+      be held at the marketplace.
     plugins:
       superpowers@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 7.0.0}
       pyright-lsp@claude-plugins-official: {marketplace: anthropics/claude-plugins-official, pin: 1.0.0}

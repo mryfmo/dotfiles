@@ -160,26 +160,70 @@ class AgmsgRemovedTest(unittest.TestCase):
             self.assertEqual(0, self.retire_shim(home).returncode)
             self.assertEqual(["mine"], os.listdir(home / ".agents/bin"))
 
-    def test_a_file_that_is_not_the_agmsg_shim_is_kept(self):
+    def test_a_newline_named_entry_keeps_the_bin_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.write_shim(home)
+            (home / ".agents/bin/\n").write_text("keep\n")
+            result = self.retire_shim(home)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(["\n"], os.listdir(home / ".agents/bin"))
+
+    def owner_dir(self, home: Path) -> Path:
+        return home / ".agents/skills/agmsg/scripts/drivers/types/antigravity"
+
+    def test_anything_short_of_positive_proof_keeps_the_file_and_fails(self):
+        def own(home: Path) -> None:
+            (home / ".agents/bin/agy-tui").write_text("#!/bin/sh\nexec agy\n")
+
+        def owner_present(home: Path) -> None:
+            self.write_shim(home)
+            self.owner_dir(home).mkdir(parents=True)
+            (self.owner_dir(home) / "agy-tui.sh").write_text("x\n")
+
+        def owner_unstatable(home: Path) -> None:
+            # lstat of the owner fails with EACCES, not ENOENT: its absence is not proven.
+            self.write_shim(home)
+            self.owner_dir(home).mkdir(parents=True)
+            (home / ".agents/skills/agmsg").chmod(0)
+
+        def unreadable(home: Path) -> None:
+            self.write_shim(home).chmod(0)
+
+        def symlink(home: Path) -> None:
+            target = self.write_shim(home, owner_home=home).rename(home / "real")
+            (home / ".agents/bin/agy-tui").symlink_to(target)
+
         cases = {
-            "own agy-tui": lambda home: (home / ".agents/bin/agy-tui").write_text("#!/bin/sh\nexec agy\n"),
-            "owner of another home": lambda home: self.write_shim(home, owner_home=home / "elsewhere"),
-            "owner still present": lambda home: (
-                self.write_shim(home),
-                (home / ".agents/skills/agmsg/scripts/drivers/types/antigravity").mkdir(parents=True),
-                (home / ".agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh").write_text("x\n"),
+            "own agy-tui": (own, "is not the retired agmsg shim", True),
+            "owner of another home": (
+                lambda home: self.write_shim(home, owner_home=home / "elsewhere"),
+                "is not the retired agmsg shim",
+                True,
             ),
+            "owner still present": (owner_present, "still exists", True),
+            "owner lstat error": (owner_unstatable, "cannot prove its owner", False),
+            "read error": (unreadable, "cannot open it", False),
+            "symlink": (symlink, "cannot open it without following a symlink", True),
         }
-        for label, make in cases.items():
+        for label, (make, message, as_root) in cases.items():
+            if not as_root and os.geteuid() == 0:
+                continue  # root bypasses the permission bits that inject the failure
             with self.subTest(case=label), tempfile.TemporaryDirectory() as temp:
                 home = Path(temp)
                 (home / ".agents/bin").mkdir(parents=True)
                 make(home)
-                before = (home / ".agents/bin/agy-tui").read_bytes()
-                result = self.retire_shim(home)
-                self.assertEqual(0, result.returncode, result.stderr)
-                self.assertIn("is not the retired agmsg shim", result.stderr)
-                self.assertEqual(before, (home / ".agents/bin/agy-tui").read_bytes())
+                try:
+                    result = self.retire_shim(home)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    self.assertIn(message, result.stderr)
+                    self.assertTrue(
+                        (home / ".agents/bin/agy-tui").is_symlink() or (home / ".agents/bin/agy-tui").exists()
+                    )
+                finally:
+                    for path in (home / ".agents/skills/agmsg", home / ".agents/bin/agy-tui"):
+                        if path.exists() and not path.is_symlink():
+                            path.chmod(0o700)
 
 
 if __name__ == "__main__":

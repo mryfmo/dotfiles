@@ -194,7 +194,7 @@ class PrAuditTest(unittest.TestCase):
             self.assertEqual(call["cwd"], str(work / "cwd"))
             self.assertEqual(call["env"]["HOME"], str(work / "home"))
             self.assertEqual(call["env"]["CODEX_HOME"], str(work / "codex-home"))
-            self.assertEqual(call["env"]["TMPDIR"], str(work / "tmp"))
+            self.assertEqual(call["env"]["TMPDIR"], str(work / "scratch-tmpdir"))
             self.assertIsNone(call["env"]["XDG_DATA_HOME"])
             self.assertEqual(call["auth_link"], str(self.auth))
             self.assertEqual(call["config"], calls[0]["config"])
@@ -254,6 +254,7 @@ class PrAuditTest(unittest.TestCase):
                 "no single [permissions.audit]",
             ),
             (lambda text: text + '"/etc" = "deny"\n', "which is not ~/<path>"),
+            (lambda text: text.replace('"~/.ssh" = "deny"', '"~/.ssh"  =  "deny"'), "deny lines"),
         )
         for edit, message in cases:
             with self.subTest(message=message):
@@ -273,11 +274,57 @@ class PrAuditTest(unittest.TestCase):
     def test_a_probe_that_reads_a_denied_path_or_reaches_the_network_is_refused(self):
         for mode, message in (
             ("readable", "the sandbox read probe did not pass"),
-            ("network", "did not show the network denied"),
+            ("curl0", "did not show the network denied"),
             ("nocurl", "did not show the network denied"),
+            ("curl127", "did not show the network denied"),  # curl could not run: no evidence either way
+            ("curl126", "did not show the network denied"),
+            ("curl28", "did not show the network denied"),  # a timeout is no proof of a denial
         ):
             with self.subTest(mode=mode):
                 self.assert_refused(self.run_lever("7", FAKE_CODEX_PROBE=mode), message)
+
+    def test_only_a_resolve_or_connect_failure_counts_as_network_denied(self):
+        for mode in ("curl6", "curl7"):
+            with self.subTest(mode=mode):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                run = self.run_lever("7", FAKE_CODEX_PROBE=mode)
+                self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_a_template_read_that_fails_midway_runs_nothing(self):
+        """A read error is never taken for the end of the file, which would drop the deny keys after it."""
+        fake = self.root / "fakecat"
+        fake.mkdir()
+        cat = fake / "cat"
+        cat.write_text(
+            '#!/bin/sh\ncase "$*" in *codex-audit/config.toml) /usr/bin/head -n 28 "$2"; exit 1 ;; esac\n'
+            'exec /bin/cat "$@"\n'
+        )
+        cat.chmod(0o755)
+        run = self.run_lever("7", PATH=f"{fake}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("cannot read", run.stderr)
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit run on a partial config")
+
+    def test_the_head_is_checked_out_without_the_callers_git_filters(self):
+        """A .gitattributes in the head cannot make the caller's filter drivers run before confinement."""
+        marker = self.root / "smudge-ran"
+        self.git("checkout", "-q", "feat")
+        (self.repo / ".gitattributes").write_text("* filter=mark\n")
+        self.git("add", ".gitattributes")
+        self.git("commit", "-q", "-m", "attributes")
+        head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "feat:refs/pull/7/head")
+        self.git("checkout", "-q", "main")
+        with Path(self.env["GIT_CONFIG_GLOBAL"]).open("a") as config:
+            config.write(f'[filter "mark"]\n\tsmudge = "touch {marker}; cat"\n\tprocess = "touch {marker}"\n')
+        attributes = self.home / ".config/git/attributes"
+        attributes.parent.mkdir(parents=True)
+        attributes.write_text("* filter=mark\n")
+        self.answer(head=head)
+        run = self.run_lever("7")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertFalse(marker.exists(), "a filter driver ran on the audited tree")
 
     def test_a_moved_head_a_foreign_base_or_no_contract_is_refused(self):
         for answer, message in (

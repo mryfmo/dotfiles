@@ -10,7 +10,9 @@
 #   a fresh repository borrows the checkout's objects (`objects/info/alternates`, no refs, no hooks) and fetches
 #   `refs/pull/<pr>/head` and `main` from the checkout's `origin` URL; the fetched head must equal `headRefOid`
 #   (PR_AUDIT_WAIT_TRIES fetches, PR_AUDIT_WAIT_SECONDS apart), else the head moved and the run is refused. That
-#   repository is checked out detached at the head: the changeset the auditor reads. The prompt holds the `## Audit`
+#   repository is checked out detached at the head, by a git that reads no global or system config or attributes
+#   file, so no filter driver the caller installed runs on the pull request's `.gitattributes`: the changeset the
+#   auditor reads. The prompt holds the `## Audit`
 #   section of the fetched `main:AGENTS.md` as the rules, the pull request body (whose `## Contract` section is the
 #   unit's contract; a body without one is refused) as untrusted data inside a per-run nonce tag, and the diff range
 #   `<merge-base of main and head>..<head>`.
@@ -19,7 +21,9 @@
 #   scratch TMPDIR, and a scratch CODEX_HOME holding only `auth.json`, a symlink to the login
 #   `${CODEX_HOME:-~/.codex}/auth.json` (which must be a regular file; it is never copied), and `config.toml`, written
 #   from the generator-owned `codex-audit/config.toml` beside the manifest the self-check read (rendered from
-#   `codex.audit` in the manifest). That file pins the model, turns skills and web search off, limits the commands'
+#   `codex.audit` in the manifest; read once and whole, a failed read is exit 1, and every deny line of it must be
+#   resolved into the written config).
+#   That file pins the model, turns skills and web search off, limits the commands'
 #   environment to the core names, and makes the permission profile `audit` (https://learn.chatgpt.com/docs/permissions)
 #   the default: `:read-only` with the whole filesystem readable, no network, and the credential stores denied. Each
 #   deny key is resolved here: `~/<path>` under the real HOME (both its spelling and its `pwd -P` form),
@@ -29,7 +33,8 @@
 #
 #   Before the audit, two launch-time probes run with that scratch CODEX_HOME through `codex sandbox` (the same default
 #   profile): every denied path that exists (the login, its resolved file, the scratch link, each deny path) must be
-#   unreadable to `/bin/sh` there, and `curl https://github.com` must fail. Either probe failing, or a probe that
+#   unreadable to `/bin/sh` there, and `curl https://github.com` must exist and fail to resolve or connect (exit 6 or
+#   7). Either probe failing, any other curl status (0, a timeout, 126/127), or a probe that
 #   cannot run, is a refusal: the measured property is a precondition of every run. Then
 #   `codex exec --strict-config --skip-git-repo-check --ephemeral -C <empty cwd> -o <verdict> -` reads the prompt,
 #   bounded by PR_AUDIT_TIMEOUT seconds. On exit the scratch repository, HOME, CODEX_HOME and TMPDIR are removed; the
@@ -110,7 +115,7 @@ lever_self_check
 # compares are the ones the sha names (U71 audit round 6); the audited repository is created fresh, so it holds no
 # grafts and no refs but the two it fetches.
 unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_NAMESPACE GIT_OBJECT_DIRECTORY \
-    GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_REPLACE_REF_BASE GIT_CONFIG_PARAMETERS
+    GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_REPLACE_REF_BASE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
 export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
 
 lever='pr-audit.sh'
@@ -155,6 +160,18 @@ git_safe() {
     command git --no-replace-objects -c core.commitGraph=false -c core.hooksPath=/dev/null "$@"
 }
 
+# @description Run git on the audited repository with no configuration but its own fresh `.git/config`: no global or
+#   system config file and no global or system attributes file, so a `.gitattributes` in the pull request names no
+#   filter driver (`filter.<name>.smudge`/`.process`), diff driver or fsmonitor that the caller installed, and the
+#   checkout runs no program outside git (U71b audit round 1). Only git's built-in conversions (eol, ident,
+#   working-tree-encoding) apply.
+# @arg $@ string The git arguments.
+git_tree() {
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_ATTR_NOSYSTEM=1 command git --no-replace-objects \
+        -c core.commitGraph=false -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+        -c core.fsmonitor=false "$@"
+}
+
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
 #   no XDG base directories.
 # @arg $1 int Seconds the run may take.
@@ -165,7 +182,7 @@ codex_scratch() {
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
-        HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/tmp bounded "${seconds}" codex "$@"
+        HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir bounded "${seconds}" codex "$@"
     )
 }
 
@@ -218,17 +235,24 @@ login=${login_home}/auth.json
 login_real=$(perl -MCwd=realpath -e 'my $p = realpath($ARGV[0]); defined $p or exit 1; print $p' "${login}") ||
     refuse "cannot resolve the Codex login ${login}"
 
-# The one config source, generated from codex.audit: it must select the `audit` profile and name no sandbox mode.
+# The one config source, generated from codex.audit: it must select the `audit` profile and name no sandbox mode. It
+# is read once, whole, with the read's status checked (U71b audit round 1: a read error inside a `while read` loop
+# looks like the end of the file and drops every deny key after it); every check below reads that one copy.
 template=${LEVER_MANIFEST%/*}/codex-audit/config.toml
 [[ -f ${template} && ! -L ${template} && -r ${template} ]] ||
     refuse "no readable audit config ${template} (run scripts/generate-agent-configs.py and chezmoi apply)"
-selected=$(grep -c -x 'default_permissions = "audit"' "${template}") || [[ $? == 1 ]] || fail "cannot read ${template}"
+template_text=$(cat -- "${template}") || fail "cannot read ${template}"
+selected=$(grep -c -x 'default_permissions = "audit"' <<< "${template_text}") || [[ $? == 1 ]] ||
+    fail "cannot search ${template}"
 [[ ${selected} == 1 ]] || refuse "${template} does not make the permission profile audit the default"
-sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' "${template}") || [[ $? == 1 ]] ||
-    fail "cannot read ${template}"
+sandbox_keys=$(grep -c -E '^[[:space:]]*"?sandbox_mode"?[[:space:]]*=' <<< "${template_text}") || [[ $? == 1 ]] ||
+    fail "cannot search ${template}"
 [[ ${sandbox_keys} == 0 ]] || refuse "${template} names sandbox_mode, which replaces the permission profile"
-profiles=$(grep -c -x '\[permissions.audit\]' "${template}") || [[ $? == 1 ]] || fail "cannot read ${template}"
+profiles=$(grep -c -x '\[permissions.audit\]' <<< "${template_text}") || [[ $? == 1 ]] || fail "cannot search ${template}"
 [[ ${profiles} == 1 ]] || refuse "${template} defines no single [permissions.audit] profile"
+template_denies=$(grep -c -E '"deny"[[:space:]]*$' <<< "${template_text}") || [[ $? == 1 ]] ||
+    fail "cannot search ${template}"
+[[ ${template_denies} -gt 0 ]] || refuse "${template} denies nothing"
 
 repo=$(git_safe rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout'
 common=$(git_safe -C "${repo}" rev-parse --path-format=absolute --git-common-dir) ||
@@ -250,7 +274,7 @@ run=$(cd "${run}" && pwd -P) || fail "cannot resolve the run directory"
 work=${run}/work
 clone=${work}/repo
 codex_home=${work}/codex-home
-mkdir "${work}" "${work}/home" "${work}/tmp" "${work}/cwd" "${codex_home}" || fail "cannot make the scratch tree in ${run}"
+mkdir "${work}" "${work}/home" "${work}/scratch-tmpdir" "${work}/cwd" "${codex_home}" || fail "cannot make the scratch tree in ${run}"
 
 gh_bounded pr view "${pr}" --repo "${slug}" --json body --jq .body > "${run}/body.md" ||
     fail "cannot read the body of pull request ${pr}"
@@ -258,22 +282,22 @@ contract=$(grep -c -E $'^## Contract\r?$' "${run}/body.md") || [[ $? == 1 ]] || 
 [[ ${contract} != 0 ]] || refuse "the body of pull request ${pr} has no '## Contract' section"
 
 # The audited tree: a fresh repository that borrows the checkout's objects and holds only the two fetched refs.
-git_safe init -q --template= "${clone}" || fail "git init ${clone} failed"
+git_tree init -q --template= "${clone}" || fail "git init ${clone} failed"
 printf '%s\n' "${common}/objects" > "${clone}/.git/objects/info/alternates" || fail 'cannot write the alternates file'
 head=''
 for ((try = 1; try <= wait_tries; try++)); do
     bounded "${gh_timeout}" git --no-replace-objects -c core.hooksPath=/dev/null -C "${clone}" fetch -q --no-tags \
         "${url}" "+refs/pull/${pr}/head:refs/audit/head" '+refs/heads/main:refs/audit/main' ||
         fail "git fetch of refs/pull/${pr}/head and main from ${url} failed"
-    head=$(git_safe -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head=''
+    head=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/head^{commit}') || head=''
     [[ ${head} != "${want}" ]] || break
     ((try == wait_tries)) || sleep "${wait_seconds}"
 done
 [[ ${head} == "${want}" ]] || refuse "the head moved: refs/pull/${pr}/head is ${head:-unreadable}, gh reports ${want}"
-main=$(git_safe -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
-mergebase=$(git_safe -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
-git_safe -C "${clone}" -c advice.detachedHead=false checkout -q --detach "${head}" || fail "git checkout ${head} failed"
-git_safe -C "${clone}" show "${main}:AGENTS.md" > "${work}/AGENTS.md" || fail "cannot read AGENTS.md of main ${main}"
+main=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
+mergebase=$(git_tree -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
+git_tree -C "${clone}" -c advice.detachedHead=false checkout -q --detach "${head}" || fail "git checkout ${head} failed"
+git_tree -C "${clone}" show "${main}:AGENTS.md" > "${work}/AGENTS.md" || fail "cannot read AGENTS.md of main ${main}"
 awk '/^## Audit$/ { f = 1 } /^## / && !/^## Audit$/ { if (f) exit } f' "${work}/AGENTS.md" > "${work}/rules.md" ||
     fail 'cannot read the Audit section'
 [[ -s ${work}/rules.md ]] || refuse "main ${main:0:12}:AGENTS.md has no '## Audit' section"
@@ -283,9 +307,11 @@ home_dir=${HOME%/}
 denied=$'\n'
 probes=("${login}" "${login_real}" "${codex_home}/auth.json")
 config=''
-while IFS= read -r line || [[ -n ${line} ]]; do
+keys=0
+while IFS= read -r line; do
     if [[ ${line} =~ ^\"([^\"]+)\"\ =\ \"deny\"$ ]]; then
         key=${BASH_REMATCH[1]}
+        keys=$((keys + 1))
         case ${key} in
         \$CODEX_HOME) paths=$(spellings "${codex_home}") ;;
         \$CODEX_LOGIN_HOME) paths=$(spellings "${login_home}") && paths+=$'\n'${login_real} ;;
@@ -301,7 +327,13 @@ while IFS= read -r line || [[ -n ${line} ]]; do
     else
         config+=${line}$'\n'
     fi
-done < "${template}" || fail "cannot read ${template}"
+done <<< "${template_text}"
+# Every deny line of the template was resolved (none skipped or unparsed), and every path resolved is in the config.
+((keys == template_denies)) ||
+    refuse "${template} has ${template_denies} deny lines, but ${keys} are of the form \"<key>\" = \"deny\""
+rendered=$(grep -c -E '^"/[^"]*" = "deny"$' <<< "${config}") || fail 'cannot search the rendered config'
+resolved=$(grep -c . <<< "${denied}") || fail 'cannot count the resolved deny paths'
+((rendered == resolved)) || fail "the rendered config denies ${rendered} paths, but ${resolved} were resolved"
 for path in "${codex_home}" "${login_home}" "${login_real}"; do
     [[ ${denied} == *$'\n'"${path}"$'\n'* ]] || refuse "${template} does not deny ${path}" # lint-comparisons: allow set membership of spellings
 done
@@ -321,14 +353,17 @@ echo "pr-audit-probe: all denied"'
 probe_out=$(codex_scratch "${probe_timeout}" sandbox -- /bin/sh -c "${read_probe}" sh "${probes[@]}" 2>&1) ||
     refuse "the sandbox read probe did not pass: ${probe_out:-no output}"
 [[ ${probe_out} == "${probe_done}" ]] || refuse "the sandbox read probe did not pass: ${probe_out:-no output}"
+# Only curl's own resolve or connect failures show the network denied: 6 (could not resolve host, measured with the
+# profile on macOS) and 7 (could not connect). Anything else refuses: 0 reached the network, 28 is a timeout that
+# proves no denial, 126/127 or a missing curl mean the probe never ran.
 # shellcheck disable=SC2016
 net_probe='command -v curl > /dev/null 2>&1 || { echo "pr-audit-probe: no curl"; exit 0; }
 curl -sS -m 10 -o /dev/null https://github.com > /dev/null 2>&1
 echo "pr-audit-probe: curl $?"'
 probe_out=$(codex_scratch "${probe_timeout}" sandbox -- /bin/sh -c "${net_probe}" 2>&1) ||
     refuse "the sandbox network probe did not run: ${probe_out:-no output}"
-[[ ${probe_out} =~ ^pr-audit-probe:\ curl\ ([0-9]+)$ && ${BASH_REMATCH[1]} != 0 ]] ||
-    refuse "the sandbox network probe did not show the network denied: ${probe_out:-no output}"
+[[ ${probe_out} =~ ^pr-audit-probe:\ curl\ (6|7)$ ]] ||
+    refuse "the sandbox network probe did not show the network denied (curl exit 6 or 7): ${probe_out:-no output}"
 echo "${lever}: sandbox probes passed: ${#probes[@]} paths unreadable, network denied (${probe_out#pr-audit-probe: })" >&2
 
 # The prompt: the rules from main, the pull request body as data inside a nonce tag, the changeset.

@@ -4,7 +4,8 @@
 FAKE_CODEX_CALLS names the file that gets one JSON object per call: the argv, the cwd, HOME, CODEX_HOME, TMPDIR, the
 XDG base-directory variables it saw, the text of `$CODEX_HOME/config.toml` and the target of `$CODEX_HOME/auth.json`.
 `sandbox` answers the lever's two probes by FAKE_CODEX_PROBE: `denied` (default; every path unreadable, curl exit 6),
-`readable` (the read probe finds its first path readable and exits 3), `network` (curl exits 0) or `nocurl`. `exec`
+`readable` (the read probe finds its first path readable and exits 3), `curl<n>` (curl exits n, e.g. `curl0` for a
+reachable network or `curl127` for a curl that could not run) or `nocurl`. `exec`
 reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
 `Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0).
 """
@@ -45,11 +46,10 @@ if argv[:1] == ["sandbox"]:
         else:
             print("pr-audit-probe: all denied")
     elif "curl" in script:
-        print(
-            {"network": "pr-audit-probe: curl 0", "nocurl": "pr-audit-probe: no curl"}.get(
-                mode, "pr-audit-probe: curl 6"
-            )
-        )
+        if mode == "nocurl":
+            print("pr-audit-probe: no curl")
+        else:
+            print(f"pr-audit-probe: curl {mode[4:] if mode.startswith('curl') else 6}")
 elif argv[:1] == ["exec"]:
     record["prompt"] = sys.stdin.read()
     out = argv[argv.index("-o") + 1]

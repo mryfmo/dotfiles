@@ -597,7 +597,7 @@ claude() {
                 str(UPDATER),
             ],
             env=os.environ | {name: "" for name in variables} | {"WORK": str(work), "HOME": str(home)} | flags,
-            cwd=project_dir if cwd == "project" else work,
+            cwd=project_dir if cwd == "project" else work,  # lint-comparisons: allow cwd is a mode keyword, not a path
             text=True,
             capture_output=True,
             check=False,
@@ -705,6 +705,17 @@ claude() {
         self.assertIn("claude plugin marketplace add tomasz-tomczyk/crit failed", result.stderr)
         self.assertIn("plugin disable crit@crit --scope user @neutral", calls)
         self.assertIs(False, state["user"]["crit@crit"])
+
+    def test_a_forged_install_row_cannot_pass_an_off_pin_plugin(self):
+        # A project entry whose projectPath carries "\nuser\t<pin>\t" came first, so a tab/newline reader took
+        # it for the user row at the pin and left the off-pin user copy enabled.
+        pin = self.pin_of("crit@crit")
+        forged = {"scope": "project", "version": pin, "projectPath": f"/w\nuser\t{pin}\t"}
+        installs = {"crit@crit": [forged, {"scope": "user", "version": "999.0.0"}]}
+        result, calls, state = self.converge_listed('converge_claude_plugin "crit@crit"', installs, {"crit@crit": True})
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("projectPath: contains a control character", result.stderr)
+        self.assertNotIn("is at its pin", result.stdout)
 
     def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
         installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}

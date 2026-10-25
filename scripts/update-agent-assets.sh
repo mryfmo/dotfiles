@@ -386,8 +386,12 @@ function claude_plugin_installs() {
 # @description Print the user-scope installed version of a Claude Code plugin, or nothing when there is none.
 # @arg $1 string Lines from claude_plugin_installs.
 #
+# @description Print the user-scope installed version of a Claude Code plugin, or nothing when there is none.
+# @arg $1 string The JSON list claude_plugin_installs prints.
+# @exitcode 1 When the list is not JSON (it always is from pin_records.py; a failure is never "no version").
+#
 function claude_user_install() {
-    awk -F '\t' '$1 == "user" { print $2; exit }' <<< "$1"
+    jq -er 'first(.[] | select(.scope == "user") | .version) // ""' <<< "$1"
 }
 
 #
@@ -398,8 +402,8 @@ function claude_user_install() {
 function claude_user_plugin_version() {
     local installs version
 
-    installs="$(claude_plugin_installs "$1")" || installs=""
-    version="$(claude_user_install "${installs}")"
+    installs="$(claude_plugin_installs "$1")" || installs="[]"
+    version="$(claude_user_install "${installs}")" || version=""
     printf '%s\n' "${version:-unknown}"
 }
 
@@ -455,7 +459,7 @@ function ensure_claude_plugin_marketplace() {
 #
 function converge_claude_plugin() {
     local plugin_id="$1"
-    local pin installs version scope project enabled failed=0
+    local pin installs version enabled failed=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s; the plugin was not changed.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -465,12 +469,10 @@ function converge_claude_plugin() {
         printf 'ERROR: cannot read the installation records of %s (installed_plugins.json); it was not changed.\n' "${plugin_id}" >&2
         return 1
     fi
-    while IFS=$'\t' read -r scope version project; do
-        if [ -n "${scope}" ] && [ "${scope}" != "user" ]; then
-            printf 'WARN: plugin %s installed in %s scope at %s: not managed (make update manages user scope only).\n' "${plugin_id}" "${scope}" "${project:-an unrecorded path}" >&2
-        fi
-    done <<< "${installs}"
-    version="$(claude_user_install "${installs}")"
+    jq -r --arg id "${plugin_id}" '.[] | select(.scope != "user")
+        | "WARN: plugin \($id) installed in \(.scope) scope at \(.projectPath // .installPath): not managed (make update manages user scope only)."' \
+        <<< "${installs}" >&2 || return 1
+    version="$(claude_user_install "${installs}")" || return 1
     if [ "${version}" != "${pin}" ] && ! ensure_claude_plugin_marketplace "${plugin_id}"; then
         failed=1
     fi
@@ -487,7 +489,7 @@ function converge_claude_plugin() {
         printf 'ERROR: cannot re-read the installation records of %s after changing it.\n' "${plugin_id}" >&2
         return 1
     fi
-    version="$(claude_user_install "${installs}")"
+    version="$(claude_user_install "${installs}")" || return 1
     if [ -z "${version}" ]; then
         printf 'ERROR: %s has no user-scope installation after claude plugin install.\n' "${plugin_id}" >&2
         return 1

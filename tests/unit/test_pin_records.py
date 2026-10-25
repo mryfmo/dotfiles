@@ -222,6 +222,54 @@ class PinRecordsTest(unittest.TestCase):
         self.refused(lambda: records.load_claude_installs(locked / "f.json"), "cannot")
         self.refused(lambda: records.present(locked / "f.json"), "cannot stat")
 
+    def test_json_null_and_wrong_top_types_are_errors_not_absent(self) -> None:
+        loaders = {
+            "installed_plugins.json": records.load_claude_installs,
+            "settings.json": records.load_claude_enabled,
+            "plugin-pins.json": records.load_plugin_pins,
+            "install record": lambda path: records.load_marketplace_install(path, "x"),
+        }
+        for name, load in loaders.items():
+            for top in ("null", "[]", "1", '"text"'):
+                with self.subTest(record=name, top=top):
+                    self.refused(lambda: load(self.write("r.json", top)), "(top)")
+
+    def test_control_characters_never_reach_an_output_row(self) -> None:
+        # A projectPath that would forge a user row at the pin in tab/newline-separated output is refused.
+        cache = "/h/.claude/plugins/cache/crit/crit/9.9.9"
+        forged = {"scope": "project", "version": "9.9.9", "installPath": cache, "projectPath": "/w\nuser\t1.8.14\t"}
+        path = self.write("i.json", {"plugins": {"crit@crit": [forged]}})
+        self.refused(lambda: records.load_claude_installs(path), "projectPath: contains a control character")
+        manifest = "owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v1\tx\nispinned: true\npath: /x\n"
+        self.write("data/gh/extensions/gh-poi/manifest.yml", manifest)
+        self.refused(lambda: records.load_gh_extension(self.dir / "data", "seachicken/gh-poi"), "tag")
+        self.refused(
+            lambda: records.load_plugin_pins(
+                self.write("p.json", {"claude": {"crit@crit\n": {}}, "codex": {}, "gh_extensions": {}})
+            ),
+            "claude.crit@crit",
+        )
+        # The command line prints one JSON list, which the shell reads with jq.
+        good = {
+            "plugins": {
+                "crit@crit": [{"scope": "user", "version": "1.8.14", "installPath": cache.replace("9.9.9", "1.8.14")}]
+            }
+        }
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(ROOT / "scripts/pin_records.py"),
+                "claude-installs",
+                str(self.write("i.json", good)),
+                "crit@crit",
+            ],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual("1.8.14", json.loads(result.stdout)[0]["version"])
+
     def test_command_line_fails_with_the_field(self) -> None:
         path = self.write("s.json", {"enabledPlugins": {"crit@crit": "false"}})
         result = subprocess.run(

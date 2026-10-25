@@ -1261,7 +1261,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         errors = [finding for finding in findings if not self.module.is_warning(finding)]
         self.assertTrue(any("installPath: is missing" in error for error in errors), findings)
-        self.assertTrue(any("forker/gh-tool is not owner/gh-tool" in error for error in errors), findings)
+        foreign = "forker/gh-tool is not owner/gh-tool"  # lint-comparisons: allow message text, not a path
+        self.assertTrue(any(foreign in error for error in errors), findings)
         self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
 
     def test_doctor_checks_the_commit_a_git_copy_came_from(self) -> None:
@@ -1280,6 +1281,17 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
         self.assertEqual(1, len(errors), errors)
         self.assertIn("git cannot resolve the commit", errors[0])
+
+    def test_doctor_reads_a_null_record_as_an_error(self) -> None:
+        pins = self.plugin_pins_fixture()
+        for record in (".claude/plugins/installed_plugins.json", ".claude/settings.json"):
+            with self.subTest(record=record):
+                self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+                (self.target_root / record).write_text("null")
+                findings = self.plugin_findings(pins)
+                errors = [finding for finding in findings if not self.module.is_warning(finding)]
+                self.assertTrue(any("is JSON null" in error for error in errors), findings)
+                self.assertFalse([finding for finding in findings if "is missing" in finding], findings)
 
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()

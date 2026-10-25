@@ -62,20 +62,35 @@ def read_text(path: Path) -> Optional[str]:
         raise RecordError(path, "(file)", f"cannot read: {error!r}") from error
 
 
-def load_json(path: Path) -> Optional[Any]:
+class Absent:
+    """The record's path does not exist; distinct from every parsed value, JSON null included."""
+
+    def __repr__(self) -> str:
+        return "ABSENT"
+
+
+ABSENT = Absent()
+
+
+def load_json(path: Path) -> Any:
+    """The parsed JSON of PATH, or ABSENT when the path does not exist; a top-level null is an error."""
     text = read_text(path)
     if text is None:
-        return None
+        return ABSENT
     try:
-        return json.loads(text)
+        data = json.loads(text)
     except ValueError as error:
         raise RecordError(path, "(file)", f"not JSON: {error}") from error
+    if data is None:
+        raise RecordError(path, "(top)", "is JSON null, not a record")
+    return data
 
 
-def load_toml(path: Path) -> Optional[Dict[str, Any]]:
+def load_toml(path: Path) -> Any:
+    """The parsed TOML of PATH, or ABSENT when the path does not exist."""
     text = read_text(path)
     if text is None:
-        return None
+        return ABSENT
     import tomllib
 
     try:
@@ -94,6 +109,19 @@ def field(record: object, data: Any, name: str, kind: type, where: str = "") -> 
     value = data[name]
     if type(value) is not kind:
         raise RecordError(record, label, f"must be {kind.__name__}, not {type(value).__name__}")
+    if kind is str:
+        clean(record, label, value)
+    return value
+
+
+CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def clean(record: object, label: str, value: str) -> str:
+    """VALUE when it holds no control character (tab, newline, carriage return, NUL, ...), else RecordError:
+    no field can then forge a row or a record boundary in any output."""
+    if CONTROL.search(value):
+        raise RecordError(record, label, f"contains a control character: {value!r}")
     return value
 
 
@@ -102,7 +130,7 @@ def optional(record: object, data: Dict[str, Any], name: str, kind: type, where:
 
 
 def plugin_parts(record: object, label: str, plugin_id: str) -> Tuple[str, str]:
-    match = PLUGIN_ID.match(plugin_id)
+    match = PLUGIN_ID.fullmatch(plugin_id)
     if not match:
         raise RecordError(record, label, f"{plugin_id!r} is not <plugin>@<marketplace>")
     return match.group(1), match.group(2)
@@ -127,7 +155,7 @@ class PluginPins:
 
 def load_plugin_pins(path: Path) -> PluginPins:
     data = load_json(path)
-    if data is None:
+    if data is ABSENT:
         raise RecordError(path, "(file)", "is missing")
     if not isinstance(data, dict) or set(data) != {"claude", "codex", "gh_extensions"}:
         raise RecordError(path, "(top)", "must hold exactly claude, codex and gh_extensions")
@@ -142,14 +170,14 @@ def load_plugin_pins(path: Path) -> PluginPins:
             if not isinstance(entry, dict) or not set(entry) <= allowed:
                 raise RecordError(path, where.rstrip("."), f"may hold only {sorted(allowed)}")
             ref = optional(path, entry, "ref", str, where)
-            if ref is not None and not COMMIT.match(ref):
+            if ref is not None and not COMMIT.fullmatch(ref):
                 raise RecordError(path, f"{where}ref", "must be a 40-hex commit")
             agents[agent][plugin_id] = Pin(
                 field(path, entry, "marketplace", str, where), field(path, entry, "pin", str, where), ref
             )
     extensions = field(path, data, "gh_extensions", dict)
     for repository, tag in extensions.items():
-        if not REPOSITORY.match(repository):
+        if not REPOSITORY.fullmatch(repository):
             raise RecordError(path, f"gh_extensions.{repository}", "must be <owner>/<repository>")
         if type(tag) is not str or not tag:
             raise RecordError(path, f"gh_extensions.{repository}", "must be a tag string")
@@ -174,7 +202,7 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
     .../plugins/cache/<marketplace>/<plugin>/<version> without `..`, the plugin's identity), and projectPath for project or local scope.
     """
     data = load_json(path)
-    if data is None:
+    if data is ABSENT:
         return None
     plugins = field(path, data, "plugins", dict)
     result: Dict[str, List[ClaudeInstall]] = {}
@@ -192,7 +220,7 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
             install_path = field(path, entry, "installPath", str, where)
             parts = Path(install_path).parts
             if (
-                not install_path.startswith("/")
+                not Path(install_path).is_absolute()
                 or ".." in parts
                 or parts[-5:-1] != ("plugins", "cache", marketplace, plugin)
             ):
@@ -208,7 +236,7 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
 def load_claude_enabled(path: Path) -> Optional[Dict[str, bool]]:
     """enabledPlugins as {plugin id: bool}, {} when unset, None when the settings file is absent."""
     data = load_json(path)
-    if data is None:
+    if data is ABSENT:
         return None
     if not isinstance(data, dict):
         raise RecordError(path, "(top)", "must be an object")
@@ -295,14 +323,14 @@ def load_codex_copy(root: Path, plugin: str, script: Path) -> Optional[CodexCopy
             continue
         except OSError as error:
             raise RecordError(entry, "(entry)", f"cannot stat: {error!r}") from error
-        if stat.S_ISDIR(mode) and segment.match(entry.name):
+        if stat.S_ISDIR(mode) and segment.fullmatch(entry.name):
             versions.append(entry.name)
     if not versions:
         raise RecordError(root, "(directory)", "holds no version directory")
     active = "local" if "local" in versions else max(versions, key=functools.cmp_to_key(compare))
     manifest_path = root / active / ".codex-plugin/plugin.json"
     manifest = load_json(manifest_path)
-    if manifest is None:
+    if manifest is ABSENT:
         raise RecordError(manifest_path, "(file)", "is missing")
     name = field(manifest_path, manifest, "name", str)
     if name != plugin:
@@ -319,7 +347,7 @@ class MarketplaceInstall:
 def load_marketplace_install(path: Path, expected_source: str) -> Optional[MarketplaceInstall]:
     """The git marketplace clone's install record, None when absent; its source must be the pinned one."""
     data = load_json(path)
-    if data is None:
+    if data is ABSENT:
         return None
     if field(path, data, "source_type", str) != "git":
         raise RecordError(path, "source_type", "must be git")
@@ -327,7 +355,7 @@ def load_marketplace_install(path: Path, expected_source: str) -> Optional[Marke
     if source != expected_source:
         raise RecordError(path, "source", f"{source!r} is not the pinned {expected_source!r}")
     revision = field(path, data, "revision", str)
-    if not COMMIT.match(revision):
+    if not COMMIT.fullmatch(revision):
         raise RecordError(path, "revision", "must be a 40-hex commit")
     return MarketplaceInstall(source, revision)
 
@@ -341,7 +369,7 @@ class CodexConfig:
 def load_codex_config(path: Path) -> Optional[CodexConfig]:
     """[plugins."<id>"] enabled flags and [marketplaces.<name>] tables, None when config.toml is absent."""
     data = load_toml(path)
-    if data is None:
+    if data is ABSENT:
         return None
     plugins = data.get("plugins", {})
     if not isinstance(plugins, dict):
@@ -404,7 +432,7 @@ def load_gh_extension(data_home: Path, repository: str) -> Optional[GhExtension]
         match = re.fullmatch(r"([a-z]+): ?(.*)", line)
         if not match or match.group(1) in values:
             raise RecordError(manifest, f"line {number}", f"is not one `key: value` line: {line!r}")
-        values[match.group(1)] = match.group(2).strip()
+        values[match.group(1)] = clean(manifest, match.group(1), match.group(2).strip())
     for key in ("owner", "name", "host", "tag", "ispinned", "path"):
         if not values.get(key):
             raise RecordError(manifest, key, "is missing")
@@ -412,6 +440,8 @@ def load_gh_extension(data_home: Path, repository: str) -> Optional[GhExtension]
         raise RecordError(manifest, "owner/name", f"{values['owner']}/{values['name']} is not {repository}")
     if values["host"] != "github.com":
         raise RecordError(manifest, "host", f"{values['host']!r} is not github.com")
+    if re.search(r"\s", values["tag"]):
+        raise RecordError(manifest, "tag", f"{values['tag']!r} is not one tag")
     if values["ispinned"] not in ("true", "false"):
         raise RecordError(manifest, "ispinned", "must be true or false")
     return GhExtension(owner, name, values["tag"], values["ispinned"] == "true")
@@ -446,6 +476,8 @@ def load_mise_holds(path: Path) -> List[str]:
         elif key and section == "tools":
             name = key.group(1).strip('"')
         if held is not None:
+            if name is not None:
+                clean(path, f"line {number}", name)
             if name is None:
                 raise RecordError(path, f"line {held}", "a Held comment must sit directly above a [tools] entry")
             names.append(name)
@@ -470,9 +502,18 @@ def main(argv: List[str]) -> int:
     elif command == "plugin-ids":
         print("\n".join(sorted(getattr(load_plugin_pins(Path(args[0])), args[1]))))
     elif command == "claude-installs":
+        # Structured output: one JSON list, never field-separated text a value could forge rows in.
         installs = load_claude_installs(Path(args[0])) or {}
-        for entry in installs.get(args[1], []):
-            print(f"{entry.scope}\t{entry.version}\t{entry.project_path or ''}")
+        rows = [
+            {
+                "scope": entry.scope,
+                "version": entry.version,
+                "installPath": entry.install_path,
+                "projectPath": entry.project_path,
+            }
+            for entry in installs.get(args[1], [])
+        ]
+        print(json.dumps(rows))
     elif command == "claude-enabled":
         enabled = load_claude_enabled(Path(args[0])) or {}
         value = enabled.get(args[1])

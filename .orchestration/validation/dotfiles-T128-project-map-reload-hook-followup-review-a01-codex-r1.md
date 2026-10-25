@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-followup-a01.md:59 The two replacement premises differ from the lineage front matter but are not among stop condition 1’s permitted differences.
-Task-file verdict: dotfiles-T128-project-map-reload-hook-followup-a01: revise

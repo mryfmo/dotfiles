@@ -1,3 +1,0 @@
-error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
-[fix/managed-post-tool-use-dedupe e5d0141b] fix(claude): identify managed hooks by their paths
- 10 files changed, 159 insertions(+), 146 deletions(-)

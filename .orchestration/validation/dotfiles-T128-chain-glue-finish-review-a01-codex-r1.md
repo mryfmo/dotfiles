@@ -1,4 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md:84 `Verdict: correct` bypasses all finding checks, so a correct audit containing P0/P1 findings can merge without the dispositions required by plan 020 step 4.
-[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md:84 The proposed acceptance record inserts `round=<n>`, which is absent from the Message Contract’s exact `AGMSG-ACCEPTANCE v1 task_id=<id> status=... reason=... next_action=...` form and is also enforced by the proposed test.
-[P2] high .orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md:84 The recovery claim incorrectly calls `pr-cost.sh` idempotent even though origin/main’s script unconditionally appends a new TSV row on every invocation.
-Task-file verdict: dotfiles-T128-chain-glue-finish-a01: revise

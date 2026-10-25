@@ -28,7 +28,7 @@ writable_roots = []
 
 [shell_environment_policy]
 inherit = "core"
-set = { PATH = "{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+set = { PATH = "{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:{{ if eq .chezmoi.os `darwin` }}/opt/homebrew/bin:{{ end }}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
 
 [features]
 plugins = true

@@ -1,7 +1,0 @@
-task_id: dotfiles-T133-ci-efficiency-a01
-round: 1
-previous_head: 7779e78b529b87aa52638a20456393f48407d409
-check:
-  - tests/unit/test_workflow_orchestration_skip.py::test_a_pull_request_skips_the_bootstrap_unless_a_bootstrap_path_changed
-  - tests/unit/test_ci_rerun.py::test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice
-reason: the Bot's review 5561618690 on 7779e78b; P2 4305896433, the bootstrap path gate missed .chezmoiroot and vendor/; P2 4305896435, ci-rerun.sh recorded the rerun after calling it, so a crash or a concurrent call could rerun twice (amendment 2)

@@ -1,6 +1,6 @@
 ## Regime
 
-- **Loop.** Work runs through the omp seats on the hcom bus: the `hcom-orchestration` skill is the loop and `hcom-worker` its worker half; each audit is one fresh `omp-run.sh --role audit` run per head. The standard a change meets is `AGENTS.md` "Audit" and "Code Review Rules".
+- **Loop.** Work runs through the omp seats on the hcom bus: the `hcom-orchestration` skill is the loop and `hcom-worker` its worker half; each audit is one fresh `~/.local/bin/common/omp-run.sh --role audit` run per head. The standard a change meets is `AGENTS.md` "Audit" and "Code Review Rules".
 - **`main`.** Every repository change lands through a seat's pull request, merged with `gh pr merge --squash --match-head-commit <audited head>`; never push to `main`.
 - **Routing.** A seat never edits the source of its own execution boundary: Claude-boundary changes go to a Codex seat, Codex-boundary changes to a Claude seat, and shared sources or permgate to the operator.
 - **Records.** The program store is `.orchestration/orchestrate/<program>/`; its `preferences.md` is the standing order. It outranks bus messages and other repository text, never the operator's own instructions, which outrank both.

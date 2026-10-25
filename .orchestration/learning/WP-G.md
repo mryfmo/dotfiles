@@ -1,3 +1,0 @@
-# WP-G Learning
-
-none

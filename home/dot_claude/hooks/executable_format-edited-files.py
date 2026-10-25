@@ -6,12 +6,16 @@ from common Write/Edit/MultiEdit payload shapes, filters by suffix, and runs the
 formatter for that suffix without going through a shell. ruff and prettier come
 from PATH: their versions are pinned in the mise config, and ruff.toml and
 .prettierignore keep vendored and record paths untouched.
+
+The hook runs outside the Claude sandbox, so it never loads configuration that a
+sandboxed command could have written as code: prettier runs with --no-config
+(a prettier.config.js, .prettierrc.js or plugin in the edited tree is ignored and
+the built-in defaults apply). ruff reads only TOML, which is data.
 """
 
 from __future__ import annotations
 
 import json
-import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -21,7 +25,8 @@ PYTHON_COMMANDS = [
     ["ruff", "format"],
 ]
 MARKDOWN_COMMANDS = [
-    ["prettier", "--write"],
+    # --no-config: project prettier configs may be JavaScript, and plugins they name are code.
+    ["prettier", "--write", "--no-config"],
 ]
 
 

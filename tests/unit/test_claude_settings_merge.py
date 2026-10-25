@@ -193,6 +193,46 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         session_hooks = json.loads(output)["hooks"]["SessionStart"]
         self.assertEqual(session_hooks, [state_hook])
 
+    def test_session_start_hook_that_only_mentions_a_managed_script_survives(self) -> None:
+        """Only the invoked executable (or the script an interpreter runs) makes a hook managed, never an argument."""
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [
+                {"type": "command", "command": f"{self.home_dir}/.local/bin/common/agent-session-staleness hook"},
+                {"type": "command", "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session"},
+            ],
+        }
+        mentions = [
+            "logger -t agent-session-staleness started",
+            "echo herdr-agent-state.sh",
+            "logger herdr-agents",
+            "bash ~/bin/wrap.sh agent-session-staleness",
+        ]
+        for command in mentions:
+            unrelated = {"matcher": "*", "hooks": [{"type": "command", "command": command}]}
+            with self.subTest(command=command):
+                output = self.merge(
+                    {"hooks": {"SessionStart": [managed_hook]}},
+                    json.dumps({"hooks": {"SessionStart": [unrelated]}}),
+                )
+                commands = [h["command"] for e in json.loads(output)["hooks"]["SessionStart"] for h in e["hooks"]]
+                self.assertIn(command, commands)
+
+        invocations = [
+            "/Users/someone-else/.local/bin/common/agent-session-staleness hook",
+            "FOO=1 /Users/someone-else/.local/bin/common/agent-session-staleness hook",
+            "sh '/Users/someone-else/.claude/hooks/herdr-agent-state.sh' session",
+            'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+        ]
+        for command in invocations:
+            stale = {"matcher": "*", "hooks": [{"type": "command", "command": command, "async": True}]}
+            with self.subTest(command=command):
+                output = self.merge(
+                    {"hooks": {"SessionStart": [managed_hook]}},
+                    json.dumps({"hooks": {"SessionStart": [stale]}}),
+                )
+                self.assertEqual(json.loads(output)["hooks"]["SessionStart"], [managed_hook])
+
     def test_managed_permgate_replaces_stale_current_ccgate_hook(self) -> None:
         managed_hook = {
             "matcher": "*",
@@ -480,6 +520,17 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                 )
                 self.assertEqual(json.loads(output)["hooks"]["PostToolUse"], [literal, managed_entry])
 
+    def test_managed_pre_tool_use_is_not_duplicated_next_to_an_unmanaged_hook(self) -> None:
+        enforce = {"type": "command", "command": "~/.claude/hooks/enforce-uv.sh"}
+        audit = {"type": "command", "command": "~/bin/audit-bash.sh"}
+        managed_entry = {"matcher": "Bash", "hooks": [enforce]}
+        current = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [enforce, audit]}]}})
+        output = self.merge({"hooks": {"PreToolUse": [managed_entry]}}, current)
+        expected = [{"matcher": "Bash", "hooks": [audit]}, managed_entry]
+        self.assertEqual(json.loads(output)["hooks"]["PreToolUse"], expected)
+        # A second apply is a fixed point: enforce-uv.sh still runs once.
+        self.assertEqual(self.merge({"hooks": {"PreToolUse": [managed_entry]}}, output), output)
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},
@@ -548,6 +599,25 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
         self.assertEqual(self.merge(managed, once), once)
 
+    def test_installed_async_staleness_hook_is_replaced_by_the_synchronous_one(self) -> None:
+        render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
+        with mock.patch.dict(os.environ, {"CHEZMOI_HOME_DIR": str(self.home_dir)}):
+            managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
+        command = f"{self.home_dir}/.local/bin/common/agent-session-staleness hook"
+        installed = {"type": "command", "command": command, "async": True, "timeout": 5}
+        current = json.dumps({"hooks": {"SessionStart": [{"matcher": "*", "hooks": [installed]}]}})
+
+        once = self.merge(managed, current)
+        staleness = [
+            hook
+            for entry in json.loads(once)["hooks"]["SessionStart"]
+            for hook in entry["hooks"]
+            if "agent-session-staleness" in hook["command"]
+        ]
+        self.assertEqual(len(staleness), 1, staleness)
+        self.assertNotIn("async", staleness[0])
+        self.assertEqual(self.merge(managed, once), once)
+
     def test_retired_update_keys_leave_settings_the_old_template_installed(self) -> None:
         """The former managed defaults go; every other installed key stays; a second run is a no-op (U18, D-024-150)."""
         render = runpy.run_path(str(MERGE_SCRIPT))["render_managed_template"]
@@ -589,7 +659,8 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         merged = json.loads(after)
         self.assertEqual(merged["permissions"]["allow"], managed["permissions"]["allow"])
         self.assertNotIn("scripts/orchestrator/", json.dumps(merged["permissions"]))
-        self.assertTrue(all("~/.local/bin/common/" in rule for rule in merged["permissions"]["allow"][:-1]))
+        levers = merged["permissions"]["allow"][:-1]
+        self.assertTrue(all("~/.local/bin/common/" in rule for rule in levers))  # lint-comparisons: allow rule-text
         self.assertEqual((merged["operatorOnly"], merged["enabledPlugins"]), ({"kept": True}, {"crit@crit": True}))
         self.assertEqual(self.merge(managed, after), after)
 

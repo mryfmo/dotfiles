@@ -1,3 +1,0 @@
-Pin the mise Python declaration to `3.15.0` so the trusted interpreter resolver has an exact version binding. The single standard-library test reads the real TOML and rejects floating, partial, non-ASCII and newline-suffixed declarations; the supply-chain policy preserves the explicit Python hold.
-
-The a02 reset continues the existing implementation unchanged and adds its byte-identical task copy. Assertion-based red evidence is inherited with source/head provenance; the directly executed single test passes on Python 3.15.0. Final-head CI is tracked in the worker validation artifacts. Host deployment remains an operator action after merge.

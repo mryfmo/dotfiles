@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-integrate-a01.md:109 The fourth argument may name any review worktree, but `orch-audit.sh` uses it only to read HEAD and audits the separate hard-coded `<main>/.claude/worktrees/orchestrator-review`, so the chain can validate one worktree and audit another; require the canonical path or test the real behavior.
-
-Task-file verdict: dotfiles-T128-chain-glue-integrate-a01: revise

@@ -54,7 +54,7 @@ Written 2026-10-17T08:29:53Z by the orchestrator seat on the operator's decision
 - **H. Cursor-only skills rewritten for omp and hcom (the operator's approval of 08:5xZ; priority order; each at a pinned upstream commit under `vendor/<name>/` with LICENSE and UPSTREAM, THIRD-PARTY-NOTICES.md appended, a test that runs the thing, minimal text):** H1 show-me-your-work reads omp's logs and the decisions TSV (`.orchestration/decisions.tsv`: what, why, basis, result) whose column form a lint checks; H2 create- and maintain-verification-skill write omp's skill folder and generate the dotfiles verification skill; H3 interrogate and reflect launch helper agents through hcom and review with both an OpenAI and an Anthropic model (the review seat's replacement); H4 architect and swarm decide types and structure first, then hand out work in parallel to hcom tags and worker seats (the orchestrator's dispatch as a fixed procedure); H5 recall restores the work state from omp's and hcom's history after a restart or a compaction; H6 poteto-mode's watch-pr part only, on gh, detecting an integration stall mechanically; H7 session-report aggregates omp's logs into HTML beside the project map; H8 PR Review Canvas's idea as a per-PR review view in the project map's HTML; H9 setup-pstack replaced by per-role models (OpenAI or Anthropic, reasoning amount) in `agent-config.yaml` rendering omp's config, Anthropic by API key only. First step, recorded above: where omp keeps its logs and skills.
 Order: F and A first, then B and C together (disjoint files), G beside them, then D, then E. H1 to H9 follow in that order, each after B (omp config) where it needs the rendered config. Every PR runs through the current chain until C lands, then through the hcom chain.
 
-## spark-9e8d: two ways, one recommendation
+## <ubuntu-host>: two ways, one recommendation
 
 | | hcom relay | herdr machine add + ssh |
 |---|---|---|
@@ -70,7 +70,7 @@ Recommendation: both, each for its role, with the broker kept off the internet: 
 1. Install (PR A lands them in `make update`; until then: `brew install can1357/tap/omp` and `uv tool install hcom`).
 2. In an `omp` session: `/login openai-codex` and complete the ChatGPT OAuth in the browser. Do not run `/login anthropic`.
 3. Put the Anthropic API key in your shell environment as `ANTHROPIC_API_KEY` (your secret store, not this repository); leave `ANTHROPIC_OAUTH_TOKEN` unset. PR D's check refuses the opposite.
-4. For spark: on the Mac `hcom relay new`; on spark, over SSH, `hcom relay connect <token>`; `herdr machine add spark-9e8d`.
+4. For spark: on the Mac `hcom relay new`; on spark, over SSH, `hcom relay connect <token>`; `herdr machine add <ubuntu-host>`.
 5. Permission or credential changes in `~/.claude/settings.json` or elsewhere are proposed here and wait for your approval; none is made by a seat.
 
 ## Status log

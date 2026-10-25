@@ -13,7 +13,36 @@ permissions:
   contents: read
 
 jobs:
+  secrets:
+    # The private bootstrap needs the private deploy key and the e-mail address; a bot-triggered run and a
+    # repository without those secrets have neither. Then the private-bootstrap jobs are skipped (shown as skipped,
+    # never as a green pass) and this job's summary and notice say why (F050, gate G13).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Check the bootstrap secrets
+        id: check
+        env:
+          WORKFLOW_TITLE: Private bootstrap
+          BOT_ACTOR: ${{ contains(github.actor, '[bot]') }}
+          HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
+          HAS_PRIVATE_DOTFILES_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "${BOT_ACTOR}" != true ] && [ "${HAS_EMAIL_ADDRESS}" = true ] && [ "${HAS_PRIVATE_DOTFILES_KEY}" = true ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "available=false" >> "${GITHUB_OUTPUT}"
+          message="${WORKFLOW_TITLE} did not run: the repository secrets EMAIL_ADDRESS and PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY are not both available to this run (a bot-triggered run gets neither). This run verifies nothing."
+          echo "::notice title=${WORKFLOW_TITLE} skipped::${message}"
+          printf '### %s skipped\n\n%s\n' "${WORKFLOW_TITLE}" "${message}" >> "${GITHUB_STEP_SUMMARY}"
+
   private-bootstrap:
+    needs: secrets
+    if: ${{ needs.secrets.outputs.available == 'true' }}
     # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
     # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
     strategy:
@@ -26,13 +55,15 @@ jobs:
             system: server
           - os: macos-14
             system: client
+          - os: macos-15
+            system: client
 
     runs-on: ${{ matrix.os }}
+    # As public-bootstrap: over twice its normal maximum, so a stalled mirror cancels the job instead of hanging.
+    timeout-minutes: 30
     env:
       CI: true
       SYSTEM: ${{ matrix.system }}
-      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
-      HAS_PRIVATE_DEPLOY_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
 
     steps:
       - name: Configure isolated HOME
@@ -73,12 +104,14 @@ jobs:
           # what setup.sh installs or how this job runs it: outside home/, the
           # files setup.sh, its installers and this job read; anywhere, a chezmoi
           # special file (.chezmoi*) or script (run_*); under home/, every path
-          # but the render-only subtrees that no installer executes or reads,
-          # whose apply the chezmoi-apply job checks on every diff (U39):
+          # but the render-only subtrees that no installer executes or reads:
           # managed skills, omp seat policies, Claude rules and the levers in
           # dot_local/bin/common/ and dot_local/bin/server/. A file directly in
           # dot_local/bin/ is not one: it renders to ~/.local/bin/<name>, where
           # the installers run mise, omp and the other tools they install.
+          # A diff that skips the bootstrap but changes a render-only path still
+          # applies home/ in this job (should_apply), so this required context
+          # fails when such a change does not render or apply (F052).
           changed="${RUNNER_TEMP}/changed-paths"
           home_paths="${RUNNER_TEMP}/changed-home-paths"
           git diff -z --no-renames --name-only "origin/${BASE_REF}...${HEAD_SHA}" > "${changed}"
@@ -94,10 +127,19 @@ jobs:
             return "${status}"
           }
           paths_match '^home/' "${changed}" > "${home_paths}" || true
-          if [ ! -s "${changed}" ] ||
+          # BSD grep -z (the macOS rows) anchors ^ and $ at a newline inside a name, so a path holding a control
+          # character could read as render-only there: such a path always bootstraps.
+          control=false
+          while IFS= read -r -d '' path; do
+            case "${path}" in *[[:cntrl:]]*) control=true ;; esac
+          done < "${changed}"
+          if [ ! -s "${changed}" ] || [ "${control}" = true ] ||
             paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
             paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"
+          elif [ -s "${home_paths}" ]; then
+            echo "should_run=false" >> "${GITHUB_OUTPUT}"
+            echo "should_apply=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_run=false" >> "${GITHUB_OUTPUT}"
           fi
@@ -106,18 +148,14 @@ jobs:
         if: ${{ steps.decide.outputs.should_run != 'true' }}
         run: echo "No path the bootstrap reads changed; the job reports success without bootstrapping."
 
-      - name: Explain skipped private bootstrap
-        if: ${{ contains(github.actor, '[bot]') || env.HAS_EMAIL_ADDRESS != 'true' || env.HAS_PRIVATE_DEPLOY_KEY != 'true' }}
-        run: echo "Private bootstrap is optional and secrets are unavailable in this context."
-
       - name: Set up the private deploy key
-        if: ${{ steps.decide.outputs.should_run == 'true' && !contains(github.actor, '[bot]') && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == 'true' }}
+        if: ${{ steps.decide.outputs.should_run == 'true' }}
         uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
       - name: Bootstrap with private restoration
-        if: ${{ steps.decide.outputs.should_run == 'true' && !contains(github.actor, '[bot]') && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == 'true' }}
+        if: ${{ steps.decide.outputs.should_run == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}

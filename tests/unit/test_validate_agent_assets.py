@@ -366,7 +366,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
-        profiles["security"]["codex"]["model"] = "gpt-6-astra"
+        profiles["security"]["codex"].update(model="gpt-6-astra", sandbox_mode="read-only")
         profiles["audit"]["codex"].update(model="gpt-6-astra", model_reasoning_effort="xhigh", sandbox_mode="read-only")
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
@@ -649,20 +649,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.validate_assets(manifest)
         path.unlink()
 
-    def test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping(self) -> None:
-        path = self.write_text_file(
-            "home/dot_claude/private_mcp.json.tmpl", '{{/* generated */}}\n{"mcpServers": {}}\n'
-        )
-        self.assertEqual(self.module.validate_claude_mcp_config(), {"mcpServers": {}})
-        self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcpServers": {}}, {"mcp_servers": {}})
-
-        for text in ('{"mcpServers": []}', "{}"):
-            with self.subTest(text=text):
-                path.write_text(text)
-                stderr = io.StringIO()
-                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-                    self.module.validate_claude_mcp_config()
-                self.assertIn("must define mcpServers as a mapping", stderr.getvalue())
+    def test_mcp_parity_compares_the_manifest_with_codex_only(self) -> None:
+        self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcp_servers": {}})
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_mcp_parity({"mcp_servers": {}}, {"mcp_servers": {"x": {}}})
+        self.assertIn("MCP server names differ", stderr.getvalue())
 
     def test_assets_scan_setup_sh_for_unrendered_versions(self) -> None:
         self.write_text_file("setup.sh", 'declare -r CHEZMOI_VERSION="2.70.4"\n')
@@ -828,6 +820,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ("model", "gpt-5.6-sol"),
             ("model", "gpt-daybreak-blue-latest"),
             ("model_reasoning_effort", "medium"),
+            ("sandbox_mode", "workspace-write"),
         ):
             with self.subTest(key=key, value=value):
                 manifest = self.write_valid_agent_manifest()

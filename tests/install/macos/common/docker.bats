@@ -6,26 +6,32 @@ function setup() {
     source "${SCRIPT_PATH}"
 }
 
-@test "[macos] docker validates the cask without installing it in CI" {
+@test "[macos] docker validates the cask without installing it on a GitHub Actions runner" {
     function brew() {
         printf '%s\n' "$*" > "${BATS_TEST_TMPDIR}/brew-args"
     }
 
-    CI=true install_docker
+    GITHUB_ACTIONS=true RUNNER_TEMP="${BATS_TEST_TMPDIR}" install_docker
 
     run cat "${BATS_TEST_TMPDIR}/brew-args"
     [ "${output}" = "info --cask docker" ]
 }
 
-@test "[macos] docker installs the cask unless CI is exactly true" {
+@test "[macos] docker installs the cask off the runner, an agent shell's CI=true included" {
     function brew() {
         printf '%s\n' "$*" > "${BATS_TEST_TMPDIR}/brew-args"
     }
 
-    local ci_value
+    local runner_env
 
-    for ci_value in false yes no 1 0; do
-        CI="${ci_value}" install_docker
+    for runner_env in "CI=true" "CI=true GITHUB_ACTIONS=true" "GITHUB_ACTIONS=false RUNNER_TEMP=${BATS_TEST_TMPDIR}"; do
+        rm -f "${BATS_TEST_TMPDIR}/brew-args"
+        # shellcheck disable=SC2086 # One VAR=value word per assignment.
+        (
+            unset GITHUB_ACTIONS RUNNER_TEMP
+            export ${runner_env}
+            install_docker
+        )
 
         run cat "${BATS_TEST_TMPDIR}/brew-args"
         [ "${output}" = "install --cask docker" ]

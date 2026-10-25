@@ -1,8 +1,0 @@
-# Sandbox: dotfiles-T128-v0-main-tests-a01
-
-- Seat: `claude-standard-dot-a002` (Claude Code, profile `standard`), worktree `.claude/worktrees/worker-c` registered as its agmsg project; bring-up PING `bringup-1791667546-81678` answered `alive` (message 267).
-- Branch `feat/main-tests` from `origin/main` `b896d9bc` with `git switch -c feat/main-tests --no-track origin/main` (no write to the shared `.git/config`). The previous branch in this worktree, `feat/task-validator`, was clean and is untouched.
-- Inside the Claude Code sandbox: every edit, `git commit` (with `-c commit.gpgsign=false`: the host's global config signs with `~/.ssh/id_ed25519.pub`, which the sandbox cannot read; earlier worker commits are unsigned and the ruleset has no signed-commit rule), the unit tests, shellcheck, shfmt, ruff, prettier, and the local `scripts/main-tests.sh origin/main` run. uv reached PyPI only for commands that named `pypi.org` and `files.pythonhosted.org` (the harness's `uv run --with pyyaml`).
-- Outside the sandbox, through the permission gate (Worker Playbook step 4's cases): `git push` over HTTPS with the `gh` credential helper (the push remote is SSH, no key here), `gh pr create`/`gh pr checks`/`gh api`/`gh run view`, writing and masking these artifacts at the main checkout's expected paths, the main-checkout CompactionDB `memory add`, and `agmsg-dispatch` for the RESULT.
-- Local suite caveat: in this sandbox `make unit-test` on unchanged `origin/main` fails 114 tests and errors in 103 (herdr, gh-auth and sandbox-placeholder tests that need host access). The harness's undeclared mode at this branch fails exactly the same set (validation §4 diff); Linux CI is the authority.
-- No scratch worktree was created; no `git worktree prune`; no stash.

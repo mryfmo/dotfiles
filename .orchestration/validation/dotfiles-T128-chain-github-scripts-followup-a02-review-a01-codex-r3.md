@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-chain-github-scripts-followup-a02.md:32 The task claims the script never reads PR-checkout files, but `resolve-threads.sh` consumes the caller-provided TSV and sweep paths directly without resolving them against a trusted checkout, so the threat row states an unlanded mechanism as present.
-Task-file verdict: dotfiles-T128-chain-github-scripts-followup-a02: revise

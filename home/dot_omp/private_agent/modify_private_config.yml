@@ -1,11 +1,16 @@
 #!/bin/sh
 # @file home/dot_omp/private_agent/modify_private_config.yml
-# @brief Carry the managed omp model role, skill roots, extensions and disabled providers into ~/.omp/agent/config.yml.
+# @brief Carry the managed omp model role, skill roots, extensions, disabled providers and denies into ~/.omp/agent/config.yml.
 # @description
 #   chezmoi passes the live config on stdin. The merge sets modelRoles.default,
 #   skills.customDirectories, extensions and disabledProviders from
 #   home/.chezmoitemplates/omp-config-managed.yml (a leading ~ expanded to
-#   $HOME, see docs/omp-skills.md) and keeps every other
+#   $HOME, see docs/omp-skills.md). When the managed file carries them (U66) it
+#   also merges the managed tools.approval denies (a managed key wins, every
+#   other key stays) and puts the managed bash.patterns denies first, ahead of
+#   every pattern already in the file, which stays in its order: omp's first
+#   matching rule wins, so a managed deny beats a user allow for the same
+#   command. tools.approvalMode is never touched. It keeps every other
 #   key and role omp wrote. It runs under `uv run --with pyyaml`, so the system
 #   python3 needs no PyYAML. Without uv, or when the live file is not a YAML
 #   mapping, it prints its input unchanged with one warning on stderr and
@@ -56,6 +61,33 @@ def main():
     data["extensions"] = [os.path.expanduser(d) for d in managed["extensions"]]
     # A disabled provider stays unselectable even with a stored OAuth session (omp docs/providers.md).
     data["disabledProviders"] = managed["disabledProviders"]
+    # Outright denies only (U66): tools.approvalMode and every other tools.approval entry stay as omp or the operator set them.
+    if "tools" in managed:
+        if data.get("tools") is None:
+            data["tools"] = {}
+        if not isinstance(data["tools"], dict):
+            return keep(current, "tools is not a mapping")
+        if data["tools"].get("approval") is None:
+            data["tools"]["approval"] = {}
+        if not isinstance(data["tools"]["approval"], dict):
+            return keep(current, "tools.approval is not a mapping")
+        # A managed deny replaces the same key; every other entry, an operator's deny or allow, stays.
+        data["tools"]["approval"].update(managed["tools"]["approval"])
+    if "bash" in managed:
+        if data.get("bash") is None:
+            data["bash"] = {}
+        if not isinstance(data["bash"], dict):
+            return keep(current, "bash is not a mapping")
+        existing = data["bash"].get("patterns")
+        if existing is None:
+            existing = []
+        if not isinstance(existing, list):
+            return keep(current, "bash.patterns is not a list")
+        # omp takes the first matching rule (docs/settings.md, "Bash command approval patterns"), so the managed denies
+        # go first and a user allow for the same command cannot pass them; every user rule stays, in its order, and
+        # an exact copy of a managed rule is dropped, so a second apply changes nothing.
+        rules = managed["bash"]["patterns"]
+        data["bash"]["patterns"] = rules + [rule for rule in existing if rule not in rules]
     sys.stdout.write(yaml.safe_dump(data, sort_keys=False))
     return 0
 

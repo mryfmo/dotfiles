@@ -1,2 +1,0 @@
-bot: completed
-head: becba33c616247057f2f75cf30ec5aefcbf00592

@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:21 The direct two-call `--cdp` form avoids issue 60, but `--session project-map-reload` starts a host daemon that may persist for the default one-hour idle timeout, and this new host effect has neither its own threat row nor a closing test as stop condition 2 requires.
-[P2] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:48 `TERMINAL_BROWSER_AGENT` is the correct test seam and terminal-browser honours it, but the environment-inputs row incorrectly calls the selected executable a pinned installed tool even though the inherited environment can select any executable path.
-Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

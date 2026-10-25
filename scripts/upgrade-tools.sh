@@ -13,7 +13,7 @@
 #   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
 #   fail, so an offline host still converges; installing the declared mise tools
 #   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes
-#   when CI=true.
+#   on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.
 
 set -Eeuo pipefail
 
@@ -23,6 +23,8 @@ script_dir="$(dirname -- "${BASH_SOURCE[0]}")" || {
     exit 1
 }
 repo_root="$(cd "${script_dir}/.." && pwd)" || exit 1
+# shellcheck source=scripts/lib/ci-runner.sh
+source "${script_dir}/lib/ci-runner.sh"
 # chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME
 # says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git
 # config's XDG_CONFIG_HOME below cannot redirect it.
@@ -534,8 +536,8 @@ USAGE
 function main() {
     parse_args "$@"
     # A CI runner's tools belong to its image, not to this machine's update.
-    if [ "${CI:-false}" = true ]; then
-        printf 'CI=true: skipping installed-tool updates.\n'
+    if is_ci_runner; then
+        printf 'GitHub Actions runner: skipping installed-tool updates.\n'
         return 0
     fi
 

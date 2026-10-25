@@ -1214,6 +1214,29 @@ The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/m
 
 [![Codecov icicle graph for mryfmo/dotfiles](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graphs/icicle.svg)](https://app.codecov.io/gh/mryfmo/dotfiles)
 
+### 🔭 Drift watch [![drift-watch](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/drift-watch.yml)
+
+[`scripts/drift-watch.py`](scripts/drift-watch.py) reports what has aged in this tree. It reads only GitHub's public API (api.github.com); no LLM and no host state are involved:
+
+- **runner-image**: an open [actions/runner-images](https://github.com/actions/runner-images/issues?q=label%3AAnnouncement) announcement whose title mentions a runner label used in `.github/workflows`, reported as "announcement mentions <label>, review". A title mentions a label when it contains the label itself (`macos-14`) or its OS name and version (`macOS 14`, `Ubuntu 24.04`), as a whole word. The watch does not decide whether the announcement retires the image. A tool or SDK deprecation that mentions a used label is reported too, on purpose, so that someone reads it.
+- **mise-pin** and **manifest-pin**: an exact version in `home/dot_mise/config.toml`, or a `pin` or `fallback.pin` in `home/dot_agents/agent-config.yaml`, whose releases are on GitHub and that is behind the newest stable GitHub release at least `minimum_release_age` old (72h, read from the mise config).
+- **plugin-pin**: a Claude or Codex plugin pin that differs from the version its marketplace serves now, both its catalog entry and its `plugin.json`.
+- **unrecorded**: a `pin: unknown`.
+- **retired-term**: each hit of the retired-term lint, `scripts/lint-retired-terms.py`, once the tree has it.
+
+Every other pin is listed under "Not watched" with the reason `no strict upstream parser in scope`. That covers npm, PyPI, nodejs.org, python.org, gcloud, git-commit, installer-script and vendored pins. A failed or malformed upstream read is listed under "Read failures" and never counts as current.
+
+```shell
+# Print the report. make exits 0 when there is no drift and 2 otherwise, after printing the script's own status
+# on stderr: "drift-watch.py exited 3" means drift, "exited 4" means an upstream read failed.
+# An exported GITHUB_TOKEN raises GitHub's anonymous limit of 60 API requests an hour.
+make drift
+# The raw status (0, 3 or 4), as the workflow reads it:
+uv run --no-project --with pyyaml python -I scripts/drift-watch.py
+```
+
+[`.github/workflows/drift-watch.yml`](.github/workflows/drift-watch.yml) runs the same script every Monday, and you can also start it by hand. It has a read-only contents token, `issues: write`, and no secrets. It keeps one tracking issue titled "Drift watch", labelled `drift-watch` and opened by `github-actions[bot]`: it opens the issue when it finds drift, rewrites the body on every run, and closes the issue when a run finds nothing. It finds the issue by reading every page of open issues with that label and creator. If more than one matches, the run fails and writes nothing, so close the extras. A read failure also fails the run. The report never contains exception text, and any occurrence of the token is redacted. A `GITHUB_TOKEN` that contains whitespace or a control character is refused before any request (exit 2).
+
 ## 📊 Measure the startup speed of the dotfiles
 
 The startup speed of zsh on MacOS with this dotfile is continuously measured at [mryfmo.me/my-dotfiles-benchmarks](https://mryfmo.me/my-dotfiles-benchmarks/) using [benchmark-action/github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark).

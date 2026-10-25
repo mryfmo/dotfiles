@@ -28,8 +28,17 @@ def fail(message: str) -> NoReturn:
     raise SystemExit(1)
 
 
+def read_exact(path: Path) -> str:
+    """A file's exact text: UTF-8 with no newline translation, so a CRLF byte stays visible to every comparison."""
+    return path.read_bytes().decode()
+
+
+def write_exact(path: Path, content: str) -> None:
+    path.write_bytes(content.encode())
+
+
 def load_manifest() -> dict[str, Any]:
-    return parse_manifest(MANIFEST_PATH.read_text())
+    return parse_manifest(read_exact(MANIFEST_PATH))
 
 
 def parse_manifest(text: str) -> dict[str, Any]:
@@ -78,11 +87,26 @@ def refresh_lever_pins(text: str) -> str:
     return "".join(lines)
 
 
+def lever_pins(manifest: dict[str, Any]) -> dict[Path, str]:
+    """Each lever's chezmoi copy and the sha256 claude.levers.sha256 pins it to."""
+    pins = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
+    return {ROOT / LEVER_INSTALL_DIR / f"executable_{name}": pins[name] for name in lever_names(manifest)}
+
+
 def render_lever_installs(manifest: dict[str, Any]) -> dict[Path, str]:
     return {
-        ROOT / LEVER_INSTALL_DIR / f"executable_{name}": (ROOT / LEVER_SOURCE_DIR / name).read_text()
+        ROOT / LEVER_INSTALL_DIR / f"executable_{name}": read_exact(ROOT / LEVER_SOURCE_DIR / name)
         for name in lever_names(manifest)
     }
+
+
+def lever_pin_drift(manifest: dict[str, Any]) -> list[str]:
+    """Each lever copy whose bytes do not hash to its pin, so a source and a copy corrupted alike still fail."""
+    return [
+        f"{path.relative_to(ROOT)} (does not hash to its claude.levers.sha256 pin)"
+        for path, pin in lever_pins(manifest).items()
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != pin
+    ]
 
 
 def json_dumps(data: Any) -> str:
@@ -263,7 +287,7 @@ def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
             path = snapshot_paths.setdefault((ROOT / entry["file"]).resolve(), ROOT / entry["file"])
             text = outputs.get(path)
             if text is None:
-                text = path.read_text()
+                text = read_exact(path)
             for constant, field in entry["constants"].items():
                 pattern = re.compile(rf'^((?:readonly |declare -r )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
                 value = asset_field(asset, field)
@@ -1121,7 +1145,7 @@ def render_codex_base_modify(manifest: dict[str, Any]) -> str:
     relative = "home/dot_codex/modify_private_config.toml"
     # A fixture ROOT (unit tests) has no base script of its own; take the repository's copy then.
     source = ROOT / relative if (ROOT / relative).exists() else Path(__file__).resolve().parents[1] / relative
-    text = source.read_text()
+    text = read_exact(source)
     start, end = text.find(HOOK_TRUST_BEGIN), text.find(HOOK_TRUST_END)
     if start == -1 or end < start:
         fail("home/dot_codex/modify_private_config.toml must keep the codex hook trust block markers")
@@ -1596,7 +1620,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
     outputs.update(render_lever_installs(manifest))
-    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs)
+    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs, lever_pins(manifest))
     return outputs
 
 
@@ -1662,20 +1686,25 @@ def chezmoi_target(source: Path) -> dict[str, Any] | None:
     return {"target": "/".join(parts), "kind": kind, "executable": executable}
 
 
-def render_output_index(outputs: dict[Path, str]) -> str:
+def render_output_index(outputs: dict[Path, str], pins: dict[Path, str] | None = None) -> str:
     """The deployed side of the expected output set, for make doctor.
 
-    `outputs` lists every generated file with its deployed target (none for one chezmoi does not deploy by itself);
-    `scopes` lists each generated directory's deployed directory and glob, where a file no output deploys is an
-    orphan on the host.
+    `outputs` lists every generated file with its deployed target (none for one chezmoi does not deploy by itself),
+    and a lever copy also with the sha256 it is pinned to; `scopes` lists each generated directory's deployed
+    directory and glob, where a file no output deploys is an orphan on the host.
     """
+    pins = pins or {}
     entries = []
     for path in sorted(outputs):
         target = chezmoi_target(path)
         rel = path.relative_to(ROOT)
         if target is None and rel.parts[0] == "home" and rel.parts[1] != ".chezmoitemplates":
             fail(f"{rel} is generated under home/ but chezmoi ignores its dot-prefixed name, so it never deploys")
-        entries.append({"source": rel.as_posix(), **(target or {"target": None})})
+        entry = {"source": rel.as_posix(), **(target or {"target": None})}
+        pin = pins.get(path)
+        if pin is not None:
+            entry["sha256"] = pin
+        entries.append(entry)
     scopes = []
     for directory, pattern in generated_scopes():
         root = chezmoi_target(ROOT / directory / "x")
@@ -1720,8 +1749,10 @@ def orphaned_outputs(outputs: dict[Path, str]) -> list[Path]:
 
 
 def output_drift(outputs: dict[Path, str]) -> list[str]:
-    """Each expected output that is missing or differs, then each orphan; empty when the tree matches the set."""
-    stale = sorted(path for path, content in outputs.items() if not path.is_file() or path.read_text() != content)
+    """Each expected output whose bytes are missing or differ, then each orphan; empty when the tree matches the set."""
+    stale = sorted(
+        path for path, content in outputs.items() if not path.is_file() or path.read_bytes() != content.encode()
+    )
     return [str(path.relative_to(ROOT)) for path in stale] + [
         f"{path.relative_to(ROOT)} (orphan: no manifest entry renders it)" for path in orphaned_outputs(outputs)
     ]
@@ -1742,7 +1773,7 @@ def remove_orphaned_outputs(outputs: dict[Path, str]) -> None:
 def write_outputs(outputs: dict[Path, str]) -> None:
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        write_exact(path, content)
         if (path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_")) or (
             path.parent == ROOT / LEVER_INSTALL_DIR and path.name.startswith("executable_")
         ):
@@ -1765,7 +1796,7 @@ def main() -> None:
 
     if args.set_asset:
         manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
-        text = manifest_path.read_text()
+        text = read_exact(manifest_path)
         updates = []
         for assignment in args.set_asset:
             target, separator, value = assignment.partition("=")
@@ -1786,7 +1817,7 @@ def main() -> None:
             if not isinstance(current, str) or current != value:
                 fail(f"assets.{name}.{path} did not update to the string {value!r}: {current!r}")
         outputs = render_asset_constants(manifest)
-        manifest_path.write_text(text)
+        write_exact(manifest_path, text)
         write_outputs(outputs)
         print("asset pins updated: " + ", ".join(f"{name}.{path}" for name, path, _ in updates))
         return
@@ -1796,17 +1827,17 @@ def main() -> None:
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
     stale: list[str] = []
     if manifest_path.exists():
-        manifest_text = manifest_path.read_text()
+        manifest_text = read_exact(manifest_path)
         pinned_text = refresh_lever_pins(manifest_text)
         if pinned_text != manifest_text:
             if args.check:
                 stale.append(str(manifest_path.relative_to(ROOT)))
             else:
-                manifest_path.write_text(pinned_text)
+                write_exact(manifest_path, pinned_text)
     manifest = load_manifest()
     outputs = expected_outputs(manifest)
     if args.check:
-        stale.extend(output_drift(outputs))
+        stale.extend(output_drift(outputs) + lever_pin_drift(manifest))
     else:
         write_outputs(outputs)
         remove_orphaned_outputs(outputs)

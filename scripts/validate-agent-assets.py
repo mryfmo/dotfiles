@@ -1290,7 +1290,7 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
 
     claude_symlink = ROOT / "home/dot_claude/rules/symlink_ponytail.md.tmpl"
     expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/ponytail.md\n"
-    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
+    if not claude_symlink.is_file() or claude_symlink.read_bytes() != expected_target.encode():
         fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
 
     readme = (ROOT / "README.md").read_text()
@@ -1353,7 +1353,7 @@ def validate_understand_anything_assets() -> None:
 
     claude_symlink = ROOT / "home/dot_claude/rules/symlink_understand-anything.md.tmpl"
     expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
-    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
+    if not claude_symlink.is_file() or claude_symlink.read_bytes() != expected_target.encode():
         fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
 
     readme = (ROOT / "README.md").read_text()

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import hashlib
 import json
 import os
 import re
@@ -115,28 +116,21 @@ def same_modified(
     applies from (CHEZMOI_WORKING_TREE), which the Codex config keys its project trust with (F058). `quiet` makes any
     stderr output a mismatch, for a script that degrades to passing its input through with a warning.
     """
-    if not target.exists():
+    if not target.is_file():
         return False
-    current = target.read_text()
+    current = target.read_bytes()
     env = os.environ.copy()
     env["CHEZMOI_SOURCE_DIR"] = str(SOURCE_ROOT)
     if working_tree is not None:
         env["CHEZMOI_WORKING_TREE"] = working_tree
-    result = subprocess.run(
-        [str(source)],
-        input=current,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        check=False,
-    )
+    # Bytes in and out: no newline translation on either side, so the script's output must equal the file exactly.
+    result = subprocess.run([str(source)], input=current, capture_output=True, env=env, check=False)
     if result.returncode != 0 or (quiet and result.stderr):
         return False
     if json_target:
         try:
             return json.loads(result.stdout) == json.loads(current)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return False
     return result.stdout == current
 
@@ -252,6 +246,7 @@ def output_index_path() -> Path:
 
 
 OUTPUT_KINDS = frozenset({"file", "template", "modify", "create", "symlink"})
+SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 
 def output_index_error(index: object) -> str | None:
@@ -278,13 +273,18 @@ def output_index_error(index: object) -> str | None:
             return f"outputs[{number}] must be an object with a relative source"
         if set(entry) == {"source", "target"} and entry["target"] is None:
             continue
+        keys = {"source", "target", "kind", "executable"}
         if (
-            set(entry) != {"source", "target", "kind", "executable"}
+            set(entry) - {"sha256"} != keys
             or not relative(entry["target"])
             or entry["kind"] not in OUTPUT_KINDS
             or not isinstance(entry["executable"], bool)
+            or ("sha256" in entry and (entry["kind"] != "file" or not SHA256_HEX.fullmatch(str(entry["sha256"]))))
         ):
-            return f"outputs[{number}] must be {{source, target, kind, executable}} with a known kind: {entry!r}"
+            return (
+                f"outputs[{number}] must be {{source, target, kind, executable}} with a known kind, and a lowercase "
+                f"hex sha256 only on a file: {entry!r}"
+            )
     for number, scope in enumerate(index["scopes"]):
         if (
             not isinstance(scope, dict)
@@ -384,6 +384,9 @@ def generated_target_findings(index: dict[str, list[dict[str, object]]], working
         else:  # "file": output_index_error admits no other kind.
             if not same_text(source, target):
                 failures.append(f"generated file differs or is missing: {target}")
+            elif "sha256" in entry and hashlib.sha256(target.read_bytes()).hexdigest() != entry["sha256"]:
+                # The source and the deployed copy can be corrupted alike; the pin cannot.
+                failures.append(f"generated file does not hash to its pinned sha256: {target}")
             elif entry["executable"] and not target.stat().st_mode & stat.S_IXUSR:
                 failures.append(f"generated file is not executable: {target}")
     for scope in index["scopes"]:

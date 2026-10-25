@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -295,6 +296,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             ("scope missing glob", index(scopes=[{"source": "home/d", "target": ".d"}])),
             ("scope glob not a string", index(scopes=[{**good_scope, "glob": ["*"]}])),
             ("absolute scope target", index(scopes=[{**good_scope, "target": "/tmp"}])),
+            ("sha256 not hex", index([{**good_output, "sha256": "Z" * 64}])),
+            ("sha256 on a template", index([{**good_output, "kind": "template", "sha256": "0" * 64}])),
         ):
             with self.subTest(name=name):
                 self.assertIsNotNone(self.module.output_index_error(candidate))
@@ -330,6 +333,38 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.module.generated_target_findings(index, "/tree"),
             )
             target.write_bytes(b"#!/bin/sh\necho ok\n")
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+
+    def test_a_lever_copy_corrupted_alike_in_source_and_on_the_host_fails_its_pin(self) -> None:
+        """The index carries a lever's pinned sha256, so matching corrupted source and target still fail."""
+        body = b"#!/usr/bin/env bash\nexit 0\n"
+        corrupted = body.replace(b"\n", b"\r\n")
+        source = self.source_root / "dot_local/bin/common/executable_omp-run.sh"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(corrupted)
+        target = self.target_root / ".local/bin/common/omp-run.sh"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(corrupted)
+        target.chmod(0o755)
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_local/bin/common/executable_omp-run.sh",
+                    "target": ".local/bin/common/omp-run.sh",
+                    "kind": "file",
+                    "executable": True,
+                    "sha256": hashlib.sha256(body).hexdigest(),
+                }
+            ],
+            "scopes": [],
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual(
+                [f"generated file does not hash to its pinned sha256: {target}"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+            source.write_bytes(body)
+            target.write_bytes(body)
             self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
 
     def test_a_leftover_install_copy_of_an_orchestrator_script_on_the_host_fails(self) -> None:

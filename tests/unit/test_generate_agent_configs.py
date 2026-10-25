@@ -929,6 +929,43 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), stale.replace("0" * 64, pin))
 
+    def test_check_refuses_a_crlf_lever_copy_and_a_copy_off_its_pin(self) -> None:
+        """F156: freshness compares bytes, and each lever copy must hash to its claude.levers.sha256 pin."""
+        body = b"#!/usr/bin/env bash\nexit 0\n"
+        source = self.temp_dir / "scripts/orchestrator/omp-run.sh"
+        copy = self.temp_dir / "home/dot_local/bin/common/executable_omp-run.sh"
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        for path in (source, copy, manifest_path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+        pin = hashlib.sha256(body).hexdigest()
+        manifest_path.write_text(f"schema_version: 1\nclaude:\n  levers:\n    sha256:\n      omp-run.sh: {pin}\n")
+        manifest = {"claude": {"levers": {"sha256": {"omp-run.sh": pin}}}}
+        self.module.load_manifest = lambda: manifest
+        self.module.expected_outputs = self.module.render_lever_installs
+        self.addCleanup(setattr, sys, "argv", sys.argv)
+        sys.argv = ["generate-agent-configs.py", "--check"]
+
+        def check() -> str:
+            with contextlib.redirect_stderr(io.StringIO()) as stderr, contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    self.module.main()
+                except SystemExit:
+                    pass
+            return stderr.getvalue()
+
+        source.write_bytes(body)
+        copy.write_bytes(body)
+        self.assertEqual("", check())
+        copy.write_bytes(body.replace(b"\n", b"\r\n"))
+        self.assertIn("home/dot_local/bin/common/executable_omp-run.sh", check())
+        # A source and a copy corrupted alike still differ from the pin.
+        source.write_bytes(body.replace(b"\n", b"\r\n"))
+        self.assertEqual(
+            ["home/dot_local/bin/common/executable_omp-run.sh (does not hash to its claude.levers.sha256 pin)"],
+            self.module.lever_pin_drift(manifest),
+        )
+        self.assertIn("does not hash to its claude.levers.sha256 pin", check())
+
     def test_check_lists_every_orphan_in_a_generated_directory_and_a_run_deletes_it(self) -> None:
         """F056: a file in a generated directory that the expected output set does not hold fails --check."""
         expected = self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"

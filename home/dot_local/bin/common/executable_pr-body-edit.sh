@@ -9,16 +9,18 @@
 #   branch other than `main`, and `gh pr view --json number,headRefName,state` (the pull request of that branch)
 #   must report it as `headRefName` and `OPEN`. The body file is a regular file (not a symlink) of 1 to 65536
 #   bytes whose real path is inside `$TMPDIR` or the checkout. The new body must hold exactly one line starting
-#   `Program-Unit:`, and it must be `Program-Unit: regime-cutover/U<n>`, the plain unit id `regime-ci.py` reads
-#   (a fix round writes its parent id, `preferences.md` standing order 24); when the current body already
-#   carries one such line, the unit must stay the same, so an edit fixes the line or the text but never moves a
-#   pull request to another unit. Every `## ` heading line and the `Generated with [Claude Code]` footer line of
+#   `Program-Unit:`, and it must be `Program-Unit: <program>/U<n>`, the line `regime-ci.py` reads: `<program>` in
+#   `regime-init`'s grammar (`^[a-z0-9][a-z0-9_-]{0,63}$`) naming a store the checkout holds,
+#   `.orchestration/orchestrate/<program>/units.tsv` (U71), and a plain unit id (a fix round writes its parent id,
+#   `preferences.md` standing order 24); when the current body already carries one such line, the program and the
+#   unit must stay the same, so an edit fixes the line or the text but never moves a pull request to another
+#   program or unit. Every `## ` heading line and the `Generated with [Claude Code]` footer line of
 #   the current body must still be in the new body, so sections are added or rewritten, never dropped. The one
 #   write is `gh pr edit <n> --body-file <file>`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl
 #   `alarm`).
 # @option --body-file <file> The new body.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
-# @stdout One receipt line: `edited pr=<n> branch=<b> unit=U<n> sha256=<body sha256>`.
+# @stdout One receipt line: `edited pr=<n> branch=<b> program=<program> unit=U<n> sha256=<body sha256>`.
 # @exitcode 0 The body was replaced.
 # @exitcode 1 A `git` or `gh` read, or the edit, failed.
 # @exitcode 2 Refused: usage, the branch, the pull request's state, the body file, or the body's content.
@@ -84,7 +86,7 @@ lever_self_check
 lever='pr-body-edit.sh'
 usage='usage: pr-body-edit.sh --body-file <file>'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
-unit_line='^Program-Unit: regime-cutover/U[0-9]+$'
+unit_line='^Program-Unit: [a-z0-9][a-z0-9_-]{0,63}/U[0-9]+$'
 footer_re='Generated with \[Claude Code\]\(https://claude\.com/claude-code\)'
 
 # @description Print the refusal on stderr and exit 2; nothing was written to GitHub.
@@ -150,8 +152,12 @@ branch=$(git branch --show-current) || fail 'git branch --show-current failed'
 body_file_check "$2"
 markers=$(lines_matching '^Program-Unit:' "${body_path}") || refuse "cannot read ${body_path}"
 [[ -n ${markers} && ${markers} != *$'\n'* && ${markers} =~ ${unit_line} ]] ||
-    refuse "the body must hold exactly one line 'Program-Unit: regime-cutover/U<n>' (a plain unit id); it holds: ${markers:-none}"
-unit=${markers##*/}
+    refuse "the body must hold exactly one line 'Program-Unit: <program>/U<n>' (a plain unit id); it holds: ${markers:-none}"
+marker=${markers#Program-Unit: }
+program=${marker%/*}
+unit=${marker##*/}
+[[ -f ${toplevel}/.orchestration/orchestrate/${program}/units.tsv ]] ||
+    refuse "the Program-Unit line names ${program}, but the checkout holds no .orchestration/orchestrate/${program}/units.tsv"
 
 view=$(gh_bounded pr view --json number,headRefName,state --jq '[(.number | tostring), .headRefName, .state] | @tsv') ||
     fail "cannot read the pull request of ${branch}"
@@ -164,8 +170,8 @@ current=$(mktemp "${TMPDIR:-/tmp}/pr-body-edit.XXXXXX") || fail 'mktemp failed'
 trap 'rm -f "${current}"' EXIT
 gh_bounded pr view "${number}" --json body --jq .body > "${current}" || fail "cannot read the body of pull request ${number}"
 old_markers=$(lines_matching "${unit_line}" "${current}") || fail "cannot read ${current}"
-if [[ -n ${old_markers} && ${old_markers} != *$'\n'* && ${old_markers##*/} != "${unit}" ]]; then
-    refuse "the current body names ${old_markers##*/}; an edit keeps the unit (the new body names ${unit})"
+if [[ -n ${old_markers} && ${old_markers} != *$'\n'* && ${old_markers#Program-Unit: } != "${marker}" ]]; then
+    refuse "the current body names ${old_markers#Program-Unit: }; an edit keeps the program and the unit (the new body names ${marker})"
 fi
 kept=$(lines_matching "^## |${footer_re}" "${current}") || fail "cannot read ${current}"
 new_lines=$(lines_matching '' "${body_path}") || refuse "cannot read ${body_path}"
@@ -180,4 +186,4 @@ if command -v sha256sum > /dev/null; then
 else
     digest=$(shasum -a 256 < "${body_path}") || digest=''
 fi
-echo "edited pr=${number} branch=${branch} unit=${unit} sha256=${digest%% *}"
+echo "edited pr=${number} branch=${branch} program=${program} unit=${unit} sha256=${digest%% *}"

@@ -22,16 +22,21 @@ tools:
     AskClaude: deny
 bash:
   patterns:
-    # Before the allow, so the audited merge form can never carry a protection bypass.
-    - match: "*gh pr merge*--admin*"
-      approval: deny
-    # The only raw GitHub write the orchestrator keeps: the audited squash merge.
-    - match: "gh pr merge * --squash --match-head-commit *"
-      approval: allow
     # The seat's GitHub-write levers (U28, scripts/orchestrator/README.md "Seat levers for GitHub writes"): each runs
     # alone, as one simple command, by the sha256-pinned copy chezmoi installs, and checks its own arguments before any
     # `gh` call. The deny after each allow catches every other spelling of that lever with arguments (the checkout
     # path, an expanded HOME, a missing `--from-table`) and the lever chained to anything, before the gh denies below.
+    # No `gh pr merge` line is allowed (U71, F010; the common deny below): the seat's merge path is pr-merge.sh, which
+    # refuses a head without a `correct` ledger row for its full sha or without green CI and never passes --admin or
+    # --auto. These rows match command text, so they are a speed bump, not a boundary: a glob spelling
+    # (`pr-merge.s[h]`, `g[h] pr merge`) or a checkout copy passes them.
+    # The merge decision rests on the lever's ledger check and on the store sitting in the orchestrator's checkout,
+    # which no worker sandbox can write (U85); a seat that runs `gh` itself acts with the operator's GitHub
+    # credentials, the residual U88 (a seat GitHub identity that cannot merge) removes.
+    - match: "~/.local/bin/common/pr-merge.sh *"
+      approval: allow
+    - match: "*pr-merge.sh *"
+      approval: deny
     - match: "~/.local/bin/common/pr-thread-reply.sh *"
       approval: allow
     - match: "*pr-thread-reply.sh *"

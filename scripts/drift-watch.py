@@ -122,7 +122,7 @@ class Upstream:
         if not allowed(url):
             raise ReadError(url, "not an allowed upstream host")
         if self.fixture is not None:
-            if url not in self.fixture:
+            if url not in self.fixture:  # lint-comparisons: allow fixture keys are the exact URLs this script builds
                 raise ReadError(url, "not in the fixture")
             entry = self.fixture[url]
             if isinstance(entry, dict) and set(entry) == {"http_status"}:
@@ -325,7 +325,7 @@ class Watch:
     def manifest_pins(self) -> None:
         assets = (yaml.safe_load((self.root / MANIFEST).read_text()) or {}).get("assets") or {}
         for name, asset in assets.items():
-            if asset.get("source") in PLUGIN_FILES:
+            if asset.get("source") in PLUGIN_FILES:  # lint-comparisons: allow a manifest source kind, not a path
                 self.plugin_pins(name, asset)
                 continue
             pins = [
@@ -478,7 +478,8 @@ def mise_source(name: str, spec) -> tuple[str, str] | None:
         for url in urls:
             if match := re.match(r"https://github\.com/([\w.-]+/[\w.-]+)/", url):
                 return "github", match[1]
-            if url.startswith("https://storage.googleapis.com/cloud-sdk-release/"):
+            parts = urllib.parse.urlsplit(url)
+            if (parts.hostname, parts.path.split("/")[1:2]) == ("storage.googleapis.com", ["cloud-sdk-release"]):
                 return "gcloud", ""
     return None
 

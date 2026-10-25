@@ -375,6 +375,294 @@ bash:
       approval: deny
     - match: "*rm --force --verbose --recursive"
       approval: deny
+    - match: "*rm -v -rf *"
+      approval: deny
+    - match: "*rm -v -rf"
+      approval: deny
+    - match: "*rm -v -fr *"
+      approval: deny
+    - match: "*rm -v -fr"
+      approval: deny
+    - match: "*rm -v -rfv *"
+      approval: deny
+    - match: "*rm -v -rfv"
+      approval: deny
+    - match: "*rm -v -rvf *"
+      approval: deny
+    - match: "*rm -v -rvf"
+      approval: deny
+    - match: "*rm -v -frv *"
+      approval: deny
+    - match: "*rm -v -frv"
+      approval: deny
+    - match: "*rm -v -fvr *"
+      approval: deny
+    - match: "*rm -v -fvr"
+      approval: deny
+    - match: "*rm -v -vrf *"
+      approval: deny
+    - match: "*rm -v -vrf"
+      approval: deny
+    - match: "*rm -v -vfr *"
+      approval: deny
+    - match: "*rm -v -vfr"
+      approval: deny
+    - match: "*rm -v -Rf *"
+      approval: deny
+    - match: "*rm -v -Rf"
+      approval: deny
+    - match: "*rm -v -fR *"
+      approval: deny
+    - match: "*rm -v -fR"
+      approval: deny
+    - match: "*rm -v -Rfv *"
+      approval: deny
+    - match: "*rm -v -Rfv"
+      approval: deny
+    - match: "*rm -v -Rvf *"
+      approval: deny
+    - match: "*rm -v -Rvf"
+      approval: deny
+    - match: "*rm -v -fRv *"
+      approval: deny
+    - match: "*rm -v -fRv"
+      approval: deny
+    - match: "*rm -v -fvR *"
+      approval: deny
+    - match: "*rm -v -fvR"
+      approval: deny
+    - match: "*rm -v -vRf *"
+      approval: deny
+    - match: "*rm -v -vRf"
+      approval: deny
+    - match: "*rm -v -vfR *"
+      approval: deny
+    - match: "*rm -v -vfR"
+      approval: deny
+    - match: "*rm --verbose -rf *"
+      approval: deny
+    - match: "*rm --verbose -rf"
+      approval: deny
+    - match: "*rm --verbose -fr *"
+      approval: deny
+    - match: "*rm --verbose -fr"
+      approval: deny
+    - match: "*rm --verbose -rfv *"
+      approval: deny
+    - match: "*rm --verbose -rfv"
+      approval: deny
+    - match: "*rm --verbose -rvf *"
+      approval: deny
+    - match: "*rm --verbose -rvf"
+      approval: deny
+    - match: "*rm --verbose -frv *"
+      approval: deny
+    - match: "*rm --verbose -frv"
+      approval: deny
+    - match: "*rm --verbose -fvr *"
+      approval: deny
+    - match: "*rm --verbose -fvr"
+      approval: deny
+    - match: "*rm --verbose -vrf *"
+      approval: deny
+    - match: "*rm --verbose -vrf"
+      approval: deny
+    - match: "*rm --verbose -vfr *"
+      approval: deny
+    - match: "*rm --verbose -vfr"
+      approval: deny
+    - match: "*rm --verbose -Rf *"
+      approval: deny
+    - match: "*rm --verbose -Rf"
+      approval: deny
+    - match: "*rm --verbose -fR *"
+      approval: deny
+    - match: "*rm --verbose -fR"
+      approval: deny
+    - match: "*rm --verbose -Rfv *"
+      approval: deny
+    - match: "*rm --verbose -Rfv"
+      approval: deny
+    - match: "*rm --verbose -Rvf *"
+      approval: deny
+    - match: "*rm --verbose -Rvf"
+      approval: deny
+    - match: "*rm --verbose -fRv *"
+      approval: deny
+    - match: "*rm --verbose -fRv"
+      approval: deny
+    - match: "*rm --verbose -fvR *"
+      approval: deny
+    - match: "*rm --verbose -fvR"
+      approval: deny
+    - match: "*rm --verbose -vRf *"
+      approval: deny
+    - match: "*rm --verbose -vRf"
+      approval: deny
+    - match: "*rm --verbose -vfR *"
+      approval: deny
+    - match: "*rm --verbose -vfR"
+      approval: deny
+    - match: "*rm -rv -f *"
+      approval: deny
+    - match: "*rm -rv -f"
+      approval: deny
+    - match: "*rm -rv --force *"
+      approval: deny
+    - match: "*rm -rv --force"
+      approval: deny
+    - match: "*rm -vr -f *"
+      approval: deny
+    - match: "*rm -vr -f"
+      approval: deny
+    - match: "*rm -vr --force *"
+      approval: deny
+    - match: "*rm -vr --force"
+      approval: deny
+    - match: "*rm -Rv -f *"
+      approval: deny
+    - match: "*rm -Rv -f"
+      approval: deny
+    - match: "*rm -Rv --force *"
+      approval: deny
+    - match: "*rm -Rv --force"
+      approval: deny
+    - match: "*rm -vR -f *"
+      approval: deny
+    - match: "*rm -vR -f"
+      approval: deny
+    - match: "*rm -vR --force *"
+      approval: deny
+    - match: "*rm -vR --force"
+      approval: deny
+    - match: "*rm -f -rv *"
+      approval: deny
+    - match: "*rm -f -rv"
+      approval: deny
+    - match: "*rm -f -vr *"
+      approval: deny
+    - match: "*rm -f -vr"
+      approval: deny
+    - match: "*rm -f -Rv *"
+      approval: deny
+    - match: "*rm -f -Rv"
+      approval: deny
+    - match: "*rm -f -vR *"
+      approval: deny
+    - match: "*rm -f -vR"
+      approval: deny
+    - match: "*rm --force -rv *"
+      approval: deny
+    - match: "*rm --force -rv"
+      approval: deny
+    - match: "*rm --force -vr *"
+      approval: deny
+    - match: "*rm --force -vr"
+      approval: deny
+    - match: "*rm --force -Rv *"
+      approval: deny
+    - match: "*rm --force -Rv"
+      approval: deny
+    - match: "*rm --force -vR *"
+      approval: deny
+    - match: "*rm --force -vR"
+      approval: deny
+    - match: "*rm -fv -r *"
+      approval: deny
+    - match: "*rm -fv -r"
+      approval: deny
+    - match: "*rm -fv -R *"
+      approval: deny
+    - match: "*rm -fv -R"
+      approval: deny
+    - match: "*rm -fv --recursive *"
+      approval: deny
+    - match: "*rm -fv --recursive"
+      approval: deny
+    - match: "*rm -vf -r *"
+      approval: deny
+    - match: "*rm -vf -r"
+      approval: deny
+    - match: "*rm -vf -R *"
+      approval: deny
+    - match: "*rm -vf -R"
+      approval: deny
+    - match: "*rm -vf --recursive *"
+      approval: deny
+    - match: "*rm -vf --recursive"
+      approval: deny
+    - match: "*rm -r -fv *"
+      approval: deny
+    - match: "*rm -r -fv"
+      approval: deny
+    - match: "*rm -r -vf *"
+      approval: deny
+    - match: "*rm -r -vf"
+      approval: deny
+    - match: "*rm -R -fv *"
+      approval: deny
+    - match: "*rm -R -fv"
+      approval: deny
+    - match: "*rm -R -vf *"
+      approval: deny
+    - match: "*rm -R -vf"
+      approval: deny
+    - match: "*rm --recursive -fv *"
+      approval: deny
+    - match: "*rm --recursive -fv"
+      approval: deny
+    - match: "*rm --recursive -vf *"
+      approval: deny
+    - match: "*rm --recursive -vf"
+      approval: deny
+    - match: "rm -*r* -*f*"
+      approval: deny
+    - match: "* rm -*r* -*f*"
+      approval: deny
+    - match: "*/rm -*r* -*f*"
+      approval: deny
+    - match: "rm -*f* -*r*"
+      approval: deny
+    - match: "* rm -*f* -*r*"
+      approval: deny
+    - match: "*/rm -*f* -*r*"
+      approval: deny
+    - match: "rm -*R* -*f*"
+      approval: deny
+    - match: "* rm -*R* -*f*"
+      approval: deny
+    - match: "*/rm -*R* -*f*"
+      approval: deny
+    - match: "rm -*f* -*R*"
+      approval: deny
+    - match: "* rm -*f* -*R*"
+      approval: deny
+    - match: "*/rm -*f* -*R*"
+      approval: deny
+    - match: "rm * -*r*f*"
+      approval: deny
+    - match: "* rm * -*r*f*"
+      approval: deny
+    - match: "*/rm * -*r*f*"
+      approval: deny
+    - match: "rm * -*f*r*"
+      approval: deny
+    - match: "* rm * -*f*r*"
+      approval: deny
+    - match: "*/rm * -*f*r*"
+      approval: deny
+    - match: "rm * -*R*f*"
+      approval: deny
+    - match: "* rm * -*R*f*"
+      approval: deny
+    - match: "*/rm * -*R*f*"
+      approval: deny
+    - match: "rm * -*f*R*"
+      approval: deny
+    - match: "* rm * -*f*R*"
+      approval: deny
+    - match: "*/rm * -*f*R*"
+      approval: deny
     - match: "*sh -s *"
       approval: deny
     - match: "*sh -s"
@@ -391,13 +679,9 @@ bash:
       approval: deny
     - match: "*dash -s"
       approval: deny
-    - match: "sh"
+    - match: "*|*sh"
       approval: deny
-    - match: "bash"
-      approval: deny
-    - match: "zsh"
-      approval: deny
-    - match: "dash"
+    - match: "*|*sh *"
       approval: deny
     - match: "*npm publish *"
       approval: deny

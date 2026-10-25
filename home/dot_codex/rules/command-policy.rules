@@ -3,13 +3,14 @@
 # The command_policy list (regime-cutover U76): `forbidden` refuses under every approval policy, `prompt`
 # asks the human before each matching command. Codex applies the strictest decision of every rule file
 # under ~/.codex/rules, so an allow rule an interactive session appends to default.rules never lifts one.
-# A rule matches the argument list from its first word, one position at a time, so it does not see a flag
-# after the operands or another spelling of the program. Codex splits `bash -lc '<script>'` into its
-# commands only when the script is plain words joined by `&&`, `||`, `;` or `|`; a script with a redirect,
-# a substitution, a variable, an assignment or a glob is matched whole as `bash -lc ...`, so none of these
-# prefix rules applies to the commands inside it (learn.chatgpt.com/docs/agent-configuration/rules, "When
-# Codex does not split the script"). The sandbox (read-only, or workspace-write with network off) is the
-# control for those forms, and for `curl ... | sh`, whose bare `sh` no prefix rule can name.
+# A rule matches the argument list from its first word, one position at a time, so it covers the listed
+# forms only: not a flag after the operands, another flag grouping (`rm -rvi -f`), or another spelling of
+# the program. Codex splits `bash -lc '<script>'` into its commands only when the script is plain words
+# joined by `&&`, `||`, `;` or `|`; a script with a redirect, a substitution, a variable, an assignment or
+# a glob is matched whole as `bash -lc ...`, so none of these prefix rules applies to the commands inside
+# it (learn.chatgpt.com/docs/agent-configuration/rules, "When Codex does not split the script"). The
+# sandbox (read-only, or workspace-write with network off) is the control for those forms, and for a
+# shell after a pipe (`curl ... | sh`), which no prefix rule can name without matching Codex's own shell.
 
 prefix_rule(
     pattern=[["sudo", "/usr/bin/sudo", "/bin/sudo", "/usr/local/bin/sudo", "/run/wrappers/bin/sudo"]],
@@ -24,7 +25,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -rf build", "rm -fr build", "rm -Rf build", "rm -vrf build", "/bin/rm -rf build", "/usr/bin/rm -fr build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -32,7 +33,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -r -f build", "rm --recursive --force build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -40,7 +41,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -f -r build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -48,7 +49,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -v -r -f build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -56,7 +57,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -v -f -r build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -64,7 +65,7 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -r -v -f build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(
@@ -72,7 +73,47 @@ prefix_rule(
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
     match=["rm -f -v -r build"],
-    not_match=["rm build/file.txt", "rm -r build", "rm -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-v", "--verbose"], ["-rf", "-fr", "-rfv", "-rvf", "-frv", "-fvr", "-vrf", "-vfr", "-Rf", "-fR", "-Rfv", "-Rvf", "-fRv", "-fvR", "-vRf", "-vfR"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -rf build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-rv", "-vr", "-Rv", "-vR"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -rv -f build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-f", "--force"], ["-rv", "-vr", "-Rv", "-vR"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -f -rv build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-fv", "-vf"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -fv -r build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
+)
+
+prefix_rule(
+    pattern=[["rm", "/bin/rm", "/usr/bin/rm"], ["-r", "-R", "--recursive"], ["-fv", "-vf"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -r -fv build"],
+    not_match=["rm build/file.txt", "rm -r build", "rm -f build", "rm -f report.txt", "rm -f /tmp/err.log other.txt", "terraform -chdir=infra plan -refresh=false"],
 )
 
 prefix_rule(

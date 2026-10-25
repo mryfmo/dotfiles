@@ -782,25 +782,33 @@ shell. The omp seats of the hcom regime run in Herdr panes that
 The dangerous-command list is managed in one place: `command_policy` in
 `home/dot_agents/agent-config.yaml` names each GitHub write and destructive
 command by its argv positions (`sudo` also by absolute path, recursive force
-`rm` in every flag order and by `/bin/rm` and `/usr/bin/rm`, `npm`, `pnpm`,
+`rm` by `rm`, `/bin/rm` and `/usr/bin/rm`, `npm`, `pnpm`,
 `yarn` and `uv publish`, `terraform apply` and `destroy`, `kubectl apply` and
 `delete`, `gh release`, `gh pr merge` and the API merge forms, `gh api`, the
 `gh pr`, `gh issue`, `gh repo`, `gh secret`, `gh variable`, `gh workflow`,
 `gh run`, `gh cache`, `gh label`, `gh gist`, key, codespace, project and
-alias writes, and a shell reading its script from a pipe). The generator
-renders it three ways: Claude Code `permissions.deny` or `permissions.ask`
-rules, the Codex execpolicy file `~/.codex/rules/command-policy.rules`
-(`forbidden` or `prompt`), and the deny block of every omp seat policy and
-of the plain-launch omp config. `tests/unit/test_command_policy.py` fails
-when a render drops an entry or lets one of its examples through. A text
+alias writes, and a shell after a pipe). The generator
+renders it three ways, each with that consumer's own matcher: Claude Code
+`permissions.deny` or `permissions.ask` rules, the Codex execpolicy file
+`~/.codex/rules/command-policy.rules` (`forbidden` or `prompt`), and the
+deny block of every omp seat policy and of the plain-launch omp config. The
+generator refuses an entry whose own renders let one of its examples through,
+and `tests/unit/test_command_policy.py` fails when a render drops an entry.
+Codex forbids the listed `rm` flag groupings only; Claude and omp also deny a
+recursive and a force flag group in any order with other letters (wildcard
+rules, which over-match on the deny side, `rm -v -f report.txt` for one).
+Claude denies every shell run as a command (`Bash(sh *)`, `Bash(bash *)`,
+`Bash(zsh *)`, `Bash(dash *)`), so `curl … | bash -e` is refused after the
+pipe is split and a script runs by its path; omp denies any line with a `|`
+followed by a word ending in `sh`; Codex has no rule for it, since a rule on a
+shell would match its own `bash -lc`, and relies on its sandbox. A text
 rule never sees another spelling of the program (`git -C`, `command gh`, a
-gh alias made earlier, a variable holding the name, a glob, `eval`,
-`bash -c "$(...)"`, a script or make target that runs it): for those the
+gh alias made earlier, a variable holding the name, a glob, `eval`, a script
+or make target that runs it): for those the
 Claude sandbox (every `gh` and `git push` prompts), the Codex sandbox and the
 omp seats' srt and GitHub identity are the controls. The old Claude rule
 `Bash(curl * | sh)` never matched, because Claude Code matches each piped
-subcommand on its own; the list denies the bare `sh`, `bash`, `zsh` or
-`dash` after the pipe instead.
+subcommand on its own.
 
 `home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
 and replaces it on every `chezmoi apply`. It keeps the Codex-only lifecycle

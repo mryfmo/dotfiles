@@ -200,11 +200,14 @@ function add_segment() {
 
 # @description Split a command line into its simple commands at the unquoted separators `&&`, `||`, `;`, `|`,
 #   `&` and newlines, the way Claude Code splits a compound command before matching it, so `cd x && python y.py`
-#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text.
+#   is judged by its `python y.py` part. Quotes and backslash escapes are kept in the segment text. A comment (an
+#   unquoted `#` that starts a word) runs to the end of its line, and a here-document body (`<<WORD`, `<<-WORD`,
+#   `<<'WORD'`, `<<"WORD"`, up to its terminator line) is data: neither yields a segment.
 # @arg $1 string The command line.
 # @set SEGMENTS array The simple commands, in order.
 function split_segments() {
-    local line="$1" current="" quote="" char i
+    local line="$1" current="" quote="" char prev i j rest body delimiter strip
+    local -a delimiters=() strips=()
     SEGMENTS=()
     for ((i = 0; i < ${#line}; i++)); do
         char=${line:i:1}
@@ -218,6 +221,10 @@ function split_segments() {
             fi
             continue
         fi
+        prev=""
+        if ((i > 0)); then
+            prev=${line:i-1:1}
+        fi
         case "$char" in
         "'" | '"')
             quote=$char
@@ -227,9 +234,75 @@ function split_segments() {
             current+=$char${line:i+1:1}
             i=$((i + 1))
             ;;
+        '#')
+            if [[ -z "$prev" || "$prev" == [[:space:]\;\&\|\(\)] ]]; then
+                # A comment: skip to the newline, which the next turn of the loop handles as a separator.
+                rest=${line:i}
+                if [[ "$rest" != *$'\n'* ]]; then
+                    break
+                fi
+                body=${rest%%$'\n'*}
+                i=$((i + ${#body} - 1))
+            else
+                current+=$char
+            fi
+            ;;
+        '<')
+            if [[ "${line:i:3}" == "<<<" ]]; then
+                current+="<<<"
+                i=$((i + 2))
+            elif [[ "${line:i:2}" == "<<" ]]; then
+                j=$((i + 2))
+                strip=""
+                if [[ "${line:j:1}" == "-" ]]; then
+                    strip=1
+                    j=$((j + 1))
+                fi
+                while [[ "${line:j:1}" == [[:blank:]] ]]; do
+                    j=$((j + 1))
+                done
+                delimiter=""
+                if [[ "${line:j:1}" == "'" || "${line:j:1}" == '"' ]]; then
+                    char=${line:j:1}
+                    rest=${line:j+1}
+                    delimiter=${rest%%"$char"*}
+                    j=$((j + ${#delimiter} + 2))
+                else
+                    while ((j < ${#line})) && [[ "${line:j:1}" != [[:space:]\;\&\|\<\>\(\)] ]]; do
+                        delimiter+=${line:j:1}
+                        j=$((j + 1))
+                    done
+                    delimiter=${delimiter//\\/}
+                fi
+                current+=${line:i:j-i}
+                delimiters+=("$delimiter")
+                strips+=("$strip")
+                i=$((j - 1))
+            else
+                current+=$char
+            fi
+            ;;
         ';' | '&' | '|' | $'\n')
             add_segment "$current"
             current=""
+            if [[ "$char" == $'\n' && ${#delimiters[@]} -gt 0 ]]; then
+                # The here-document bodies follow this newline, one after another, each up to its terminator.
+                for ((j = 0; j < ${#delimiters[@]}; j++)); do
+                    while ((i < ${#line})); do
+                        rest=${line:i+1}
+                        body=${rest%%$'\n'*}
+                        i=$((i + ${#body} + 1))
+                        if [[ -n "${strips[j]}" ]]; then
+                            body=${body#"${body%%[!$'\t']*}"}
+                        fi
+                        if [[ "$body" == "${delimiters[j]}" ]]; then
+                            break
+                        fi
+                    done
+                done
+                delimiters=()
+                strips=()
+            fi
             ;;
         *)
             current+=$char

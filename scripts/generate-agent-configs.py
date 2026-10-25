@@ -403,7 +403,20 @@ def render_codex(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-COMMAND_POLICY_KEYS = {"id", "patterns", "claude", "codex", "reason", "examples", "not_examples", "whole", "omp_flags"}
+COMMAND_POLICY_KEYS = {
+    "id",
+    "patterns",
+    "claude",
+    "codex",
+    "reason",
+    "examples",
+    "not_examples",
+    "sandbox_examples",
+    "flag_globs",
+    "omp_flags",
+    "omp_globs",
+    "omp_derived",
+}
 COMMAND_POLICY_REQUIRED = {"id", "patterns", "claude", "codex", "reason", "examples"}
 COMMAND_POLICY_WORD = re.compile(r"[^\s*]+")
 CODEX_COMMAND_RULES = "home/dot_codex/rules/command-policy.rules"
@@ -413,6 +426,9 @@ OMP_COMMAND_POLICY_BEGIN = (
     "home/dot_agents/agent-config.yaml; edit it there) >>>\n"
 )
 OMP_COMMAND_POLICY_END = "    # <<< command_policy <<<\n"
+# code.claude.com/docs/en/permissions, "Compound commands": the separators Claude Code splits on.
+CLAUDE_SEPARATORS = set(";&|\n")
+CLAUDE_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
 
 
 def pattern_expansions(pattern: list[Any]) -> list[tuple[str, ...]]:
@@ -420,93 +436,191 @@ def pattern_expansions(pattern: list[Any]) -> list[tuple[str, ...]]:
     return list(itertools.product(*(item if isinstance(item, list) else [item] for item in pattern)))
 
 
-def pattern_matches(pattern: list[Any], words: list[str], whole: bool = False) -> bool:
-    """Codex's prefix match: each position holds one of its alternatives; `whole` also wants no further word."""
-    if len(words) < len(pattern) or (whole and len(words) != len(pattern)):
+def pattern_matches(pattern: list[Any], words: list[str]) -> bool:
+    """Codex's prefix match: each position holds one of its alternatives."""
+    if len(words) < len(pattern):
         return False
     return all(word in (item if isinstance(item, list) else [item]) for item, word in zip(pattern, words))
 
 
+def claude_subcommands(command: str) -> list[str]:
+    """The subcommands Claude Code matches: split at unquoted separators, leading assignments dropped."""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace_split = True
+    parts: list[list[str]] = [[]]
+    for token in lexer:
+        if set(token) <= CLAUDE_SEPARATORS:
+            parts.append([])
+        else:
+            parts[-1].append(token)
+    subcommands = []
+    for words in parts:
+        while words and CLAUDE_ASSIGNMENT.fullmatch(words[0]):
+            words = words[1:]
+        if words:
+            subcommands.append(" ".join(words))
+    return subcommands
+
+
+def claude_rule_matches(rule: str, command: str) -> bool:
+    """A `Bash(...)` deny or ask rule against any subcommand: `*` is any text, spaces included, and a sole trailing
+    ` *` also matches the bare command (code.claude.com/docs/en/permissions, "Wildcard patterns")."""
+    pattern = rule[len("Bash(") : -1]
+    for subcommand in claude_subcommands(command):
+        if pattern.count("*") == 1 and pattern.endswith(" *") and subcommand == pattern[:-2]:
+            return True
+        if re.fullmatch(".*".join(re.escape(part) for part in pattern.split("*")), subcommand, re.DOTALL):
+            return True
+    return False
+
+
+def omp_deny_matches(glob: str, command: str) -> bool:
+    """An omp bash.patterns deny: a `*` glob over the whitespace-normalised whole line or any one segment."""
+    regex = re.compile("^" + ".*".join(re.escape(part) for part in " ".join(glob.split()).split("*")) + "$", re.DOTALL)
+    texts = [" ".join(command.split())] + [" ".join(p.split()) for p in re.split(r"[\n;&|()]+", command) if p.strip()]
+    return any(regex.match(text) for text in texts)
+
+
+def entry_claude_rules(entry: dict[str, Any]) -> list[str]:
+    """`Bash(<words> *)` per expansion (a sole trailing ` *` also matches the bare command), then the entry's
+    `flag_globs` tails after each of its programs."""
+    rules = [f"Bash({' '.join(words)} *)" for pattern in entry["patterns"] for words in pattern_expansions(pattern)]
+    globs = entry.get("flag_globs")
+    if globs:
+        rules += [f"Bash({program} {tail})" for program in globs["programs"] for tail in globs["tails"]]
+    return list(dict.fromkeys(rules))
+
+
+def entry_omp_denies(entry: dict[str, Any]) -> list[str]:
+    """The entry's omp deny globs.
+
+    `*<words>* <flag>*` per `omp_flags`, else (unless `omp_derived: false`) `*<words> *` and `*<words>` per
+    expansion, a path spelling dropped when its bare name's form is there (the leading `*` matches it); then the
+    `flag_globs` tails after `<name>`, `* <name>` and `*/<name>` for each program's base name; then `omp_globs`.
+    """
+    forms: list[str] = []
+    for pattern in entry["patterns"]:
+        for words in pattern_expansions(pattern):
+            text = " ".join(words)
+            if entry.get("omp_flags"):
+                forms += [f"*{text}* {flag}*" for flag in entry["omp_flags"]]
+            elif entry.get("omp_derived", True):
+                forms += [f"*{text} *", f"*{text}"]
+    starred = {form[1:] for form in forms if form.startswith("*")}
+    forms = [form for form in forms if not any(form[1:].endswith("/" + other) for other in starred)]
+    globs = entry.get("flag_globs")
+    if globs:
+        names = list(dict.fromkeys(program.rsplit("/", 1)[-1] for program in globs["programs"]))
+        forms += [f"{lead}{name} {tail}" for name in names for tail in globs["tails"] for lead in ("", "* ", "*/")]
+    forms += entry.get("omp_globs", [])
+    return list(dict.fromkeys(forms))
+
+
+def entry_codex_patterns(entry: dict[str, Any]) -> list[list[Any]]:
+    return [] if entry["codex"] == "sandbox" else entry["patterns"]
+
+
+def validate_command_policy_shape(entry: Any, seen: set[str]) -> str:
+    if not isinstance(entry, dict) or not COMMAND_POLICY_REQUIRED <= set(entry) <= COMMAND_POLICY_KEYS:
+        fail(
+            f"command_policy entry {entry!r} must hold {sorted(COMMAND_POLICY_REQUIRED)} and only {sorted(COMMAND_POLICY_KEYS)}"
+        )
+    label = f"command_policy.{entry['id']}"
+    if not isinstance(entry["id"], str) or entry["id"] in seen:
+        fail(f"{label}: the id must be a unique string")
+    seen.add(entry["id"])
+    if entry["claude"] not in ("deny", "ask"):
+        fail(f"{label}.claude must be deny or ask")
+    # `sandbox`: no Codex rule renders; the Codex sandbox is the control (a prefix rule on a shell would also match
+    # Codex's own `bash -lc` wrapper).
+    if entry["codex"] not in ("forbidden", "prompt", "sandbox"):
+        fail(f"{label}.codex must be forbidden, prompt or sandbox")
+    if not isinstance(entry["reason"], str) or not entry["reason"].strip():
+        fail(f"{label}.reason must be a non-empty string")
+    patterns = entry["patterns"]
+    if not isinstance(patterns, list) or not patterns:
+        fail(f"{label}.patterns must be a non-empty list")
+    for pattern in patterns:
+        if not isinstance(pattern, list) or not pattern:
+            fail(f"{label}.patterns holds a pattern that is not a non-empty list: {pattern!r}")
+        for item in pattern:
+            alternatives = item if isinstance(item, list) else [item]
+            if not alternatives or not all(
+                isinstance(word, str) and COMMAND_POLICY_WORD.fullmatch(word) for word in alternatives
+            ):
+                fail(f"{label}: each pattern position is one word or a non-empty list of words: {item!r}")
+    for key in ("omp_flags", "omp_globs"):
+        values = entry.get(key, [])
+        if not isinstance(values, list) or not all(isinstance(v, str) and v and v.strip() == v for v in values):
+            fail(f"{label}.{key} must be a list of non-empty strings")
+    if not isinstance(entry.get("omp_derived", True), bool):
+        fail(f"{label}.omp_derived must be true or false")
+    globs = entry.get("flag_globs")
+    if globs is not None and (
+        not isinstance(globs, dict)
+        or sorted(globs) != ["programs", "tails"]
+        or not all(
+            isinstance(values, list) and values and all(isinstance(v, str) and v.strip() == v and v for v in values)
+            for values in globs.values()
+        )
+    ):
+        fail(f"{label}.flag_globs must map programs and tails to non-empty lists of strings")
+    for key in ("examples", "not_examples", "sandbox_examples"):
+        values = entry.get(key, [])
+        if not isinstance(values, list) or not all(isinstance(value, str) and value.strip() for value in values):
+            fail(f"{label}.{key} must be a list of commands")
+    if not entry["examples"]:
+        fail(f"{label}.examples must name at least one command")
+    return label
+
+
 def command_policy(manifest: dict[str, Any]) -> list[dict[str, Any]]:
-    """The validated command_policy list (regime-cutover U76); any malformed entry fails the generation."""
+    """The validated command_policy list (regime-cutover U76); any malformed entry fails the generation.
+
+    Every example must be stopped by the entry's own render in each consumer that claims it (Claude, omp, and Codex
+    unless `codex: sandbox`); a `sandbox_examples` command by Claude's and omp's and by no Codex rule of the entry;
+    a not_example by none of the entry's renders.
+    """
     entries = manifest.get("command_policy")
     if not isinstance(entries, list) or not entries:
         fail("command_policy must be a non-empty list")
     seen: set[str] = set()
     for entry in entries:
-        if not isinstance(entry, dict) or not COMMAND_POLICY_REQUIRED <= set(entry) <= COMMAND_POLICY_KEYS:
-            fail(
-                f"command_policy entry {entry!r} must hold {sorted(COMMAND_POLICY_REQUIRED)} and only {sorted(COMMAND_POLICY_KEYS)}"
-            )
-        label = f"command_policy.{entry['id']}"
-        if not isinstance(entry["id"], str) or entry["id"] in seen:
-            fail(f"{label}: the id must be a unique string")
-        seen.add(entry["id"])
-        whole = entry.get("whole", False)
-        if not isinstance(whole, bool):
-            fail(f"{label}.whole must be true or false")
-        if entry["claude"] not in ("deny", "ask"):
-            fail(f"{label}.claude must be deny or ask")
-        # A Codex prefix rule cannot say "no further word", so a whole-command entry names the sandbox instead.
-        if entry["codex"] not in (("sandbox",) if whole else ("forbidden", "prompt")):
-            fail(f"{label}.codex must be {'sandbox' if whole else 'forbidden or prompt'}")
-        if not isinstance(entry["reason"], str) or not entry["reason"].strip():
-            fail(f"{label}.reason must be a non-empty string")
-        patterns = entry["patterns"]
-        if not isinstance(patterns, list) or not patterns:
-            fail(f"{label}.patterns must be a non-empty list")
-        for pattern in patterns:
-            if not isinstance(pattern, list) or not pattern:
-                fail(f"{label}.patterns holds a pattern that is not a non-empty list: {pattern!r}")
-            for item in pattern:
-                alternatives = item if isinstance(item, list) else [item]
-                if not alternatives or not all(
-                    isinstance(word, str) and COMMAND_POLICY_WORD.fullmatch(word) for word in alternatives
-                ):
-                    fail(f"{label}: each pattern position is one word or a non-empty list of words: {item!r}")
-        flags = entry.get("omp_flags", [])
-        if not isinstance(flags, list) or not all(
-            isinstance(flag, str) and flag.strip() == flag and flag for flag in flags
-        ):
-            fail(f"{label}.omp_flags must be a list of flags")
-        if flags and whole:
-            fail(f"{label}: a whole-command entry has no flags")
-        examples, not_examples = entry["examples"], entry.get("not_examples", [])
-        for key, values in (("examples", examples), ("not_examples", not_examples)):
-            if not isinstance(values, list) or not all(isinstance(value, str) and value.strip() for value in values):
-                fail(f"{label}.{key} must be a list of commands")
-        if not examples:
-            fail(f"{label}.examples must name at least one command")
-        if not whole:
-            # Codex checks each rule's match/not_match when it loads the file, so each pattern carries an example.
-            for pattern in patterns:
-                if not any(pattern_matches(pattern, shlex.split(example)) for example in examples):
-                    fail(f"{label}: no example matches the pattern {pattern!r}")
-            for example in examples:
-                if not any(pattern_matches(pattern, shlex.split(example)) for pattern in patterns):
-                    fail(f"{label}: the example {example!r} matches no pattern")
-        for example in not_examples:
-            if any(pattern_matches(pattern, shlex.split(example), whole) for pattern in patterns):
-                fail(f"{label}: the not_example {example!r} matches a pattern")
+        label = validate_command_policy_shape(entry, seen)
+        claude, omp, codex = entry_claude_rules(entry), entry_omp_denies(entry), entry_codex_patterns(entry)
+
+        def stops(command: str) -> dict[str, bool]:
+            return {
+                "claude": any(claude_rule_matches(rule, command) for rule in claude),
+                "omp": any(omp_deny_matches(glob, command) for glob in omp),
+                "codex": any(pattern_matches(pattern, shlex.split(command)) for pattern in codex),
+            }
+
+        for example in entry["examples"]:
+            missed = [name for name, hit in stops(example).items() if not hit and (name != "codex" or codex)]
+            if missed:
+                fail(f"{label}: the example {example!r} passes the {' and '.join(missed)} render")
+        for example in entry.get("sandbox_examples", []):
+            hits = stops(example)
+            if not (hits["claude"] and hits["omp"]) or hits["codex"]:
+                fail(f"{label}: the sandbox example {example!r} must be stopped by Claude and omp and by no Codex rule")
+        for example in entry.get("not_examples", []):
+            hit = [name for name, matched in stops(example).items() if matched]
+            if hit:
+                fail(f"{label}: the not_example {example!r} is stopped by the {' and '.join(hit)} render")
+        # Codex checks each rule's match/not_match when it loads the file, so each pattern carries an example.
+        for pattern in codex:
+            if not any(pattern_matches(pattern, shlex.split(example)) for example in entry["examples"]):
+                fail(f"{label}: no example matches the pattern {pattern!r}")
     return entries
 
 
 def claude_command_rules(manifest: dict[str, Any], decision: str) -> list[str]:
-    """`Bash(<words> *)` per expansion of each command_policy entry whose `claude` is `decision`.
-
-    A space and a sole trailing `*` also match the bare command; a whole-command entry has no `*`, so it matches
-    exactly the subcommand Claude Code splits off a pipe (code.claude.com/docs/en/permissions, wildcard patterns).
-    """
-    rules: list[str] = []
-    for entry in command_policy(manifest):
-        if entry["claude"] != decision:
-            continue
-        for pattern in entry["patterns"]:
-            for words in pattern_expansions(pattern):
-                rule = f"Bash({' '.join(words)})" if entry.get("whole") else f"Bash({' '.join(words)} *)"
-                if rule not in rules:
-                    rules.append(rule)
-    return rules
+    """The Claude rules of every command_policy entry whose `claude` is `decision`, in list order."""
+    rules = [
+        rule for entry in command_policy(manifest) if entry["claude"] == decision for rule in entry_claude_rules(entry)
+    ]
+    return list(dict.fromkeys(rules))
 
 
 def render_codex_command_rules(manifest: dict[str, Any]) -> str:
@@ -516,18 +630,17 @@ def render_codex_command_rules(manifest: dict[str, Any]) -> str:
         "# The command_policy list (regime-cutover U76): `forbidden` refuses under every approval policy, `prompt`",
         "# asks the human before each matching command. Codex applies the strictest decision of every rule file",
         "# under ~/.codex/rules, so an allow rule an interactive session appends to default.rules never lifts one.",
-        "# A rule matches the argument list from its first word, one position at a time, so it does not see a flag",
-        "# after the operands or another spelling of the program. Codex splits `bash -lc '<script>'` into its",
-        "# commands only when the script is plain words joined by `&&`, `||`, `;` or `|`; a script with a redirect,",
-        "# a substitution, a variable, an assignment or a glob is matched whole as `bash -lc ...`, so none of these",
-        '# prefix rules applies to the commands inside it (learn.chatgpt.com/docs/agent-configuration/rules, "When',
-        '# Codex does not split the script"). The sandbox (read-only, or workspace-write with network off) is the',
-        "# control for those forms, and for `curl ... | sh`, whose bare `sh` no prefix rule can name.",
+        "# A rule matches the argument list from its first word, one position at a time, so it covers the listed",
+        "# forms only: not a flag after the operands, another flag grouping (`rm -rvi -f`), or another spelling of",
+        "# the program. Codex splits `bash -lc '<script>'` into its commands only when the script is plain words",
+        "# joined by `&&`, `||`, `;` or `|`; a script with a redirect, a substitution, a variable, an assignment or",
+        "# a glob is matched whole as `bash -lc ...`, so none of these prefix rules applies to the commands inside",
+        '# it (learn.chatgpt.com/docs/agent-configuration/rules, "When Codex does not split the script"). The',
+        "# sandbox (read-only, or workspace-write with network off) is the control for those forms, and for a",
+        "# shell after a pipe (`curl ... | sh`), which no prefix rule can name without matching Codex's own shell.",
     ]
     for entry in command_policy(manifest):
-        if entry.get("whole"):
-            continue
-        for pattern in entry["patterns"]:
+        for pattern in entry_codex_patterns(entry):
             examples = [example for example in entry["examples"] if pattern_matches(pattern, shlex.split(example))]
             lines.extend(
                 [
@@ -545,31 +658,8 @@ def render_codex_command_rules(manifest: dict[str, Any]) -> str:
 
 
 def omp_command_denies(manifest: dict[str, Any]) -> list[str]:
-    """The bash.patterns deny strings for the command_policy list, in list order.
-
-    `*<words> *` and `*<words>` per expansion; `<words>` alone for a whole-command entry (omp tests a deny against
-    each segment of a compound line, so it matches the `sh` after a pipe); `*<words>* <flag>*` per `omp_flags`. A path
-    spelling (`*/bin/rm -rf *`) is dropped when the bare name's pattern (`*rm -rf *`) is in the list, since the leading
-    `*` already matches it.
-    """
-    denies: list[str] = []
-    for entry in command_policy(manifest):
-        for pattern in entry["patterns"]:
-            for words in pattern_expansions(pattern):
-                text = " ".join(words)
-                if entry.get("whole"):
-                    forms = [text]
-                elif entry.get("omp_flags"):
-                    forms = [f"*{text}* {flag}*" for flag in entry["omp_flags"]]
-                else:
-                    forms = [f"*{text} *", f"*{text}"]
-                denies.extend(form for form in forms if form not in denies)
-    starred = {deny[1:] for deny in denies if deny.startswith("*")}
-    return [
-        deny
-        for deny in denies
-        if not (deny.startswith("*") and any(deny[1:].endswith("/" + other) for other in starred))
-    ]
+    """The bash.patterns deny strings for the command_policy list, in list order (see entry_omp_denies)."""
+    return list(dict.fromkeys(deny for entry in command_policy(manifest) for deny in entry_omp_denies(entry)))
 
 
 def omp_command_policy_block(manifest: dict[str, Any]) -> str:
@@ -593,7 +683,7 @@ def render_omp_policies(manifest: dict[str, Any]) -> dict[Path, str]:
     for source in sources:
         text = source.read_text()
         start, end = text.find(OMP_COMMAND_POLICY_BEGIN), text.find(OMP_COMMAND_POLICY_END)
-        if start == -1 or end < start or text.count(OMP_COMMAND_POLICY_BEGIN) != 1:
+        if text.count(OMP_COMMAND_POLICY_BEGIN) != 1 or text.count(OMP_COMMAND_POLICY_END) != 1 or not -1 < start < end:
             fail(f"{OMP_POLICY_DIR}/{source.name} must keep exactly one command_policy block between its markers")
         outputs[ROOT / OMP_POLICY_DIR / source.name] = text[:start] + block + text[end + len(OMP_COMMAND_POLICY_END) :]
     return outputs

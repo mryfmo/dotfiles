@@ -40,6 +40,10 @@ class EnforceUvTest(unittest.TestCase):
             ("cd x && python foo.py", "uv run python foo.py"),
             ("make lint; pip install requests", "uv add requests"),
             ("cat in.txt | python3 -c 'import sys'", "uv run python3 -c 'import sys'"),
+            # U76 audit: a comment or a here-document body is data, the commands around it still count.
+            ("echo a#b; python x.py", "uv run python x.py"),
+            ("cat <<EOF > notes.txt\npython x.py\nEOF\npython y.py", "uv run python y.py"),
+            ("cat <<'EOF'; python z.py\nbody\nEOF", "uv run python z.py"),
         ):
             with self.subTest(command=command):
                 result = self.hook(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
@@ -68,6 +72,13 @@ class EnforceUvTest(unittest.TestCase):
                 ("Bash", "echo 'a; python x'"),
                 ("Bash", 'git commit -m "use python && pip here"'),
                 ("Bash", "cd x && uv run python foo.py"),
+                ("Bash", "echo ok # ; python script.py"),
+                ("Bash", "# python script.py\ngit status"),
+                ("Bash", "cat <<EOF > run.sh\npython x.py\nEOF"),
+                ("Bash", "cat <<'EOF' > run.sh\npip install x\nEOF\nchmod +x run.sh"),
+                ("Bash", "cat <<-EOF\n\tpython x.py\n\tEOF\nls"),
+                ("Bash", 'cat <<"END" | tee a <<A2\npython a.py\nEND\npython b.py\nA2'),
+                ("Bash", "grep -c x <<< 'python x.py'"),
             )
         ]
         for payload in payloads:

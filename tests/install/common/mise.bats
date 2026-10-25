@@ -20,11 +20,19 @@ function teardown() {
     export PATH
 }
 
-# Put fake curl, gh, gpg and gpgv first on PATH, so install_mise runs offline against a fixture release of
-# jdx/mise: a releases list whose newest stable release is FIXTURE_MISE_TAG, the artifact for this platform, its
-# SHASUMS256.asc and the release key. curl refuses any other URL as a 404 would, so a case never reaches the
-# network (unauthenticated api.github.com answers 403 once the runner's rate limit is spent). gh is not
-# authenticated, so the GPG signature is the check. Every call is logged under MISE_FAKE_DIR.
+#
+# @description Put fake curl, gh, gpg and gpgv first on PATH, so install_mise runs offline against a fixture
+#   release of jdx/mise: a releases list whose newest stable release is FIXTURE_MISE_TAG, the artifact for this
+#   platform, its SHASUMS256.asc and the release key. curl refuses any other URL as a 404 would, so a case never
+#   reaches the network (unauthenticated api.github.com answers 403 once the runner's rate limit is spent). gh is
+#   not authenticated, so the GPG signature is the check. Every call is logged under MISE_FAKE_DIR.
+# @noargs
+# @set MISE_FAKE_DIR path The fakes' directory: bin/ (on PATH), serve/ (the served files), curl.log and calls.log.
+# @set MISE_FAKE_FINGERPRINT string The fingerprint fake gpg reports, MISE_GPG_FINGERPRINT.
+# @set FIXTURE_MISE_TAG string The release tag the fixture serves as newest stable.
+# @set FIXTURE_MISE_ARTIFACT string The served artifact's name for this platform.
+# @set PATH string The fakes' bin/ first.
+#
 function serve_fixture_release() {
     export MISE_FAKE_DIR="${BATS_TEST_TMPDIR}/fake"
     export MISE_FAKE_FINGERPRINT="${MISE_GPG_FINGERPRINT}"

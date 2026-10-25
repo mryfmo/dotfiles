@@ -17,7 +17,8 @@
 #   once, and it blocks only its own run. All of these live in the checkout this script lives in
 #   (`git rev-parse --show-toplevel` there). Before reading anything, uv, python3, gh, jq, git and mkdir are resolved
 #   as `mise which` answers them under env -i from / (else `command -v`; a shims or relative path exits 1); all but
-#   python3 are linked into a private directory and PATH becomes those links then /usr/bin:/bin. python3 is always
+#   python3 are linked into a private directory (under TMPDIR when it is absolute and has no ':', else /tmp; removed
+#   on exit and on HUP, INT or TERM) and PATH becomes those links then /usr/bin:/bin. python3 is always
 #   started by its own path, never a link (CPython reads a pyvenv.cfg beside and above the path it starts by), as
 #   `python3 -I` and as uv's `--python` for `uv run --no-config --no-project` under env -i from the root, so no
 #   checkout's `.python-version`, `.venv` or executable and no inherited UV_*, VIRTUAL_ENV or PYTHON* variable picks
@@ -30,6 +31,7 @@
 # @exitcode 2 Usage error, a run not completed yet, or a run with no failed, timed-out or cancelled job.
 # @exitcode 3 A job matched no signature (`real failure: <job>`) or the head is superseded (`superseded: run <id>`).
 # @exitcode 4 The run is already reserved or in ci-reruns.tsv; nothing was rerun.
+# @exitcode 129/130/143 Hung up, interrupted or terminated; the private directory is removed.
 # @example
 #   scripts/orchestrator/ci-rerun.sh 39046848147
 set -euo pipefail
@@ -39,8 +41,15 @@ if (($# != 1)) || [[ ! $1 =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 run_id=$1
-bin="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/ci-rerun-bin.XXXXXX")" # system paths: PATH is not pinned yet
+# The private directory heads the pinned PATH, so a relative TMPDIR or one with a ':' (which would split it into
+# entries the caller chose, an empty one being the cwd) falls back to /tmp.
+base=${TMPDIR:-/tmp}
+[[ ${base} == /* && ${base} != *:* ]] || base=/tmp        # lint-comparisons: allow an absolute-path and ':' content test, not a comparison of two paths
+bin="$(/usr/bin/mktemp -d "${base}/ci-rerun-bin.XXXXXX")" # system paths: PATH is not pinned yet
 trap '/bin/rm -rf -- "${bin}"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 for tool in python3 uv gh jq git mkdir; do
     found="$(cd / && /usr/bin/env -i PATH="${PATH}" HOME="${HOME}" mise which "${tool}" 2> /dev/null || command -v "${tool}")" || found=""
     # The directory is judged physically, so a PATH entry that links to a shims directory is refused too.

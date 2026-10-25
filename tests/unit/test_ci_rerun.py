@@ -11,9 +11,11 @@ checked-in .github/flakes.yaml with the script's own YAML loader and matches wit
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -101,6 +103,19 @@ def egrep(pattern, text):
     return subprocess.run(["grep", "-Eq", "--", pattern], input=text, text=True, check=False).returncode
 
 
+def real_tool(tool):
+    """The tool outside any shims directory: the first such PATH entry, else what the host's mise answers."""
+    for entry in os.environ["PATH"].split(os.pathsep):
+        if entry.startswith("/") and "/shims/" not in os.path.realpath(entry) + "/":
+            found = shutil.which(tool, path=entry)
+            if found:
+                return found
+    answer = subprocess.run(["mise", "which", tool], capture_output=True, text=True, check=False)
+    if answer.returncode == 0 and answer.stdout.strip().startswith("/"):
+        return answer.stdout.strip()
+    raise AssertionError(f"no {tool} outside a shims directory on this host")
+
+
 def registry(path):
     """The flake file through the script's loader: PyYAML under uv, the offline cache first."""
     script = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1])) or []))"
@@ -129,10 +144,24 @@ class CiRerunTest(unittest.TestCase):
         gh = self.t / "bin/gh"
         gh.write_text(STUB.replace("@PYTHON@", sys.executable))
         gh.chmod(0o755)
-        (self.t / "bin/mise").write_text(
-            "#!/bin/sh\nexit 1\n"
-        )  # no mise answer: tools resolve through PATH, stubs first
-        (self.t / "bin/mise").chmod(0o755)
+        # The script's resolver: a stub mise that answers `mise which <tool>` from mise.json, so every test pins the
+        # same real tools whatever shims lead the host's PATH; a tool missing from the map falls back to PATH.
+        self.answers = self.t / "mise.json"
+        mise = self.t / "bin/mise"
+        mise.write_text(
+            f"#!{sys.executable}\nimport json, sys\nanswers = json.load(open({str(self.answers)!r}))\n"
+            "if sys.argv[1:2] != ['which'] or sys.argv[2] not in answers:\n    sys.exit(1)\nprint(answers[sys.argv[2]])\n"
+        )
+        mise.chmod(0o755)
+        self.real = {tool: real_tool(tool) for tool in ("python3", "uv", "jq", "git", "mkdir")} | {"gh": str(gh)}
+        self.answer()
+        # The same real tools behind wrappers, for the no-answer fallback under a PATH the test controls.
+        self.tools = self.t / "tools"
+        self.tools.mkdir()
+        for tool, real in self.real.items():
+            if tool != "gh":
+                (self.tools / tool).write_text(f'#!/bin/sh\nexec "{real}" "$@"\n')
+                (self.tools / tool).chmod(0o755)
         self.log = self.t / "gh.log"
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
         self.runs = {
@@ -157,6 +186,10 @@ class CiRerunTest(unittest.TestCase):
 
     def reservation(self, run_id):
         return self.ledger.with_name("ci-reruns.lock.d") / run_id
+
+    def answer(self, **answers):
+        """What the stub mise answers: the real tools, overridden by name."""
+        self.answers.write_text(json.dumps(self.real | answers))
 
     def reset(self):
         self.ledger.unlink(missing_ok=True)
@@ -309,6 +342,7 @@ class CiRerunTest(unittest.TestCase):
         python.write_text(f'#!/bin/sh\necho "$0" >> "{seen}"\nexec "{sys.executable}" "$@"\n')
         python.chmod(0o755)
         self.reset()
+        self.answer(python3=str(python))
         path = f"{python.parent}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
         result = self.finish(self.start("101", PATH=path))
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -316,7 +350,8 @@ class CiRerunTest(unittest.TestCase):
 
     def test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin(self):
         # Revise 1 (the chain's P1 on 7329f0e): before PATH is pinned, the EXIT trap's rm and the env around mise ran
-        # whatever the caller's PATH named. mise is the resolver the design names; setUp's stub stands in for it.
+        # whatever the caller's PATH named. mise is the resolver the design names; setUp's stub stands in for it, and
+        # here it answers nothing (or a shim), so every tool falls back to a PATH this test controls.
         planted, shims, marker = self.t / "planted", self.t / "shims", self.t / "planted.log"
         for tool, real in (("rm", "/bin/rm"), ("env", "/usr/bin/env")):  # each works, and leaves a mark
             (planted / tool).parent.mkdir(exist_ok=True)
@@ -325,22 +360,64 @@ class CiRerunTest(unittest.TestCase):
         shims.mkdir()
         (shims / "jq").write_text("#!/bin/sh\nexit 1\n")
         (shims / "jq").chmod(0o755)
-        base = os.pathsep.join(map(str, (planted, self.t / "bin", os.environ["PATH"])))
+        base = os.pathsep.join(map(str, (planted, self.t / "bin", self.tools, "/usr/bin", "/bin")))
         (self.t / "linked").symlink_to(shims)  # a PATH entry that links to a shims directory is a shims directory
         cases = [
-            ("refused before the pin", shims, 1),
-            ("refused through a link", self.t / "linked", 1),
-            ("a full run", "", 0),
+            ("refused before the pin", shims, {}, 1),
+            ("refused through a link", self.t / "linked", {}, 1),
+            ("refused as mise's answer", "", {"jq": str(shims / "jq")}, 1),
+            ("a full run", "", {}, 0),
         ]
-        for name, first, code in cases:
+        for name, first, answers, code in cases:
             path = f"{first}{os.pathsep}{base}" if first else base
             with self.subTest(name):
                 self.reset()
+                self.answers.write_text(json.dumps(answers))
                 marker.unlink(missing_ok=True)
                 result = self.finish(self.start("101", PATH=path))
                 self.assertEqual(code, result.returncode, result.stdout + result.stderr)
                 self.assertEqual(bool(code), "no jq outside a shims directory" in result.stderr, result.stderr)
                 self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+
+    def test_ci_rerun_keeps_a_caller_tmpdir_out_of_its_pinned_path(self):
+        # Audit P2 on d6521941: the private directory heads PATH, so a TMPDIR with a ':' split it into entries the
+        # caller chose (a relative one, or an empty one: the cwd), and their commands ran after the pin.
+        marker, checkout = self.t / "planted.log", self.t / "checkout"
+        planted = self.t / "planted"
+        for directory in (planted, checkout):
+            directory.mkdir()
+            for tool in ("dirname", "git", "jq", "gh", "awk", "grep", "date", "mkdir"):  # each leaves a mark
+                (directory / tool).write_text(f'#!/bin/sh\necho "{directory.name} {tool}" >> "{marker}"\nexit 1\n')
+                (directory / tool).chmod(0o755)
+        Path(f"{planted}:").mkdir()  # mktemp creates only the last component, so the split parent must exist
+        (checkout / ":x").mkdir()
+        for name, tmpdir in (("a named directory", f"{planted}:"), ("the cwd", ":x")):
+            with self.subTest(name):
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", cwd=checkout, TMPDIR=tmpdir))
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+                self.assertEqual(1, len(self.reruns()))
+
+    def test_ci_rerun_removes_its_private_directory_when_signalled(self):
+        # Audit P3 on d6521941: an EXIT-only trap is skipped when the shell dies of a signal.
+        tmp = self.t / "tmp"
+        tmp.mkdir()
+        for signum, code in ((signal.SIGHUP, 129), (signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(signal=signum.name):
+                self.reset()
+                process = self.start("101", TMPDIR=str(tmp), GH_LOG_DELAY="1")
+                deadline = time.monotonic() + 60
+                while "--job" not in self.log.read_text():  # inside the first log read, after the pin
+                    self.assertLess(time.monotonic(), deadline, "the script never reached its log reads")
+                    time.sleep(0.05)
+                self.assertEqual(1, len(list(tmp.glob("ci-rerun-bin.*"))))
+                process.send_signal(signum)
+                result = self.finish(process)
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual([], list(tmp.glob("ci-rerun-bin.*")))
+                self.assertEqual([], self.reruns())
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.

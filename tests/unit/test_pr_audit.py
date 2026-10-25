@@ -59,6 +59,17 @@ def tree_state(root, skip):
     return state
 
 
+def probe_sections(args):
+    """The --control, --read and --write lists of the read and write probe's arguments."""
+    sections, current = {"--control": [], "--read": [], "--write": []}, None
+    for arg in args:
+        if arg in sections:
+            current = arg
+        else:
+            sections[current].append(arg)
+    return sections["--control"], sections["--read"], sections["--write"]
+
+
 @unittest.skipUnless(JQ, "no jq or gojq (gh's --jq dialect) on this host")
 class PrAuditTest(unittest.TestCase):
     def setUp(self):
@@ -298,8 +309,9 @@ class PrAuditTest(unittest.TestCase):
                 self.assertEqual(access[f"{spelling}/{rel}"], "deny")
         self.assertEqual(access[codex_home], "deny")
         self.assertEqual(access[str(self.auth)], "deny")
-        probes = sandbox["probe_paths"]
-        reads, writes = probes[: probes.index("--write")], probes[probes.index("--write") + 1 :]
+        controls, reads, writes = probe_sections(sandbox["probe_paths"])
+        self.assertEqual(controls, [str(work / "repo/.git/HEAD"), str(work / "repo")])
+        self.assertEqual(sandbox["probe_output"], "pr-audit-probe: all denied\n")
         self.assertIn(f"{link}/.codex/auth.json", reads)
         self.assertIn(str(self.auth), reads)
         self.assertIn(f"{codex_home}/auth.json", reads)
@@ -318,7 +330,7 @@ class PrAuditTest(unittest.TestCase):
             path.mkdir(parents=True)
         run = self.run_lever("7", **{name: str(path) for name, path in stores.items()})
         self.assertEqual(run.returncode, 0, run.stderr)
-        reads = self.codex_calls()[0]["probe_paths"]
+        _, reads, _ = probe_sections(self.codex_calls()[0]["probe_paths"])
         for path in stores.values():
             self.assertIn(str(path), reads)
 
@@ -354,7 +366,7 @@ class PrAuditTest(unittest.TestCase):
 
     def test_a_probe_that_reads_a_denied_path_or_reaches_the_network_is_refused(self):
         for mode, message in (
-            ("readable", "the sandbox read probe did not pass"),
+            ("readable", "pr-audit-probe: readable"),
             ("curl0", "did not show the network denied"),
             ("nocurl", "did not show the network denied"),
             ("curl127", "did not show the network denied"),  # curl could not run: no evidence either way
@@ -363,6 +375,71 @@ class PrAuditTest(unittest.TestCase):
         ):
             with self.subTest(mode=mode):
                 self.assert_refused(self.run_lever("7", FAKE_CODEX_PROBE=mode), message)
+
+    def test_a_denial_counts_only_with_its_permission_error_and_working_tools(self):
+        """U71b audit round 5: a probe tool that could not run (exit 42, 126, 127, no denial text) is no denial, and the
+        positive controls (cat and ls in the tree, mkdir in the scratch TMPDIR) must pass in the same sandbox run."""
+        for mode, message in (
+            ("toolexit42", "unproven read of"),
+            ("toolexit126", "unproven read of"),
+            ("toolexit127", "unproven read of"),
+            ("controlexit127", "pr-audit-probe: control: mkdir in the scratch TMPDIR failed"),
+            ("controlexit42", "pr-audit-probe: control: mkdir in the scratch TMPDIR failed"),
+        ):
+            with self.subTest(mode=mode):
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                self.assert_refused(self.run_lever("7", FAKE_CODEX_PROBE=mode), message)
+
+    def test_the_probe_script_tells_denials_from_failures_on_its_own(self):
+        """The lever's probe script itself, run outside any sandbox with tools that fail one way each."""
+        self.assertEqual(self.run_lever("7").returncode, 0)
+        argv = next(c["argv"] for c in self.codex_calls() if "for p do" in " ".join(c["argv"]))
+        script = argv[argv.index("-c") + 1]
+        tree = self.root / "tree-probe"
+        (tree / "dir").mkdir(parents=True)
+        (tree / "file").write_text("x\n")
+        scratch = self.root / "scratch-tmpdir"
+        scratch.mkdir()
+        bindir = self.root / "probe-bin"
+        bindir.mkdir()
+
+        def run(tools, *args):
+            for name, body in tools.items():
+                (bindir / name).write_text(f"#!/bin/sh\n{body}\n")
+                (bindir / name).chmod(0o755)
+            env = {**self.env, "PATH": f"{bindir}:{self.env['PATH']}", "TMPDIR": str(scratch)}
+            done = subprocess.run(
+                ["/bin/sh", "-c", script, "sh", *args], env=env, capture_output=True, text=True, check=False
+            )
+            for name in tools:
+                (bindir / name).unlink()
+            return done.returncode, done.stdout.strip()
+
+        denied = 'case "$*" in *denied*) echo "$0: x: Operation not permitted" >&2; exit 1 ;; esac; exec /bin/{} "$@"'
+        controls = ("--control", str(tree / "file"), str(tree / "dir"))
+        target = str(tree / "denied")
+        tools = {name: denied.format(name) for name in ("cat", "ls", "mkdir")}
+        self.assertEqual(run(tools, *controls, "--read", target, "--write", target), (0, "pr-audit-probe: all denied"))
+        for code in ("42", "126", "127"):
+            failing = f'case "$*" in *denied*) exit {code} ;; esac; exec /bin/{{}} "$@"'
+            for name, label in (("cat", "unproven read of"), ("mkdir", "unproven write to")):
+                with self.subTest(tool=name, exit=code):
+                    status, out = run(
+                        {**tools, name: failing.format(name)}, *controls, "--read", target, "--write", target
+                    )
+                    self.assertEqual(status, 3, out)
+                    self.assertIn(label, out)
+                    self.assertIn(f"(exit {code})", out)
+            for name in ("cat", "ls", "mkdir"):
+                with self.subTest(control=name, exit=code):
+                    status, out = run({**tools, name: f"exit {code}"}, *controls, "--read", target)
+                    self.assertEqual(status, 3, out)
+                    self.assertIn("pr-audit-probe: control:", out)
+        status, out = run({}, *controls, "--read", str(tree / "file"))
+        self.assertEqual((status, out), (3, f"pr-audit-probe: readable {tree / 'file'}"))
+        status, out = run({}, *controls, "--write", str(tree / "dir"))
+        self.assertEqual((status, out), (3, f"pr-audit-probe: writable {tree / 'dir'}"))
+        self.assertEqual(list((tree / "dir").iterdir()), [], "the write probe removes what it made")
 
     def test_only_a_resolve_or_connect_failure_counts_as_network_denied(self):
         for mode in ("curl6", "curl7"):
@@ -542,7 +619,7 @@ class PrAuditTest(unittest.TestCase):
             ("fetched head", git("*'refs/audit/head^{commit}'*"), 2, "the head moved"),
             ("fetched main", git("*'refs/audit/main^{commit}'*"), 1, "cannot resolve the fetched main"),
             ("merge base", git("*merge-base*"), 1, "git merge-base"),
-            ("probe runner", {"FAKE_CODEX_PROBE": "failrun"}, 2, "the sandbox read probe did not pass"),
+            ("probe runner", {"FAKE_CODEX_PROBE": "failrun"}, 2, "the sandbox read and write probe did not pass"),
             ("nonce", {"PATH": self.failing_tool("od", "*")}, 1, "cannot read /dev/urandom"),
             (
                 "prompt body copy",

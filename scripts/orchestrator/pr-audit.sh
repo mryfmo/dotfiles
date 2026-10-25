@@ -53,8 +53,11 @@
 #   canary the lever writes in the run directory outside the allowlist, the real HOME, and each store the caller's
 #   CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and XDG base-directory variables name must be unreadable to `/bin/sh` there,
 #   the run directory and /var/tmp must not take a new directory, and `curl https://github.com` must exist and fail
-#   to resolve or connect (exit 6 or 7). Either probe failing, any other curl status (0, a timeout, 126/127), or a
-#   probe that cannot run, is a refusal: the measured property is a precondition of every run. Then
+#   to resolve or connect (exit 6 or 7). A read or write denial counts only when the tool ran and its error names it
+#   (`Operation not permitted`, `Permission denied`, `Read-only file system`), after positive controls in the same run
+#   (`cat` and `ls` in the head's tree, `mkdir` in the scratch TMPDIR) succeeded. Either probe failing, an unproven
+#   denial, any other curl status (0, a timeout, 126/127), or a probe that cannot run, is a refusal: the measured
+#   property is a precondition of every run. Then
 #   `codex exec --strict-config --skip-git-repo-check --ephemeral -C <empty cwd> -o <verdict> -` reads the prompt,
 #   bounded by PR_AUDIT_TIMEOUT seconds. Every codex call runs in a process group of its own under a supervisor that
 #   stops the whole group on its deadline and on INT, TERM or HUP; the lever forwards those signals to it and exits
@@ -500,9 +503,13 @@ ln -s "${login}" "${codex_home}/auth.json" || fail 'cannot link the Codex login'
 # The launch-time precondition: the measured property, measured again on this host with this config. Besides the
 # denied paths, the read probe covers what the allowlist must keep out without naming it (U71b audit round 4): a
 # canary the lever writes in the run directory outside the allowlist, the real HOME itself, and every store the
-# caller's environment names (CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and the XDG base directories) that exists. After
-# `--write`, the run directory and each directory an absolute deny key names (/var/tmp: `:minimal` alone makes it
-# writable) must not take a new directory.
+# caller's environment names (CLAUDE_CONFIG_DIR, GH_CONFIG_DIR and the XDG base directories) that exists. The write
+# probe covers the run directory and each directory an absolute deny key names (/var/tmp: `:minimal` alone makes it
+# writable). A denial counts only as evidence (U71b audit round 5: a probe tool that could not run, exit 126/127 or
+# 42, read as "denied"): the tool ran, failed, and its error names the denial (`Operation not permitted`,
+# `Permission denied` or `Read-only file system`); any other failure is "unproven" and refuses. Positive controls in
+# the same sandbox run show the tools work there: `cat` of a file and `ls` of the head's tree must succeed, and
+# `mkdir` in the scratch TMPDIR must succeed, before any denial is believed.
 printf 'pr-audit canary\n' > "${run}/canary" || fail "cannot write the canary ${run}/canary"
 probes+=("${run}/canary" "${home_dir}")
 for name in CLAUDE_CONFIG_DIR GH_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME; do
@@ -511,30 +518,80 @@ for name in CLAUDE_CONFIG_DIR GH_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME XDG_ST
         probes+=("${value}")
     fi
 done
+controls=("${clone}/.git/HEAD" "${clone}")
 # The single quotes keep the probe script for the sandboxed shell, never this one.
 # shellcheck disable=SC2016
-read_probe='mode=read
+read_probe='denial() {
+    case $1 in
+    *"Operation not permitted"* | *"Permission denied"* | *"Read-only file system"*) return 0 ;;
+    esac
+    return 1
+}
+read_one() {
+    if [ -d "$1" ]; then
+        ls -- "$1" 2>&1 > /dev/null
+    else
+        cat -- "$1" 2>&1 > /dev/null
+    fi
+}
+probe_dir=${TMPDIR:?}/pr-audit-probe.$$
+if ! out=$(mkdir -- "$probe_dir" 2>&1) || ! rmdir -- "$probe_dir"; then
+    echo "pr-audit-probe: control: mkdir in the scratch TMPDIR failed: $out"
+    exit 3
+fi
+mode=
 for p do
-    if [ "$p" = --write ]; then
-        mode=write
-    elif [ "$mode" = read ]; then
-        if test -r "$p" || { test -f "$p" && head -c 1 "$p" > /dev/null 2>&1; } || { test -d "$p" && ls "$p" > /dev/null 2>&1; }; then
+    case $p in
+    --control | --read | --write)
+        mode=$p
+        continue
+        ;;
+    esac
+    case $mode in
+    --control)
+        if ! out=$(read_one "$p"); then
+            echo "pr-audit-probe: control: cannot read $p: $out"
+            exit 3
+        fi
+        ;;
+    --read)
+        out=$(read_one "$p")
+        status=$?
+        if [ "$status" -eq 0 ]; then
             echo "pr-audit-probe: readable $p"
             exit 3
         fi
-    elif d=$(mktemp -d "$p/pr-audit-probe.XXXXXX" 2> /dev/null); then
-        rmdir "$d"
-        echo "pr-audit-probe: writable $p"
+        if ! denial "$out"; then
+            echo "pr-audit-probe: unproven read of $p (exit $status): $out"
+            exit 3
+        fi
+        ;;
+    --write)
+        out=$(mkdir -- "$p/pr-audit-probe.$$" 2>&1)
+        status=$?
+        if [ "$status" -eq 0 ]; then
+            rmdir -- "$p/pr-audit-probe.$$"
+            echo "pr-audit-probe: writable $p"
+            exit 3
+        fi
+        if ! denial "$out"; then
+            echo "pr-audit-probe: unproven write to $p (exit $status): $out"
+            exit 3
+        fi
+        ;;
+    *)
+        echo "pr-audit-probe: argument $p before --control, --read or --write"
         exit 3
-    fi
+        ;;
+    esac
 done
 echo "pr-audit-probe: all denied"'
 status=0
-codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${read_probe}" sh "${probes[@]}" \
-    --write "${writes[@]}" || status=$?
+codex_scratch "${probe_timeout}" /dev/null "${work}/probe.out" sandbox -- /bin/sh -c "${read_probe}" sh \
+    --control "${controls[@]}" --read "${probes[@]}" --write "${writes[@]}" || status=$?
 probe_out=$(cat -- "${work}/probe.out") || fail "cannot read ${work}/probe.out"
 ((status == 0)) && [[ ${probe_out} == "${probe_done}" ]] ||
-    refuse "the sandbox read probe did not pass (exit ${status}): ${probe_out:-no output}"
+    refuse "the sandbox read and write probe did not pass (exit ${status}): ${probe_out:-no output}"
 rm -f -- "${run}/canary" || fail "cannot remove the canary ${run}/canary"
 # Only curl's own resolve or connect failures show the network denied: 6 (could not resolve host, measured with the
 # profile on macOS) and 7 (could not connect). Anything else refuses: 0 reached the network, 28 is a timeout that

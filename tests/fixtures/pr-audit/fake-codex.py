@@ -3,10 +3,13 @@
 
 FAKE_CODEX_CALLS names the file that gets one JSON object per call: the argv, the cwd, HOME, CODEX_HOME, TMPDIR, the
 XDG base-directory variables it saw, the text of `$CODEX_HOME/config.toml` and the target of `$CODEX_HOME/auth.json`.
-`sandbox` answers the lever's two probes by FAKE_CODEX_PROBE: `denied` (default; every path unreadable, curl exit 6),
-`readable` (the read probe finds its first path readable and exits 3), `curl<n>` (curl exits n, e.g. `curl0` for a
-reachable network or `curl127` for a curl that could not run), `nocurl`, or `failrun` (both probes print a passing
-line but `codex sandbox` itself exits 1). `exec`
+`sandbox` runs the lever's real read and write probe script under an emulated sandbox: `/bin/sh` with links to
+`sandbox-tool.py` as `cat`, `ls` and `mkdir` first on PATH, reading only the absolute `read` and `write` paths of its
+config and writing only the `write` ones and TMPDIR (`:tmpdir`); FAKE_CODEX_PROBE `readable` also opens the first
+`--read` path, `toolexit<n>` makes every denial a bare exit n (a tool that could not run), `controlexit<n>` fails every
+tool call so, the positive controls included, and `failrun` exits 1 after a passing run. The network probe is
+answered: curl exit 6 by default, `curl<n>` (curl exits n, e.g. `curl0` for a reachable network or `curl127` for a
+curl that could not run) or `nocurl`. `exec`
 reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
 `Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0). With FAKE_CODEX_REFRESH set,
 `exec` first plays Codex's own token refresh: it rewrites `$CODEX_HOME/auth.json` in place (open with truncate, as
@@ -17,9 +20,39 @@ and sleeps 60 seconds.
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
+
+TOOL = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sandbox-tool.py")
+
+
+def run_probe(script, args, config_text):
+    """Run the probe script as `codex sandbox` would, under the emulated sandbox; return its output and status."""
+    reads, writes = [], [os.environ["TMPDIR"]]
+    for key, access in re.findall(r'^"(/[^"]*)" = "(read|write)"$', config_text, re.MULTILINE):
+        (reads if access == "read" else writes).append(key)
+    if mode == "readable":
+        reads.append(args[args.index("--read") + 1])
+    bindir = os.path.join(os.environ["TMPDIR"], "fake-sandbox-bin")
+    os.makedirs(bindir, exist_ok=True)
+    for name in ("cat", "ls", "mkdir"):
+        if not os.path.lexists(os.path.join(bindir, name)):
+            os.symlink(TOOL, os.path.join(bindir, name))
+    env = {
+        **os.environ,
+        "PATH": f"{bindir}:{os.environ['PATH']}",
+        "FAKE_SANDBOX_READ": os.pathsep.join(reads),
+        "FAKE_SANDBOX_WRITE": os.pathsep.join(writes),
+    }
+    if mode.startswith("toolexit"):
+        env["FAKE_SANDBOX_EXIT"] = mode[len("toolexit") :]
+    if mode.startswith("controlexit"):
+        env["FAKE_SANDBOX_EXIT_ALL"] = mode[len("controlexit") :]
+    done = subprocess.run(["/bin/sh", "-c", script, "sh", *args], env=env, capture_output=True, text=True, check=False)
+    return done.stdout + done.stderr, done.returncode
+
 
 argv = sys.argv[1:]
 codex_home = os.environ.get("CODEX_HOME", "")
@@ -45,13 +78,11 @@ status = 0
 if argv[:1] == ["sandbox"]:
     script = argv[argv.index("-c") + 1] if "-c" in argv else ""
     if "for p do" in script:
-        paths = argv[argv.index("-c") + 3 :]
-        record["probe_paths"] = paths
-        if mode == "readable":
-            print(f"pr-audit-probe: readable {paths[0]}")
-            status = 3
-        else:
-            print("pr-audit-probe: all denied")
+        args = argv[argv.index("-c") + 3 :]
+        record["probe_paths"] = args
+        output, status = run_probe(script, args, record.get("config", ""))
+        record["probe_output"] = output
+        sys.stdout.write(output)
     elif "curl" in script:
         if mode == "nocurl":
             print("pr-audit-probe: no curl")

@@ -1,8 +1,0 @@
-# Learning triage: dotfiles-T128-chain-github-scripts-a01
-
-These are candidates only; nothing is promoted. The candidates of `dotfiles-T128-gate-wrapper-path-a01` stand (`.orchestration/dotfiles-T128-gate-wrapper-path-a01/learning.md`).
-
-1. [memory:failure] A `while read … done <<< "${list}"` loop gives its stdin to every command in its body. A command that reads stdin swallows the rest of the list, and the loop then reports success over items it never saw. Here the chain's resolve-threads input exited 0 with `missing rows: 0` over a thread that had no disposition. Feed such loops on fd 3 (`while read -r a b <&3; … done 3<<< "${list}"`). A stub that reads its stdin is what exposes it.
-2. [memory:failure] `gh api --paginate --jq '<filter> | length'` applies the filter to each page and prints one number per page. At more than 30 items, a count lands as two lines in one field. Sum the per-page results (`| awk '{n += $1} END {print n + 0}'`).
-3. [memory:decision] A gh stub for scripts that filter with `--jq` is keyed on the API path plus the expression. The stub records and answers. The test computes each canned answer by running the real `jq` with that expression over the fixture the case describes, one page at a time. The fixture then still means something, such as "a Bot reply that does not count", and a script whose expression drifts gets no answer and fails loudly.
-4. [memory:decision] A chain script that only needs dates or JSON should use `jq` and `awk`, not a `uv run --no-project python` one-liner. uv discovers configuration (`.python-version`, `uv.toml`) from the current directory. jq's `fromdate` plus awk's `%.1f` prints the same one-decimal hours as Python's `round(x, 1)` on whole hours and on ties.

@@ -1,6 +1,0 @@
-task_id: dotfiles-T133-ci-efficiency-a02
-round: 1
-previous_head: 6b2ff08f0b09d719eb3786fd032ce16786002257
-check:
-  - tests/unit/test_workflow_orchestration_skip.py::test_the_matrices_do_not_fail_fast
-reason: amendment 1 (the spec-level P2 this seat proposed in its 07:58Z RESULT); the test, public-bootstrap and private-bootstrap matrices keep GitHub's default fail-fast true, so one failing job cancels its siblings, and ci-rerun.sh, which needs a signature for every cancelled job, refuses the measured flake run 39046848147 attempt 1

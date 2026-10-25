@@ -1,2 +1,0 @@
-uv run --offline --with pyyaml scripts/generate-agent-configs.py --check
-generated agent configs are up to date

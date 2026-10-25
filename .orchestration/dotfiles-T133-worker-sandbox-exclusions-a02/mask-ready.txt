@@ -1,8 +1,0 @@
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/report.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validation.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/sandbox.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/learning.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/autoskill.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-review-receipt.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/worklog/20261020_142413_todo.md
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/worklog/20261020_142413_plan.md

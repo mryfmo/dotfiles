@@ -21,7 +21,7 @@ Written by the orchestrator seat from official documentation (fetched 2026-10-05
 
 Local checks (Linux host, 2026-10-05 18:3xZ):
 
-- `~/.config/gh/hosts.yml` is readable from the Claude Bash sandbox and holds a plaintext `oauth_token` for the active account `moriya-fumio-thd` (scopes `gist, read:org, repo, workflow`); the second account `mryfmo` (the repository owner) is stored in the keyring (`gh auth status`). A Secret Service is running (`gnome-keyring-daemon --components=pkcs11,secrets`, `org.freedesktop.secrets` on the user bus), so the plaintext entry is a fallback from an earlier login, not a missing keyring.
+- `~/.config/gh/hosts.yml` is readable from the Claude Bash sandbox and holds a plaintext `oauth_token` for the active account `<work-account>` (scopes `gist, read:org, repo, workflow`); the second account `mryfmo` (the repository owner) is stored in the keyring (`gh auth status`). A Secret Service is running (`gnome-keyring-daemon --components=pkcs11,secrets`, `org.freedesktop.secrets` on the user bus), so the plaintext entry is a fallback from an earlier login, not a missing keyring.
 - `~/.config/gh-worker` does not exist (T90 provisioning pending). Both checkouts use the HTTPS remote with `credential.helper = !gh auth git-credential`, so a worker pane's `GH_CONFIG_DIR` decides which identity pushes.
 
 ## 2. Why one identity is not enough
@@ -59,7 +59,7 @@ Both seats run as the same Unix user. Neither sandbox restricts reads (F10 for C
 ## 6. Recommendation
 
 1. **Worker identity: GitHub App** (owner `mryfmo`, installed on `mryfmo/dotfiles` only; permissions Contents RW, Pull requests RW, Metadata R, Checks R, Actions R, Commit statuses R). It is GitHub's recommended automation identity, its tokens are short-lived and repository-scoped, it needs no second account and no 2FA, and the only long-lived secret is one PEM that travels once through chezmoi-private. A worker task adds the minting helper (`herdr-agents` already sets `GH_CONFIG_DIR`; the helper writes a fresh token into that config dir or exports `GH_TOKEN` for the worker pane and refreshes it), its tests, `make doctor` checks, and the README. Until the helper lands, the **interim** form is the machine account + repository-scoped fine-grained PAT written to `~/.config/gh-worker/hosts.yml` and distributed by chezmoi-private, which the current code supports without change. Either way the worker never logs in again on any machine.
-2. **Orchestrator identity: the repository owner's human account in the OS keyring**, one login per machine, no file copy. Linux hygiene now: the active `gh` account on the Linux host is the work account `moriya-fumio-thd` with a plaintext token in `hosts.yml`; switch the active account to `mryfmo` (`gh auth switch`), remove the plaintext entry (`gh auth logout --user moriya-fumio-thd`, then re-login into the keyring if that account is needed on this host at all), and confirm `hosts.yml` carries no `oauth_token`. The agent host should hold only the identity the regime uses.
+2. **Orchestrator identity: the repository owner's human account in the OS keyring**, one login per machine, no file copy. Linux hygiene now: the active `gh` account on the Linux host is the work account `<work-account>` with a plaintext token in `hosts.yml`; switch the active account to `mryfmo` (`gh auth switch`), remove the plaintext entry (`gh auth logout --user <work-account>`, then re-login into the keyring if that account is needed on this host at all), and confirm `hosts.yml` carries no `oauth_token`. The agent host should hold only the identity the regime uses.
 3. **Rulesets, after the worker identity exists:** required approvals 1, require approval of the most recent reviewable push, dismiss stale approvals, no bypass actor on the integrity ruleset; the gate's role check (author ≠ merger, approval present) activates by itself once `hosts.yml` or the minted token exists.
 4. **Login count that results:** orchestrator account, one keyring login per machine (Linux done, Mac once); worker identity, zero logins anywhere (one app creation or one PAT creation, ever).
 
@@ -105,7 +105,7 @@ Resulting form, replacing section 6 items 1, 2 and 4:
 | **Section 8 said the worker uses a repository-scoped fine-grained PAT of the machine account** | **wrong, corrected** | docs.github.com lists among fine-grained PAT limitations "Using fine-grained personal access token to contribute to repositories where the user is an outside or repository collaborator" and "Calling the Checks API"; `mryfmo/dotfiles` is owned by another personal account, so the machine account is a collaborator there and its fine-grained PAT cannot contribute (nor run `gh pr checks`). The worker file therefore holds the machine account's **OAuth token from one `gh auth login`** (scopes `repo`, `read:org`, `gist`, optionally `workflow`; long-lived by default) or a **classic PAT** with `repo` and `read:org` (GitHub removes a classic PAT unused for a year; the worker uses it daily). The scope is broad only within the machine account, which holds nothing but this collaboration. |
 | Codex `workspace-write` can read `~/.config/gh/hosts.yml` and reach the user's Secret Service | **untested** | the headless probe (`codex --profile express exec --sandbox workspace-write …` running `test -r`, `grep -c oauth_token`, `busctl --user list`) was refused by the Claude Code auto-mode classifier as credential exploration and was not retried; the read claim rests on openai/codex #7657 and the Codex documentation, the D-Bus claim on reasoning only. The operator can run that probe from a plain shell. |
 | Claude Bash sandbox can read `~/.config/gh/hosts.yml` | verified | `test -r` inside the sandbox (section 1) |
-| Linux host has a running Secret Service; `mryfmo` is in the keyring, the active `moriya-fumio-thd` token is in plaintext | verified | `busctl --user list`, `gh auth status`, `hosts.yml` key names |
+| Linux host has a running Secret Service; `mryfmo` is in the keyring, the active `<work-account>` token is in plaintext | verified | `busctl --user list`, `gh auth status`, `hosts.yml` key names |
 
 Corrected final form (supersedes section 8's second bullet):
 
@@ -120,7 +120,7 @@ Section 6 item 2 and section 8 told the operator to strip the work account from 
 | account | config dir | used by | selection |
 |---|---|---|---|
 | `mryfmo` (owner) | `~/.config/gh` (gh default) | orchestrator seat, personal repositories | nothing to set |
-| `moriya-fumio-thd` (work) | `~/.config/gh-work` | work repositories | `GH_CONFIG_DIR` set per repository (direnv `.envrc` or the shell profile for the work tree) |
+| `<work-account>` (work) | `~/.config/gh-work` | work repositories | `GH_CONFIG_DIR` set per repository (direnv `.envrc` or the shell profile for the work tree) |
 | machine account | `~/.config/gh-worker` | worker seats | set by `herdr-agents` (T90) |
 
 `gh auth switch` is no longer used; each store holds exactly one user, so `gh auth status` and `gh auth git-credential` (the HTTPS helper reads the same `GH_CONFIG_DIR`) are unambiguous. The two seats still carry two different identities (section 2); nothing is shared between them.
@@ -150,15 +150,15 @@ GitHub never hands an existing credential back: a PAT is shown once at creation,
 
 | machine | OS user | GitHub account |
 |---|---|---|
-| MacBook Pro | `a0004262` | `moriya-fumio-thd` |
-| Ubuntu `spark-9e8d` (this host, the regime host) | `moriya` | `moriya-fumio-thd` |
+| MacBook Pro | `<mac-user>` | `<work-account>` |
+| Ubuntu `<ubuntu-host>` (this host, the regime host) | `<linux-user>` | `<work-account>` |
 | MacBook Air | `mryfmo` | `mryfmo` |
 
-So the human account is a property of the machine, not of the repository: on this host the intended account is `moriya-fumio-thd`, and the stray entry in `~/.config/gh` is `mryfmo` (keyring), not the work account as §6, §8 and §10 assumed. The three-store model of T103 is wrong in one place: there is no "work" store. The correct model has two stores on every machine: `~/.config/gh` holds that machine's human account (whichever it is; it is the merging account on that machine), and `~/.config/gh-worker` holds the one machine account the worker seats use everywhere. Both human accounts need write access to `mryfmo/dotfiles` (the repository owner already has it; `moriya-fumio-thd` already merges here), and the required-approval rule works on every machine because the PR author is always the machine account. Correction task: drop `work_gh_config_dir`/`WORK_GH_CONFIG_DIR`, rename the "owner" store to the machine's operator account in manifest, renderer, script, doctor, README and tests, and remove the chezmoi-private sentence (§14). Host hygiene on `spark-9e8d`: `gh auth logout --user mryfmo --hostname github.com` (operator's account, operator's command).
+So the human account is a property of the machine, not of the repository: on this host the intended account is `<work-account>`, and the stray entry in `~/.config/gh` is `mryfmo` (keyring), not the work account as §6, §8 and §10 assumed. The three-store model of T103 is wrong in one place: there is no "work" store. The correct model has two stores on every machine: `~/.config/gh` holds that machine's human account (whichever it is; it is the merging account on that machine), and `~/.config/gh-worker` holds the one machine account the worker seats use everywhere. Both human accounts need write access to `mryfmo/dotfiles` (the repository owner already has it; `<work-account>` already merges here), and the required-approval rule works on every machine because the PR author is always the machine account. Correction task: drop `work_gh_config_dir`/`WORK_GH_CONFIG_DIR`, rename the "owner" store to the machine's operator account in manifest, renderer, script, doctor, README and tests, and remove the chezmoi-private sentence (§14). Host hygiene on `<ubuntu-host>`: `gh auth logout --user mryfmo --hostname github.com` (operator's account, operator's command).
 
 ## 16. Decision A (operator, 2026-10-06): one account per machine for every seat; what still protects `main`, and what does not
 
-Under A the orchestrator, the worker seats and the headless auditor on a machine all act as that machine's GitHub account (`moriya-fumio-thd` on spark-9e8d and the MacBook Pro, `mryfmo` on the MacBook Air). The auditor already is identity-less and read-only, so nothing changes there. The question is what replaces the actor separation that T90 wanted. Survey of the mechanisms, each checked against the official documentation on 2026-10-06:
+Under A the orchestrator, the worker seats and the headless auditor on a machine all act as that machine's GitHub account (`<work-account>` on <ubuntu-host> and the MacBook Pro, `mryfmo` on the MacBook Air). The auditor already is identity-less and read-only, so nothing changes there. The question is what replaces the actor separation that T90 wanted. Survey of the mechanisms, each checked against the official documentation on 2026-10-06:
 
 | layer | mechanism | works with one account? | note |
 |---|---|---|---|
@@ -180,4 +180,4 @@ Resulting form, consistent with the dotfiles intent (same environment on macOS a
 3. **Rulesets**: keep PR-only `main`, required checks, conversation resolution, linear history, force-push and deletion blocks; drop the required-approval rule and the bypass actor from the design (they cannot work under A); add "require signed commits" when the per-seat keys exist.
 4. **Gate and records**: unchanged.
 
-`gh auth logout --user mryfmo` on spark-9e8d remains the one host command (the operator's account).
+`gh auth logout --user mryfmo` on <ubuntu-host> remains the one host command (the operator's account).

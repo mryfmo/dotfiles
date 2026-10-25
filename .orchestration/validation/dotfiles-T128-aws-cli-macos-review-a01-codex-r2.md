@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-aws-cli-macos-a01.md:82 The failure-mode specification omits explicit fail-closed/open behavior for signing-key validation/dearmor failures and a non-zero `install.sh` exit, so stop condition 1’s requirement that every failure path be classified is not met.
-Task-file verdict: dotfiles-T128-aws-cli-macos-a01: revise

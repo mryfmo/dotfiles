@@ -1,6 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T133-worker-sandbox-exclusions-a02.md:127 — The “private cache” is a predictable, reusable path: `pwd -P` resolves only its parent, and `mkdir -p` accepts a pre-existing directory or symlink. Another same-user process can prepopulate or redirect it; copying the shared cache neither removes planted entries nor authenticates dependency bytes subsequently executed by uv. This does not establish line 69’s launcher-owned cache control. Bind the actual cache and seed provenance, or explicitly record this execution-source risk. [uv cache behavior](https://docs.astral.sh/uv/concepts/cache/).
-
-Checked all 28 threat rows and related acceptance/review records. Every allowed file has a row; the three closed rows’ tests fit their narrow configuration claims. The other stated execution-binding limitations remain acknowledged residuals.
-
-Not checked: implementation, test execution, or live enforcement; Linux runtime remains unmeasured. No files changed.
-Verdict: incorrect

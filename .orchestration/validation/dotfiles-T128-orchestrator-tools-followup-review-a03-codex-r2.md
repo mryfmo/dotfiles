@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:72 Selecting the first textual `kind:` line allows duplicate or malformed YAML such as an initial `kind: review` followed by `kind: code` to bypass the checker, so the exemption is not fail-closed.
-[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:73 The closed-row test omits a duplicate/malformed-front-matter case and an assertion that the checker was actually invoked, so an implementation that merely refuses non-review files can satisfy every described assertion.
-Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

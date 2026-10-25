@@ -1,2 +1,0 @@
-[P3] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:88 The claim that every written sentence is pinned is false: item 5’s sandbox test checks only `Seatbelt` and `bubblewrap` in Worker step 4, leaving item 1(e)’s remaining platform details and the seat-lock/Crit edits unpinned.
-Task-file verdict: dotfiles-T128-rules-step8-a01: revise

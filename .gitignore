@@ -81,3 +81,4 @@ __pycache__/
 !/.zprofile/
 /.zshrc
 !/.zshrc/
+.omp/

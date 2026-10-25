@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a02.md:64 The collision regression test is reversed: the cited audit’s `discussion_r123` and `123` keys collide only after `discussion_r` normalization, so “collide only before the strip” does not test the defect.
-[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a02.md:74 The completion clause simultaneously requires every P2 to be reported as advisory and requires a small in-scope P2 to be fixed in a revise round, leaving integration readiness contradictory.
-Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a02: revise

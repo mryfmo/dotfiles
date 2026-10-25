@@ -1,5 +1,0 @@
-# T15 amendment5 sandbox
-
-All commands stayed inside the managed sandbox and allowed source/task/Git roots. No escalation, policy edit, installed apply/restart, local bats, graph update, merge or thread reply/resolution. Tests run the modifier against temporary settings/source without executing hook commands. Standard library only; uv cache is under /tmp. Commit printed a nonfatal packed-refs.lock denial but exited0 and created c98e4ceafc451282c956d6f61546dff46f55864f; HTTPS push exited0. PR description and explicit @codex review6208103549 were authorized by the task/operator. No retry of the previously denied GraphQL read. Main-checkout CompactionDB consolidation and final integration remain orchestrator-owned.
-
-Operator D-P1-369-2-A permits this extra round; amendment4 was held before commit after peer finding, and amendment5 corrected the contract in that same round. No worker waiver of the stop rule. Exact task SHA f317d68de16722f12d972deb2e1b46433df0c8b0eadabe78c8a8393ca8bb574d. Core report/validation/sandbox/learning are committed; postpublication supplements are untracked in this worktree for orchestrator sync.

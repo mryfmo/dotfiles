@@ -1,5 +1,0 @@
-# T15 amendment 2 sandbox
-
-All actions used the current managed sandbox and allowed task/source/Git paths. No escalation, permission-policy change or alternate network route. Python tests run the modifier in a temporary source tree with temporary settings; they do not execute hook commands. uv cache is under /tmp. Source/test changes are limited to the predicate and the task's single new method. No installed apply, restart, local bats, graph update, merge, review publication or thread reply/resolution. GitHub publication and requested @codex review use permitted in-sandbox CLI; new-head proof is collected after push. Main-checkout CompactionDB consolidation remains orchestrator-owned.
-
-Commit/push succeeded inside the sandbox, despite the nonfatal packed-refs.lock warning during commit. PR description updated and explicit @codex review posted. No current round GraphQL retry or worker thread write. Reproduction of compact chain used the existing unittest helper with temporary files and executed no hook command.

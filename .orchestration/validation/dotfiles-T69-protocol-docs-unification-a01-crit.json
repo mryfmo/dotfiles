@@ -1,8 +1,0 @@
-[
-  {
-    "id": "dotfiles-T69-review-final",
-    "scope": "review",
-    "body": "Orchestrator adversarial review of PR #253 final head d9bbd800 (dotfiles-T69, protocol and docs unification) across three revise rounds. The written protocol now names one task-level audit per task on the final head (`herdr-agents --audit <sha> --task <id>`, headless `codex <audit profile args> exec --sandbox read-only` otherwise), the acceptance order sweep -> audit -> acceptance record (audit-finding dispositions when incorrect) -> gate with AUDIT_EVIDENCE -> merge -> ACCEPTANCE, the worker Bot wait (paginated, head-filtered, 15-minute cap), the boundary-PR exception (thread replies, no sweep JSON), the parallel-execution invariant, the Codex-seat branch creation without .git/config writes, and the Claude-seat GitHub exception worded per the round-2 addendum (allowance exists, gh/git push still fail, T97 ends it). `review --commit` is gone from AGENTS.md, README.md, the rules, the SKILL and model-selection.md; both stale herdr-agents hint strings (1133, 2159) now point at the SKILL (string-only changes, test pins updated, ruff-formatted in d9bbd800). gh-first-workflow step 8 keeps the gate literal because tests/unit/test_pr_feedback.py:407 pins it in both skills (outside allowed_files; T83 consolidates). 13 Codex Bot threads over the PR's life, each fixed in a later commit (4e83dd8d, 3c6a3cb2, d31dc32d, 4656f19f, 0b65a2ec) and resolved by the orchestrator after verifying the fix is an ancestor of the head; no Bot review on the final head within the window. CI green on d9bbd800; branch up to date with main 2ad504e3; final-head validation pasted with exact invocations and rc.",
-    "resolved": true
-  }
-]

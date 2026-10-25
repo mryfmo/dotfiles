@@ -1,3 +1,0 @@
-error: Unable to create '~/Workspace/dotfiles/.git/packed-refs.lock': Operation not permitted
-[fix/regime-rules-step8 07400690] docs(agents): count both bot reviews after a fix round
- 12 files changed, 68 insertions(+), 48 deletions(-)

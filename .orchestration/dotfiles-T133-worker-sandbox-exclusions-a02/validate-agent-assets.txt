@@ -1,3 +1,0 @@
-uv run --offline --with pyyaml scripts/validate-agent-assets.py
-ERROR: .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/dotfiles-T133-worker-sandbox-exclusions-a02-worker-crit-status.json names a home directory; normalise it with `uv run --no-project --with pyyaml scripts/validate-agent-assets.py --mask-secrets <files>`
-make: *** [validate-agent-assets] Error 1

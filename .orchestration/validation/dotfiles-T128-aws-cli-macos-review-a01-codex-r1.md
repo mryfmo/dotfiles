@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-aws-cli-macos-a01.md:82 Download failure is mislabeled fail-closed: `main` deliberately returns success and preserves a working installed CLI on status 3, so the task must state this conditional fail-open path.
-[P2] high .orchestration/tasks/dotfiles-T128-aws-cli-macos-a01.md:40 The generic environment row claims to enumerate the script’s commands but omits existing PATH-resolved commands including `awk`, `date`, `mkdir`, `unzip`, `rm`, `dirname`, and `cat`.
-Task-file verdict: dotfiles-T128-aws-cli-macos-a01: revise

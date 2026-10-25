@@ -1,5 +1,0 @@
-# The revise round of 2026-10-18T12:51:20Z (AGMSG-ACCEPTANCE status=revise), as the message contract asks.
-previous_head: 49d04349b22a95771d53155012d694f591736a89
-reason: "the Bot's P2 4307029052 on this task's own change (C-50): a link target escaping the npm prefix with .. passed the plain pattern"
-checks:
-  - tests/unit/test_update_agent_assets.py::test_a_link_target_escaping_the_npm_prefix_is_refused

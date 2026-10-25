@@ -1,2 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-orchestrator-tools-followup-a03.md:100 The pre-send window is written under caller-controlled `$TMPDIR`, but the task neither requires collision-safe private creation and cleanup nor includes the implied temporary-file/environment control row, so stop condition 3 is unmet and bus contents could be overwritten, exposed, or left behind.
-Task-file verdict: dotfiles-T128-orchestrator-tools-followup-a03: revise

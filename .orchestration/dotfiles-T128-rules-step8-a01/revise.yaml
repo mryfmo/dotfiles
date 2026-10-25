@@ -1,6 +1,0 @@
-task_id: dotfiles-T128-rules-step8-a01
-amendment: 6
-previous_head: 61dbd68e6bb72b1bc0420f3e1b93b7c064fdbce3
-check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgRegimePatternTest::test_step_10_states_the_advisory_p2_policy
-regression_check: tests/unit/test_agmsg_orchestration_docs.py::AgmsgOrchestrationRuleTest::test_boundary_cadence_is_stated_between_integrations
-finding: Bot-P2-4290644781-review-count

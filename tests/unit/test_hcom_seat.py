@@ -830,6 +830,11 @@ class HcomSeatTest(unittest.TestCase):
             f"write root {inside.resolve()}/worker lies inside the main checkout {self.repo.resolve()}", run.stderr
         )
         self.assertFalse(inside.exists())
+        # Neither exists yet: identity cannot decide, so the launch is refused as well.
+        run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("cannot decide by identity", run.stderr)
+        Path(self.seats, "hcom").mkdir(parents=True)
         run = self.seat("worker", "--seats-root", self.seats, HCOM_DIR=str(Path(self.seats, "hcom")))
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn("seat write roots must not overlap", run.stderr)
@@ -853,6 +858,26 @@ class HcomSeatTest(unittest.TestCase):
         )
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"lies inside the main checkout {self.repo.resolve()}", run.stderr)
+
+    def test_overlap_is_decided_by_identity_never_by_path_text(self):
+        """U85 round 14: containment is by (device, inode) only. A seats root spelled through a case alias of a write
+        root (`~/.CLAUDE/seats` for `~/.claude`) is refused when the alias exists, and refused as undecidable when
+        neither the root nor the alias exists yet; a nonexistent child of an existing alias is caught too."""
+        claude = self.home / ".claude"
+        alias = self.home / ".CLAUDE"
+        run = self.seat("worker", "--seats-root", str(alias / "seats"), "--dry-run")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("cannot decide by identity", run.stderr)
+        claude.mkdir(exist_ok=True)
+        if not alias.exists():
+            self.skipTest("the file system is case-sensitive, so no case alias exists")
+        for seats in (alias / "seats", alias / "new" / "deeper" / "seats"):
+            with self.subTest(seats=seats.relative_to(self.home)):
+                run = self.seat("worker", "--seats-root", str(seats))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"contains the seats root {alias}", run.stderr)
+                self.assertFalse(seats.exists())
+        self.assertEqual(self.calls_of("hcom"), [])
 
     def test_a_separate_git_dir_holding_the_seats_root_is_refused(self):
         """U85 round 12: one invariant over the final allowWrite list: a git common directory outside the checkout

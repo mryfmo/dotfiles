@@ -469,7 +469,7 @@ claude:
   # for the exact head and green CI, U71).
   levers:
     sha256:
-      hcom-seat: d0a64890fc3f4c7e695e21f9802a8d90f05a86077e348cd1768f0bba633f0415
+      hcom-seat: b3c95db4b2498d3ff573fc8d3be34c6c0b024a9684b5e1485580869a95ab8e3d
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293

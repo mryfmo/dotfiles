@@ -10,7 +10,7 @@
 #   The default mode updates user-level tooling and Homebrew-managed packages
 #   when those managers are available. Pass `--system` to include
 #   operating-system package upgrades such as apt. The network-only phases
-#   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
+#   (Homebrew, mise self-update, uv tools, unpinned gh extensions) only warn when they
 #   fail, so an offline host still converges; installing the declared mise tools
 #   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes
 #   on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.
@@ -496,15 +496,37 @@ function upgrade_uv_tools() {
 }
 
 #
-# @description Upgrade GitHub CLI extensions when gh is available.
+# @description Upgrade the GitHub CLI extensions this repository does not pin, one by one, when gh is available.
+# @description
+#   An extension recorded in scripts/plugin-pins.json (assets.gh-extensions) stays at its reviewed tag:
+#   install/common/gh_extensions.sh installs it with --pin, and no blanket `gh extension upgrade --all` runs.
+# @exitcode 1 When the pins or the extension list cannot be read (nothing is upgraded), or an upgrade fails.
 #
 function upgrade_gh_extensions() {
+    local pinned listing repository failed=0
+
     if ! has_command gh; then
         return 0
     fi
 
     section "GitHub CLI extensions"
-    gh extension upgrade --all
+    if ! pinned="$(jq -r '.gh_extensions | keys[]' "${repo_root}/scripts/plugin-pins.json" 2> /dev/null)"; then
+        printf 'warning: cannot read the pinned gh extensions from %s; no extension was upgraded\n' "${repo_root}/scripts/plugin-pins.json" >&2
+        return 1
+    fi
+    if ! listing="$(gh extension list)"; then
+        printf 'warning: gh extension list failed; no extension was upgraded\n' >&2
+        return 1
+    fi
+    while IFS=$'\t' read -r _ repository _; do
+        [ -n "${repository}" ] || continue
+        if grep -qxF -- "${repository}" <<< "${pinned}"; then
+            printf 'Skipping gh extension %s: pinned in assets.gh-extensions.\n' "${repository}"
+            continue
+        fi
+        gh extension upgrade "${repository##*/}" || failed=1
+    done <<< "${listing}"
+    return "${failed}"
 }
 
 #

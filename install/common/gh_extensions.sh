@@ -37,11 +37,29 @@ function activate_mise() {
 }
 
 #
-# @description Install every configured extension at its pinned tag, or skip when unauthenticated.
+# @description Print `true` when gh recorded an installed extension as pinned (`ispinned: true` in its
+#   manifest.yml), else `false`; a missing or unreadable manifest is `false`, so it is reinstalled pinned.
+# @arg $1 string Extension repository name, for example gh-poi.
+#
+function gh_extension_is_pinned() {
+    local manifest="${XDG_DATA_HOME:-${HOME}/.local/share}/gh/extensions/$1/manifest.yml"
+
+    if grep -qx 'ispinned: true' "${manifest}" 2> /dev/null; then
+        printf 'true\n'
+    else
+        printf 'false\n'
+    fi
+}
+
+#
+# @description Install every configured extension pinned at its tag, or skip when unauthenticated.
+# @description
+#   An extension at its tag and pinned is left alone; one at another tag, or installed unpinned (an earlier
+#   plain install, which `gh extension upgrade` could move), is removed and installed again with --pin.
 # @exitcode 1 When `gh extension list` fails: an unreadable list is never read as "not installed".
 #
 function install_gh_extensions() {
-    local entry extension pin listing installed
+    local entry extension pin listing installed pinned
 
     if ! gh auth status &> /dev/null; then
         printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
@@ -56,11 +74,12 @@ function install_gh_extensions() {
         extension="${entry%=*}"
         pin="${entry##*=}"
         installed="$(awk -F '\t' -v expected="${extension}" '$2 == expected { print $3; exit }' <<< "${listing}")"
-        if [ "${installed}" = "${pin}" ]; then
+        pinned="$(gh_extension_is_pinned "${extension##*/}")"
+        if [ "${installed}" = "${pin}" ] && [ "${pinned}" = "true" ]; then
             continue
         fi
         if [ -n "${installed}" ]; then
-            printf '%s is at %s; reinstalling it at the pinned %s.\n' "${extension}" "${installed}" "${pin}"
+            printf '%s is at %s (pinned: %s); reinstalling it pinned at %s.\n' "${extension}" "${installed}" "${pinned}" "${pin}"
             gh extension remove "${extension##*/}"
         fi
         gh extension install "${extension}" --pin "${pin}"

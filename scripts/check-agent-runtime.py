@@ -751,7 +751,7 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
 
 
 def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
-    """Fail for a gh extension installed at another tag than its pin (assets.gh-extensions)."""
+    """Fail for a gh extension at another tag than its pin (assets.gh-extensions), or installed unpinned."""
     data_home = Path(os.environ.get("XDG_DATA_HOME") or home / ".local/share")
     findings = []
     for repository, pin in sorted(pins.items()):
@@ -762,13 +762,20 @@ def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
             )
             continue
         try:
-            tag = re.search(r"^tag: *(\S+)$", manifest.read_text(), re.MULTILINE)
+            text = manifest.read_text()
+            tag = re.search(r"^tag: *(\S+)$", text, re.MULTILINE)
+            pinned = re.search(r"^ispinned: *true$", text, re.MULTILINE) is not None
         except OSError as error:
             findings.append(f"gh extension {repository}: cannot read {manifest} ({error!r})")
             continue
         if tag is None or tag.group(1) != pin:
             findings.append(
                 f"gh extension {repository} is installed at {tag.group(1) if tag else 'an unknown tag'}, not its pin {pin}; run make update"
+            )
+        elif not pinned:
+            findings.append(
+                f"gh extension {repository} is at its pin {pin} but installed unpinned, so gh extension upgrade "
+                "can move it; run make update to reinstall it pinned"
             )
     return findings
 

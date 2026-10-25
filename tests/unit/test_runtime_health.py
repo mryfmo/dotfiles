@@ -969,6 +969,7 @@ EOF
         shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         (repo / "scripts/lib").mkdir()
         shutil.copy(ROOT / "scripts/lib/ci-runner.sh", repo / "scripts/lib/ci-runner.sh")
+        shutil.copy(ROOT / "scripts/plugin-pins.json", repo / "scripts/plugin-pins.json")
         self.executable(bin_dir / "uname", f"printf '{os_name}\\n'\n")
         self.executable(
             bin_dir / "brew",
@@ -1184,7 +1185,29 @@ EOF
                 self.assertIn("required failures:", result.stdout)
                 log = (repo / "commands.log").read_text()
                 if phase != "apt":
-                    self.assertIn("gh extension upgrade --all", log)
+                    self.assertIn("gh extension list", log)
+                    self.assertNotIn("gh extension upgrade --all", log)
+
+    def test_upgrade_never_moves_a_pinned_gh_extension(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        # gh lists the pinned gh-poi and an extension this repository does not pin.
+        self.executable(
+            repo / "bin/gh",
+            """
+            printf 'gh %s\\n' "$*" >> "$TEST_LOG"
+            if [ "$1 $2" = "extension list" ]; then
+                printf 'gh poi\\tseachicken/gh-poi\\tv0.18.5\\ngh dash\\tdlvhdr/gh-dash\\tv4.0.0\\n'
+            fi
+            """,
+        )
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertIn("gh extension upgrade gh-dash", log)
+        self.assertFalse([line for line in log if line.startswith("gh extension upgrade") and "poi" in line], log)
+        self.assertNotIn("gh extension upgrade --all", log)
+        self.assertIn("Skipping gh extension seachicken/gh-poi: pinned", result.stdout)
 
     def test_upgrade_holds_exactly_the_tools_the_config_marks_held(self) -> None:
         repo, env = self.upgrade_fixture("none")

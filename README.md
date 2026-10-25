@@ -1147,8 +1147,11 @@ taking the newest release:
   `[marketplaces.ponytail]`, which the Codex modify script owns), and its hooks
   are trusted only at their `trusted_hash` pins. The OpenAI-curated Superpowers
   takes no version, so it is only compared.
-- gh-poi installs with `gh extension install --pin <tag>`; another tag is
-  reinstalled at the pin.
+- gh-poi installs with `gh extension install --pin <tag>`. An install at
+  another tag, or at the tag but unpinned (an earlier plain install), is
+  removed and installed again pinned. `scripts/upgrade-tools.sh` upgrades only
+  the extensions this repository does not pin, one by one; it never runs
+  `gh extension upgrade --all`.
 
 `make doctor` fails on any installed version, marketplace revision or extension
 tag that differs from its pin, and warns for an enabled plugin with no pin. To

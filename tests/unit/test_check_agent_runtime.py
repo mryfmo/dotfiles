@@ -1055,7 +1055,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
         return pins
 
-    def install_plugin_fixture(self, claude: str, codex: str, revision: str, tag: str) -> None:
+    def install_plugin_fixture(self, claude: str, codex: str, revision: str, tag: str, pinned: bool = True) -> None:
         home = self.target_root
         (home / ".claude/plugins").mkdir(parents=True, exist_ok=True)
         (home / ".claude/plugins/installed_plugins.json").write_text(
@@ -1070,7 +1070,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         (record / ".codex-marketplace-install.json").write_text(json.dumps({"revision": revision}))
         extension = home / ".local/share/gh/extensions/gh-tool"
         extension.mkdir(parents=True, exist_ok=True)
-        (extension / "manifest.yml").write_text(f"owner: owner\nname: gh-tool\ntag: {tag}\n")
+        (extension / "manifest.yml").write_text(
+            f"owner: owner\nname: gh-tool\ntag: {tag}\nispinned: {'true' if pinned else 'false'}\n"
+        )
 
     def plugin_findings(self, pins: Path) -> list[str]:
         with mock.patch.dict(os.environ, {"XDG_DATA_HOME": ""}):
@@ -1129,6 +1131,15 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(all(self.module.is_warning(finding) for finding in findings), findings)
         self.assertTrue(any("demo@market is not installed" in finding for finding in findings), findings)
         self.assertIn("WARN: plugin other@elsewhere installed in project scope at /work/app: not managed", findings)
+
+    def test_doctor_fails_on_a_gh_extension_at_its_tag_but_unpinned(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0", pinned=False)
+
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("gh extension owner/gh-tool is at its pin v1.0.0 but installed unpinned", errors[0])
 
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()

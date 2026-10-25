@@ -39,6 +39,10 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 }
 
 @test "[common] gh_extensions keeps an extension at its pinned tag unchanged" {
+    export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
+    mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
+    printf 'tag: %s\nispinned: true\n' "$(sed -n 's/^GH_POI_PIN_VERSION="\(.*\)"$/\1/p' "${SCRIPT_PATH}")" \
+        > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }
@@ -54,6 +58,28 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 
     [ "${status}" -eq 0 ]
     [ -z "${output}" ]
+}
+
+@test "[common] gh_extensions reinstalls an unpinned extension at its tag with --pin" {
+    export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
+    mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
+    printf 'ispinned: false\n' > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        activate_mise() { :; }
+        gh() {
+            case "$1 $2" in
+                "auth status") return 0 ;;
+                "extension list") printf "gh poi\tseachicken/gh-poi\t%s\n" "${GH_POI_PIN_VERSION}" ;;
+                *) printf "%s\n" "$*" ;;
+            esac
+        }
+        main
+    '
+
+    [ "${status}" -eq 0 ]
+    [ "${lines[1]}" = "extension remove gh-poi" ]
+    [[ "${lines[2]}" == "extension install seachicken/gh-poi --pin "* ]]
 }
 
 @test "[common] gh_extensions reinstalls an extension at another tag at its pin" {

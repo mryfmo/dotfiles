@@ -1104,6 +1104,103 @@ claude() {
         )
         self.assertEqual(["absent", "absent", "installed 1.8.14"], result.stdout.splitlines())
 
+    MALFORMED_COPY_REPLIES = ("", "garbage", "copy ", "copy a b", "copy ../x", "absent extra", "Copy 1.0")
+
+    def run_with_copy_reply(self, reply: str, body: str) -> tuple[subprocess.CompletedProcess, list[str]]:
+        # The reader (pin_record codex-copy) answers REPLY; every other pin_record call keeps its real reader.
+        work = Path(tempfile.mkdtemp(prefix="copy-reply-"))
+        self.addCleanup(shutil.rmtree, work)
+        stub = (
+            'eval "real_$(declare -f pin_record)"; '
+            'pin_record() { case "$1" in codex-copy) printf "%s\\n" "${REPLY_UNDER_TEST}" ;; '
+            'codex-marketplace-pinned) return 0 ;; *) real_pin_record "$@" ;; esac; }; '
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; }; ensure_codex_ponytail_marketplace() { :; }; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; set +e; {stub}{body}; echo "rc=$?"', "bash", str(UPDATER)],
+            env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "REPLY_UNDER_TEST": reply},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        return result, calls
+
+    def test_every_codex_copy_reply_but_absent_or_a_strict_copy_is_an_error(self):
+        # Audit of 0190e1f6: both installers took any reply but `absent` for "already installed".
+        for reply in self.MALFORMED_COPY_REPLIES:
+            with self.subTest(step="codex_plugin_copy", reply=reply):
+                result, _ = self.run_with_copy_reply(reply, "codex_plugin_copy ponytail@ponytail")
+                self.assertIn("rc=3", result.stdout, result.stderr)
+                self.assertEqual(["rc=3"], result.stdout.splitlines())
+            for step in ("install_codex_superpowers", "install_codex_ponytail"):
+                with self.subTest(step=step, reply=reply):
+                    result, calls = self.run_with_copy_reply(reply, step)
+                    self.assertIn("rc=1", result.stdout, result.stderr)
+                    self.assertNotIn("already installed", result.stdout)
+                    self.assertFalse([c for c in calls if c.startswith("plugin add")], calls)
+            with self.subTest(step="disable_plugin", reply=reply):
+                result, calls = self.run_with_copy_reply(reply, "disable_plugin codex ponytail@ponytail")
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertEqual(["plugin remove ponytail@ponytail"], calls)  # never read as absent
+        for reply, expected in (
+            ("absent", "absent"),
+            ("copy 5.3.2", "copy 5.3.2"),
+            ("copy 1.0.0+b.1", "copy 1.0.0+b.1"),
+        ):
+            with self.subTest(reply=reply):
+                result, _ = self.run_with_copy_reply(reply, "codex_plugin_copy ponytail@ponytail")
+                self.assertEqual([expected, "rc=0"], result.stdout.splitlines())
+        result, calls = self.run_with_copy_reply("copy 5.3.2", "install_codex_superpowers")
+        self.assertIn("already installed", result.stdout)
+        self.assertIn("rc=0", result.stdout)
+
+    def test_every_user_install_reply_but_absent_or_a_strict_version_is_an_error(self):
+        for listing in (
+            '[{"scope": "user", "version": ""}]',
+            '[{"scope": "user", "version": "a b"}]',
+            '[{"scope": "user"}]',
+        ):
+            with self.subTest(listing=listing):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; set +e; claude_user_install "$2"; echo "rc=$?"',
+                        "bash",
+                        str(UPDATER),
+                        listing,
+                    ],
+                    env=os.environ | scratch_env(Path(tempfile.mkdtemp(prefix="user-install-"))),
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(["rc=3"], result.stdout.splitlines(), result.stderr)
+
+    def test_no_caller_reads_a_plugin_state_reply_but_through_its_one_parser(self):
+        # Structural guard: the Codex copy reader is called only by codex_plugin_copy; the two parsers' output
+        # lands only in codex_copy / user_install, which no `[`, `[[` or `test` ever compares: every caller
+        # matches them in a `case` whose default is an error.
+        text = UPDATER.read_text()
+        bodies = dict(re.findall(r"^function (\w+)\(\) \(?\{\n(.*?)^\}", text, re.M | re.S))
+        self.assertEqual(
+            ["codex_plugin_copy"], [name for name, body in bodies.items() if "pin_record codex-copy" in body]
+        )
+        for parser, variable in (("codex_plugin_copy", "codex_copy"), ("claude_user_install", "user_install")):
+            assigned = re.findall(rf'(\w+)="\$\({parser} ', text)
+            self.assertTrue(assigned, parser)
+            self.assertEqual({variable}, set(assigned), parser)
+            tests = [
+                line.strip()
+                for line in text.splitlines()
+                if re.search(r"(\[\[?|\btest) ", line) and f"${{{variable}" in line
+            ]
+            self.assertEqual([], tests, variable)
+            for name, body in bodies.items():
+                if f'{variable}="$({parser} ' in body:
+                    self.assertIn(f'case "${{{variable}}}" in', body, name)
+
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.
         work = Path(tempfile.mkdtemp(prefix="ponytail-step-"))

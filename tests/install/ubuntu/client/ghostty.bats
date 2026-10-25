@@ -5,10 +5,14 @@ readonly RETRY="the next make update retries"
 readonly SKIPPED="ghostty not installed: its PPA is unreachable: "
 
 # Fakes for sudo, curl, dpkg-query, add-apt-repository and apt-get that answer with exit codes and recorded argv only.
-# PROBE picks curl's answer for every URL: dns (exit 6), timeout (exit 28), http503, or local (exit 2, a usage error,
-# not evidence of the network); an api- prefix applies it to the Launchpad API URL only. Default: HTTP 200.
+# PROBE picks curl's answer for every URL, as its `%{http_connect} %{http_code}` write-out and exit status: dns (exit 6),
+# timeout (exit 28), http503, proxy503 (the proxy's CONNECT answered 503, exit 56), proxy407 (the proxy refused the
+# credentials, exit 56), or local (exit 2, a usage error, not evidence of the network); an api- prefix applies it to the
+# Launchpad API URL only. Default: HTTP 200. A ${HOME}/.curlrc with `fail` makes an HTTP 4xx/5xx exit 22, unless
+# curl's first argument is -q, as with the real curl.
 # FAIL picks the failing step once the probe answered: ppa-add (registration), ppa-permission (registration cannot
-# write the source), lock (apt-get update cannot take its lock), resolve or download (the ghostty install), or archive
+# write the source), lock (apt-get update cannot take its lock), index (apt-get update cannot fetch the PPA index),
+# resolve or download (the ghostty install), or archive
 # (the dependency install). SPC and STATUS are the dpkg status of software-properties-common (default installed;
 # empty is absent) and of ghostty (default absent). Every curl, add-apt-repository and apt-get call is logged, an
 # install that completes is logged as installed, and the ERR trap logs ERR when it fires in the script's own shell
@@ -21,19 +25,26 @@ readonly APT_FAKES='
     sudo() { shift; "$@"; }
     dpkg-query() { local s="${STATUS-}"; [ "$4" = ghostty ] || s="${SPC-installed}"; printf "%s" "${s}"; [ -n "${s}" ]; }
     curl() {
-        local url="${*: -1}" mode="${PROBE-}"
+        local url="${*: -1}" mode="${PROBE-}" code=200
         printf "curl %s\n" "${url}" >> "${HOME}/calls.log"
         if [[ ${mode} == api-* ]]; then
             mode="${mode#api-}"
             [[ ${url} == https://api.launchpad.net/* ]] || mode=
         fi
         case "${mode}" in
-            dns) echo "curl: (6) Could not resolve host" >&2; printf 000; return 6 ;;
-            timeout) echo "curl: (28) Connection timed out" >&2; printf 000; return 28 ;;
-            http503) printf 503 ;;
+            dns) echo "curl: (6) Could not resolve host" >&2; printf "000 000"; return 6 ;;
+            timeout) echo "curl: (28) Connection timed out" >&2; printf "000 000"; return 28 ;;
+            proxy503) echo "curl: (56) CONNECT tunnel failed, response 503" >&2; printf "503 000"; return 56 ;;
+            proxy407) echo "curl: (56) CONNECT tunnel failed, response 407" >&2; printf "407 000"; return 56 ;;
             local) echo "curl: (2) option unknown" >&2; return 2 ;;
-            *) printf 200 ;;
+            http503) code=503 ;;
         esac
+        if [ "$1" != -q ] && grep -qx fail "${HOME}/.curlrc" 2> /dev/null && [ "${code}" -ge 400 ]; then
+            echo "curl: (22) The requested URL returned error: ${code}" >&2
+            printf "000 %s" "${code}"
+            return 22
+        fi
+        printf "000 %s" "${code}"
     }
     add-apt-repository() {
         printf "add-apt-repository %s\n" "$*" >> "${HOME}/calls.log"
@@ -47,6 +58,7 @@ readonly APT_FAKES='
         printf "apt-get %s\n" "$*" >> "${HOME}/calls.log"
         case "${FAIL-}:$*" in
             lock:update) echo "E: Could not get lock /var/lib/apt/lists/lock" >&2; return 100 ;;
+            index:update) echo "E: Failed to fetch https://ppa.launchpadcontent.net/.../InRelease  503  Service Unavailable" >&2; return 100 ;;
             resolve:"install -y ghostty") echo "E: Unable to correct problems, you have held broken packages." >&2; return 100 ;;
             download:"install -y ghostty") echo "E: Failed to fetch ghostty.deb" >&2; return 100 ;;
             archive:*software-properties-common) return 100 ;;
@@ -167,7 +179,7 @@ function run_fakes() {
 
 @test "[ubuntu-client] an unreachable PPA skips Ghostty before any apt call" {
     local probe
-    for probe in dns timeout http503 api-dns; do
+    for probe in dns timeout http503 proxy503 api-dns; do
         run_fakes "${probe}" PROBE="${probe}"
         [ "${status}" -eq 0 ]
         [[ "${output}" == *"${SKIPPED}"*"${RETRY}"* ]]
@@ -175,17 +187,28 @@ function run_fakes() {
     done
 }
 
-@test "[ubuntu-client] a probe that fails locally is fatal, not a skip" {
-    run_fakes home PROBE=local
-    [ "${status}" -ne 0 ]
-    [[ "${output}" != *"${RETRY}"* ]]
-    grep -qx ERR "${BATS_TEST_TMPDIR}/home/calls.log"
-    ! grep -q -e '^apt-get' -e '^add-apt-repository' "${BATS_TEST_TMPDIR}/home/calls.log"
+@test "[ubuntu-client] a curlrc with fail does not turn an HTTP 503 probe into a fatal exit" {
+    mkdir -p "${BATS_TEST_TMPDIR}/home"
+    echo fail > "${BATS_TEST_TMPDIR}/home/.curlrc"
+    run_fakes home PROBE=http503
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"${SKIPPED}"*"(HTTP 503)"*"${RETRY}"* ]]
 }
 
-@test "[ubuntu-client] once the PPA answers, every later failure is fatal" {
+@test "[ubuntu-client] a probe that fails locally (a curl usage error or a proxy CONNECT 407) is fatal, not a skip" {
+    local probe
+    for probe in local proxy407; do
+        run_fakes "${probe}" PROBE="${probe}"
+        [ "${status}" -ne 0 ]
+        [[ "${output}" != *"${RETRY}"* ]]
+        grep -qx ERR "${BATS_TEST_TMPDIR}/${probe}/calls.log"
+        run ! grep -q -e '^apt-get' -e '^add-apt-repository' "${BATS_TEST_TMPDIR}/${probe}/calls.log"
+    done
+}
+
+@test "[ubuntu-client] once the PPA answers the probe, every later failure is fatal, a failed index or package fetch included (by design)" {
     local fail spc
-    for fail in ppa-add ppa-permission lock resolve download archive; do
+    for fail in ppa-add ppa-permission lock index resolve download archive; do
         spc=installed
         [ "${fail}" != archive ] || spc=
         run_fakes "${fail}" FAIL="${fail}" SPC="${spc}"

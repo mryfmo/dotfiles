@@ -6,8 +6,11 @@
 #   Adds the community-maintained Ghostty Ubuntu PPA recommended by
 #   mkasberg/ghostty-ubuntu and installs the `ghostty` package through apt.
 #   When a Launchpad host the remaining steps need gives no answer, Ghostty is
-#   skipped with a retry line before any apt call; once the hosts answer, every
-#   failure stays fatal.
+#   skipped with a retry line before any apt call. Once the hosts answer the
+#   probe, every failure is fatal, a later failed index or package fetch (such
+#   as a 503 between the probe and apt) included: the probe is the only
+#   network evidence, so a local, permission, lock or resolution fault is never
+#   masked as an outage, and the next make update retries.
 
 set -Eeuo pipefail
 
@@ -76,17 +79,24 @@ function add_ghostty_ppa() {
 #   answer within the timeout (curl exit 5, 6, 7, 28, 35, 52 or 56), or answers HTTP 5xx;
 #   nothing when every URL answers.
 # @exitcode 0 Each URL answered or was found unreachable.
-# @exitcode * Any other curl failure (a local error, not evidence of the network), unchanged.
+# @exitcode * A proxy that answered CONNECT with 4xx (such as 407, a local credential fault), or any
+#   other curl failure (a local error, not evidence of the network): curl's status, unchanged.
 #
 function ghostty_unreachable_url() {
-    local url code status
+    local url out connect code status
     for url in "$@"; do
         status=0
-        code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+        # -q must come first so no curlrc can change the options this decision relies on (e.g. `fail`).
+        out="$(curl -q --silent --show-error --output /dev/null --write-out '%{http_connect} %{http_code}' \
             --connect-timeout 5 --max-time 15 "${url}")" || status=$?
+        read -r connect code <<< "${out}" || true
+        if [[ ${connect-} == 4?? ]]; then
+            printf 'ghostty: the proxy answered CONNECT %s for %s\n' "${connect}" "${url}" >&2
+            return "$((status == 0 ? 1 : status))"
+        fi
         case "${status}" in
         0)
-            if [[ ${code} == 5?? ]]; then
+            if [[ ${code-} == 5?? ]]; then
                 printf '%s (HTTP %s)\n' "${url}" "${code}"
                 return 0
             fi

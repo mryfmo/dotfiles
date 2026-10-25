@@ -435,8 +435,8 @@ main
         upgrade = tree.index("\t./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)\n")
         self.assertLess(tree.index("\tchezmoi apply --verbose\n"), upgrade)
         self.assertLess(upgrade, tree.index("\t./scripts/update-agent-assets.sh\n"))
-        # The retire calls the installed agmsg tree, so it runs before the apply that can remove it (U26).
-        self.assertLess(tree.index("\t$(MAKE) agmsg-retire\n"), tree.index("\tchezmoi apply --verbose\n"))
+        # The agmsg retire step left with herdr-agents (U72): the apply is the first step of the tree update.
+        self.assertTrue(tree.startswith("\tchezmoi apply --verbose\n"), tree[:200])
 
     def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
         with tempfile.TemporaryDirectory() as temporary:

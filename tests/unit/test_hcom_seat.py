@@ -331,7 +331,7 @@ class HcomSeatTest(unittest.TestCase):
         # One outstanding TASK the orchestrator sent, on thread `custom` only; the slug's thread is empty.
         bus.write_text(
             '#!/bin/sh\nprintf "%s\\n" "$1" >> "$HOME/bus-calls"\n[ "$1" = custom ] || exit 0\n'
-            'printf "7\\t2026-10-24T09:00:00+00:00\\torchestrator\\tworker\\tAGMSG-TASK\\tAGMSG-TASK v1 task_id=c1\\n"\n'
+            'printf "7\\t2026-10-24T09:00:00+00:00\\torchestrator\\tworker\\tTASK\\tTASK v1 task_id=c1\\n"\n'
         )
         bus.chmod(0o755)
         # The seat's own name last: omp["env"] carries every HCOM_* the caller's session held.

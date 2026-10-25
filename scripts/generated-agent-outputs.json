@@ -36,18 +36,6 @@
       "executable": false
     },
     {
-      "source": "home/dot_agents/omp/profiles/review.yml.tmpl",
-      "target": ".agents/omp/profiles/review.yml",
-      "kind": "template",
-      "executable": false
-    },
-    {
-      "source": "home/dot_agents/omp/profiles/security.yml.tmpl",
-      "target": ".agents/omp/profiles/security.yml",
-      "kind": "template",
-      "executable": false
-    },
-    {
       "source": "home/dot_agents/omp/profiles/worker.yml.tmpl",
       "target": ".agents/omp/profiles/worker.yml",
       "kind": "template",
@@ -347,14 +335,14 @@
       "target": ".local/bin/common/hcom-dispatch",
       "kind": "file",
       "executable": true,
-      "sha256": "b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274"
+      "sha256": "1fed20dcf91092307267b65db6e4a279db68ec49f7fab6d32c45f40a9814c053"
     },
     {
       "source": "home/dot_local/bin/common/executable_hcom-seat",
       "target": ".local/bin/common/hcom-seat",
       "kind": "file",
       "executable": true,
-      "sha256": "b3c95db4b2498d3ff573fc8d3be34c6c0b024a9684b5e1485580869a95ab8e3d"
+      "sha256": "553092aa13909b925fadf160a89f13f1b421dc6ad668396c610ecc87a421d25f"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -431,7 +419,7 @@
       "target": ".local/bin/common/regime-init",
       "kind": "file",
       "executable": true,
-      "sha256": "f6b9443069d7d9b0a195a8bd1a3b0562e54a73effe3fb2b2f587c68bb4789324"
+      "sha256": "190d96664560c0e421e25cbab58b9c341c8995881366809a016271b7f17c36d2"
     },
     {
       "source": "home/dot_local/bin/common/executable_regime-start",
@@ -452,7 +440,7 @@
       "target": ".local/bin/common/seat-login-preflight",
       "kind": "file",
       "executable": true,
-      "sha256": "863694c760a1180cebdb897d418b02bccf8caa9895ec949b0290e695f1b5dc15"
+      "sha256": "5aa82ac3df2434cb3b2e888949d79039712dd42ed1d7cdd663916b648b4983ce"
     },
     {
       "source": "home/dot_local/bin/common/executable_worktree-gc.sh",

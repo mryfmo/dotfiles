@@ -191,7 +191,7 @@ cat << EOF
 Next, in ${checkout}:
   hcom-seat orchestrator; hcom-seat worker
   ${listing}
-  hcom-dispatch ${HCOM_TEAM} operator orchestrator-<word> - "TASK v1 task_id=O1 brief=<absolute path of the program brief>"
+  hcom-dispatch ${HCOM_TEAM} operator orchestrator-<word> "TASK v1 task_id=O1 brief=<absolute path of the program brief>"
 From inside a seat, which inherits HCOM_DIR and HCOM_TEAM from its launch, unset both first
 (env -u HCOM_DIR -u HCOM_TEAM <command>), or the seats join the inheriting seat's store and team.
 EOF

@@ -429,7 +429,8 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         format_hook = {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}
         reload_hook = {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"}
         custom_hook = {"type": "command", "command": "~/bin/my-hook.sh"}
-        managed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, reload_hook]}
+        # The managed matcher has no MultiEdit (F078); installed entries still carry the old matcher and converge.
+        managed_entry = {"matcher": "Write|Edit", "hooks": [format_hook, reload_hook]}
         stale_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook]}
         mixed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, custom_hook]}
         wrapper_entry = {
@@ -510,7 +511,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         # audit:ca892e4:1: a quoted or escaped ~ names a literal ~ directory in the shell, not the managed home path.
         format_hook = {"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}
         reload_hook = {"type": "command", "command": "~/.claude/hooks/project-map-reload.sh"}
-        managed_entry = {"matcher": "Write|Edit|MultiEdit", "hooks": [format_hook, reload_hook]}
+        managed_entry = {"matcher": "Write|Edit", "hooks": [format_hook, reload_hook]}
         for command in ("'~/.claude/hooks/format-edited-files.py'", "\\~/.claude/hooks/format-edited-files.py"):
             literal = {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": command}]}
             with self.subTest(command=command):

@@ -24,8 +24,8 @@
 #   context file loads, and the explicit flag also wins over any project APPEND_SYSTEM.md. The rules file is required
 #   and must be non-empty, since omp reads a missing path as literal text. The extensions default to the
 #   pi-claude-bridge, which the role's model route needs, plus the openai-siwc when it
-#   is present; `--ext` replaces that list. There is no audit seat: every audit is one
-#   fresh `omp-run.sh --role audit` run (regime-cutover U57, U58). The stop gate's directory
+#   is present; `--ext` replaces that list. The roles are orchestrator and worker; every audit is
+#   one fresh `omp-run.sh --role audit` run, never a seat (regime-cutover U57, U58). The stop gate's directory
 #   `~/.agents/omp/hooks` is loaded on every launch, whatever `--ext` says, and the
 #   launch line ends with `--hcom-team <HCOM_TEAM>`: hcom passes HCOM_DIR into the
 #   pane but not HCOM_TEAM, so the flag, which the gate registers, carries exactly the

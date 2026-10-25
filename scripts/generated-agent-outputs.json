@@ -24,6 +24,24 @@
       "executable": false
     },
     {
+      "source": "home/dot_agents/omp/policies/audit.yml",
+      "target": ".agents/omp/policies/audit.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/policies/orchestrator.yml",
+      "target": ".agents/omp/policies/orchestrator.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
+      "source": "home/dot_agents/omp/policies/worker.yml",
+      "target": ".agents/omp/policies/worker.yml",
+      "kind": "file",
+      "executable": false
+    },
+    {
       "source": "home/dot_agents/omp/profiles/audit.yml.tmpl",
       "target": ".agents/omp/profiles/audit.yml",
       "kind": "template",
@@ -321,6 +339,12 @@
       "source": "home/dot_codex/modify_private_standard.config.toml",
       "target": ".codex/standard.config.toml",
       "kind": "modify",
+      "executable": false
+    },
+    {
+      "source": "home/dot_codex/rules/command-policy.rules",
+      "target": ".codex/rules/command-policy.rules",
+      "kind": "file",
       "executable": false
     },
     {

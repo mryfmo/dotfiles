@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("pin_records", ROOT / "scripts/pin_records.py")
@@ -59,7 +61,7 @@ class PinRecordsTest(unittest.TestCase):
         self.refused(lambda: records.load_plugin_pins(self.dir / "absent.json"), "is missing")
 
     def test_claude_installs(self) -> None:
-        cache = "/h/.claude/plugins/cache/crit/crit/1.8.14"
+        cache = f"{self.dir}/cache/crit/crit/1.8.14"
         good = {"version": 2, "plugins": {"crit@crit": [{"scope": "user", "version": "1.8.14", "installPath": cache}]}}
         self.assertEqual("1.8.14", records.load_claude_installs(self.write("i.json", good))["crit@crit"][0].version)
         self.assertIsNone(records.load_claude_installs(self.dir / "absent.json"))
@@ -68,11 +70,18 @@ class PinRecordsTest(unittest.TestCase):
             ("no installPath (audit case)", {"scope": "user", "version": "9.9.9"}, "installPath: is missing"),
             ("numeric version", {**entry, "version": 1.8}, "version: must be str"),
             ("unknown scope", {**entry, "scope": "global"}, "scope"),
-            ("foreign cache", {**entry, "installPath": "/h/.claude/plugins/cache/other/crit/1"}, "installPath"),
+            ("foreign cache", {**entry, "installPath": f"{self.dir}/cache/other/crit/1.8.14"}, "installPath"),
+            ("version contradicts path (audit case)", {**entry, "version": "9.9.9"}, "installPath"),
+            (
+                "another claude directory",
+                {**entry, "installPath": "/h/.claude/plugins/cache/crit/crit/1.8.14"},
+                "installPath",
+            ),
+            ("dot-dot", {**entry, "installPath": f"{self.dir}/cache/crit/crit/../crit/1.8.14"}, "installPath"),
             ("project without path", {**entry, "scope": "project"}, "projectPath: is missing"),
             (
                 "duplicate user record (audit case)",
-                [entry, {**entry, "version": "99.0.0"}],
+                [entry, {**entry, "version": "99.0.0", "installPath": cache.replace("1.8.14", "99.0.0")}],
                 "a second user-scope record",
             ),
             ("not an object", "crit", "must be an object"),
@@ -106,9 +115,13 @@ class PinRecordsTest(unittest.TestCase):
             "registered", records.claude_marketplace_state(json.dumps(listing), "crit", "tomasz-tomczyk/crit")
         )
         self.assertEqual("absent", records.claude_marketplace_state("[]", "crit", "tomasz-tomczyk/crit"))
+        for text in (
+            json.dumps([{"name": "crit", "source": "github", "repo": "fork/crit"}]),
+            json.dumps([{"name": "crit", "source": "directory", "path": "/x"}]),
+        ):
+            with self.subTest(foreign=text):
+                self.assertEqual("foreign", records.claude_marketplace_state(text, "crit", "tomasz-tomczyk/crit"))
         for name, text, field in (
-            ("foreign source", json.dumps([{"name": "crit", "source": "github", "repo": "fork/crit"}]), "[0]"),
-            ("directory source", json.dumps([{"name": "crit", "source": "directory", "path": "/x"}]), "[0]"),
             ("no name", json.dumps([{"source": "github"}]), "[0].name"),
             ("not JSON", "", "not JSON"),
             ("object", "{}", "must be a list"),
@@ -182,15 +195,17 @@ class PinRecordsTest(unittest.TestCase):
         )
 
     def test_gh_extension_manifest(self) -> None:
-        data = self.dir / "data"
+        data = self.dir / "data/gh"
         self.assertIsNone(records.load_gh_extension(data, "seachicken/gh-poi"))
-        good = "owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v0.18.5\nispinned: true\npath: /x/gh-poi\n"
+        binary = data / "extensions/gh-poi/gh-poi"
+        good = f"owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v0.18.5\nispinned: true\npath: {binary}\n"
         self.write("data/gh/extensions/gh-poi/manifest.yml", good)
         extension = records.load_gh_extension(data, "seachicken/gh-poi")
         self.assertEqual(("v0.18.5", True), (extension.tag, extension.pinned))
         for name, text, field in (
             ("fork (audit case)", good.replace("owner: seachicken", "owner: forker"), "owner/name"),
             ("other host", good.replace("github.com", "ghe.example"), "host"),
+            ("other path", good.replace(str(binary), "/elsewhere/gh-poi"), "path"),
             ("no ispinned", good.replace("ispinned: true\n", ""), "ispinned: is missing"),
             ("ispinned yes", good.replace("ispinned: true", "ispinned: yes"), "ispinned"),
             ("duplicate key", good + "tag: v9\n", "line 7"),
@@ -199,7 +214,7 @@ class PinRecordsTest(unittest.TestCase):
             with self.subTest(case=name):
                 self.write("data/gh/extensions/gh-poi/manifest.yml", text)
                 self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), field)
-        (data / "gh/extensions/gh-poi/manifest.yml").unlink()
+        (data / "extensions/gh-poi/manifest.yml").unlink()
         self.write("data/gh/extensions/gh-poi/gh-poi", "binary")
         self.refused(lambda: records.load_gh_extension(data, "seachicken/gh-poi"), "cannot verify its pin")
 
@@ -241,13 +256,13 @@ class PinRecordsTest(unittest.TestCase):
 
     def test_control_characters_never_reach_an_output_row(self) -> None:
         # A projectPath that would forge a user row at the pin in tab/newline-separated output is refused.
-        cache = "/h/.claude/plugins/cache/crit/crit/9.9.9"
+        cache = f"{self.dir}/cache/crit/crit/9.9.9"
         forged = {"scope": "project", "version": "9.9.9", "installPath": cache, "projectPath": "/w\nuser\t1.8.14\t"}
         path = self.write("i.json", {"plugins": {"crit@crit": [forged]}})
         self.refused(lambda: records.load_claude_installs(path), "projectPath: contains a control character")
         manifest = "owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v1\tx\nispinned: true\npath: /x\n"
         self.write("data/gh/extensions/gh-poi/manifest.yml", manifest)
-        self.refused(lambda: records.load_gh_extension(self.dir / "data", "seachicken/gh-poi"), "tag")
+        self.refused(lambda: records.load_gh_extension(self.dir / "data/gh", "seachicken/gh-poi"), "tag")
         self.refused(
             lambda: records.load_plugin_pins(
                 self.write("p.json", {"claude": {"crit@crit\n": {}}, "codex": {}, "gh_extensions": {}})
@@ -340,6 +355,24 @@ class PinRecordsTest(unittest.TestCase):
         ):
             with self.subTest(args=args[0:1] + args[2:]):
                 self.assertEqual(code, subprocess.run([*script, *args], capture_output=True, check=False).returncode)
+
+    def test_agent_homes_follow_each_tools_own_variables(self) -> None:
+        home = Path("/h")
+        cases = (
+            ("claude", {}, "/h/.claude"),
+            ("claude", {"CLAUDE_CONFIG_DIR": "/c"}, "/c"),
+            ("codex", {}, "/h/.codex"),
+            ("codex", {"CODEX_HOME": "/x"}, "/x"),
+            ("codex", {"CODEX_HOME": ""}, "/h/.codex"),
+            ("gh", {}, "/h/.local/share/gh"),
+            ("gh", {"XDG_DATA_HOME": "/d"}, "/d/gh"),
+            ("gh", {"GH_DATA_DIR": "/g", "XDG_DATA_HOME": "/d"}, "/g"),
+        )
+        for agent, env, expected in cases:
+            with self.subTest(agent=agent, env=env):
+                clear = {name: "" for name in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "GH_DATA_DIR", "XDG_DATA_HOME")}
+                with mock.patch.dict(os.environ, {**clear, **env}):
+                    self.assertEqual(Path(expected), records.agent_home(agent, home))
 
     def test_command_line_fails_with_the_field(self) -> None:
         path = self.write("s.json", {"enabledPlugins": {"crit@crit": "false"}})

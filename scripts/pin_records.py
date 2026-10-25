@@ -20,6 +20,7 @@ from __future__ import annotations
 import functools
 import io
 import json
+import os
 import re
 import stat
 import sys
@@ -141,6 +142,30 @@ def plugin_parts(record: object, label: str, plugin_id: str) -> Tuple[str, str]:
     return match.group(1), match.group(2)
 
 
+# --- agent homes ----------------------------------------------------------------------------------------------
+
+
+def agent_home(agent: str, home: Optional[Path] = None) -> Path:
+    """The directory each tool keeps its records in, resolved the way the tool itself does; the one resolver
+    make doctor and update-agent-assets.sh share (the shell asks `pin_records.py agent-home <agent>`).
+
+    claude: CLAUDE_CONFIG_DIR, else ~/.claude. codex: CODEX_HOME, else ~/.codex. gh: GH_DATA_DIR, else
+    $XDG_DATA_HOME/gh, else ~/.local/share/gh (gh's config.DataDir). An empty variable counts as unset, as
+    `${VAR:-default}` does.
+    """
+    env = os.environ
+    base = home if home is not None else Path.home()
+    if agent == "claude":
+        return Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else base / ".claude"
+    if agent == "codex":
+        return Path(env["CODEX_HOME"]) if env.get("CODEX_HOME") else base / ".codex"
+    if agent == "gh":
+        if env.get("GH_DATA_DIR"):
+            return Path(env["GH_DATA_DIR"])
+        return Path(env["XDG_DATA_HOME"]) / "gh" if env.get("XDG_DATA_HOME") else base / ".local/share/gh"
+    raise RecordError("agent-home", agent, "is not claude, codex or gh")
+
+
 # --- scripts/plugin-pins.json (rendered from assets.* in agent-config.yaml) ---------------------------------
 
 
@@ -204,8 +229,8 @@ class ClaudeInstall:
 def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]:
     """Every installation record, or None when the file is absent.
 
-    Required per entry: scope (one of Claude Code's scopes), version, installPath (an absolute
-    .../plugins/cache/<marketplace>/<plugin>/<version> without `..`, the plugin's identity), and projectPath for project or local scope.
+    Required per entry: scope (one of Claude Code's scopes), version, installPath (exactly
+    <this file's directory>/cache/<marketplace>/<plugin>/<version>, with the record's own version: the identity), and projectPath for project or local scope.
     """
     data = load_json(path)
     if data is ABSENT:
@@ -224,13 +249,9 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
                 raise RecordError(path, f"{where}scope", f"{scope!r} is not one of {CLAUDE_SCOPES}")
             version = field(path, entry, "version", str, where)
             install_path = field(path, entry, "installPath", str, where)
-            parts = Path(install_path).parts
-            if (
-                not Path(install_path).is_absolute()
-                or ".." in parts
-                or parts[-5:-1] != ("plugins", "cache", marketplace, plugin)
-            ):
-                raise RecordError(path, f"{where}installPath", f"{install_path!r} is not this plugin's cache")
+            expected = path.parent / "cache" / marketplace / plugin / version
+            if Path(install_path) != expected:
+                raise RecordError(path, f"{where}installPath", f"{install_path!r} is not {str(expected)!r}")
             project = field(path, entry, "projectPath", str, where) if scope in ("project", "local") else None
             # One record per identity (scope, project): a second one would let a reader pick either version.
             if any((seen.scope, seen.project_path) == (scope, project) for seen in result[plugin_id]):
@@ -267,7 +288,8 @@ def load_claude_enabled(path: Path) -> Optional[Dict[str, bool]]:
 
 
 def claude_marketplace_state(listing: str, name: str, recorded: str) -> str:
-    """`registered` when NAME is registered from RECORDED (GitHub owner/repo), `absent` when not registered."""
+    """`registered` when NAME is registered from RECORDED (GitHub owner/repo), `foreign` when NAME is registered
+    from anything else, `absent` when it is not registered; an unreadable listing raises."""
     record = "claude plugin marketplace list --json"
     try:
         data = json.loads(listing)
@@ -278,15 +300,9 @@ def claude_marketplace_state(listing: str, name: str, recorded: str) -> str:
     for index, entry in enumerate(data):
         if field(record, entry, "name", str, f"[{index}].") != name:
             continue
-        source = field(record, entry, "source", str, f"[{index}].")
-        if source != "github":
-            raise RecordError(record, f"[{index}].source", f"{name} is registered from {source}, not github:{recorded}")
-        repo = field(record, entry, "repo", str, f"[{index}].")
-        if repo != recorded:
-            raise RecordError(
-                record, f"[{index}].repo", f"{name} is registered from github:{repo}, not github:{recorded}"
-            )
-        return "registered"
+        if field(record, entry, "source", str, f"[{index}].") != "github":
+            return "foreign"
+        return "registered" if field(record, entry, "repo", str, f"[{index}].") == recorded else "foreign"
     return "absent"
 
 
@@ -426,15 +442,15 @@ class GhExtension:
     pinned: bool
 
 
-def load_gh_extension(data_home: Path, repository: str) -> Optional[GhExtension]:
+def load_gh_extension(gh_dir: Path, repository: str) -> Optional[GhExtension]:
     """gh's record of an installed binary extension, None when its directory is absent.
 
-    gh writes <data home>/gh/extensions/<name>/manifest.yml as `key: value` lines. owner, name, host, tag,
+    gh writes <gh data dir>/extensions/<name>/manifest.yml as `key: value` lines (agent_home("gh")). owner, name, host, tag,
     ispinned and path are required; owner/name must be REPOSITORY and host github.com, so a fork's copy of
     the same name is foreign. A directory without a readable manifest cannot be verified and raises.
     """
     owner, name = repository.split("/", 1)
-    directory = data_home / "gh/extensions" / name
+    directory = gh_dir / "extensions" / name
     if not present(directory):
         return None
     manifest = directory / "manifest.yml"
@@ -454,6 +470,8 @@ def load_gh_extension(data_home: Path, repository: str) -> Optional[GhExtension]
             raise RecordError(manifest, key, "is missing")
     if (values["owner"], values["name"]) != (owner, name):
         raise RecordError(manifest, "owner/name", f"{values['owner']}/{values['name']} is not {repository}")
+    if Path(values["path"]) != directory / name:
+        raise RecordError(manifest, "path", f"{values['path']!r} is not {str(directory / name)!r}")
     if values["host"] != "github.com":
         raise RecordError(manifest, "host", f"{values['host']!r} is not github.com")
     if re.search(r"\s", values["tag"]):
@@ -515,6 +533,8 @@ def main(argv: List[str]) -> int:
         if value is None:
             raise RecordError(args[0], f"{args[1]}.{args[2]}.{args[3]}", "is not recorded")
         print(value)
+    elif command == "agent-home":
+        print(agent_home(args[0]))
     elif command == "plugin-ids":
         print("\n".join(sorted(getattr(load_plugin_pins(Path(args[0])), args[1]))))
     elif command == "claude-installs":

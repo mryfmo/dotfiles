@@ -570,6 +570,8 @@ claude() {
         project_dir = work / "project"
         (project_dir / ".claude").mkdir(parents=True)
         (project_dir / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": project or {}}))
+        # A copy: a test may reuse one INSTALLS across runs, each with its own home.
+        installs = json.loads(json.dumps(installs)) if isinstance(installs, dict) else installs
         for plugin_id, entries in installs.items() if isinstance(installs, dict) else []:
             plugin, marketplace = plugin_id.split("@", 1)
             for entry in entries:
@@ -583,7 +585,8 @@ claude() {
         record.write_text(installs if isinstance(installs, str) else json.dumps({"version": 2, "plugins": installs}))
         (home / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": enabled}))
         pins = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["claude"]
-        sources = {plugin_id.split("@", 1)[1]: pin["marketplace"] for plugin_id, pin in pins.items()}
+        foreign = flags.pop("FOREIGN", "")
+        sources = {plugin_id.split("@", 1)[1]: foreign or pin["marketplace"] for plugin_id, pin in pins.items()}
         names = list(sources) if markets is None else markets
         listing = [{"name": name, "source": "github", "repo": sources[name]} for name in names]
         (work / "markets.json").write_text(json.dumps(listing))
@@ -777,6 +780,25 @@ claude() {
                 self.assertIn(f"is not pinned to {ref}", result.stderr)
                 self.assertFalse([call for call in calls if call.startswith("plugin marketplace upgrade")], calls)
 
+    def test_a_foreign_marketplace_never_installs_or_updates_and_its_plugin_is_disabled(self):
+        # Audit round 19: a marketplace of the recorded name from another repository can serve a release that
+        # reports the pinned version. Its plugin is disabled at any version, and nothing is installed or updated.
+        pin = self.pin_of("crit@crit")
+        for version in (pin, "999.0.0"):
+            with self.subTest(version=version):
+                installs = {"crit@crit": [{"scope": "user", "version": version}]}
+                result, calls, state = self.converge_listed(
+                    'converge_claude_plugin "crit@crit"', installs, {"crit@crit": True}, FOREIGN="fork/crit"
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual(["plugin disable crit@crit --scope user @neutral"], calls)
+                self.assertIs(False, state["user"]["crit@crit"])
+                self.assertIn("registered from another source", result.stderr)
+        # Not installed: nothing is installed from it either.
+        result, calls, _ = self.converge_listed('converge_claude_plugin "crit@crit"', {}, {}, FOREIGN="fork/crit")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+
     def test_a_failed_disable_of_an_off_pin_plugin_fails_closed(self):
         installs = {"crit@crit": [{"scope": "user", "version": "999.0.0"}]}
         result, calls, state = self.converge_listed(
@@ -895,7 +917,7 @@ claude() {
                 self.assertIn("reached failures=", result.stdout)
                 self.assertIn(f"plugin disable {plugin_id} --scope user @neutral", calls)
                 self.assertIs(False, state["user"][plugin_id])
-                self.assertIn(f"{pins[plugin_id]['pin']}", result.stderr)
+                self.assertIn(f"{plugin_id} is not installed or updated from an unverified marketplace", result.stderr)
 
     def run_gh_extensions(
         self, tag: str, pinned: str | None, install_fails: bool = False

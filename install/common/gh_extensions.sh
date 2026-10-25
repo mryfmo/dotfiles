@@ -60,13 +60,13 @@ function pin_records_path() {
 #   such a copy cannot be verified, so the caller reinstalls it pinned.
 #
 function gh_extension_state() {
-    local reader
+    local reader gh_dir
 
-    reader="$(pin_records_path)" || {
-        printf 'Cannot find scripts/pin_records.py; cannot verify %s.\n' "$1" >&2
+    if ! reader="$(pin_records_path)" || ! gh_dir="$(python3 -I "${reader}" agent-home gh)"; then
+        printf 'Cannot find scripts/pin_records.py or the gh data directory; cannot verify %s.\n' "$1" >&2
         return 2
-    }
-    python3 -I "${reader}" gh-extension "${XDG_DATA_HOME:-${HOME}/.local/share}" "$1"
+    fi
+    python3 -I "${reader}" gh-extension "${gh_dir}" "$1"
 }
 
 #
@@ -82,8 +82,16 @@ function gh_extension_state() {
 #
 function replace_gh_extension() {
     local extension="$1" pin="$2"
-    local root="${XDG_DATA_HOME:-${HOME}/.local/share}/gh/extensions"
-    local current="${root}/${1##*/}" previous="${root}/.${1##*/}.previous"
+    local reader gh_dir root current previous
+
+    # gh's extension directory, resolved as make doctor resolves it (pin_records.py agent-home gh).
+    if ! reader="$(pin_records_path)" || ! gh_dir="$(python3 -I "${reader}" agent-home gh)"; then
+        printf 'Cannot resolve the gh extension directory; %s was not changed.\n' "${extension}" >&2
+        return 1
+    fi
+    root="${gh_dir}/extensions"
+    current="${root}/${1##*/}"
+    previous="${root}/.${1##*/}.previous"
 
     if [ -e "${current}" ] || [ -L "${current}" ]; then
         if ! { rm -rf "${previous}" && mv "${current}" "${previous}"; }; then

@@ -813,8 +813,7 @@ def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
     records are read by pin_records, so a malformed entry is an error, never "not installed".
     """
     findings = []
-    # The directory Claude Code writes (CLAUDE_CONFIG_DIR, else ~/.claude), as update-agent-assets.sh reads it.
-    claude_dir = Path(os.environ["CLAUDE_CONFIG_DIR"]) if os.environ.get("CLAUDE_CONFIG_DIR") else home / ".claude"
+    claude_dir = records.agent_home("claude", home)
     installed_path = claude_dir / "plugins/installed_plugins.json"
     try:
         installed = records.load_claude_installs(installed_path)
@@ -864,21 +863,22 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
     marketplace's install record and the config.toml marketplace table must name the pinned source.
     """
     findings = []
-    config_path = home / ".codex/config.toml"
+    codex_dir = records.agent_home("codex", home)
+    config_path = codex_dir / "config.toml"
     try:
         config = records.load_codex_config(config_path)
     except (RecordError, ImportError) as error:
         return [f"Codex plugins: {error}; plugin pins not checked"]
     for plugin_id, pin in sorted(pins.items()):
         plugin, _, marketplace = plugin_id.partition("@")
-        root = home / ".codex/plugins/cache" / marketplace / plugin
+        root = codex_dir / "plugins/cache" / marketplace / plugin
         try:
             copy = records.load_codex_copy(root, plugin, script)
         except RecordError as error:
             findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify its pin")
             continue
         if pin.ref is not None:
-            install_record = home / ".codex/.tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
+            install_record = codex_dir / ".tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
             try:
                 install = records.load_marketplace_install(install_record, pin.marketplace)
                 clone_present = present(install_record.parent)
@@ -947,11 +947,11 @@ def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]
 def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
     """Fail for a gh extension at another tag than its pin (assets.gh-extensions), installed unpinned, foreign
     (a fork of the same name) or without a readable manifest."""
-    data_home = Path(os.environ.get("XDG_DATA_HOME") or home / ".local/share")
+    gh_dir = records.agent_home("gh", home)
     findings = []
     for repository, pin in sorted(pins.items()):
         try:
-            extension = records.load_gh_extension(data_home, repository)
+            extension = records.load_gh_extension(gh_dir, repository)
         except RecordError as error:
             findings.append(f"gh extension {repository}: {error}; run make update to reinstall it pinned")
             continue

@@ -1404,8 +1404,12 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             f"path: {extension / 'gh-tool'}\n"
         )
 
-    def plugin_findings(self, pins: Path) -> list[str]:
-        with mock.patch.dict(os.environ, {"XDG_DATA_HOME": ""}):
+    AGENT_HOME_VARIABLES = ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "GH_DATA_DIR", "XDG_DATA_HOME")
+
+    def plugin_findings(self, pins: Path, **env: str) -> list[str]:
+        # The host's own agent-home variables never take part; ENV sets one for a test.
+        clear = dict.fromkeys(self.AGENT_HOME_VARIABLES, "")
+        with mock.patch.dict(os.environ, {**clear, **env}):
             return self.module.plugin_pin_findings(self.target_root, pins)
 
     def test_doctor_fails_on_every_plugin_and_extension_off_its_recorded_pin(self) -> None:
@@ -1624,6 +1628,35 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         (finding,) = self.plugin_findings(pins)
         self.assertTrue(finding.startswith("plugin pins unreadable:"), finding)
         self.assertIn("codex.tail@tail.ref: must be str, not NoneType", finding)
+
+    def test_doctor_follows_codex_home_like_the_updater(self) -> None:
+        # Audit round 19: the Codex checks read ~/.codex even when CODEX_HOME names another directory.
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        moved = self.temp_dir / "codex-home"
+        shutil.move(str(self.target_root / ".codex"), moved)
+        errors = [f for f in self.plugin_findings(pins, CODEX_HOME=str(moved)) if not self.module.is_warning(f)]
+        self.assertEqual([], errors)
+        findings = self.plugin_findings(pins)
+        self.assertTrue(any("tail@tail is not installed" in finding for finding in findings), findings)
+        # The updater resolves the same directory.
+        resolved = subprocess.run(
+            [sys.executable, "-I", str(ROOT / "scripts/pin_records.py"), "agent-home", "codex"],
+            env={**os.environ, "CODEX_HOME": str(moved)},
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(str(moved), resolved.stdout.strip())
+
+    def test_doctor_refuses_an_install_path_that_contradicts_its_version(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        record = self.target_root / ".claude/plugins/installed_plugins.json"
+        entry = {**self.claude_entry("2.1.0"), "version": "2.0.0"}
+        record.write_text(json.dumps({"plugins": {"demo@market": [entry]}}))
+        errors = [f for f in self.plugin_findings(pins) if not self.module.is_warning(f)]
+        self.assertTrue(any("installPath" in error for error in errors), errors)
 
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()

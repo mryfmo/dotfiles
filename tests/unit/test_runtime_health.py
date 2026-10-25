@@ -414,6 +414,8 @@ EOF
         home = self.temp_dir / "crit-home"
         bin_dir = repo / "bin"
         (repo / "scripts/lib").mkdir(parents=True)
+        # Sourcing the updater resolves the agent homes through pin_records.py.
+        shutil.copy(ROOT / "scripts/pin_records.py", repo / "scripts/pin_records.py")
         (home / ".local/bin").mkdir(parents=True)
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",

@@ -50,7 +50,10 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:  # main() refuses with a fixed message; importing the module stays possible without it
+    yaml = None
 
 ROOT = Path(__file__).resolve().parent.parent
 GITHUB_API = "https://api.github.com"
@@ -612,6 +615,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--now", type=cli_time, default=None)
     parser.add_argument("--upstream", type=Path, default=None, help="fixture: JSON object mapping URL to response")
     args = parser.parse_args(argv)
+    if yaml is None:
+        print("PyYAML is required: uv run --no-project --with pyyaml python -I scripts/drift-watch.py", file=sys.stderr)
+        return 2
     fixture = json.loads(args.upstream.read_text()) if args.upstream else None
     now = args.now or datetime.datetime.now(datetime.UTC)
     try:

@@ -4,7 +4,9 @@ A tree whose every watched pin is current reports nothing even though upstream h
 releases younger than the 72h window; the same tree with a retiring runner image and old pins reports each one; pins
 outside the watched sources are listed as not watched; a failed or misshapen read is a failure, never "current"; no
 catalog text changes the URL a plugin.json is read from; the GitHub token reaches api.github.com only. The watch runs
-as a subprocess (`python -I`), except for the request-level checks.
+as a subprocess (`python -I`), except for the request-level checks. The script needs PyYAML, and the macOS unit run has
+none: a test that runs the script or reads the workflow skips without it; the request-level tests run everywhere.
+Fake tokens are built from parts at run time, so the committed-secret scan has no credential-shaped literal to flag.
 """
 
 import copy
@@ -20,7 +22,18 @@ import urllib.error
 from pathlib import Path
 from unittest import mock
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    yaml = None
+
+NO_YAML = "PyYAML is not installed: the script and the workflow parse need it"
+
+
+def fake_token(fill: str) -> str:
+    """A token-shaped test value, assembled so no literal in this file looks like a credential."""
+    return "_".join(("ghs", fill * 36))
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/drift-watch.py"
@@ -201,14 +214,17 @@ def load_module():
 
 class DriftWatchTest(unittest.TestCase):
     def watch(self, oses, mise, manifest, upstream, lint=None, token=None, stderr=""):
+        if yaml is None:
+            self.skipTest(NO_YAML)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / ".github/workflows").mkdir(parents=True)
-            (root / ".github/workflows/ci.yml").write_text(yaml.safe_dump(workflow(oses)))
+            # JSON is YAML, so the fixture tree needs no YAML writer.
+            (root / ".github/workflows/ci.yml").write_text(json.dumps(workflow(oses)))
             (root / "home/dot_mise").mkdir(parents=True)
             (root / "home/dot_mise/config.toml").write_text(mise)
             (root / "home/dot_agents").mkdir(parents=True)
-            (root / "home/dot_agents/agent-config.yaml").write_text(yaml.safe_dump(manifest))
+            (root / "home/dot_agents/agent-config.yaml").write_text(json.dumps(manifest))
             if lint is not None:
                 (root / "scripts").mkdir()
                 (root / "scripts/lint-retired-terms.py").write_text(lint)
@@ -470,15 +486,16 @@ class DriftWatchTest(unittest.TestCase):
     def test_a_token_with_a_newline_is_refused_with_a_fixed_message_and_no_report(self):
         refused = "GITHUB_TOKEN contains whitespace or a control character; refusing to use it\n"
         current = (["ubuntu-24.04"], CURRENT_MISE, CURRENT_MANIFEST, CURRENT_UPSTREAM)
-        status, report = self.watch(*current, token="ghs_secretvalue123\n", stderr=refused)
+        newline = fake_token("n") + "\n"
+        status, report = self.watch(*current, token=newline, stderr=refused)
         self.assertEqual((2, ""), (status, report))
 
     def test_a_token_that_upstream_text_repeats_is_redacted_from_the_report(self):
-        token = "ghs_" + "t" * 36
-        title = f"macos-15 will be retired {token}"
+        secret = fake_token("t")
+        title = f"macos-15 will be retired {secret}"
         upstream = copy.deepcopy(CURRENT_UPSTREAM)
         upstream[RUNNER_ISSUES].append({"number": 9, "state": "open", "title": title})
-        status, report = self.watch(["macos-15"], CURRENT_MISE, CURRENT_MANIFEST, upstream, token=token)
+        status, report = self.watch(["macos-15"], CURRENT_MISE, CURRENT_MANIFEST, upstream, token=secret)
         self.assertEqual(3, status, report)
         self.assertIn("macos-15 will be retired [redacted]", report)
 
@@ -602,7 +619,7 @@ class UpstreamTokenTest(unittest.TestCase):
         self.assertEqual([], self.requests)
 
     def test_the_report_never_contains_the_token(self):
-        token = "ghs_" + "s" * 36
+        token = fake_token("s")
         watch = mock.Mock(
             now=self.module.datetime.datetime(2026, 10, 25), window=self.module.datetime.timedelta(hours=72)
         )
@@ -725,6 +742,8 @@ class TrackingIssueStepTest(unittest.TestCase):
     """The workflow's issue step, run with a stub gh: which issue it writes, and that an unclear lookup writes none."""
 
     def step(self, status, issues, list_fails=False):
+        if yaml is None:
+            self.skipTest(NO_YAML)
         doc = yaml.safe_load(WORKFLOW.read_text())
         script = next(
             s["run"] for s in doc["jobs"]["drift"]["steps"] if s.get("name") == "Keep the tracking issue current"
@@ -752,6 +771,8 @@ class TrackingIssueStepTest(unittest.TestCase):
         return run.returncode, [call for call in writes if not call.startswith("api ")]
 
     def test_the_workflow_runs_only_on_schedule_and_by_hand(self):
+        if yaml is None:
+            self.skipTest(NO_YAML)
         doc = yaml.safe_load(WORKFLOW.read_text())
         self.assertEqual({"schedule", "workflow_dispatch"}, set(doc[True]))
 

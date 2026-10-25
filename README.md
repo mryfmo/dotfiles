@@ -452,7 +452,13 @@ repo-owned policy at `~/.agents/permgate-policy.yaml` and is deterministic
 only: deny patterns run first, then allow patterns for single, bounded
 commands. Every other request, including unconstrained reads and searches,
 writes such as `apply_patch`, and any policy or input failure, falls through
-to the agent's native prompt. permgate runs no classifier model. The audit
+to the agent's native prompt. For Claude Code, permgate never approves a
+command that the sandbox excludes (`sandbox.excludedCommands` in the rendered
+`~/.claude/settings.json`, today `git push *` and `gh *`), because such a
+command runs unsandboxed and its ask rule is its only gate. It counts a match
+anywhere in the command, behind `env`, `command`, a variable assignment, a
+full path or `git -C`, and decides nothing at all for Claude when it cannot
+read that set. permgate runs no classifier model. The audit
 JSONL records each decision with an input hash and a command summary, never
 payload values. ccgate is fully removed.
 

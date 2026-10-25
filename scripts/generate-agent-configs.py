@@ -26,8 +26,9 @@ def fail(message: str) -> NoReturn:
     raise SystemExit(1)
 
 
-def load_manifest() -> dict[str, Any]:
-    return parse_manifest(MANIFEST_PATH.read_text())
+def load_manifest(text: str | None = None) -> dict[str, Any]:
+    """The parsed manifest: `text` when given (main's in-memory copy with refreshed lever pins), else the file."""
+    return parse_manifest(MANIFEST_PATH.read_text() if text is None else text)
 
 
 def parse_manifest(text: str) -> dict[str, Any]:
@@ -1902,7 +1903,7 @@ def main() -> None:
         if refreshed != manifest_text:
             pinned_text = refreshed
             stale.append(manifest_path.relative_to(ROOT))
-    manifest = load_manifest() if pinned_text is None else parse_manifest(pinned_text)
+    manifest = load_manifest(pinned_text)
     outputs = expected_outputs(manifest)
     stale_profiles = stale_profile_outputs(manifest)
     stale_rules = stale_standing_rule_outputs(outputs)

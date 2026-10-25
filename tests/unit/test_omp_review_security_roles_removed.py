@@ -15,22 +15,21 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[2]
 RETIRED = ("review", "security")
 REMOVALS = tuple(f".agents/omp/profiles/{role}.yml" for role in RETIRED)
 
 
 class OmpReviewSecurityRolesRemovedTest(unittest.TestCase):
-    def test_the_manifest_has_no_retired_role_and_keeps_the_model_profiles(self):
-        manifest = yaml.safe_load((ROOT / "home/dot_agents/agent-config.yaml").read_text())
-        self.assertEqual(set(manifest["omp"]["roles"]), {"orchestrator", "worker", "audit"})
+    def test_only_the_seat_overlays_render_and_the_model_profiles_stay(self):
+        # The generator renders one overlay per manifest omp role, and `generate-agent-configs.py --check` (CI's render
+        # check) fails when the rendered set and the roles differ, so the rendered set is the role list. The Codex
+        # profile scripts are rendered per model profile, so theirs is the model-profile list. No PyYAML needed.
+        overlays = sorted(p.name for p in (ROOT / "home/dot_agents/omp/profiles").iterdir())
+        self.assertEqual(["audit.yml.tmpl", "orchestrator.yml.tmpl", "worker.yml.tmpl"], overlays)
         for role in RETIRED:
             with self.subTest(role=role):
-                self.assertIn(role, manifest["model_profiles"])
-                self.assertFalse((ROOT / f"home/dot_agents/omp/profiles/{role}.yml.tmpl").exists())
-                self.assertTrue((ROOT / f"home/dot_codex/modify_private_{role}.config.toml").exists())
+                self.assertTrue((ROOT / f"home/dot_codex/modify_private_{role}.config.toml").is_file())
 
     def test_chezmoiremove_lists_the_deployed_overlays(self):
         entries = [line.strip() for line in (ROOT / "home/.chezmoiremove").read_text().splitlines()]

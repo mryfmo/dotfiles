@@ -572,8 +572,25 @@ class WorkflowTriggerTest(unittest.TestCase):
                 self.assertNotIn("if", step)
                 self.assertNotIn("continue-on-error", step)
         apply = next(step for step in job["steps"] if step_name(step) == "Apply home/ into a scratch HOME")
-        self.assertIn("apply --exclude=scripts,externals", apply["script"])
-        self.assertIn("verify --exclude=scripts,externals", apply["script"])
+        # U82: the apply is scripts/apply-check.sh, the one definition make apply-check runs in a container.
+        self.assertEqual('scripts/apply-check.sh --system "${SYSTEM}" --chezmoi "${APPLY_CHEZMOI}"', apply["run"])
+        script = (ROOT / "scripts/apply-check.sh").read_text()
+        self.assertIn("apply --exclude=scripts,externals", script)
+        self.assertIn("verify --exclude=scripts,externals", script)
+
+    def test_apply_container_is_not_required_and_runs_make_apply_check_on_every_diff(self) -> None:
+        # U82: the CI run of the command an agent runs locally, unconditional and never a required context.
+        job = jobs(REMOTE)["apply-container"]
+        self.assertEqual("ubuntu-24.04", job["keys"]["runs-on"])
+        self.assertNotIn("apply-container", {context.split(" ", 1)[0] for context in REQUIRED_CONTEXTS})
+        for key in ("if", "needs", "continue-on-error", "strategy"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, job["keys"])
+        for step in job["steps"]:
+            with self.subTest(step=step_name(step)):
+                self.assertNotIn("if", step)
+                self.assertNotIn("continue-on-error", step)
+        self.assertEqual(["make apply-check"], [step["run"] for step in job["steps"] if "run" in step])
 
     def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
         for path in (TEST, REMOTE, AGENT_ASSETS):
@@ -589,7 +606,7 @@ class WorkflowTriggerTest(unittest.TestCase):
         self.assertEqual({"push", "schedule", "workflow_dispatch"}, set(re.findall(r"^  ([a-z_]+):", on, re.MULTILINE)))
         self.assertIn("  push:\n    branches: [main]\n", on)
         self.assertIn('    - cron: "0 0 * * 5"', on)
-        self.assertEqual(["public-bootstrap", "chezmoi-apply"], list(jobs(REMOTE)))
+        self.assertEqual(["public-bootstrap", "chezmoi-apply", "apply-container"], list(jobs(REMOTE)))
         self.assertEqual(["private-bootstrap"], list(jobs(PRIVATE)))
         self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(PRIVATE, "private-bootstrap"))
 

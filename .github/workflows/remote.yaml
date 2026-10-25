@@ -173,7 +173,8 @@ jobs:
     # Not a required check. The public-bootstrap decision skips setup.sh when every changed path under home/ is
     # render-only (managed skills, omp seat policies, Claude rules, levers); this job applies home/ into a scratch
     # HOME on every diff, so such a change that does not render or apply still fails, in minutes instead of a
-    # bootstrap's ten (U39).
+    # bootstrap's ten (U39). scripts/apply-check.sh is the one definition of that apply and of the credential-free
+    # doctor checks after it; make apply-check and the apply-container job run it in a container (U82).
     strategy:
       fail-fast: false
       matrix:
@@ -236,36 +237,26 @@ jobs:
 
       - name: Apply home/ into a scratch HOME
         shell: bash
-        run: |
-          set -euo pipefail
-          apply_home="${RUNNER_TEMP}/chezmoi-apply-home"
-          apply_source="${RUNNER_TEMP}/chezmoi-apply-source"
-          apply_config="${apply_home}/.config/chezmoi/chezmoi.yaml"
-          # A scratch HOME and a copy of the source: the runner's HOME and the checkout stay untouched.
-          cp -R "${GITHUB_WORKSPACE}/home" "${apply_source}"
-          # Externals are downloads and scripts are installers: both belong to the public-bootstrap job, which runs
-          # whenever a .chezmoi* or run_* path changes. As setup.sh does without a tty, age-encrypted targets
-          # leave the copy: CI holds no key.
-          rm -f "${apply_source}/.chezmoiexternal.yaml.tmpl"
-          rm -rf "${apply_source}/.chezmoitemplates/chezmoiexternal.d"
-          find "${apply_source}" -type f -name 'encrypted_*' -exec rm -f {} +
-          mkdir -p "${apply_home}" "$(dirname "${apply_config}")"
-          printf 'sourceDir: "%s"\ndata:\n  email: "ci@example.invalid"\n  system: "%s"\n' \
-            "${apply_source}" "${SYSTEM}" > "${apply_config}"
-          printf 'home-sentinel\n' > "${apply_home}/unmanaged-sentinel"
-          chezmoi=(
-            "${APPLY_CHEZMOI}" --source "${apply_source}" --destination "${apply_home}"
-            --config "${apply_config}" --no-tty
-          )
-          # init regenerates the config from home/.chezmoi.yaml.tmpl, as setup.sh's init does.
-          HOME="${apply_home}" "${chezmoi[@]}" init
-          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never apply --exclude=scripts,externals
-          # verify exits non-zero when any managed target differs from the source after the apply.
-          HOME="${apply_home}" "${chezmoi[@]}" --refresh-externals=never verify --exclude=scripts,externals
-          test "$(cat "${apply_home}/unmanaged-sentinel")" = home-sentinel
-          if [ "${SYSTEM}" = client ]; then
-            test -e "${apply_home}/.zshrc"
-          else
-            test -e "${apply_home}/.bashrc"
-          fi
-          printf 'Applied home/ of %s for %s on %s\n' "${GITHUB_SHA}" "${SYSTEM}" "${RUNNER_OS}"
+        # A copy of the tree under RUNNER_TEMP applied into a scratch HOME there: the runner's HOME and the checkout
+        # stay untouched. The script prints one summary line and fails when any step fails.
+        run: scripts/apply-check.sh --system "${SYSTEM}" --chezmoi "${APPLY_CHEZMOI}"
+
+  apply-container:
+    # Not a required check. make apply-check, the command an agent runs before touching a real host, run as is:
+    # the working tree applied as a fresh Ubuntu client and then a fresh server, each in a throwaway container
+    # with no network and no credential, followed by the credential-free doctor checks (U82).
+    runs-on: ubuntu-24.04
+    # The image build installs build-essential; three times a normal run of about five minutes.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run make apply-check
+        env:
+          # For the host side of the image build only: github-release.sh resolves the chezmoi release, and gh
+          # verifies its attestation. make apply-check passes no variable of this step into the container.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make apply-check

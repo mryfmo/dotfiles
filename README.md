@@ -1067,6 +1067,28 @@ Run the [`chezmoi init --apply`](https://www.chezmoi.io/user-guide/setup/#use-a-
 mryfmo@5f93d270cb51:~$ chezmoi init --apply
 ```
 
+To check a change without touching a real host, run:
+
+```shell
+make apply-check
+```
+
+It applies the working tree as a fresh Ubuntu client and then as a fresh
+server, each in a throwaway container (`docker`, else `podman`; it refuses when
+neither is on PATH or the engine is not running). The tree is mounted
+read-only and copied inside, and the container has no network, no credential
+and no host `HOME`. As on a CI runner (`scripts/lib/ci-runner.sh`), the chezmoi
+config renders without age encryption, the `encrypted_*` targets are left out,
+and externals and `run_*` scripts are not applied. After `chezmoi init`,
+`apply` and `verify`, it runs the parts of `make doctor` that judge the applied
+files without installed tools or logins (`chezmoi doctor --no-network` and
+`scripts/check-agent-runtime.py`) and prints one summary line per system, then
+`make apply-check: client=… server=…`; it fails when any step fails.
+`scripts/check-tools.sh` is left out because only the skipped installers put
+mise, uv, gh and omp on a host. `scripts/apply-check.sh` holds the steps; the
+`chezmoi-apply` CI job runs it on each runner and the `apply-container` job
+runs `make apply-check` itself.
+
 ### 🦇 Unit Test with [Bats](https://github.com/bats-core/bats-core) [![Unit test](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml)
 
 Python unit tests can be run locally with `make unit-test`.

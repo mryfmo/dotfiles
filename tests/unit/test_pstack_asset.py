@@ -197,37 +197,71 @@ class PstackAssetTest(unittest.TestCase):
             check=False,
         )
 
-    def test_retire_removes_only_identical_copies_the_old_external_left(self) -> None:
-        home = self.temp_dir / "home"
-        for root in (".agents/pstack/skills", ".agents/skills"):
-            for name in ("identical", "changed", "linked", "unreadable"):
-                (home / root / name).mkdir(parents=True)
-                (home / root / name / "SKILL.md").write_text(f"{name}\n")
-        (home / ".agents/skills/changed/SKILL.md").write_text("ours\n")
-        shutil.rmtree(home / ".agents/skills/linked")
-        (home / ".agents/skills/linked").symlink_to(home / ".agents/pstack/skills/linked")
-        (home / ".agents/skills/own").mkdir()
+    def pstack_home(self, name: str, shared: dict[str, str]) -> Path:
+        """A home whose pstack root holds `changed`, `identical` and `zz-last`, and whose ~/.agents/skills holds `shared`."""
+        home = self.temp_dir / name
+        for skill in ("changed", "identical", "zz-last"):
+            (home / ".agents/pstack/skills" / skill).mkdir(parents=True)
+            (home / ".agents/pstack/skills" / skill / "SKILL.md").write_text(f"{skill}\n")
+        for skill, text in shared.items():
+            (home / ".agents/skills" / skill).mkdir(parents=True)
+            (home / ".agents/skills" / skill / "SKILL.md").write_text(text)
+        return home
 
-        unreadable = home / ".agents/skills/unreadable/SKILL.md"
+    def test_retire_removes_only_identical_copies_the_old_external_left(self) -> None:
+        home = self.pstack_home("home", {"identical": "identical\n", "changed": "ours\n", "own": "own\n"})
+        result = self.retire(home)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["changed", "own"], sorted(os.listdir(home / ".agents/skills")))
+        self.assertIn(f"kept {home / '.agents/skills/changed'}: it differs", result.stderr)
+        self.assertEqual(3, len(os.listdir(home / ".agents/pstack/skills")), "the pstack root is never touched")
+
+        bare = self.temp_dir / "bare-home"
+        (bare / ".agents/skills/identical").mkdir(parents=True)
+        self.assertEqual(0, self.retire(bare).returncode)
+        self.assertTrue((bare / ".agents/skills/identical").is_dir(), "without the pstack root nothing is touched")
+
+    def test_retire_refuses_before_removing_anything(self) -> None:
+        """A comparison failure or a symlink anywhere on the path to a removal stops the step with nothing deleted."""
+        home = self.pstack_home("unreadable", {"identical": "identical\n", "zz-last": "zz-last\n"})
+        unreadable = home / ".agents/skills/zz-last/SKILL.md"
         unreadable.chmod(0)
         try:
             failed = self.retire(home)
         finally:
             unreadable.chmod(0o644)
         self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
-        self.assertIn(f"cannot compare {home / '.agents/skills/unreadable'}", failed.stderr)
+        self.assertIn(f"cannot compare {home / '.agents/skills/zz-last'}", failed.stderr)
+        self.assertTrue((home / ".agents/skills/identical").is_dir(), "an identical pair checked earlier stays")
 
-        result = self.retire(home)
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(["changed", "linked", "own"], sorted(os.listdir(home / ".agents/skills")))
-        self.assertIn(f"kept {home / '.agents/skills/changed'}: it differs", result.stderr)
-        self.assertTrue((home / ".agents/skills/linked").is_symlink())
-        self.assertEqual(4, len(os.listdir(home / ".agents/pstack/skills")), "the pstack root is never touched")
+        home = self.pstack_home("linked-child", {"identical": "identical\n"})
+        (home / "elsewhere/zz-last").mkdir(parents=True)
+        (home / "elsewhere/zz-last/SKILL.md").write_text("zz-last\n")
+        (home / ".agents/skills/zz-last").symlink_to(home / "elsewhere/zz-last")
+        failed = self.retire(home)
+        self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+        self.assertIn(f"{home / '.agents/skills/zz-last'} is a symlink", failed.stderr)
+        self.assertTrue((home / ".agents/skills/identical").is_dir())
+        self.assertTrue((home / "elsewhere/zz-last/SKILL.md").is_file())
 
-        bare = self.temp_dir / "bare-home"
-        (bare / ".agents/skills/identical").mkdir(parents=True)
-        self.assertEqual(0, self.retire(bare).returncode)
-        self.assertTrue((bare / ".agents/skills/identical").is_dir(), "without the pstack root nothing is touched")
+        # A symlinked ~/.agents/skills root, and a symlinked ~/.agents: rm -r would delete inside the referent.
+        for link in (".agents/skills", ".agents"):
+            with self.subTest(link=link):
+                label = link.replace("/", "-")
+                home = self.pstack_home(f"linked{label}", {})
+                referent = self.temp_dir / f"referent{label}"
+                if link == ".agents":
+                    shutil.move(home / ".agents", referent)
+                    copy = referent / "skills/identical"
+                else:
+                    copy = referent / "identical"
+                copy.mkdir(parents=True)
+                (copy / "SKILL.md").write_text("identical\n")
+                (home / link).symlink_to(referent)
+                failed = self.retire(home)
+                self.assertEqual(1, failed.returncode, failed.stdout + failed.stderr)
+                self.assertIn(f"{home / link} is a symlink", failed.stderr)
+                self.assertTrue(copy.is_dir(), "nothing in the referent is removed")
 
     def check_pstack(self, home: Path, omp_listing: str | None) -> subprocess.CompletedProcess[str]:
         bin_dir = self.temp_dir / "bin"

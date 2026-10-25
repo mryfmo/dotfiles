@@ -831,6 +831,43 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertEqual(data["model"], "managed")
         self.assertTrue(data["experimental"]["local_state"]["enabled"])
 
+    def test_the_managed_skills_config_replaces_an_operator_array_in_every_toml_form(self) -> None:
+        """U87: the managed [[skills.config]] array is the only one; a second copy of the key would abort the apply."""
+        managed = """
+            model = "managed"
+
+            [[skills.config]]
+            path = "/managed/SKILL.md"
+            enabled = false
+            """
+        operator = '{ path = "/operator/SKILL.md", enabled = false }'
+        forms = {
+            "inline array under [skills]": f"[skills]\nmax_context_tokens = 500\nconfig = [\n  {operator},\n]\n",
+            "dotted at the root": f"skills.config = [\n  {operator},\n]\nskills.max_context_tokens = 500\n",
+            "inline table at the root": f"skills = {{ config = [{operator}], max_context_tokens = 500 }}\n",
+            "array of tables": '[[skills.config]]\npath = "/operator/SKILL.md"\nenabled = false\n',
+        }
+        for form, skills in forms.items():
+            with self.subTest(form=form):
+                output = self.merge(managed, f'{skills}\n[tui]\ntheme = "night"\n')
+                data = tomllib.loads(output)
+                self.assertEqual([{"path": "/managed/SKILL.md", "enabled": False}], data["skills"]["config"])
+                self.assertEqual({"theme": "night"}, data["tui"])
+                if form != "array of tables":
+                    self.assertEqual(500, data["skills"]["max_context_tokens"], "the other skills settings stay")
+
+    def test_a_skills_table_that_cannot_be_rewritten_refuses_the_apply(self) -> None:
+        self.baseline_path.write_text('model = "managed"\n')
+        env = {**os.environ, "CHEZMOI_SOURCE_DIR": str(self.source_dir)}
+        env["CHEZMOI_HOME_DIR"] = str(self.source_dir / "target-home")
+        current = '[skills]\nconfig = [{ path = "/operator/SKILL.md", enabled = false }]\nsince = 2026-10-25\n'
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=False
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual("", result.stdout)
+        self.assertIn("cannot rewrite a date value in skills", result.stderr)
+
     def merge_stale_paths(self, script: Path, current: str, home: Path) -> subprocess.CompletedProcess:
         """Run one committed modify script over `current` with an empty managed baseline and HOME at `home`."""
         self.baseline_path.write_text('model = "managed"\n')

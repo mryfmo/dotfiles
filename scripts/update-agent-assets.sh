@@ -1295,30 +1295,54 @@ function check_pstack() {
 #   every agent; it now extracts into ~/.agents/pstack/skills, and chezmoi does not delete what the old external
 #   placed. A directory ~/.agents/skills/<name> goes only when ~/.agents/pstack/skills/<name> exists and the two
 #   trees are byte-identical (`diff -r`), so a skill with the same name and other content stays; make doctor then
-#   reports it as listed outside its audience. A symlink is never followed or removed. Without the pstack root
-#   (chezmoi apply has not run) nothing is touched.
-# @exitcode 1 diff could not compare a pair (exit 2), or a removal failed; the path is named.
+#   reports it as listed outside its audience. Every path component below $HOME on the way to a removal
+#   (~/.agents, ~/.agents/skills and the skill directory) must be a real directory, not a symlink, and the
+#   directory's physical path must equal $HOME's physical path plus .agents/skills/<name>; otherwise the step
+#   refuses before it removes anything. Every pair is checked first and removal starts only when all passed, so a
+#   refusal deletes nothing. Without the pstack root (chezmoi apply has not run) nothing is touched.
+# @exitcode 1 A component is a symlink, a physical path differs, diff could not compare a pair (exit 2), or a
+#   removal failed; the path is named.
 #
 function retire_shared_pstack_copies() {
-    local pstack_root="${HOME}/.agents/pstack/skills" shared_root="${HOME}/.agents/skills" source name target status
+    local pstack_root="${HOME}/.agents/pstack/skills" shared_root="${HOME}/.agents/skills"
+    local source name target status physical_home physical dir
+    local -a remove=()
     [ -d "${pstack_root}" ] || return 0
+    for dir in "${HOME}/.agents" "${shared_root}"; do
+        if [ -L "${dir}" ]; then
+            printf 'pstack: %s is a symlink; refusing to remove anything under it.\n' "${dir}" >&2
+            return 1
+        fi
+    done
+    [ -d "${shared_root}" ] || return 0
+    physical_home="$(cd -P -- "${HOME}" && pwd -P)" || {
+        printf 'pstack: cannot resolve the physical path of %s.\n' "${HOME}" >&2
+        return 1
+    }
     for source in "${pstack_root}"/*/; do
         [ -d "${source}" ] || continue
         name="${source%/}"
         name="${name##*/}"
         target="${shared_root}/${name}"
-        if [ ! -d "${target}" ] || [ -L "${target}" ]; then
-            continue
+        if [ -L "${target}" ]; then
+            printf 'pstack: %s is a symlink; refusing to remove anything.\n' "${target}" >&2
+            return 1
         fi
+        [ -d "${target}" ] || continue
         status=0
         diff -r -q "${source}" "${target}" > /dev/null 2>&1 || status=$?
         case "${status}" in
         0)
-            rm -r "${target}" || {
-                printf 'pstack: cannot remove the retired copy %s.\n' "${target}" >&2
+            physical="$(cd -P -- "${target}" && pwd -P)" || {
+                printf 'pstack: cannot resolve the physical path of %s.\n' "${target}" >&2
                 return 1
             }
-            printf 'pstack: removed the retired copy %s (identical to %s).\n' "${target}" "${source%/}"
+            if [ "${physical}" != "${physical_home}/.agents/skills/${name}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
+                printf 'pstack: %s resolves to %s, not under %s/.agents/skills; refusing to remove anything.\n' \
+                    "${target}" "${physical}" "${physical_home}" >&2
+                return 1
+            fi
+            remove+=("${physical}")
             ;;
         1) printf 'pstack: kept %s: it differs from %s.\n' "${target}" "${source%/}" >&2 ;;
         *)
@@ -1326,6 +1350,13 @@ function retire_shared_pstack_copies() {
             return 1
             ;;
         esac
+    done
+    for physical in "${remove[@]+"${remove[@]}"}"; do
+        rm -r -- "${physical}" || {
+            printf 'pstack: cannot remove the retired copy %s.\n' "${physical}" >&2
+            return 1
+        }
+        printf 'pstack: removed the retired copy %s (identical to %s/%s).\n' "${physical}" "${pstack_root}" "${physical##*/}"
     done
 }
 

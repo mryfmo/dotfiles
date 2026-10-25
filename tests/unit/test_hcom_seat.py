@@ -578,7 +578,8 @@ class HcomSeatTest(unittest.TestCase):
         return marker
 
     def test_no_caller_path_entry_runs_a_helper(self):
-        """U85 round 4: helpers planted in a seat-writable directory on the caller's PATH never run.
+        """U85 rounds 4 and 6: helpers planted in a seat-writable directory on the caller's PATH never run, bash (the
+        interpreter of hcom-seat itself, `#!/bin/bash`) included.
 
         The system tools hcom-seat and its children call by name (sed, awk, git's helpers, uname, mkdir, mv, ls)
         and jq come from the fixed system directories; a tool resolved from the caller's PATH (git) inside a seat
@@ -586,7 +587,7 @@ class HcomSeatTest(unittest.TestCase):
         """
         planted = self.repo / "bin"  # the checkout, which the orchestrator seat writes
         marker = self.plant(
-            planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink", "jq", "stat"
+            planted, "sed", "awk", "uname", "mkdir", "mv", "ls", "cat", "chmod", "env", "readlink", "jq", "stat", "bash"
         )
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{planted}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -668,6 +669,62 @@ class HcomSeatTest(unittest.TestCase):
         tag = subprocess.run(["git", "-C", str(clone), "tag", "-a", "t1", "-m", "t"], env={**host, **omp["git_config"]},
                              capture_output=True, text=True, check=False)  # fmt: skip
         self.assertEqual(tag.returncode, 0, tag.stderr)
+
+    def test_host_read_git_state_is_write_denied_and_checked_before_launch(self):
+        """U85 round 6: the git state host git reads for a worktree is denied to every seat, and a launch over state a
+        seat may have written (a `config.worktree` key host git acts on, a moved `commondir`) is refused."""
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        common = (self.repo / ".git").resolve()
+        wt = common / "worktrees/worker"
+        deny = self.settings_of("worker")["filesystem"]["denyWrite"]
+        for path in (common / "config", common / "config.worktree", common / "info", common / "hooks",
+                     wt / "config.worktree", wt / "info", wt / "commondir", wt / "gitdir",
+                     Path(self.seats, "worker/.git").resolve()):  # fmt: skip
+            self.assertIn(str(path), deny)
+            self.assertTrue(path.exists(), path)
+        allow_read = self.settings_of("worker")["filesystem"]["allowRead"]
+        self.assertIn(str(self.repo.resolve() / ".orchestration/orchestrate"), allow_read)
+        self.assertNotIn(str(self.repo.resolve()), allow_read, "a worker reads the records, not the whole checkout")
+        for target, text in ((wt / "config.worktree", "[core]\n\tfsmonitor = /tmp/u85-evil\n"),
+                             (common / "config.worktree", '[includeIf "gitdir:/"]\n\tpath = /tmp/x\n'),
+                             (wt / "config.worktree", "[core]\n\thooksPath = /tmp/h\n"),
+                             (wt / "config.worktree", '[filter "x"]\n\tsmudge = /tmp/f\n')):  # fmt: skip
+            with self.subTest(target=target.name, text=text.splitlines()[1]):
+                target.write_text(text)
+                run = self.seat("worker", "--seats-root", self.seats)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"the git config {target} sets", run.stderr)
+                target.write_text("")
+        (wt / "config.worktree").write_text("[core]\n\tsparseCheckout = true\n")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        # Another worktree's commondir, moved by a seat that could write it before this round, refuses every launch.
+        run = self.seat("worker", "--seats-root", self.seats, "--name", "worker-2")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (common / "worktrees/worker-2/commondir").write_text("/tmp\n")
+        run = self.seat("worker", "--seats-root", self.seats)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("commondir leads to /tmp", run.stderr)
+
+    def test_an_interpreter_in_a_seat_write_root_never_runs(self):
+        """U85 round 6: the interpreter of mise or of a resolved tool is held to the identity check before either runs."""
+        interp = self.store / "u85interp"
+        marker = self.plant(self.store, "u85interp")
+        self.addCleanup(interp.unlink)
+        outside = Path(self.temp.name).resolve() / "chain-bin"
+        for tool in ("mise", "git"):
+            with self.subTest(tool=tool):
+                outside.mkdir(exist_ok=True)
+                for old in outside.iterdir():
+                    old.unlink()
+                (outside / tool).write_text(f"#!{interp}\n")
+                (outside / tool).chmod(0o755)
+                run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn(f"{tool} {interp.resolve()} is or lies under the seat write root", run.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
+        self.assertFalse(Path(self.seats).exists())
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # @file hcom-seat
 # @brief Start one omp seat for a role in a herdr pane through `hcom omp`, with its profile, policy overlay and extensions wired in.
 # @description
@@ -55,6 +55,10 @@
 #   `~/.local/state/hcom-seat/tools`; PATH is then that directory and the system
 #   directories, for hcom-seat, hcom, the shim and srt (whose Linux settings name bwrap, socat and rg).
 #   Inside the sandbox omp gets that PATH followed by the caller's absolute entries.
+#   Every executable is checked with its interpreter chain, and hcom-seat, the shim and the wrappers run
+#   under `#!/bin/bash`. The git state host git reads for this repository's worktrees (config,
+#   config.worktree, info, hooks, commondir, gitdir, the worktree's .git file) is denied to every seat,
+#   and a launch over such state holding a key host git would act on is refused (git_state_check).
 #   No seat launches a seat: the orchestrator's sandbox, like the worker's, has no herdr socket and no
 #   write to the seats root, and a launch from inside a seat is refused; seats are started from a
 #   terminal outside every seat (the operator or the coordinator, as gate G7 was).
@@ -316,6 +320,61 @@ is_shim() {
     return 1
 }
 
+# @description Print the first executable `$1` on PATH, which hcom-seat has set: the system directories, then the
+#   private tool directory before them once it is filled.
+# @arg $1 string The command name.
+# @stdout The path, symlinks not yet followed.
+# @exitcode 1 None found.
+find_on_path() {
+    local path_dir path_dirs=()
+    IFS=: read -r -a path_dirs <<< "${PATH}"
+    for path_dir in "${path_dirs[@]}"; do
+        [[ -n ${path_dir} && -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
+        printf '%s\n' "${path_dir}/$1"
+        return 0
+    done
+    return 1
+}
+
+# @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
+#   interpreter when it is a `#!` script (`#!/abs/interp` or `#!/usr/bin/env <name>`, no arguments; an interpreter
+#   that is itself a script is refused). No part may be, or lie under, a write root of any seat (`root_ids`), since
+#   a seat that could rewrite a file the launch runs would run uncontained on the next launch. A failure exits 2
+#   naming `$1`.
+# @arg $1 string A label for the refusal.
+# @arg $2 string The executable's path.
+# @set pinned The argv.
+pin_exec() {
+    local label=$1 file first interp name extra interp_path
+    file=$(physical_file "$2") || refuse "cannot resolve ${label} to a physical executable file: $2"
+    refuse_if_seat_writable "${label}" "${file}"
+    [[ -r ${file} ]] || refuse "cannot read ${label}: ${file}"
+    first=''
+    IFS= read -r first < "${file}" || [[ -n ${first} ]] || first=''
+    pinned=("${file}")
+    case ${first} in
+    '#!'*)
+        extra=''
+        read -r interp name extra <<< "${first#??}"
+        if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
+            [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
+                refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_path=$(find_on_path "${name}") || refuse "${label}: interpreter ${name} not found on PATH"
+        else
+            [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
+            interp_path=${interp}
+        fi
+        interp=$(physical_file "${interp_path}") || refuse "cannot resolve the interpreter of ${label}: ${interp_path}"
+        refuse_if_seat_writable "${label}" "${interp}"
+        [[ -r ${interp} ]] || refuse "cannot read the interpreter of ${label}: ${interp}"
+        first=''
+        IFS= read -r first < "${interp}" || [[ -n ${first} ]] || first=''
+        [[ ${first} != '#!'* ]] || refuse "${label}: its interpreter ${interp} is itself a script"
+        pinned=("${interp}" "${file}")
+        ;;
+    esac
+}
+
 # The tools (regime-cutover U85, the pattern of scripts/orchestrator/ci-rerun.sh, U61). First the complete protected
 # set, by identity: the (device, inode) of every write root any seat may have that exists, files and directories,
 # computed with builtins, /usr/bin/stat, /usr/bin/readlink and the system jq only, before any tool outside the
@@ -395,11 +454,16 @@ done
 tools_dir=$(physical_path "${tools_dir}") || refuse "cannot resolve the private tool directory ${tools_dir}"
 [[ ${tools_dir} != *:* ]] || refuse "the private tool directory ${tools_dir} holds a ':'" # lint-comparisons: allow a ':' content test
 refuse_if_seat_writable 'the private tool directory' "${tools_dir}"
-# mise runs only once its physical file has passed the complete protected set above.
+# mise runs only once its physical file and its interpreter chain have passed the complete protected set above, and
+# it runs by the argv that check pinned.
+mise_cmd=()
 mise_real=''
 mise_found=$(PATH=${caller_path} && command -v mise && printf .) && mise_found=${mise_found%.} &&
     mise_found=${mise_found%$'\n'} && mise_real=$(physical_file "${mise_found}") || mise_real=''
-[[ -z ${mise_real} ]] || refuse_if_seat_writable 'mise' "${mise_real}"
+if [[ -n ${mise_real} ]]; then
+    pin_exec mise "${mise_real}"
+    mise_cmd=("${pinned[@]}")
+fi
 # jq is the system's (/usr/bin/jq), not a resolved tool, so a stale link of an earlier launch is dropped.
 /bin/rm -f "${tools_dir}/jq" || refuse "cannot clear ${tools_dir}/jq"
 required_tools=(git hcom herdr omp srt)
@@ -409,7 +473,7 @@ linux*) required_tools+=(bwrap socat rg) ;;
 esac
 for tool in "${required_tools[@]}" "${optional_tools[@]}"; do
     found=$(cd / && {
-        { [[ -n ${mise_real} ]] && /usr/bin/env -i PATH="${system_path}" HOME="${HOME}" "${mise_real}" which "${tool}" 2> /dev/null; } ||
+        { [[ -n ${mise_real} ]] && /usr/bin/env -i PATH="${system_path}" HOME="${HOME}" "${mise_cmd[@]}" which "${tool}" 2> /dev/null; } ||
             { PATH=${caller_path} && command -v "${tool}"; }
     } && printf .) || found=''
     found=${found%.}
@@ -433,6 +497,12 @@ for tool in "${required_tools[@]}" "${optional_tools[@]}"; do
     fi
 done
 PATH=${tools_dir}:${system_path}
+# Every linked tool's interpreter chain (`#!/abs/interp`, or `#!/usr/bin/env X` with X looked up on this PATH, as it
+# will be when the tool runs) passes the same identity check before anything runs it; git runs next (regime-env).
+for link in "${tools_dir}"/*; do
+    [[ -e ${link} || -L ${link} ]] || continue
+    pin_exec "${link##*/}" "${link}"
+done
 # Inside the sandbox the seat works with its tools (gh, uv, linters) from the caller's absolute PATH entries after
 # these; every process there is contained, and nothing outside the sandbox runs from that list.
 seat_path=${PATH}
@@ -507,62 +577,6 @@ if [[ -e ${seats_root%/}/.sandbox ]] && ! ls "${seats_root%/}/.sandbox" > /dev/n
     refuse "refused inside a seat sandbox (${seats_root%/}/.sandbox is unreadable): launch seats from a terminal outside every seat"
 fi
 
-# @description Print the first executable `$1` on PATH, which from here on is the private tool directory and the
-#   system directories only.
-# @arg $1 string The command name.
-# @stdout The path, symlinks not yet followed.
-# @exitcode 1 None found.
-find_on_path() {
-    local path_dir path_dirs=()
-    IFS=: read -r -a path_dirs <<< "${PATH}"
-    for path_dir in "${path_dirs[@]}"; do
-        [[ -n ${path_dir} && -x ${path_dir}/$1 && ! -d ${path_dir}/$1 ]] || continue
-        printf '%s\n' "${path_dir}/$1"
-        return 0
-    done
-    return 1
-}
-
-# @description Resolve `$2` to the argv that runs it with no lookup left: its physical file, preceded by the physical
-#   interpreter when it is a `#!` script (`#!/abs/interp` or `#!/usr/bin/env <name>`, no arguments; an interpreter
-#   that is itself a script is refused). No part may be, or lie under, a write root of any seat (`root_ids`), since
-#   a seat that could rewrite a file the launch runs would run uncontained on the next launch. A failure exits 2
-#   naming `$1`.
-# @arg $1 string A label for the refusal.
-# @arg $2 string The executable's path.
-# @set pinned The argv.
-pin_exec() {
-    local label=$1 file first interp name extra interp_path part
-    file=$(physical_file "$2") || refuse "cannot resolve ${label} to a physical executable file: $2"
-    [[ -r ${file} ]] || refuse "cannot read ${label}: ${file}"
-    first=''
-    IFS= read -r first < "${file}" || [[ -n ${first} ]] || first=''
-    pinned=("${file}")
-    case ${first} in
-    '#!'*)
-        extra=''
-        read -r interp name extra <<< "${first#??}"
-        if [[ ${interp} == /usr/bin/env ]]; then # lint-comparisons: allow the literal interpreter line, no path compare
-            [[ -n ${name} && -z ${extra} && ${name} != -* ]] ||
-                refuse "${label}: unsupported interpreter line '${first}' in ${file}"
-            interp_path=$(find_on_path "${name}") || refuse "${label}: interpreter ${name} not found on PATH"
-        else
-            [[ -z ${name} ]] || refuse "${label}: unsupported interpreter line '${first}' in ${file}"
-            interp_path=${interp}
-        fi
-        interp=$(physical_file "${interp_path}") || refuse "cannot resolve the interpreter of ${label}: ${interp_path}"
-        [[ -r ${interp} ]] || refuse "cannot read the interpreter of ${label}: ${interp}"
-        first=''
-        IFS= read -r first < "${interp}" || [[ -n ${first} ]] || first=''
-        [[ ${first} != '#!'* ]] || refuse "${label}: its interpreter ${interp} is itself a script"
-        pinned=("${interp}" "${file}")
-        ;;
-    esac
-    for part in "${pinned[@]}"; do
-        refuse_if_seat_writable "${label}" "${part}"
-    done
-}
-
 # @description Print the srt write roots of one seat, one per line in physical form: the list the seat's settings
 #   carry as `allowWrite` (seat_sandbox_write writes exactly this list), followed by the paths srt 0.0.81 makes
 #   writable without a listing (`/tmp/claude`, `/private/tmp/claude`, `~/.npm/_logs`, `~/.claude/debug`).
@@ -599,14 +613,14 @@ for settings_file in "${seats_root%/}"/.sandbox/*/srt-settings.json; do
     done <<< "${listed}"
 done
 add_roots "${roots[@]}"
-[[ -z ${mise_real} ]] || refuse_if_seat_writable 'mise' "${mise_real}"
+[[ -z ${mise_real} ]] || PATH=${system_path} pin_exec mise "${mise_real}"
 
-# Every link in the private tool directory is re-checked against the exact set, and PATH is that directory and the
-# system directories, so hcom's own lookups (`herdr`, `node`) and srt's (`env`, the shell) find nothing a seat writes.
+# Every link in the private tool directory, with its interpreter chain, is re-checked against the exact set, and PATH
+# is that directory and the system directories, so hcom's own lookups (`herdr`, `node`) and srt's (`env`, the shell)
+# find nothing a seat writes.
 for link in "${tools_dir}"/*; do
     [[ -e ${link} || -L ${link} ]] || continue
-    link_real=$(physical_file "${link}") || refuse "the private tool link ${link} names no executable file"
-    refuse_if_seat_writable "${link##*/}" "${link_real}"
+    pin_exec "${link##*/}" "${link}"
 done
 IFS=: read -r -a path_dirs <<< "${PATH}"
 for path_dir in "${path_dirs[@]}"; do
@@ -643,6 +657,63 @@ Linux)
 *) refuse "no seat sandbox for ${os}; srt supports macOS and Linux" ;;
 esac
 
+# @description Collect the git state host git reads for the worktrees of this repository into `git_state`, make sure
+#   each file exists, and refuse (exit 2) a launch over state a seat may have written. The set: the common `config`,
+#   `config.worktree`, `info/` and `hooks/`; for every linked worktree `worktrees/<n>/config.worktree`, `info/`,
+#   `commondir` and `gitdir`; and the seat worktree's own `.git` file. None may be a symbolic link. Every
+#   `config.worktree` may hold only the keys `git sparse-checkout` writes (`core.sparseCheckout`,
+#   `core.sparseCheckoutCone`): anything else (`core.fsmonitor`, `core.hooksPath`, `filter.*`, `diff.*.textconv`,
+#   `include.*`, `includeIf.*`, `extensions.*` among them) is a refusal, read with `git config --no-includes`, which
+#   runs nothing the file names. Every `commondir` must lead to this common directory, and the seat worktree's
+#   `.git` file into its `worktrees/`. An absent `config.worktree` is created empty and an absent `info/` or `hooks/`
+#   empty, which git reads as no setting.
+# @noargs
+# @set git_state The paths, for the seat's write denies.
+git_state_check() {
+    local wt f names name line target
+    git_state=("${common_real}/config" "${common_real}/config.worktree" "${common_real}/info" "${common_real}/hooks")
+    for wt in "${common_real}"/worktrees/*/; do
+        [[ -d ${wt} ]] || continue
+        wt=${wt%/}
+        git_state+=("${wt}/config.worktree" "${wt}/info")
+        for f in commondir gitdir; do
+            if [[ -e ${wt}/${f} || -L ${wt}/${f} ]]; then git_state+=("${wt}/${f}"); fi
+        done
+        if [[ -e ${wt}/commondir ]]; then
+            IFS= read -r line < "${wt}/commondir" || [[ -n ${line:-} ]] || refuse "cannot read ${wt}/commondir"
+            case ${line} in # lint-comparisons: allow a relative operand is made absolute, no path compare
+            /*) target=${line} ;;
+            *) target=${wt}/${line} ;;
+            esac
+            [[ ${target} -ef ${common_real} ]] || refuse "${wt}/commondir leads to ${line}, not to ${common_real}"
+        fi
+    done
+    if [[ -f ${dir_real}/.git ]]; then
+        git_state+=("${dir_real}/.git")
+        IFS= read -r line < "${dir_real}/.git" || [[ -n ${line:-} ]] || refuse "cannot read ${dir_real}/.git"
+        target=${line#gitdir: }
+        [[ ${target%/*} -ef ${common_real}/worktrees ]] ||
+            refuse "${dir_real}/.git leads to ${target}, outside ${common_real}/worktrees"
+    fi
+    for f in "${git_state[@]}"; do
+        [[ ! -L ${f} ]] || refuse "the git state ${f} is a symbolic link"
+        case ${f##*/} in
+        info | hooks) [[ -d ${f} ]] || /bin/mkdir -p "${f}" || refuse "cannot create ${f}" ;;
+        config.worktree) [[ -f ${f} ]] || : >> "${f}" || refuse "cannot create ${f}" ;;
+        esac
+    done
+    for f in "${git_state[@]}"; do
+        [[ ${f##*/} == config.worktree ]] || continue
+        names=$(git config --file "${f}" --no-includes --name-only --list) || refuse "cannot read the git config ${f}"
+        while IFS= read -r name; do
+            case ${name} in
+            '' | core.sparsecheckout | core.sparsecheckoutcone) ;;
+            *) refuse "the git config ${f} sets ${name}, which host git would act on; a seat may have written it" ;;
+            esac
+        done <<< "${names}"
+    done
+}
+
 # @description Write the seat's srt settings and its `omp` shim under `<seats-root>/.sandbox/<name>` (regime-cutover
 #   U85), afresh on every launch, after the seat directory exists. The settings name what the seat may write (its
 #   directory, the repository's git common directory, the program's hcom store, its own omp profile and the omp
@@ -678,7 +749,16 @@ seat_sandbox_write() {
         deny_write+=("${base}/.claude/settings.json" "${base}/.claude/settings.local.json" "${base}/.claude/hooks"
             "${base}/.omp" "${base}/.codex" "${base}/.envrc" "${base}/.mcp.json")
     done
-    deny_write+=("${common_real}/config" "${common_real}/hooks")
+    # The git state host git reads for any worktree of this repository (regime-cutover U85): a seat that could write
+    # it could make a later host git command run a program of its choosing (`core.fsmonitor`, `core.hooksPath`,
+    # filter and textconv drivers, includes). git_state_check refuses a launch over such state and creates the files
+    # that are absent, so each deny below names an existing path (srt on Linux binds only existing paths).
+    git_state_check
+    deny_write+=("${git_state[@]}")
+    # A worktree created after this launch gets its files denied on macOS by pattern; on Linux srt takes literal
+    # write denies only, and the next launch's git_state_check covers it.
+    [[ ${os} != Darwin ]] || deny_write+=("${common_real}/worktrees/*/config.worktree" "${common_real}/worktrees/*/info"
+        "${common_real}/worktrees/*/commondir" "${common_real}/worktrees/*/gitdir")
     for path in config.toml env config.env .tmp/launch scripts integrations shell_env.json; do
         deny_write+=("${hcom_real}/${path}")
     done
@@ -690,6 +770,9 @@ seat_sandbox_write() {
         "${h}/.local/share/chezmoi" "${h}/.local/share/chezmoi-private" "${h}/.config/chezmoi"
         "${h}/.config/chezmoi-private" "${h}/Workspace" "${seats_real}/.sandbox")
     allow_read=("${dir_real}" "${common_real}" "${hcom_real}" "${h}/.omp/profiles/${role}")
+    # The coordinator's records (briefs, verdict files) are read by absolute path in the main checkout; nothing else
+    # of it, or of ~/Workspace, is readable to a worker.
+    allow_read+=("${common_real%/.git}/.orchestration/orchestrate")
     # The orchestrator reads the worker clones it reviews; a worker reads no other seat.
     [[ ${role} == orchestrator ]] || deny_read+=("${seats_real}")
     settings=${sandbox_real}/srt-settings.json
@@ -815,7 +898,7 @@ if ((dry_run)); then
     exit 0
 fi
 # U37: a remote seat host needs this host's own login first (seat-login-preflight beside this file).
-"${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
+/bin/bash "${BASH_SOURCE[0]%/*}/seat-login-preflight" "${role}" || exit $?
 if [[ ! -e ${dir} ]]; then
     # A repository without a remote (a fresh project) seats its worktrees at HEAD instead of origin/main. Only a
     # genuinely absent ref means that: a ref that is broken or names no commit, or a failed git, is a refusal.

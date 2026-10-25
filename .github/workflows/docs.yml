@@ -2,10 +2,12 @@ name: Docs
 
 on:
   workflow_dispatch:
+  # docs-check.yml builds the same paths with --strict on every pull request; keep the two lists equal.
   push:
     branches: [main]
     paths:
       - ".github/workflows/docs.yml"
+      - "docs/**"
       - "Makefile"
       - "README.md"
       - "mkdocs.yml"
@@ -26,6 +28,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    # The deploy takes under a minute; a hung shdoc or mkdocs install cancels it instead of running 6 h.
+    timeout-minutes: 15
 
     steps:
       - name: Configure Git defaults

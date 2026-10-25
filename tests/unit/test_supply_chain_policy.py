@@ -668,9 +668,18 @@ main
             self.assertEqual("preserve\n", (target / "sentinel").read_text())
             self.assertFalse((target / "font.txt").exists())
 
-    def test_renovate_owns_dependency_update_notifications(self):
-        for name in ("dependabot.yml", "dependabot.yaml"):
-            self.assertFalse((ROOT / ".github" / name).exists())
+    def test_dependabot_updates_the_pinned_actions_behind_the_release_age_cooldown(self):
+        # Renovate never ran on this repository (F021), so Dependabot raises the SHA-pinned actions' updates, after
+        # the same 72-hour window mise, npm and scripts/lib/github-release.sh wait.
+        self.assertFalse((ROOT / ".github/dependabot.yaml").exists())
+        config = (ROOT / ".github/dependabot.yml").read_text()
+        self.assertIn("\nversion: 2\n", config)
+        entries = re.findall(r"^  - package-ecosystem: (\S+)$", config, re.MULTILINE)
+        self.assertEqual(["github-actions"], entries)
+        self.assertRegex(config, r"\n    directory: /\n")
+        self.assertRegex(config, r"\n    cooldown:\n      default-days: 3\n")
+
+    def test_renovate_configuration_covers_mise_and_the_manifest_pins(self):
         config = json.loads((ROOT / "renovate.json").read_text())
         self.assertEqual({"github-actions", "mise", "custom.regex"}, set(config["enabledManagers"]))
         self.assertTrue(

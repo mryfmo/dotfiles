@@ -31,7 +31,7 @@ See [.chezmoiroot - chezmoi](https://www.chezmoi.io/reference/special-files-and-
 
 To set up the dotfiles run the appropriate snippet in the terminal.
 
-### 💻 `MacOS` [![MacOS](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml)
+### 💻 `MacOS`
 
 - Configuration snippet of the Apple Silicon MacOS environment for client macnine:
 
@@ -43,7 +43,7 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 On CI runners (`CI=true`), the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; outside CI it leaves your taps alone.
 
-### 🖥️ `Ubuntu` [![Ubuntu](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml)
+### 🖥️ `Ubuntu`
 
 - Configuration snippet of the Ubuntu environment for both client and server machine:
 
@@ -54,6 +54,8 @@ bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 ![Screenshot of setup on Ubuntu Server machine](.github/screenshot-ubuntu-server.png)
 
 On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. The next `make update` installs the configured GitHub CLI extensions. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation. Ubuntu clients use zsh from the next login; run `exec zsh` to switch the current terminal immediately.
+
+The [Snippet install](https://github.com/mryfmo/dotfiles/actions/workflows/remote.yaml) workflow bootstraps the public source on both systems on every relevant pull request. The `MacOS`, `Ubuntu` and `Private bootstrap` workflows also restore the private dotfiles, so they need the `EMAIL_ADDRESS` and `PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY` repository secrets. Without them only their `secrets` job runs: its summary says the bootstrap did not run, and the bootstrap jobs show as skipped, so a green run of those workflows verifies nothing.
 
 ### Minimal setup
 
@@ -707,18 +709,19 @@ Before a pull request is merged, the orchestrator follows the
 `hcom-orchestration` SKILL's loop (`AGENTS.md`): a verdict row for the head
 sha, CI green, every bot finding fixed at root cause or dismissed with a pasted
 refutation, then the squash merge pinned to that head sha
-(`--match-head-commit`). A CodeRabbit full review is optional; the plan allows
-one review per hour, and a review that exists is dispositioned like any other
-finding:
+(`--match-head-commit`). CodeRabbit reviews each pull request once, when it
+opens or leaves draft; a later push is reviewed only on request, and a review
+that exists is dispositioned like any other finding:
 
 ```bash
-gh pr comment <pr> --body '@coderabbitai full review'
+gh pr comment <pr> --body '@coderabbitai review'
 ```
 
-`.coderabbit.yaml` writes reviews in Japanese, excludes `.orchestration/`,
-`reviews/`, and `.ua/`, turns off automatic reviews (on open and per push) so a
-review runs only when explicitly requested, and lets CodeRabbit request
-changes. No workflow posts review requests automatically.
+`.coderabbit.yaml` writes reviews in Japanese, excludes `.orchestration/` and
+`.ua/`, turns off incremental reviews (per push) because every review event
+spends one of the plan's per-developer reviews, and lets CodeRabbit request
+changes. When the allowance is spent, CodeRabbit posts a passing "Review rate
+limited" check and a comment instead of a review.
 
 `main` has one ruleset, the **integrity ruleset** `main integration gate`,
 saved as `main-integrity.json`. Committing the payload does not apply it. In
@@ -822,6 +825,30 @@ To apply the payload:
 3. Read it back and check: no bypass actors, the seven strict checks, zero approvals, thread resolution, and deletion and non-fast-forward protection.
 4. Delete an earlier `main merge control` ruleset if one exists. Its approval and bypass rules need two accounts.
 
+The `regime` workflow (`.github/workflows/regime.yml`) runs on
+`pull_request_target`: the base branch's `regime-ci.py` reads the pull
+request's head as data, so a pull request cannot rewrite its own check (on
+`pull_request` the workflow file would come from the pull request). From
+2026-12-02 GitHub blocks `pull_request_target` in a public repository that has
+no Actions event policy allowing it
+([Securely using pull_request_target](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target#default-policy-for-pull_request_target)).
+An admin allows it for this workflow only, under **Settings → Actions →
+Policies**: a new policy named `regime pull_request_target`, enforcement
+**Active**, targeting the workflow `.github/workflows/regime.yml`, with
+**Restrict events** allowing `pull_request_target`. The same policy through the
+API:
+
+```bash
+gh api -X POST repos/mryfmo/dotfiles/actions/policies -H 'X-GitHub-Api-Version: 2026-03-10' --input - <<'EOF'
+{"name": "regime pull_request_target", "enforcement": "active",
+ "conditions": {"workflow_path": {"include": [".github/workflows/regime.yml"], "exclude": []}},
+ "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": ["pull_request_target"]}}]}
+EOF
+```
+
+Read it back with `gh api repos/mryfmo/dotfiles/actions/policies`, and check
+that **Policy insights** lists no blocked `regime` run.
+
 GitHub login (once per machine, outside the sandbox): every seat on a machine
 (the orchestrator, the worker seats and the headless auditor) acts as that
 machine's one GitHub account, stored in gh's default directory.
@@ -845,8 +872,8 @@ runs `gh`, `git push` and an authenticated `git fetch` outside the sandbox,
 through the permission prompt. SSH pushes use SSH keys instead.
 
 Bot-review presence is not gated. The `CodeRabbit` status is not a required
-check (it reports success even when it skipped the review); the ruleset's
-resolved-threads rule and the orchestrator's loop cover its findings.
+check (it reports success even when it skipped or rate-limited the review); the
+ruleset's resolved-threads rule and the orchestrator's loop cover its findings.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

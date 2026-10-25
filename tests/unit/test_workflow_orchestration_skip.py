@@ -1,4 +1,4 @@
-"""An .orchestration-only PR runs no bootstrap or test matrix, and every required context still reports (T128 INV-2)."""
+"""Every required context reports on every diff, and a skip happens only on a diff shown safe to skip (T128 INV-2, F051)."""
 
 from __future__ import annotations
 
@@ -43,11 +43,28 @@ SUCCESSOR_CONTEXTS = frozenset({"test (macos-15, client)", "public-bootstrap (ma
 BOOTSTRAP_DECISION = "Decide whether the diff needs a bootstrap"
 QUOTED_CHARS = {"double-quote": '"', "backslash": "\\", "tab": "\t", "newline": "\n"}
 TEST_DECISION = "Decide whether the diff needs the unit tests"
-# The jobs that skip their heavy steps, each with its own decision step and gate.
+# The jobs that skip their heavy steps, each with its own decision step and the gates its heavy steps carry.
 DECIDING_JOBS = (
-    (REMOTE, "public-bootstrap", BOOTSTRAP_DECISION, "steps.decide.outputs.should_run == 'true'"),
-    (PRIVATE, "private-bootstrap", BOOTSTRAP_DECISION, "steps.decide.outputs.should_run == 'true'"),
-    (TEST, "test", TEST_DECISION, "steps.decide.outputs.should_test == 'true'"),
+    (
+        REMOTE,
+        "public-bootstrap",
+        BOOTSTRAP_DECISION,
+        ("steps.decide.outputs.should_run == 'true'", "steps.decide.outputs.should_apply == 'true'"),
+    ),
+    (PRIVATE, "private-bootstrap", BOOTSTRAP_DECISION, ("steps.decide.outputs.should_run == 'true'",)),
+    (TEST, "test", TEST_DECISION, ("steps.decide.outputs.should_test == 'true'",)),
+)
+# A bootstrap decision's output: it runs, it skips with nothing to apply, or it skips and applies home/ (F052).
+BOOTSTRAP_OUTPUT = {
+    "true": "should_run=true\n",
+    "false": "should_run=false\n",
+    "apply": "should_run=false\nshould_apply=true\n",
+}
+# The workflows whose bootstrap needs repository secrets, each gated by a `secrets` job (F050, gate G13).
+SECRET_GATED = (
+    (WORKFLOWS / "macos.yaml", "build"),
+    (WORKFLOWS / "ubuntu.yaml", "build"),
+    (PRIVATE, "private-bootstrap"),
 )
 # Steps a deciding job runs on every diff: setup, the checkout the decision
 # needs, the decision, and the notices that say what was skipped.
@@ -61,7 +78,6 @@ UNGATED_STEPS = frozenset(
         TEST_DECISION,
         "Skip the bootstrap when no bootstrap path changed",
         "Skip full unit test run for unrelated changes",
-        "Explain skipped private bootstrap",
     }
 )
 
@@ -237,7 +253,6 @@ class RequiredContextsTest(unittest.TestCase):
             (AGENT_ASSETS, "validate"),
             (TEST, "test"),
             (REMOTE, "public-bootstrap"),
-            (PRIVATE, "private-bootstrap"),
         ):
             for key in ("if", "needs"):
                 with self.subTest(job=name, key=key):
@@ -273,12 +288,23 @@ class RequiredContextsTest(unittest.TestCase):
 
 class DecisionStepTest(unittest.TestCase):
     def test_every_heavy_step_carries_its_jobs_decision(self) -> None:
-        for path, name, _, gate in DECIDING_JOBS:
+        for path, name, _, gates in DECIDING_JOBS:
             heavy = [step for step in jobs(path)[name]["steps"] if step_name(step) not in UNGATED_STEPS]
             self.assertTrue(heavy, name)
             for step in heavy:
                 with self.subTest(job=name, step=step_name(step)):
-                    self.assertIn(gate, step.get("if", ""))
+                    self.assertTrue(any(gate in step.get("if", "") for gate in gates), step.get("if", ""))
+
+    def test_the_required_bootstrap_applies_home_where_it_skips_the_bootstrap(self) -> None:
+        # F052: a render-only home/ change skips setup.sh, so the required context itself applies and verifies
+        # home/ into a scratch HOME; no separate, non-required job carries that check.
+        self.assertEqual(["public-bootstrap"], list(jobs(REMOTE)))
+        steps = jobs(REMOTE)["public-bootstrap"]["steps"]
+        apply = next(step for step in steps if step_name(step) == "Apply home/ into a scratch HOME")
+        self.assertEqual("${{ steps.decide.outputs.should_apply == 'true' }}", apply["if"])
+        self.assertNotIn("continue-on-error", apply)
+        self.assertIn("apply --exclude=scripts,externals", apply["script"])
+        self.assertIn("verify --exclude=scripts,externals", apply["script"])
 
     def test_each_deciding_job_decides_after_its_checkout_and_fails_closed(self) -> None:
         for path, name, decide, _ in DECIDING_JOBS:
@@ -356,6 +382,77 @@ class DecisionTest(unittest.TestCase):
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                     self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
 
+    def test_the_unit_test_decision_skips_only_the_allowlisted_paths(self) -> None:
+        # F051: a pattern of paths that need the tests let every other root file skip them (.shellcheckrc, read
+        # by make shellcheck; renovate.json, read by test_supply_chain_policy.py). Only the allowlisted paths skip.
+        script = decide_script(TEST, "test")
+        cases = {
+            ".shellcheckrc": "true",
+            "renovate.json": "true",
+            ".simplecov": "true",
+            "mise.toml": "true",
+            ".chezmoiroot": "true",
+            "codecov.yml": "true",
+            ".coderabbit.yaml": "true",
+            ".github/dependabot.yml": "true",
+            ".github/funding.yaml": "true",
+            "docs/x.md": "true",
+            "new-root-file": "true",
+            ".orchestration/y.md": "false",
+            ".ua/knowledge-graph.json": "false",
+            ".github/header.png": "false",
+            "LICENSE": "false",
+            # A .png anywhere else, or LICENSE in a subdirectory, is not on the allowlist.
+            "home/x.png": "true",
+            "vendor/x/LICENSE": "true",
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            for path, expected in cases.items():
+                with self.subTest(path=path):
+                    head = pull_request_head(clone, git, f"a-{path.replace('/', '_')}", [(path, "x\n")])
+                    env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head, "OS": "ubuntu-24.04"}
+                    self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
+            with self.subTest(case="empty"):
+                head = pull_request_head(clone, git, "a-empty")
+                env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head, "OS": "ubuntu-24.04"}
+                self.assertIn("should_test=true\n", run_decision(script, env, clone))
+
+    def test_the_unit_test_decision_fails_when_grep_fails(self) -> None:
+        # Standing order 21: grep's exit 2 fails the required context instead of reading as "only skippable paths".
+        script = decide_script(TEST, "test")
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = scratch_repository(Path(temp))
+            head = pull_request_head(clone, git, "g-records", [(".orchestration/y.md", "y\n")])
+            shim = Path(temp) / "shim"
+            shim.mkdir()
+            (shim / "grep").write_text("#!/bin/sh\nexit 2\n")
+            (shim / "grep").chmod(0o755)
+            with tempfile.TemporaryDirectory() as runner_temp:
+                output = Path(runner_temp) / "github-output"
+                output.touch()
+                result = subprocess.run(
+                    ["bash", "-c", script],
+                    cwd=clone,
+                    env={
+                        **os.environ,
+                        "EVENT_NAME": "pull_request",
+                        "BASE_REF": "main",
+                        "HEAD_SHA": head,
+                        "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}",
+                        "GIT_CONFIG_GLOBAL": os.devnull,
+                        "GIT_CONFIG_NOSYSTEM": "1",
+                        "GITHUB_OUTPUT": str(output),
+                        "RUNNER_TEMP": runner_temp,
+                    },
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn("failed with exit 2", result.stderr)
+                self.assertNotIn("should_test=", output.read_text())
+
     def test_the_unit_test_decision_runs_the_registry_test_for_a_flakes_only_diff(self) -> None:
         # audit:4fe2438:2: test_ci_rerun.py validates .github/flakes.yaml, so a change to it alone must run the tests.
         script = decide_script(TEST, "test")
@@ -399,16 +496,16 @@ class DecisionTest(unittest.TestCase):
             "vendor": ([("vendor/compactiondb/x", "x\n")], "true"),
             "orchestration": ([(".orchestration/y.md", "y\n")], "false"),
             "empty": ([], "true"),
-            # U39: the render-only subtrees of home/ skip it; chezmoi-apply applies them on every diff.
-            "skill": ([("home/dot_agents/skills/x/SKILL.md", "x\n")], "false"),
-            "seat-policy": ([("home/dot_agents/omp/policies/worker.yml", "x\n")], "false"),
-            "claude-rule": ([("home/dot_claude/rules/symlink_x.md.tmpl", "x\n")], "false"),
-            "config-claude-rule": ([("home/dot_config/claude/rules/x.md", "x\n")], "false"),
-            "lever": ([("home/dot_local/bin/common/executable_x", "x\n")], "false"),
-            "server-lever": ([("home/dot_local/bin/server/x.sh", "x\n")], "false"),
+            # U39: the render-only subtrees of home/ skip it, and the job applies home/ instead (F052).
+            "skill": ([("home/dot_agents/skills/x/SKILL.md", "x\n")], "apply"),
+            "seat-policy": ([("home/dot_agents/omp/policies/worker.yml", "x\n")], "apply"),
+            "claude-rule": ([("home/dot_claude/rules/symlink_x.md.tmpl", "x\n")], "apply"),
+            "config-claude-rule": ([("home/dot_config/claude/rules/x.md", "x\n")], "apply"),
+            "lever": ([("home/dot_local/bin/common/executable_x", "x\n")], "apply"),
+            "server-lever": ([("home/dot_local/bin/server/x.sh", "x\n")], "apply"),
             "render-only-and-python": (
                 [("home/dot_agents/skills/x/SKILL.md", "x\n"), ("scripts/x.py", "x\n")],
-                "false",
+                "apply",
             ),
             # Everything else under home/ still runs it: the installers read these targets.
             "mise-config": ([("home/dot_mise/config.toml", "x\n")], "true"),
@@ -451,7 +548,7 @@ class DecisionTest(unittest.TestCase):
                 with self.subTest(case=name):
                     head = pull_request_head(clone, git, f"b-{name}", writes)
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
-                    self.assertEqual(run_decision(script, env, clone), f"should_run={expected}\n")
+                    self.assertEqual(run_decision(script, env, clone), BOOTSTRAP_OUTPUT[expected])
             with self.subTest(case="push"):
                 self.assertEqual(run_decision(script, {"EVENT_NAME": "push"}, clone), "should_run=true\n")
 
@@ -463,7 +560,7 @@ class DecisionTest(unittest.TestCase):
             clone, git = scratch_repository(Path(temp))
             head = pull_request_head(clone, git, "g-skill", [("home/dot_agents/skills/x/SKILL.md", "x\n")])
             env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
-            self.assertEqual(run_decision(script, env, clone), "should_run=false\n")
+            self.assertEqual(run_decision(script, env, clone), BOOTSTRAP_OUTPUT["apply"])
             for call in (1, 2, 3):
                 with self.subTest(failing_call=call):
                     shim = Path(temp) / f"shim-{call}"
@@ -504,15 +601,15 @@ class DecisionTest(unittest.TestCase):
         script = decide_script(REMOTE, "public-bootstrap")
         cases = {name: ([(f"home/a{char}b", "x\n")], "true") for name, char in QUOTED_CHARS.items()}
         cases["orchestration-quote"] = ([('.orchestration/a"b', "x\n")], "false")
-        cases["render-only-quote"] = ([('home/dot_agents/skills/a"b/SKILL.md', "x\n")], "false")
-        cases["render-only-newline-then-home"] = ([("home/dot_agents/skills/a\nhome/b", "x\n")], "false")
+        cases["render-only-quote"] = ([('home/dot_agents/skills/a"b/SKILL.md', "x\n")], "apply")
+        cases["render-only-newline-then-home"] = ([("home/dot_agents/skills/a\nhome/b", "x\n")], "apply")
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
             for name, (writes, expected) in cases.items():
                 with self.subTest(case=name):
                     head = pull_request_head(clone, git, f"q-{name}", writes)
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
-                    self.assertEqual(run_decision(script, env, clone), f"should_run={expected}\n")
+                    self.assertEqual(run_decision(script, env, clone), BOOTSTRAP_OUTPUT[expected])
 
     def test_the_unit_test_decision_skips_macos_for_an_os_independent_diff_and_runs_it_otherwise(self) -> None:
         script = decide_script(TEST, "test")
@@ -520,7 +617,11 @@ class DecisionTest(unittest.TestCase):
             clone, git = scratch_repository(Path(temp))
             base = git("rev-parse", "origin/main")
             for name, writes, macos in (
-                ("os-independent", [("scripts/x.py", "x\n"), ("docs/x.md", "x\n"), ("README.md", "x\n")], "false"),
+                ("os-independent", [("docs/x.md", "x\n"), ("README.md", "x\n"), ("plans/x.md", "x\n")], "false"),
+                ("records-and-docs", [(".orchestration/y.md", "y\n"), ("docs/x.md", "x\n")], "false"),
+                # F154: Python can behave differently on macOS, so a Python change keeps it.
+                ("script-python", [("scripts/x.py", "x\n"), ("docs/x.md", "x\n")], "true"),
+                ("test-python", [("tests/unit/test_x.py", "x\n")], "true"),
                 ("shell", [("home/x.sh", "x\n")], "true"),
                 # a01 audit P2: Markdown under home/ or install/ is applied or installed, so it keeps macOS.
                 ("home-markdown", [("home/dot_claude/skills/x/SKILL.md", "x\n")], "true"),
@@ -549,31 +650,57 @@ class WorkflowTriggerTest(unittest.TestCase):
         for path, name in (
             (TEST, "test"),
             (REMOTE, "public-bootstrap"),
-            (REMOTE, "chezmoi-apply"),
             (PRIVATE, "private-bootstrap"),
         ):
             with self.subTest(job=name):
                 block = path.read_text().split(f"\n  {name}:\n", 1)[1].split("\n    runs-on:", 1)[0]
                 self.assertIn("\n    strategy:\n      fail-fast: false\n      matrix:\n", block)
 
-    def test_chezmoi_apply_is_not_required_and_applies_on_every_diff_where_the_bootstrap_runs(self) -> None:
-        # U39: the bootstrap skips render-only home/ paths, so chezmoi-apply has to run on those diffs: no
-        # decision, no job-level if or needs, the bootstrap's own matrix, and no context the ruleset requires.
-        contexts = matrix_contexts(REMOTE, "chezmoi-apply")
-        bootstrap = matrix_contexts(REMOTE, "public-bootstrap")
-        self.assertEqual({context.replace("public-bootstrap", "chezmoi-apply") for context in bootstrap}, contexts)
-        self.assertFalse(contexts & REQUIRED_CONTEXTS)
-        job = jobs(REMOTE)["chezmoi-apply"]
-        for key in ("if", "needs", "continue-on-error"):
-            with self.subTest(key=key):
-                self.assertNotIn(key, job["keys"])
-        for step in job["steps"]:
-            with self.subTest(step=step_name(step)):
-                self.assertNotIn("if", step)
-                self.assertNotIn("continue-on-error", step)
-        apply = next(step for step in job["steps"] if step_name(step) == "Apply home/ into a scratch HOME")
-        self.assertIn("apply --exclude=scripts,externals", apply["script"])
-        self.assertIn("verify --exclude=scripts,externals", apply["script"])
+    def test_a_bootstrap_without_its_secrets_is_skipped_and_says_so(self) -> None:
+        # F050 (gate G13): without the secrets, the bootstrap jobs are skipped by their `secrets` job, never run as
+        # a green pass of skipped steps, and the run's summary says nothing was verified.
+        for path, name in SECRET_GATED:
+            with self.subTest(workflow=path.name):
+                workflow = jobs(path)
+                self.assertEqual(["secrets", name], list(workflow))
+                self.assertEqual("secrets", workflow[name]["keys"]["needs"])
+                self.assertEqual("${{ needs.secrets.outputs.available == 'true' }}", workflow[name]["keys"]["if"])
+                for step in workflow[name]["steps"]:
+                    self.assertNotIn("HAS_EMAIL_ADDRESS", step.get("if", ""))
+                [check] = workflow["secrets"]["steps"]
+                cases = {
+                    "both": ({"HAS_EMAIL_ADDRESS": "true", "HAS_PRIVATE_DOTFILES_KEY": "true"}, "true"),
+                    "no-key": ({"HAS_EMAIL_ADDRESS": "true", "HAS_PRIVATE_DOTFILES_KEY": "false"}, "false"),
+                    "no-email": ({"HAS_EMAIL_ADDRESS": "false", "HAS_PRIVATE_DOTFILES_KEY": "true"}, "false"),
+                    "bot": (
+                        {"HAS_EMAIL_ADDRESS": "true", "HAS_PRIVATE_DOTFILES_KEY": "true", "BOT_ACTOR": "true"},
+                        "false",
+                    ),
+                }
+                for case, (env, available) in cases.items():
+                    with self.subTest(workflow=path.name, case=case), tempfile.TemporaryDirectory() as temp:
+                        output, summary = Path(temp) / "output", Path(temp) / "summary"
+                        result = subprocess.run(
+                            ["bash", "-c", check["script"]],
+                            env={
+                                **os.environ,
+                                "WORKFLOW_TITLE": "Bootstrap",
+                                "BOT_ACTOR": "false",
+                                **env,
+                                "GITHUB_OUTPUT": str(output),
+                                "GITHUB_STEP_SUMMARY": str(summary),
+                            },
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        self.assertEqual(0, result.returncode, result.stderr)
+                        self.assertEqual(f"available={available}\n", output.read_text())
+                        if available == "true":
+                            self.assertFalse(summary.exists())
+                        else:
+                            self.assertIn("Bootstrap skipped", summary.read_text())
+                            self.assertIn("::notice title=Bootstrap skipped::", result.stdout)
 
     def test_the_three_workflows_cancel_superseded_pull_request_runs_and_keep_every_main_run(self) -> None:
         for path in (TEST, REMOTE, AGENT_ASSETS):
@@ -589,8 +716,8 @@ class WorkflowTriggerTest(unittest.TestCase):
         self.assertEqual({"push", "schedule", "workflow_dispatch"}, set(re.findall(r"^  ([a-z_]+):", on, re.MULTILINE)))
         self.assertIn("  push:\n    branches: [main]\n", on)
         self.assertIn('    - cron: "0 0 * * 5"', on)
-        self.assertEqual(["public-bootstrap", "chezmoi-apply"], list(jobs(REMOTE)))
-        self.assertEqual(["private-bootstrap"], list(jobs(PRIVATE)))
+        self.assertEqual(["public-bootstrap"], list(jobs(REMOTE)))
+        self.assertEqual(["secrets", "private-bootstrap"], list(jobs(PRIVATE)))
         self.assertEqual(decide_script(REMOTE, "public-bootstrap"), decide_script(PRIVATE, "private-bootstrap"))
 
 

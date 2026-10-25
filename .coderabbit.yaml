@@ -10,8 +10,11 @@ reviews:
     - "!.orchestration/**"
     - "!.ua/**"
   auto_review:
-    # Each review event, automatic on open or on a push, or requested, spends
-    # one of the plan's hourly reviews (docs.coderabbit.ai/management/rate-limits).
-    # Reviews run only on an explicit `@coderabbitai full review` for the head.
-    enabled: false
+    # Each review event spends one of the plan's per-developer reviews
+    # (docs.coderabbit.ai/management/rate-limits). One automatic review per pull
+    # request, when it opens or leaves draft; later pushes are reviewed only on an
+    # explicit `@coderabbitai review` for the head. A rate-limited review posts a
+    # passing "Review rate limited" check and a comment, never a blocking status.
+    enabled: true
+    drafts: false
     auto_incremental_review: false

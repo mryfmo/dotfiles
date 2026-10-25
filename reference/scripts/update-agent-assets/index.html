@@ -4897,6 +4897,7 @@
 <li><code>claude_plugin_installs</code></li>
 <li><code>claude_user_enabled</code></li>
 <li><code>claude_user_install</code></li>
+<li><code>claude_user_observed</code></li>
 <li><code>claude_user_plugin_version</code></li>
 <li><code>codex_marketplace_has_source</code></li>
 <li><code>codex_plugin_copy</code></li>
@@ -4932,6 +4933,7 @@
 <li><code>refresh_codex_hook_trust</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>resolve_dotfiles_source_dir</code></li>
+<li><code>retire_agmsg_shim</code></li>
 <li><code>retire_marketplace_dev_workflows</code></li>
 <li><code>retire_shared_pstack_copies</code></li>
 <li><code>run_pinned_installer</code></li>
@@ -5368,6 +5370,27 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print what the user-scope installation of a Claude Code plugin is compared with its pin by</span>
+<span class="c1">#   (pin_records.claude_observed): its version for a version pin; for a content pin, the content digest of its</span>
+<span class="c1">#   installPath together with its catalog entry in the installed marketplace clone (pin_records.content_digest),</span>
+<span class="c1">#   whatever commit its version names.</span>
+<span class="c1"># @arg $1 string The JSON list claude_plugin_installs prints, holding a user-scope installation.</span>
+<span class="c1"># @arg $2 string The pin.</span>
+<span class="c1"># @exitcode 1 When there is no user-scope installation, or it cannot be read or hashed (a symlink or special</span>
+<span class="c1">#   file in it included); nothing is printed, so an unknown state is never compared.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>claude_user_observed<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>user_install<span class="w"> </span>install_path
+<span class="w">    </span><span class="nv">user_install</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_user_install<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">user_install</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="s2">"installed "</span>?*<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="nv">install_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-er<span class="w"> </span><span class="s1">'first(.[] | select(.scope == "user") | .installPath)'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>pin_record<span class="w"> </span>claude-observed<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">user_install</span><span class="p">#installed </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">install_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Print the user-scope installed version of a Claude Code plugin for the asset manifest. A</span>
 <span class="c1">#   failure is never a version: nothing is printed for it, and `unknown` is never produced.</span>
 <span class="c1"># @arg $1 string Fully qualified Claude Code plugin ID.</span>
@@ -5515,7 +5538,7 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>move_claude_plugin_to_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">plugin_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>pin<span class="w"> </span>installs<span class="w"> </span>user_install<span class="w"> </span>marketplace<span class="w"> </span>enabled<span class="w"> </span><span class="nv">fresh</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>pin<span class="w"> </span>installs<span class="w"> </span>user_install<span class="w"> </span>observed<span class="w"> </span>marketplace<span class="w"> </span>enabled<span class="w"> </span><span class="nv">fresh</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>plugin_pin<span class="w"> </span>claude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>pin<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Cannot read the pin of %s from %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_PLUGIN_PINS</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -5553,8 +5576,17 @@
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span><span class="s2">"installed </span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span><span class="s2">"installed "</span>?*<span class="o">)</span><span class="w"> </span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>update<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--scope<span class="w"> </span>user<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="s2">"installed "</span>?*<span class="o">)</span>
+<span class="w">        </span><span class="c1"># An installation whose pin state cannot be computed is a failure: nothing is updated from an unknown</span>
+<span class="w">        </span><span class="c1"># state, and converge_or_disable disables it.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">observed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_user_observed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installs</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read the installed content of %s to compare it with its pin; nothing is updated.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">observed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>claude_outside_projects<span class="w"> </span>plugin<span class="w"> </span>update<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--scope<span class="w"> </span>user<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: unexpected installation state of %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">user_install</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -5576,7 +5608,11 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
-<span class="w">    </span>judge_installed_version<span class="w"> </span>claude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">user_install</span><span class="p">#installed </span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fresh</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">observed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claude_user_observed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installs</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'ERROR: cannot read the installed content of %s to compare it with its pin.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>judge_installed_version<span class="w"> </span>claude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">observed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">fresh</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -6915,6 +6951,152 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Remove the launcher shim the retired agmsg skill wrote to ~/.agents/bin/agy-tui.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   agmsg wrote ~/.agents/bin/agy-tui outside its skill tree, so .chezmoiremove (which deletes ~/.agents/skills/agmsg)</span>
+<span class="c1">#   leaves it behind, dangling, and make doctor reports ~/.agents/bin as an orphaned agent asset. Every operation is</span>
+<span class="c1">#   fd-relative, with no path walked again: $HOME is opened, then `.agents` and `bin` below it with</span>
+<span class="c1">#   O_DIRECTORY|O_NOFOLLOW (a symlink at either refuses), and the shim is lstat'ed, opened, moved and deleted, and</span>
+<span class="c1">#   `bin` removed, only relative to those open directories. The shim goes only on positive proof: a regular file</span>
+<span class="c1">#   (fstatat) opened with O_NOFOLLOW|O_NONBLOCK whose fstat is the same device and inode, read completely, holding</span>
+<span class="c1">#   the exact line `# agmsg-shim-owner: $HOME/.agents/skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh`, and</span>
+<span class="c1">#   an owner (looked up below the open `.agents`) whose lstat fails with ENOENT. Every other outcome keeps the file</span>
+<span class="c1">#   and fails the step with the reason. Removal is by the verified inode: the entry is renamed (renameat, atomic) into</span>
+<span class="c1">#   a private quarantine directory created in the open `bin`, and unlinked there only when its device and inode are</span>
+<span class="c1">#   the verified ones; anything else is linked back under its name (linkat, never over a newer entry) and the step</span>
+<span class="c1">#   fails. `bin` is then removed (unlinkat AT_REMOVEDIR relative to `.agents`) only when its lstat is still the</span>
+<span class="c1">#   directory opened above and it is empty; ENOTEMPTY or EEXIST keeps it. A missing `.agents`, `bin` or shim is</span>
+<span class="c1">#   nothing to do, so a second run changes nothing. Guaranteed: no path is followed through a symlink, and the inode</span>
+<span class="c1">#   deleted is the verified one. A same-user process racing the step inside the operator's own $HOME is the</span>
+<span class="c1">#   same-user class accepted under G17: a residual, not a guarantee.</span>
+<span class="c1"># @exitcode 1 No positive proof for an existing ~/.agents/bin/agy-tui, or a removal failed; the reason is printed.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>retire_agmsg_shim<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
+<span class="s">import errno</span>
+<span class="s">import os</span>
+<span class="s">import secrets</span>
+<span class="s">import stat</span>
+<span class="s">import sys</span>
+
+<span class="s">home = sys.argv[1]</span>
+<span class="s">agents = os.path.join(home, ".agents")</span>
+<span class="s">bin_dir = os.path.join(agents, "bin")</span>
+<span class="s">shim = os.path.join(bin_dir, "agy-tui")</span>
+<span class="s">owner_rel = "skills/agmsg/scripts/drivers/types/antigravity/agy-tui.sh"</span>
+<span class="s">owner = os.path.join(agents, owner_rel)</span>
+<span class="s">marker = f"# agmsg-shim-owner: {owner}"</span>
+<span class="s">DIRECTORY = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW</span>
+
+
+<span class="s">def refuse(reason):</span>
+<span class="s">    sys.exit(f"agmsg: kept {shim}: {reason}.")</span>
+
+
+<span class="s">def open_directory(name, parent_fd, label):</span>
+<span class="s">    """The directory NAME below PARENT_FD, opened without following a symlink; None when it does not exist."""</span>
+<span class="s">    try:</span>
+<span class="s">        return os.open(name, DIRECTORY, dir_fd=parent_fd)</span>
+<span class="s">    except FileNotFoundError:</span>
+<span class="s">        return None</span>
+<span class="s">    except OSError as error:</span>
+<span class="s">        if error.errno in (errno.ELOOP, errno.ENOTDIR):</span>
+<span class="s">            refuse(f"{label} is not a real directory")</span>
+<span class="s">        refuse(f"cannot open {label} ({error})")</span>
+
+
+<span class="s">try:</span>
+<span class="s">    home_fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    refuse(f"cannot open {home} ({error})")</span>
+<span class="s">agents_fd = open_directory(".agents", home_fd, agents)</span>
+<span class="s">if agents_fd is None:</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">bin_fd = open_directory("bin", agents_fd, bin_dir)</span>
+<span class="s">if bin_fd is None:</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">bin_status = os.fstat(bin_fd)</span>
+<span class="s">try:</span>
+<span class="s">    shim_status = os.stat("agy-tui", dir_fd=bin_fd, follow_symlinks=False)</span>
+<span class="s">except FileNotFoundError:</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    refuse(f"cannot lstat it ({error})")</span>
+<span class="s"># Only a regular file is opened (a FIFO would block the open), without following a symlink swapped in and without</span>
+<span class="s"># blocking; fstat must then show the same regular file lstat saw.</span>
+<span class="s">if not stat.S_ISREG(shim_status.st_mode):</span>
+<span class="s">    refuse("it is not a regular file")</span>
+<span class="s">verified = (shim_status.st_dev, shim_status.st_ino)</span>
+<span class="s">try:</span>
+<span class="s">    fd = os.open("agy-tui", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=bin_fd)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    refuse(f"cannot open it without following a symlink ({error})")</span>
+<span class="s">with os.fdopen(fd, "rb") as handle:</span>
+<span class="s">    try:</span>
+<span class="s">        opened = os.fstat(handle.fileno())</span>
+<span class="s">        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != verified:</span>
+<span class="s">            refuse("it changed while it was read")</span>
+<span class="s">        data = handle.read()</span>
+<span class="s">    except OSError as error:</span>
+<span class="s">        refuse(f"cannot read it ({error})")</span>
+<span class="s">if marker.encode() not in data.split(b"\n"):</span>
+<span class="s">    refuse(f"it does not hold the line {marker!r}, so it is not the retired agmsg shim")</span>
+<span class="s">try:</span>
+<span class="s">    os.stat(owner_rel, dir_fd=agents_fd, follow_symlinks=False)</span>
+<span class="s">except FileNotFoundError:</span>
+<span class="s">    pass</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    refuse(f"cannot prove its owner {owner} is gone ({error})")</span>
+<span class="s">else:</span>
+<span class="s">    refuse(f"its owner {owner} still exists")</span>
+<span class="s"># Verified: from here on, nothing is removed by name.</span>
+<span class="s">quarantine = f".agmsg-retire-{secrets.token_hex(8)}"</span>
+<span class="s">try:</span>
+<span class="s">    os.mkdir(quarantine, 0o700, dir_fd=bin_fd)</span>
+<span class="s">    quarantine_fd = os.open(quarantine, DIRECTORY, dir_fd=bin_fd)</span>
+<span class="s">    os.rename("agy-tui", "agy-tui", src_dir_fd=bin_fd, dst_dir_fd=quarantine_fd)</span>
+<span class="s">    moved = os.stat("agy-tui", dir_fd=quarantine_fd, follow_symlinks=False)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    try:</span>
+<span class="s">        os.rmdir(quarantine, dir_fd=bin_fd)  # only when the move did not happen: rmdir keeps a non-empty one</span>
+<span class="s">    except OSError:</span>
+<span class="s">        pass</span>
+<span class="s">    sys.exit(f"agmsg: cannot move the retired shim {shim} aside to remove it ({error}).")</span>
+<span class="s">if (moved.st_dev, moved.st_ino) != verified:</span>
+<span class="s">    try:</span>
+<span class="s">        # link never replaces an entry that appeared under the name meanwhile; rename would.</span>
+<span class="s">        os.link("agy-tui", "agy-tui", src_dir_fd=quarantine_fd, dst_dir_fd=bin_fd, follow_symlinks=False)</span>
+<span class="s">        os.unlink("agy-tui", dir_fd=quarantine_fd)</span>
+<span class="s">        os.rmdir(quarantine, dir_fd=bin_fd)</span>
+<span class="s">    except OSError as error:</span>
+<span class="s">        sys.exit(f"agmsg: {shim} changed before its removal; the entry moved aside stays in {bin_dir}/{quarantine} ({error}).")</span>
+<span class="s">    refuse("it changed before its removal (another file took its name); the replacement is back in place")</span>
+<span class="s">try:</span>
+<span class="s">    os.unlink("agy-tui", dir_fd=quarantine_fd)</span>
+<span class="s">    os.rmdir(quarantine, dir_fd=bin_fd)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    sys.exit(f"agmsg: cannot remove the retired shim moved to {bin_dir}/{quarantine} ({error}).")</span>
+<span class="s">print(f"agmsg: removed the retired shim {shim}.")</span>
+<span class="s"># Removed: only the bin directory opened above may go.</span>
+<span class="s">try:</span>
+<span class="s">    current = os.stat("bin", dir_fd=agents_fd, follow_symlinks=False)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    sys.exit(f"agmsg: cannot lstat {bin_dir} again ({error}).")</span>
+<span class="s">if (current.st_dev, current.st_ino) != (bin_status.st_dev, bin_status.st_ino):</span>
+<span class="s">    print(f"agmsg: kept {bin_dir}: it is not the directory the shim was removed from.")</span>
+<span class="s">    sys.exit(0)</span>
+<span class="s">try:</span>
+<span class="s">    os.rmdir("bin", dir_fd=agents_fd)</span>
+<span class="s">except OSError as error:</span>
+<span class="s">    if error.errno in (errno.ENOTEMPTY, errno.EEXIST):</span>
+<span class="s">        print(f"agmsg: kept {bin_dir}: it holds other entries.")</span>
+<span class="s">        sys.exit(0)</span>
+<span class="s">    sys.exit(f"agmsg: cannot remove the empty {bin_dir} ({error}).")</span>
+<span class="s">print(f"agmsg: removed the empty {bin_dir}.")</span>
+<span class="s">PY</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Sync the vendored CompactionDB tree without deleting project runtime state.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_compactiondb<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -6931,18 +7113,18 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
-<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.</span>
+<span class="c1"># @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies, retire_marketplace_dev_workflows or retire_agmsg_shim.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$#</span><span class="s2">:</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pstack<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_shared_pstack_copies<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_marketplace_dev_workflows<span class="o">)</span>
+<span class="w">        </span><span class="m">1</span>:update_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pi_claude_bridge<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:check_pstack<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_shared_pstack_copies<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_marketplace_dev_workflows<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="m">1</span>:retire_agmsg_shim<span class="o">)</span>
 <span class="w">            </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">return</span>
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span><span class="k">esac</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows | retire_agmsg_shim]\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 
@@ -6950,6 +7132,7 @@
 <span class="w">    </span>remove_node_global_agent_cli_shadows
 <span class="w">    </span>retire_shared_pstack_copies
 <span class="w">    </span>retire_marketplace_dev_workflows
+<span class="w">    </span>retire_agmsg_shim
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>claude<span class="w"> </span><span class="s2">"npm:@anthropic-ai/claude-code"</span>
 <span class="w">    </span><span class="c1"># Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned</span>
 <span class="w">    </span><span class="c1"># plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).</span>

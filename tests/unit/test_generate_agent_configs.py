@@ -2715,14 +2715,20 @@ class LinuxGlobWarningParserTest(unittest.TestCase):
 
 
 class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
-    """`claude doctor` names exactly the `.env` glob pair on Linux, and nothing on macOS (regime-cutover U17).
+    """`claude doctor` names exactly the `.env` glob pair on Linux (regime-cutover U17).
 
     The rendered settings load from a scratch CLAUDE_CONFIG_DIR under a scratch HOME, never the real ~/.claude. A
     control copy with `Read(id_rsa*)` and `Read(id_ed25519*)` added back shows that the instrument sees the warning it
     checks; should a later Claude Code stop emitting the warning, both runs carry none and the test passes.
+
+    Linux only: on macOS `claude doctor` under a scratch HOME asks the login keychain for its credentials
+    (`security find-generic-password -a unknown`, then `security -i`), and with no keychain search list in that HOME
+    macOS raises a "keychain unknown cannot be found" dialog on every run. The glob warning is Linux-only anyway.
     """
 
     def setUp(self) -> None:
+        if not sys.platform.startswith("linux"):
+            self.skipTest("Linux only: macOS claude doctor under a scratch HOME raises a keychain dialog")
         if os.environ.get("CLAUDE_DOCTOR_BIN") and not os.access(os.environ["CLAUDE_DOCTOR_BIN"], os.X_OK):
             self.fail(f"CLAUDE_DOCTOR_BIN is not executable: {os.environ['CLAUDE_DOCTOR_BIN']}")
         if not CLAUDE_DOCTOR_BIN:
@@ -2760,18 +2766,15 @@ class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
         return output
 
     def test_doctor_names_only_the_env_glob_pair_on_linux(self) -> None:
-        os_name = "linux" if sys.platform.startswith("linux") else "darwin"
         template = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
-        settings = json.loads(execute_chezmoi_template(template, self.temp_dir, os_name))
+        settings = json.loads(execute_chezmoi_template(template, self.temp_dir, "linux"))
         control = json.loads(json.dumps(settings))
         control["permissions"]["deny"] += ["Read(id_rsa*)", "Read(id_ed25519*)"]
         managed = linux_glob_patterns(self.doctor(settings, "managed"))
         seen = linux_glob_patterns(self.doctor(control, "control"))
-        if os_name != "linux" or seen is None:
-            self.assertIsNone(managed, "no glob warning off Linux, or none at all once Claude Code stops emitting it")
-            if os_name == "linux":
-                self.skipTest("this Claude Code prints no Linux glob warning even for the control; nothing to hold")
-            return
+        if seen is None:
+            self.assertIsNone(managed, "no glob warning at all once Claude Code stops emitting it")
+            self.skipTest("this Claude Code prints no Linux glob warning even for the control; nothing to hold")
         self.assertIsNotNone(managed, "the .env pair keeps its glob, so Linux doctor still warns about it")
         self.assertEqual(seen[0], managed[0] + 2, f"the control adds the two key globs: {seen} against {managed}")
         self.assertEqual((managed[0], sorted(managed[1])), (2, sorted(["Read(.env.*)", "Edit(.env*)"])))

@@ -133,17 +133,19 @@ only extra CLI arguments are `model`, `strict-mcp-config` and
 session:
 
 ```sh
-HOME=<scratch dir> scripts/update-agent-assets.sh check_pi_claude_bridge
+scripts/update-agent-assets.sh check_pi_claude_bridge
 ```
 
 It runs
 `omp --no-extensions -e <install dir> --no-session --model claude-bridge/claude-haiku-4-5 --max-time 60 -p "Reply with the single word PONG."`,
 fails when stderr or the omp log files written by that run contain
 `Failed to load extension`, and passes when the output reaches the model
-(`PONG` with a login, `Not logged in` without). Point `HOME` at a scratch
-directory to keep the session out of the real `~/.omp`; under the real HOME a
-logged-in host spends one short model turn. The function is callable from
-`make doctor` once the Makefile wires it (follow-up).
+(`PONG` with a login, `Not logged in` without). It runs under the real HOME and
+spends one short model turn on a logged-in host; `make doctor` calls it. On
+Linux a scratch `HOME` keeps the session out of the real `~/.omp`. Do not do
+that on macOS: the child Claude Code asks the login keychain for its
+credentials, and with no keychain search list under the scratch HOME macOS
+shows a "keychain unknown cannot be found" dialog for every run.
 
 ## Subagents
 

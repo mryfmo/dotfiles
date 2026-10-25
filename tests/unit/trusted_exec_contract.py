@@ -102,6 +102,9 @@ class HostileGit:
             raise AssertionError("hostile git: " + "; ".join(found))
 
 
+CONSUMER_GENERATION = 1
+
+
 class WorkerRoot:
     """An input, an output and a new output under a worker root.
 
@@ -127,7 +130,9 @@ class WorkerRoot:
         self.base, seat = base, base / "root" / ".claude" / "worktrees" / "probe-seat"
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
-        self.reads, self.errors = [], []
+        # Every read is (generation, entry): the generation the poll that saw it started in. Setup's self-test is
+        # generation 0; the consumer's is 1, and only it counts, so a late record of the self-test never does.
+        self.reads, self.errors, self._generation = [], [], 0
         os.mkfifo(self.input, 0o600)
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
@@ -145,18 +150,30 @@ class WorkerRoot:
         st = os.fstat(fd)
         return stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]
 
+    def _record(self, generation, entry):
+        with self._cond:
+            self.reads.append((generation, entry))
+            self._cond.notify_all()
+
+    def consumer_reads(self):
+        """The reads recorded in the consumer's generation."""
+        with self._cond:
+            return [entry for generation, entry in self.reads if generation == CONSUMER_GENERATION]
+
     def _poll_once(self):
         """One poll: record a reader that has the input open, then release any writer waiting for a reader."""
+        with self._cond:
+            generation = self._generation
         try:
             fd = os.open(self.input, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
         except OSError as error:
             if error.errno not in (errno.ENXIO, errno.ENOENT, errno.ELOOP):
-                self.errors.append(f"cannot poll {self.input}: {error!r}")
+                with self._cond:
+                    self.errors.append(f"cannot poll {self.input}: {error!r}")
         else:
             try:
                 if self._is_sentinel(fd):
-                    with self._cond:
-                        self.reads.append(f"{self.input} opened for reading")
+                    self._record(generation, f"{self.input} opened for reading")
             finally:
                 os.close(fd)  # the reader now sees EOF
         try:
@@ -184,14 +201,18 @@ class WorkerRoot:
                 raise RuntimeError(f"the FIFO watcher of {self.input} did not poll within {self.LIVENESS_S}s")
 
     def _self_test(self):
-        """The watcher must record a reader of the sentinel, or no read is observable at all."""
+        """The watcher must record a reader of the sentinel, or no read is observable at all. The self-test reader
+        is closed and two more polls settle before the consumer's generation starts, and its records keep generation
+        0 wherever they land, so none of them is ever a consumer read."""
         fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK)
         try:
             self._settle()
         finally:
             os.close(fd)
+        self._settle()
         with self._cond:
-            recorded, self.reads[:] = list(self.reads), []
+            recorded = [entry for generation, entry in self.reads if generation == 0]
+            self._generation = CONSUMER_GENERATION
         if not recorded:
             raise RuntimeError(f"the FIFO watcher did not record the probe's self-test reader on {self.input}")
 
@@ -221,7 +242,8 @@ class WorkerRoot:
                 found.append(f"wrote {path}")
         found += [f"created {self.new_output}"] if self.new_output.parent.exists() else []
         with self._cond:
-            found = [f"read {entry}" for entry in self.reads] + found + self.errors
+            errors = list(self.errors)
+        found = [f"read {entry}" for entry in self.consumer_reads()] + found + errors
         if found:
             raise AssertionError("worker root: " + "; ".join(found))
 

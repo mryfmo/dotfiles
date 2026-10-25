@@ -1,6 +1,7 @@
 """Exercise tests/unit/trusted_exec_contract.py: each probe fails for the intended reason on a noncompliant consumer stub
 (so an inert attack or a no-op assertion fails the test), then passes a compliant one; fixtures are temporary."""
 
+import functools
 import hashlib
 import os
 import pwd
@@ -29,8 +30,11 @@ REDIRECTED, HOOK = "attacker root .*; attacker content", "attacker hook ran"  # 
 ATTACKS = (("environment", f"{REDIRECTED}; {HOOK}"), ("local-worktree", REDIRECTED), ("local-include", HOOK))
 
 
-def run(argv, env, **kw):
-    return subprocess.run(argv, env=env, capture_output=True, check=False, stdin=subprocess.DEVNULL, **kw)
+def run(argv, env, timeout=60, **kw):
+    """A subprocess with a deadline: one that hangs (a watcher that stopped serving the FIFO) fails the test."""
+    return subprocess.run(
+        argv, env=env, capture_output=True, check=False, stdin=subprocess.DEVNULL, timeout=timeout, **kw
+    )
 
 
 def naive_git(root, env):
@@ -50,14 +54,26 @@ def careful_git(root, env):
 
 
 def in_thread(target, timeout=30):
-    """Run TARGET in another thread and wait for it; a consumer that hangs fails the test instead of the suite."""
+    """Run TARGET in another thread and return its result; a consumer that hangs (a blocking FIFO open nobody
+    serves) fails the test after TIMEOUT instead of hanging the suite, and its exception is raised here."""
     import threading
 
-    thread = threading.Thread(target=target, name="consumer", daemon=True)
+    outcome = {}
+
+    def body():
+        try:
+            outcome["value"] = target()
+        except BaseException as error:  # noqa: BLE001 - handed to the test thread
+            outcome["error"] = error
+
+    thread = threading.Thread(target=body, name="consumer", daemon=True)
     thread.start()
     thread.join(timeout)
     if thread.is_alive():
         raise AssertionError(f"consumer still running after {timeout}s: it hung")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("value")
 
 
 def read_relative(path):
@@ -158,7 +174,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def case_worker_root(self):
         probe = self.worker_root_probe()
-        naive_io(probe)
+        in_thread(lambda: naive_io(probe))
         with self.assertRaisesRegex(AssertionError, "worker root: read .*; wrote .*; created ") as red:
             probe.assert_untouched()
         clean = self.worker_root_probe()
@@ -275,7 +291,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 probe = self.worker_root_probe()
                 self.assertIn("/.claude/worktrees/", str(probe.input))
                 self.assertFalse(Path(probe.new_output).exists())
-                act(probe)
+                in_thread(functools.partial(act, probe))  # a blocking open nobody serves fails here, never hangs
                 with self.assertRaisesRegex(AssertionError, reason):
                     probe.assert_untouched()
 
@@ -352,10 +368,36 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         probe = self.worker_root_probe()
         result = subprocess.run(["/bin/cat", str(probe.input)], capture_output=True, timeout=30, check=False)
         self.assertEqual((0, b""), (result.returncode, result.stdout))  # EOF: a sentinel, never content
-        with probe._cond:  # recorded already, before any check settles the watcher
-            self.assertTrue(probe.reads)
+        self.assertTrue(probe.consumer_reads())  # recorded already, before any check settles the watcher
         with self.assertRaisesRegex(AssertionError, "worker root: read "):
             probe.assert_untouched()
+
+    def test_a_late_record_of_the_self_test_never_counts_as_a_consumer_read(self):
+        # Audit round 4 of 3f49cbf9: a poll in flight during setup could append the self-test read after setup had
+        # cleared the reads. Forced here: the first self-test record is delivered at once (the self-test needs one)
+        # and again from a poll held at a barrier until setup has returned. That late copy keeps generation 0, so the
+        # compliant consumer still passes.
+        import threading
+
+        real, released, late = tec.WorkerRoot._record, threading.Event(), []
+
+        def held(probe, generation, entry):
+            if generation == 0 and not late:
+                late.append(threading.Thread(target=lambda: (released.wait(30), real(probe, generation, entry))))
+                late[0].start()
+            real(probe, generation, entry)
+
+        with mock.patch.object(tec.WorkerRoot, "_record", held):
+            probe = self.worker_root_probe()
+        self.assertEqual(1, len(late))
+        released.set()
+        late[0].join(30)
+        self.assertFalse(late[0].is_alive())
+        self.assertIn((0, f"{probe.input} opened for reading"), probe.reads[-1:])  # it landed, after setup
+        self.assertEqual([], probe.consumer_reads())
+        with self.assertRaises(PermissionError):
+            guarded_io(probe)
+        probe.assert_untouched()
 
     def test_a_writer_to_the_input_never_hangs(self):
         probe = self.worker_root_probe()

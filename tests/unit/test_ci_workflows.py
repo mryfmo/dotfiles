@@ -18,7 +18,7 @@ TEST = ROOT / ".github/workflows/test.yaml"
 # The render-only subtrees of home/ and the targets chezmoi gives them; the bootstrap must neither execute nor read
 # any of these targets, or a change there needs the full bootstrap again.
 RENDER_ONLY = {
-    # Per skill, not the whole of .agents/skills: the installers own agmsg, crit*, understand* and poteto-mode there.
+    # Per skill, not the whole of .agents/skills: the installers own crit*, understand* and poteto-mode there.
     "dot_agents/skills": [".agents/skills/{skill}"],
     "dot_agents/omp/policies": [".agents/omp/policies"],
     "dot_claude/rules": [".claude/rules"],

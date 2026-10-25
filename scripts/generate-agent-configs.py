@@ -126,7 +126,7 @@ PROFILE_AGENT_KEYS = {
     "omp": ("model",),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
-# Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
+# omp roles on a Claude model route through the pi-claude-bridge provider, on an OpenAI model through openai-siwc
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
@@ -507,7 +507,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "SessionStart": hooks.get("session_start", []),
             "PostToolUse": [
                 {
-                    "matcher": "Write|Edit|MultiEdit",
+                    "matcher": "Write|Edit",
                     "hooks": post_hooks,
                 }
             ],
@@ -654,6 +654,7 @@ CODEX_CONFIG_HOOK_SOURCE = "{{ .chezmoi.homeDir }}/.codex/config.toml"
 HOOK_TRUST_CODE = """import functools
 import hashlib
 import json
+import os
 import re
 
 HOOK_TRUST_HOME = "{{ .chezmoi.homeDir }}"
@@ -1058,6 +1059,45 @@ def drop_declared_hook_state(chunks: list, declared: list) -> list:
     return kept
 
 
+# Codex keys trust by absolute path: a project by its directory, a config-layer hook by the hooks.json or
+# config.toml that holds it (codex-rs hooks/src/lib.rs hook_key, rust-v0.160.0: "<source>:<event>:<group>:<handler>").
+HOOK_SOURCE_NAMES = ("hooks.json", "config.toml")
+
+
+def path_is_gone(path: str, entry: str) -> bool:
+    \"\"\"True only when nothing exists at the path; any other failed check keeps the entry and says so.\"\"\"
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return True
+    except OSError as error:
+        print(f"warning: cannot check {path} ({error}); keeping {entry}", file=sys.stderr)
+    return False
+
+
+def trusted_path(name):
+    \"\"\"The absolute path a [projects.<path>] table or a hooks.json/config.toml [hooks.state.<key>] trusts, else None.\"\"\"
+    path = key_path(name) if name else None
+    if path and len(path) >= 2 and path[0] == "projects":
+        return path[1] if os.path.isabs(path[1]) else None
+    key = hook_state_key(name)
+    parts = key.rsplit(":", 3) if key else []
+    if len(parts) == 4 and os.path.isabs(parts[0]) and os.path.basename(parts[0]) in HOOK_SOURCE_NAMES:
+        return parts[0]
+    return None
+
+
+def drop_missing_path_state(chunks: list) -> list:
+    \"\"\"Drop project and hook trust whose absolute path no longer exists on this host; plugin keys stay.\"\"\"
+    kept = []
+    for name, chunk in chunks:
+        path = trusted_path(name)
+        if path is not None and path_is_gone(path, f"[{name}]"):
+            continue
+        kept.append((name, chunk))
+    return kept
+
+
 def verified_merge(merged: str, declared) -> str:
     \"\"\"The merged config once it parses and every declared key holds exactly the managed entry; else refuse.\"\"\"
     hooks = parse_config(merged, "the merged config").get("hooks", {})
@@ -1262,7 +1302,7 @@ def base_hook_state() -> list[tuple[str, str]]:
         return []
     return [
         (name, chunk)
-        for name, chunk in split_chunks(normalize_hook_state(path.read_text(), str(path)))
+        for name, chunk in drop_missing_path_state(split_chunks(normalize_hook_state(path.read_text(), str(path))))
         if runtime_prefix(name) == "hooks.state"
     ]
 
@@ -1279,6 +1319,7 @@ def merge_config(current: str) -> str:
     declared = declared_hook_state(str(Path.home()))
     declared_keys = {{hook_state_key(name) for name, _ in declared}}
     current_chunks = drop_declared_hook_state(split_chunks(normalize_hook_state(current)) if current.strip() else [], declared)
+    current_chunks = drop_missing_path_state(current_chunks)
     current_by_name: dict[str, list[str]] = {{}}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {{}}
     managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {{}}
@@ -1359,7 +1400,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
     lines = [
-        "# Shell fragment sourced by agent launchers (herdr-agents).",
+        "# Shell fragment of the model profiles for agent launchers.",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
     ]

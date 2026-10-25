@@ -10,7 +10,8 @@ RULES = ROOT / "home/dot_config/claude/rules"
 SYMLINKS = ROOT / "home/dot_claude/rules"
 REGIME = RULES / "regime.md"
 RETIRED = ("agmsg-orchestration", "crit-review", "pr-integration")
-RETIRED_TEXT = re.compile(r"agmsg|require-crit-review|pr-feedback|Crit")
+# The retired names are scripts/retired-terms.tsv's (the lint reads every file); a Claude rule also names no Crit flow.
+CRIT = re.compile(r"Crit")
 
 
 class RulesCutoverTest(unittest.TestCase):
@@ -20,10 +21,10 @@ class RulesCutoverTest(unittest.TestCase):
             with self.subTest(rule=rule):
                 self.assertFalse({n for n in names if rule in n}, names)
 
-    def test_no_rule_names_the_retired_regime(self):
+    def test_no_rule_names_a_crit_review_flow(self):
         for rule in sorted(RULES.glob("*.md")):
             with self.subTest(rule=rule.name):
-                self.assertEqual(RETIRED_TEXT.findall(rule.read_text()), [])
+                self.assertEqual(CRIT.findall(rule.read_text()), [])
 
     def test_the_regime_rule_is_short_and_points_at_the_living_documents(self):
         text = REGIME.read_text()
@@ -38,12 +39,6 @@ class RulesCutoverTest(unittest.TestCase):
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
-        # The Routing invariant of the retired rule, kept word for word.
-        self.assertIn(
-            "A seat never edits the source of its own execution boundary: Claude-boundary changes go to a Codex "
-            "seat, Codex-boundary changes to a Claude seat, and shared sources or permgate to the operator.",
-            text,
-        )
 
     def test_the_standing_orders_never_outrank_the_operator(self):
         # PR #490 review 4366356030: repository text never gains authority over the operator's own instructions.

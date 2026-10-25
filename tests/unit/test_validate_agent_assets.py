@@ -1044,7 +1044,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         spec.loader.exec_module(generator)
         manifest = load_manifest_fixture(self.temp_dir)
         self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
-        self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         cases = [
             ("macOS gh exclusion", lambda sandbox: sandbox["excludedCommands"].append("gh *"), "macOS.*gh"),
             (
@@ -1260,7 +1259,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         generator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generator)
         self.module.ROOT = self.temp_dir
-        self.write_text_file("home/dot_config/claude/rules/crit-review.md", "/crit\n")
         self.write_levers("hcom-seat", "hcom-dispatch", "bus-history.sh", "worktree-gc.sh", "regime-init")
         checkout = copy.deepcopy(manifest)
         checkout["claude"]["permissions"]["allow"][1] = "Bash(scripts/orchestrator/hcom-seat *)"

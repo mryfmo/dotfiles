@@ -16,8 +16,8 @@
 #   a producer (`uname`, `stat`, `date`, `security`) that fails, are reported as unreadable, never as
 #   absent, and make the exit status 1.
 #
-#   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker, audit, review or
-#   security; `hcom-seat` calls it with the seat's role before it creates or starts anything) does nothing
+#   `<profile>` (a seat profile of the manifest's `omp.roles`: orchestrator, worker or audit; `hcom-seat`
+#   calls it with the seat's role before it creates or starts anything) does nothing
 #   on a local host. On a remote host (`SSH_CONNECTION` set, or a Linux host without a display, which a
 #   herdr pane on the seat host can be even when its server did not inherit `SSH_CONNECTION`) it checks
 #   that a seat can use the login, which is more than `--check` shows. SIWC needs an active `openai-siwc`
@@ -110,7 +110,7 @@ siwc_ext=${HOME}/.agents/omp/extensions/openai-siwc
 token_file=${HOME}/.config/claude-code/oauth-token
 callback_port=1455
 # The seat profiles, the values of `omp.roles` in home/dot_agents/agent-config.yaml.
-seat_profiles=(orchestrator worker audit review security)
+seat_profiles=(orchestrator worker audit)
 # openai-siwc `src/store.ts`: `JSON.parse` of the whole file, so exactly one top-level document (jq reads a stream, so
 # `-s` gathers every document and the filter requires one), then `isRegistration`, with the issued client id held to
 # the charset `src/seed.ts` accepts, so nothing else reaches the terminal. \A and \z anchor the whole string.
@@ -356,7 +356,7 @@ login() {
     ((status == 0)) || die "the ${route} login exited ${status}" 1
 }
 
-usage='usage: seat-login-preflight --check [<profile>...] | seat-login-preflight <orchestrator|worker|audit|review|security>'
+usage='usage: seat-login-preflight --check [<profile>...] | seat-login-preflight <orchestrator|worker|audit>'
 (($# > 0)) || die "${usage}"
 if [[ $1 == --check ]]; then
     shift

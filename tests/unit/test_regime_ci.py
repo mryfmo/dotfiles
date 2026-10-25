@@ -165,12 +165,11 @@ class RegimeCiTest(unittest.TestCase):
         fetch, verify = runs
         self.assertIn('git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/regime/pr-head"', fetch["run"])
         self.assertIn('test "$(git rev-parse refs/regime/pr-head)" = "${HEAD_SHA}"', fetch["run"])
-        line = 'uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
+        line = 'uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"'
         self.assertEqual(line, verify["run"])
         head = "${{ github.event.pull_request.head.sha }}"
-        token = {"GH_TOKEN": "${{ github.token }}"}
         body = {"PR_BODY": "${{ github.event.pull_request.body }}"}  # the program marker's source (D-024-131)
-        self.assertEqual(({"HEAD_SHA": head} | token | body, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
+        self.assertEqual(({"HEAD_SHA": head} | body, head), (verify["env"], fetch["env"]["HEAD_SHA"]))
         for step in steps:  # no step checks out, switches to or runs anything from the head
             self.assertNotIn("${{", step.get("run", ""))
             self.assertNotRegex(step.get("run", ""), r"git (checkout|switch|worktree|reset)|pr-head:|\./")
@@ -178,12 +177,13 @@ class RegimeCiTest(unittest.TestCase):
             self.assertNotRegex(given, r"head|merge_commit_sha|event\.after|pull/")
             self.assertFalse(step.get("uses", "x").startswith("./"))
 
-    def test_regime_yml_sets_the_token(self):
+    def test_regime_yml_gives_the_checker_no_token(self):
+        # F082: regime-ci.py runs only git, so its step gets no GH_TOKEN; the job's token stays contents: read.
         read = "import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
         cmd = [*UV, "-c", read, str(ROOT / ".github/workflows/regime.yml")]
         doc = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
-        verify = [s for s in doc["jobs"]["regime"]["steps"] if "regime-ci.py" in s.get("run", "")]
-        self.assertEqual(["${{ github.token }}"], [s.get("env", {}).get("GH_TOKEN") for s in verify])
+        steps = doc["jobs"]["regime"]["steps"]
+        self.assertEqual([], [s.get("name", s.get("uses")) for s in steps if "GH_TOKEN" in s.get("env", {})])
         self.assertEqual({"contents": "read"}, doc["permissions"])
 
 

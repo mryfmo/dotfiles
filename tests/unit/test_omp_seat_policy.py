@@ -472,22 +472,6 @@ class OmpSeatPolicyTest(unittest.TestCase):
             with self.subTest(role=role):
                 self.assertEqual(policy["tools"]["approval"]["task"], "deny")
 
-    def test_a_bus_line_kind_with_or_without_the_retired_prefix_decides_the_same(self):
-        """U35: the rows match on the command, not the line text, so the line kinds' spelling changes no decision."""
-        kinds = ("TASK", "RESULT", "VERDICT", "PONG", "MERGED", "HOLD", "PING")
-        checked = 0
-        for role, rows in TABLE.items():
-            for tool, command, expected in rows:
-                if tool != "bash" or not any(f"{kind} v1" in command for kind in kinds):
-                    continue
-                old = command
-                for kind in kinds:
-                    old = old.replace(f"{kind} v1", f"AGMSG-{kind} v1")
-                with self.subTest(role=role, command=command):
-                    self.assertEqual(decide(self.policies[role], tool, old), expected)
-                    checked += 1
-        self.assertGreaterEqual(checked, 4)
-
     def test_the_mirror_matches_the_documented_examples(self):
         deny = {"match": "rm -rf *", "approval": "deny"}
         self.assertTrue(rule_matches("cd /tmp && rm -rf build", deny), "settings.md: a deny matches a segment")

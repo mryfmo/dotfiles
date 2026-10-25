@@ -2,10 +2,11 @@
 # @file hcom-dispatch
 # @brief Send one protocol line from one seat to another over hcom and print a durable receipt.
 # @description
-#   Plan 025 W2b (C-1). Keeps agmsg-dispatch's argument form so every caller keeps
-#   its call: the words after the pane are joined with spaces into one line, which
-#   reaches hcom as one argument after `--` (`hcom send --help`: "Everything after
-#   -- is the message"). The send is
+#   Plan 025 W2b (C-1). The words after the recipient are joined with spaces into one
+#   line, which reaches hcom as one argument after `--` (`hcom send --help`:
+#   "Everything after -- is the message"). The line's first word is its kind
+#   (`^[A-Z]+$`, e.g. TASK or PING); any other first word, such as the `-` or pane
+#   label of the retired agmsg-dispatch form, is refused before any hcom call. The send is
 #   `hcom send @<to> --thread <team> --from <from> --json -- <line>` (hcom 0.7.30 and 0.7.31,
 #   measured 2026-10-23 and 2026-10-24; the send.rs and events.rs lines are at v0.7.30):
 #   `@<to>` is the seat's exact hcom name (send --help "Target matching"; a name
@@ -20,24 +21,22 @@
 #   --full` (src/commands/events.rs:45 sql, :39 full), so the receipt names a row
 #   the bus holds, the one bus-history.sh prints:
 #   `id=<N> at=<hcom ts> to=<to> kind=<first word of the line>`.
-#   The pane argument is accepted and unused: hcom delivers to a bound seat itself
-#   (`hcom list --help`: "[OMP] hcom-launched, automatic delivery"), so there is no
-#   wake. The store is `$HCOM_DIR/hcom.db` (`hcom start --help`: "Prefix all hcom
+#   hcom delivers to a bound seat itself (`hcom list --help`: "[OMP] hcom-launched,
+#   automatic delivery"), so there is no wake. The store is `$HCOM_DIR/hcom.db` (`hcom start --help`: "Prefix all hcom
 #   commands with: HCOM_DIR=..."); an unset HCOM_DIR or an absent store is refused
 #   before any hcom call, because hcom creates a store on first use and the seats'
 #   launch owns that.
 # @arg $1 string Team, the hcom thread (`^[a-z0-9][a-z0-9_-]{0,63}$`).
 # @arg $2 string Sender seat, same grammar.
 # @arg $3 string Recipient seat, its exact hcom name, same grammar.
-# @arg $4 string Pane or seat label, accepted for agmsg-dispatch's form, unused.
-# @arg $@ string Message words, joined with spaces into one line.
+# @arg $@ string Message words, joined with spaces into one line whose first word is the kind.
 # @env HCOM_DIR The private hcom store directory; default: the store derived from the checkout (regime-env).
 # @stdout One receipt line `id=<event id> at=<ts> to=<to> kind=<kind>`.
 # @exitcode 0 Sent and found in the bus.
-# @exitcode 1 Usage, grammar, empty line, store absent, or the sent id was not found.
+# @exitcode 1 Usage, grammar, empty line, a first word that is not a kind, store absent, or the sent id was not found.
 # @exitcode * hcom's own status when the send fails (its error on stderr).
 # @example
-#   HCOM_DIR=/path/to/.hcom hcom-dispatch dotfiles orch u5team-nemo w1:p2 'TASK v1 task_id=T1 ...'
+#   HCOM_DIR=/path/to/.hcom hcom-dispatch dotfiles orch u5team-nemo 'TASK v1 task_id=T1 ...'
 set -euo pipefail
 
 # @description Refuse to run unless this file's sha256 equals its pin in the manifest beside it (regime-cutover U31):
@@ -98,13 +97,18 @@ lever_self_check() {
 }
 lever_self_check
 
-(($# >= 5)) || {
-    echo 'usage: hcom-dispatch <team> <from> <to> <pane> <line...>' >&2
+(($# >= 4)) || {
+    echo 'usage: hcom-dispatch <team> <from> <to> <line...>' >&2
     exit 1
 }
 team=$1 from=$2 to=$3
-shift 4
+shift 3
 line=$*
+[[ ${1%%[[:space:]]*} =~ ^[A-Z]+$ ]] || {
+    echo "hcom-dispatch: the line's first word '${1%%[[:space:]]*}' is not a kind (^[A-Z]+\$)" >&2
+    echo 'usage: hcom-dispatch <team> <from> <to> <line...>' >&2
+    exit 1
+}
 for identifier in "${team}" "${from}" "${to}"; do
     [[ ${identifier} =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]] || {
         echo "hcom-dispatch: identifier '${identifier}' is outside ^[a-z0-9][a-z0-9_-]{0,63}\$" >&2

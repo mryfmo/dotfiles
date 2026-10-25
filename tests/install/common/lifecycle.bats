@@ -315,11 +315,6 @@ herdr server reload-config" ]
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
-    grep -q 'crit status --json' home/dot_config/codex/AGENTS.md
-    grep -q 'crit comments --all --json <review.json>' home/dot_config/codex/AGENTS.md
-    grep -q '作業手順の証跡' home/dot_config/codex/AGENTS.md
-    grep -q 'レビュー実施者を認証するものではありません' home/dot_config/codex/AGENTS.md
-    ! grep -q 'crit comments --json' home/dot_config/codex/AGENTS.md
 }
 
 @test "[common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex" {

@@ -26,7 +26,7 @@ SOURCE_ROOT = ROOT / "home"
 HOME = Path.home()
 CHEZMOI_SOURCE_PREFIXES = ("executable_", "private_")
 # backups/ holds the pre-install state copies that earlier `make update` runs made.
-AGENT_ROOT_ALLOWLIST = {"backups", "compactiondb", "db", "run", "teams", "worklog"}
+AGENT_ROOT_ALLOWLIST = {"backups", "compactiondb", "worklog"}
 UNDERSTAND_SKILL_ALLOWLIST = {
     "understand",
     "understand-chat",
@@ -519,8 +519,6 @@ def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None =
         UNDERSTAND_SKILL_ALLOWLIST
         | CRIT_PLUGIN_SKILLS
         | receipt_skill_names
-        # The installed agmsg tree stays until U27 archives its db, teams and run and removes it.
-        | {"agmsg", "db", "run", "teams"}
         # chezmoi externals (the pstack skills) have no copy under home/ but are chezmoi's.
         | chezmoi_managed_child_names(skills_root)
     )

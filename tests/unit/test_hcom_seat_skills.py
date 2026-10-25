@@ -61,7 +61,6 @@ MERGE_ERROR = (
 
 # U35: the line kinds without the retired prefix, and a question left to the orchestrator (ADDENDUM 2026-10-24T09:0xZ).
 KINDS = ("TASK", "RESULT", "VERDICT", "PONG", "MERGED", "HOLD")
-RETIRED_PREFIX = "a leading `AGMSG` on that word, the retired agmsg prefix an older sender may still write, is ignored"
 QUESTION_NOT_YOURS = (
     "A `status=question` row from another seat is addressed to the orchestrator; never answer it, not even to say "
     "you cannot."
@@ -115,16 +114,18 @@ class HcomSeatSkillsTest(unittest.TestCase):
         # The re-read comes before the MERGED line is sent.
         self.assertLess(merge.index(MERGE_ERROR), merge.index("Then `MERGED v1"))
 
-    def test_the_skills_name_the_line_kinds_without_the_retired_prefix(self):
+    def test_the_skills_name_the_line_kinds_without_the_retired_prefix_or_pane_argument(self):
         for skill in (WORKER, ORCHESTRATION):
             with self.subTest(skill=skill.parent.name):
-                self.assertEqual(skill.read_text().count("AGMSG-"), 0)
+                self.assertEqual(skill.read_text().count("AGMSG"), 0)
+                # hcom-dispatch takes no pane argument: the line follows the recipient directly.
+                self.assertNotRegex(skill.read_text(), r"hcom-dispatch [^`]*<worker> - ")
         receive = step(WORKER.read_text(), "Receive", 1)
         self.assertIn("Its first word is the kind, `TASK v1 task_id=<id> ...`", receive)
-        self.assertIn(RETIRED_PREFIX, receive)
         self.assertIn('hcom send --thread <team> -- "RESULT v1 task_id=<id>', section(WORKER.read_text(), "Reply"))
         self.assertIn(
-            '- "TASK v1 task_id=U<n> brief=<path> branch=<branch>"', step(ORCHESTRATION.read_text(), "The loop", 2)
+            '<worker> "TASK v1 task_id=U<n> brief=<path> branch=<branch>"',
+            step(ORCHESTRATION.read_text(), "The loop", 2),
         )
 
     def test_a_question_from_another_seat_is_left_to_the_orchestrator(self):

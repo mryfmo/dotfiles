@@ -22,14 +22,11 @@
 
 ## Crit レビュー運用
 
-- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、まず Codex 内の `/diff`、`/review`、Codex app の Review pane、または取得済みの Crit data を使ってください。ユーザが Crit web UI を明示した場合のみ `$crit` / `crit` をブラウザ review として使ってください。Crit data を取得できない場合は、ブラウザ review を開かず agent-side のレビュー証跡(独立した subagent レビューと保存済みの記録)で代替し、ユーザにレビューを依頼しないでください。その代替証跡は、空でない文字列の `id`・`body`・`scope` と `resolved: true` を持つオブジェクトの repo 内 JSON リスト(`scope: "review"` の record、または空でない `path` を持つ `line`/`file` の record を 1 件以上含む。guard は形式だけを検証し出所は問わないため手書きの record でも可)として保存し、receipt に `review_surface: crit-data`、`reviewer: codex`、`review_source: <その JSON>`、`review_outcome: approved` または `addressed` を記載してください。
+- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、Codex 内の `/diff`、`/review`、Codex app の Review pane を使ってください。ブラウザの Crit web UI を開いたり、人間のユーザーにレビューを依頼する目的で Crit を使ったりしないでください(2026-07-18 操作者指示)。
 - Codex では Crit plugin の `Stop` hook による Plan Mode レビューが発火した場合は尊重してください。`CRIT_PLAN_REVIEW=off` が明示されていない限り、発火済みの計画レビュー hook を迂回しないでください。
-- レビューでは、既定ではブラウザ版 Crit を起動しないでください。Codex は `crit status --json` で review file を特定し、`crit comments --all --json <review.json>` の出力を repo 内の `.agents/worklog/.../*.json` に保存して内容を判断し、指摘へ対応してください。Agent evidence には resolved record が 1 件以上必要です。指摘がない場合は review-scope の approval record を追加して resolve してください。このローカルデータは作業手順の証跡にすぎず、レビュー実施者を認証するものではありません。Crit data の JSON evidence を読まないレビュー済みの自己申告は禁止です。
-- ユーザが明示的に Crit web UI を求めた場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示してください。
-- Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。`crit share` などの publish は、ユーザが明示的に求めた場合だけ実行する。
-- ブラウザ Crit レビューを開いたり、人間のユーザーにレビューを依頼する目的で Crit を使うことは禁止(2026-07-18 操作者指示)。
 - Plan Mode hook が開いた Crit セッションは、レビューが終わったら閉じてください(ローカルの Crit web server を常駐させない)。
 - ユーザが明示的に Crit/review を無効化した場合のみ `CRIT_REVIEW=off` を使ってください。
+- dotfiles リポジトリの変更のレビュー証跡は、プログラムの記録 `.orchestration/orchestrate/<program>/ledger.tsv` にある、その head sha の verdict 行です(`hcom-orchestration` skill)。Crit のコメントや保存した JSON はレビュー証跡になりません。
 
 ## PR 統合
 
@@ -58,7 +55,7 @@
 
 - Understand-Anything (`understand-anything@understand-anything`) を利用できる場合は、リポジトリのナレッジグラフ生成・参照に使ってください。Codex では `$understand` で起動します(`/understand` ではありません)。
 - 初回のフル解析はトークン消費が大きい処理です。
-- dotfiles リポジトリでは、graph の更新は operator が regime boundary で依頼したときだけ、worker task が `$understand --full` で行います。増分更新はこのリポジトリでは公開できません。Understand-Anything 2.9.7 の `validate-incremental-symbols.mjs` は、決定的な parser がないファイル(拡張子のない shell script `executable_herdr-agents`、Python の chezmoi script `modify_private_settings.json`)の class に属さない関数をすべて `unknown` と判定し、path ごとの言語指定もないためです(T51)。`.ua/config.json` は `autoUpdate: false` で、plugin の SessionStart と PostToolUse の更新指示を止めます。更新と更新の間 graph は意図的に stale であり、下の鮮度確認によって検索は grep にフォールバックします。
+- dotfiles リポジトリでは、graph の更新は operator が regime boundary で依頼したときだけ、worker task が `$understand --full` で行います。増分更新はこのリポジトリでは公開できません。Understand-Anything 2.9.7 の `validate-incremental-symbols.mjs` は、決定的な parser がないファイル(拡張子のない shell script `executable_hcom-dispatch`、Python の chezmoi script `modify_private_settings.json`)の class に属さない関数をすべて `unknown` と判定し、path ごとの言語指定もないためです(T51)。`.ua/config.json` は `autoUpdate: false` で、plugin の SessionStart と PostToolUse の更新指示を止めます。更新と更新の間 graph は意図的に stale であり、下の鮮度確認によって検索は grep にフォールバックします。
 - 出力は `.ua/` に生成されます。`.ua/intermediate/` と `.ua/diff-overlay.json` は commit せず、対象リポジトリの `.gitignore` に追加してください。それ以外の `.ua/` は commit 対象です。
 - リポジトリ全体の探索やシンボル検索の前に、`.ua/knowledge-graph.json` があればまず node の `summary` と `filePath` を照会し、`.ua/meta.json` の `gitCommitHash` が `git rev-parse HEAD` と一致するか、異なる場合も `git diff --name-only <hash>..HEAD` が `.ua/` または `.orchestration/` 内の path だけなら current と扱い、graph が存在しないか別の path が含まれる場合だけ grep にフォールバックしてください。
 - インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。

@@ -1,11 +1,10 @@
 name: regime
 
-# The regime job (plan 024 P1-11, redesigned in T133 regime-ci a02): a pull request that carries a task copy is checked
-# by the base's scripts/orchestrator/regime-ci.py against the base's dispatched policy. pull_request_target runs this
-# workflow as it is on the base; the pull request's head is fetched as data and is never checked out or executed.
-# A pull request without a task copy passes only when it changes records alone, or when its body carries its own line
-# `Program-Unit: regime-cutover/U<n>` (operator decision D-024-131: the regime-cutover program's pull requests carry
-# no task copy). It is an optional check until the operator adds `regime` to the ruleset's required contexts.
+# The regime job: the base's scripts/orchestrator/regime-ci.py reads the pull request's diff and body. A pull request
+# passes when it changes records alone (every path under .orchestration/), or when its body carries its own line
+# `Program-Unit: regime-cutover/U<n>` (operator decision D-024-131). pull_request_target runs this workflow as it is on
+# the base; the pull request's head is fetched as data and is never checked out or executed, and the checker runs only
+# git. It is an optional check until the operator adds `regime` to the ruleset's required contexts.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -42,9 +41,6 @@ jobs:
       - name: Check the pull request with the base's verifier
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # the checker's gh api reads (canonical-main SHA, design bytes, C8/C9) need authentication on a fresh
-          # runner; the job's contents: read token can only read this repository's contents (P1-17)
-          GH_TOKEN: ${{ github.token }}
           # the program marker (D-024-131) is read from the event payload as data, never interpolated into run:
           PR_BODY: ${{ github.event.pull_request.body }}
-        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+        run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"

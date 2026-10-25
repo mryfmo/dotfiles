@@ -1,4 +1,4 @@
-# Vendored and agent-record paths stay byte-identical (task files are hashed into task_rev).
+# Vendored code, generated snapshots and agent records stay byte-identical: prettier never rewrites them.
 vendor/
 .ua/
 .orchestration/

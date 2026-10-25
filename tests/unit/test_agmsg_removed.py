@@ -1,12 +1,12 @@
-"""The agmsg docs, skill and deployed skill tree are gone (regime-cutover U27; U26 removed the tooling, U32 the rules).
+"""The agmsg docs, skill, deployed skill tree and retire helper are gone (regime-cutover U27; U26 removed the tooling, U32
+the rules, U72 the `herdr-agents` retire step that `make update` ran before `chezmoi apply`).
 
-Only the retire path stays (`make agmsg-retire`, `herdr-agents --retire-agmsg`, run before `chezmoi apply`), and the
-hcom bus keeps its `AGMSG-` line kinds (D-024-133). The dry run applies a scratch source that holds only the real
-`home/.chezmoiremove` to a scratch HOME, so it exercises exactly the removal entries and nothing else.
+No live file names the old regime: scripts/lint-retired-terms.py checks every tracked file against the one list,
+scripts/retired-terms.tsv (U72), so this module keeps only the removals. The dry run applies a scratch source that holds
+only the real `home/.chezmoiremove` to a scratch HOME, so it exercises exactly the removal entries and nothing else.
 """
 
 import os
-import re
 import shutil
 import subprocess
 import tempfile
@@ -21,19 +21,9 @@ REMOVALS = (
     # The deleted skill's deployed copies: ~/.agents/skills is not exact, so only these entries remove them (U27b F1).
     ".agents/skills/agmsg-orchestration",
     ".claude/skills/agmsg-orchestration",
+    # The retire helper's deployed copy: nothing on either host is left for it to retire (U72).
+    ".local/bin/common/herdr-agents",
 )
-RETIRED = re.compile(
-    r"agmsg|codex-orchestrate|pr-feedback|crit-review|regime-counters|acceptance record", re.IGNORECASE
-)
-# The bus line kinds and the kept retire path's own names are not old-regime prose.
-ALLOWED = re.compile(r"AGMSG-[A-Z]*|make agmsg-retire|--retire-agmsg")
-RETIRE_PARAGRAPH = "Before `chezmoi apply`, `make update` runs `make agmsg-retire`"
-
-
-def stray(text):
-    """Return each paragraph that still names the old regime once the allowed names are taken out."""
-    return [p for p in re.split(r"\n\s*\n", text) if RETIRED.search(ALLOWED.sub("", p))]
-
 
 class AgmsgRemovedTest(unittest.TestCase):
     def test_the_agmsg_orchestration_skill_is_gone_on_both_sides(self):
@@ -46,16 +36,6 @@ class AgmsgRemovedTest(unittest.TestCase):
         for entry in REMOVALS:
             with self.subTest(entry=entry):
                 self.assertIn(entry, entries)
-
-    def test_readme_keeps_only_the_retire_paragraph_and_the_bus_line_kinds(self):
-        paragraphs = stray((ROOT / "README.md").read_text())
-        self.assertEqual(1, len(paragraphs), paragraphs)
-        self.assertTrue(paragraphs[0].startswith(RETIRE_PARAGRAPH), paragraphs[0][:200])
-
-    def test_agents_md_and_the_seat_doc_name_no_old_regime(self):
-        for name in ("AGENTS.md", "docs/orchestrator-seat.md"):
-            with self.subTest(file=name):
-                self.assertEqual([], stray((ROOT / name).read_text()))
 
     @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
     def test_apply_removes_the_tree_and_the_command_and_keeps_their_neighbours(self):
@@ -71,6 +51,8 @@ class AgmsgRemovedTest(unittest.TestCase):
                 ".agents/skills/other/SKILL.md": "kept",
                 ".claude/commands/agmsg.md": "c",
                 ".claude/commands/keep.md": "kept",
+                ".local/bin/common/herdr-agents": "retired",
+                ".local/bin/common/hcom-seat": "kept",
             }
             for rel, text in files.items():
                 (home / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +79,13 @@ class AgmsgRemovedTest(unittest.TestCase):
             self.assertEqual(0, run.returncode, run.stderr)
             left = sorted(str(p.relative_to(home)) for p in home.rglob("*") if p.is_file())
             self.assertEqual(
-                [".agents/skills/other/SKILL.md", ".claude/commands/keep.md", ".claude/skills/other/SKILL.md"], left
+                [
+                    ".agents/skills/other/SKILL.md",
+                    ".claude/commands/keep.md",
+                    ".claude/skills/other/SKILL.md",
+                    ".local/bin/common/hcom-seat",
+                ],
+                left,
             )
             for gone in (
                 ".agents/skills/agmsg",

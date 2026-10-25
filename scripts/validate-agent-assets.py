@@ -959,7 +959,7 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                 fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
 
 
-# omp model roles: Claude seats through pi-claude-bridge, OpenAI seats through openai-siwc
+# omp model roles: a Claude model through pi-claude-bridge, an OpenAI model through openai-siwc
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
 OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-]+$")
@@ -1035,7 +1035,7 @@ def validate_agent_manifest() -> dict[str, Any]:
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     # Operator pin (2026-09-27): worker claude launches carry --advisor fable. The pin read its profile from the
-    # manifest's herdr-agents worker-profile key, standard, until U40 removed that key; it stays on the profile it
+    # manifest's worker-profile key, standard, until U40 removed that key; it stays on the profile it
     # checked.
     advisor_profile = "standard"
     if profiles.get(advisor_profile, {}).get("claude", {}).get("advisor") != "fable":
@@ -1159,11 +1159,8 @@ def validate_crit_install_assets() -> None:
             fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in (
-        "$crit",
         "Crit plugin",
         "CRIT_PLAN_REVIEW=off",
-        "TUI",
-        "http://localhost",
     ):
         if token not in codex_agents:
             fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")

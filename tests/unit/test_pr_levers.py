@@ -1033,6 +1033,39 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(self.merge("--carry-from", audited), "differs from the audited")
         self.assert_refused(self.merge("--carry-from", SHA_B), f"--carry-from {SHA_B} is no commit")
 
+    def test_a_planted_replace_ref_cannot_make_an_unaudited_head_carry(self):
+        # U71 audit round 6 (P1): the worker-writable git store's refs/replace made the unaudited head H read as the
+        # honest merge, whose diff against main equals the audited one, so the carry passed.
+        audited, honest = self.carry_repo()
+        (self.repo / "tool.sh").write_text("changed after the audit\n")
+        self.git("commit", "-q", "-am", "unaudited")
+        head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", f"{head}:refs/pull/7/head")
+        self.git("replace", head, honest)
+        self.ledger(ledger_row(audited))
+        self.github(head=head)
+        self.assert_refused(self.merge("--carry-from", audited), "differs from the audited")
+        self.assertEqual(self.writes(), [])
+
+    def test_grafts_alternates_and_a_shallow_cut_are_refused(self):
+        common = self.repo / ".git"
+        for path, text, message in (
+            (common / "info/grafts", f"{SHA_A}\n", "info/grafts exists"),
+            (common / "shallow", f"{SHA_A}\n", "shallow exists"),
+            (common / "objects/info/alternates", "/tmp/other/objects\n", "names alternate object stores"),
+        ):
+            with self.subTest(path.name):
+                self.calls.unlink(missing_ok=True)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text)
+                self.github()
+                self.assert_refused(self.merge(), message)
+                self.assertEqual(self.gh_calls(), [], "refused before any gh call")
+                path.unlink()
+        (common / "objects/info/alternates").write_text("")
+        self.github()
+        self.assertEqual(self.merge().returncode, 0, "an empty alternates file names no store")
+
     def test_a_carry_compares_the_whole_tree_whatever_the_cwd_and_git_config(self):
         # U71 audit round 2 (P1): `git diff` under diff.relative=true, run from an unchanged subdirectory, saw neither
         # side's change, so an unaudited commit after the audited one carried the verdict.
@@ -1074,6 +1107,10 @@ env | grep '^XDG_' > "$FAKE_CODEX_LOG/xdg"
 cat "$CODEX_HOME/config.toml" > "$FAKE_CODEX_LOG/config"
 ls -A . > "$FAKE_CODEX_LOG/cwd"
 cat > "$FAKE_CODEX_LOG/prompt"
+wt=$(sed -n 's/^The changeset lives in the worktree \\([^ ]*\\) .*/\\1/p' "$FAKE_CODEX_LOG/prompt")
+cat "$wt/AGENTS.md" > "$FAKE_CODEX_LOG/wt-file"
+git -C "$wt" show HEAD:AGENTS.md > "$FAKE_CODEX_LOG/wt-git"
+env | grep '^GIT_NO_REPLACE_OBJECTS=' > "$FAKE_CODEX_LOG/git-env"
 echo "codex log ${FAKE_CODEX_TAG:-}"
 [ -n "$FAKE_CODEX_VERDICT" ] && printf '%s\\n' "$FAKE_CODEX_VERDICT" > "$out"
 exit "${FAKE_CODEX_EXIT:-0}"
@@ -1164,7 +1201,9 @@ class PrAuditTest(PrLeverTestCase):
             (self.seen / "config").read_text(),
             'model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\nweb_search = "disabled"\n\n[skills]\n'
             "include_instructions = false\n\n"
-            "[skills.bundled]\nenabled = false\n",
+            "[skills.bundled]\nenabled = false\n\n[shell_environment_policy]\n"
+            'set = { GIT_NO_REPLACE_OBJECTS = "1", GIT_GRAFT_FILE = "/dev/null", GIT_CONFIG_COUNT = "1", '
+            'GIT_CONFIG_KEY_0 = "core.commitGraph", GIT_CONFIG_VALUE_0 = "false" }\n',
         )
         self.assertEqual((self.seen / "cwd").read_text(), "", "the auditor's cwd is empty")
         prompt = (self.seen / "prompt").read_text()
@@ -1179,6 +1218,22 @@ class PrAuditTest(PrLeverTestCase):
         self.assertIn("read-only, scratch cwd, scratch HOME and CODEX_HOME", row[5])
         self.assertEqual(row[6], "https://github.com/acme/widgets/pull/7")
         self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1, "the worktree is removed")
+
+    def test_a_planted_replace_ref_does_not_change_the_audited_bytes(self):
+        # U71 audit round 6 (P1): with refs/replace honoured, the worktree and the auditor's git showed a benign commit.
+        self.git("switch", "-q", "-c", "benign", "main")
+        (self.repo / "AGENTS.md").write_text("# Rules\n\n## Audit\n\nBENIGN\n")
+        self.git("commit", "-q", "-am", "benign")
+        benign = self.git("rev-parse", "HEAD")
+        self.git("switch", "-q", "main")
+        self.git("replace", self.head, benign)
+        self.github()
+        self.assertEqual(self.audit().returncode, 0)
+        real = "# Rules\n\n## Audit\n\nRULES-FROM-HEAD: approve\n"
+        self.assertEqual((self.seen / "wt-file").read_text(), real, "the worktree holds the GitHub head's bytes")
+        self.assertEqual((self.seen / "wt-git").read_text(), real, "the auditor's git ignores refs/replace")
+        self.assertEqual((self.seen / "git-env").read_text(), "GIT_NO_REPLACE_OBJECTS=1\n")
+        self.assertIn("git --no-replace-objects -C ", (self.seen / "prompt").read_text())
 
     def test_the_auditor_gets_an_empty_scratch_home(self):
         self.github()

@@ -96,6 +96,23 @@ lever_self_check() {
 }
 lever_self_check
 
+# Object substitution (U71 audit round 6): the git common directory is shared with, and writable by, the worker seats
+# (U85), so a planted `refs/replace/*` ref, an `info/grafts` file, an alternate object store or a forged commit-graph
+# could make the objects git reads here differ from the sha GitHub reports. Every git call of this lever, and every
+# process it starts, runs with replace objects off (`GIT_NO_REPLACE_OBJECTS`, and `--no-replace-objects` through the
+# `git` function), grafts read from /dev/null, the commit-graph off, and none of the caller's object-store or
+# repository-location variables; `git_objects_guard` refuses a checkout that holds grafts, alternates or a shallow cut.
+unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_OBJECT_DIRECTORY GIT_REPLACE_REF_BASE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR \
+    GIT_INDEX_FILE GIT_NAMESPACE GIT_CONFIG_PARAMETERS
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.commitGraph GIT_CONFIG_VALUE_0=false
+
+# @description Run git with replace objects and the commit-graph off, whatever the caller's environment or config.
+# @arg $@ string The git arguments.
+git() {
+    command git --no-replace-objects -c core.commitGraph=false "$@"
+}
+
 lever='pr-merge.sh'
 usage='usage: pr-merge.sh <pr> --records <dir> [--carry-from <sha>]'
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
@@ -120,6 +137,19 @@ fail() {
     exit 1
 }
 
+# @description Refuse unless the git common directory of checkout $1 holds no grafts file, no non-empty alternates
+#   file and no shallow file: each would substitute or cut the objects this lever reads (U71 audit round 6).
+# @arg $1 path The checkout.
+git_objects_guard() {
+    local common path
+    common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir) || refuse "cannot read the git common directory of $1"
+    [[ -d ${common} ]] || refuse "the git common directory ${common} is no directory"
+    for path in "${common}/info/grafts" "${common}/shallow"; do
+        [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; it rewrites the history this lever reads"
+    done
+    path=${common}/objects/info/alternates
+    [[ ! -L ${path} && ! -s ${path} ]] || refuse "${path} names alternate object stores; this lever reads only the checkout's own objects"
+}
 # @description Run `gh` with its wait bounded by PR_LEVER_GH_TIMEOUT seconds.
 # @arg $@ string The `gh` arguments.
 gh_bounded() {
@@ -237,6 +267,7 @@ done
 toplevel=$(git rev-parse --show-toplevel 2> /dev/null) || refuse 'run from the repository checkout that holds the program store'
 [[ -n ${toplevel} && -d ${toplevel} ]] || refuse 'run from the repository checkout that holds the program store'
 toplevel=$(cd "${toplevel}" && pwd -P) || refuse "cannot resolve ${toplevel}"
+git_objects_guard "${toplevel}"
 git_dir=$(git_top rev-parse --absolute-git-dir) || refuse 'cannot read the git directory'
 common_dir=$(git_top rev-parse --path-format=absolute --git-common-dir) || refuse 'cannot read the git common directory'
 git_dir=$(cd "${git_dir}" && pwd -P) || refuse "cannot resolve ${git_dir}"
@@ -258,7 +289,7 @@ if [[ -z ${carry} ]]; then
 else
     [[ ${carry} != "${head}" ]] || refuse "--carry-from ${carry} is the head itself; drop --carry-from"
     require_correct_row "${carry}"
-    perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git -C "${toplevel}" fetch -q --no-tags origin \
+    perl -e 'alarm shift; exec @ARGV or die "exec git: $!\n"' "${gh_timeout}" git --no-replace-objects -C "${toplevel}" fetch -q --no-tags origin \
         "+refs/heads/main:refs/pr-merge/${pr}/main" "+refs/pull/${pr}/head:refs/pr-merge/${pr}/head" ||
         fail "git fetch of main and refs/pull/${pr}/head failed"
     fetched=$(git_top rev-parse --verify --quiet "refs/pr-merge/${pr}/head^{commit}") || fetched=''

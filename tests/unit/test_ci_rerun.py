@@ -129,6 +129,10 @@ class CiRerunTest(unittest.TestCase):
         gh = self.t / "bin/gh"
         gh.write_text(STUB.replace("@PYTHON@", sys.executable))
         gh.chmod(0o755)
+        (self.t / "bin/mise").write_text(
+            "#!/bin/sh\nexit 1\n"
+        )  # no mise answer: tools resolve through PATH, stubs first
+        (self.t / "bin/mise").chmod(0o755)
         self.log = self.t / "gh.log"
         self.ledger = self.repo / ".orchestration/validation/ci-reruns.tsv"
         self.runs = {
@@ -162,9 +166,10 @@ class CiRerunTest(unittest.TestCase):
             turn.unlink()
         (self.t / "runs.json").write_text(json.dumps(self.runs))
 
-    def start(self, run_id, **env):
+    def start(self, run_id, cwd=None, **env):
         return subprocess.Popen(
             ["bash", str(self.repo / "scripts/orchestrator/ci-rerun.sh"), run_id],
+            cwd=cwd,
             env=os.environ
             | {
                 "PATH": str(self.t / "bin") + os.pathsep + os.environ["PATH"],
@@ -275,6 +280,67 @@ class CiRerunTest(unittest.TestCase):
         self.assertEqual([], calls)
         result, _ = self.run_script("303")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_ci_rerun_pins_its_interpreter_against_a_checkout_and_the_environment(self):
+        # security:4fe2438:1: run from a PR checkout, uv took its .python-version (or .venv, UV_PYTHON, VIRTUAL_ENV).
+        checkout, marker = self.t / "checkout", self.t / "planted.log"
+        python = checkout / ".venv/bin/python"
+        python.parent.mkdir(parents=True)
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{marker}"\nexec "{sys.executable}" "$@"\n')  # works, leaves a mark
+        python.chmod(0o755)
+        (checkout / ".venv/pyvenv.cfg").write_text(f"home = {Path(sys.executable).parent}\n")
+        (checkout / ".python-version").write_text(f"{python}\n")
+        for tool in ("mktemp", "ln"):  # the checkout's own, reached through the empty PATH entry below
+            (checkout / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexit 1\n')
+            (checkout / tool).chmod(0o755)
+        self.reset()
+        selectors = {"UV_PYTHON": str(python), "VIRTUAL_ENV": str(checkout / ".venv")}
+        selectors["PATH"] = os.pathsep + str(self.t / "bin") + os.pathsep + os.environ["PATH"]
+        result = self.finish(self.start("101", cwd=checkout, **selectors))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(1, len(self.reruns()))
+        self.assertFalse(marker.exists(), "a checkout or inherited selector ran the planted interpreter")
+
+    def test_ci_rerun_starts_the_pinned_interpreter_by_its_own_path(self):
+        # Worker review P1: CPython reads pyvenv.cfg beside, and one directory above, the path it was started by, so a
+        # link under a shared TMPDIR would let ${TMPDIR}/pyvenv.cfg choose its standard library.
+        python, seen = self.t / "py/python3", self.t / "started.log"
+        python.parent.mkdir()
+        python.write_text(f'#!/bin/sh\necho "$0" >> "{seen}"\nexec "{sys.executable}" "$@"\n')
+        python.chmod(0o755)
+        self.reset()
+        path = f"{python.parent}{os.pathsep}{self.t / 'bin'}{os.pathsep}{os.environ['PATH']}"
+        result = self.finish(self.start("101", PATH=path))
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual({str(python)}, set(seen.read_text().split()))
+
+    def test_ci_rerun_never_runs_a_path_resolved_command_before_the_pin(self):
+        # Revise 1 (the chain's P1 on 7329f0e): before PATH is pinned, the EXIT trap's rm and the env around mise ran
+        # whatever the caller's PATH named. mise is the resolver the design names; setUp's stub stands in for it.
+        planted, shims, marker = self.t / "planted", self.t / "shims", self.t / "planted.log"
+        for tool, real in (("rm", "/bin/rm"), ("env", "/usr/bin/env")):  # each works, and leaves a mark
+            (planted / tool).parent.mkdir(exist_ok=True)
+            (planted / tool).write_text(f'#!/bin/sh\necho "{tool}" >> "{marker}"\nexec {real} "$@"\n')
+            (planted / tool).chmod(0o755)
+        shims.mkdir()
+        (shims / "jq").write_text("#!/bin/sh\nexit 1\n")
+        (shims / "jq").chmod(0o755)
+        base = os.pathsep.join(map(str, (planted, self.t / "bin", os.environ["PATH"])))
+        (self.t / "linked").symlink_to(shims)  # a PATH entry that links to a shims directory is a shims directory
+        cases = [
+            ("refused before the pin", shims, 1),
+            ("refused through a link", self.t / "linked", 1),
+            ("a full run", "", 0),
+        ]
+        for name, first, code in cases:
+            path = f"{first}{os.pathsep}{base}" if first else base
+            with self.subTest(name):
+                self.reset()
+                marker.unlink(missing_ok=True)
+                result = self.finish(self.start("101", PATH=path))
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(bool(code), "no jq outside a shims directory" in result.stderr, result.stderr)
+                self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
 
     def test_ci_rerun_refuses_a_superseded_pull_request_head(self):
         # a01 audit P2: a rerun of a superseded head's run re-enters pr-<N> and would cancel the newest head's run.

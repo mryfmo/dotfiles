@@ -16,6 +16,8 @@ extensions:
 disabledProviders:
   - agent-plugins
   - openai-codex
+startup:
+  checkUpdate: false
 tools:
   approval:
     debug: deny

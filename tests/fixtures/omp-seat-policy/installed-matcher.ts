@@ -1,6 +1,6 @@
 // The installed omp's own bash.patterns matcher, run on a policy file and a list of commands (regime-cutover U76).
 //
-// omp 18.11.3 keeps the matcher private in src/tools/bash.ts, so this script copies its declarations out of the
+// omp 18.12.6 (as 18.11.3) keeps the matcher private in src/tools/bash.ts, so this script copies its declarations out of the
 // installed source at run time (from `const BASH_APPROVAL_SHELL_CONTROL_CHARS` through `hasBashApprovalShellControl`,
 // and from `type BashPatternApproval` through `findBashApprovalPatternRule`), imports the installed
 // `tokenizeShellSegments`, and asks `findBashApprovalPatternRule` for each command's first matching rule. A missing

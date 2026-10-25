@@ -23,7 +23,7 @@ GUARD = ROOT / "home/.chezmoiscripts/common/run_before_00-refuse-dirty-source.sh
 DECRYPT = ROOT / "home/.chezmoiscripts/common/run_before_01-decrypt-private-key.sh.tmpl"
 CONFIG = ROOT / "home/.chezmoi.yaml.tmpl"
 CHEZMOI = shutil.which("chezmoi")
-# What omp's bash tool exports into every command (dist/cli.js of @oh-my-pi/pi-coding-agent 18.11.3).
+# What omp's bash tool exports into every command (dist/cli.js of @oh-my-pi/pi-coding-agent 18.12.6, as of 18.11.3).
 AGENT_SHELL = {"CI": "true", "npm_config_yes": "true", "GIT_EDITOR": "true", "GIT_TERMINAL_PROMPT": "0"}
 RUNNER_VARIABLES = ("CI", "GITHUB_ACTIONS", "RUNNER_TEMP", *AGENT_SHELL)
 

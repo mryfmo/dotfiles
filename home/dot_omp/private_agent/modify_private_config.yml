@@ -1,10 +1,11 @@
 #!/bin/sh
 # @file home/dot_omp/private_agent/modify_private_config.yml
-# @brief Carry the managed omp model role, skill settings, extensions, disabled providers and denies into ~/.omp/agent/config.yml.
+# @brief Carry the managed omp model role, skill settings, extensions, disabled providers, update check and denies into ~/.omp/agent/config.yml.
 # @description
 #   chezmoi passes the live config on stdin. The merge sets modelRoles.default,
 #   every managed skills key (customDirectories, ignoredSkills; skills.audience
-#   in the manifest), extensions and disabledProviders from
+#   in the manifest), extensions, disabledProviders and startup.checkUpdate
+#   (omp.check_update; every other startup key stays) from
 #   home/.chezmoitemplates/omp-config-managed.yml (a leading ~ expanded to
 #   $HOME, see docs/omp-skills.md). When the managed file carries them (U66) it
 #   also merges the managed tools.approval denies (a managed key wins, every
@@ -59,13 +60,20 @@ def main():
     # skills.audience owns every key the managed file carries; other skills keys stay as omp or the operator set them.
     for key, value in managed["skills"].items():
         data["skills"][key] = value
-    # `omp skill list` resolves a non-absolute entry against cwd before omp expands ~ (src/cli/skill-list.ts:58-64).
+    # `omp skill list` resolved a non-absolute entry against cwd before expanding ~ until omp 18.12.3
+    # (src/cli/skill-list.ts:58-64 of 18.11.3); an absolute entry reads the same in every release.
     if "customDirectories" in managed["skills"]:
         data["skills"]["customDirectories"] = [os.path.expanduser(d) for d in managed["skills"]["customDirectories"]]
     # A plain launch registers the default model's extension provider only through this list (docs/pi-claude-bridge.md).
     data["extensions"] = [os.path.expanduser(d) for d in managed["extensions"]]
     # A disabled provider stays unselectable even with a stored OAuth session (omp docs/providers.md).
     data["disabledProviders"] = managed["disabledProviders"]
+    # omp self-update refuses this install; the update path is the reviewed pin (omp.check_update, U94).
+    if data.get("startup") is None:
+        data["startup"] = {}
+    if not isinstance(data["startup"], dict):
+        return keep(current, "startup is not a mapping")
+    data["startup"]["checkUpdate"] = managed["startup"]["checkUpdate"]
     # Outright denies only (U66): tools.approvalMode and every other tools.approval entry stay as omp or the operator set them.
     if "tools" in managed:
         if data.get("tools") is None:

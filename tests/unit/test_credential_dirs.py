@@ -58,6 +58,35 @@ class CredentialDirsTest(unittest.TestCase):
         self.assertEqual(0o755, target.stat().st_mode & 0o777)
         self.assertIn(".aws is a symlink", result.stderr)
 
+    def test_a_trailing_slash_does_not_hide_a_symlink(self):
+        target = self.temp / "shared"
+        target.mkdir()
+        target.chmod(0o755)
+        (self.home / ".config").mkdir()
+        os.symlink(target, self.home / ".config/gh")
+        for configured in (f"{self.home}/.config/gh/", f"{self.home}/.config/gh//"):
+            with self.subTest(GH_CONFIG_DIR=configured):
+                self.env["GH_CONFIG_DIR"] = configured
+                result = self.run_script()
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(0o755, target.stat().st_mode & 0o777)
+                self.assertIn("is a symlink or is reached through one", result.stderr)
+
+    def test_a_symlinked_parent_is_not_followed(self):
+        # ~/.config is a link: ~/.config/age resolves outside $HOME, so neither it nor its target changes.
+        elsewhere = self.temp / "elsewhere"
+        (elsewhere / "age").mkdir(parents=True)
+        (elsewhere / "age").chmod(0o755)
+        os.symlink(elsewhere, self.home / ".config")
+        (self.home / ".aws").mkdir()
+        (self.home / ".aws").chmod(0o775)
+        result = self.run_script()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0o755, (elsewhere / "age").stat().st_mode & 0o777)
+        self.assertIn(".config/age is a symlink or is reached through one", result.stderr)
+        # A safe directory beside it is still fixed.
+        self.assertEqual(0o700, (self.home / ".aws").stat().st_mode & 0o777)
+
     def test_failed_chmod_fails_the_apply_naming_the_dir(self):
         (self.home / ".aws").mkdir()
         result = self.run_script('source "$0"; chmod() { return 1; }; secure_credential_dirs')

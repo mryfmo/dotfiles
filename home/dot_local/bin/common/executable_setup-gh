@@ -83,21 +83,40 @@ function ensure_default_ssh_key() {
     chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }
 
+# The one-off login's GH_CONFIG_DIR while it exists; empty once cleaned up.
+KEY_CONFIG=""
+
+# @description Log out the one-off login and delete its config directory. Idempotent: a second call
+#   (the EXIT trap after a signal trap, or after the normal path) does nothing.
+function cleanup_key_login() {
+    local dir="${KEY_CONFIG}"
+    [ -n "${dir}" ] || return 0
+    KEY_CONFIG=""
+    GH_CONFIG_DIR="${dir}" gh auth logout -h github.com > /dev/null 2>&1 || true
+    rm -rf "${dir}"
+}
+
 # @description Upload the local public SSH key under a one-off login that holds the key-admin scopes.
+#   The cleanup trap is installed before the login starts, so INT, TERM or HUP after authentication
+#   still log out and delete the token file (exit 128 + the signal number).
 function add_ssh_key_to_github() {
-    local key_config status=0
+    local status=0
     ensure_default_ssh_key
-    key_config="$(mktemp -d)" || return 1
+    trap cleanup_key_login EXIT
+    trap 'cleanup_key_login; exit 129' HUP
+    trap 'cleanup_key_login; exit 130' INT
+    trap 'cleanup_key_login; exit 143' TERM
+    KEY_CONFIG="$(mktemp -d "${TMPDIR:-/tmp}/setup-gh.XXXXXX")" || return 1
     (
-        export GH_CONFIG_DIR="${key_config}"
+        export GH_CONFIG_DIR="${KEY_CONFIG}"
         unset GH_TOKEN GITHUB_TOKEN
         printf 'setup-gh: a one-off login with admin:public_key and admin:ssh_signing_key uploads the key; the machine login keeps its scopes\n' >&2
         gh auth login -h github.com -p https --insecure-storage -s admin:public_key,admin:ssh_signing_key &&
             gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication &&
             gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
     ) || status=$?
-    GH_CONFIG_DIR="${key_config}" gh auth logout -h github.com > /dev/null 2>&1 || true
-    rm -rf "${key_config}"
+    cleanup_key_login
+    trap - EXIT HUP INT TERM
     return "${status}"
 }
 

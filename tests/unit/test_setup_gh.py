@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -10,10 +12,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_setup-gh"
-# The fake gh logs each call with the config directory it saw; `auth login` fails when FAIL_LOGIN is set.
+# The fake gh logs each call with the config directory it saw; `auth login` fails when FAIL_LOGIN is set;
+# `ssh-key add` touches $HANG_MARKER and hangs when that is set (an interrupt after authentication).
 FAKE_GH = """#!/bin/sh
 printf '%s|%s\\n' "${GH_CONFIG_DIR-default}" "$*" >> "$GH_CALLS"
 case "$1 $2" in
+"ssh-key add") [ -z "${HANG_MARKER-}" ] || { : > "$HANG_MARKER"; exec sleep 30; } ;;
 "auth login") [ -z "${FAIL_LOGIN-}" ] || exit 1; [ -d "$GH_CONFIG_DIR" ] && : > "$GH_CONFIG_DIR/hosts.yml" ;;
 esac
 exit 0
@@ -85,6 +89,38 @@ class SetupGhTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertFalse(any("ssh-key add" in command for _, command in calls))
         self.assertEqual([], list(self.tmpdir.iterdir()))
+
+    def test_a_signal_after_authentication_still_logs_out_and_removes_the_token(self):
+        for name, number in (("TERM", signal.SIGTERM), ("INT", signal.SIGINT), ("HUP", signal.SIGHUP)):
+            with self.subTest(signal=name):
+                self.calls.unlink(missing_ok=True)
+                marker = self.temp / f"hang-{name}"
+                process = subprocess.Popen(
+                    ["bash", str(SCRIPT)],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={**self.env, "HANG_MARKER": str(marker)},
+                    start_new_session=True,
+                )
+                try:
+                    for _ in range(200):
+                        if marker.exists() or process.poll() is not None:
+                            break
+                        subprocess.run(["sleep", "0.05"], check=True)
+                    self.assertTrue(marker.exists(), "the fake login never reached the key upload")
+                    # The one-off token is on disk now; the terminal's interrupt reaches the whole group.
+                    self.assertEqual(1, len(list(self.tmpdir.glob("*/hosts.yml"))))
+                    os.killpg(process.pid, number)
+                    returncode = process.wait(timeout=30)
+                finally:
+                    if process.poll() is None:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
+                self.assertEqual(128 + number, returncode)
+                self.assertEqual([], list(self.tmpdir.iterdir()))
+                commands = self.calls.read_text().splitlines()
+                self.assertTrue(commands[-1].endswith("|auth logout -h github.com"), commands)
 
     def test_missing_gh_auth_script_stops_before_any_gh_call(self):
         result, calls = self.run_setup_gh(DOTFILES_GH_AUTH_SCRIPT=str(self.temp / "absent.sh"))

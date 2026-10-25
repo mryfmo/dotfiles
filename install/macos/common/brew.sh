@@ -79,7 +79,7 @@ function handle_ci_untrusted_taps() {
     installed="$(brew list --formula --full-name)"
     for name in ${installed}; do
         for tap in ${taps}; do
-            if [[ "${name}" == "${tap}/"* ]]; then
+            if [[ "${name}" == "${tap}/"* ]]; then # lint-comparisons: allow brew names: user/repo/formula vs its tap user/repo
                 formulae+=" ${name}"
                 with_items+=" ${tap} "
             fi
@@ -88,7 +88,7 @@ function handle_ci_untrusted_taps() {
     installed="$(brew list --cask --full-name)"
     for name in ${installed}; do
         for tap in ${taps}; do
-            if [[ "${name}" == "${tap}/"* ]]; then
+            if [[ "${name}" == "${tap}/"* ]]; then # lint-comparisons: allow brew names: user/repo/cask vs its tap user/repo
                 casks+=" ${name}"
                 with_items+=" ${tap} "
             fi

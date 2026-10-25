@@ -605,6 +605,18 @@ UNPINNED_CODEX_MARKETPLACES = frozenset(
 )
 
 
+def present(path: Path) -> bool:
+    """Whether PATH exists: False only when it (or a parent) is absent; any other OSError propagates.
+
+    Path.exists() swallows every OSError from Python 3.14 on, which would read "cannot tell" as "absent".
+    """
+    try:
+        path.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
 def read_json(path: Path) -> object:
     """Parse a JSON file; OSError or ValueError propagates so a caller can tell a failed read from an absent file."""
     return json.loads(path.read_text())
@@ -618,7 +630,11 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
     local-scope installation belongs to its project and is reported as not managed, never as a pass.
     """
     installed_path = home / ".claude/plugins/installed_plugins.json"
-    if not installed_path.exists():
+    try:
+        installed_present = present(installed_path)
+    except OSError as error:
+        return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
+    if not installed_present:
         return [
             f"WARN: Claude Code plugins: {installed_path} is missing, so no recorded plugin is installed; run make update"
         ]
@@ -653,7 +669,14 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
                 "or run make update to return to the pin"
             )
     settings_path = home / ".claude/settings.json"
-    if settings_path.exists():
+    try:
+        settings_present = present(settings_path)
+    except OSError as error:
+        return [
+            *findings,
+            f"Claude Code plugins: cannot read {settings_path} ({error!r}); unpinned plugins not checked",
+        ]
+    if settings_present:
         try:
             enabled = read_json(settings_path).get("enabledPlugins", {})
         except (OSError, ValueError, AttributeError) as error:
@@ -689,14 +712,32 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
     for plugin_id, pin in sorted(pins.items()):
         plugin, _, marketplace = plugin_id.partition("@")
         root = home / ".codex/plugins/cache" / marketplace / plugin
-        version_dir = active_plugin_version(root) if root.is_dir() else None
+        # Absent and cannot-tell differ: only a missing cache directory means "not installed". The shared
+        # active_plugin_version reads any OSError as "no copy", so the directory is listed here first.
+        try:
+            list(root.iterdir())
+        except FileNotFoundError:
+            version_dir = None
+        except OSError as error:
+            findings.append(
+                f"Codex plugin {plugin_id}: cannot read its cache {root} ({error!r}); cannot verify its pin"
+            )
+            continue
+        else:
+            version_dir = active_plugin_version(root)
         copy = root / version_dir if version_dir is not None else None
         ref = pin.get("ref")
         if ref is not None:
             # The marketplace revision is recorded beside its clone, whether or not a plugin copy is cached:
             # a clone off its pin is an error even with no copy, and an unreadable record is never a pass.
             install_record = home / ".codex/.tmp/marketplaces" / marketplace / ".codex-marketplace-install.json"
-            if install_record.exists():
+            try:
+                record_present = present(install_record)
+                clone_present = present(install_record.parent)
+            except OSError as error:
+                findings.append(f"Codex marketplace {marketplace}: cannot read {install_record} ({error!r})")
+                record_present = clone_present = None
+            if record_present:
                 try:
                     revision = read_json(install_record).get("revision")
                 except (OSError, ValueError, AttributeError) as error:
@@ -708,7 +749,7 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
                             f"Codex marketplace {marketplace} is at {revision}, not its pinned ref {ref}; "
                             "run chezmoi apply, then make update"
                         )
-            elif copy is not None or install_record.parent.exists():
+            elif record_present is False and (copy is not None or clone_present):
                 findings.append(
                     f"Codex marketplace {marketplace}: {install_record} is missing, so its pinned ref {ref} "
                     "cannot be checked; run make update"
@@ -734,7 +775,11 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
                     f"Codex plugin {plugin_id} copy {copy} was installed from {commit}, not the pinned ref {ref}"
                 )
     config_path = home / ".codex/config.toml"
-    if config_path.exists():
+    try:
+        config_present = present(config_path)
+    except OSError as error:
+        return [*findings, f"Codex plugins: cannot read {config_path} ({error!r}); unpinned plugins not checked"]
+    if config_present:
         try:
             enabled = tomllib.loads(config_path.read_text()).get("plugins", {})
         except (OSError, ValueError) as error:
@@ -755,10 +800,28 @@ def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
     data_home = Path(os.environ.get("XDG_DATA_HOME") or home / ".local/share")
     findings = []
     for repository, pin in sorted(pins.items()):
-        manifest = data_home / "gh/extensions" / repository.split("/", 1)[1] / "manifest.yml"
-        if not manifest.exists():
+        directory = data_home / "gh/extensions" / repository.split("/", 1)[1]
+        manifest = directory / "manifest.yml"
+        # Absent only when the extension directory itself is missing; a directory or binary without a
+        # readable manifest cannot be verified, which is an error, never "not installed".
+        try:
+            directory.stat()
+        except FileNotFoundError:
             findings.append(
                 f"WARN: gh extension {repository} is not installed (pin {pin}); run make update after make gh-auth"
+            )
+            continue
+        except OSError as error:
+            findings.append(f"gh extension {repository}: cannot read {directory} ({error!r}); cannot verify its pin")
+            continue
+        try:
+            manifest_present = present(manifest)
+        except OSError:
+            manifest_present = False
+        if not manifest_present or not manifest.is_file():
+            findings.append(
+                f"gh extension {repository} is installed at {directory} but has no readable {manifest.name}; "
+                "cannot verify its pin; run make update to reinstall it pinned"
             )
             continue
         try:

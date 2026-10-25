@@ -1141,6 +1141,39 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(1, len(errors), errors)
         self.assertIn("gh extension owner/gh-tool is at its pin v1.0.0 but installed unpinned", errors[0])
 
+    def test_doctor_never_reads_an_unreadable_probe_as_absent(self) -> None:
+        # Failure injection: "cannot tell" is an error with "cannot", never "not installed" or a pass.
+        pins = self.plugin_pins_fixture()
+        cases = {
+            "unreadable Codex plugin cache": self.target_root / ".codex/plugins/cache/tail/tail",
+            "unreadable gh extension directory": self.target_root / ".local/share/gh/extensions/gh-tool",
+        }
+        for name, directory in cases.items():
+            with self.subTest(case=name):
+                self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+                directory.chmod(0)
+                try:
+                    findings = self.plugin_findings(pins)
+                finally:
+                    directory.chmod(0o755)
+                errors = [finding for finding in findings if not self.module.is_warning(finding)]
+                self.assertTrue(any("cannot" in error for error in errors), findings)
+                self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
+
+        # The gh-poi binary is there but gh's manifest.yml is gone: its pin cannot be verified.
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        extension = self.target_root / ".local/share/gh/extensions/gh-tool"
+        (extension / "gh-tool").write_text("#!/bin/sh\n")
+        (extension / "manifest.yml").unlink()
+        errors = [finding for finding in self.plugin_findings(pins) if not self.module.is_warning(finding)]
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("cannot verify its pin", errors[0])
+
+        # A stat failure other than "absent" on any record propagates instead of reading as missing.
+        with mock.patch.object(Path, "stat", side_effect=PermissionError("denied")):
+            with self.assertRaises(PermissionError):
+                self.module.present(self.target_root / "anything")
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

@@ -1715,6 +1715,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_pr-thread-reply/" class="md-nav__link">
         
   
@@ -4461,6 +4489,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/orchestrator/pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/orchestrator/pr-thread-reply/" class="md-nav__link">
         
   
@@ -4859,7 +4915,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_pr-body-editsh">home/dot_local/bin/common/executable_pr-body-edit.sh<a class="headerlink" href="#homedot_localbincommonexecutable_pr-body-editsh" title="Permanent link">&para;</a></h1>
-<p>Regime-cutover U28, the worker seat's lever, allowed only in the form <code>~/.local/bin/common/pr-body-edit.sh --body-file *</code> by <code>home/dot_agents/omp/policies/worker.yml</code> (scripts/orchestrator/README.md, "Seat levers for GitHub writes"); the orchestrator's policy denies it. It edits only the pull request of the branch the seat has checked out: <code>git branch --show-current</code> must name a branch other than <code>main</code>, and <code>gh pr view --json number,headRefName,state</code> (the pull request of that branch) must report it as <code>headRefName</code> and <code>OPEN</code>. The body file is a regular file (not a symlink) of 1 to 65536 bytes whose real path is inside <code>$TMPDIR</code> or the checkout. The new body must hold exactly one line starting <code>Program-Unit:</code>, and it must be <code>Program-Unit: regime-cutover/U&lt;n&gt;</code>, the plain unit id <code>regime-ci.py</code> reads (a fix round writes its parent id, <code>preferences.md</code> standing order 24); when the current body already carries one such line, the unit must stay the same, so an edit fixes the line or the text but never moves a pull request to another unit. Every <code>##</code> heading line and the <code>Generated with [Claude Code]</code> footer line of the current body must still be in the new body, so sections are added or rewritten, never dropped. The one write is <code>gh pr edit &lt;n&gt; --body-file &lt;file&gt;</code>. Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl <code>alarm</code>).</p>
+<p>Regime-cutover U28, the worker seat's lever, allowed only in the form <code>~/.local/bin/common/pr-body-edit.sh --body-file *</code> by <code>home/dot_agents/omp/policies/worker.yml</code> (scripts/orchestrator/README.md, "Seat levers for GitHub writes"); the orchestrator's policy denies it. It edits only the pull request of the branch the seat has checked out: <code>git branch --show-current</code> must name a branch other than <code>main</code>, and <code>gh pr view --json number,headRefName,state</code> (the pull request of that branch) must report it as <code>headRefName</code> and <code>OPEN</code>. The body file is a regular file (not a symlink) of 1 to 65536 bytes whose real path is inside <code>$TMPDIR</code> or the checkout. The new body must hold exactly one line starting <code>Program-Unit:</code>, and it must be <code>Program-Unit: &lt;program&gt;/U&lt;n&gt;</code>, the line <code>regime-ci.py</code> reads: <code>&lt;program&gt;</code> in <code>regime-init</code>'s grammar (<code>^[a-z0-9][a-z0-9_-]{0,63}$</code>) naming a store the checkout holds, <code>.orchestration/orchestrate/&lt;program&gt;/units.tsv</code> (U71), and a plain unit id (a fix round writes its parent id, <code>preferences.md</code> standing order 24); when the current body already carries one such line, the program and the unit must stay the same, so an edit fixes the line or the text but never moves a pull request to another program or unit. Every <code>##</code> heading line and the <code>Generated with [Claude Code]</code> footer line of the current body must still be in the new body, so sections are added or rewritten, never dropped. The one write is <code>gh pr edit &lt;n&gt; --body-file &lt;file&gt;</code>. Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl <code>alarm</code>).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_pr-body-edit.sh</code></li>
@@ -4887,16 +4943,18 @@
 <span class="c1">#   branch other than `main`, and `gh pr view --json number,headRefName,state` (the pull request of that branch)</span>
 <span class="c1">#   must report it as `headRefName` and `OPEN`. The body file is a regular file (not a symlink) of 1 to 65536</span>
 <span class="c1">#   bytes whose real path is inside `$TMPDIR` or the checkout. The new body must hold exactly one line starting</span>
-<span class="c1">#   `Program-Unit:`, and it must be `Program-Unit: regime-cutover/U&lt;n&gt;`, the plain unit id `regime-ci.py` reads</span>
-<span class="c1">#   (a fix round writes its parent id, `preferences.md` standing order 24); when the current body already</span>
-<span class="c1">#   carries one such line, the unit must stay the same, so an edit fixes the line or the text but never moves a</span>
-<span class="c1">#   pull request to another unit. Every `## ` heading line and the `Generated with [Claude Code]` footer line of</span>
+<span class="c1">#   `Program-Unit:`, and it must be `Program-Unit: &lt;program&gt;/U&lt;n&gt;`, the line `regime-ci.py` reads: `&lt;program&gt;` in</span>
+<span class="c1">#   `regime-init`'s grammar (`^[a-z0-9][a-z0-9_-]{0,63}$`) naming a store the checkout holds,</span>
+<span class="c1">#   `.orchestration/orchestrate/&lt;program&gt;/units.tsv` (U71), and a plain unit id (a fix round writes its parent id,</span>
+<span class="c1">#   `preferences.md` standing order 24); when the current body already carries one such line, the program and the</span>
+<span class="c1">#   unit must stay the same, so an edit fixes the line or the text but never moves a pull request to another</span>
+<span class="c1">#   program or unit. Every `## ` heading line and the `Generated with [Claude Code]` footer line of</span>
 <span class="c1">#   the current body must still be in the new body, so sections are added or rewritten, never dropped. The one</span>
 <span class="c1">#   write is `gh pr edit &lt;n&gt; --body-file &lt;file&gt;`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl</span>
 <span class="c1">#   `alarm`).</span>
 <span class="c1"># @option --body-file &lt;file&gt; The new body.</span>
 <span class="c1"># @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).</span>
-<span class="c1"># @stdout One receipt line: `edited pr=&lt;n&gt; branch=&lt;b&gt; unit=U&lt;n&gt; sha256=&lt;body sha256&gt;`.</span>
+<span class="c1"># @stdout One receipt line: `edited pr=&lt;n&gt; branch=&lt;b&gt; program=&lt;program&gt; unit=U&lt;n&gt; sha256=&lt;body sha256&gt;`.</span>
 <span class="c1"># @exitcode 0 The body was replaced.</span>
 <span class="c1"># @exitcode 1 A `git` or `gh` read, or the edit, failed.</span>
 <span class="c1"># @exitcode 2 Refused: usage, the branch, the pull request's state, the body file, or the body's content.</span>
@@ -4962,7 +5020,7 @@ lever_self_check
 <span class="nv">lever</span><span class="o">=</span><span class="s1">'pr-body-edit.sh'</span>
 <span class="nv">usage</span><span class="o">=</span><span class="s1">'usage: pr-body-edit.sh --body-file &lt;file&gt;'</span>
 <span class="nv">gh_timeout</span><span class="o">=</span><span class="si">${</span><span class="nv">PR_LEVER_GH_TIMEOUT</span><span class="k">:-</span><span class="nv">60</span><span class="si">}</span>
-<span class="nv">unit_line</span><span class="o">=</span><span class="s1">'^Program-Unit: regime-cutover/U[0-9]+$'</span>
+<span class="nv">unit_line</span><span class="o">=</span><span class="s1">'^Program-Unit: [a-z0-9][a-z0-9_-]{0,63}/U[0-9]+$'</span>
 <span class="nv">footer_re</span><span class="o">=</span><span class="s1">'Generated with \[Claude Code\]\(https://claude\.com/claude-code\)'</span>
 
 <span class="c1"># @description Print the refusal on stderr and exit 2; nothing was written to GitHub.</span>
@@ -5028,8 +5086,12 @@ lines_matching<span class="o">()</span><span class="w"> </span><span class="o">{
 body_file_check<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="nv">markers</span><span class="o">=</span><span class="k">$(</span>lines_matching<span class="w"> </span><span class="s1">'^Program-Unit:'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">body_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">markers</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">markers</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">markers</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">unit_line</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
-<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the body must hold exactly one line 'Program-Unit: regime-cutover/U&lt;n&gt;' (a plain unit id); it holds: </span><span class="si">${</span><span class="nv">markers</span><span class="k">:-</span><span class="nv">none</span><span class="si">}</span><span class="s2">"</span>
-<span class="nv">unit</span><span class="o">=</span><span class="si">${</span><span class="nv">markers</span><span class="p">##*/</span><span class="si">}</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the body must hold exactly one line 'Program-Unit: &lt;program&gt;/U&lt;n&gt;' (a plain unit id); it holds: </span><span class="si">${</span><span class="nv">markers</span><span class="k">:-</span><span class="nv">none</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">marker</span><span class="o">=</span><span class="si">${</span><span class="nv">markers</span><span class="p">#Program-Unit: </span><span class="si">}</span>
+<span class="nv">program</span><span class="o">=</span><span class="si">${</span><span class="nv">marker</span><span class="p">%/*</span><span class="si">}</span>
+<span class="nv">unit</span><span class="o">=</span><span class="si">${</span><span class="nv">marker</span><span class="p">##*/</span><span class="si">}</span>
+<span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">toplevel</span><span class="si">}</span>/.orchestration/orchestrate/<span class="si">${</span><span class="nv">program</span><span class="si">}</span>/units.tsv<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the Program-Unit line names </span><span class="si">${</span><span class="nv">program</span><span class="si">}</span><span class="s2">, but the checkout holds no .orchestration/orchestrate/</span><span class="si">${</span><span class="nv">program</span><span class="si">}</span><span class="s2">/units.tsv"</span>
 
 <span class="nv">view</span><span class="o">=</span><span class="k">$(</span>gh_bounded<span class="w"> </span>pr<span class="w"> </span>view<span class="w"> </span>--json<span class="w"> </span>number,headRefName,state<span class="w"> </span>--jq<span class="w"> </span><span class="s1">'[(.number | tostring), .headRefName, .state] | @tsv'</span><span class="k">)</span><span class="w"> </span><span class="o">||</span>
 <span class="w">    </span>fail<span class="w"> </span><span class="s2">"cannot read the pull request of </span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2">"</span>
@@ -5042,8 +5104,8 @@ body_file_check<span class="w"> </span><span class="s2">"</span><span class="nv"
 <span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -f "${current}"'</span><span class="w"> </span>EXIT
 gh_bounded<span class="w"> </span>pr<span class="w"> </span>view<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">number</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--json<span class="w"> </span>body<span class="w"> </span>--jq<span class="w"> </span>.body<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read the body of pull request </span><span class="si">${</span><span class="nv">number</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">old_markers</span><span class="o">=</span><span class="k">$(</span>lines_matching<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">unit_line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="p">##*/</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the current body names </span><span class="si">${</span><span class="nv">old_markers</span><span class="p">##*/</span><span class="si">}</span><span class="s2">; an edit keeps the unit (the new body names </span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2">)"</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">old_markers</span><span class="p">#Program-Unit: </span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marker</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>refuse<span class="w"> </span><span class="s2">"the current body names </span><span class="si">${</span><span class="nv">old_markers</span><span class="p">#Program-Unit: </span><span class="si">}</span><span class="s2">; an edit keeps the program and the unit (the new body names </span><span class="si">${</span><span class="nv">marker</span><span class="si">}</span><span class="s2">)"</span>
 <span class="k">fi</span>
 <span class="nv">kept</span><span class="o">=</span><span class="k">$(</span>lines_matching<span class="w"> </span><span class="s2">"^## |</span><span class="si">${</span><span class="nv">footer_re</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>fail<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">new_lines</span><span class="o">=</span><span class="k">$(</span>lines_matching<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>refuse<span class="w"> </span><span class="s2">"cannot read </span><span class="si">${</span><span class="nv">body_path</span><span class="si">}</span><span class="s2">"</span>
@@ -5058,7 +5120,7 @@ gh_bounded<span class="w"> </span>pr<span class="w"> </span>edit<span class="w">
 <span class="k">else</span>
 <span class="w">    </span><span class="nv">digest</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">digest</span><span class="o">=</span><span class="s1">''</span>
 <span class="k">fi</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">"edited pr=</span><span class="si">${</span><span class="nv">number</span><span class="si">}</span><span class="s2"> branch=</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2"> unit=</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> sha256=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span><span class="s2">"</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"edited pr=</span><span class="si">${</span><span class="nv">number</span><span class="si">}</span><span class="s2"> branch=</span><span class="si">${</span><span class="nv">branch</span><span class="si">}</span><span class="s2"> program=</span><span class="si">${</span><span class="nv">program</span><span class="si">}</span><span class="s2"> unit=</span><span class="si">${</span><span class="nv">unit</span><span class="si">}</span><span class="s2"> sha256=</span><span class="si">${</span><span class="nv">digest</span><span class="p">%% *</span><span class="si">}</span><span class="s2">"</span>
 </code></pre></div>
 
 

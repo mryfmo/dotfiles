@@ -1627,6 +1627,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../home/dot_local/bin/common/executable_pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../home/dot_local/bin/common/executable_pr-thread-reply/" class="md-nav__link">
         
   
@@ -4377,6 +4405,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../pr-merge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/orchestrator/pr-merge.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../pr-thread-reply/" class="md-nav__link">
         
   
@@ -4855,7 +4911,7 @@
 
 
 <h1 id="scriptsorchestratorpr-update-branchsh">scripts/orchestrator/pr-update-branch.sh<a class="headerlink" href="#scriptsorchestratorpr-update-branchsh" title="Permanent link">&para;</a></h1>
-<p>Regime-cutover U28, a lever of the omp orchestrator seat, allowed by the row <code>~/.local/bin/common/pr-update-branch.sh *</code> of <code>home/dot_agents/omp/policies/orchestrator.yml</code> (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). <code>&lt;pr&gt;</code> is decimal and checked before the first <code>gh</code> call. <code>gh pr view &lt;pr&gt; --json state,baseRefName,headRefOid</code> must report <code>OPEN</code> and base <code>main</code>, else the lever refuses; the one write is <code>gh pr update-branch &lt;pr&gt;</code>, GitHub's merge form (never <code>--rebase</code>, which rewrites the worker's branch), and the head is read again afterwards. A merge commit from main does not void a verdict while <code>gh pr diff</code> is unchanged (<code>preferences.md</code> standing order 18); the orchestrator checks that and CI on the new head before it merges with <code>--match-head-commit &lt;new head&gt;</code>. Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl <code>alarm</code>).</p>
+<p>Regime-cutover U28, a lever of the omp orchestrator seat, allowed by the row <code>~/.local/bin/common/pr-update-branch.sh *</code> of <code>home/dot_agents/omp/policies/orchestrator.yml</code> (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). <code>&lt;pr&gt;</code> is decimal and checked before the first <code>gh</code> call. <code>gh pr view &lt;pr&gt; --json state,baseRefName,headRefOid</code> must report <code>OPEN</code> and base <code>main</code>, else the lever refuses; the one write is <code>gh pr update-branch &lt;pr&gt;</code>, GitHub's merge form (never <code>--rebase</code>, which rewrites the worker's branch), and the head is read again afterwards. The new head needs its own audit and <code>correct</code> ledger row before <code>pr-merge.sh</code> merges it (U71: no verdict carries over from the old head). Each <code>gh</code> call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl <code>alarm</code>).</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/orchestrator/pr-update-branch.sh</code></li>
@@ -4879,9 +4935,9 @@
 <span class="c1">#   (scripts/orchestrator/README.md, "Seat levers for GitHub writes"). `&lt;pr&gt;` is decimal and checked before the</span>
 <span class="c1">#   first `gh` call. `gh pr view &lt;pr&gt; --json state,baseRefName,headRefOid` must report `OPEN` and base `main`,</span>
 <span class="c1">#   else the lever refuses; the one write is `gh pr update-branch &lt;pr&gt;`, GitHub's merge form (never `--rebase`,</span>
-<span class="c1">#   which rewrites the worker's branch), and the head is read again afterwards. A merge commit from main does not</span>
-<span class="c1">#   void a verdict while `gh pr diff` is unchanged (`preferences.md` standing order 18); the orchestrator checks</span>
-<span class="c1">#   that and CI on the new head before it merges with `--match-head-commit &lt;new head&gt;`. Each `gh` call is bounded</span>
+<span class="c1">#   which rewrites the worker's branch), and the head is read again afterwards. The new head needs its own audit</span>
+<span class="c1">#   and `correct` ledger row before `pr-merge.sh` merges it (U71: no verdict carries over from the old head). Each</span>
+<span class="c1">#   `gh` call is bounded</span>
 <span class="c1">#   by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).</span>
 <span class="c1"># @arg $1 int The pull request number.</span>
 <span class="c1"># @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).</span>

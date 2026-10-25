@@ -52,14 +52,49 @@ function gh_extension_is_pinned() {
 }
 
 #
+# @description Install one extension pinned at its tag without losing the copy it replaces.
+# @description
+#   The installed copy (gh's directory for it) is moved aside under the gh extensions directory with a
+#   dot name, which `gh extension list` does not read as an extension; the pinned copy is installed;
+#   on success the old copy is deleted, on failure the partial install is removed and the old copy put
+#   back, so a failed install never leaves the extension missing.
+# @arg $1 string Extension repository, for example seachicken/gh-poi.
+# @arg $2 string Pinned tag.
+# @exitcode 1 When the pinned install fails (the previous copy is restored) or the old copy cannot be moved.
+#
+function replace_gh_extension() {
+    local extension="$1" pin="$2"
+    local root="${XDG_DATA_HOME:-${HOME}/.local/share}/gh/extensions"
+    local current="${root}/${1##*/}" previous="${root}/.${1##*/}.previous"
+
+    if [ -e "${current}" ] || [ -L "${current}" ]; then
+        if ! { rm -rf "${previous}" && mv "${current}" "${previous}"; }; then
+            printf 'Cannot move %s aside; %s was not changed.\n' "${current}" "${extension}" >&2
+            return 1
+        fi
+    fi
+    if gh extension install "${extension}" --pin "${pin}"; then
+        rm -rf "${previous}"
+        return 0
+    fi
+    printf 'gh extension install %s --pin %s failed; restoring the previous copy.\n' "${extension}" "${pin}" >&2
+    if [ -e "${previous}" ] || [ -L "${previous}" ]; then
+        rm -rf "${current}" && mv "${previous}" "${current}"
+    fi
+    return 1
+}
+
+#
 # @description Install every configured extension pinned at its tag, or skip when unauthenticated.
 # @description
 #   An extension at its tag and pinned is left alone; one at another tag, or installed unpinned (an earlier
-#   plain install, which `gh extension upgrade` could move), is removed and installed again with --pin.
-# @exitcode 1 When `gh extension list` fails: an unreadable list is never read as "not installed".
+#   plain install, which `gh extension upgrade` could move), is installed again with --pin, keeping the old
+#   copy until the new one is in place (replace_gh_extension).
+# @exitcode 1 When `gh extension list` fails (an unreadable list is never read as "not installed") or a
+#   pinned install fails; every other extension is still processed.
 #
 function install_gh_extensions() {
-    local entry extension pin listing installed pinned
+    local entry extension pin listing installed pinned failed=0
 
     if ! gh auth status &> /dev/null; then
         printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
@@ -80,10 +115,10 @@ function install_gh_extensions() {
         fi
         if [ -n "${installed}" ]; then
             printf '%s is at %s (pinned: %s); reinstalling it pinned at %s.\n' "${extension}" "${installed}" "${pinned}" "${pin}"
-            gh extension remove "${extension##*/}"
         fi
-        gh extension install "${extension}" --pin "${pin}"
+        replace_gh_extension "${extension}" "${pin}" || failed=1
     done
+    return "${failed}"
 }
 
 #

@@ -78,11 +78,12 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[1]}" = "extension remove gh-poi" ]
-    [[ "${lines[2]}" == "extension install seachicken/gh-poi --pin "* ]]
+    [[ "${lines[1]}" == "extension install seachicken/gh-poi --pin "* ]]
+    [[ "${output}" != *"extension remove"* ]]
 }
 
 @test "[common] gh_extensions reinstalls an extension at another tag at its pin" {
+    export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }
@@ -98,9 +99,32 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     '
 
     [ "${status}" -eq 0 ]
-    pin="${lines[3]#pin=}"
-    [ "${lines[1]}" = "extension remove gh-poi" ]
-    [ "${lines[2]}" = "extension install seachicken/gh-poi --pin ${pin}" ]
+    pin="${lines[2]#pin=}"
+    [ "${lines[1]}" = "extension install seachicken/gh-poi --pin ${pin}" ]
+}
+
+@test "[common] gh_extensions restores the previous copy when the pinned install fails" {
+    export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
+    mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
+    printf 'old\n' > "${XDG_DATA_HOME}/gh/extensions/gh-poi/gh-poi"
+    run bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        activate_mise() { :; }
+        gh() {
+            case "$1 $2" in
+                "auth status") return 0 ;;
+                "extension list") printf "gh poi\tseachicken/gh-poi\tv0.0.1\n" ;;
+                "extension install") mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"; return 1 ;;
+                *) printf "unexpected: %s\n" "$*" ;;
+            esac
+        }
+        main
+    '
+
+    [ "${status}" -ne 0 ]
+    [ "$(cat "${XDG_DATA_HOME}/gh/extensions/gh-poi/gh-poi")" = "old" ]
+    [ ! -e "${XDG_DATA_HOME}/gh/extensions/.gh-poi.previous" ]
+    [[ "${output}" != *"unexpected:"* ]]
 }
 
 @test "[common] gh_extensions changes nothing when the extension list cannot be read" {

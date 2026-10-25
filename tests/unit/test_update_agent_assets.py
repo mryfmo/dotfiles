@@ -817,18 +817,29 @@ claude() {
                 self.assertIs(False, state["user"][plugin_id])
                 self.assertIn(f"{pins[plugin_id]['pin']}", result.stderr)
 
-    def run_gh_extensions(self, tag: str, pinned: str | None) -> tuple[subprocess.CompletedProcess, list[str]]:
+    def run_gh_extensions(
+        self, tag: str, pinned: str | None, install_fails: bool = False
+    ) -> tuple[subprocess.CompletedProcess, list[str], Path]:
         # install/common/gh_extensions.sh against a fake gh listing gh-poi at TAG; PINNED is its manifest.yml
-        # ispinned value (None: no manifest), the field gh writes for `gh extension install --pin`.
+        # ispinned value (None: no manifest), the field gh writes for `gh extension install --pin`. The fake
+        # install writes a fresh pinned copy, or (INSTALL_FAILS) leaves a partial directory and fails.
         work = Path(tempfile.mkdtemp(prefix="gh-extensions-"))
         self.addCleanup(shutil.rmtree, work)
+        directory = work / "data/gh/extensions/gh-poi"
+        directory.mkdir(parents=True)
+        (directory / "gh-poi").write_text("old binary\n")
         if pinned is not None:
-            manifest = work / "data/gh/extensions/gh-poi/manifest.yml"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(f"owner: seachicken\nname: gh-poi\ntag: {tag}\nispinned: {pinned}\n")
+            (directory / "manifest.yml").write_text(
+                f"owner: seachicken\nname: gh-poi\ntag: {tag}\nispinned: {pinned}\n"
+            )
         fake = (
             'gh() { case "$1 $2" in "auth status") return 0 ;; '
             '"extension list") printf "gh poi\\tseachicken/gh-poi\\t%s\\n" "${TAG}" ;; '
+            '"extension install") printf "%s\\n" "$*" >> "${WORK}/calls"; '
+            'd="${XDG_DATA_HOME}/gh/extensions/gh-poi"; [ ! -e "$d" ] || return 7; mkdir -p "$d"; '
+            'if [ -n "${INSTALL_FAILS}" ]; then echo partial > "$d/gh-poi"; return 1; fi; '
+            'echo new > "$d/gh-poi"; printf "tag: %s\\nispinned: true\\n" "$5" > "$d/manifest.yml" ;; '
+            '"extension remove") printf "%s\\n" "$*" >> "${WORK}/calls"; rm -rf "${XDG_DATA_HOME}/gh/extensions/$3" ;; '
             '*) printf "%s\\n" "$*" >> "${WORK}/calls" ;; esac; }'
         )
         result = subprocess.run(
@@ -839,28 +850,51 @@ claude() {
                 "bash",
                 str(ROOT / "install/common/gh_extensions.sh"),
             ],
-            env=os.environ | {"WORK": str(work), "TAG": tag, "XDG_DATA_HOME": str(work / "data")},
+            env=os.environ
+            | {
+                "WORK": str(work),
+                "TAG": tag,
+                "XDG_DATA_HOME": str(work / "data"),
+                "INSTALL_FAILS": "1" if install_fails else "",
+            },
             text=True,
             capture_output=True,
             check=False,
         )
         calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
-        return result, calls
+        return result, calls, directory
+
+    def test_a_failed_pinned_install_restores_the_previous_gh_extension(self):
+        pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["gh_extensions"]["seachicken/gh-poi"]
+        result, calls, directory = self.run_gh_extensions("v0.0.1", "false", install_fails=True)
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertEqual([f"extension install seachicken/gh-poi --pin {pin}"], calls)
+        # The old copy is back in place and nothing is left aside.
+        self.assertEqual("old binary\n", (directory / "gh-poi").read_text())
+        self.assertFalse((directory.parent / ".gh-poi.previous").exists())
+        self.assertIn("restoring the previous copy", result.stderr)
+
+        # On success the old copy is replaced and its aside copy deleted; nothing is removed first.
+        result, calls, directory = self.run_gh_extensions("v0.0.1", "false")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("new\n", (directory / "gh-poi").read_text())
+        self.assertFalse((directory.parent / ".gh-poi.previous").exists())
+        self.assertFalse([call for call in calls if call.startswith("extension remove")], calls)
 
     def test_a_gh_extension_is_kept_pinned_at_its_tag(self):
         pin = json.loads((ROOT / "scripts/plugin-pins.json").read_text())["gh_extensions"]["seachicken/gh-poi"]
-        reinstall = ["extension remove gh-poi", f"extension install seachicken/gh-poi --pin {pin}"]
+        reinstall = [f"extension install seachicken/gh-poi --pin {pin}"]
         # At its tag and pinned: nothing to do.
-        result, calls = self.run_gh_extensions(pin, "true")
+        result, calls, _ = self.run_gh_extensions(pin, "true")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual([], calls)
         # At its tag but installed unpinned (or with no readable manifest): reinstalled with --pin,
         # since `gh extension upgrade` could otherwise move it.
         for pinned in ("false", None):
             with self.subTest(pinned=pinned):
-                result, calls = self.run_gh_extensions(pin, pinned)
+                result, calls, _ = self.run_gh_extensions(pin, pinned)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(reinstall, calls)
         # At another tag: reinstalled at the pin.
-        result, calls = self.run_gh_extensions("v0.0.1", "true")
+        result, calls, _ = self.run_gh_extensions("v0.0.1", "true")
         self.assertEqual(reinstall, calls)

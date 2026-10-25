@@ -1149,7 +1149,8 @@ taking the newest release:
   takes no version, so it is only compared.
 - gh-poi installs with `gh extension install --pin <tag>`. An install at
   another tag, or at the tag but unpinned (an earlier plain install), is
-  removed and installed again pinned. `scripts/upgrade-tools.sh` upgrades only
+  installed again pinned; the old copy is moved aside first and put back if
+  the pinned install fails, so gh-poi is never left missing. `scripts/upgrade-tools.sh` upgrades only
   the extensions this repository does not pin, one by one; it never runs
   `gh extension upgrade --all`.
 

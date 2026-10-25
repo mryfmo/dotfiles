@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-import configparser
 import json
 import os
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
@@ -501,20 +502,31 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
             fail(f"{label}.allow rule {rule!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
-# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is the audited squash
-# merge (orchestrator only) or one lever by its installed path, `~/.local/bin/common/<lever> *`,
-# `~/.local/bin/common/<lever> --<flag> *` or the exact bare `~/.local/bin/common/<lever>` (U28b F3), held to the same
-# lever checks as a Claude allow rule. audit.yml keeps its read-only allows under `always-ask`;
-# tests/unit/test_omp_seat_policy.py holds its decision table.
+# The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is one lever by its
+# installed path, `~/.local/bin/common/<lever> *`, `~/.local/bin/common/<lever> --<flag> *` or the exact bare
+# `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
+# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table.
+OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
-OMP_MERGE_ALLOW = "gh pr merge * --squash --match-head-commit *"
+# GitHub reach (U71, audit rounds 3, 8 and 9): enumerating merge spellings always missed one (`/merges`, then GraphQL
+# `mergePullRequest`), so in every policy file under OMP_POLICY_DIR, found by glob so a new or renamed file is covered
+# too, an allow row that mentions `gh`, `graphql`, `api.github.com`, `curl` or `wget` must be byte-identical to an
+# entry of its role's list below; any other such row is refused. The lists are today's rows, small and exact, so the
+# single manifest list U76 renders the policies from can adopt them. The orchestrator merges only through pr-merge.sh.
+OMP_GITHUB_REACH = re.compile(r"\bgh\b|graphql|api\.github\.com|\bcurl\b|\bwget\b", re.IGNORECASE)
+OMP_GITHUB_ALLOWLIST = {
+    # the auditor's read-only GitHub reads, behind audit.yml's common and write-method denies
+    "audit": ("gh pr view *", "gh pr diff *", "gh pr checks *", "gh run view *", "gh api repos/*"),
+    # the orchestrator's GitHub writes go through its levers only; no raw gh row
+    "orchestrator": (),
+    # the worker's one GitHub-write lever; its gh pr create/ready/comment run under the yolo default, not an allow row
+    "worker": (),
+}
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
 
-def validate_omp_policy_allow(
-    policy: Any, label: str, pinned: Iterable[str] | None = None, merge: bool = False
-) -> None:
+def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | None = None) -> None:
     patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
     if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
         fail(f"{label} bash.patterns must be a list of rules")
@@ -522,8 +534,6 @@ def validate_omp_policy_allow(
         if rule.get("approval") != "allow":
             continue
         match = rule.get("match")
-        if merge and match == OMP_MERGE_ALLOW:
-            continue
         if not isinstance(match, str):
             fail(f"{label} allow rule {match!r} is not a string")
         if OMP_CHECKOUT_LEVER.match(match):
@@ -533,8 +543,7 @@ def validate_omp_policy_allow(
             )
         lever = OMP_LEVER_ALLOW.fullmatch(match)
         if not lever:
-            merge_form = f"{OMP_MERGE_ALLOW!r} or " if merge else ""
-            fail(f"{label} allow rule {match!r} is not {merge_form}{LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
+            fail(f"{label} allow rule {match!r} is not {LEVER_INSTALL_PREFIX}<lever> [[--<flag>] *]")
         reason = lever_refusal(lever.group(1))
         if reason:
             fail(f"{label} allow rule {match!r}: scripts/orchestrator/{lever.group(1)} {reason}")
@@ -542,15 +551,46 @@ def validate_omp_policy_allow(
             fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
+def omp_policy_roles() -> list[str]:
+    """The role of every policy file under OMP_POLICY_DIR (`<role>.yml`), found by glob."""
+    roles = sorted(path.stem for path in (ROOT / OMP_POLICY_DIR).glob("*.yml"))
+    if not roles:
+        fail(f"{ROOT / OMP_POLICY_DIR} holds no omp seat policy")
+    return roles
+
+
+def validate_omp_github_allow(policy: Any, label: str, role: str) -> None:
+    """Refuse an allow rule that mentions GitHub reach unless it is byte-identical to an OMP_GITHUB_ALLOWLIST entry of
+    its role (U71); a role without a list allows no such row."""
+    patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
+    if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
+        fail(f"{label} bash.patterns must be a list of rules")
+    for rule in patterns:
+        match = rule.get("match")
+        if rule.get("approval") != "allow" or not isinstance(match, str) or not OMP_GITHUB_REACH.search(match):
+            continue
+        if match not in OMP_GITHUB_ALLOWLIST.get(role, ()):
+            fail(
+                f"{label} allow rule {match!r} reaches GitHub and is not on the {role} allowlist in "
+                f"validate-agent-assets.py; seats merge only through {LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
+            )
+
+
 def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
-    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    """Check every seat policy's GitHub-reaching allow rows against its allowlist and the writing seats' allow rows; `policies` maps each role of
+    omp_policy_roles() to its parsed overlay, else PyYAML reads the files."""
     if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
     pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    for role in OMP_WRITING_POLICIES:
-        path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
+    roles = omp_policy_roles()
+    if policies is not None and sorted(policies) != roles:
+        fail(f"the parsed omp policies {sorted(policies)} are not the policy files {roles}")
+    for role in roles:
+        path = ROOT / OMP_POLICY_DIR / f"{role}.yml"
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
-        validate_omp_policy_allow(policy, str(path), pinned, merge=role == "orchestrator")
+        validate_omp_github_allow(policy, str(path), role)
+        if role in OMP_WRITING_POLICIES:
+            validate_omp_policy_allow(policy, str(path), pinned)
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns
@@ -1390,25 +1430,136 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
             fail(f"{claude_rule} must document model profile token {token!r}")
 
 
+GIT_SIGNING_KEYS = ("user.signingkey", "gpg.format", "commit.gpgsign")
+# An [include] or [includeIf] section pulls in config the render check never sees.
+GIT_INCLUDE_SECTION = re.compile(r"^\s*\[\s*include(if)?\b", re.IGNORECASE | re.MULTILINE)
+
+
+def git_config_read(git: str, config_file: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run `git config --file <config_file> <args>` with no system or global config in play."""
+    try:
+        return subprocess.run(
+            [git, "config", "--file", str(config_file), *args],
+            env={
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "HOME": str(config_file.parent),
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": os.devnull,
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f"git config could not read the rendered {config_file.name}: {error}")
+
+
+def render_git_config(template: Path, with_key: bool) -> tuple[dict[str, list[str]], str, str | None]:
+    """Render the git config template with chezmoi in a scratch HOME and read the output with git itself.
+
+    The scratch HOME holds `~/.ssh/id_ed25519.pub` only when `with_key` is set, so the two renders
+    show what the template does on a host with and without the signing key. Git parses the render
+    (`git config --file <render> --list`), so section and key names are matched the way git matches
+    them (case-insensitively). Returns every entry by canonical name, the scratch HOME, and
+    commit.gpgsign read as a git boolean (None when unset).
+    """
+    relative = template.relative_to(ROOT)
+    chezmoi = os.environ.get("DOTFILES_CHEZMOI") or shutil.which("chezmoi")
+    if not chezmoi:
+        fail(f"chezmoi is required to render {relative}; install it or set DOTFILES_CHEZMOI")
+    git = shutil.which("git")
+    if not git:
+        fail(f"git is required to read the rendered {relative}")
+    with tempfile.TemporaryDirectory(prefix="validate-git-config-") as temporary:
+        home = Path(temporary)
+        if with_key:
+            (home / ".ssh").mkdir()
+            (home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA validate-agent-assets\n")
+        config = home / "chezmoi.toml"
+        config.write_text('[data]\nemail = "validate@example.invalid"\n')
+        try:
+            result = subprocess.run(
+                [
+                    chezmoi,
+                    "execute-template",
+                    "--config",
+                    str(config),
+                    "--persistent-state",
+                    str(home / "chezmoistate.boltdb"),
+                    "--source",
+                    str(ROOT / "home"),
+                    "--destination",
+                    str(home),
+                    "--file",
+                    str(template),
+                ],
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(home)},
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            fail(f"chezmoi could not render {relative}: {error}")
+        if result.returncode != 0:
+            fail(f"chezmoi could not render {relative}: {result.stderr.strip()}")
+        rendered = home / "gitconfig"
+        rendered.write_text(result.stdout)
+        listing = git_config_read(git, rendered, "--null", "--list")
+        if listing.returncode != 0:
+            fail(f"{relative} does not render to a valid git config: {listing.stderr.strip()}")
+        entries: dict[str, list[str]] = {}
+        for entry in listing.stdout.split("\0"):
+            if entry:
+                name, _, value = entry.partition("\n")
+                entries.setdefault(name, []).append(value)
+        gpgsign = None
+        if "commit.gpgsign" in entries:
+            boolean = git_config_read(git, rendered, "--type=bool", "--get-all", "commit.gpgsign")
+            if boolean.returncode != 0:
+                fail(f"{relative} renders a commit.gpgsign git cannot read as a boolean: {boolean.stderr.strip()}")
+            gpgsign = boolean.stdout.strip()
+        return entries, str(home), gpgsign
+
+
 def validate_git_config() -> None:
-    """Validate managed Git commit signing configuration."""
+    """Validate managed Git commit signing by rendering the template on a host with and without the key.
+
+    With `~/.ssh/id_ed25519.pub` present the rendered config signs commits with that key over SSH;
+    without it none of the three signing settings is rendered, so commits are unsigned instead of failing.
+    Git reads each render, and the template may carry no include directive the check could not follow.
+    """
     path = ROOT / "home/dot_config/git/config.tmpl"
+    relative = path.relative_to(ROOT)
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:
-        fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    config = configparser.ConfigParser(strict=False)
-    config.read_string(text)
-    expected = {
-        ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
-        ("gpg", "format"): "ssh",
-        ("commit", "gpgsign"): "true",
-    }
-    for (section, key), expected_value in expected.items():
-        actual_value = config.get(section, key, fallback="").strip()
-        if actual_value != expected_value:
-            fail(
-                f"{path.relative_to(ROOT)} must configure SSH commit signing with [{section}] {key} = {expected_value}"
-            )
+        fail(f"{relative} must not reference the removed GPG signing key")
+    if GIT_INCLUDE_SECTION.search(text):
+        fail(f"{relative} must not use [include] or [includeIf]: the render check cannot follow them")
+    for with_key in (True, False):
+        entries, home, gpgsign = render_git_config(path, with_key=with_key)
+        state = "with the signing key present" if with_key else "without the signing key"
+        includes = sorted(name for name in entries if name.startswith(("include.", "includeif.")))
+        if includes:
+            fail(f"{relative} rendered {state} must not include other config: {', '.join(includes)}")
+        if not with_key:
+            for name in GIT_SIGNING_KEYS:
+                if name in entries:
+                    fail(f"{relative} rendered {state} must not set {name}")
+            continue
+        expected = {
+            "user.signingkey": f"{home}/.ssh/id_ed25519.pub",
+            "gpg.format": "ssh",
+        }
+        for name in GIT_SIGNING_KEYS:
+            if len(entries.get(name, [])) != 1:
+                fail(f"{relative} rendered {state} must set {name} exactly once, not {entries.get(name, [])!r}")
+        for name, expected_value in expected.items():
+            if entries[name][0] != expected_value:
+                fail(f"{relative} rendered {state} must set {name} = {expected_value}, not {entries[name][0]!r}")
+        if gpgsign != "true":
+            fail(f"{relative} rendered {state} must set commit.gpgsign = true, not {gpgsign!r}")
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

@@ -341,6 +341,87 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def git_config_failure(self, template: str) -> str | None:
+        """Run validate_git_config on a template beside the real setup-gh; return its error or None."""
+        self.write_text_file("home/dot_config/git/config.tmpl", template)
+        setup_gh = "home/dot_local/bin/common/executable_setup-gh"
+        self.write_text_file(setup_gh, (ROOT / setup_gh).read_text())
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr):
+                self.module.validate_git_config()
+        except SystemExit:
+            return stderr.getvalue()
+        return None
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_accepts_the_managed_template_rendered_with_and_without_the_key(self) -> None:
+        self.assertIsNone(self.git_config_failure((ROOT / "home/dot_config/git/config.tmpl").read_text()))
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_git_config_refuses_templates_that_render_the_wrong_signing(self) -> None:
+        managed = (ROOT / "home/dot_config/git/config.tmpl").read_text()
+        guard = '{{- $signing := stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub") }}\n'
+        if_line = "{{- if $signing }}\n"
+        self.assertIn(guard, managed)
+        self.assertEqual(2, managed.count(if_line))
+        mutations = {
+            # Audit of 52e28100: an else right after each guard signs only when the key is absent.
+            "else after the guard": (
+                managed.replace(if_line, if_line + "{{- else }}\n"),
+                "rendered with the signing key present",
+            ),
+            "unconditional signing": (
+                managed.replace(guard, "{{- $signing := true }}\n"),
+                "rendered without the signing key",
+            ),
+            "gpgsign outside the guard": (
+                managed.replace(
+                    "{{- if $signing }}\n[commit]\n\tgpgsign = true\n",
+                    "[commit]\n\tgpgsign = true\n{{- if $signing }}\n",
+                ),
+                "without the signing key must not set commit.gpgsign",
+            ),
+            "format dropped": (managed.replace("\tformat = ssh\n", ""), "must set gpg.format exactly once"),
+            "guard dropped": (managed.replace(guard, ""), "could not render"),
+            # Audit of 551f3439: git reads [Commit] as [commit], so an unconditional one signs without the key.
+            "unconditional [Commit]": (managed + "[Commit]\n\tgpgsign = true\n", "commit.gpgsign"),
+            "mixed-case section and key": (managed + "[COMMIT]\n\tGpgSign = true\n", "commit.gpgsign"),
+            "mixed-case format outside the guard": (managed + "[GPG]\n\tFormat = ssh\n", "gpg.format"),
+            "gpgsign false beside the guarded one": (
+                managed.replace("[pull]\n", "[Commit]\n\tgpgsign = false\n[pull]\n"),
+                "commit.gpgsign",
+            ),
+            "include directive": (managed + "[include]\n\tpath = ~/.gitconfig.local\n", "[include] or [includeIf]"),
+            "includeIf directive": (
+                managed + '[IncludeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig.work\n',
+                "[include] or [includeIf]",
+            ),
+            "include hidden from the text check": (
+                managed + '{{ "[" }}include]\n\tpath = ~/.gitconfig.local\n',
+                "must not include other config: include.path",
+            ),
+        }
+        for name, (template, message) in mutations.items():
+            with self.subTest(mutation=name):
+                self.assertNotEqual(managed, template)
+                self.assertIn(message, self.git_config_failure(template) or "")
+
+    def test_git_config_names_a_missing_chezmoi(self) -> None:
+        self.write_text_file("home/dot_config/git/config.tmpl", "[user]\n")
+        old_path = os.environ.get("PATH", "")
+        old_override = os.environ.pop("DOTFILES_CHEZMOI", None)
+        os.environ["PATH"] = str(self.temp_dir / "no-bin")
+        stderr = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                self.module.validate_git_config()
+        finally:
+            os.environ["PATH"] = old_path
+            if old_override is not None:
+                os.environ["DOTFILES_CHEZMOI"] = old_override
+        self.assertIn("chezmoi is required", stderr.getvalue())
+
     def copy_managed_hook_sources(self) -> None:
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
@@ -513,7 +594,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "gpg_fingerprint": "FB5D",
                     "reason": "fixture: a pinned archive",
                     "install_path": "~/.local/share/aws-cli",
-                    "installer": "install/ubuntu/common/aws_cli.sh",
+                    "installer": "install/common/aws_cli.sh",
                 },
                 "plugins": {
                     "source": "claude-plugin",
@@ -569,19 +650,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         aws.update(
             release="latest",
             render={
-                "file": "install/ubuntu/common/aws_cli.sh",
+                "file": "install/common/aws_cli.sh",
                 "constants": {"AWS_CLI_FINGERPRINT": "gpg_fingerprint"},
             },
         )
         return manifest
 
     def test_assets_accept_rolling_releases_without_pins(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
 
         self.module.validate_assets(self.rolling_asset_manifest())
 
     def test_assets_reject_invalid_rolling_and_pinned_declarations(self) -> None:
-        self.write_text_file("install/ubuntu/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
+        self.write_text_file("install/common/aws_cli.sh", 'readonly AWS_CLI_FINGERPRINT="FB5D"\n')
         cases = {
             "release other than latest": (lambda a: a["mise"].update(release="v1"), "release must be 'latest'"),
             "release on a git-commit source": (
@@ -1209,9 +1290,55 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 + " | toJson }}",
                 self.temp_dir,
             )
-            for role in self.module.OMP_WRITING_POLICIES
+            for role in self.module.omp_policy_roles()
         }
+        self.assertEqual(["audit", "orchestrator", "worker"], sorted(policies))
         self.module.validate_omp_policies(manifest, policies)
+        # U71 audit rounds 3, 8 and 9: in every policy file an allow row that reaches GitHub must be on its role's
+        # allowlist; merge spellings are not enumerated, so the GraphQL mutation and any gh write are refused too.
+        allowed = self.module.OMP_GITHUB_ALLOWLIST
+        self.assertEqual(sorted(allowed), sorted(policies))
+        for role, policy in policies.items():
+            reaching = [
+                rule["match"]
+                for rule in policy["bash"]["patterns"]
+                if rule["approval"] == "allow" and self.module.OMP_GITHUB_REACH.search(rule["match"])
+            ]
+            self.assertEqual(sorted(reaching), sorted(allowed[role]), role)
+        for role in sorted(policies):
+            for row in (
+                "gh pr merge 541 --squash --match-head-commit *",
+                "gh api repos/o/r/pulls/541/merge *",
+                "gh api repos/o/r/merges *",
+                "curl -X POST https://api.github.com/repos/o/r/merges *",
+                "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+                "gh api graphql *",
+                "gh issue create *",
+                "gh pr view 1 --json body && gh pr close 1",
+                "GH_TOKEN=x gh api user",
+                "wget -qO- https://example.com",
+                "gh api repos/* ",
+            ):
+                with self.subTest(role=role, row=row):
+                    injected = json.loads(json.dumps(policies))
+                    injected[role]["bash"]["patterns"].insert(0, {"match": row, "approval": "allow"})
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_omp_policies(manifest, injected)
+                    self.assertIn(f"reaches GitHub and is not on the {role} allowlist", stderr.getvalue())
+        # each allowlisted row passes in its own role, and only there
+        for role, rows in allowed.items():
+            for row in rows:
+                for other in sorted(policies):
+                    with self.subTest(row=row, into=other):
+                        injected = json.loads(json.dumps(policies))
+                        patterns = injected[other]["bash"]["patterns"]
+                        patterns[:] = [rule for rule in patterns if rule["match"] != row]
+                        patterns.append({"match": row, "approval": "allow"})
+                        if other == role:
+                            self.module.validate_omp_policies(manifest, injected)
+                        else:
+                            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                                self.module.validate_omp_policies(manifest, injected)
         if self.module.yaml is None:
             with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                 self.module.validate_omp_policies(manifest)
@@ -1225,31 +1352,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         merge = "gh pr merge * --squash --match-head-commit *"
         installed = "~/.local/bin/common/pr-close.sh --from-table *"
-        self.module.validate_omp_policy_allow(policy(merge, installed), "orchestrator.yml", pinned, merge=True)
+        self.module.validate_omp_policy_allow(policy(installed), "orchestrator.yml", pinned)
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh *"), "worker.yml", pinned)
         # U28b F3: the exact bare form of a lever that acts without arguments.
         self.module.validate_omp_policy_allow(policy("~/.local/bin/common/pr-close.sh"), "orchestrator.yml", pinned)
         cases = {
-            (merge, False): "is not ~/.local/bin/common/<lever>",
-            ("gh pr close *", True): "is not 'gh pr merge",
-            ("gh api *", True): "is not 'gh pr merge",
-            ("*", True): "is not 'gh pr merge",
-            ("bash *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh x", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh*", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh --from-table x *", True): "is not 'gh pr merge",
-            ("~/.local/bin/common/pr-close.sh * && *", True): "is not 'gh pr merge",
-            ("/Users/x/.local/bin/common/pr-close.sh *", True): "is not 'gh pr merge",
-            ("scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("./scripts/orchestrator/pr-close.sh --from-table *", True): "names a lever inside the rewritable checkout",
-            ("*scripts/orchestrator/pr-close.sh *", True): "names a lever inside the rewritable checkout",
-            ("~/.local/bin/common/absent.sh *", True): "absent.sh is not a regular file",
-            ("~/.local/bin/common/python3 *", True): "python3 is named as an interpreter",
+            merge: "is not ~/.local/bin/common/<lever>",  # U71: no raw merge allow, even for the orchestrator
+            "gh pr close *": "is not ~/.local/bin/common/<lever>",
+            "gh api *": "is not ~/.local/bin/common/<lever>",
+            "*": "is not ~/.local/bin/common/<lever>",
+            "bash *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh x": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh*": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh --from-table x *": "is not ~/.local/bin/common/<lever>",
+            "~/.local/bin/common/pr-close.sh * && *": "is not ~/.local/bin/common/<lever>",
+            "/Users/x/.local/bin/common/pr-close.sh *": "is not ~/.local/bin/common/<lever>",
+            "scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "./scripts/orchestrator/pr-close.sh --from-table *": "names a lever inside the rewritable checkout",
+            "*scripts/orchestrator/pr-close.sh *": "names a lever inside the rewritable checkout",
+            "~/.local/bin/common/absent.sh *": "absent.sh is not a regular file",
+            "~/.local/bin/common/python3 *": "python3 is named as an interpreter",
         }
-        for (match, merge_allowed), message in cases.items():
-            with self.subTest(rejects=match, merge=merge_allowed):
+        for match, message in cases.items():
+            with self.subTest(rejects=match):
                 with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
-                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned, merge=merge_allowed)
+                    self.module.validate_omp_policy_allow(policy(match), "seat.yml", pinned)
                 self.assertIn(message, stderr.getvalue())
         with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
             self.module.validate_omp_policy_allow(policy(installed), "seat.yml", {})

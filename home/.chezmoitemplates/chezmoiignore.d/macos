@@ -5,3 +5,6 @@
 .config/systemd
 
 .bash/server/bashrc
+
+# Ubuntu-only scripts render empty on macOS; ignoring them keeps chezmoi status quiet.
+.chezmoiscripts/ubuntu/**

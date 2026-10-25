@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-INSTALLER = ROOT / "install/ubuntu/common/aws_cli.sh"
+INSTALLER = ROOT / "install/common/aws_cli.sh"
 # The archive is unversioned (AWS's current release), so any reported version is a fixture value.
 AWS_CLI_VERSION = "2.37.6"
 FINGERPRINT = re.search(r'^readonly AWS_CLI_FINGERPRINT="([0-9A-F]{40})"$', INSTALLER.read_text(), re.MULTILINE).group(
@@ -756,23 +756,23 @@ main
         self.assertEqual(2, result.returncode, result.stderr)
         self.assertFalse((home / ".local/state/dotfiles/aws-cli-archive.etag").exists())
 
-    def test_macos_etag_skip_uses_the_pkg_url(self):
+    def test_macos_etag_skip_uses_the_version_txt_install_sh_installs(self):
         result, _home, calls, _temp = self.run_macos("aws_cli_archive_etag")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual('"pkg-2"\n', result.stdout)
-        self.assertEqual(["https://awscli.amazonaws.com/AWSCLIV2.pkg"], (calls / "urls").read_text().splitlines())
+        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
         # The same probe on Linux reads the archive URL.
         result, _home, calls, _temp = self.run_macos('uname() { printf "x86_64\\n"; }\naws_cli_archive_etag')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
             ["https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"], (calls / "urls").read_text().splitlines()
         )
-        # A recorded ETag equal to the pkg's, with a working CLI, skips the install.
+        # A recorded ETag equal to version.txt's, with a working CLI, skips the install.
         working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
         body = 'mkdir -p "$(dirname "${AWS_CLI_ETAG_FILE}")"; printf \'"pkg-2"\\n\' > "${AWS_CLI_ETAG_FILE}"\nmain'
         result, _home, calls, _temp = self.run_macos(body, existing_aws=working)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(["https://awscli.amazonaws.com/AWSCLIV2.pkg"], (calls / "urls").read_text().splitlines())
+        self.assertEqual(["https://awscli.amazonaws.com/v2/version.txt"], (calls / "urls").read_text().splitlines())
 
     def test_macos_download_failure_keeps_a_working_aws_and_runs_no_gpgv(self):
         working = "#!/bin/sh\nprintf 'aws-cli/2.35.20 Python/3.13 Darwin/25\\n'\n"
@@ -802,8 +802,11 @@ main
             self.assertNotIn(forbidden, mac_dependencies)
 
         wrapper = (ROOT / "home/.chezmoiscripts/ubuntu/run_after_04-install-aws-cli.sh.tmpl").read_text()
-        self.assertIn('include "../install/ubuntu/common/aws_cli.sh"', wrapper)
+        self.assertIn('include "../install/common/aws_cli.sh"', wrapper)
         self.assertNotIn(".system", wrapper)
+        mac_wrapper = (ROOT / "home/.chezmoiscripts/macos/run_after_04-install-aws-cli.sh.tmpl").read_text()
+        self.assertIn('include "../install/common/aws_cli.sh"', mac_wrapper)
+        self.assertNotIn("install/ubuntu/", mac_wrapper)
 
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
             config = tomllib.load(config_file)

@@ -11,7 +11,10 @@
 #   A candidate qualifies when its tree is clean (`git status --porcelain
 #   --ignored=matching --untracked-files=all` prints nothing: `git worktree
 #   remove` deletes ignored files without asking, so a tree holding one, an
-#   `.env` say, is kept) and its work landed, the first of: its head is
+#   `.env` say, is kept; and no index entry carries the `assume-unchanged` or
+#   `skip-worktree` flag, `git ls-files -v` tag lowercase or `S`, since an edit
+#   to such a file is invisible to `git status` and to the removal's own check)
+#   and its work landed, the first of: its head is
 #   reachable from `origin/main` (`git merge-base --is-ancestor`); it landed by
 #   content (every path `git diff --no-renames --name-only -z <merge-base>
 #   <head>` names holds in `origin/main` the entry it holds in the head, mode
@@ -36,9 +39,13 @@
 #   .gc-quarantine/<random>/<name>` (one rename on the same filesystem; git
 #   refuses a locked tree), writes `<epoch> <classified head>` to
 #   `gc-quarantined-at` in the tree's admin directory (`git rev-parse
-#   --absolute-git-dir`), then checks the moved tree clean again and its HEAD
-#   equal to the classified one. Both hold: a `quarantined` row. Either fails
-#   (a file or commit made after the classification moved with the tree): a
+#   --absolute-git-dir`, refused unless a plain directory directly under
+#   `<common dir>/worktrees/`; the marker goes to a `mktemp` file there,
+#   renamed onto its name, so a symlink planted at the name is replaced, never
+#   written through), then checks the moved tree clean again (index flags
+#   included) and its HEAD equal to the classified one. Both hold: a
+#   `quarantined` row. Either fails (a file or commit made after the
+#   classification moved with the tree), or the marker cannot be written: a
 #   `held` row with the reason; the tree stays in the quarantine, is never
 #   moved back and never deleted by this run. A refused move is a `failed`
 #   row, exit 1. `--purge <days>` lists only the quarantine: each entry whose
@@ -201,10 +208,25 @@ in_quarantine() {
 # @arg $1 path The worktree.
 # @exitcode 1 git failed or the admin directory is elsewhere.
 admin_dir() {
-    local dir
-    dir=$(git -C "$1" rev-parse --absolute-git-dir) && dir=$(cd "${dir}" && pwd -P) || return 1
+    local raw dir
+    raw=$(git -C "$1" rev-parse --absolute-git-dir) && [[ ! -L ${raw} ]] && dir=$(cd "${raw}" && pwd -P) || return 1
     [[ ${dir} == "${common_dir}/worktrees/"?* && ${dir} != "${common_dir}/worktrees/"*/* ]] || return 1 # lint-comparisons: allow both sides are pwd -P forms
     printf '%s\n' "${dir}"
+}
+
+# @description Write the quarantine marker into an admin directory without following a link at its name: the content
+#   goes to a fresh `mktemp` file beside it, which is renamed onto the name (a rename replaces a symlink there). A
+#   directory at the name, or one a symlink there points at, is refused, since `mv` would move the file into it.
+# @arg $1 path The admin directory, from admin_dir.
+# @arg $2 string The marker line.
+# @exitcode 1 The marker was not written.
+write_marker() {
+    local tmp
+    [[ ! -d $1/${marker} ]] || return 1
+    tmp=$(mktemp "$1/${marker}.XXXXXX") || return 1
+    if printf '%s\n' "$2" > "${tmp}" && mv -f "${tmp}" "$1/${marker}"; then return 0; fi
+    rm -f "${tmp}"
+    return 1
 }
 
 # @description Run gh in the checkout, killed after WORKTREE_GC_GH_TIMEOUT seconds.
@@ -253,7 +275,8 @@ record() {
 # fields are read as they are (`read -d ''`), never turned into lines, so a newline inside a path stays in its field.
 listing=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
 changed=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
-trap 'rm -f "${listing}" "${changed}"' EXIT
+entries=$(mktemp "${TMPDIR:-/tmp}/worktree-gc.XXXXXX")
+trap 'rm -f "${listing}" "${changed}" "${entries}"' EXIT
 git -C "${toplevel}" worktree list --porcelain -z > "${listing}" || {
     echo 'worktree-gc: git worktree list failed' >&2
     exit 1
@@ -308,11 +331,19 @@ landed_by_content() {
     [[ ${in_head} == "${in_main}" ]] || return 1
 }
 
-# @description Set `status` to the `git status --porcelain --ignored=matching --untracked-files=all` of a worktree.
+# @description Set `status` to the `git status --porcelain --ignored=matching --untracked-files=all` of a worktree,
+#   and `flagged` to the number of its index entries marked `assume-unchanged` (`git ls-files -v` tag lowercase) or
+#   `skip-worktree` (tag `S`), whose edits neither `git status` nor `git worktree remove` sees.
 # @arg $1 path The worktree.
-# @exitcode 1 git status failed.
+# @exitcode 1 git status or git ls-files failed.
 tree_status() {
-    status=$(git -C "$1" status --porcelain --ignored=matching --untracked-files=all)
+    local entry
+    flagged=0
+    status=$(git -C "$1" status --porcelain --ignored=matching --untracked-files=all) || return 1
+    git -C "$1" ls-files -v -z > "${entries}" || return 1
+    while IFS= read -r -d '' entry; do
+        if [[ ${entry} == [[:lower:]S]' '* ]]; then flagged=$((flagged + 1)); fi
+    done < "${entries}"
 }
 
 # @description Set `verdict` and `reason` for one candidate.
@@ -341,6 +372,10 @@ classify() {
     fi
     if [[ -n ${status} ]] && grep -qv '^!! ' <<< "${status}"; then
         reason='dirty or untracked files'
+        return
+    fi
+    if ((flagged)); then
+        reason="${flagged} index entries marked assume-unchanged or skip-worktree (git status cannot see their edits)"
         return
     fi
     if [[ -n ${status} ]]; then
@@ -522,12 +557,14 @@ for i in "${gc[@]+"${gc[@]}"}"; do
     fi
     # The classification may be minutes old (gh calls); whatever changed since moved with the tree and holds it.
     reason=''
-    if ! dir=$(admin_dir "${dest}") || ! printf '%s %s\n' "${now}" "${head}" > "${dir}/${marker}"; then
+    if ! dir=$(admin_dir "${dest}") || ! write_marker "${dir}" "${now} ${head}"; then
         reason="cannot write ${marker} in its admin directory"
     elif ! tree_status "${dest}"; then
         reason='git status failed after the move'
     elif [[ -n ${status} ]]; then
         reason='changed since the check: dirty, untracked or ignored files'
+    elif ((flagged)); then
+        reason="${flagged} index entries marked assume-unchanged or skip-worktree since the check"
     elif ! moved_head=$(git -C "${dest}" rev-parse --verify --quiet 'HEAD^{commit}'); then
         reason='cannot read HEAD after the move'
     elif [[ ${moved_head} != "${head}" ]]; then

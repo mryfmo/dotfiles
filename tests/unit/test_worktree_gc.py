@@ -530,6 +530,72 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertTrue(dest.is_dir() and other.is_dir())
         self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
 
+    def test_a_symlink_planted_at_the_marker_name_is_replaced_not_written_through(self):
+        """`--apply` renames a fresh file onto `gc-quarantined-at` (U56d F1), so the link's target is untouched."""
+        path, _ = self.add_tree("linked", "feat/linked", commit=False)
+        outside = self.root / "victim.txt"
+        outside.write_text("precious\n")
+        link = self.marker(path)
+        link.symlink_to(outside)
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["gc", "quarantined", "summary"], rows)
+        self.assertEqual(outside.read_text(), "precious\n")
+        marker = self.marker(Path(rows[1][2]))
+        self.assertFalse(marker.is_symlink())
+        self.assertRegex(marker.read_text(), r"^[0-9]+ [0-9a-f]{40}\n$")
+        self.assertEqual(sorted(p.name for p in marker.parent.glob("gc-quarantined-at*")), ["gc-quarantined-at"])
+
+    def test_a_symlink_at_the_marker_name_to_a_directory_holds_the_tree(self):
+        path, _ = self.add_tree("dir-linked", "feat/dir-linked", commit=False)
+        outside = self.root / "victim-dir"
+        outside.mkdir()
+        self.marker(path).symlink_to(outside)
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual([row[0] for row in rows], ["gc", "held", "summary"], rows)
+        self.assertIn("cannot write gc-quarantined-at", rows[1][3])
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_an_edit_hidden_by_an_index_flag_keeps_the_tree_through_apply_and_purge(self):
+        """`assume-unchanged` and `skip-worktree` hide an edit from `git status` (U56d F2); the tree is kept."""
+        flags = ("--assume-unchanged", "--skip-worktree")
+        hidden = {}
+        for flag in flags:
+            path, _ = self.add_tree(flag.strip("-"), f"feat/{flag.strip('-')}", commit=False)
+            (path / "README").write_text("hidden edit\n")
+            self.git("update-index", flag, "README", cwd=path)
+            self.assertEqual(self.git("status", "--porcelain", "--ignored", cwd=path), "")
+            hidden[str(path)] = path
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(sorted(row[1] for row in rows if row[0] == "keep"), sorted(hidden), rows)
+        for row in rows[:-1]:
+            self.assertIn("assume-unchanged or skip-worktree", row[3])
+        self.assertEqual(rows[-1], ["summary", "0 quarantined, 0 held, 0 failed, 2 kept"])
+        for path in hidden.values():
+            self.assertEqual((path / "README").read_text(), "hidden edit\n")
+
+        quarantined = {}
+        for flag in flags:
+            dest, _ = self.apply_one(f"{flag.strip('-')}-later")
+            (dest / "README").write_text("hidden in quarantine\n")
+            self.git("update-index", flag, "README", cwd=dest)
+            quarantined[str(dest)] = dest
+        result = self.run_gc("--purge", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(sorted(row[1] for row in rows if row[0] == "keep"), sorted(quarantined), rows)
+        for row in rows[:-1]:
+            self.assertIn("assume-unchanged or skip-worktree", row[3])
+        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 2 kept"])
+        for dest in quarantined.values():
+            self.assertEqual((dest / "README").read_text(), "hidden in quarantine\n")
+        self.assertEqual([argv for argv in self.calls(self.git_calls) if "remove" in argv], [])
+
     def test_the_quarantine_is_never_a_candidate(self):
         dest, _ = self.apply_one("parked")
         result = self.run_gc("--apply")

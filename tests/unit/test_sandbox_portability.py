@@ -190,7 +190,11 @@ def python_tmp_lines(text):
         found = list(own_nodes(stmt))
         calls = [n for n in found if isinstance(n, ast.Call)]
         if any(dotted(c.func) in ENV_READS and c.args and is_tmpdir(c.args[0]) for c in calls) or any(
-            isinstance(n, ast.Subscript) and dotted(n.value) == "os.environ" and is_tmpdir(n.slice) for n in found
+            isinstance(n, ast.Subscript)
+            and isinstance(n.ctx, ast.Load)  # `os.environ["TMPDIR"] = "/tmp/x"` writes TMPDIR, reads nothing
+            and dotted(n.value) == "os.environ"
+            and is_tmpdir(n.slice)
+            for n in found
         ):
             continue
         tempfile_calls = [c for c in calls if dotted(c.func).startswith("tempfile.")]
@@ -298,6 +302,7 @@ TMP_REFUSED = {
     # fail closed: an aliased read is no canonical spelling, so the constant is refused although it would run fine
     ("bad.py", 'from os import getenv as env\nout = env("TMPDIR", "/tmp")\n'): [2],
     ("bad.py", "from tempfile import gettempdir\nd = gettempdir() or '/tmp'\n"): [2],
+    ("bad.py", 'os.environ["TMPDIR"] = "/tmp/work"\n'): [1],
 }
 TMP_ACCEPTED = (
     ("ok.sh", SH + 't="${TMPDIR:-/tmp}/x"\nx=1 # a comment may name /tmp\n'),
@@ -308,6 +313,7 @@ TMP_ACCEPTED = (
     ("ok.py", 'd = os.environ["TMPDIR"] if "TMPDIR" in os.environ else "/tmp"\n'),
     ("ok.py", "d = tempfile.gettempdir() or '/tmp'\n"),
     ("ok.py", 'd = tempfile.mkdtemp(dir=os.environ.get("TMPDIR", "/tmp"))\n'),
+    ("ok.py", 'x = os.environ["TMPDIR"] or "/tmp"\n'),
 )
 
 

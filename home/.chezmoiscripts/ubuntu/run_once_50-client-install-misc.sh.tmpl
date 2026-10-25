@@ -6,9 +6,6 @@ set -Eeuo pipefail
 {{   if eq .chezmoi.osRelease.idLike "debian" -}}
 {{     if eq .system "client" -}}
 (
-{{       include "../install/ubuntu/client/ghostty.sh" }}
-)
-(
 {{       include "../install/ubuntu/client/misc.sh" }}
 )
 {{     end -}}

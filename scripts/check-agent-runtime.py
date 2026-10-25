@@ -253,9 +253,10 @@ SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 def output_index_error(index: object) -> str | None:
     """Why `index` is not the generator's output index, field by field with exact types; None when it is.
 
-    The shape is generate-agent-configs.py render_output_index's: exactly generated_by, outputs and scopes; an output
-    is {source, target: null} for a file chezmoi does not deploy by itself, else {source, target, kind, executable}
-    with a known kind; a scope is {source, target, glob}. Every path is a non-empty relative string.
+    The shape is generate-agent-configs.py render_output_index's: exactly generated_by, outputs, scopes and skills; an
+    output is {source, target: null} for a file chezmoi does not deploy by itself, else {source, target, kind,
+    executable} with a known kind; a scope is {source, target, glob}; skills is skill_index's. Every path is a
+    non-empty relative string.
     """
 
     def relative(value: object) -> bool:
@@ -263,12 +264,40 @@ def output_index_error(index: object) -> str | None:
             isinstance(value, str) and bool(value) and not Path(value).is_absolute() and ".." not in Path(value).parts
         )
 
-    if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes"}:
-        return "the top level must hold exactly generated_by, outputs and scopes"
+    def names(value: object) -> bool:
+        return isinstance(value, list) and all(isinstance(item, str) and item for item in value)
+
+    if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes", "skills"}:
+        return "the top level must hold exactly generated_by, outputs, scopes and skills"
     if not isinstance(index["generated_by"], str):
         return "generated_by must be a string"
     if not isinstance(index["outputs"], list) or not isinstance(index["scopes"], list):
         return "outputs and scopes must be lists"
+    skills = index["skills"]
+    if (
+        not isinstance(skills, dict)
+        or set(skills) != {"shared_root", "pstack_root", "audience", "pstack", "codex_disabled", "omp"}
+        or not relative(skills["shared_root"])
+        or not relative(skills["pstack_root"])
+        or not isinstance(skills["audience"], dict)
+        or not all(names(audience) for audience in skills["audience"].values())
+        or not isinstance(skills["pstack"], dict)
+        or set(skills["pstack"]) != {"audience", "exclude"}
+        or not all(names(value) for value in skills["pstack"].values())
+        or not names(skills["codex_disabled"])
+        or not isinstance(skills["omp"], dict)
+        or not all(
+            isinstance(entry, dict)
+            and set(entry) == {"enabled", "pstack", "ignored"}
+            and isinstance(entry["enabled"], bool)
+            and isinstance(entry["pstack"], bool)
+            and names(entry["ignored"])
+            for entry in skills["omp"].values()
+        )
+    ):
+        return (
+            "skills must be {shared_root, pstack_root, audience, pstack, codex_disabled, omp} as skill_index renders it"
+        )
     for number, entry in enumerate(index["outputs"]):
         if not isinstance(entry, dict) or not relative(entry.get("source")):
             return f"outputs[{number}] must be an object with a relative source"
@@ -548,6 +577,67 @@ def compare_claude_skills(entries: list[dict[str, object]]) -> list[str]:
         # Cowork syncs its own skills into this subtree; chezmoi does not own it.
         ignored_paths=terminal_browser_receipt_paths() | {HOME / ".claude/skills/synced"},
     )
+
+
+def skill_names(root: Path) -> list[str]:
+    """The skill directories directly under root (a symlinked one included), sorted; none when root is absent."""
+    if not root.is_dir():
+        return []
+    return sorted(path.name for path in root.iterdir() if (path / "SKILL.md").is_file())
+
+
+def skill_audience_findings(skills: dict, home: Path | None = None) -> list[str]:
+    """An ERROR for each deployed skill an agent lists outside its skills.audience, from the deployed roots.
+
+    What each agent lists: Claude Code every skill under ~/.claude/skills; Codex every one under ~/.agents/skills less
+    the managed `[[skills.config]]` disables (codex_disabled; the managed keys of ~/.codex/config.toml are checked
+    with the generated outputs); each omp consumer, unless its skills are off, every one under ~/.agents/skills and,
+    when it loads the pstack root, under ~/.agents/pstack/skills, less its ignoredSkills. A name under the pstack
+    root, or one under ~/.agents/skills that the pstack root also holds (a copy the retired external left), has the
+    pstack audience; a name with no audience at all is a WARN.
+    """
+    home = HOME if home is None else home
+    audience: dict[str, list[str]] = skills["audience"]
+    pstack: dict[str, list[str]] = skills["pstack"]
+    shared_root = home / str(skills["shared_root"])
+    pstack_root = home / str(skills["pstack_root"])
+    claude_root = home / ".claude/skills"
+    shared = skill_names(shared_root)
+    pstack_names = set(skill_names(pstack_root))
+    # (name, path, whether the path is under the pstack root) for every skill each agent lists.
+    listed: dict[str, list[tuple[str, Path, bool]]] = {
+        "claude": [(name, claude_root / name, False) for name in skill_names(claude_root)]
+    }
+    disabled = set(skills["codex_disabled"])
+    listed["codex"] = [(name, shared_root / name, False) for name in shared if name not in disabled]
+    for consumer, entry in skills["omp"].items():
+        if not entry["enabled"]:
+            listed[consumer] = []
+            continue
+        ignored = set(entry["ignored"])
+        roots = [(name, shared_root / name, False) for name in shared]
+        if entry["pstack"]:
+            roots += [(name, pstack_root / name, True) for name in sorted(pstack_names)]
+        listed[consumer] = [root for root in roots if root[0] not in ignored]
+    findings: list[str] = []
+    undeclared: set[Path] = set()
+    for consumer, entries in listed.items():
+        for name, path, in_pstack_root in entries:
+            if in_pstack_root or (name not in audience and name in pstack_names):
+                allowed = [] if name in pstack["exclude"] else pstack["audience"]
+            elif name in audience:
+                allowed = audience[name]
+            else:
+                undeclared.add(path)
+                continue
+            if consumer not in allowed:
+                findings.append(f"skill {name} is listed by {consumer} outside its audience {allowed}: {path}")
+    findings.extend(
+        f"WARN: skill {path.name} has no skills.audience entry in agent-config.yaml; every agent reading "
+        f"{path.parent} lists it: {path}"
+        for path in sorted(undeclared)
+    )
+    return findings
 
 
 def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
@@ -1222,6 +1312,8 @@ def check() -> list[str]:
 
     failures.extend(compare_shared_skills())
     failures.extend(compare_claude_skills(index["outputs"]))
+    if index.get("skills") is not None:
+        failures.extend(skill_audience_findings(index["skills"]))
     failures.extend(
         check_executable_hook(
             SOURCE_ROOT / "dot_claude/hooks/executable_enforce-uv.sh",

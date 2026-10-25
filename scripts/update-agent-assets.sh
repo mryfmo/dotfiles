@@ -1543,18 +1543,18 @@ function omp_version_label() {
 }
 
 #
-# @description Confirm the pstack skills chezmoi places under ~/.agents/skills reach an omp seat.
+# @description Confirm the pstack skills chezmoi places under ~/.agents/pstack/skills reach the plain omp launch.
 # @description
-#   No installer step runs for pstack: the two externals in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
-#   deploy the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply. The check
-#   fails when the poteto-mode skill or the Claude Code adapter its first paragraph links is missing, or when
-#   `omp skill list`, run from an empty directory so no project skill tree takes part, does not name poteto-mode.
-#   Without omp the file check alone decides.
+#   No installer step runs for pstack: the external in home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl
+#   deploys the pinned plugin's skills/* and docs/** (assets.pstack in the manifest) at every chezmoi apply, into a
+#   root only the omp consumers skills.pstack.audience names load. The check fails when the poteto-mode skill or the
+#   Claude Code adapter its first paragraph links is missing, or when `omp skill list`, run from an empty directory
+#   so no project skill tree takes part, does not name poteto-mode. Without omp the file check alone decides.
 # @exitcode 1 A file is missing or omp does not list the skill; omp's listing is printed above the verdict.
 #
 function check_pstack() {
     local file cwd listing count version
-    for file in "${HOME}/.agents/skills/poteto-mode/SKILL.md" "${HOME}/.agents/docs/harness/claude-code.md"; do
+    for file in "${HOME}/.agents/pstack/skills/poteto-mode/SKILL.md" "${HOME}/.agents/pstack/docs/harness/claude-code.md"; do
         [ -f "${file}" ] || {
             printf 'pstack: %s is missing; run make update.\n' "${file}" >&2
             return 1
@@ -1578,6 +1578,177 @@ function check_pstack() {
 }
 
 #
+# @description Remove the copies of the pstack skills the retired ~/.agents/skills external left there.
+# @description
+#   Until U87 the pstack external extracted into ~/.agents/skills, which Codex and omp's agents provider list for
+#   every agent; it now extracts into ~/.agents/pstack/skills, and chezmoi does not delete what the old external
+#   placed. A directory ~/.agents/skills/<name> goes only when ~/.agents/pstack/skills/<name> exists and the two
+#   trees are byte-identical (`diff -r`), so a skill with the same name and other content stays; make doctor then
+#   reports it as listed outside its audience. Every path component below $HOME on the way to a removal
+#   (~/.agents, ~/.agents/skills and the skill directory) must be a real directory, not a symlink, and the
+#   directory's physical path must equal $HOME's physical path plus .agents/skills/<name>; otherwise the step
+#   refuses before it removes anything. Every pair is checked first and removal starts only when all passed, so a
+#   refusal deletes nothing. Without the pstack root (chezmoi apply has not run) nothing is touched.
+# @exitcode 1 A component is a symlink, a physical path differs, diff could not compare a pair (exit 2), or a
+#   removal failed; the path is named.
+#
+function retire_shared_pstack_copies() {
+    local pstack_root="${HOME}/.agents/pstack/skills" shared_root="${HOME}/.agents/skills"
+    local source name target status physical_home physical dir
+    local -a remove=()
+    [ -d "${pstack_root}" ] || return 0
+    for dir in "${HOME}/.agents" "${shared_root}"; do
+        if [ -L "${dir}" ]; then
+            printf 'pstack: %s is a symlink; refusing to remove anything under it.\n' "${dir}" >&2
+            return 1
+        fi
+    done
+    [ -d "${shared_root}" ] || return 0
+    physical_home="$(cd -P -- "${HOME}" && pwd -P)" || {
+        printf 'pstack: cannot resolve the physical path of %s.\n' "${HOME}" >&2
+        return 1
+    }
+    for source in "${pstack_root}"/*/; do
+        [ -d "${source}" ] || continue
+        name="${source%/}"
+        name="${name##*/}"
+        target="${shared_root}/${name}"
+        if [ -L "${target}" ]; then
+            printf 'pstack: %s is a symlink; refusing to remove anything.\n' "${target}" >&2
+            return 1
+        fi
+        [ -d "${target}" ] || continue
+        status=0
+        diff -r -q "${source}" "${target}" > /dev/null 2>&1 || status=$?
+        case "${status}" in
+        0)
+            physical="$(cd -P -- "${target}" && pwd -P)" || {
+                printf 'pstack: cannot resolve the physical path of %s.\n' "${target}" >&2
+                return 1
+            }
+            if [ "${physical}" != "${physical_home}/.agents/skills/${name}" ]; then # lint-comparisons: allow both sides are pwd -P physical paths
+                printf 'pstack: %s resolves to %s, not under %s/.agents/skills; refusing to remove anything.\n' \
+                    "${target}" "${physical}" "${physical_home}" >&2
+                return 1
+            fi
+            remove+=("${physical}")
+            ;;
+        1) printf 'pstack: kept %s: it differs from %s.\n' "${target}" "${source%/}" >&2 ;;
+        *)
+            printf 'pstack: cannot compare %s with %s (diff exit %s).\n' "${target}" "${source%/}" "${status}" >&2
+            return 1
+            ;;
+        esac
+    done
+    for physical in "${remove[@]+"${remove[@]}"}"; do
+        rm -r -- "${physical}" || {
+            printf 'pstack: cannot remove the retired copy %s.\n' "${physical}" >&2
+            return 1
+        }
+        printf 'pstack: removed the retired copy %s (identical to %s/%s).\n' "${physical}" "${pstack_root}" "${physical##*/}"
+    done
+}
+
+#
+# @description Remove the retired mryfmo-dev-workflows entry from the live ~/.agents/plugins/marketplace.json.
+# @description
+#   The marketplace is a create_ seed: chezmoi writes it once and never again, so a host that has it keeps the entry
+#   U87 retired while .chezmoiremove deletes the plugin directory it points at. The step parses the file strictly
+#   (JSON only, no duplicate keys, no NaN or Infinity, no number that overflows or underflows a float, a top-level
+#   object whose plugins is a list), removes exactly the entry named mryfmo-dev-workflows whose source is the local
+#   ./plugins/mryfmo-dev-workflows, keeps every other entry and key in its order, and replaces the file atomically
+#   with its mode kept. Before the replace, the new text is parsed again with every number read exactly
+#   (decimal.Decimal for fractions and exponents) and must equal the old file's exact parse minus the removed entry;
+#   any difference (a number the rewrite would change) refuses. A file without that entry is not rewritten, so a
+#   second run changes nothing. An entry with that name and another source is kept and named. A missing file is
+#   nothing to do.
+# @exitcode 1 The file is a symlink, is not valid JSON of that shape, holds a number the rewrite would change, or
+#   cannot be rewritten; it is left unchanged.
+#
+function retire_marketplace_dev_workflows() {
+    local marketplace="${HOME}/.agents/plugins/marketplace.json"
+    [ -e "${marketplace}" ] || [ -L "${marketplace}" ] || return 0
+    if [ -L "${marketplace}" ]; then
+        printf 'marketplace: %s is a symlink; left unchanged.\n' "${marketplace}" >&2
+        return 1
+    fi
+    python3 - "${marketplace}" << 'PY'
+import decimal
+import json
+import math
+import os
+import shutil
+import sys
+import tempfile
+
+path = sys.argv[1]
+RETIRED = {"name": "mryfmo-dev-workflows", "source": {"path": "./plugins/mryfmo-dev-workflows", "source": "local"}}
+
+
+def unique_keys(pairs):
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"duplicate key in {keys}")
+    return dict(pairs)
+
+
+def no_constant(name):
+    raise ValueError(f"{name} is not JSON")
+
+
+def finite_float(text):
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError(f"{text} overflows a float")
+    return value
+
+
+def load(text, parse_float):
+    return json.loads(text, object_pairs_hook=unique_keys, parse_constant=no_constant, parse_float=parse_float)
+
+
+try:
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
+    data = load(text, finite_float)
+    exact = load(text, decimal.Decimal)
+except (OSError, UnicodeDecodeError, ValueError) as error:
+    sys.exit(f"marketplace: cannot read {path} ({error}); left unchanged.")
+if not isinstance(data, dict) or not isinstance(data.get("plugins"), list):
+    sys.exit(f"marketplace: {path} is not an object with a plugins list; left unchanged.")
+removed = set()
+for index, entry in enumerate(data["plugins"]):
+    if isinstance(entry, dict) and entry.get("name") == RETIRED["name"]:
+        if entry.get("source") == RETIRED["source"]:
+            removed.add(index)
+            continue
+        print(f"marketplace: kept {RETIRED['name']} in {path}: its source is not {RETIRED['source']}", file=sys.stderr)
+if not removed:
+    sys.exit(0)
+data["plugins"] = [entry for index, entry in enumerate(data["plugins"]) if index not in removed]
+exact["plugins"] = [entry for index, entry in enumerate(exact["plugins"]) if index not in removed]
+new_text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+try:
+    same = load(new_text, decimal.Decimal) == exact
+except ValueError:
+    same = False
+if not same:
+    sys.exit(f"marketplace: removing the entry would change other values in {path}; left unchanged.")
+handle = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=os.path.dirname(path), delete=False)
+try:
+    with handle:
+        handle.write(new_text)
+    shutil.copymode(path, handle.name)
+    os.replace(handle.name, path)
+except OSError as error:
+    if os.path.exists(handle.name):
+        os.unlink(handle.name)
+    sys.exit(f"marketplace: cannot rewrite {path} ({error}); left unchanged.")
+print(f"marketplace: removed the retired {RETIRED['name']} entry from {path}.")
+PY
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -1594,23 +1765,25 @@ function update_compactiondb() {
 
 #
 # @description Install and refresh managed agent plugin assets.
-# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge or check_pstack.
+# @arg $1 string Optional single step to run alone: update_pi_claude_bridge, check_pi_claude_bridge, check_pstack, retire_shared_pstack_copies or retire_marketplace_dev_workflows.
 #
 function main() {
     if [ "$#" -gt 0 ]; then
         case "$#:$1" in
-        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack)
+        1:update_pi_claude_bridge | 1:check_pi_claude_bridge | 1:check_pstack | 1:retire_shared_pstack_copies | 1:retire_marketplace_dev_workflows)
             export PATH="${HOME}/.local/share/mise/shims:${PATH}"
             "$1"
             return
             ;;
         esac
-        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack]\n' >&2
+        printf 'Usage: scripts/update-agent-assets.sh [update_pi_claude_bridge | check_pi_claude_bridge | check_pstack | retire_shared_pstack_copies | retire_marketplace_dev_workflows]\n' >&2
         exit 2
     fi
 
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
+    retire_shared_pstack_copies
+    retire_marketplace_dev_workflows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     # Claude Code plugin convergence comes before any step that may stop the run (set -e), so every pinned
     # plugin is checked; its own failures are counted and fail the run at the end (fail_on_claude_pin_failures).

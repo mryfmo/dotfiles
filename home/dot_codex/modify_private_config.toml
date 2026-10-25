@@ -699,6 +699,97 @@ def verified_merge(merged: str, declared) -> str:
 # <<< codex hook trust <<<
 
 
+def value_bracket_depth(text: str, depth: int) -> int:
+    """The [ and { nesting still open after `text`, given the depth before it; strings and comments are skipped."""
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == "#":
+            break
+        if char == '"':
+            index += 1
+            while index < len(text) and text[index] != '"':
+                index += 2 if text[index] == "\\" else 1
+        elif char == "'":
+            end = text.find("'", index + 1)
+            index = len(text) if end == -1 else end
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+        index += 1
+    return depth
+
+
+def drop_skills_assignments(chunk: str) -> str:
+    """The root chunk without its `skills = {…}` or `skills.<key> = …` assignments, a multi-line array included."""
+    kept: list[str] = []
+    string = None
+    depth = 0
+    for line in chunk.splitlines(keepends=True):
+        if depth > 0:
+            depth = value_bracket_depth(line, depth)
+            continue
+        if string is None:
+            match = DOTTED_KEY_ASSIGNMENT.match(line)
+            path = key_path(match.group(1)) if match else None
+            if path and path[0] == "skills":
+                depth = value_bracket_depth(line[match.end() :], 0)
+                continue
+        kept.append(line)
+        string = multiline_string_after(line, string)
+    return "".join(kept)
+
+
+def normalize_skills_config(text: str, label: str = "the current file") -> str:
+    """The config without any skills.config entry, whatever valid TOML form held it: the managed baseline owns it.
+
+    `[[skills.config]]` tables, `config = [...]` under `[skills]`, and `skills.config = [...]` or `skills = {…}` at the
+    root all go; every other skills setting comes back as one `[skills]` table (and `[skills.<key>]` tables) rebuilt
+    from the parsed data. Text without skills.config is returned unchanged. Invalid TOML, or a rewrite that would change
+    any other setting, stops the apply: two copies of the key would make the merged file invalid (U87).
+    """
+    if not text.strip():
+        return text
+    data = parse_config(text, label)
+    skills = data.get("skills", {})
+    if not isinstance(skills, dict):
+        refuse(f"skills in {label} is not a table")
+    if "config" not in skills:
+        return text
+    chunks = []
+    for name, chunk in split_chunks(text):
+        scope = [] if name is None else key_path(name)
+        if scope is None:
+            refuse(f"cannot read the table name [{name}] in {label}")
+        if scope[:1] == ["skills"]:
+            continue
+        chunks.append(drop_skills_assignments(chunk) if scope == [] else chunk)
+    rest = {key: value for key, value in skills.items() if key != "config"}
+    tables = []
+    flat = [f"{toml_key(key)} = {toml_value(value, label, 'skills')}" for key, value in rest.items() if not isinstance(value, dict)]
+    if flat:
+        tables.append("\n".join(["[skills]", *flat]))
+    for key, fields in rest.items():
+        if isinstance(fields, dict):
+            lines = [f"[skills.{toml_key(key)}]"]
+            lines.extend(f"{toml_key(field)} = {toml_value(value, label, 'skills')}" for field, value in fields.items())
+            tables.append("\n".join(lines))
+    body = "".join(chunks).rstrip("\n")
+    normalized = "\n\n".join(([body] if body.strip() else []) + tables) + "\n"
+    expected = {key: value for key, value in data.items() if key != "skills"}
+    if rest:
+        expected["skills"] = rest
+    try:
+        same = hook_trust_toml.loads(normalized) == expected
+    except ValueError:
+        same = False
+    if not same:
+        refuse(f"cannot drop skills.config from {label} without changing its other settings")
+    return normalized
+
+
+
 def merge_config(managed: str, current: str) -> str:
     # Declared hook trust is hashed on this host and replaces the managed literal and any existing entry,
     # whatever TOML form holds it; only keys the managed template declares are touched. Project and hook
@@ -713,7 +804,8 @@ def merge_config(managed: str, current: str) -> str:
         merged = "".join(chunk for _, chunk in managed_chunks)
         return verified_merge(merged if merged.endswith("\n") else merged + "\n", declared)
 
-    current_chunks = drop_declared_hook_state(split_chunks(normalize_projects(normalize_hook_state(current))), declared)
+    current = normalize_skills_config(normalize_projects(normalize_hook_state(current)))
+    current_chunks = drop_declared_hook_state(split_chunks(current), declared)
     current_chunks = drop_missing_path_state(current_chunks)
     # A marketplace the manifest pins to a reviewed commit (`ref`) is managed, not runtime state: its runtime
     # copy (no ref, or a stale last_revision) gives way, so `codex plugin marketplace upgrade` stays on the pin.

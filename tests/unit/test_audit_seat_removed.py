@@ -91,11 +91,11 @@ class AuditSeatRemovedTest(unittest.TestCase):
             )
             self.assertEqual(0, run.returncode, run.stderr)
             left = sorted(str(p.relative_to(home)) for p in home.rglob("*") if p.is_file())
+            # hcom-worker's Claude link goes too: its skills.audience is the omp worker seat alone (U87, F130).
             self.assertEqual(
                 [
                     ".agents/omp/policies/audit.yml",
                     ".agents/skills/hcom-worker/SKILL.md",
-                    ".claude/skills/hcom-worker/SKILL.md",
                     ".local/bin/common/hcom-dispatch",
                 ],
                 left,

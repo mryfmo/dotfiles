@@ -19,6 +19,15 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKER = ROOT / "scripts/check-agent-runtime.py"
+# The smallest skills section skill_index renders: no declared skill, pstack for the plain omp launch only.
+GOOD_SKILLS = {
+    "shared_root": ".agents/skills",
+    "pstack_root": ".agents/pstack/skills",
+    "audience": {},
+    "pstack": {"audience": ["omp"], "exclude": []},
+    "codex_disabled": [],
+    "omp": {"omp": {"enabled": True, "pstack": True, "ignored": []}},
+}
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
@@ -159,7 +168,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def write_index(self, outputs: list[dict], scopes: list[dict] | None = None) -> Path:
         path = self.temp_dir / "scripts/generated-agent-outputs.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"generated_by": "test", "outputs": outputs, "scopes": scopes or []}))
+        path.write_text(
+            json.dumps({"generated_by": "test", "outputs": outputs, "scopes": scopes or [], "skills": GOOD_SKILLS})
+        )
         return path
 
     def test_check_runs_each_indexed_codex_modify_script_with_chezmoi_working_tree(self) -> None:
@@ -287,7 +298,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         good_scope = {"source": "home/d", "target": ".d", "glob": "*"}
 
         def index(outputs=None, scopes=None, **extra) -> dict:
-            return {"generated_by": "g", "outputs": outputs or [good_output], "scopes": scopes or [good_scope], **extra}
+            return {
+                "generated_by": "g",
+                "outputs": outputs or [good_output],
+                "scopes": scopes or [good_scope],
+                "skills": GOOD_SKILLS,
+                **extra,
+            }
 
         self.assertIsNone(self.module.output_index_error(index()))
         self.assertIsNone(self.module.output_index_error(index([{"source": "install/x.sh", "target": None}])))
@@ -311,6 +328,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             ("absolute scope target", index(scopes=[{**good_scope, "target": "/tmp"}])),
             ("sha256 not hex", index([{**good_output, "sha256": "Z" * 64}])),
             ("sha256 on a template", index([{**good_output, "kind": "template", "sha256": "0" * 64}])),
+            ("no skills section", {key: value for key, value in index().items() if key != "skills"}),
+            ("skills audience not lists", index(skills={**GOOD_SKILLS, "audience": {"x": "claude"}})),
+            ("skills root escapes HOME", index(skills={**GOOD_SKILLS, "shared_root": "../skills"})),
+            (
+                "omp entry without ignored",
+                index(skills={**GOOD_SKILLS, "omp": {"omp": {"enabled": True, "pstack": True}}}),
+            ),
         ):
             with self.subTest(name=name):
                 self.assertIsNotNone(self.module.output_index_error(candidate))
@@ -410,11 +434,70 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 self.module.generated_target_findings(index, "/tree"),
             )
 
+    def test_a_skill_an_agent_lists_outside_its_audience_is_an_error(self) -> None:
+        """skills.audience: what each agent can list on the host is read from the deployed roots and the index."""
+        home = self.target_root
+        for rel in (
+            ".claude/skills/shared",
+            ".claude/skills/seat-only",
+            ".agents/skills/shared",
+            ".agents/skills/seat-only",
+            ".agents/skills/poteto-mode",
+            ".agents/skills/mystery",
+            ".agents/pstack/skills/poteto-mode",
+            ".agents/pstack/skills/setup-pstack",
+        ):
+            (home / rel).mkdir(parents=True)
+            (home / rel / "SKILL.md").write_text("---\nname: x\ndescription: y\n---\n")
+        skills = {
+            **GOOD_SKILLS,
+            "audience": {"shared": ["claude", "codex", "omp"], "seat-only": ["omp-worker"]},
+            "pstack": {"audience": ["omp", "omp-worker"], "exclude": ["setup-pstack"]},
+            "codex_disabled": ["seat-only"],
+            "omp": {
+                "omp": {"enabled": True, "pstack": True, "ignored": ["seat-only", "setup-pstack"]},
+                "omp-worker": {"enabled": True, "pstack": True, "ignored": ["shared", "setup-pstack"]},
+                "omp-audit": {"enabled": False, "pstack": False, "ignored": []},
+            },
+        }
+        findings = self.module.skill_audience_findings(skills, home)
+        errors = sorted(finding for finding in findings if not self.module.is_warning(finding))
+        self.assertEqual(
+            [
+                (
+                    f"skill poteto-mode is listed by codex outside its audience ['omp', 'omp-worker']: "
+                    f"{home / '.agents/skills/poteto-mode'}"
+                ),
+                (
+                    f"skill seat-only is listed by claude outside its audience ['omp-worker']: "
+                    f"{home / '.claude/skills/seat-only'}"
+                ),
+            ],
+            errors,
+        )
+        warnings = [finding for finding in findings if self.module.is_warning(finding)]
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertIn(str(home / ".agents/skills/mystery"), warnings[0])
+
+        # An omp consumer that does not ignore an excluded pstack skill lists it, and Codex lists an undisabled one.
+        skills["omp"]["omp"]["ignored"] = ["seat-only"]
+        skills["codex_disabled"] = []
+        errors = [finding for finding in self.module.skill_audience_findings(skills, home) if "listed by" in finding]
+        self.assertIn(
+            f"skill setup-pstack is listed by omp outside its audience []: {home / '.agents/pstack/skills/setup-pstack'}",
+            errors,
+        )
+        self.assertIn(
+            f"skill seat-only is listed by codex outside its audience ['omp-worker']: {home / '.agents/skills/seat-only'}",
+            errors,
+        )
+
     def test_the_committed_output_index_matches_the_generated_tree(self) -> None:
         """The doctor's index names every deployed generated file, and each source it names exists."""
         index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
         targets = {entry["target"] for entry in index["outputs"] if entry["target"]}
-        self.assertIn(".agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json", targets)
+        self.assertNotIn(".agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json", targets)
+        self.assertIn(".agents/plugins/marketplace.json", targets)
         self.assertIn(".claude/agents/project-map.md", targets)
         for entry in index["outputs"]:
             self.assertTrue((ROOT / entry["source"]).is_file(), entry["source"])

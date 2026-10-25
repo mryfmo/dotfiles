@@ -3,6 +3,8 @@
 readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 
 @test "[common] gh_extensions installs extensions when authenticated" {
+    # No installed copy: the host's own gh extensions never take part.
+    export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }
@@ -87,6 +89,10 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
 
 @test "[common] gh_extensions reinstalls an extension at another tag at its pin" {
     export XDG_DATA_HOME="${BATS_TEST_TMPDIR}/data"
+    # gh's record of the installed copy: pinned, but at another tag than the pin.
+    mkdir -p "${XDG_DATA_HOME}/gh/extensions/gh-poi"
+    printf 'owner: seachicken\nname: gh-poi\nhost: github.com\ntag: v0.0.1\nispinned: true\npath: %s\n' \
+        "${XDG_DATA_HOME}/gh/extensions/gh-poi/gh-poi" > "${XDG_DATA_HOME}/gh/extensions/gh-poi/manifest.yml"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
         activate_mise() { :; }
@@ -102,7 +108,9 @@ readonly SCRIPT_PATH="./install/common/gh_extensions.sh"
     '
 
     [ "${status}" -eq 0 ]
+    [ "${#lines[@]}" -eq 3 ]
     pin="${lines[2]#pin=}"
+    [ "${lines[0]}" = "seachicken/gh-poi is v0.0.1 true (listed at v0.0.1); reinstalling it pinned at ${pin}." ]
     [ "${lines[1]}" = "extension install seachicken/gh-poi --pin ${pin}" ]
 }
 

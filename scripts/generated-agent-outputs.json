@@ -466,6 +466,10 @@
       "target": null
     },
     {
+      "source": "install/common/gh_extensions.sh",
+      "target": null
+    },
+    {
       "source": "install/common/mise.sh",
       "target": null
     },
@@ -479,6 +483,10 @@
     },
     {
       "source": "scripts/lib/installer-pins.sh",
+      "target": null
+    },
+    {
+      "source": "scripts/plugin-pins.json",
       "target": null
     },
     {

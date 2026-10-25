@@ -1,4 +1,4 @@
-# omp policy for the audit role; `scripts/orchestrator/omp-run.sh --role audit` passes it as
+# omp policy for the audit role; `~/.local/bin/common/omp-run.sh --role audit` passes it as
 # `--config ~/.agents/omp/policies/audit.yml`. Schema: `tools.approvalMode`
 # (src/tools/settings.ts:311-318), `tools.approval` (src/tools/settings.ts:295-305)
 # and `bash.patterns` (src/exec/settings.ts:134-145) of @oh-my-pi/pi-coding-agent
@@ -17,6 +17,10 @@ tools:
     eval: deny
     task: deny
     manage_skill: deny
+    # A DAP launch starts any program outside bash.patterns, and the bridge's AskClaude runs a Claude Code child
+    # with its own tools outside this overlay (U66, findings F040 and F006).
+    debug: deny
+    AskClaude: deny
 bash:
   patterns:
     - match: "*sudo *"

@@ -43,6 +43,78 @@ omp:
   disabled_providers:
     - agent-plugins
     - openai-codex
+  # Discovery providers the seat role overlays (~/.agents/omp/profiles/<role>.yml) switch off on
+  # top of disabled_providers; the plain-launch config keeps them (regime-cutover U66, F005).
+  # --no-extensions stops only extension modules: measured on omp 18.11.3 under a scratch HOME,
+  # a cwd's .omp/tools/*.ts still ran and its .omp/mcp.json and .mcp.json still started their
+  # server process, and both stopped with these providers off, while the cwd's AGENTS.md
+  # (agents-md) and the skills.customDirectories skills still loaded. Each one reads code,
+  # MCP servers, hooks or settings from the project tree (getAllProvidersInfo). The seat
+  # profile directories hold no native user-level files, so native costs nothing there.
+  # omp still merges a cwd's .omp/config.yml at start whatever this list says (the list binds
+  # only after settings load), so hcom-seat refuses a seat directory that holds .omp.
+  seat_disabled_providers:
+    - native
+    - claude
+    - codex
+    - gemini
+    - opencode
+    - cursor
+    - windsurf
+    - vscode
+    - mcp-json
+  # A plain `omp` launch (~/.omp/agent/config.yml, merged by modify_private_config.yml) keeps omp's
+  # approval mode (default yolo): the operator drives those sessions, the coordinator among them, and
+  # they run gate-free by design (coordinator decision on U66 F043). It gets only outright denies,
+  # which omp honours in every mode: the debug tool and the bridge's AskClaude (both run programs
+  # outside bash.patterns), and the seat policies' common bash deny list
+  # (home/dot_agents/omp/policies/README.md), so a plain launch refuses the same commands a seat
+  # does; tests/unit/test_omp_seat_policy.py fails when the copies drift. eval stays allowed here
+  # (the operator's sessions use it), so a shell started through eval bypasses the bash list. The
+  # seats use named profiles and their own --config policy, never this file.
+  interactive_policy:
+    tool_deny:
+      - debug
+      - AskClaude
+    bash_deny:
+      - "*sudo *"
+      - "*rm -rf *"
+      - "*curl *|*sh"
+      - "*curl *|*sh *"
+      - "*wget *|*sh"
+      - "*wget *|*sh *"
+      - "*gh release*"
+      - "*npm publish*"
+      - "*uv publish*"
+      - "*terraform apply*"
+      - "*kubectl apply*"
+      - "*gh pr merge*"
+      - "*gh pr edit*"
+      - "*gh pr close*"
+      - "*gh pr review*"
+      - "*gh pr update-branch*"
+      - "*gh issue*"
+      - "*gh api* -X POST*"
+      - "*gh api* --method POST*"
+      - "*gh api* -XPOST*"
+      - "*gh api* --method=POST*"
+      - "*gh api* -X PATCH*"
+      - "*gh api* --method PATCH*"
+      - "*gh api* -XPATCH*"
+      - "*gh api* --method=PATCH*"
+      - "*gh api* -X PUT*"
+      - "*gh api* --method PUT*"
+      - "*gh api* -XPUT*"
+      - "*gh api* --method=PUT*"
+      - "*gh api* -X DELETE*"
+      - "*gh api* --method DELETE*"
+      - "*gh api* -XDELETE*"
+      - "*gh api* --method=DELETE*"
+      - "*gh api* -f*"
+      - "*gh api* -F*"
+      - "*gh api* --field*"
+      - "*gh api* --raw-field*"
+      - "*gh api* --input*"
   # Seat role -> model profile. One overlay per role renders to
   # ~/.agents/omp/profiles/<role>.yml with that profile's omp model as
   # modelRoles.default and skills_directories as skills.customDirectories; the
@@ -309,22 +381,25 @@ claude:
     DO_NOT_TRACK: "1"
     CHECKPOINT_DISABLE: "1"
     AWS_EC2_METADATA_DISABLED: "true"
-  # The coordinator's levers, installed read-only (regime-cutover U31). The
-  # generator renders home/dot_local/bin/common/executable_<name> from
-  # scripts/orchestrator/<name> (same bytes; chezmoi installs it as
-  # ~/.local/bin/common/<name>, outside every sandbox write root) and
-  # refreshes the pins below; each lever refuses to run (exit 2)
-  # when its own sha256 differs from its line here, read from the deployed
-  # ~/.agents/agent-config.yaml for the installed copy. regime-env is the
+  # The coordinator's levers (regime-cutover U31). The generator renders
+  # home/dot_local/bin/common/executable_<name> from scripts/orchestrator/<name>
+  # (same bytes; chezmoi installs it as ~/.local/bin/common/<name>, mode 0755,
+  # outside every Claude sandbox write root) and refreshes the pins below. The
+  # copy is not read-only: its owner can rewrite it and this manifest. The guard
+  # is detection: each lever refuses to run (exit 2) when its own sha256 differs
+  # from its line here, read from the deployed ~/.agents/agent-config.yaml for
+  # the installed copy. regime-env is the
   # helper the levers source for the per-repository derivation (U33): pinned
   # and self-checked like a lever, but sourced, never run, so no allow rule;
   # regime-init reads its templates from ~/.agents/regime beside this manifest.
   # The pr-*.sh and records-sync.sh pins are the omp seats' GitHub-write levers
   # (U28): the same install and self-check, allowed by the seat policies under
-  # ~/.agents/omp/policies, never by a claude.permissions rule.
+  # ~/.agents/omp/policies, never by a claude.permissions rule. omp-run.sh is
+  # the one-turn omp runner the audit path uses (U66): installed and
+  # self-checked the same way, so every repository runs the same pinned copy.
   levers:
     sha256:
-      hcom-seat: 213f9f5bbe782f51cf74137024c1793533e11fc14223eac45d5fbe98aec4a2f3
+      hcom-seat: 43f5f617ecac078bb62cfd0a1d77686e80f4fc486a2d40a689f94439b8092309
       hcom-dispatch: b7883a16f2902933ca7d627ea3c1c1c434558c27e40b2546cfe3dd59e5f04274
       bus-history.sh: e27cac5048ca6ef1abf6637d5518b1a481df9974929c03c715ba9f59d2115cf2
       worktree-gc.sh: 4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293
@@ -340,9 +415,14 @@ claude:
       pr-body-edit.sh: cb5ca5de2f032c86692a364d7d792da81eef4dad494afe8102292d3d8918c1cf
       pr-threads-check.sh: 7cd92e2610b088efd86106a8e181c3cd8f01486c7731c835165c892ed58d0610
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
-    # The only extension directories `hcom-seat` loads, by default or through
-    # `--ext`: the pi-claude-bridge, the openai-siwc extension, and the stop
-    # gate's directory, which every launch loads (regime-cutover U33c).
+      omp-run.sh: dc87a4da71bc407627c65e35c35095eecfd784c0edbde62863f56343f372982e
+    # The only extension directories `hcom-seat` passes with `-e`, by default or
+    # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
+    # stop gate's directory, which every launch loads (regime-cutover U33c).
+    # hcom's own delivery extension is the one other `-e` (hcom adds it). The
+    # seat shim runs omp with --no-extensions, so no ambient module (the cwd's
+    # .omp/extensions, .omp/hooks, .omp/plugins, a settings `extensions` entry,
+    # an installed plugin) loads beside them (U85, U66 F005).
     extensions:
       - ~/.local/lib/omp-extensions/pi-claude-bridge
       - ~/.agents/omp/extensions/openai-siwc

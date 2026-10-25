@@ -5152,7 +5152,7 @@ orchestrator<span class="o">)</span><span class="w"> </span><span class="nv">dir
 <span class="w">    </span>refuse<span class="w"> </span><span class="s2">"seat directory exists and is not a worktree of </span><span class="si">${</span><span class="nv">repo</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="k">fi</span>
 <span class="c1"># U66 (F005): omp 18.11.3 merges the cwd's .omp/config.yml and .omp/settings.json at start whatever disabledProviders</span>
-<span class="c1"># says (the list binds only after settings load; measured under a scratch HOME), so a seat never starts in a directory</span>
+<span class="c1"># says (the list binds only after settings load; measured under a scratch HOME; 18.12.6 loads settings the same way), so a seat never starts in a directory</span>
 <span class="c1"># that holds .omp. The profile overlay's disabledProviders (native and the other project-code providers) keeps the</span>
 <span class="c1"># cwd's .omp tools, MCP servers, rules and skills out of the running seat (measured the same way).</span>
 <span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/.omp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span>/.omp<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>

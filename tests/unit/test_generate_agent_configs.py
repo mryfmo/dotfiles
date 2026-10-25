@@ -2926,6 +2926,27 @@ class StandingRulesTest(unittest.TestCase):
         self.assertFalse((dest / ".codex/AGENTS.md").exists())
         self.assertTrue((dest / ".claude/rules/shared.md").is_file())
 
+    def test_check_fails_while_a_codex_rules_file_no_rule_renders_is_present(self) -> None:
+        # PR #544 thread 4370227867: with no codex audience left, the old Codex AGENTS.md template must fail --check.
+        self.module.write_outputs(self.module.render_standing_rules(self.manifest))
+        codex = self.temp_dir / "home/dot_codex/AGENTS.md.tmpl"
+        self.assertTrue(codex.is_file())
+        rules = self.manifest["standing_rules"]["rules"]
+        del rules["codex-only"]
+        (self.rules / "codex-only.md").unlink()
+        rules["shared"] = ["claude", "omp-worker"]
+        self.module.load_manifest = lambda: self.manifest
+        self.module.expected_outputs = self.module.render_standing_rules
+        self.module.stale_profile_outputs = lambda _manifest: []
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stderr = io.StringIO()
+        quiet = contextlib.redirect_stdout(io.StringIO())
+        with contextlib.redirect_stderr(stderr), quiet, self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn("home/dot_codex/AGENTS.md.tmpl", stderr.getvalue())
+
     def test_pstack_models_render_from_the_model_profiles_they_name(self) -> None:
         self.manifest["standing_rules"]["pstack_models"] = {
             "budget": "medium (high)",

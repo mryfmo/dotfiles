@@ -4069,6 +4069,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/lib/github-release/" class="md-nav__link">
         
   
@@ -4718,7 +4746,7 @@
 
 
 <h1 id="installubuntucommonapparmor_usernssh">install/ubuntu/common/apparmor_userns.sh<a class="headerlink" href="#installubuntucommonapparmor_usernssh" title="Permanent link">&para;</a></h1>
-<p>Copies install/ubuntu/common/apparmor/bwrap-userns to /etc/apparmor.d and loads it with apparmor_parser, so sandboxed Codex runs keep working under kernel.apparmor_restrict_unprivileged_userns=1. It is a no-op when the restriction is off or absent, or when apparmor_parser or /usr/bin/bwrap is missing. The global sysctl is never changed. Remove with: sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns &amp;&amp; sudo rm /etc/apparmor.d/bwrap-userns</p>
+<p>Loads install/ubuntu/common/apparmor/bwrap-userns with apparmor_parser and copies it to /etc/apparmor.d, so sandboxed Codex runs keep working under kernel.apparmor_restrict_unprivileged_userns=1. It is a no-op when the restriction is off or absent, when apparmor_parser or /usr/bin/bwrap is missing, or when the installed copy equals the source and bwrap can already create a user namespace (the profile is loaded). The global sysctl is never changed. Remove with: sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns &amp;&amp; sudo rm /etc/apparmor.d/bwrap-userns</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/common/apparmor_userns.sh</code></li>
@@ -4729,6 +4757,7 @@
 <ul>
 <li><code>install_profile</code></li>
 <li><code>main</code></li>
+<li><code>profile_is_effective</code></li>
 <li><code>profile_source</code></li>
 <li><code>skip_reason</code></li>
 </ul>
@@ -4738,11 +4767,13 @@
 <span class="c1"># @file install/ubuntu/common/apparmor_userns.sh</span>
 <span class="c1"># @brief Install the AppArmor profile that lets bwrap create user namespaces.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Copies install/ubuntu/common/apparmor/bwrap-userns to /etc/apparmor.d and</span>
-<span class="c1">#   loads it with apparmor_parser, so sandboxed Codex runs keep working under</span>
+<span class="c1">#   Loads install/ubuntu/common/apparmor/bwrap-userns with apparmor_parser and</span>
+<span class="c1">#   copies it to /etc/apparmor.d, so sandboxed Codex runs keep working under</span>
 <span class="c1">#   kernel.apparmor_restrict_unprivileged_userns=1. It is a no-op when the</span>
-<span class="c1">#   restriction is off or absent, or when apparmor_parser or /usr/bin/bwrap is</span>
-<span class="c1">#   missing. The global sysctl is never changed.</span>
+<span class="c1">#   restriction is off or absent, when apparmor_parser or /usr/bin/bwrap is</span>
+<span class="c1">#   missing, or when the installed copy equals the source and bwrap can already</span>
+<span class="c1">#   create a user namespace (the profile is loaded). The global sysctl is never</span>
+<span class="c1">#   changed.</span>
 <span class="c1">#   Remove with: sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns &amp;&amp;</span>
 <span class="c1">#   sudo rm /etc/apparmor.d/bwrap-userns</span>
 
@@ -4794,34 +4825,49 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Copy the profile into place and (re)load it; both steps are idempotent.</span>
+<span class="c1"># @description Load the profile, then copy it into place; both steps are idempotent.</span>
 <span class="c1">#   Never prompts: without cached sudo credentials it leaves the profile pending.</span>
 <span class="c1"># @exitcode 0 Profile loaded, or left pending without cached sudo credentials.</span>
 <span class="c1"># @stderr Pending notice with the manual remedy when sudo would prompt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_profile<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nb">source</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"apparmor bwrap-userns profile pending: run 'sudo -v &amp;&amp; bash install/ubuntu/common/apparmor_userns.sh'"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"apparmor bwrap-userns profile pending: run 'sudo -v &amp;&amp; bash install/ubuntu/common/apparmor_userns.sh', or cache sudo before the next chezmoi apply, which retries"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="nv">source</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>profile_source<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span>apparmor_parser<span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span>apparmor_parser<span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Loaded AppArmor profile bwrap-userns from %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the bwrap user-namespace profile when the host needs it.</span>
+<span class="c1"># @description Succeed when bwrap can create a user namespace, the effect the loaded profile</span>
+<span class="c1">#   grants; the same unprivileged probe `make doctor` runs. A profile file in /etc/apparmor.d</span>
+<span class="c1">#   proves nothing: a copy whose load failed sits there unloaded.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>profile_is_effective<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">BWRAP_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--ro-bind<span class="w"> </span>/<span class="w"> </span>/<span class="w"> </span><span class="nb">true</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install the bwrap user-namespace profile when the host needs it, unless the</span>
+<span class="c1">#   installed copy equals the source and bwrap already works under it. chezmoi runs this on every</span>
+<span class="c1">#   apply (run_after_), so a pending or failed install is retried without the operator</span>
+<span class="c1">#   remembering it; a working host costs one cmp and one bwrap probe.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>reason
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>reason<span class="w"> </span><span class="nb">source</span>
 <span class="w">    </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>skip_reason<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping bwrap AppArmor userns profile: %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>install_profile
+<span class="w">    </span><span class="nv">source</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>profile_source<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>cmp<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>profile_is_effective<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>install_profile<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

@@ -4069,6 +4069,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/lib/github-release/" class="md-nav__link">
         
   
@@ -4752,6 +4780,12 @@
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
+<span class="c1"># The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>is_ci_runner<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/../../../scripts/lib/ci-runner.sh"</span>
+<span class="k">fi</span>
+
 <span class="c1">#</span>
 <span class="c1"># @description Check whether Homebrew is already available on `PATH`.</span>
 <span class="c1">#</span>
@@ -4798,10 +4832,11 @@
 <span class="c1">#   https://github.com/mryfmo/dotfiles/actions/runs/37030239884/job/110914945531),</span>
 <span class="c1">#   item-level trust alone cleared azure/bicep and hashicorp/tap but the</span>
 <span class="c1">#   warning persisted for aws/tap, so only such taps get whole-tap trust.</span>
-<span class="c1">#   Does nothing unless `CI` is exactly `true`.</span>
+<span class="c1">#   Does nothing outside a GitHub Actions runner (is_ci_runner): an agent</span>
+<span class="c1">#   shell's `CI=true` on an operator's Mac never trusts a tap.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>handle_ci_untrusted_taps<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span>is_ci_runner<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>taps<span class="w"> </span>installed<span class="w"> </span>tap<span class="w"> </span>name<span class="w"> </span><span class="nv">formulae</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">casks</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">with_items</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">whole_taps</span><span class="o">=</span><span class="s2">""</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>untrust<span class="w"> </span>--tap<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

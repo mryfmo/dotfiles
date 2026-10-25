@@ -4065,6 +4065,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../lib/github-release/" class="md-nav__link">
         
   
@@ -4772,6 +4800,9 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
+<span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/lib/ci-runner.sh"</span>
+
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">DOCS_DIR</span><span class="o">=</span><span class="s2">"docs"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">REFERENCE_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/reference"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">LANDING_PAGE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/index.md"</span>
@@ -4811,7 +4842,7 @@
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>is_ci_runner<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'info: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>

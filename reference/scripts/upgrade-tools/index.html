@@ -4065,6 +4065,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../lib/github-release/" class="md-nav__link">
         
   
@@ -4714,7 +4742,7 @@
 
 
 <h1 id="scriptsupgrade-toolssh">scripts/upgrade-tools.sh<a class="headerlink" href="#scriptsupgrade-toolssh" title="Permanent link">&para;</a></h1>
-<p>Each manager's own safety features decide what the latest safe version is: mise's minimum_release_age and verification settings in the applied ~/.config/mise/config.toml, and a manager's own hold (an exact version in that config, brew pin, uv tool install <pkg>==<version>, apt-mark hold). The default mode updates user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. The network-only phases (Homebrew, mise self-update, uv tools, gh extensions) only warn when they fail, so an offline host still converges; installing the declared mise tools stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes when CI=true.</p>
+<p>Each manager's own safety features decide what the latest safe version is: mise's minimum_release_age and verification settings in the applied ~/.config/mise/config.toml, and a manager's own hold (an exact version in that config, brew pin, uv tool install <pkg>==<version>, apt-mark hold). The default mode updates user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. The network-only phases (Homebrew, mise self-update, uv tools, gh extensions) only warn when they fail, so an offline host still converges; installing the declared mise tools stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/upgrade-tools.sh</code></li>
@@ -4763,7 +4791,7 @@
 <span class="c1">#   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they</span>
 <span class="c1">#   fail, so an offline host still converges; installing the declared mise tools</span>
 <span class="c1">#   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes</span>
-<span class="c1">#   when CI=true.</span>
+<span class="c1">#   on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -4773,6 +4801,8 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 <span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/lib/ci-runner.sh"</span>
 <span class="c1"># chezmoi applies home/dot_config/mise/config.toml.tmpl to ~/.config/mise whatever XDG_CONFIG_HOME</span>
 <span class="c1"># says, so mise reads exactly that config: no inherited MISE_CONFIG_DIR, and the isolated Git</span>
 <span class="c1"># config's XDG_CONFIG_HOME below cannot redirect it.</span>
@@ -5284,8 +5314,8 @@
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>parse_args<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># A CI runner's tools belong to its image, not to this machine's update.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="nv">false</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'CI=true: skipping installed-tool updates.\n'</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>is_ci_runner<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'GitHub Actions runner: skipping installed-tool updates.\n'</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 

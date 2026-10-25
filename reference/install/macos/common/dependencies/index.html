@@ -4069,6 +4069,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../scripts/lib/ci-runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/ci-runner.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../scripts/lib/github-release/" class="md-nav__link">
         
   
@@ -4747,6 +4775,12 @@
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
+<span class="c1"># The chezmoi script includes scripts/lib/ci-runner.sh before this file; a direct run sources it.</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>is_ci_runner<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/ci-runner.sh</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/../../../scripts/lib/ci-runner.sh"</span>
+<span class="k">fi</span>
+
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">BREW_PACKAGES</span><span class="o">=(</span>
 <span class="w">    </span>cmake
 <span class="w">    </span>git
@@ -4781,7 +4815,7 @@
 <span class="w">    </span><span class="k">done</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>is_ci_runner<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>

@@ -7,13 +7,12 @@ exits 0 when it found no drift, 3 when it found drift, 4 when an upstream read f
 beside whatever it found; a failed read is never read as "current"). Any other status is a crash with no report.
 
 The watch reads api.github.com only, and only these four things:
-- runner-image: every runner label in .github/workflows (`runs-on` and strategy.matrix values) against the
-  actions/runner-images announcements whose subject is that runner image and that retire it: the title (after an
-  optional "[macOS]" tag and "The") starts with the OS and major version and says its runner image(s) will be or
-  are deprecated, retired, removed or unsupported ("The macOS 14 Sonoma based runner images will begin
-  deprecation"), or starts with the label itself ("macos-14 will be retired", "The macos-14 image is deprecated").
-  A title that deprecates something on, from or in an image ("Deprecation of Python 3.9 on macOS 15 runner
-  images") is a tool deprecation and is never reported.
+- runner-image: every open actions/runner-images announcement whose title mentions a runner label the workflows use
+  (`runs-on` and strategy.matrix values in .github/workflows), as "announcement mentions <label>, review". A title
+  mentions a label when it contains the label itself (`macos-14`) or its OS name and version (`macOS 14`, `Ubuntu
+  24.04` or `Ubuntu 24`, `Windows Server 2025`), each as a whole token. The watch does not decide whether the
+  announcement retires the image: a tool or SDK deprecation that mentions a used label is reported on purpose. These
+  false positives are intended; the finding asks a human to read the announcement.
 - mise-pin and manifest-pin: every exact version in home/dot_mise/config.toml and every `pin` and `fallback.pin` in
   home/dot_agents/agent-config.yaml assets that lives on GitHub, against the newest stable GitHub release at least
   minimum_release_age old (the window home/dot_mise/config.toml sets, 72h today).
@@ -56,17 +55,12 @@ MISE_CONFIG = "home/dot_mise/config.toml"
 MANIFEST = "home/dot_agents/agent-config.yaml"
 WORKFLOWS = ".github/workflows"
 OUT_OF_SCOPE = "no strict upstream parser in scope"
-_SUBJECT = r"(?:\[[^\]]*\]\s*)?(?:The\s+)?"
-_RETIRED = r"(?:will\s+(?:begin\s+)?(?:be\s+)?|(?:is|are)\s+(?:now\s+)?)(?:deprecat|retir|remov|unsupported)"
-IMAGE_RETIREMENT = re.compile(
-    _SUBJECT + r"(?P<os>macOS|Ubuntu|Windows)(?:\s+Server)?\s+(?P<major>\d+)\b[^:;]*?\brunner\s+images?\s+" + _RETIRED,
-    re.IGNORECASE,
-)
-LABEL_RETIREMENT = re.compile(
-    _SUBJECT + r"`?(?P<label>(?:ubuntu|macos|windows)-[a-z0-9.-]+)`?\s+(?:(?:runner\s+)?image\s+)?" + _RETIRED,
-    re.IGNORECASE,
-)
-TOOL_ON_IMAGE = re.compile(r"\b(?:on|from|in)\s+(?:the\s+)?`?(?:macOS|Ubuntu|Windows)\b", re.IGNORECASE)
+# The title words for each runner OS; the version follows them as a whole token.
+RUNNER_OS_WORDS = {"macos": r"macOS", "ubuntu": r"Ubuntu", "windows": r"Windows(?:\s+Server)?"}
+# A whole token ends where no word character, hyphen, or `.` plus a digit follows (so `macOS 14` is not in
+# `macOS 14.5`, and `macos-14` is not in `macos-14-large`).
+TOKEN_END = r"(?![\w-]|\.\d)"
+TOKEN_START = r"(?<![\w.-])"
 RUNNER_LABEL = re.compile(r"(?:ubuntu|macos|windows)-[a-z0-9.]+(?:-[a-z0-9]+)*")
 # mise core tools with an exact pin whose releases are on GitHub; every other core tool is not watched.
 MISE_CORE_GITHUB = {"fd": "sharkdp/fd", "uv": "astral-sh/uv"}
@@ -296,15 +290,16 @@ def scalars(value):
         yield value
 
 
-def retires(title: str, label: str) -> bool:
-    """Whether an announcement title retires the runner image a label runs on (see the module docstring)."""
-    if TOOL_ON_IMAGE.search(title):
-        return False
-    if match := IMAGE_RETIREMENT.match(title):
-        image = re.match(r"(ubuntu|macos|windows)-(\d+)", label)
-        return bool(image) and (match["os"].lower(), int(match["major"])) == (image[1], int(image[2]))
-    match = LABEL_RETIREMENT.match(title)
-    return bool(match) and match["label"].lower() == label
+def mention_pattern(label: str) -> re.Pattern:
+    """The whole-token forms in which an announcement title names a runner label: the label, and its OS name and
+    version (a dotted version also by its major alone)."""
+    forms = [re.escape(label)]
+    if match := re.fullmatch(r"(macos|ubuntu|windows)-(\d+)(?:\.(\d+))?(?:-[a-z0-9]+)*", label):
+        versions = [re.escape(f"{match[2]}.{match[3]}"), match[2]] if match[3] else [match[2]]
+        forms.append(rf"{RUNNER_OS_WORDS[match[1]]}\s+(?:{'|'.join(versions)})")
+    # Every interpolated part is re.escape()d, a run of digits from the fullmatch above, or a module constant.
+    pattern = rf"{TOKEN_START}(?:{'|'.join(forms)}){TOKEN_END}"
+    return re.compile(pattern, re.IGNORECASE)  # lint-comparisons: allow each part is escaped or digits-only
 
 
 def mise_repo(name: str, spec) -> str | None:
@@ -366,17 +361,18 @@ class Watch:
                         used.setdefault(value, set()).add(path.name)
         if not used:
             return
-        url = f"{GITHUB_API}/repos/{RUNNER_IMAGES}/issues?labels=Announcement&state=all&per_page=100"
+        url = f"{GITHUB_API}/repos/{RUNNER_IMAGES}/issues?labels=Announcement&state=open&per_page=100"
         try:
             announcements = parse_announcements(self.upstream.get(url), Shape(url))
         except ReadError as error:
             self.failures.append(f"runner-image: {error}")
             return
         for label, files in sorted(used.items()):
+            mentions = mention_pattern(label)
             for number, state, title in announcements:
-                if retires(title, label):
+                if state == "open" and mentions.search(title):
                     recorded = ", ".join(sorted(files))
-                    notice = f"{RUNNER_IMAGES}#{number} ({state}): {title}"
+                    notice = f"announcement mentions {label}, review: {RUNNER_IMAGES}#{number}: {title}"
                     self.findings.append(Finding("runner-image", label, recorded, notice, f"{WORKFLOWS}/"))
 
     def mise_pins(self) -> None:

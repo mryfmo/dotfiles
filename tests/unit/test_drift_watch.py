@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/drift-watch.py"
 NOW = "2026-10-25T00:00:00Z"
 GH = "https://api.github.com/repos"
-RUNNER_ISSUES = f"{GH}/actions/runner-images/issues?labels=Announcement&state=all&per_page=100"
+RUNNER_ISSUES = f"{GH}/actions/runner-images/issues?labels=Announcement&state=open&per_page=100"
 FD = f"{GH}/sharkdp/fd/releases?per_page=100"
 BATS = f"{GH}/bats-core/bats-core/releases?per_page=100"
 STARSHIP = f"{GH}/starship/starship/releases?per_page=100"
@@ -110,14 +110,15 @@ CURRENT_UPSTREAM = {
             "state": "open",
             "title": "[macOS] The macOS 14 Sonoma based runner images will begin deprecation on July 6th",
         },
-        # Naming a label in use without retiring anything is no drift either.
+        # Closed announcements are not reported, even when they mention a used label.
         {"number": 12520, "state": "closed", "title": "[macOS] `macos-latest` YAML-label will use `macos-15` in 2025"},
-        # A tool deprecation on an image in use is not the image's retirement.
         {
             "number": 13570,
             "state": "closed",
             "title": "[macOS] Deprecation of simulator runtimes for Xcode 26 on macOS 15",
         },
+        # A title naming only an unused label or version is no finding.
+        {"number": 14856, "state": "open", "title": "[macOS] OpenSSL will be updated from 3 to 4 on macOS 26"},
         {"number": 7, "state": "open", "title": "macos-15 is retired", "pull_request": {}},
     ],
     FD: [
@@ -257,7 +258,7 @@ class DriftWatchTest(unittest.TestCase):
         self.assertEqual(3, status, report)
         self.assertEqual(STALE, self.findings(report))
         self.assertIn("`v10.5.0 (2026-08-26)`", report, "the newest release past the window, not the fresh v10.6.0")
-        self.assertIn("actions/runner-images#13518 (open)", report)
+        self.assertIn("announcement mentions macos-14, review: actions/runner-images#13518", report)
 
     def test_a_failed_read_is_a_failure_not_current(self):
         for name, change in (
@@ -401,35 +402,44 @@ class DriftWatchTest(unittest.TestCase):
         self.assertEqual(2, upstream_cell.count("`"), upstream_cell)
         self.assertNotIn("\n## injected", report)
 
-    def test_only_an_announcement_whose_subject_is_the_runner_image_is_reported(self):
-        retiring = {
-            "The macOS 14 Sonoma based runner images will begin deprecation on July 6th and will be fully unsupported": (
-                "macos-14"
-            ),
-            "[macOS] The macOS 14 Sonoma based runner images will begin deprecation": "macos-14-large",
-            "[Ubuntu] The Ubuntu 22 based runner images will begin deprecation on September 17th": "ubuntu-22.04",
-            "The Windows 2019 Actions runner image will begin deprecation on 2025-06-01": "windows-2019",
-            "`macos-15` will be retired on 2027-01-01": "macos-15",
-            "The macos-15 image is deprecated": "macos-15",
-        }
-        not_retiring = {
-            "Deprecation of Python 3.9 on macOS 15 runner images": "macos-15",
-            "[macOS] Deprecation of simulator runtimes for Xcode 26.0.1 on macOS 15 on January 26th": "macos-15",
-            "[macOS] Python 3.9 will be removed from macOS 15 runner images": "macos-15",
-            "macOS 15 runner images: Python 3.9 will be removed": "macos-15",
-            "[Ubuntu & Windows] Four tools scheduled for deprecation on November 3, 2025": "ubuntu-24.04",
-            "[macOS] `macos-latest` YAML-label will use `macos-15` in August 2025": "macos-15",
-            "[Ubuntu] `ubuntu-latest` label will use Ubuntu 26.04 in November 2026": "ubuntu-24.04",
-            "The macOS 14 Sonoma based runner images will begin deprecation": "macos-15",
-            "Deprecated packages on macos-15 will be removed": "macos-15",
-        }
-        for title, label in {**retiring, **not_retiring}.items():
-            with self.subTest(title):
-                issue = [{"number": 1, "state": "open", "title": title}]
-                status, report = self.current(
-                    lambda upstream, issue=issue: upstream.update({RUNNER_ISSUES: issue}), oses=[label]
-                )
-                self.assertEqual(3 if title in retiring else 0, status, report)
+    def test_an_open_announcement_that_mentions_a_used_label_is_reported_for_review(self):
+        # The titles of audit rounds 4 and 5 plus the live retirement title: whether each retires the image or
+        # deprecates a tool on it, it mentions the label, so it is reported for a human to read.
+        mentioning = [
+            ("Deprecation of Python 3.9 on macOS 15 runner images", "macos-15"),
+            ("The macOS 15 SDK in runner images will be removed", "macos-15"),
+            ("The macOS 15 runner images will be retired from the macOS runner fleet", "macos-15"),
+            ("Deprecated packages on macos-15 will be removed", "macos-15"),
+            ("[macOS] The macOS 14 Sonoma based runner images will begin deprecation on July 6th", "macos-14"),
+            ("[macOS] The macOS 14 Sonoma based runner images will begin deprecation", "macos-14-large"),
+            ("[Ubuntu] The Ubuntu 22 based runner images will begin deprecation on September 17th", "ubuntu-22.04"),
+            ("[Ubuntu] `ubuntu-latest` label will use Ubuntu 26.04 in November 2026", "ubuntu-26.04"),
+            ("The Windows Server 2025 image will be updated", "windows-2025"),
+        ]
+        # Each names another label or version than the one in use, or the used one only inside a longer token.
+        unused = [
+            ("The macOS 14 Sonoma based runner images will begin deprecation", "macos-15"),
+            ("[macOS] Xcode 16 is removed from macOS 150 images", "macos-15"),
+            ("Deprecation on macOS 15.5 point images", "macos-15"),
+            ("macos-15-large will be retired", "macos-15"),
+            ("[Ubuntu] `ubuntu-latest` label will use Ubuntu 26.04 in November 2026", "ubuntu-24.04"),
+            ("Ubuntu 24.10 images are in preview", "ubuntu-24.04"),
+            ("[Windows] MySQL will be updated from 8.0 to 8.4", "windows-2025"),
+        ]
+        for expected, cases in ((True, mentioning), (False, unused)):
+            for title, label in cases:
+                with self.subTest(title=title, label=label):
+                    issue = [{"number": 1, "state": "open", "title": title}]
+                    status, report = self.current(
+                        lambda upstream, issue=issue: upstream.update({RUNNER_ISSUES: issue}), oses=[label]
+                    )
+                    self.assertEqual(3 if expected else 0, status, report)
+                    self.assertEqual(expected, f"announcement mentions {label}, review" in report, report)
+
+    def test_a_closed_announcement_is_not_reported(self):
+        issue = [{"number": 1, "state": "closed", "title": "The macOS 15 runner images will be retired"}]
+        status, report = self.current(lambda upstream: upstream.update({RUNNER_ISSUES: issue}), oses=["macos-15"])
+        self.assertEqual(0, status, report)
 
     def test_make_drift_names_the_script_status(self):
         # make turns a failing recipe into its own status 2; the recipe prints the script's status first.

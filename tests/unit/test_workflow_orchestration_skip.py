@@ -613,7 +613,12 @@ class DecisionTest(unittest.TestCase):
         cases = {name: ([(f"home/a{char}b", "x\n")], "true") for name, char in QUOTED_CHARS.items()}
         cases["orchestration-quote"] = ([('.orchestration/a"b', "x\n")], "false")
         cases["render-only-quote"] = ([('home/dot_agents/skills/a"b/SKILL.md', "x\n")], "apply")
-        cases["render-only-newline-then-home"] = ([("home/dot_agents/skills/a\nhome/b", "x\n")], "apply")
+        # Audit of 5c08e431: BSD grep -z (macOS) anchors at a newline inside a name, so any control character bootstraps.
+        cases["render-only-newline-then-home"] = ([("home/dot_agents/skills/a\nhome/b", "x\n")], "true")
+        cases["home-newline-then-render-only"] = (
+            [("home/dot_zshrc\nhome/dot_agents/skills/x/SKILL.md", "x\n")],
+            "true",
+        )
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
             for name, (writes, expected) in cases.items():

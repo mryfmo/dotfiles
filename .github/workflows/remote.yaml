@@ -106,7 +106,13 @@ jobs:
             return "${status}"
           }
           paths_match '^home/' "${changed}" > "${home_paths}" || true
-          if [ ! -s "${changed}" ] ||
+          # BSD grep -z (the macOS rows) anchors ^ and $ at a newline inside a name, so a path holding a control
+          # character could read as render-only there: such a path always bootstraps.
+          control=false
+          while IFS= read -r -d '' path; do
+            case "${path}" in *[[:cntrl:]]*) control=true ;; esac
+          done < "${changed}"
+          if [ ! -s "${changed}" ] || [ "${control}" = true ] ||
             paths_match -q '^(setup\.sh$|vendor/|install/|scripts/lib/|scripts/update-agent-assets\.sh$|scripts/gh-auth\.sh$|tests/install/|\.github/workflows/remote\.yaml$|\.github/workflows/private-bootstrap\.yaml$)|(^|/)(\.chezmoi|run_)' "${changed}" ||
             paths_match -qv '^home/(dot_agents/skills|dot_agents/omp/policies|dot_claude/rules|dot_config/claude/rules|dot_local/bin/common|dot_local/bin/server)/' "${home_paths}"; then
             echo "should_run=true" >> "${GITHUB_OUTPUT}"

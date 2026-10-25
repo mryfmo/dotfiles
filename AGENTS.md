@@ -44,7 +44,7 @@
 
 ## Audit
 
-Standing review rules for the auditor (the verifier's audit of a unit's final head, run in a fresh context or as the audit seat through `scripts/orchestrator/omp-run.sh --role audit`, per `home/dot_agents/skills/hcom-orchestration/SKILL.md`; read-only):
+Standing review rules for the auditor (the verifier's audit of a unit's final head: one fresh `scripts/orchestrator/omp-run.sh --role audit` run per head, per `home/dot_agents/skills/hcom-orchestration/SKILL.md`; read-only). The auditor's rules are this file as it stands on `origin/main`, which `omp-run.sh` puts in the prompt; the head's own copy is part of the changeset under review and never binds its audit:
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
 - Cover:

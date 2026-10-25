@@ -27,6 +27,16 @@ exit 0
 FAKE_GH_AUTH = """#!/bin/sh
 printf 'default|gh-auth.sh\\n' >> "$GH_CALLS"
 """
+# A gh-auth.sh at the default ~/.local/share/chezmoi, which a host with another sourceDir must not run.
+DECOY_GH_AUTH = """#!/bin/sh
+printf 'default|decoy gh-auth.sh\\n' >> "$GH_CALLS"
+"""
+# The fake chezmoi answers `source-path` with the configured sourceDir's home/ subtree (.chezmoiroot).
+FAKE_CHEZMOI = """#!/bin/sh
+[ "$1" = source-path ] || exit 2
+[ -z "${FAIL_SOURCE_PATH-}" ] || exit 1
+printf '%s\\n' "$CHEZMOI_SOURCE_PATH"
+"""
 
 
 class SetupGhTest(unittest.TestCase):
@@ -37,9 +47,22 @@ class SetupGhTest(unittest.TestCase):
         (self.home / ".ssh/id_ed25519.pub").write_text("ssh-ed25519 AAAA fixture\n")
         bin_dir = self.temp / "bin"
         bin_dir.mkdir()
-        for name, body in (("gh", FAKE_GH), ("gh-auth.sh", FAKE_GH_AUTH)):
+        for name, body in (("gh", FAKE_GH), ("chezmoi", FAKE_CHEZMOI)):
             (bin_dir / name).write_text(body)
             (bin_dir / name).chmod(0o755)
+        # The checkout lives at a non-default sourceDir (README: setup.sh reuses a configured sourceDir).
+        self.checkout = self.temp / "elsewhere/dotfiles"
+        (self.checkout / "home").mkdir(parents=True)
+        (self.checkout / "scripts").mkdir()
+        subprocess.run(["git", "init", "-q", str(self.checkout)], check=True, env={"PATH": "/usr/bin:/bin"})
+        self.gh_auth = self.checkout / "scripts/gh-auth.sh"
+        self.gh_auth.write_text(FAKE_GH_AUTH)
+        self.gh_auth.chmod(0o755)
+        decoy = self.home / ".local/share/chezmoi/scripts/gh-auth.sh"
+        decoy.parent.mkdir(parents=True)
+        decoy.write_text(DECOY_GH_AUTH)
+        decoy.chmod(0o755)
+        self.bin_dir = bin_dir
         self.tmpdir = self.temp / "tmp"
         self.tmpdir.mkdir()
         self.calls = self.temp / "calls"
@@ -48,7 +71,7 @@ class SetupGhTest(unittest.TestCase):
             "HOME": str(self.home),
             "TMPDIR": str(self.tmpdir),
             "GH_CALLS": str(self.calls),
-            "DOTFILES_GH_AUTH_SCRIPT": str(bin_dir / "gh-auth.sh"),
+            "CHEZMOI_SOURCE_PATH": str(self.checkout / "home"),
         }
 
     def tearDown(self) -> None:
@@ -134,10 +157,31 @@ class SetupGhTest(unittest.TestCase):
     def test_a_signal_during_the_logout_still_removes_the_token(self):
         self.interrupt_at("HANG_LOGOUT_MARKER")
 
+    def test_gh_auth_comes_from_the_configured_source_dir_not_the_default(self):
+        result, calls = self.run_setup_gh()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(("default", "gh-auth.sh"), calls[0])
+        self.assertNotIn(("default", "decoy gh-auth.sh"), calls)
+
     def test_missing_gh_auth_script_stops_before_any_gh_call(self):
-        result, calls = self.run_setup_gh(DOTFILES_GH_AUTH_SCRIPT=str(self.temp / "absent.sh"))
+        self.gh_auth.unlink()
+        result, calls = self.run_setup_gh()
         self.assertEqual(1, result.returncode)
+        self.assertIn(f"{self.checkout}/scripts/gh-auth.sh not found", result.stderr)
         self.assertIn("make gh-auth", result.stderr)
+        self.assertEqual([], calls)
+
+    def test_missing_or_failing_chezmoi_stops_before_any_gh_call(self):
+        (self.bin_dir / "chezmoi").unlink()
+        result, calls = self.run_setup_gh()
+        self.assertEqual(1, result.returncode)
+        self.assertIn("chezmoi is not installed", result.stderr)
+        self.assertEqual([], calls)
+        (self.bin_dir / "chezmoi").write_text(FAKE_CHEZMOI)
+        (self.bin_dir / "chezmoi").chmod(0o755)
+        result, calls = self.run_setup_gh(FAIL_SOURCE_PATH="1")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("chezmoi source-path failed", result.stderr)
         self.assertEqual([], calls)
 
 

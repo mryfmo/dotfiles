@@ -4,7 +4,8 @@
 # @brief Log in `gh` through gh-auth.sh and upload the local SSH key.
 # @description
 #   Logs this machine into GitHub through the one login path, the dotfiles
-#   checkout's `scripts/gh-auth.sh` (file storage the sandboxed seats can read),
+#   checkout's `scripts/gh-auth.sh` (file storage the sandboxed seats can read;
+#   the checkout is found through `chezmoi source-path`, so any sourceDir works),
 #   ensures the local SSH public key exists through an explicit interactive
 #   flow, and registers it as both an authentication and a commit signing key.
 #   The two key uploads need `admin:public_key` and `admin:ssh_signing_key`;
@@ -19,16 +20,40 @@ set -Eeuo pipefail
 
 readonly DEFAULT_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
 readonly DEFAULT_SSH_PUBLIC_KEY_PATH="${DEFAULT_SSH_KEY_PATH}.pub"
-readonly GH_AUTH_SCRIPT="${DOTFILES_GH_AUTH_SCRIPT:-${HOME%/}/.local/share/chezmoi/scripts/gh-auth.sh}"
 
-# @description Log in the machine's GitHub account through the dotfiles checkout's gh-auth.sh.
-# @exitcode 1 gh-auth.sh is missing or the login did not complete.
-function login_to_github() {
-    if [[ ! -x "${GH_AUTH_SCRIPT}" ]]; then
-        printf 'setup-gh: %s not found; run "make gh-auth" in the dotfiles checkout\n' "${GH_AUTH_SCRIPT}" >&2
+# @description Print the dotfiles checkout's scripts/gh-auth.sh. The checkout is chezmoi's configured
+#   sourceDir, not always ~/.local/share/chezmoi: `chezmoi source-path` names its home/ subtree
+#   (.chezmoiroot), and git names the repository root above it.
+# @stdout Absolute path of an executable scripts/gh-auth.sh.
+# @exitcode 1 chezmoi or git is missing or fails, or the script is not there.
+function gh_auth_script() {
+    local source_path top script
+    if ! command -v chezmoi > /dev/null 2>&1; then
+        printf 'setup-gh: chezmoi is not installed, so the dotfiles checkout holding scripts/gh-auth.sh cannot be found\n' >&2
         return 1
     fi
-    "${GH_AUTH_SCRIPT}"
+    if ! source_path="$(chezmoi source-path)" || [ -z "${source_path}" ]; then
+        printf 'setup-gh: chezmoi source-path failed; cannot find the dotfiles checkout\n' >&2
+        return 1
+    fi
+    if ! top="$(git -C "${source_path}" rev-parse --show-toplevel)" || [ -z "${top}" ]; then
+        printf 'setup-gh: %s is not inside a git checkout; cannot find scripts/gh-auth.sh\n' "${source_path}" >&2
+        return 1
+    fi
+    script="${top}/scripts/gh-auth.sh"
+    if [[ ! -x "${script}" ]]; then
+        printf 'setup-gh: %s not found; run "make gh-auth" in the dotfiles checkout\n' "${script}" >&2
+        return 1
+    fi
+    printf '%s\n' "${script}"
+}
+
+# @description Log in the machine's GitHub account through the dotfiles checkout's gh-auth.sh.
+# @exitcode 1 gh-auth.sh cannot be found or the login did not complete.
+function login_to_github() {
+    local script
+    script="$(gh_auth_script)" || return 1
+    "${script}"
 }
 
 # @description Print the short host name, or fail naming the read when neither form works.

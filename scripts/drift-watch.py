@@ -25,11 +25,12 @@ A `pin: unknown` is a finding (unrecorded). Every other pin (npm, PyPI, nodejs.o
 installer scripts, vendored code) and the retired-term lint while it is absent are listed under "Not watched", with
 the reason. Every payload goes through a strict parser for its endpoint, and one that is not exactly the expected
 shape, any non-2xx response, and any error while a body is read are read failures. A list endpoint (releases,
-announcements) is read page by page along its Link header's rel="next" until there is none; more than MAX_PAGES pages,
-or a next page off api.github.com, is a read failure, never a cut list. --upstream replaces the network with a JSON
-object mapping each URL to its decoded response (a URL missing from it is a read failure; {"body": ..., "link_next":
-URL} is one page with a next link); --now fixes the clock. GITHUB_TOKEN, when set, is sent to api.github.com and
-never follows a redirect.
+announcements) is read page by page from URLs this script builds (`&page=1`, `&page=2`, ... at PER_PAGE items) until a
+page holds fewer than PER_PAGE items; no URL the server supplies is followed (the Link header is not read), and a list
+still full after MAX_PAGES pages is a read failure, never a cut list. An unexpected exception inside a check is a read
+failure of that check, so a report is always written. --upstream replaces the network with a JSON object mapping each
+URL to its decoded response (a URL missing from it is a read failure); --now fixes the clock. GITHUB_TOKEN, when set,
+is sent to api.github.com and never follows a redirect.
 """
 
 import argparse
@@ -89,8 +90,12 @@ class ReadError(Exception):
     built; no exception text ever reaches it, since an exception can quote a request header (the token)."""
 
     def __init__(self, url: str, reason: str) -> None:
-        parts = urllib.parse.urlsplit(url)
-        super().__init__(f"{parts.path}{'?' + parts.query if parts.query else ''}: {reason}")
+        try:
+            parts = urllib.parse.urlsplit(url)
+            where = f"{parts.path}{'?' + parts.query if parts.query else ''}"
+        except ValueError:
+            where = "(a URL that does not parse)"
+        super().__init__(f"{where}: {reason}")
 
 
 class Shape:
@@ -144,8 +149,12 @@ class Release:
 
 
 def allowed(url: str) -> bool:
-    parts = urllib.parse.urlsplit(url)
-    return parts.scheme == "https" and parts.hostname == "api.github.com" and parts.port is None
+    try:
+        parts = urllib.parse.urlsplit(url)
+        return parts.scheme == "https" and parts.hostname == "api.github.com" and parts.port is None
+    except ValueError:
+        # urlsplit or .port refuses the URL (a port such as `api.github.com:bad`): not an allowed URL.
+        return False
 
 
 class AllowedRedirects(urllib.request.HTTPRedirectHandler):
@@ -162,7 +171,8 @@ OPENER = urllib.request.build_opener(AllowedRedirects)
 # http.client quotes an invalid header value, token included, in its error.
 TOKEN_CHARS = re.compile(r"[\x21-\x7e]+")
 TOKEN_REFUSED = "GITHUB_TOKEN contains whitespace or a control character; refusing to use it"
-# The most pages of one list endpoint the watch reads (100 items each); more is a read failure, never a cut list.
+# List endpoints are read PER_PAGE items a page; a list still full after MAX_PAGES pages is a read failure.
+PER_PAGE = 100
 MAX_PAGES = 20
 
 
@@ -175,28 +185,24 @@ class Upstream:
         self.fixture = fixture
         self.token = token
 
-    def get(self, url: str, raw: bool = False):
-        return self.fetch(url, raw)[0]
-
-    def get_list(self, url: str) -> list:
-        """Every item of a paginated list endpoint: each page must be a JSON list, and the Link header's rel="next"
-        is followed until there is none. A next link off api.github.com, or a next link after MAX_PAGES pages, is a
-        read failure; a list is never silently truncated."""
+    def get_list(self, base: str) -> list:
+        """Every item of a list endpoint. base ends in `per_page=PER_PAGE`; this script appends `&page=N` itself
+        (N = 1, 2, ...) and stops at the first page with fewer than PER_PAGE items. Every page must be a JSON list.
+        No server-supplied URL (Link header) is read. A list whose MAX_PAGES-th page is still full is a read failure;
+        a list is never silently cut."""
         items: list = []
-        for _ in range(MAX_PAGES):
-            page, next_url = self.fetch(url)
+        for number in range(1, MAX_PAGES + 1):
+            url = f"{base}&page={number}"
+            page = self.get(url)
             if not isinstance(page, list):
                 raise ReadError(url, f"unexpected response: a page of the list is {type(page).__name__}")
             items += page
-            if next_url is None:
+            if len(page) < PER_PAGE:
                 return items
-            if not allowed(next_url):
-                raise ReadError(url, "the next page is not on api.github.com")
-            url = next_url
-        raise ReadError(url, f"more than {MAX_PAGES} pages")
+        raise ReadError(base, f"more than {MAX_PAGES} pages of {PER_PAGE}")
 
-    def fetch(self, url: str, raw: bool = False) -> tuple[object, str | None]:
-        """One response: its decoded JSON body and the rel="next" link of its Link header, if any."""
+    def get(self, url: str, raw: bool = False):
+        """One response's decoded JSON body."""
         if not allowed(url):
             raise ReadError(url, "not an allowed upstream host")
         if self.fixture is not None:
@@ -205,35 +211,24 @@ class Upstream:
             entry = self.fixture[url]
             if isinstance(entry, dict) and set(entry) == {"http_status"}:
                 raise ReadError(url, f"HTTP {entry['http_status']}")
-            # A paginated page in a fixture: {"body": <page>, "link_next": <url>}.
-            if isinstance(entry, dict) and set(entry) == {"body", "link_next"}:
-                return entry["body"], entry["link_next"]
-            return entry, None
-        request = urllib.request.Request(url, headers={"User-Agent": "mryfmo-dotfiles-drift-watch"})
-        request.add_header("Accept", "application/vnd.github.raw+json" if raw else "application/vnd.github+json")
-        request.add_header("X-GitHub-Api-Version", "2022-11-28")
-        if self.token:
-            request.add_unredirected_header("Authorization", f"Bearer {self.token}")
+            return entry
         try:
+            request = urllib.request.Request(url, headers={"User-Agent": "mryfmo-dotfiles-drift-watch"})
+            request.add_header("Accept", "application/vnd.github.raw+json" if raw else "application/vnd.github+json")
+            request.add_header("X-GitHub-Api-Version", "2022-11-28")
+            if self.token:
+                request.add_unredirected_header("Authorization", f"Bearer {self.token}")
             with OPENER.open(request, timeout=30) as response:
                 # Strict UTF-8, as JSON on the wire must be: json.loads(bytes) would also accept UTF-16 and UTF-32,
                 # and a str that starts with a byte-order mark is refused by json.loads.
-                body = json.loads(response.read().decode("utf-8"))
-                return body, next_link(response.headers.get("Link", ""))
+                return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             raise ReadError(url, f"HTTP {int(error.code)}") from None
         # OSError covers URLError, timeouts and a connection reset while the body is read; HTTPException covers
-        # IncompleteRead; ValueError covers a body that is no strict UTF-8 JSON. Only the class name is kept.
+        # IncompleteRead and InvalidURL; ValueError covers a body that is no strict UTF-8 JSON and a URL the request
+        # refuses. Only the class name is kept.
         except (OSError, http.client.HTTPException, ValueError) as error:
             raise ReadError(url, f"read failed ({type(error).__name__})") from None
-
-
-def next_link(header) -> str | None:
-    """The rel="next" target of a Link header (RFC 8288), or None."""
-    for part in str(header or "").split(","):
-        if match := re.fullmatch(r'\s*<([^<>]*)>\s*;\s*rel="next"\s*', part):
-            return match[1]
-    return None
 
 
 def cli_time(text: str) -> datetime.datetime:
@@ -551,10 +546,17 @@ class Watch:
             self.failures.append(f"retired-term: {RETIRED_TERM_LINT} exited 1 and printed no hit")
 
     def run(self) -> None:
-        self.runner_images()
-        self.mise_pins()
-        self.manifest_pins()
-        self.retired_terms()
+        for name, check in (
+            ("runner-image", self.runner_images),
+            ("mise-pin", self.mise_pins),
+            ("manifest-pin", self.manifest_pins),
+            ("retired-term", self.retired_terms),
+        ):
+            try:
+                check()
+            except Exception as error:  # noqa: BLE001 - any escape still ends in a report, as a read failure
+                # The class name only: exception text can quote a request header, the token included.
+                self.failures.append(f"{name}: the check stopped on an unexpected {type(error).__name__}")
 
 
 def code_span(text: str) -> str:

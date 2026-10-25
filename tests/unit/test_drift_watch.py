@@ -26,10 +26,18 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/drift-watch.py"
 NOW = "2026-10-25T00:00:00Z"
 GH = "https://api.github.com/repos"
-RUNNER_ISSUES = f"{GH}/actions/runner-images/issues?labels=Announcement&state=open&per_page=100"
-FD = f"{GH}/sharkdp/fd/releases?per_page=100"
-BATS = f"{GH}/bats-core/bats-core/releases?per_page=100"
-STARSHIP = f"{GH}/starship/starship/releases?per_page=100"
+# The first page of each list endpoint the script reads; it builds `&page=N` itself.
+RUNNER_ISSUES = f"{GH}/actions/runner-images/issues?labels=Announcement&state=open&per_page=100&page=1"
+FD = f"{GH}/sharkdp/fd/releases?per_page=100&page=1"
+BATS = f"{GH}/bats-core/bats-core/releases?per_page=100&page=1"
+STARSHIP = f"{GH}/starship/starship/releases?per_page=100&page=1"
+
+
+def page(first: str, number: int) -> str:
+    """The URL of page `number` of the list whose first page is `first`."""
+    return f"{first.removesuffix('&page=1')}&page={number}"
+
+
 PONYTAIL = f"{GH}/DietrichGebert/ponytail/contents"
 CLAUDE_CATALOG = f"{PONYTAIL}/.claude-plugin/marketplace.json"
 CODEX_CATALOG = f"{PONYTAIL}/.agents/plugins/marketplace.json"
@@ -379,48 +387,53 @@ class DriftWatchTest(unittest.TestCase):
         status, report = self.current(change)
         self.assert_read_failure(status, report)
 
-    def test_every_page_of_a_list_endpoint_is_read(self):
+    def test_a_two_page_list_is_read_in_full(self):
+        # A full page of 100 means another page may follow; the script asks for page 2 itself.
         older = [{"number": 20000 + n, "state": "open", "title": f"Announcement {n}"} for n in range(100)]
         retiring = {"number": 13518, "state": "open", "title": "The macOS 14 Sonoma runner images will be retired"}
-        page_two = f"{RUNNER_ISSUES}&page=2"
 
         def runner(upstream):
-            upstream[RUNNER_ISSUES] = {"body": older, "link_next": page_two}
-            upstream[page_two] = [retiring]
+            upstream[RUNNER_ISSUES] = older
+            upstream[page(RUNNER_ISSUES, 2)] = [retiring]
 
         status, report = self.current(runner, oses=["macos-14"])
         self.assertEqual(3, status, report)
         self.assertEqual({("runner-image", "macos-14")}, self.findings(report))
 
-        fd_two = f"{FD}&page=2"
-
         def releases(upstream):
-            upstream[FD] = {"body": upstream[FD], "link_next": fd_two}
-            upstream[fd_two] = [release("v10.9.0", "2026-09-01T00:00:00Z")]
+            drafts = [release(f"v11.0.{n}", None, draft=True) for n in range(100 - len(upstream[FD]))]
+            upstream[FD] = upstream[FD] + drafts
+            upstream[page(FD, 2)] = [release("v10.9.0", "2026-09-01T00:00:00Z")]
 
         status, report = self.current(releases)
         self.assertEqual(3, status, report)
         self.assertIn("`v10.9.0 (2026-09-01)`", report)
 
-    def test_a_list_that_does_not_end_or_leaves_api_github_com_is_a_read_failure(self):
+        def exactly_full(upstream):
+            upstream[RUNNER_ISSUES] = older
+            upstream[page(RUNNER_ISSUES, 2)] = []
+
+        self.assertEqual(0, self.current(exactly_full)[0])
+
+    def test_a_list_still_full_after_twenty_pages_is_a_read_failure(self):
         def endless(upstream):
-            for page in range(1, 22):
-                url = FD if page == 1 else f"{FD}&page={page}"
-                upstream[url] = {"body": [], "link_next": f"{FD}&page={page + 1}"}
+            for number in range(1, 22):
+                drafts = [release(f"v99.{number}.{n}", None, draft=True) for n in range(100)]
+                upstream[page(FD, number)] = drafts
 
         status, report = self.current(endless)
         self.assert_read_failure(status, report)
-        self.assertIn("more than 20 pages", report)
-        status, report = self.current(
-            lambda upstream: upstream.update({FD: {"body": [], "link_next": "https://evil.invalid/page2"}})
-        )
-        self.assert_read_failure(status, report)
-        self.assertIn("the next page is not on api.github.com", report)
-        status, report = self.current(
-            lambda upstream: upstream.update({FD: {"body": [], "link_next": f"{FD}&page=2"}, f"{FD}&page=2": {}})
-        )
+        self.assertIn("more than 20 pages of 100", report)
+        status, report = self.current(lambda upstream: upstream.update({FD: {}}))
         self.assert_read_failure(status, report)
         self.assertIn("a page of the list is dict", report)
+
+    def test_an_unexpected_error_in_a_check_is_a_read_failure_and_the_report_is_written(self):
+        mise = CURRENT_MISE.replace('jq = "latest"', '"npm:odd" = 5')
+        status, report = self.watch(["ubuntu-24.04"], mise, CURRENT_MANIFEST, CURRENT_UPSTREAM)
+        self.assert_read_failure(status, report)
+        self.assertIn("mise-pin: the check stopped on an unexpected AttributeError", report)
+        self.assertIn("# Drift watch", report)
 
     def test_an_upstream_with_no_release_is_listed_as_not_watched_not_current(self):
         status, report = self.current(lambda upstream: upstream.update({STARSHIP: []}))
@@ -611,31 +624,35 @@ class UpstreamTokenTest(unittest.TestCase):
             self.module.Upstream(None, "").get("https://api.github.com/x")
         self.assertIn("HTTP 500", str(raised.exception))
 
-    def test_the_link_header_next_page_is_followed(self):
-        pages = {
-            "https://api.github.com/repos/o/r/releases?per_page=100": (
-                b'[{"n": 1}]',
-                (
-                    '<https://api.github.com/repositories/1/releases?per_page=100&page=2>; rel="next", '
-                    '<https://api.github.com/repositories/1/releases?per_page=100&page=2>; rel="last"'
-                ),
-            ),
-            "https://api.github.com/repositories/1/releases?per_page=100&page=2": (
-                b'[{"n": 2}]',
-                '<https://api.github.com/repositories/1/releases?per_page=100&page=1>; rel="first"',
-            ),
-        }
+    def test_pages_come_from_urls_this_script_builds_and_the_link_header_is_ignored(self):
+        base = "https://api.github.com/repos/o/r/releases?per_page=100"
+        bodies = {f"{base}&page=1": json.dumps([{"n": n} for n in range(100)]).encode(), f"{base}&page=2": b"[]"}
+        requested = []
 
         def open_page(request, timeout):
-            body, link = pages[request.full_url]
+            requested.append(request.full_url)
             response = mock.MagicMock()
-            response.__enter__.return_value.read.return_value = body
-            response.__enter__.return_value.headers = {"Link": link}
+            response.__enter__.return_value.read.return_value = bodies[request.full_url]
+            # A server-supplied next link, to another host and with extra parameters: never read.
+            response.__enter__.return_value.headers = {"Link": '<https://evil.invalid/p2>; rel="next"; type="x"'}
             return response
 
         with mock.patch.object(self.module.OPENER, "open", side_effect=open_page):
-            items = self.module.Upstream(None, "").get_list("https://api.github.com/repos/o/r/releases?per_page=100")
-        self.assertEqual([{"n": 1}, {"n": 2}], items)
+            items = self.module.Upstream(None, "").get_list(base)
+        self.assertEqual(100, len(items))
+        self.assertEqual([f"{base}&page=1", f"{base}&page=2"], requested)
+
+    def test_a_url_that_does_not_parse_is_refused_without_an_exception(self):
+        upstream = self.module.Upstream(None, "")
+        for url in ("https://api.github.com:bad/x", "https://[api.github.com/x"):
+            with self.subTest(url):
+                self.assertFalse(self.module.allowed(url))
+                with self.assertRaises(self.module.ReadError):
+                    upstream.get(url)
+        handler = self.module.AllowedRedirects()
+        request = self.module.urllib.request.Request("https://api.github.com/repos/o/r")
+        self.assertIsNone(handler.redirect_request(request, None, 302, "Found", {}, "https://api.github.com:bad/x"))
+        self.assertEqual([], self.requests)
 
     def test_an_error_while_the_body_is_read_is_a_read_failure(self):
         for name, read in (

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+{{ if eq .chezmoi.os "linux" -}}
+{{   if eq .chezmoi.osRelease.idLike "debian" -}}
+{{     if eq .system "client" -}}
+(
+{{       include "../install/ubuntu/client/ghostty.sh" }}
+)
+{{     end -}}
+{{   end -}}
+{{ end -}}

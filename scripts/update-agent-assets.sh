@@ -385,15 +385,33 @@ function claude_plugin_installs() {
 }
 
 #
-# @description Print the user-scope installed version of a Claude Code plugin, or nothing when there is none.
-# @arg $1 string Lines from claude_plugin_installs.
-#
-# @description Print the user-scope installed version of a Claude Code plugin, or nothing when there is none.
+# @description The one parser of a Claude Code plugin's user-scope installation state: print exactly `absent`
+#   (the list names no user-scope installation) or `installed <version>` with a version that is one strict
+#   component ([A-Za-z0-9][A-Za-z0-9._+-]*). Every caller reads its output in a `case` whose default is an
+#   error, and only into a variable named user_install (the structural test checks both).
 # @arg $1 string The JSON list claude_plugin_installs prints.
-# @exitcode 1 When the list is not JSON (it always is from pin_records.py; a failure is never "no version").
+# @exitcode 1 When the list is not JSON (a failure is never "absent").
+# @exitcode 3 When the list yields anything else (an empty, malformed or non-component version).
 #
 function claude_user_install() {
-    jq -er 'first(.[] | select(.scope == "user") | .version) // ""' <<< "$1"
+    local reply
+
+    reply="$(jq -er '[.[] | select(.scope == "user")] | if length == 0 then "absent" else "installed \(.[0].version | if type == "string" then . else "" end)" end' <<< "$1")" || return 1
+    case "${reply}" in
+    absent) printf 'absent\n' ;;
+    "installed "*)
+        if [[ ${reply#installed } =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            printf '%s\n' "${reply}"
+        else
+            printf 'ERROR: the user-scope installation record holds no valid version: %q\n' "${reply}" >&2
+            return 3
+        fi
+        ;;
+    *)
+        printf 'ERROR: unexpected user-scope installation state: %q\n' "${reply}" >&2
+        return 3
+        ;;
+    esac
 }
 
 #
@@ -402,26 +420,66 @@ function claude_user_install() {
 #   (pin_records.content_sha256) for a content pin, whatever commit its version names.
 # @arg $1 string The JSON list claude_plugin_installs prints, holding a user-scope installation.
 # @arg $2 string The pin.
-# @exitcode 1 When the installation cannot be read or hashed (a symlink or special file in it included).
+# @exitcode 1 When there is no user-scope installation, or it cannot be read or hashed (a symlink or special
+#   file in it included); nothing is printed, so an unknown state is never compared.
 #
 function claude_user_observed() {
-    local version install_path
-    version="$(claude_user_install "$1")" || return 1
+    local user_install install_path
+    user_install="$(claude_user_install "$1")" || return 1
+    case "${user_install}" in
+    "installed "?*) ;;
+    *) return 1 ;;
+    esac
     install_path="$(jq -er 'first(.[] | select(.scope == "user") | .installPath)' <<< "$1")" || return 1
-    pin_record claude-observed "$2" "${version}" "${install_path}"
+    pin_record claude-observed "$2" "${user_install#installed }" "${install_path}"
 }
 
 #
-# @description Print the user-scope installed version of a Claude Code plugin for the asset manifest, or
-#   `unknown` when installed_plugins.json does not record one.
+# @description Print the user-scope installed version of a Claude Code plugin for the asset manifest. A
+#   failure is never a version: nothing is printed for it, and `unknown` is never produced.
 # @arg $1 string Fully qualified Claude Code plugin ID.
+# @exitcode 4 When installed_plugins.json names no user-scope installation (`absent`): nothing to record.
+# @exitcode 1 When the record cannot be read or parsed, or names an unexpected state.
 #
 function claude_user_plugin_version() {
-    local installs version
+    local installs user_install
 
-    installs="$(claude_plugin_installs "$1")" || installs="[]"
-    version="$(claude_user_install "${installs}")" || version=""
-    printf '%s\n' "${version:-unknown}"
+    if ! installs="$(claude_plugin_installs "$1")"; then
+        printf 'ERROR: cannot read the installation records of %s for the asset manifest.\n' "$1" >&2
+        return 1
+    fi
+    user_install="$(claude_user_install "${installs}")" || return 1
+    case "${user_install}" in
+    "installed "?*) printf '%s\n' "${user_install#installed }" ;;
+    absent) return 4 ;;
+    *)
+        printf 'ERROR: unexpected installation state of %s: %s\n' "$1" "${user_install}" >&2
+        return 1
+        ;;
+    esac
+}
+
+#
+# @description Record a converged Claude Code plugin step in the installed asset manifest with the version
+#   installed_plugins.json records. A version that cannot be read is a counted failure, never `unknown`; a
+#   plugin with no user-scope installation has nothing to record (a WARN).
+# @arg $1 string Install step name.
+# @arg $2 string Fully qualified Claude Code plugin ID.
+# @arg $@ string The manifest paths, `--`, and the command lines (manifest_record after its version).
+#
+function record_claude_plugin_step() {
+    local step="$1" plugin_id="$2" plugin_version status=0
+    shift 2
+
+    plugin_version="$(claude_user_plugin_version "${plugin_id}")" || status=$?
+    case "${status}" in
+    0)
+        manifest_record "${step}" plugin "${plugin_version}" "$@" ||
+            record_claude_failure "recording ${step} in the installed asset manifest"
+        ;;
+    4) printf 'WARN: %s has no user-scope installation; %s is not recorded in the installed asset manifest.\n' "${plugin_id}" "${step}" >&2 ;;
+    *) record_claude_failure "reading the installed version of ${plugin_id} for the asset manifest" ;;
+    esac
 }
 
 #
@@ -524,7 +582,7 @@ function judge_installed_version() {
 #
 function move_claude_plugin_to_pin() {
     local plugin_id="$1"
-    local pin installs version observed marketplace enabled fresh=0
+    local pin installs user_install observed marketplace enabled fresh=0
 
     if ! pin="$(plugin_pin claude "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
@@ -537,7 +595,7 @@ function move_claude_plugin_to_pin() {
     jq -r --arg id "${plugin_id}" '.[] | select(.scope != "user")
         | "WARN: plugin \($id) installed in \(.scope) scope at \(.projectPath // .installPath): not managed (make update manages user scope only)."' \
         <<< "${installs}" >&2 || return 1
-    version="$(claude_user_install "${installs}")" || return 1
+    user_install="$(claude_user_install "${installs}")" || return 1
     # The marketplace identity is verified before anything is installed or updated from it; a foreign one may
     # serve a release under the pinned version, so its plugin fails (and is disabled) at any version.
     # Fresh: no installation at any scope and not enabled in the user settings (as the doctor's readers see it),
@@ -555,23 +613,45 @@ function move_claude_plugin_to_pin() {
         printf 'ERROR: %s is not installed or updated from an unverified marketplace.\n' "${plugin_id}" >&2
         return 1
     fi
-    if [ -z "${version}" ]; then
+    case "${user_install}" in
+    absent)
         if ! claude_outside_projects plugin install "${plugin_id}" --scope user < /dev/null; then
             printf 'ERROR: claude plugin install %s failed; the pinned plugin is not installed.\n' "${plugin_id}" >&2
             return 1
         fi
-    elif ! observed="$(claude_user_observed "${installs}" "${pin}")" || [ "${observed}" != "${pin}" ]; then
-        claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true
-    fi
+        ;;
+    "installed "?*)
+        # An installation whose pin state cannot be computed is a failure: nothing is updated from an unknown
+        # state, and converge_or_disable disables it.
+        if ! observed="$(claude_user_observed "${installs}" "${pin}")"; then
+            printf 'ERROR: cannot read the installed content of %s to compare it with its pin; nothing is updated.\n' "${plugin_id}" >&2
+            return 1
+        fi
+        if [ "${observed}" != "${pin}" ]; then
+            claude_outside_projects plugin update "${plugin_id}" --scope user < /dev/null || true
+        fi
+        ;;
+    *)
+        printf 'ERROR: unexpected installation state of %s: %s\n' "${plugin_id}" "${user_install}" >&2
+        return 1
+        ;;
+    esac
     if ! installs="$(claude_plugin_installs "${plugin_id}")"; then
         printf 'ERROR: cannot re-read the installation records of %s after changing it.\n' "${plugin_id}" >&2
         return 1
     fi
-    version="$(claude_user_install "${installs}")" || return 1
-    if [ -z "${version}" ]; then
+    user_install="$(claude_user_install "${installs}")" || return 1
+    case "${user_install}" in
+    "installed "?*) ;;
+    absent)
         printf 'ERROR: %s has no user-scope installation after claude plugin install.\n' "${plugin_id}" >&2
         return 1
-    fi
+        ;;
+    *)
+        printf 'ERROR: unexpected installation state of %s: %s\n' "${plugin_id}" "${user_install}" >&2
+        return 1
+        ;;
+    esac
     if ! observed="$(claude_user_observed "${installs}" "${pin}")"; then
         printf 'ERROR: cannot read the installed content of %s to compare it with its pin.\n' "${plugin_id}" >&2
         return 1
@@ -593,14 +673,25 @@ function move_claude_plugin_to_pin() {
 #
 function disable_plugin() {
     local agent="$1" plugin_id="$2"
-    local installs version enabled copy
+    local installs user_install enabled codex_copy
 
     case "${agent}" in
     claude)
-        if installs="$(claude_plugin_installs "${plugin_id}" 2> /dev/null)" &&
-            version="$(claude_user_install "${installs}" 2> /dev/null)" && [ -z "${version}" ]; then
-            return 0
+        # Nothing to disable only on the readers' explicit `absent`. A state that cannot be read is still
+        # disabled (best effort), and fails: it cannot be proven.
+        user_install="unreadable"
+        if installs="$(claude_plugin_installs "${plugin_id}" 2> /dev/null)"; then
+            user_install="$(claude_user_install "${installs}" 2> /dev/null)" || user_install="unreadable"
         fi
+        case "${user_install}" in
+        absent) return 0 ;;
+        "installed "?*) ;;
+        *)
+            printf 'ERROR: cannot tell whether Claude Code plugin %s is installed (%s); disabling it anyway.\n' "${plugin_id}" "${user_install}" >&2
+            claude_outside_projects plugin disable "${plugin_id}" --scope user < /dev/null || true
+            return 1
+            ;;
+        esac
         # Idempotent: a plugin already disabled may make the command fail; the settings file shows the result.
         claude_outside_projects plugin disable "${plugin_id}" --scope user < /dev/null || true
         if ! enabled="$(claude_user_enabled "${plugin_id}")" || [ "${enabled}" != "disabled" ]; then
@@ -610,14 +701,27 @@ function disable_plugin() {
         printf 'WARN: Claude Code plugin %s is disabled at user scope; once make update passes, re-enable it with: claude plugin enable %s --scope user\n' "${plugin_id}" "${plugin_id}" >&2
         ;;
     codex)
-        if copy="$(codex_plugin_cache_versions "${plugin_id}" 2> /dev/null)" && [ -z "${copy}" ]; then
-            return 0
-        fi
-        codex plugin remove "${plugin_id}" < /dev/null || true
-        if ! copy="$(codex_plugin_cache_versions "${plugin_id}")" || [ -n "${copy}" ]; then
-            printf 'ERROR: Codex plugin %s is not at its pin and codex plugin remove left a copy (%s).\n' "${plugin_id}" "${copy:-unreadable}" >&2
+        # Nothing to remove only on the reader's explicit `absent`. A state that cannot be read is still removed
+        # (best effort), and fails: it cannot be proven.
+        codex_copy="$(codex_plugin_copy "${plugin_id}" 2> /dev/null)" || codex_copy="unreadable"
+        case "${codex_copy}" in
+        absent) return 0 ;;
+        "copy "?*) ;;
+        *)
+            printf 'ERROR: cannot tell whether Codex plugin %s is cached (%s); removing it anyway.\n' "${plugin_id}" "${codex_copy}" >&2
+            codex plugin remove "${plugin_id}" < /dev/null || true
             return 1
-        fi
+            ;;
+        esac
+        codex plugin remove "${plugin_id}" < /dev/null || true
+        codex_copy="$(codex_plugin_copy "${plugin_id}")" || codex_copy="unreadable"
+        case "${codex_copy}" in
+        absent) ;;
+        *)
+            printf 'ERROR: Codex plugin %s is not at its pin and codex plugin remove left a copy (%s).\n' "${plugin_id}" "${codex_copy}" >&2
+            return 1
+            ;;
+        esac
         printf 'WARN: Codex plugin %s was removed; the next make update that reaches its pin installs it again.\n' "${plugin_id}" >&2
         ;;
     *)
@@ -828,10 +932,7 @@ function update_claude_superpowers() {
         claude_outside_projects plugin marketplace update claude-plugins-official || true
     fi
     converge_claude_step "${CLAUDE_SUPERPOWERS_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")"
-    manifest_record "update_claude_superpowers" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/claude-plugins-official/superpowers" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}" ||
-        record_claude_failure "recording update_claude_superpowers in the installed asset manifest"
+    record_claude_plugin_step "update_claude_superpowers" "${CLAUDE_SUPERPOWERS_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/claude-plugins-official/superpowers" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -852,10 +953,7 @@ function update_claude_crit() {
         claude_outside_projects plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_CRIT_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_CRIT_PLUGIN}")"
-    manifest_record "update_claude_crit" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/crit/crit" "${AGENT_CLAUDE_DIR}/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" ||
-        record_claude_failure "recording update_claude_crit in the installed asset manifest"
+    record_claude_plugin_step "update_claude_crit" "${CLAUDE_CRIT_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/crit/crit" "${AGENT_CLAUDE_DIR}/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -875,10 +973,7 @@ function update_claude_ponytail() {
     fi
     converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}" || return 0
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")"
-    manifest_record "update_claude_ponytail" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" ||
-        record_claude_failure "recording update_claude_ponytail in the installed asset manifest"
+    record_claude_plugin_step "update_claude_ponytail" "${CLAUDE_PONYTAIL_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/ponytail/ponytail" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -897,26 +992,40 @@ function update_claude_understand_anything() {
         claude_outside_projects plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
     fi
     converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || return 0
-    local plugin_version
-    plugin_version="$(claude_user_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")"
-    manifest_record "update_claude_understand_anything" plugin "${plugin_version}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" ||
-        record_claude_failure "recording update_claude_understand_anything in the installed asset manifest"
+    record_claude_plugin_step "update_claude_understand_anything" "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "${AGENT_CLAUDE_DIR}/plugins/cache/understand-anything/understand-anything" "${AGENT_CLAUDE_DIR}/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #
-# @description Print the versions in the plugin.json of every installed copy of a Codex plugin, one per line.
+# @description The one parser of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own
+#   choice among the cached versions, its plugin.json read strictly). It maps the reader's reply to exactly
+#   `absent` or `copy <version>` with a version that is one strict component ([A-Za-z0-9][A-Za-z0-9._+-]*).
+#   Every caller reads its output in a `case` whose default is an error, and only into a variable named
+#   codex_copy; no caller reads the reader itself (the structural test checks all three).
 # @arg $1 string Fully qualified Codex plugin ID.
+# @exitcode 2 When the reader fails: the cache cannot be read, or its copy names another plugin or holds no
+#   (or an empty) version.
+# @exitcode 3 When the reader's reply is neither `absent` nor `copy <component>`.
 #
-# @description Print the version of the Codex plugin copy Codex loads (pin_records.py codex-copy: Codex's own
-#   choice among the cached versions, its plugin.json read strictly), nothing when no copy is cached.
-# @arg $1 string Fully qualified Codex plugin ID.
-# @exitcode 2 When the cache cannot be read or its copy names another plugin or holds no string version.
-#
-function codex_plugin_cache_versions() {
-    local plugin="${1%@*}" marketplace="${1#*@}"
+function codex_plugin_copy() {
+    local plugin="${1%@*}" marketplace="${1#*@}" reply
 
-    pin_record codex-copy "${AGENT_CODEX_DIR}/plugins/cache/${marketplace}/${plugin}" "${plugin}" \
-        "${DOTFILES_REPO_SOURCE_DIR}/home/dot_codex/modify_private_config.toml"
+    reply="$(pin_record codex-copy "${AGENT_CODEX_DIR}/plugins/cache/${marketplace}/${plugin}" "${plugin}" \
+        "${DOTFILES_REPO_SOURCE_DIR}/home/dot_codex/modify_private_config.toml")" || return 2
+    case "${reply}" in
+    absent) printf 'absent\n' ;;
+    "copy "*)
+        if [[ ${reply#copy } =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            printf '%s\n' "${reply}"
+        else
+            printf 'ERROR: the cached copy of %s holds no valid version: %q\n' "$1" "${reply}" >&2
+            return 3
+        fi
+        ;;
+    *)
+        printf 'ERROR: unexpected cache state of %s: %q\n' "$1" "${reply}" >&2
+        return 3
+        ;;
+    esac
 }
 
 #
@@ -926,19 +1035,25 @@ function codex_plugin_cache_versions() {
 # @exitcode 11 (PLUGIN_FRESH_OFF_PIN) When the fresh copy is off its pin; 1 when it or the pin cannot be read.
 #
 function judge_fresh_codex_copy() {
-    local plugin_id="$1" pin version
+    local plugin_id="$1" pin codex_copy
 
     if ! pin="$(plugin_pin codex "${plugin_id}" pin)"; then
         printf 'Cannot read the pin of %s from %s.\n' "${plugin_id}" "${AGENT_PLUGIN_PINS}" >&2
         return 1
     fi
-    if ! version="$(codex_plugin_cache_versions "${plugin_id}")"; then
+    if ! codex_copy="$(codex_plugin_copy "${plugin_id}")"; then
         printf 'ERROR: cannot read the cached copy of %s after installing it.\n' "${plugin_id}" >&2
         return 1
     fi
+    case "${codex_copy}" in
     # Nothing installed (no catalog, no login): make doctor reports it as a warning only.
-    [ -n "${version}" ] || return 0
-    judge_installed_version codex "${plugin_id}" "${version}" "${pin}" 1
+    absent) return 0 ;;
+    "copy "?*) judge_installed_version codex "${plugin_id}" "${codex_copy#copy }" "${pin}" 1 ;;
+    *)
+        printf 'ERROR: unexpected cache state of %s: %s\n' "${plugin_id}" "${codex_copy}" >&2
+        return 1
+        ;;
+    esac
 }
 
 #
@@ -948,15 +1063,24 @@ function judge_fresh_codex_copy() {
 # @exitcode 1 When the cached copy cannot be read.
 #
 function install_codex_superpowers() {
-    local codex_output installed
+    local codex_output codex_copy
 
-    if ! installed="$(codex_plugin_cache_versions "${CODEX_SUPERPOWERS_PLUGIN}")"; then
+    if ! codex_copy="$(codex_plugin_copy "${CODEX_SUPERPOWERS_PLUGIN}")"; then
         printf 'ERROR: cannot read the cached copy of %s.\n' "${CODEX_SUPERPOWERS_PLUGIN}" >&2
         return 1
     fi
-    if [ -n "${installed}" ]; then
+    case "${codex_copy}" in
+    absent) ;;
+    "copy "?*)
         printf 'Codex Superpowers plugin is already installed.\n'
-    elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
+        return 0
+        ;;
+    *)
+        printf 'ERROR: unexpected cache state of %s: %s\n' "${CODEX_SUPERPOWERS_PLUGIN}" "${codex_copy}" >&2
+        return 1
+        ;;
+    esac
+    if codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
         if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
             printf '%s\n' "${codex_output}" >&2
         fi
@@ -1040,7 +1164,7 @@ function ensure_codex_ponytail_marketplace() {
 #   be read, or the cached copy cannot be read.
 #
 function install_codex_ponytail() {
-    local ref pinned installed
+    local ref pinned codex_copy
 
     if ! ensure_codex_ponytail_marketplace; then
         printf 'ERROR: the Codex Ponytail marketplace registration failed.\n' >&2
@@ -1060,16 +1184,21 @@ function install_codex_ponytail() {
     fi
     codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
 
-    if ! installed="$(codex_plugin_cache_versions "${CODEX_PONYTAIL_PLUGIN}")"; then
+    if ! codex_copy="$(codex_plugin_copy "${CODEX_PONYTAIL_PLUGIN}")"; then
         printf 'ERROR: cannot read the cached copy of %s.\n' "${CODEX_PONYTAIL_PLUGIN}" >&2
         return 1
     fi
-    if [ -n "${installed}" ]; then
-        printf 'Codex Ponytail plugin is already installed.\n'
-    else
+    case "${codex_copy}" in
+    absent)
         codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
         judge_fresh_codex_copy "${CODEX_PONYTAIL_PLUGIN}"
-    fi
+        ;;
+    "copy "?*) printf 'Codex Ponytail plugin is already installed.\n' ;;
+    *)
+        printf 'ERROR: unexpected cache state of %s: %s\n' "${CODEX_PONYTAIL_PLUGIN}" "${codex_copy}" >&2
+        return 1
+        ;;
+    esac
 }
 
 #
@@ -1899,7 +2028,7 @@ def refuse(reason):
 
 
 try:
-    os.lstat(shim)
+    shim_status = os.lstat(shim)
 except FileNotFoundError:
     sys.exit(0)
 except OSError as error:
@@ -1911,14 +2040,22 @@ for directory in (agents, bin_dir):
         refuse(f"cannot lstat {directory} ({error})")
     if not stat.S_ISDIR(mode):
         refuse(f"{directory} is not a real directory")
+# Only a regular file is opened (a FIFO would block the open), without following a symlink swapped in and without
+# blocking; fstat must then show the same regular file lstat saw.
+if not stat.S_ISREG(shim_status.st_mode):
+    refuse("it is not a regular file")
 try:
-    fd = os.open(shim, os.O_RDONLY | os.O_NOFOLLOW)
+    fd = os.open(shim, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
 except OSError as error:
     refuse(f"cannot open it without following a symlink ({error})")
 with os.fdopen(fd, "rb") as handle:
     try:
-        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-            refuse("it is not a regular file")
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
+            shim_status.st_dev,
+            shim_status.st_ino,
+        ):
+            refuse("it changed while it was read")
         data = handle.read()
     except OSError as error:
         refuse(f"cannot read it ({error})")

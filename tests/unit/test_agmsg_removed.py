@@ -122,6 +122,7 @@ class AgmsgRemovedTest(unittest.TestCase):
             text=True,
             capture_output=True,
             check=False,
+            timeout=30,  # a FIFO at the shim path must be refused, never opened and waited on
         )
 
     @staticmethod
@@ -194,6 +195,9 @@ class AgmsgRemovedTest(unittest.TestCase):
             target = self.write_shim(home, owner_home=home).rename(home / "real")
             (home / ".agents/bin/agy-tui").symlink_to(target)
 
+        def fifo(home: Path) -> None:
+            os.mkfifo(home / ".agents/bin/agy-tui")
+
         cases = {
             "own agy-tui": (own, "is not the retired agmsg shim", True),
             "owner of another home": (
@@ -204,7 +208,8 @@ class AgmsgRemovedTest(unittest.TestCase):
             "owner still present": (owner_present, "still exists", True),
             "owner lstat error": (owner_unstatable, "cannot prove its owner", False),
             "read error": (unreadable, "cannot open it", False),
-            "symlink": (symlink, "cannot open it without following a symlink", True),
+            "symlink": (symlink, "is not a regular file", True),
+            "fifo": (fifo, "is not a regular file", True),
         }
         for label, (make, message, as_root) in cases.items():
             if not as_root and os.geteuid() == 0:

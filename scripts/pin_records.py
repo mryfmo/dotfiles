@@ -115,7 +115,7 @@ def load_toml(path: Path) -> Any:
 
 def field(record: object, data: Any, name: str, kind: type, where: str = "", ascii: bool = False) -> Any:
     """DATA[NAME] with exactly type KIND (bool is never an int, an int never a str); a string is clean, and
-    ASCII only when ASCII (an id, version, tag, source or commit: the format is ASCII)."""
+    with ASCII (an id, version, tag, scope, source or commit: an identity value) ASCII and never empty."""
     label = f"{where}{name}"
     if not isinstance(data, dict):
         raise RecordError(record, where.rstrip(".") or "(top)", f"must be an object, not {type(data).__name__}")
@@ -152,12 +152,15 @@ def clean(record: object, label: str, value: str, ascii: bool = False) -> str:
     """VALUE exactly as recorded, else RecordError: it holds no control character (tab, newline, carriage
     return, NUL, ...), so no field can forge a row or a record boundary in any output; it has no leading or
     trailing whitespace of any kind (str.isspace: NBSP, U+2009, U+3000, ...), which a reader that stripped
-    it would have turned into another value; and with ASCII it holds ASCII only. Values are never stripped:
-    every comparison is of the exact string."""
+    it would have turned into another value; and with ASCII (an identity value: id, version, tag, scope,
+    source, commit) it is not empty and holds ASCII only, so an empty version never reads as "no version".
+    Values are never stripped: every comparison is of the exact string."""
     if CONTROL.search(value):
         raise RecordError(record, label, f"contains a control character: {value!r}")
     if value and (value[0].isspace() or value[-1].isspace()):
         raise RecordError(record, label, f"has leading or trailing whitespace: {value!r}")
+    if ascii and not value:
+        raise RecordError(record, label, "is empty")
     if ascii and not value.isascii():
         raise RecordError(record, label, f"must be ASCII: {value!r}")
     return value
@@ -284,7 +287,7 @@ def content_sha256(root: Path) -> str:
     count. CLAUDE_CACHE_MARKERS at the top level are left out. A symlink, or anything that is neither a regular
     file nor a directory, anywhere below the root (the root included) refuses: it is not reviewable content.
     """
-    files: List[Tuple[bytes, Path]] = []
+    files: List[Tuple[bytes, Path, os.stat_result]] = []
 
     def walk(directory: Path, prefix: str) -> None:
         try:
@@ -296,13 +299,13 @@ def content_sha256(root: Path) -> str:
             if not prefix and entry.name in CLAUDE_CACHE_MARKERS:
                 continue
             try:
-                mode = entry.stat(follow_symlinks=False).st_mode
+                status = entry.stat(follow_symlinks=False)
             except OSError as error:
                 raise RecordError(root, relative, f"cannot lstat ({error})") from None
-            if stat.S_ISDIR(mode):
+            if stat.S_ISDIR(status.st_mode):
                 walk(Path(entry.path), relative + "/")
-            elif stat.S_ISREG(mode):
-                files.append((os.fsencode(relative), Path(entry.path)))
+            elif stat.S_ISREG(status.st_mode):
+                files.append((os.fsencode(relative), Path(entry.path), status))
             else:
                 raise RecordError(
                     root, relative, "is a symlink or special file; a content pin covers regular files only"
@@ -316,17 +319,31 @@ def content_sha256(root: Path) -> str:
         raise RecordError(root, "(directory)", "is not a real directory")
     walk(root, "")
     digest = hashlib.sha256()
-    for relative, file_path in sorted(files):
+    for relative, file_path, status in sorted(files, key=lambda item: item[0]):
         try:
-            fd = os.open(file_path, os.O_RDONLY | os.O_NOFOLLOW)
+            fd = open_regular(file_path, status)
+            if fd is None:
+                raise RecordError(root, os.fsdecode(relative), "changed while it was read")
             with os.fdopen(fd, "rb") as handle:
-                if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                    raise RecordError(root, os.fsdecode(relative), "is not a regular file")
                 data = handle.read()
         except OSError as error:
             raise RecordError(root, os.fsdecode(relative), f"cannot read ({error})") from None
         digest.update(relative + b"\0" + str(len(data)).encode() + b"\0" + data)
     return "sha256:" + digest.hexdigest()
+
+
+def open_regular(path: Path, status: os.stat_result) -> Optional[int]:
+    """Open PATH, which lstat showed as the regular file STATUS, for reading; None when it is now something else.
+
+    O_NOFOLLOW refuses a symlink swapped in, O_NONBLOCK keeps a FIFO swapped in from blocking the open, and fstat
+    must show the same regular file (device and inode) lstat showed.
+    """
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    opened = os.fstat(fd)
+    if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (status.st_dev, status.st_ino):
+        os.close(fd)
+        return None
+    return fd
 
 
 def claude_observed(pin: str, version: str, install_path: str) -> str:
@@ -373,6 +390,8 @@ def load_claude_installs(path: Path) -> Optional[Dict[str, List[ClaudeInstall]]]
             if Path(install_path) != expected:
                 raise RecordError(path, f"{where}installPath", f"{install_path!r} is not {str(expected)!r}")
             project = field(path, entry, "projectPath", str, where) if scope in ("project", "local") else None
+            if project == "":
+                raise RecordError(path, f"{where}projectPath", "is empty")
             # One record per identity (scope, project): a second one would let a reader pick either version.
             if any((seen.scope, seen.project_path) == (scope, project) for seen in result[plugin_id]):
                 raise RecordError(
@@ -685,13 +704,12 @@ def main(argv: List[str]) -> int:
     elif command == "claude-marketplace":
         print(claude_marketplace_state(sys.stdin.read(), args[0], args[1]))
     elif command == "codex-copy":
+        # Explicit for the shell: `absent`, or `copy <version>`; an empty answer is never a state.
         copy = load_codex_copy(Path(args[0]), args[1], Path(args[2]))
-        if copy is not None:
-            print(copy.version)
+        print("absent" if copy is None else f"copy {copy.version}")
     elif command == "marketplace-install":
         install = load_marketplace_install(Path(args[0]), args[1])
-        if install is not None:
-            print(install.revision)
+        print("absent" if install is None else f"revision {install.revision}")
     elif command == "codex-marketplace":
         print(codex_marketplace_state(Path(args[0]), args[1], args[2]))
     elif command == "codex-marketplace-pinned":

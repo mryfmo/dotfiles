@@ -572,7 +572,8 @@ claude() {
             cp -R "${INSTALL_CONTENT}" "${HOME}/.claude/plugins/cache/${3#*@}/${3%@*}/${INSTALL_VERSION}"
         fi
         [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
-    "plugin update "*) [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
+    "plugin update "*) [ -z "${UPDATE_FIXES}" ] || chmod -R u+rwX "${HOME}/.claude/plugins/cache"
+        [ -z "${CORRUPT_AFTER}" ] || printf '{truncated' > "${record}" ;;
     "plugin disable "*) [ -z "${DISABLE_FAILS}" ] || return 1; [ -z "${DISABLE_NOOP}" ] || return 0
         settings="${user}"; [ "$5" = user ] || settings="${PWD}/.claude/settings.json"
         jq --arg id "$3" '.enabledPlugins[$id] = false' "${settings}" > "${WORK}/next" && mv "${WORK}/next" "${settings}" ;;
@@ -623,6 +624,7 @@ claude() {
             "CORRUPT_AFTER",
             "LIST_FAILS",
             "INSTALL_CONTENT",
+            "UPDATE_FIXES",
         )
         result = subprocess.run(
             [
@@ -831,12 +833,12 @@ claude() {
         self.addCleanup(shutil.rmtree, work)
         body = (
             'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; [ "$1 $2" != "plugin remove" ] || : > "${WORK}/removed"; }; '
-            'codex_plugin_cache_versions() { [ -e "${WORK}/removed" ] || printf "5.3.2\\n"; }; '
+            'codex_plugin_copy() { if [ -e "${WORK}/removed" ]; then echo absent; else echo "copy 5.3.2"; fi; }; '
             "doctor_pin_check() { return 1; }; "
         )
         for name, extra, expected in (
             ("drift", "", ["plugin remove ponytail@ponytail"]),
-            ("remove leaves a copy", 'codex_plugin_cache_versions() { printf "5.3.2\\n"; }; ', None),
+            ("remove leaves a copy", 'codex_plugin_copy() { echo "copy 5.3.2"; }; ', None),
         ):
             with self.subTest(case=name):
                 for leftover in ("calls", "removed"):
@@ -1049,6 +1051,30 @@ claude() {
         self.assertIn("is a symlink or special file", result.stderr)
         self.assertIs(False, state["user"][plugin_id])
 
+    def test_a_content_hash_that_cannot_be_read_fails_the_step_before_any_update(self):
+        # Round-3 audit: an unreadable installed copy used to trigger an update, and a later readable copy at the
+        # pin then passed. An unknown pin state is a failure: no update, the plugin disabled, the step failed.
+        if os.geteuid() == 0:
+            self.skipTest("root reads a mode-0 file, so the read failure cannot be injected")
+        plugin_id = "frontend-design@claude-plugins-official"
+        copy = "${HOME}/.claude/plugins/cache/claude-plugins-official/frontend-design/cccccccccccc"
+        step = f'chmod 0 "{copy}/README.md"; ' + self.content_step(self.pin_of(plugin_id))
+        installs = {plugin_id: [{"scope": "user", "version": "cccccccccccc", "reviewed": True}]}
+        # The fake's `plugin update` makes the copy readable again, so only an update could make it pass.
+        result, calls, state = self.converge_listed(step, installs, {plugin_id: True}, UPDATE_FIXES="1")
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("failures=1", result.stdout)
+        self.assertIn("cannot read the installed content", result.stderr)
+        self.assertEqual([f"plugin disable {plugin_id} --scope user @neutral"], calls)
+        self.assertIs(False, state["user"][plugin_id])
+        # The same copy readable is at its pin: nothing is called and it stays enabled.
+        result, calls, state = self.converge_listed(
+            self.content_step(self.pin_of(plugin_id)), installs, {plugin_id: True}
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([], calls)
+        self.assertIs(True, state["user"][plugin_id])
+
     def test_a_fresh_codex_install_that_lands_off_its_pin_is_removed_and_warned_not_failed(self):
         # Audit round 28: the round-27 rule covered Claude only. A fresh Codex copy off its pin is removed
         # (Codex has no disable) and proven gone, through the same converge_or_disable decision.
@@ -1105,6 +1131,228 @@ claude() {
                     )
                 else:
                     self.assertNotIn("plugin add superpowers@openai-curated", calls)
+
+    def test_a_codex_copy_with_an_empty_version_is_removed_not_read_as_absent(self):
+        # U90: plugin.json `version: ""` printed a blank line, which disable_plugin took for "no copy", so the
+        # removal was skipped. The reader refuses it, and only its explicit `absent` skips the removal.
+        for version in ("", " ", "\u00a0"):
+            with self.subTest(version=repr(version)):
+                work = Path(tempfile.mkdtemp(prefix="codex-empty-"))
+                self.addCleanup(shutil.rmtree, work)
+                cache = work / "home/.codex/plugins/cache/ponytail/ponytail"
+                (cache / "5.3.2/.codex-plugin").mkdir(parents=True)
+                (cache / "5.3.2/.codex-plugin/plugin.json").write_text(
+                    json.dumps({"name": "ponytail", "version": version})
+                )
+                fake = 'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; [ "$1 $2" != "plugin remove" ] || rm -rf "${CACHE}"; }'
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"; set +e; {fake}\ndisable_plugin codex ponytail@ponytail; echo "rc=$?"',
+                        "bash",
+                        str(UPDATER),
+                    ],
+                    env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "CACHE": str(cache)},
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(
+                    ["plugin remove ponytail@ponytail"],
+                    (work / "calls").read_text().splitlines() if (work / "calls").exists() else [],
+                )
+                # Removed anyway, and still a failure: the state before the removal could not be read.
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertIn("cannot tell whether Codex plugin ponytail@ponytail is cached", result.stderr)
+                self.assertFalse(cache.exists())
+        # The explicit states the shell reads.
+        work = Path(tempfile.mkdtemp(prefix="codex-state-"))
+        self.addCleanup(shutil.rmtree, work)
+        states = []
+        for setup in (None, "5.3.2"):
+            if setup:
+                (work / "home/.codex/plugins/cache/ponytail/ponytail/5.3.2/.codex-plugin").mkdir(parents=True)
+                (work / "home/.codex/plugins/cache/ponytail/ponytail/5.3.2/.codex-plugin/plugin.json").write_text(
+                    json.dumps({"name": "ponytail", "version": setup})
+                )
+            states.append(
+                subprocess.run(
+                    ["bash", "-c", 'source "$1"; codex_plugin_copy ponytail@ponytail', "bash", str(UPDATER)],
+                    env=os.environ | scratch_env(work / "home"),
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                ).stdout
+            )
+        self.assertEqual(["absent\n", "copy 5.3.2\n"], states)
+
+    def test_the_claude_user_install_state_is_explicit(self):
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1"; claude_user_install "[]"; '
+                'claude_user_install \'[{"scope": "project", "version": "1"}]\'; '
+                'claude_user_install \'[{"scope": "user", "version": "1.8.14"}]\'',
+                "bash",
+                str(UPDATER),
+            ],
+            env=os.environ | scratch_env(Path(tempfile.mkdtemp(prefix="claude-state-"))),
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(["absent", "absent", "installed 1.8.14"], result.stdout.splitlines())
+
+    MALFORMED_COPY_REPLIES = ("", "garbage", "copy ", "copy a b", "copy ../x", "absent extra", "Copy 1.0")
+
+    def run_with_copy_reply(self, reply: str, body: str) -> tuple[subprocess.CompletedProcess, list[str]]:
+        # The reader (pin_record codex-copy) answers REPLY; every other pin_record call keeps its real reader.
+        work = Path(tempfile.mkdtemp(prefix="copy-reply-"))
+        self.addCleanup(shutil.rmtree, work)
+        stub = (
+            'eval "real_$(declare -f pin_record)"; '
+            'pin_record() { case "$1" in codex-copy) printf "%s\\n" "${REPLY_UNDER_TEST}" ;; '
+            'codex-marketplace-pinned) return 0 ;; *) real_pin_record "$@" ;; esac; }; '
+            'codex() { printf "%s\\n" "$*" >> "${WORK}/calls"; }; ensure_codex_ponytail_marketplace() { :; }; '
+        )
+        result = subprocess.run(
+            ["bash", "-c", f'source "$1"; set +e; {stub}{body}; echo "rc=$?"', "bash", str(UPDATER)],
+            env=os.environ | scratch_env(work / "home") | {"WORK": str(work), "REPLY_UNDER_TEST": reply},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        calls = (work / "calls").read_text().splitlines() if (work / "calls").exists() else []
+        return result, calls
+
+    def test_every_codex_copy_reply_but_absent_or_a_strict_copy_is_an_error(self):
+        # Audit of 0190e1f6: both installers took any reply but `absent` for "already installed".
+        for reply in self.MALFORMED_COPY_REPLIES:
+            with self.subTest(step="codex_plugin_copy", reply=reply):
+                result, _ = self.run_with_copy_reply(reply, "codex_plugin_copy ponytail@ponytail")
+                self.assertIn("rc=3", result.stdout, result.stderr)
+                self.assertEqual(["rc=3"], result.stdout.splitlines())
+            for step in ("install_codex_superpowers", "install_codex_ponytail"):
+                with self.subTest(step=step, reply=reply):
+                    result, calls = self.run_with_copy_reply(reply, step)
+                    self.assertIn("rc=1", result.stdout, result.stderr)
+                    self.assertNotIn("already installed", result.stdout)
+                    self.assertFalse([c for c in calls if c.startswith("plugin add")], calls)
+            with self.subTest(step="disable_plugin", reply=reply):
+                result, calls = self.run_with_copy_reply(reply, "disable_plugin codex ponytail@ponytail")
+                self.assertIn("rc=1", result.stdout, result.stderr)
+                self.assertEqual(["plugin remove ponytail@ponytail"], calls)  # never read as absent
+        for reply, expected in (
+            ("absent", "absent"),
+            ("copy 5.3.2", "copy 5.3.2"),
+            ("copy 1.0.0+b.1", "copy 1.0.0+b.1"),
+        ):
+            with self.subTest(reply=reply):
+                result, _ = self.run_with_copy_reply(reply, "codex_plugin_copy ponytail@ponytail")
+                self.assertEqual([expected, "rc=0"], result.stdout.splitlines())
+        result, calls = self.run_with_copy_reply("copy 5.3.2", "install_codex_superpowers")
+        self.assertIn("already installed", result.stdout)
+        self.assertIn("rc=0", result.stdout)
+
+    def test_every_user_install_reply_but_absent_or_a_strict_version_is_an_error(self):
+        for listing in (
+            '[{"scope": "user", "version": ""}]',
+            '[{"scope": "user", "version": "a b"}]',
+            '[{"scope": "user"}]',
+        ):
+            with self.subTest(listing=listing):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'source "$1"; set +e; claude_user_install "$2"; echo "rc=$?"',
+                        "bash",
+                        str(UPDATER),
+                        listing,
+                    ],
+                    env=os.environ | scratch_env(Path(tempfile.mkdtemp(prefix="user-install-"))),
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(["rc=3"], result.stdout.splitlines(), result.stderr)
+
+    def test_no_caller_reads_a_plugin_state_reply_but_through_its_one_parser(self):
+        # Structural guard: the Codex copy reader is called only by codex_plugin_copy; the two parsers' output
+        # lands only in codex_copy / user_install, which no `[`, `[[` or `test` ever compares: every caller
+        # matches them in a `case` whose default is an error.
+        text = UPDATER.read_text()
+        bodies = dict(re.findall(r"^function (\w+)\(\) \(?\{\n(.*?)^\}", text, re.M | re.S))
+        self.assertEqual(
+            ["codex_plugin_copy"], [name for name, body in bodies.items() if "pin_record codex-copy" in body]
+        )
+        for parser, variable in (("codex_plugin_copy", "codex_copy"), ("claude_user_install", "user_install")):
+            assigned = re.findall(rf'(\w+)="\$\({parser} ', text)
+            self.assertTrue(assigned, parser)
+            self.assertEqual({variable}, set(assigned), parser)
+            tests = [
+                line.strip()
+                for line in text.splitlines()
+                if re.search(r"(\[\[?|\btest) ", line) and f"${{{variable}" in line
+            ]
+            self.assertEqual([], tests, variable)
+            for name, body in bodies.items():
+                if f'{variable}="$({parser} ' in body:
+                    self.assertIn(f'case "${{{variable}}}" in', body, name)
+        # Every case on a state (and each parser's own case on the reader's reply) has a `*)` default that returns
+        # non-zero: an unexpected state is never a success, a version or `unknown`.
+        blocks = re.findall(r'^( *)case "\$\{(codex_copy|user_install|reply)\}" in\n(.*?)^\1esac', text, re.M | re.S)
+        self.assertGreaterEqual(len(blocks), 9)
+        for indent, variable, block in blocks:
+            default = re.search(rf"^{indent}\*\)(.*?);;", block, re.M | re.S)
+            with self.subTest(variable=variable, block=block[:60]):
+                self.assertIsNotNone(default)
+                self.assertRegex(default.group(1), r"\b(return|exit) [1-9]")
+        # No record read falls back to a made-up value: no `|| printf 'unknown'`-style default in the record readers.
+        for function in (
+            "claude_user_plugin_version",
+            "claude_user_install",
+            "codex_plugin_copy",
+            "record_claude_plugin_step",
+        ):
+            self.assertNotIn("unknown", bodies[function], function)
+
+    def test_a_claude_version_that_cannot_be_read_is_never_recorded_as_unknown(self):
+        # Audit of 1b93aad9: claude_user_plugin_version turned a read failure, a parser failure and an unexpected
+        # state into a successful `unknown`, and manifest_record recorded it.
+        for name, stubs in (
+            ("read failure", "claude_plugin_installs() { return 1; }"),
+            ("parser failure", 'claude_plugin_installs() { printf \'[{"scope": "user", "version": "a b"}]\\n\'; }'),
+            ("unexpected state", "claude_user_install() { printf 'garbage\\n'; }"),
+        ):
+            with self.subTest(case=name):
+                step = (
+                    f'{stubs}; set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
+                    'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
+                    'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"; '
+                    '[ ! -e "${HOME}/.agents/.installed-manifest.json" ] || echo recorded'
+                )
+                result, _, _ = self.converge_listed(step, {}, {})
+                lines = result.stdout.splitlines()
+                self.assertEqual(["rc=1", "failures=1"], lines, result.stderr)
+                self.assertNotIn("unknown", result.stdout)
+                self.assertIn("reading the installed version of crit@crit for the asset manifest", result.stderr)
+        # Absent is its own result: nothing is recorded and nothing is counted.
+        step = (
+            'set +e; claude_user_plugin_version crit@crit; echo "rc=$?"; '
+            'record_claude_plugin_step update_claude_crit crit@crit "${HOME}/x" -- "cmd"; '
+            'printf "failures=%s\\n" "${CLAUDE_PIN_FAILURES}"'
+        )
+        result, _, _ = self.converge_listed(step, {}, {})
+        self.assertEqual(["rc=4", "failures=0"], result.stdout.splitlines(), result.stderr)
+        self.assertIn("is not recorded in the installed asset manifest", result.stderr)
+        # And an installed version is recorded as itself.
+        pin = self.pin_of("crit@crit")
+        installs = {"crit@crit": [{"scope": "user", "version": pin}]}
+        result, _, _ = self.converge_listed('claude_user_plugin_version crit@crit; echo "rc=$?"', installs, {})
+        self.assertEqual([pin, "rc=0"], result.stdout.splitlines(), result.stderr)
 
     def run_ponytail_step(self, config: str) -> tuple[subprocess.CompletedProcess, list[str]]:
         # update_codex_ponytail against a fake codex that logs every call; CONFIG is ~/.codex/config.toml.
@@ -1311,7 +1559,7 @@ claude() {
         for step, stubs in (
             (
                 "update_codex_superpowers",
-                "codex_plugin_cache_versions() { echo 6.3.0; }; doctor_pin_check() { :; }; "
+                "codex_plugin_copy() { echo 'copy 6.3.0'; }; doctor_pin_check() { :; }; "
                 "manifest_codex_plugin_version() { echo 6.3.0; }; ",
             ),
             ("ensure_herdr_integrations", 'herdr() { echo "herdr 1.0"; }; '),

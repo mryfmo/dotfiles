@@ -498,17 +498,9 @@ class CodexConfigMergeTest(unittest.TestCase):
             ('a."b\\"c"', 'a."b\\"c"'),
             ('a."é"', 'a."é"'),
         )
-        globals_ = canonical.__globals__
-        toml = globals_["hook_trust_toml"]
-        try:
-            # The tomllib path and the key grammar used without tomllib agree.
-            for module in (toml, None):
-                globals_["hook_trust_toml"] = module
-                for raw, name in cases:
-                    with self.subTest(raw=raw, tomllib=module is not None):
-                        self.assertEqual(canonical(raw), name)
-        finally:
-            globals_["hook_trust_toml"] = toml
+        for raw, name in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(canonical(raw), name)
 
     def test_equivalent_hook_state_spellings_are_one_table(self) -> None:
         home = self.source_dir / "target-home"
@@ -639,27 +631,66 @@ class CodexConfigMergeTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
-    def test_declared_keys_inside_an_inline_table_container_leave_the_file_to_the_guard(self) -> None:
+    def test_an_unpinned_plugin_hook_is_revoked_in_every_toml_form(self) -> None:
+        # The audit case: the current file trusts the installed (unreviewed) Ponytail hook in a non-table form.
         home = self.source_dir / "target-home"
-        key = f"{home}/.codex/config.toml:permission_request:0:0"
+        ponytail = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        handler = {"type": "command", "command": "ponytail-unreviewed session-start", "timeout": 5}
+        hook_file = home / ".codex/plugins/cache/ponytail/ponytail/99.0.0/hooks/claude-codex-hooks.json"
+        hook_file.parent.mkdir(parents=True)
+        hook_file.write_text(json.dumps({"hooks": {"SessionStart": [{"matcher": "startup", "hooks": [handler]}]}}))
+        block = MERGE_SCRIPT.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace = {"sys": __import__("sys"), "Path": Path}
+        exec(block.split("\n", 1)[1], namespace)
+        installed = namespace["codex_hook_hash"]("session_start", "startup", handler)
+        self.baseline_path.write_text(f'[hooks.state]\n\n[hooks.state."{ponytail}"]\nenabled = true\n')
         env = os.environ.copy()
         env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
-        self.baseline_path.write_text(
-            '[hooks.state]\n\n[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]\n'
-            "enabled = true\n"
-        )
-        # Rewriting an inline table's interior is out of scope by design; the parse guard keeps the file.
-        current = f'[hooks]\nstate = {{ "{key}" = {{ trusted_hash = "sha256:stale" }} }}\n'
+        entry = f'"{ponytail}" = {{ trusted_hash = "{installed}", enabled = true }}'
+        other = '"/elsewhere/hooks.json:stop:0:0" = { trusted_hash = "sha256:operator" }'
+        projects = '\n[projects."/work"]\ntrust_level = "trusted"\n'
+        for form, current in (
+            ("inline table under [hooks]", f"[hooks]\nstate = {{ {entry}, {other} }}\n{projects}"),
+            ("inline table at the root", f"hooks.state = {{ {entry}, {other} }}\n{projects}"),
+            ("nested inline table at the root", f"hooks = {{ state = {{ {entry}, {other} }} }}\n{projects}"),
+            ("inline entries under [hooks.state]", f"[hooks.state]\n{entry}\n{other}\n{projects}"),
+            (
+                "dotted keys under [hooks]",
+                f'[hooks]\nstate."{ponytail}".trusted_hash = "{installed}"\nstate.{other}\n{projects}',
+            ),
+            (
+                "dotted keys at the root",
+                f'hooks.state."{ponytail}".trusted_hash = "{installed}"\nhooks.state.{other}\n{projects}',
+            ),
+        ):
+            with self.subTest(form=form):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=False
+                )
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                data = tomllib.loads(result.stdout)
+                self.assertEqual(data["hooks"]["state"][ponytail], {"enabled": True})
+                self.assertEqual(
+                    data["hooks"]["state"]["/elsewhere/hooks.json:stop:0:0"], {"trusted_hash": "sha256:operator"}
+                )
+                self.assertEqual(data["projects"]["/work"], {"trust_level": "trusted"})
+                self.assertNotIn(installed, result.stdout)
+
+    def test_a_current_file_that_is_not_valid_toml_is_refused(self) -> None:
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(self.source_dir / "target-home"))
+        self.baseline_path.write_text('[hooks.state]\n\n[hooks.state."custom-hook"]\nenabled = true\n')
 
         result = subprocess.run(
-            [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=False
+            [str(MERGE_SCRIPT)], input="[hooks\nstate = 1\n", text=True, capture_output=True, env=env, check=False
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, current)
-        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: codex config merge:", result.stderr)
 
-    def test_invalid_merge_output_keeps_the_current_content(self) -> None:
+    def test_invalid_merge_output_is_refused(self) -> None:
         home = self.source_dir / "target-home"
         env = os.environ.copy()
         env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
@@ -678,9 +709,10 @@ class CodexConfigMergeTest(unittest.TestCase):
 
         result = subprocess.run([str(script)], input=current, text=True, capture_output=True, env=env, check=False)
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, current)
-        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+        # chezmoi keeps the target untouched when a modify script fails, and reports the error.
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: codex config merge: the merged config is not valid TOML", result.stderr)
 
     def test_make_update_refreshes_codex_hook_trust_after_the_plugin_update(self) -> None:
         script = (ROOT / "scripts/update-agent-assets.sh").read_text()

@@ -1400,7 +1400,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
-    def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
+    def test_profile_modify_scripts_refuse_an_invalid_merge(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
         self.module.write_outputs(self.module.expected_outputs(manifest))
@@ -1425,9 +1425,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, current)
-        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: codex config merge: the merged config is not valid TOML", result.stderr)
+
+    def test_profile_modify_scripts_revoke_an_unpinned_plugin_hook_in_inline_and_dotted_forms(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        handler = {"type": "command", "command": "demo stop", "timeout": 5}
+        plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
+        installed = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+        key = "demo@market:hooks/hooks.json:stop:0:0"
+        entry = f'"{key}" = {{ trusted_hash = "{installed}", enabled = true }}'
+        for form, current in (
+            ("inline table under [hooks]", f"[hooks]\nstate = {{ {entry} }}\n"),
+            ("inline table at the root", f"hooks.state = {{ {entry} }}\n"),
+            ("dotted keys under [hooks]", f'[hooks]\nstate."{key}".trusted_hash = "{installed}"\n'),
+        ):
+            with self.subTest(form=form):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(tomllib.loads(result.stdout)["hooks"]["state"][key], {"enabled": True})
+                self.assertNotIn(installed, result.stdout)
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())

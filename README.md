@@ -489,7 +489,15 @@ warning naming the installed hash and the pin, and Codex lists the hook in
 `/hooks`. Review it there, then record the reviewed hash as its
 `trusted_hash` so the next apply trusts it; a trust granted only in `/hooks`
 is replaced at the next apply. The result replaces any existing entry for a
-declared key, and keys the manifest does not declare are kept. Config-hook
+declared key in whatever TOML form it is written (a table, an inline table or
+dotted keys under `[hooks.state]`, `[hooks]` or the root; the modify scripts
+rewrite hook state as one table per entry first), and keys the manifest does
+not declare are kept. A Codex config that is not valid TOML, whose hook state
+cannot be rewritten without changing another setting, or whose merged result
+does not hold exactly the managed entry for every declared key, stops the apply
+of that file with an `ERROR: codex config merge:` line: `chezmoi apply` fails
+and `make doctor` reports the Codex config as differing until the file is
+fixed; it is never rewritten with trust the merge could not verify. Config-hook
 trust follows the manifest definition, so a hook hand-edited in
 `~/.codex/config.toml` deliberately stops matching and stays untrusted. As its
 last step, after every plugin update, `scripts/update-agent-assets.sh`

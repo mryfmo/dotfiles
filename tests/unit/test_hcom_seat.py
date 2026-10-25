@@ -439,6 +439,10 @@ class HcomSeatTest(unittest.TestCase):
         self.assertIn(str((self.repo / ".git/config").resolve()), worker["filesystem"]["denyWrite"])
         self.assertEqual(worker["network"]["allowUnixSockets"], [])
         self.assertNotIn("example.com", worker["network"]["allowedDomains"])
+        # srt 0.0.81 grants local binding on every interface, so no seat gets it (U85 round 3).
+        self.assertIs(worker["network"]["allowLocalBinding"], False)
+        # The protected set and the sandbox come from one list: the write roots include the writable file.
+        self.assertIn(str(self.home.resolve() / ".claude.json"), write)
         run = self.seat("orchestrator", "--seats-root", self.seats)
         self.assertEqual(run.returncode, 0, run.stderr)
         orchestrator = self.settings_of("orchestrator")
@@ -507,7 +511,7 @@ class HcomSeatTest(unittest.TestCase):
         (outside / "srt").symlink_to(target)
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(f"srt {target.resolve()} lies under the seat write root {self.store.resolve()}", run.stderr)
+        self.assertIn(f"srt {target.resolve()} is or lies under the seat write root {self.store.resolve()}", run.stderr)
         # The interpreter a `#!/usr/bin/env` line names is held to the same rule.
         interp = self.store / "u85interp"
         shutil.copy("/bin/sh", interp)
@@ -518,8 +522,41 @@ class HcomSeatTest(unittest.TestCase):
         (outside / "u85interp").symlink_to(interp)
         run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
         self.assertEqual(run.returncode, 2, run.stderr)
-        self.assertIn(f"srt {interp.resolve()} lies under the seat write root {self.store.resolve()}", run.stderr)
+        self.assertIn(f"srt {interp.resolve()} is or lies under the seat write root {self.store.resolve()}", run.stderr)
+        # A writable file root, not only a directory: an executable at ~/.claude.json reached through a PATH link.
+        claude_json = self.home / ".claude.json"
+        shutil.copy(FAKE, claude_json)
+        (outside / "srt").unlink()
+        (outside / "srt").symlink_to(claude_json)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{outside}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        real = claude_json.resolve()
+        self.assertIn(f"srt {real} is or lies under the seat write root {real}", run.stderr)
+        # A PATH entry a seat can write is refused, since srt and hcom look tools up on PATH.
+        run = self.seat("orchestrator", "--seats-root", self.seats, PATH=f"{self.repo}/bin:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 2, run.stderr)
+        self.assertIn(f"the PATH entry {self.repo.resolve()}/bin is or lies under the seat write root", run.stderr)
         self.assertEqual(self.calls_of("hcom"), [])
+
+    def test_hcom_and_herdr_run_by_the_physical_argv_that_was_checked(self):
+        """U85 round 3: the launch execs hcom's checked physical file, and hcom's own lookups reach wrappers of it."""
+        real = Path(self.temp.name).resolve() / "real-bin"
+        real.mkdir()
+        links = Path(self.temp.name).resolve() / "link-bin"
+        links.mkdir()
+        for tool in ("hcom", "herdr"):
+            (self.bindir / tool).rename(real / tool)
+            (links / tool).symlink_to(real / tool)
+        run = self.seat("worker", "--seats-root", self.seats, PATH=f"{links}:{self.env['PATH']}")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        (hcom,) = self.calls_of("hcom")
+        self.assertEqual(hcom["argv0"], str(real / "hcom"), "exec'd by its physical file, not the PATH link")
+        herdr = self.calls_of("herdr")
+        self.assertTrue(herdr)
+        self.assertEqual({call["argv0"] for call in herdr}, {str(real / "herdr")})
+        for tool in ("hcom", "herdr"):
+            wrapper = Path(self.seats, ".sandbox/worker/bin", tool).read_text()
+            self.assertIn(shlex.quote(str(real / tool)), wrapper)
 
     def test_a_dry_run_writes_no_sandbox(self):
         run = self.seat("worker", "--seats-root", self.seats, "--dry-run")

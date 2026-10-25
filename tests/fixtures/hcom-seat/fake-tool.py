@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """One fake for `hcom`, `herdr`, `omp` and `srt` in the hcom-seat tests; the test copies it under each name.
 
-Every call appends `{"argv": [...], "cwd": ..., "env": {HCOM_*}}` as one JSON line to `$FAKE_CALLS/<tool>`.
+Every call appends `{"argv": [...], "argv0": ..., "cwd": ..., "env": {HCOM_*}}` as one JSON line to `$FAKE_CALLS/<tool>`;
+`argv0` is the path the fake was run by, so a test sees whether a launch ran the physical file or a link to it.
 `hcom omp` plays hcom 0.7.30's `--go` gate (without `--go` it prints the launch preview and starts nothing, as hcom
 does inside an AI tool, `src/commands/launch.rs:48` at v0.7.30) and its herdr terminal preset (`herdr tab create
 --label <tag>`, then `herdr pane run <pane> ...`): the omp tool-args after `--` run in `--dir` with HCOM_LAUNCHED=1
@@ -24,7 +25,8 @@ tool = os.path.basename(sys.argv[0])
 argv = sys.argv[1:]
 with open(os.path.join(os.environ["FAKE_CALLS"], tool), "a", encoding="utf-8") as calls:
     hcom_env = {key: value for key, value in os.environ.items() if key.startswith("HCOM_")}
-    calls.write(json.dumps({"argv": argv, "cwd": os.getcwd(), "env": hcom_env}) + "\n")
+    record = {"argv": argv, "argv0": sys.argv[0], "cwd": os.getcwd(), "env": hcom_env}
+    calls.write(json.dumps(record) + "\n")
 
 if tool == "hcom" and argv[:1] == ["omp"] and "--" in argv:
     flags, tool_args = argv[1 : argv.index("--")], argv[argv.index("--") + 1 :]

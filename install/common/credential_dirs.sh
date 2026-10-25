@@ -22,19 +22,6 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 #
-# @description Print the credential directories, one per line.
-# @stdout Absolute directory paths.
-#
-function credential_dirs() {
-    local config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
-    printf '%s\n' \
-        "${GH_CONFIG_DIR:-${config_home}/gh}" \
-        "${config_home}/age" \
-        "${HOME}/.aws" \
-        "${HOME}/.local/share/chezmoi-private"
-}
-
-#
 # @description Strip trailing slashes from a path (a bare `/` stays `/`).
 # @arg $1 string Path.
 # @stdout The path without trailing slashes.
@@ -99,8 +86,15 @@ function chmod_private() {
 # @exitcode 1 chmod failed on a directory, or uname failed.
 #
 function secure_credential_dirs() {
-    local dir dirs home kernel no_follow="" status=0
-    dirs="$(credential_dirs)" || return 1
+    local config_home="${XDG_CONFIG_HOME:-${HOME}/.config}" dir home kernel no_follow="" status=0
+    # An array, not a here-string: bash 3.2 writes a here-string to a temporary file, and a failed
+    # write there would skip every chmod while the loop still returned success.
+    local -a dirs=(
+        "${GH_CONFIG_DIR:-${config_home}/gh}"
+        "${config_home}/age"
+        "${HOME}/.aws"
+        "${HOME}/.local/share/chezmoi-private"
+    )
     home="$(strip_trailing_slashes "${HOME}")" || return 1
     kernel="$(uname -s)" || {
         printf 'credential_dirs: uname -s failed; no directory mode was changed\n' >&2
@@ -109,7 +103,7 @@ function secure_credential_dirs() {
     case "${kernel}" in
     Darwin | *BSD) no_follow=1 ;;
     esac
-    while IFS= read -r dir; do
+    for dir in "${dirs[@]}"; do
         dir="$(strip_trailing_slashes "${dir}")" || return 1
         if [ -L "${dir}" ] || ! path_has_no_symlink "${dir}" "${home}"; then
             printf 'warning: credential_dirs: %s is a symlink or is reached through one; its mode is left unchanged\n' "${dir}" >&2
@@ -120,7 +114,7 @@ function secure_credential_dirs() {
             printf 'credential_dirs: cannot set %s to mode 0700\n' "${dir}" >&2
             status=1
         fi
-    done <<< "${dirs}"
+    done
     return "${status}"
 }
 

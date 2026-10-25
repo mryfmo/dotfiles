@@ -87,6 +87,17 @@ class CredentialDirsTest(unittest.TestCase):
         # A safe directory beside it is still fixed.
         self.assertEqual(0o700, (self.home / ".aws").stat().st_mode & 0o777)
 
+    def test_a_failed_temporary_file_write_does_not_skip_the_chmods(self):
+        # Audit of dfeeed87: bash 3.2 (macOS /bin/bash) wrote the directory list's here-string to a
+        # temporary file; a failed write (here: a zero file-size limit) skipped every chmod with status 0.
+        (self.home / ".aws").mkdir()
+        (self.home / ".aws").chmod(0o775)
+        result = self.run_script("trap '' XFSZ; ulimit -f 0; bash \"$0\"")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(0o700, (self.home / ".aws").stat().st_mode & 0o777)
+        # No here-document or here-string is left for any bash to stage in a temporary file.
+        self.assertNotIn("<<", SCRIPT.read_text())
+
     def test_failed_chmod_fails_the_apply_naming_the_dir(self):
         (self.home / ".aws").mkdir()
         result = self.run_script('source "$0"; chmod() { return 1; }; secure_credential_dirs')

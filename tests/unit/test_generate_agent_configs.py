@@ -63,12 +63,12 @@ def sample_manifest() -> dict:
             "express": {
                 "claude": {"model": "haiku", "effort": "low"},
                 "codex": {"model": "gpt-5.6-luna", "model_reasoning_effort": "low"},
-                "omp": {"model": "openai-siwc/gpt-5.6-luna"},
+                "omp": {"model": "openai-siwc/gpt-5.6-luna", "effort": "low"},
             },
             "standard": {
                 "claude": {"model": "sonnet", "effort": "high"},
                 "codex": {"model": "gpt-6.1-sol", "model_reasoning_effort": "high"},
-                "omp": {"model": "anthropic/sonnet"},
+                "omp": {"model": "anthropic/sonnet", "effort": "high"},
             },
         },
         "interactive_profile": "standard",
@@ -410,7 +410,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest = self.write_asset_fixture()
         self.module.load_manifest = lambda: manifest
         self.module.expected_outputs = self.module.render_asset_constants
-        self.module.stale_profile_outputs = lambda _manifest: []
         old_argv = sys.argv
         self.addCleanup(setattr, sys, "argv", old_argv)
 
@@ -684,7 +683,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
             },
-            "omp": {"model": "openai-siwc/gpt-6-astra"},
+            "omp": {"model": "openai-siwc/gpt-6-astra", "effort": "high"},
         }
         outputs = self.module.expected_outputs(manifest)
         security_profile = self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
@@ -917,7 +916,6 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest_path.write_text(stale)
         self.module.load_manifest = lambda: {"claude": {}}
         self.module.expected_outputs = lambda _manifest: {}
-        self.module.stale_profile_outputs = lambda _manifest: []
         old_argv = sys.argv
         self.addCleanup(setattr, sys, "argv", old_argv)
 
@@ -930,6 +928,88 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), stale.replace("0" * 64, pin))
+
+    def test_check_lists_every_orphan_in_a_generated_directory_and_a_run_deletes_it(self) -> None:
+        """F056: a file in a generated directory that the expected output set does not hold fails --check."""
+        expected = self.temp_dir / "home/dot_agents/omp/profiles/worker.yml.tmpl"
+        orphans = [
+            "home/dot_agents/omp/profiles/retired.yml.tmpl",
+            "home/dot_agents/plugins/old/.codex-plugin/plugin.json",
+            "home/dot_claude/agents/old.md",
+            "home/dot_claude/skills/gone/references/symlink_removed.md.tmpl",
+            "home/dot_codex/modify_private_retired.config.toml",
+            "home/dot_codex/retired.config.toml",
+            "home/dot_local/bin/common/executable_unpinned",
+        ]
+        keepers = ["home/dot_codex/symlink_AGENTS.md.tmpl", "home/dot_local/bin/common/executable_tool"]
+        for rel in [*orphans, *keepers, "scripts/orchestrator/unpinned"]:
+            (self.temp_dir / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.temp_dir / rel).write_text("x\n")
+        expected.write_text("current\n")
+        self.module.load_manifest = dict
+        self.module.expected_outputs = lambda _manifest: {expected: "current\n"}
+        self.addCleanup(setattr, sys, "argv", sys.argv)
+
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.main()
+        for rel in orphans:
+            self.assertIn(f"{rel} (orphan", stderr.getvalue())
+        for rel in [*keepers, "home/dot_agents/omp/profiles/worker.yml.tmpl"]:
+            self.assertNotIn(rel, stderr.getvalue())
+        self.assertTrue(all((self.temp_dir / rel).exists() for rel in orphans), "--check deletes nothing")
+
+        sys.argv = ["generate-agent-configs.py"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.main()
+        self.assertEqual([rel for rel in orphans if (self.temp_dir / rel).exists()], [])
+        self.assertTrue(all((self.temp_dir / rel).exists() for rel in keepers))
+        self.assertFalse((self.temp_dir / "home/dot_claude/skills/gone").exists())
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.module.main()
+        self.assertIn("up to date", stdout.getvalue())
+
+    def test_a_generated_file_chezmoi_ignores_is_refused(self) -> None:
+        """F054: chezmoi skips a dot-prefixed source name, so a file generated under one never deploys."""
+        hidden = self.temp_dir / "home/dot_agents/plugins/p/.codex-plugin/plugin.json"
+        self.assertIsNone(self.module.chezmoi_target(hidden))
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.render_output_index({hidden: "{}\n"})
+        self.assertIn("never deploys", stderr.getvalue())
+        shown = self.temp_dir / "home/dot_agents/plugins/p" / self.module.CODEX_PLUGIN_MANIFEST
+        self.assertEqual(
+            {"target": ".agents/plugins/p/.codex-plugin/plugin.json", "kind": "file", "executable": False},
+            self.module.chezmoi_target(shown),
+        )
+
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_every_indexed_target_is_what_chezmoi_deploys(self) -> None:
+        """The output index's targets are exactly the entries chezmoi manages for the generated sources."""
+        self.module.ROOT = ROOT
+        index = json.loads((ROOT / "scripts/generated-agent-outputs.json").read_text())
+        deployed = [entry for entry in index["outputs"] if entry["target"]]
+        source, home = self.temp_dir / "source", self.temp_dir / "home"
+        for entry in deployed:
+            path = source / Path(entry["source"]).relative_to("home")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / entry["source"], path)
+        home.mkdir()
+        (self.temp_dir / "chezmoi.toml").write_text("")
+        run = subprocess.run(
+            [
+                *("chezmoi", "managed", "--include=files,symlinks", "--no-tty"),
+                *("--source", str(source), "--destination", str(home), "--config", str(self.temp_dir / "chezmoi.toml")),
+                *("--cache", str(self.temp_dir / "cache"), "--persistent-state", str(self.temp_dir / "state.boltdb")),
+            ],
+            env=os.environ | {"HOME": str(home)},
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertEqual(0, run.returncode, run.stderr)
+        self.assertEqual(sorted(entry["target"] for entry in deployed), sorted(run.stdout.split()))
 
     def test_sandbox_exclusions_render_only_git_push_and_gh_for_all_os(self) -> None:
         manifest = load_manifest_fixture(self.temp_dir)
@@ -1005,7 +1085,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_mode": "read-only",
             },
-            "omp": {"model": "openai-siwc/gpt-6-astra"},
+            "omp": {"model": "openai-siwc/gpt-6-astra", "effort": "xhigh"},
         }
         outputs = self.module.expected_outputs(manifest)
         self.module.write_outputs(outputs)
@@ -1859,7 +1939,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             with self.subTest(value=value):
                 manifest = sample_manifest()
                 manifest["model_profiles"]["standard"]["omp"]["model"] = value
-                self.assertEqual(self.module.model_profiles(manifest)["standard"]["omp"], {"model": value})
+                self.assertEqual(
+                    self.module.model_profiles(manifest)["standard"]["omp"], {"model": value, "effort": "high"}
+                )
+
+    def test_model_profiles_require_an_omp_thinking_level_omp_accepts(self) -> None:
+        for value in (None, "auto", "off", "XHIGH", "ultra", 3):
+            with self.subTest(value=value):
+                manifest = sample_manifest()
+                if value is None:
+                    del manifest["model_profiles"]["standard"]["omp"]["effort"]
+                else:
+                    manifest["model_profiles"]["standard"]["omp"]["effort"] = value
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.model_profiles(manifest)
 
     def test_omp_config_renders_the_interactive_profile_as_the_default_role(self) -> None:
         manifest = sample_manifest()
@@ -1930,16 +2023,23 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(sorted(overlays), ["audit.yml.tmpl", "worker.yml.tmpl"])
         self.assertEqual(
-            overlays["worker.yml.tmpl"], header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + wizard
+            overlays["worker.yml.tmpl"],
+            header + "modelRoles:\n  default: anthropic/sonnet\n" + skills + "defaultThinkingLevel: high\n" + wizard,
         )
         self.assertEqual(
-            overlays["audit.yml.tmpl"], header + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n" + skills + wizard
+            overlays["audit.yml.tmpl"],
+            header
+            + "modelRoles:\n  default: openai-siwc/gpt-5.6-luna\n"
+            + skills
+            + "defaultThinkingLevel: low\n"
+            + wizard,
         )
         self.assertEqual(
             execute_chezmoi_template(overlays["worker.yml.tmpl"], self.temp_dir),
             header
             + "modelRoles:\n  default: anthropic/sonnet\n"
             + skills.replace("{{ .chezmoi.homeDir }}", "/render-home")
+            + "defaultThinkingLevel: high\n"
             + wizard,
         )
 
@@ -1953,6 +2053,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             f"# {self.module.GENERATED_HEADER}\n"
             "modelRoles:\n  default: anthropic/sonnet\n"
             "skills:\n  customDirectories:\n    - {{ .chezmoi.homeDir }}/.agents/skills\n"
+            "defaultThinkingLevel: high\n"
             "disabledProviders:\n  - agent-plugins\n"
             "setupVersion: 2\nstartup:\n  setupWizard: false\n",
         )
@@ -2039,9 +2140,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         for name, lines in profiles.items():
             with self.subTest(profile=name):
                 self.assertEqual(len(lines), 1)
-                value = re.fullmatch(r'    omp: \{ model: "([^"]+)" \}', lines[0])
+                value = re.fullmatch(r'    omp: \{ model: "([^"]+)", effort: ([a-z]+) \}', lines[0])
                 self.assertIsNotNone(value)
                 self.assertIsNotNone(self.module.OMP_MODEL_RE.fullmatch(value[1]))
+                self.assertIn(value[2], self.module.OMP_THINKING_LEVELS)
 
         base = subprocess.run(
             ["git", "-C", str(ROOT), "show", "origin/main:home/dot_agents/agent-config.yaml"],

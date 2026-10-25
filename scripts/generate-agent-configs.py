@@ -110,10 +110,6 @@ def quote_toml_key(key: str) -> str:
     return json.dumps(key, ensure_ascii=False)
 
 
-def target_agents(manifest: dict[str, Any]) -> set[str]:
-    return set(manifest.get("target_agents", []))
-
-
 def enabled_for(server: dict[str, Any], agent: str) -> bool:
     return bool(server.get("agents", {}).get(agent, False))
 
@@ -123,9 +119,12 @@ PROFILE_VALUE_RE = re.compile(r"^[A-Za-z0-9._\[\]-]+$")
 PROFILE_AGENT_KEYS = {
     "claude": ("model", "effort"),
     "codex": ("model", "model_reasoning_effort"),
-    "omp": ("model",),
+    "omp": ("model", "effort"),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
+# The levels omp's `defaultThinkingLevel` setting accepts besides `auto` (omp 18.11.3 src/session/settings.ts:196-201,
+# values THINKING_EFFORTS from @oh-my-pi/pi-catalog src/effort.ts:11-18). A seat's level is stated, never `auto`.
+OMP_THINKING_LEVELS = ("minimal", "low", "medium", "high", "xhigh", "max")
 # Claude seats route through the pi-claude-bridge provider and OpenAI seats through openai-siwc
 # (D-024-129/130); anthropic stays expressible as the API-key fallback (gates G1). The openai-codex
 # fallback is retired (plan 025 E1, decision 29) and refused with a message of its own.
@@ -162,7 +161,12 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
             optional = PROFILE_OPTIONAL_KEYS.get(agent, ())
             for key in keys + tuple(key for key in optional if key in mapping):
                 value = mapping.get(key)
-                if agent == "omp":
+                if agent == "omp" and key == "effort":
+                    if value not in OMP_THINKING_LEVELS:
+                        fail(
+                            f"model profile {name}.omp.effort must be one of {', '.join(OMP_THINKING_LEVELS)}: {value!r}"
+                        )
+                elif agent == "omp":
                     route = value.split("/", 1)[0] if isinstance(value, str) else None
                     if route in OMP_RETIRED_ROUTES:
                         fail(
@@ -1502,8 +1506,12 @@ def render_omp_role_overlay(manifest: dict[str, Any], role: str) -> str:
     directories = [
         re.sub(r"^~/", "{{ .chezmoi.homeDir }}/", directory) for directory in omp_skills_directories(manifest)
     ]
-    model = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]["model"]
-    overlay = omp_config_yaml(model, directories)
+    omp = model_profiles(manifest)[omp_roles(manifest)[role]]["omp"]
+    overlay = omp_config_yaml(omp["model"], directories)
+    # A `modelRoles.default` without a `:<level>` suffix starts at the `defaultThinkingLevel` setting (omp 18.11.3
+    # src/config/model-presets.ts:232-244), whose default is high (src/session/settings.ts:196-201); a `--config`
+    # overlay is a settings layer above the profile's own config.yml (src/config/settings.ts:879).
+    overlay += f"defaultThinkingLevel: {omp['effort']}\n"
     disabled = "".join(f"  - {provider}\n" for provider in omp_seat_disabled_providers(manifest))
     if disabled:
         overlay += f"disabledProviders:\n{disabled}"
@@ -1580,28 +1588,135 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         if not plugin.get("managed_manifest", True):
             continue
         source_path = plugin["source_path"].removeprefix("./")
-        outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
+        outputs[ROOT / "home/dot_agents" / source_path / CODEX_PLUGIN_MANIFEST] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
     outputs.update(render_lever_installs(manifest))
+    outputs[ROOT / OUTPUT_INDEX_PATH] = render_output_index(outputs)
     return outputs
 
 
-def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
-    generated_roots = [ROOT / "home/dot_claude/skills"]
-    output_set = set(outputs)
-    for generated_root in generated_roots:
-        if not generated_root.exists():
+# Codex reads a plugin's manifest at <plugin>/.codex-plugin/plugin.json; chezmoi ignores every source entry whose name
+# starts with a dot (except .chezmoi*), so the source names the directory dot_codex-plugin (F054).
+CODEX_PLUGIN_MANIFEST = "dot_codex-plugin/plugin.json"
+# The expected output set rendered for consumers that cannot load the manifest: make doctor runs
+# scripts/check-agent-runtime.py on the system python3, without PyYAML. It lives outside home/, so chezmoi never
+# deploys it.
+OUTPUT_INDEX_PATH = "scripts/generated-agent-outputs.json"
+# The generated directories: every file a glob matches here is a generator output, so one that expected_outputs()
+# does not render is an orphan, which --check reports and a write run deletes (F056). Each entry is a source
+# directory and a pathlib glob; the doctor checks the deployed directory of each the same way.
+GENERATED_SCOPES = (
+    ("home/dot_agents/omp/profiles", "*"),
+    ("home/dot_agents/plugins", "**/*"),
+    ("home/dot_claude/agents", "*"),
+    ("home/dot_claude/skills", "**/*"),
+    ("home/dot_codex", "*.config.toml"),
+)
+# chezmoi source-state attributes, in the order chezmoi reads them (chezmoi.io reference/source-state-attributes);
+# a generated output uses no other attribute, and chezmoi_target refuses one it does not know.
+CHEZMOI_DIR_PREFIXES = ("exact_", "private_", "readonly_")
+CHEZMOI_FILE_TYPES = ("create_", "modify_", "symlink_")
+CHEZMOI_FILE_PREFIXES = ("private_", "readonly_", "empty_", "executable_")
+CHEZMOI_UNSUPPORTED = ("encrypted_", "remove_", "run_", "external_", "literal_", "once_", "onchange_")
+
+
+def chezmoi_target(source: Path) -> dict[str, Any] | None:
+    """How chezmoi deploys one generated file: its HOME-relative target, the kind of entry, and its mode.
+
+    None for a file chezmoi does not deploy by itself: anything outside home/, and any source entry whose name starts
+    with a dot, which chezmoi ignores (chezmoi.io reference/source-state-attributes), the .chezmoitemplates that the
+    modify scripts read among them.
+    """
+    rel = source.relative_to(ROOT)
+    if rel.parts[0] != "home" or any(part.startswith(".") for part in rel.parts[1:]):
+        return None
+    parts: list[str] = []
+    for name in rel.parts[1:-1]:
+        for prefix in CHEZMOI_DIR_PREFIXES:
+            name = name.removeprefix(prefix)
+        parts.append("." + name.removeprefix("dot_") if name.startswith("dot_") else name)
+    name = rel.parts[-1]
+    if name.startswith(CHEZMOI_UNSUPPORTED):
+        fail(f"{rel} uses a chezmoi attribute the generator does not deploy")
+    kind = "file"
+    for prefix in CHEZMOI_FILE_TYPES:
+        if name.startswith(prefix):
+            kind, name = prefix.removesuffix("_"), name.removeprefix(prefix)
+            break
+    executable = False
+    for prefix in CHEZMOI_FILE_PREFIXES:
+        if name.startswith(prefix):
+            executable = executable or prefix == "executable_"
+            name = name.removeprefix(prefix)
+    template = name.endswith(".tmpl")
+    name = name.removesuffix(".tmpl")
+    parts.append("." + name.removeprefix("dot_") if name.startswith("dot_") else name)
+    if template and kind == "file":
+        kind = "template"
+    return {"target": "/".join(parts), "kind": kind, "executable": executable}
+
+
+def render_output_index(outputs: dict[Path, str]) -> str:
+    """The deployed side of the expected output set, for make doctor.
+
+    `outputs` lists every generated file with its deployed target (none for one chezmoi does not deploy by itself);
+    `scopes` lists each generated directory's deployed directory and glob, where a file no output deploys is an
+    orphan on the host.
+    """
+    entries = []
+    for path in sorted(outputs):
+        target = chezmoi_target(path)
+        rel = path.relative_to(ROOT)
+        if target is None and rel.parts[0] == "home" and rel.parts[1] != ".chezmoitemplates":
+            fail(f"{rel} is generated under home/ but chezmoi ignores its dot-prefixed name, so it never deploys")
+        entries.append({"source": rel.as_posix(), **(target or {"target": None})})
+    scopes = []
+    for directory, pattern in GENERATED_SCOPES:
+        target = chezmoi_target(ROOT / directory / "x")
+        assert target is not None
+        scopes.append({"source": directory, "target": target["target"].removesuffix("/x"), "glob": pattern})
+    return json_dumps({"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes})
+
+
+def generated_scope_files() -> set[Path]:
+    """Every file now in a generated directory, and each install copy of a scripts/orchestrator script."""
+    files: set[Path] = set()
+    for directory, pattern in GENERATED_SCOPES:
+        files.update(path for path in (ROOT / directory).glob(pattern) if path.is_file() or path.is_symlink())
+    # A lever's chezmoi copy is generated from its checkout script; a copy of a script that is not a pinned lever is
+    # an unsynchronised duplicate (F156).
+    source_dir = ROOT / LEVER_SOURCE_DIR
+    if source_dir.is_dir():
+        for script in source_dir.iterdir():
+            install = ROOT / LEVER_INSTALL_DIR / f"executable_{script.name}"
+            if install.is_file() or install.is_symlink():
+                files.add(install)
+    return files
+
+
+def orphaned_outputs(outputs: dict[Path, str]) -> list[Path]:
+    """Files in a generated directory that the expected output set does not hold."""
+    return sorted(generated_scope_files() - set(outputs))
+
+
+def output_drift(outputs: dict[Path, str]) -> list[str]:
+    """Each expected output that is missing or differs, then each orphan; empty when the tree matches the set."""
+    stale = sorted(path for path, content in outputs.items() if not path.is_file() or path.read_text() != content)
+    return [str(path.relative_to(ROOT)) for path in stale] + [
+        f"{path.relative_to(ROOT)} (orphan: no manifest entry renders it)" for path in orphaned_outputs(outputs)
+    ]
+
+
+def remove_orphaned_outputs(outputs: dict[Path, str]) -> None:
+    for path in orphaned_outputs(outputs):
+        path.unlink()
+    for directory, _pattern in GENERATED_SCOPES:
+        root = ROOT / directory
+        if not root.is_dir():
             continue
-        for path in sorted(generated_root.rglob("*"), reverse=True):
-            if (
-                path.is_file()
-                and path.name.startswith("symlink_")
-                and path.suffix == ".tmpl"
-                and path not in output_set
-            ):
-                path.unlink()
-            elif path.is_dir() and not any(path.iterdir()):
+        for path in sorted(root.rglob("*"), reverse=True):
+            if path.is_dir() and not path.is_symlink() and not any(path.iterdir()):
                 path.rmdir()
 
 
@@ -1613,14 +1728,6 @@ def write_outputs(outputs: dict[Path, str]) -> None:
             path.parent == ROOT / LEVER_INSTALL_DIR and path.name.startswith("executable_")
         ):
             path.chmod(path.stat().st_mode | 0o111)
-
-
-def stale_profile_outputs(manifest: dict[str, Any]) -> list[Path]:
-    return [
-        ROOT / "home/dot_codex" / f"{name}.config.toml"
-        for name in model_profiles(manifest)
-        if (ROOT / "home/dot_codex" / f"{name}.config.toml").exists()
-    ]
 
 
 def main() -> None:
@@ -1668,29 +1775,22 @@ def main() -> None:
     # The lever pins live in the manifest itself; refresh them first so the outputs below read current pins. A test
     # ROOT without a manifest file has no pins to refresh (load_manifest fails on its own when the real one is absent).
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
-    stale: list[Path] = []
+    stale: list[str] = []
     if manifest_path.exists():
         manifest_text = manifest_path.read_text()
         pinned_text = refresh_lever_pins(manifest_text)
         if pinned_text != manifest_text:
             if args.check:
-                stale.append(manifest_path.relative_to(ROOT))
+                stale.append(str(manifest_path.relative_to(ROOT)))
             else:
                 manifest_path.write_text(pinned_text)
     manifest = load_manifest()
     outputs = expected_outputs(manifest)
-    stale_profiles = stale_profile_outputs(manifest)
-    for path, content in outputs.items():
-        if args.check:
-            if not path.exists() or path.read_text() != content:
-                stale.append(path.relative_to(ROOT))
     if args.check:
-        stale.extend(path.relative_to(ROOT) for path in stale_profiles)
-    if not args.check:
+        stale.extend(output_drift(outputs))
+    else:
         write_outputs(outputs)
-        for path in stale_profiles:
-            path.unlink()
-        remove_stale_generated_outputs(outputs)
+        remove_orphaned_outputs(outputs)
     if stale:
         fail("generated agent configs are stale: " + ", ".join(str(path) for path in stale))
     if args.check:

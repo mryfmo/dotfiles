@@ -145,7 +145,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def write_index(self, outputs: list[dict], scopes: list[dict] | None = None) -> Path:
         path = self.temp_dir / "scripts/generated-agent-outputs.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"outputs": outputs, "scopes": scopes or []}))
+        path.write_text(json.dumps({"generated_by": "test", "outputs": outputs, "scopes": scopes or []}))
         return path
 
     def test_check_runs_each_indexed_codex_modify_script_with_chezmoi_working_tree(self) -> None:
@@ -221,22 +221,25 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                     "source": "source/dot_agents/model-profiles.env",
                     "target": ".agents/model-profiles.env",
                     "kind": "file",
+                    "executable": False,
                 },
                 {
                     "source": "source/dot_agents/omp/profiles/worker.yml.tmpl",
                     "target": ".agents/omp/profiles/worker.yml",
                     "kind": "template",
+                    "executable": False,
                 },
                 {
                     "source": "source/dot_agents/plugins/create_marketplace.json",
                     "target": ".agents/plugins/marketplace.json",
                     "kind": "create",
+                    "executable": False,
                 },
                 {"source": "source/.chezmoitemplates/x.toml", "target": None},
             ],
-            "scopes": [{"target": ".agents/omp/profiles", "glob": "*"}],
+            "scopes": [{"source": "home/dot_agents/omp/profiles", "target": ".agents/omp/profiles", "glob": "*"}],
         }
-        rendered = {"text": "home: /rendered\n"}
+        rendered = {"text": b"home: /rendered\n"}
         with mock.patch.multiple(
             self.module,
             SOURCE_ROOT=self.source_root,
@@ -248,7 +251,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.assertEqual(2, len(findings), findings)
             self.assertTrue(self.module.is_warning(findings[0]) and str(marketplace) in findings[0], findings)
             self.assertTrue(not self.module.is_warning(findings[1]) and str(retired) in findings[1], findings)
-            rendered["text"] = "home: /elsewhere\n"
+            rendered["text"] = b"home: /elsewhere\n"
             self.assertIn(
                 f"generated file differs or is missing: {self.target_root / '.agents/omp/profiles/worker.yml'}",
                 self.module.generated_target_findings(index, "/tree"),
@@ -263,6 +266,101 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             index, error = self.module.load_output_index()
             self.assertIsNone(index)
             self.assertRegex(error, r"^generated output index invalid: ")
+
+    def test_a_malformed_output_index_is_refused_field_by_field(self) -> None:
+        """Every deviation from the generator's index shape is an ERROR, never an index with fewer outputs."""
+        good_output = {"source": "home/a", "target": ".a", "kind": "file", "executable": False}
+        good_scope = {"source": "home/d", "target": ".d", "glob": "*"}
+
+        def index(outputs=None, scopes=None, **extra) -> dict:
+            return {"generated_by": "g", "outputs": outputs or [good_output], "scopes": scopes or [good_scope], **extra}
+
+        self.assertIsNone(self.module.output_index_error(index()))
+        self.assertIsNone(self.module.output_index_error(index([{"source": "install/x.sh", "target": None}])))
+        for name, candidate in (
+            ("not an object", []),
+            ("extra top-level key", index(stray=1)),
+            ("generated_by not a string", {**index(), "generated_by": 1}),
+            ("outputs not a list", {**index(), "outputs": {}}),
+            ("output not an object", index(["home/a"])),
+            ("source not a string", index([{**good_output, "source": 3}])),
+            ("absolute source", index([{**good_output, "source": "/etc/passwd"}])),
+            ("target not a string", index([{**good_output, "target": 3}])),
+            ("target escapes HOME", index([{**good_output, "target": "../x"}])),
+            ("unknown kind", index([{**good_output, "kind": "script"}])),
+            ("executable not a bool", index([{**good_output, "executable": "yes"}])),
+            ("missing executable", index([{key: good_output[key] for key in ("source", "target", "kind")}])),
+            ("extra output key", index([{**good_output, "mode": 755}])),
+            ("null target with a kind", index([{"source": "home/a", "target": None, "kind": "file"}])),
+            ("scope missing glob", index(scopes=[{"source": "home/d", "target": ".d"}])),
+            ("scope glob not a string", index(scopes=[{**good_scope, "glob": ["*"]}])),
+            ("absolute scope target", index(scopes=[{**good_scope, "target": "/tmp"}])),
+        ):
+            with self.subTest(name=name):
+                self.assertIsNotNone(self.module.output_index_error(candidate))
+                with mock.patch.object(self.module, "SOURCE_ROOT", self.source_root):
+                    path = self.temp_dir / "scripts/generated-agent-outputs.json"
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(json.dumps(candidate))
+                    loaded, error = self.module.load_output_index()
+                self.assertIsNone(loaded)
+                self.assertRegex(error, r"^generated output index invalid: ")
+
+    def test_a_crlf_corrupted_generated_executable_differs(self) -> None:
+        """Generated files compare byte for byte: CRLF line endings break a shebang, so they are a mismatch."""
+        self.write_source("dot_local/bin/common/executable_tool", "#!/bin/sh\necho ok\n")
+        target = self.target_root / ".local/bin/common/tool"
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"#!/bin/sh\r\necho ok\r\n")
+        target.chmod(0o755)
+        index = {
+            "outputs": [
+                {
+                    "source": "source/dot_local/bin/common/executable_tool",
+                    "target": ".local/bin/common/tool",
+                    "kind": "file",
+                    "executable": True,
+                }
+            ],
+            "scopes": [],
+        }
+        with mock.patch.multiple(self.module, SOURCE_ROOT=self.source_root, HOME=self.target_root):
+            self.assertEqual(
+                [f"generated file differs or is missing: {target}"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
+            target.write_bytes(b"#!/bin/sh\necho ok\n")
+            self.assertEqual([], self.module.generated_target_findings(index, "/tree"))
+
+    def test_a_leftover_install_copy_of_an_orchestrator_script_on_the_host_fails(self) -> None:
+        """The host scopes come from the generator's one scope list, lever rule included (ci-rerun.sh is no lever)."""
+        spec = importlib.util.spec_from_file_location(
+            "generate_agent_configs", ROOT / "scripts/generate-agent-configs.py"
+        )
+        assert spec and spec.loader
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        tree = self.temp_dir / "tree"
+        for name in ("hcom-seat", "ci-rerun.sh"):
+            (tree / "scripts/orchestrator").mkdir(parents=True, exist_ok=True)
+            (tree / "scripts/orchestrator" / name).write_text("#!/bin/sh\n")
+        install = tree / "home/dot_local/bin/common/executable_hcom-seat"
+        install.parent.mkdir(parents=True)
+        install.write_text("#!/bin/sh\n")
+        generator.ROOT = tree
+        index = json.loads(generator.render_output_index({install: "#!/bin/sh\n"}))
+        self.assertIn(
+            {"source": "home/dot_local/bin/common", "target": ".local/bin/common", "glob": "ci-rerun.sh"},
+            index["scopes"],
+        )
+        self.write_target(".local/bin/common/hcom-seat", "#!/bin/sh\n", executable=True)
+        leftover = self.write_target(".local/bin/common/ci-rerun.sh", "#!/bin/sh\n", executable=True)
+        self.write_target(".local/bin/common/unrelated-tool", "#!/bin/sh\n", executable=True)
+        with mock.patch.multiple(self.module, SOURCE_ROOT=tree / "home", HOME=self.target_root):
+            self.assertEqual(
+                [f"generated directory holds a file no manifest entry renders: {leftover}; remove it"],
+                self.module.generated_target_findings(index, "/tree"),
+            )
 
     def test_the_committed_output_index_matches_the_generated_tree(self) -> None:
         """The doctor's index names every deployed generated file, and each source it names exists."""

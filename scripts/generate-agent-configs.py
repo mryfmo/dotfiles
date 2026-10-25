@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import glob
 import hashlib
 import json
 import re
@@ -132,6 +133,9 @@ OMP_MODEL_RE = re.compile(r"^(openai-siwc|anthropic|claude-bridge)/[A-Za-z0-9._-
 # The same routes as a set, for omp.disabled_providers; a test keeps it equal to OMP_MODEL_RE's alternation.
 OMP_MODEL_ROUTES = ("openai-siwc", "anthropic", "claude-bridge")
 OMP_RETIRED_ROUTES = ("openai-codex",)
+# The routes omp itself provides; every other model route exists only while the extension that registers it is loaded,
+# so omp.extension_providers must name exactly the remaining routes.
+OMP_BUILTIN_ROUTES = ("anthropic",)
 OMP_ACCEPTED_ROUTES = "claude-bridge, openai-siwc or anthropic"
 CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 RUNTIME_PREFIXES = (
@@ -1605,7 +1609,8 @@ CODEX_PLUGIN_MANIFEST = "dot_codex-plugin/plugin.json"
 OUTPUT_INDEX_PATH = "scripts/generated-agent-outputs.json"
 # The generated directories: every file a glob matches here is a generator output, so one that expected_outputs()
 # does not render is an orphan, which --check reports and a write run deletes (F056). Each entry is a source
-# directory and a pathlib glob; the doctor checks the deployed directory of each the same way.
+# directory and a pathlib glob; generated_scopes() adds the lever rule, and the doctor checks the deployed side of
+# every scope it returns.
 GENERATED_SCOPES = (
     ("home/dot_agents/omp/profiles", "*"),
     ("home/dot_agents/plugins", "**/*"),
@@ -1672,26 +1677,40 @@ def render_output_index(outputs: dict[Path, str]) -> str:
             fail(f"{rel} is generated under home/ but chezmoi ignores its dot-prefixed name, so it never deploys")
         entries.append({"source": rel.as_posix(), **(target or {"target": None})})
     scopes = []
-    for directory, pattern in GENERATED_SCOPES:
-        target = chezmoi_target(ROOT / directory / "x")
-        assert target is not None
-        scopes.append({"source": directory, "target": target["target"].removesuffix("/x"), "glob": pattern})
+    for directory, pattern in generated_scopes():
+        root = chezmoi_target(ROOT / directory / "x")
+        target = chezmoi_target(ROOT / directory / pattern)
+        assert root is not None and target is not None
+        host_root = root["target"].removesuffix("/x")
+        scopes.append(
+            {"source": directory, "target": host_root, "glob": target["target"].removeprefix(host_root + "/")}
+        )
     return json_dumps({"generated_by": GENERATED_HEADER, "outputs": entries, "scopes": scopes})
 
 
-def generated_scope_files() -> set[Path]:
-    """Every file now in a generated directory, and each install copy of a scripts/orchestrator script."""
-    files: set[Path] = set()
-    for directory, pattern in GENERATED_SCOPES:
-        files.update(path for path in (ROOT / directory).glob(pattern) if path.is_file() or path.is_symlink())
-    # A lever's chezmoi copy is generated from its checkout script; a copy of a script that is not a pinned lever is
-    # an unsynchronised duplicate (F156).
+def generated_scopes() -> list[tuple[str, str]]:
+    """Every generated scope as (source directory, glob): the fixed directories, then the lever rule.
+
+    A lever's chezmoi copy is generated from its checkout script, so the install name of every scripts/orchestrator
+    script is a scope of its own; a copy of one that is not a pinned lever is an unsynchronised duplicate (F156). The
+    generator checks the source tree and make doctor the deployed tree against this one list.
+    """
+    scopes = list(GENERATED_SCOPES)
     source_dir = ROOT / LEVER_SOURCE_DIR
     if source_dir.is_dir():
-        for script in source_dir.iterdir():
-            install = ROOT / LEVER_INSTALL_DIR / f"executable_{script.name}"
-            if install.is_file() or install.is_symlink():
-                files.add(install)
+        scopes.extend(
+            (LEVER_INSTALL_DIR, glob.escape(f"executable_{script.name}"))
+            for script in sorted(source_dir.iterdir())
+            if script.is_file()
+        )
+    return scopes
+
+
+def generated_scope_files() -> set[Path]:
+    """Every file now in a generated scope of the source tree."""
+    files: set[Path] = set()
+    for directory, pattern in generated_scopes():
+        files.update(path for path in (ROOT / directory).glob(pattern) if path.is_file() or path.is_symlink())
     return files
 
 

@@ -80,8 +80,17 @@ class AssetFinding(NamedTuple):
     entry: dict[str, object]
 
 
+def exact_text(path: Path) -> str:
+    """A file's text with every byte kept: no newline translation, undecodable bytes round-trip through encode_bytes."""
+    return path.read_bytes().decode(errors="surrogateescape")
+
+
+def encode_bytes(text: str) -> bytes:
+    return text.encode(errors="surrogateescape")
+
+
 def render_template(path: Path) -> str:
-    text = path.read_text()
+    text = exact_text(path)
     # This repository uses .chezmoiroot=home, so .chezmoi.sourceDir resolves to
     # the chezmoi source root that contains dot_agents/, dot_codex/, etc.
     text = text.replace("{{ .chezmoi.sourceDir }}", str(SOURCE_ROOT))
@@ -90,10 +99,11 @@ def render_template(path: Path) -> str:
 
 
 def same_text(source: Path, target: Path, template: bool = False) -> bool:
-    if not target.exists():
+    """Whether target holds exactly the bytes of source (or of its rendering): a CRLF or BOM difference is a mismatch."""
+    if not target.is_file():
         return False
-    expected = render_template(source) if template else source.read_text()
-    return target.read_text() == expected
+    expected = encode_bytes(render_template(source)) if template else source.read_bytes()
+    return target.read_bytes() == expected
 
 
 def same_modified(
@@ -241,21 +251,60 @@ def output_index_path() -> Path:
     return SOURCE_ROOT.parent / "scripts/generated-agent-outputs.json"
 
 
+OUTPUT_KINDS = frozenset({"file", "template", "modify", "create", "symlink"})
+
+
+def output_index_error(index: object) -> str | None:
+    """Why `index` is not the generator's output index, field by field with exact types; None when it is.
+
+    The shape is generate-agent-configs.py render_output_index's: exactly generated_by, outputs and scopes; an output
+    is {source, target: null} for a file chezmoi does not deploy by itself, else {source, target, kind, executable}
+    with a known kind; a scope is {source, target, glob}. Every path is a non-empty relative string.
+    """
+
+    def relative(value: object) -> bool:
+        return (
+            isinstance(value, str) and bool(value) and not Path(value).is_absolute() and ".." not in Path(value).parts
+        )
+
+    if not isinstance(index, dict) or set(index) != {"generated_by", "outputs", "scopes"}:
+        return "the top level must hold exactly generated_by, outputs and scopes"
+    if not isinstance(index["generated_by"], str):
+        return "generated_by must be a string"
+    if not isinstance(index["outputs"], list) or not isinstance(index["scopes"], list):
+        return "outputs and scopes must be lists"
+    for number, entry in enumerate(index["outputs"]):
+        if not isinstance(entry, dict) or not relative(entry.get("source")):
+            return f"outputs[{number}] must be an object with a relative source"
+        if set(entry) == {"source", "target"} and entry["target"] is None:
+            continue
+        if (
+            set(entry) != {"source", "target", "kind", "executable"}
+            or not relative(entry["target"])
+            or entry["kind"] not in OUTPUT_KINDS
+            or not isinstance(entry["executable"], bool)
+        ):
+            return f"outputs[{number}] must be {{source, target, kind, executable}} with a known kind: {entry!r}"
+    for number, scope in enumerate(index["scopes"]):
+        if (
+            not isinstance(scope, dict)
+            or set(scope) != {"source", "target", "glob"}
+            or not all(relative(scope[key]) for key in ("source", "target", "glob"))
+        ):
+            return f"scopes[{number}] must be {{source, target, glob}} of relative strings: {scope!r}"
+    return None
+
+
 def load_output_index() -> tuple[dict[str, list[dict[str, object]]] | None, str | None]:
-    """The generated output index, or None and the reason it cannot be read; a read failure is never "no outputs"."""
+    """The generated output index, or None and the reason it cannot be used; a bad index is never "no outputs"."""
     path = output_index_path()
     try:
         index = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         return None, f"generated output index unreadable: {path} ({error})"
-    if (
-        not isinstance(index, dict)
-        or not isinstance(index.get("outputs"), list)
-        or not isinstance(index.get("scopes"), list)
-        or not all(isinstance(entry, dict) and "source" in entry and "target" in entry for entry in index["outputs"])
-        or not all(isinstance(scope, dict) and {"target", "glob"} <= set(scope) for scope in index["scopes"])
-    ):
-        return None, f"generated output index invalid: {path} (run scripts/generate-agent-configs.py)"
+    error = output_index_error(index)
+    if error is not None:
+        return None, f"generated output index invalid: {path}: {error} (run scripts/generate-agent-configs.py)"
     return index, None
 
 
@@ -275,20 +324,19 @@ def chezmoi_working_tree() -> tuple[str | None, str | None]:
     return result.stdout.strip(), None
 
 
-def render_chezmoi_template(source: Path) -> tuple[str | None, str | None]:
-    """chezmoi's own rendering of one source template with the host's data, or None and why it failed."""
+def render_chezmoi_template(source: Path) -> tuple[bytes | None, str | None]:
+    """chezmoi's own rendering of one source template with the host's data, as bytes, or None and why it failed."""
     try:
         result = subprocess.run(
             ["chezmoi", "--no-pager", "execute-template"],
-            input=source.read_text(),
-            text=True,
+            input=source.read_bytes(),
             capture_output=True,
             check=False,
         )
     except OSError as error:
         return None, str(error)
     if result.returncode != 0:
-        return None, result.stderr.strip() or f"exit {result.returncode}"
+        return None, result.stderr.decode(errors="replace").strip() or f"exit {result.returncode}"
     return result.stdout, None
 
 
@@ -331,15 +379,13 @@ def generated_target_findings(index: dict[str, list[dict[str, object]]], working
             rendered, error = render_chezmoi_template(source)
             if rendered is None:
                 failures.append(f"cannot render {entry['source']} with chezmoi: {error}")
-            elif not target.is_file() or target.read_text() != rendered:
+            elif not target.is_file() or target.read_bytes() != rendered:
                 failures.append(f"generated file differs or is missing: {target}")
-        elif kind == "file":
+        else:  # "file": output_index_error admits no other kind.
             if not same_text(source, target):
                 failures.append(f"generated file differs or is missing: {target}")
-            elif entry.get("executable") and not target.stat().st_mode & stat.S_IXUSR:
+            elif entry["executable"] and not target.stat().st_mode & stat.S_IXUSR:
                 failures.append(f"generated file is not executable: {target}")
-        else:
-            failures.append(f"generated output index names an unknown kind {kind!r} for {entry['source']}")
     for scope in index["scopes"]:
         if Path(str(scope["target"])).parts == (".claude", "skills"):
             continue
@@ -363,7 +409,7 @@ def expected_claude_skill_targets(entries: list[dict[str, object]]) -> dict[Path
         linked_source_text = render_template(SOURCE_ROOT.parent / str(entry["source"])).strip()
         linked_source = Path(linked_source_text)
         if linked_source.exists():
-            outputs[applied_rel] = linked_source.read_text()
+            outputs[applied_rel] = exact_text(linked_source)
         else:
             outputs[applied_rel] = f"__BROKEN_EXPECTED_LINK__:{linked_source_text}"
     return outputs
@@ -437,7 +483,7 @@ def compare_tree_contents(
     for rel in sorted(expected_rels & actual):
         target = target_root / rel
         try:
-            actual_text = target.read_text()
+            actual_text = exact_text(target)
         except OSError as error:
             failures.append(f"{label} cannot read {target}: {error}")
             continue
@@ -477,7 +523,7 @@ def compare_shared_skills() -> list[str]:
     if not target_root.exists():
         return ["shared skill directory is missing: ~/.agents/skills"]
     expected_sources = source_files(source_root)
-    expected = {rel: path.read_text() for rel, path in expected_sources.items()}
+    expected = {rel: exact_text(path) for rel, path in expected_sources.items()}
     owned_elsewhere = installer_owned_skill_names() - {rel.parts[0] for rel in expected if rel.parts}
     return compare_tree_contents(
         "shared skill directory",

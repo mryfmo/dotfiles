@@ -537,6 +537,34 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         manifest["model_profiles"]["audit"]["omp"]["model"] = "openai-siwc/gpt-model"
         self.module.validate_agent_manifest()
 
+    def test_the_default_model_provider_stays_loadable_when_its_mapping_is_removed(self) -> None:
+        """A plain omp launch must load the default model's provider: dropping its extension_providers entry, with or
+        without emptying omp.extensions, is refused, as is an entry for a route omp provides or does not know."""
+        for name, mutate in (
+            (
+                "bridge entry removed, extensions emptied",
+                lambda m: (m["omp"]["extension_providers"].pop("claude-bridge"), m["omp"].update(extensions=[])),
+            ),
+            ("bridge entry removed", lambda m: m["omp"]["extension_providers"].pop("claude-bridge")),
+            (
+                "builtin route mapped",
+                lambda m: m["omp"]["extension_providers"].update({"anthropic": "~/.agents/omp/extensions/openai-siwc"}),
+            ),
+            (
+                "unknown route mapped",
+                lambda m: m["omp"]["extension_providers"].update({"other": "~/.agents/omp/extensions/openai-siwc"}),
+            ),
+        ):
+            with self.subTest(name=name):
+                manifest = self.write_valid_agent_manifest()
+                mutate(manifest)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["deep"]["omp"]["model"] = "anthropic/claude-model"
+        manifest["omp"]["extensions"] = []
+        self.module.validate_agent_manifest()
+
     def test_agent_manifest_keeps_every_omp_extension_directory_among_the_seat_extensions(self) -> None:
         """F162: omp.extensions and omp.extension_providers name only claude.levers.extensions directories."""
         for mutate in (

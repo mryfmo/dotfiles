@@ -1031,6 +1031,14 @@ def omp_extension_providers(manifest_path: Path, manifest: dict[str, Any]) -> di
         or not all(isinstance(key, str) and isinstance(value, str) for key, value in providers.items())
     ):
         fail(f"{manifest_path} omp.extension_providers must map omp provider ids to extension directories")
+    # Exact set: every model route omp does not provide itself, and nothing else, so a route can never lose the entry
+    # that says which extension a plain launch must load for it.
+    expected_routes = set(GENERATOR.OMP_MODEL_ROUTES) - set(GENERATOR.OMP_BUILTIN_ROUTES)
+    if set(providers) != expected_routes:
+        fail(
+            f"{manifest_path} omp.extension_providers must name exactly the extension-registered model routes "
+            f"{sorted(expected_routes)}: {sorted(providers)}"
+        )
     extensions = omp.get("extensions", [])
     if not isinstance(extensions, list):
         fail(f"{manifest_path} omp.extensions must be a list of extension directories")
@@ -1052,9 +1060,12 @@ def validate_omp_interactive_provider(manifest_path: Path, manifest: dict[str, A
     """
     model = manifest["model_profiles"][manifest["interactive_profile"]]["omp"]["model"]
     provider = model.split("/", 1)[0]
-    needed = omp_extension_providers(manifest_path, manifest).get(provider)
+    providers = omp_extension_providers(manifest_path, manifest)
+    if provider in GENERATOR.OMP_BUILTIN_ROUTES:
+        return
+    needed = providers.get(provider)
     extensions = manifest["omp"].get("extensions", [])
-    if needed is not None and needed not in extensions:
+    if needed is None or needed not in extensions:
         fail(
             f"{manifest_path} interactive_profile omp model {model} needs {needed} in omp.extensions; "
             f"a plain omp launch skips a default model whose provider {provider} is not registered"

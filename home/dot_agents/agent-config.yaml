@@ -674,6 +674,35 @@ codex:
   projects:
     "{{ .chezmoi.workingTree }}":
       trust_level: trusted
+  # The Codex audit route, scripts/orchestrator/pr-audit.sh (regime-cutover U71b; operator decision G18,
+  # 2026-10-26: keep the ChatGPT login, keep the auditor from reading credentials). The generator renders
+  # home/dot_agents/codex-audit/config.toml from this entry and the model profile it names; the lever copies
+  # that file into each run's scratch CODEX_HOME with every deny path resolved. The commands the auditor runs
+  # get the permission profile `audit` (https://learn.chatgpt.com/docs/permissions): `:read-only` with the
+  # whole filesystem readable, no network, these paths denied, and only the core environment names. `~/` is
+  # the real HOME, `$CODEX_HOME` the run's scratch CODEX_HOME (which links the login), `$CODEX_LOGIN_HOME`
+  # the directory of the login it links to (`${CODEX_HOME:-~/.codex}` of the caller).
+  audit:
+    model_profile: review
+    deny:
+      - $CODEX_LOGIN_HOME
+      - $CODEX_HOME
+      - ~/.codex
+      - ~/.ssh
+      - ~/.gnupg
+      - ~/.config/gh
+      - ~/.local/share/gh
+      - ~/.claude
+      - ~/.claude.json
+      - ~/.omp
+      - ~/.config/chezmoi-private
+      - ~/.local/share/chezmoi-private
+      - ~/.aws
+      - ~/.netrc
+      - ~/.docker
+      - ~/Library/Keychains
+      - ~/.local/state/hcom-regime
+      - ~/.local/state/hcom
 
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
@@ -777,7 +806,9 @@ claude:
   # the one-turn omp runner the audit path uses (U66): installed and
   # self-checked the same way, so every repository runs the same pinned copy.
   # pr-merge.sh is the orchestrator's only merge path (a `correct` ledger row
-  # for the exact head and green CI, U71).
+  # for the exact head and green CI, U71). pr-audit.sh is the Codex audit route
+  # (U71b): one `codex exec` under the `audit` permission profile of
+  # codex.audit, never run unless its launch-time sandbox probes pass.
   levers:
     sha256:
       hcom-seat: 2da3209222ed295efd3f7a695beccfaacf56400ff7b1c83cc300cbd7653ce7fd
@@ -798,6 +829,7 @@ claude:
       records-sync.sh: 401dbb2c3ea86a2114c6465bebbad5c8bbcc036703f38daf2e76f8dc364c40c7
       pr-merge.sh: bdb32ef369f98af58a83b3a5a70774b0cc12150eb21f1a2b530ff86d0b660c79
       omp-run.sh: 3577b01102954ac8bf3dfd4dcbcb65e868dc653dec4272fc04e491bb816a8ec5
+      pr-audit.sh: 4bd519b02fa413e8d7da0f10b3721f6758ceadb247293d185602bece76fe7fb7
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

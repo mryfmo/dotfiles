@@ -81,6 +81,7 @@ def sample_manifest() -> dict:
         },
         "codex": {
             "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
+            "audit": {"model_profile": "standard", "deny": ["$CODEX_LOGIN_HOME", "$CODEX_HOME", "~/.ssh"]},
             "model_reasoning_summary": "concise",
             "model_verbosity": "low",
             "approval_policy": "on-request",
@@ -230,6 +231,7 @@ LEVERS = (
     "hcom-dispatch",
     "hcom-seat",
     "omp-run.sh",
+    "pr-audit.sh",
     "pr-body-edit.sh",
     "pr-close.sh",
     "pr-merge.sh",

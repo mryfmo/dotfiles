@@ -343,6 +343,69 @@ def codex_command_hook_lines(event: str, hook: dict[str, Any]) -> list[str]:
     ]
 
 
+# The Codex audit route's config (regime-cutover U71b, operator decision G18): scripts/orchestrator/pr-audit.sh reads
+# it beside the manifest (~/.agents/codex-audit/config.toml installed, else the checkout's copy) and writes it into
+# each run's scratch CODEX_HOME, replacing every deny key with absolute paths.
+AUDIT_CODEX_CONFIG = "home/dot_agents/codex-audit/config.toml"
+AUDIT_DENY_TOKENS = ("$CODEX_LOGIN_HOME", "$CODEX_HOME")
+AUDIT_DENY_HOME = re.compile(r"^~/(?!(?:.*/)?\.\.?(?:/|$))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
+
+
+def render_codex_audit_config(manifest: dict[str, Any]) -> str:
+    """pr-audit.sh's CODEX_HOME config: model pin, no skills or web search, the `audit` permission profile as default.
+
+    The deny keys keep their manifest spelling (`~/<path>`, `$CODEX_HOME`, `$CODEX_LOGIN_HOME`); the lever resolves
+    them per run, so the file is the same on every host.
+    """
+    audit = manifest["codex"].get("audit")
+    if not isinstance(audit, dict):
+        fail("codex.audit must be a mapping with model_profile and deny")
+    profile = model_profiles(manifest).get(audit.get("model_profile"))
+    if profile is None:
+        fail(f"codex.audit.model_profile names no model_profiles entry: {audit.get('model_profile')!r}")
+    deny = audit.get("deny")
+    if not isinstance(deny, list) or not deny or len(set(deny)) != len(deny):
+        fail("codex.audit.deny must be a non-empty list without duplicates")
+    for entry in deny:
+        if not isinstance(entry, str) or not (entry in AUDIT_DENY_TOKENS or AUDIT_DENY_HOME.match(entry)):
+            fail(f"codex.audit.deny entry {entry!r} is not ~/<relative path>, $CODEX_HOME or $CODEX_LOGIN_HOME")
+    for token in AUDIT_DENY_TOKENS:
+        if token not in deny:
+            fail(f"codex.audit.deny must name {token}: the login reaches the run through it")
+    lines = [
+        f"# {GENERATED_HEADER} Change codex.audit there.",
+        "# scripts/orchestrator/pr-audit.sh writes this file into each audit run's scratch CODEX_HOME, with every deny",
+        "# key resolved to absolute paths; the run refuses unless `audit` is the default permission profile.",
+        "",
+        'default_permissions = "audit"',
+        f"model = {quote_toml(profile['codex']['model'])}",
+        f"model_reasoning_effort = {quote_toml(profile['codex']['model_reasoning_effort'])}",
+        'web_search = "disabled"',
+        "",
+        "[skills]",
+        "include_instructions = false",
+        "",
+        "[skills.bundled]",
+        "enabled = false",
+        "",
+        "[shell_environment_policy]",
+        'inherit = "core"',
+        "ignore_default_excludes = false",
+        "",
+        "[permissions.audit]",
+        'description = "Read-only audit: no network, credential stores denied to commands."',
+        'extends = ":read-only"',
+        "",
+        "[permissions.audit.filesystem]",
+        '":root" = "read"',
+        *(f'{quote_toml(entry)} = "deny"' for entry in deny),
+        "",
+        "[permissions.audit.network]",
+        "enabled = false",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -2257,6 +2320,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             name, profile, manifest
         )
     outputs[ROOT / "home/dot_codex/modify_private_config.toml"] = render_codex_base_modify(manifest)
+    outputs[ROOT / AUDIT_CODEX_CONFIG] = render_codex_audit_config(manifest)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/.chezmoitemplates/omp-config-managed.yml"] = render_omp_config(manifest)
     for role in omp_roles(manifest):
@@ -2401,6 +2465,7 @@ OUTPUT_INDEX_PATH = "scripts/generated-agent-outputs.json"
 # directory and a pathlib glob; generated_scopes() adds the lever rule, and the doctor checks the deployed side of
 # every scope it returns.
 GENERATED_SCOPES = (
+    ("home/dot_agents/codex-audit", "*"),
     ("home/dot_agents/omp/profiles", "*"),
     ("home/dot_agents/plugins", "**/*"),
     ("home/dot_claude/agents", "*"),

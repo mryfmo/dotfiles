@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""A fake `codex` for tests/unit/test_pr_audit.py: records each call and plays `codex sandbox` and `codex exec`.
+
+FAKE_CODEX_CALLS names the file that gets one JSON object per call: the argv, the cwd, HOME, CODEX_HOME, TMPDIR, the
+XDG base-directory variables it saw, the text of `$CODEX_HOME/config.toml` and the target of `$CODEX_HOME/auth.json`.
+`sandbox` answers the lever's two probes by FAKE_CODEX_PROBE: `denied` (default; every path unreadable, curl exit 6),
+`readable` (the read probe finds its first path readable and exits 3), `network` (curl exits 0) or `nocurl`. `exec`
+reads the prompt from stdin into `prompt` of the record and writes FAKE_CODEX_VERDICT (default a finding-free
+`Verdict: correct` message) to its `-o` file, then exits FAKE_CODEX_EXEC_EXIT (default 0).
+"""
+
+import json
+import os
+import sys
+
+argv = sys.argv[1:]
+codex_home = os.environ.get("CODEX_HOME", "")
+record = {
+    "argv": argv,
+    "cwd": os.getcwd(),
+    "env": {
+        name: os.environ.get(name)
+        for name in ("HOME", "CODEX_HOME", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME")
+    },
+}
+config = os.path.join(codex_home, "config.toml")
+if os.path.isfile(config):
+    with open(config, encoding="utf-8") as handle:
+        record["config"] = handle.read()
+auth = os.path.join(codex_home, "auth.json")
+if os.path.islink(auth):
+    record["auth_link"] = os.readlink(auth)
+elif os.path.exists(auth):
+    record["auth_link"] = None
+mode = os.environ.get("FAKE_CODEX_PROBE", "denied")
+status = 0
+if argv[:1] == ["sandbox"]:
+    script = argv[argv.index("-c") + 1] if "-c" in argv else ""
+    if "for p do" in script:
+        paths = argv[argv.index("-c") + 3 :]
+        record["probe_paths"] = paths
+        if mode == "readable":
+            print(f"pr-audit-probe: readable {paths[0]}")
+            status = 3
+        else:
+            print("pr-audit-probe: all denied")
+    elif "curl" in script:
+        print(
+            {"network": "pr-audit-probe: curl 0", "nocurl": "pr-audit-probe: no curl"}.get(
+                mode, "pr-audit-probe: curl 6"
+            )
+        )
+elif argv[:1] == ["exec"]:
+    record["prompt"] = sys.stdin.read()
+    out = argv[argv.index("-o") + 1]
+    with open(out, "w", encoding="utf-8") as handle:
+        handle.write(
+            os.environ.get("FAKE_CODEX_VERDICT", "No findings; the head meets its contract.\n\nVerdict: correct\n")
+        )
+    status = int(os.environ.get("FAKE_CODEX_EXEC_EXIT", "0"))
+else:
+    status = 9
+with open(os.environ["FAKE_CODEX_CALLS"], "a", encoding="utf-8") as calls:
+    calls.write(json.dumps(record) + "\n")
+sys.exit(status)

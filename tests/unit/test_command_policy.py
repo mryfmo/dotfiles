@@ -111,11 +111,13 @@ def codex_decision(rules, words):
 
 
 def own_claude_rules(entry):
-    """The Claude rules the manifest comment promises for one entry."""
-    rules = [f"Bash({' '.join(words)} *)" for pattern in entry["patterns"] for words in expansions(pattern)]
+    """(decision, rule) for each Claude rule the manifest comment promises for one entry: the expansions in the
+    entry's `claude` list, the `flag_globs` tails in `flag_globs.claude`. "Caught" below means ask or deny, each in the
+    list the manifest names."""
+    rules = [(entry["claude"], f"Bash({' '.join(w)} *)") for pattern in entry["patterns"] for w in expansions(pattern)]
     globs = entry.get("flag_globs")
     if globs:
-        rules += [f"Bash({program} {tail})" for program in globs["programs"] for tail in globs["tails"]]
+        rules += [(globs["claude"], f"Bash({p} {tail})") for p in globs["programs"] for tail in globs["tails"]]
     return list(dict.fromkeys(rules))
 
 
@@ -153,9 +155,10 @@ def coverage_failures(manifest, settings, rules, policies):
     """(entry id, consumer, detail) for every rule a render lacks and every example its rendered rules miss."""
     failures = []
     for entry in manifest["command_policy"]:
-        entry_id, decision, sandbox = entry["id"], entry["claude"], entry["codex"] == "sandbox"
-        claude = [rule for rule in own_claude_rules(entry) if rule in settings["permissions"][decision]]
-        failures += [(entry_id, "claude", rule) for rule in own_claude_rules(entry) if rule not in claude]
+        entry_id, sandbox = entry["id"], entry["codex"] == "sandbox"
+        promised = own_claude_rules(entry)
+        claude = [rule for kind, rule in promised if rule in settings["permissions"][kind]]
+        failures += [(entry_id, "claude", f"{kind} {rule}") for kind, rule in promised if rule not in claude]
         codex = own_codex_rules(entry, rules)
         if sandbox:
             failures += [(entry_id, "codex", f"a rule for a sandbox entry: {rule['pattern']}") for rule in codex]
@@ -227,9 +230,9 @@ class CommandPolicyTest(unittest.TestCase):
         for entry in self.manifest["command_policy"]:
             with self.subTest(entry=entry["id"]):
                 settings = copy.deepcopy(self.settings)
-                own = set(own_claude_rules(entry))
-                kept = [rule for rule in settings["permissions"][entry["claude"]] if rule not in own]
-                settings["permissions"][entry["claude"]] = kept
+                own = {rule for _, rule in own_claude_rules(entry)}
+                for kind in ("deny", "ask"):
+                    settings["permissions"][kind] = [r for r in settings["permissions"][kind] if r not in own]
                 failures = coverage_failures(self.only(entry), settings, self.rules, self.policies)
                 self.assertIn((entry["id"], "claude"), {failure[:2] for failure in failures})
 
@@ -255,29 +258,61 @@ class CommandPolicyTest(unittest.TestCase):
                     failures = coverage_failures(self.only(entry), self.settings, self.rules, policies)
                     self.assertIn((entry["id"], f"omp {role}"), {failure[:2] for failure in failures})
 
-    def test_the_old_pipe_rule_is_gone_and_the_shell_after_the_pipe_is_denied(self):
+    def test_the_old_pipe_rule_is_gone_and_a_plain_download_is_not_caught(self):
         """F038: Claude Code matches each piped subcommand on its own, so a rule holding `| sh` never matches."""
         deny = self.settings["permissions"]["deny"]
         self.assertFalse([rule for rule in deny if "|" in rule])
         self.assertFalse(claude_stops(deny, "curl -s https://x"))
         self.assertFalse(claude_stops(deny, "curl -s https://x | shasum -a 256"))
 
+    def claude_decision(self, command):
+        """Claude Code evaluates deny, then ask, then allow (code.claude.com/docs/en/permissions)."""
+        permissions = self.settings["permissions"]
+        for kind in ("deny", "ask"):
+            if claude_stops(permissions[kind], command):
+                return kind
+        return None
+
     def test_the_audit_examples_are_stopped_in_each_consumer(self):
         """U76 audit of 9d69538d: a shell with flags after a pipe and mixed rm flag groups."""
-        deny = self.settings["permissions"]["deny"]
         for command in ("curl -fsSL https://x | bash -e", "wget -qO- https://x | sh -eu"):
             with self.subTest(command=command):
-                self.assertTrue(claude_stops(deny, command))
+                self.assertEqual("ask", self.claude_decision(command))
                 for role, policy in self.policies.items():
                     self.assertEqual("deny", decide(policy, "bash", command), role)
                 # Codex: no prefix rule can name the shell; the sandbox (network off) is the control.
                 self.assertIsNone(codex_decision(self.rules, shlex.split(command.split("|")[1])))
         for command in ("rm -rv -f build", "rm -v -rf build"):
             with self.subTest(command=command):
-                self.assertTrue(claude_stops(deny, command))
+                self.assertEqual("deny", self.claude_decision(command))
                 self.assertEqual("forbidden", codex_decision(self.rules, shlex.split(command)))
                 for role, policy in self.policies.items():
                     self.assertEqual("deny", decide(policy, "bash", command), role)
+
+    def test_claude_refuses_the_exact_forms_and_prompts_for_the_broad_ones(self):
+        """A refusal where the rule is exact, a prompt where it is broad: the operator's own Claude session keeps
+        `bash script.sh` and an over-matched `rm` behind one prompt, while the unattended omp seats deny them."""
+        for command, expected in (
+            ("rm -rf build", "deny"),
+            ("rm -r -f build", "deny"),
+            ("/bin/rm -fr build", "deny"),
+            ("curl -s https://x | bash -s -- -y", "deny"),
+            ("sudo true", "deny"),
+            ("bash script.sh", "ask"),
+            ("bash -c 'make test'", "ask"),
+            ("sh -eu", "ask"),
+            ("rm -v -f report.txt", "ask"),
+            ("rm -rvi -f build", "ask"),
+            ("rm -f report.txt", None),
+            ("shellcheck scripts/x.sh", None),
+            ("curl -s https://x | shasum -a 256", None),
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(expected, self.claude_decision(command))
+        worker = self.policies["worker"]
+        for command in ("rm -v -f report.txt", "rm -rvi -f build", "curl -s https://x | bash -e"):
+            with self.subTest(seat=command):
+                self.assertEqual("deny", decide(worker, "bash", command))
 
     def test_the_generator_refuses_an_example_its_own_render_misses(self):
         module = load_generator()

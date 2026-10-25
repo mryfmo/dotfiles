@@ -481,14 +481,22 @@ def omp_deny_matches(glob: str, command: str) -> bool:
     return any(regex.match(text) for text in texts)
 
 
-def entry_claude_rules(entry: dict[str, Any]) -> list[str]:
-    """`Bash(<words> *)` per expansion (a sole trailing ` *` also matches the bare command), then the entry's
-    `flag_globs` tails after each of its programs."""
-    rules = [f"Bash({' '.join(words)} *)" for pattern in entry["patterns"] for words in pattern_expansions(pattern)]
+def entry_claude_rules(entry: dict[str, Any], decision: str | None = None) -> list[str]:
+    """`Bash(<words> *)` per expansion (a sole trailing ` *` also matches the bare command), in the entry's `claude`
+    list, then the `flag_globs` tails after each of its programs, in `flag_globs.claude`; only `decision`'s when given.
+
+    The wildcard tails are broad (a `*` crosses spaces), so a manifest renders them as `ask` while the exact listed
+    forms keep `deny`: a refusal where the rule is exact, a prompt where it is broad.
+    """
+    rules = [
+        (entry["claude"], f"Bash({' '.join(words)} *)")
+        for pattern in entry["patterns"]
+        for words in pattern_expansions(pattern)
+    ]
     globs = entry.get("flag_globs")
     if globs:
-        rules += [f"Bash({program} {tail})" for program in globs["programs"] for tail in globs["tails"]]
-    return list(dict.fromkeys(rules))
+        rules += [(globs["claude"], f"Bash({p} {tail})") for p in globs["programs"] for tail in globs["tails"]]
+    return list(dict.fromkeys(rule for kind, rule in rules if decision in (None, kind)))
 
 
 def entry_omp_denies(entry: dict[str, Any]) -> list[str]:
@@ -558,13 +566,14 @@ def validate_command_policy_shape(entry: Any, seen: set[str]) -> str:
     globs = entry.get("flag_globs")
     if globs is not None and (
         not isinstance(globs, dict)
-        or sorted(globs) != ["programs", "tails"]
+        or sorted(globs) != ["claude", "programs", "tails"]
+        or globs["claude"] not in ("deny", "ask")
         or not all(
             isinstance(values, list) and values and all(isinstance(v, str) and v.strip() == v and v for v in values)
-            for values in globs.values()
+            for values in (globs["programs"], globs["tails"])
         )
     ):
-        fail(f"{label}.flag_globs must map programs and tails to non-empty lists of strings")
+        fail(f"{label}.flag_globs must map claude (deny or ask), programs and tails (non-empty lists of strings)")
     for key in ("examples", "not_examples", "sandbox_examples"):
         values = entry.get(key, [])
         if not isinstance(values, list) or not all(isinstance(value, str) and value.strip() for value in values):
@@ -616,10 +625,8 @@ def command_policy(manifest: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def claude_command_rules(manifest: dict[str, Any], decision: str) -> list[str]:
-    """The Claude rules of every command_policy entry whose `claude` is `decision`, in list order."""
-    rules = [
-        rule for entry in command_policy(manifest) if entry["claude"] == decision for rule in entry_claude_rules(entry)
-    ]
+    """The Claude rules of every command_policy entry rendered in `decision` (deny or ask), in list order."""
+    rules = [rule for entry in command_policy(manifest) for rule in entry_claude_rules(entry, decision)]
     return list(dict.fromkeys(rules))
 
 

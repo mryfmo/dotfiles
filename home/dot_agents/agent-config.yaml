@@ -89,9 +89,12 @@ omp:
 
 # The dangerous GitHub-write and destructive commands no agent runs on its own (regime-cutover U76).
 # One list, rendered by scripts/generate-agent-configs.py to three consumers:
-# - Claude Code: `Bash(<words> *)` per expansion (a sole trailing ` *` also matches the bare command),
-#   then `Bash(<program> <tail>)` per `flag_globs` tail, in `deny` or `ask` as `claude` says, after the
-#   hand-written claude.permissions rules. Claude Code splits a line at `&&`, `||`, `;`, `|`, `&` and
+# - Claude Code: `Bash(<words> *)` per expansion (a sole trailing ` *` also matches the bare command)
+#   in `deny` or `ask` as `claude` says, then `Bash(<program> <tail>)` per `flag_globs` tail in
+#   `flag_globs.claude`, after the hand-written claude.permissions rules. A refusal where the rule is
+#   exact, a prompt where it is broad: the wildcard tails and a bare-shell prefix are `ask`, so a
+#   false positive costs one prompt in the operator's session, never a refusal. Claude Code evaluates
+#   deny before ask, so an exact deny still wins. It splits a line at `&&`, `||`, `;`, `|`, `&` and
 #   newlines and matches each subcommand; a `*` matches any text, spaces included
 #   (code.claude.com/docs/en/permissions, "Wildcard patterns", "Compound commands").
 # - Codex: one prefix_rule per pattern in home/dot_codex/rules/command-policy.rules, decision `codex`
@@ -131,10 +134,11 @@ command_policy:
   - id: rm-recursive-force
     # Codex: the listed groupings of the recursive and force flags, joined or apart, alone or with -v,
     # by bare name or by path; any other grouping (`rm -rvi -f`, `rm -i -rf`) is left to its sandbox.
-    # Claude and omp also deny, through `flag_globs`, a recursive group and a force group in separate
-    # flags in either order with any other letters (`-*r* -*f*`), and a joined group after another
-    # flag (`* -*r*f*`). Their `*` crosses spaces, so these over-match on the deny side: `rm -v -f
-    # report.txt` is refused, and for omp, whose globs see the whole line, `rm -f x && ls -R` too.
+    # Claude also prompts for (`flag_globs.claude: ask`) and omp, unattended, denies a recursive group
+    # and a force group in separate flags in either order with any other letters (`-*r* -*f*`), and a
+    # joined group after another flag (`* -*r*f*`). Their `*` crosses spaces, so they over-match:
+    # `rm -v -f report.txt` prompts in Claude and is refused by omp, and omp, whose globs see the whole
+    # line, also refuses `rm -f x && ls -R`. The exact listed forms stay a Claude deny.
     # Not caught by any consumer: a joined first group outside the Codex list (`rm -dRf`, `rm -rfi`)
     # and a flag after the operands (`rm build -rf`); the sandboxes are the control.
     patterns:
@@ -152,6 +156,7 @@ command_policy:
       - [*rm, &force_verbose [-fv, -vf], *recursive]
       - [*rm, *recursive, *force_verbose]
     flag_globs:
+      claude: ask
       programs: *rm
       tails: ["-*r* -*f*", "-*f* -*r*", "-*R* -*f*", "-*f* -*R*", "* -*r*f*", "* -*f*r*", "* -*R*f*", "* -*f*R*"]
     claude: deny
@@ -194,16 +199,17 @@ command_policy:
     examples: [bash -s -- -y, sh -s]
     not_examples: [bash -lc true, sh script.sh]
   - id: shell-after-pipe
-    # `curl ... | sh`, `| bash -e`, `| sh -eu`. Claude: `Bash(<shell> *)` denies the shell after the
-    # pipe with any flags, and with it every shell run as a command (`bash script.sh`, `bash -c '...'`,
-    # which also closes that spelling of the other rules); run a script by its path instead. omp: a
-    # `|` followed later on the line by a word ending in `sh` (sh, bash, zsh, dash, /bin/sh) with or
-    # without flags; this also refuses `... | ssh host` and `a | b && ./x.sh`. Codex: no prefix rule
-    # can name a shell without matching Codex's own `bash -lc` wrapper, so its sandbox (network off)
-    # is the control and the download fails there.
+    # `curl ... | sh`, `| bash -e`, `| sh -eu`. Claude: `Bash(<shell> *)` asks for the shell after the
+    # pipe with any flags, and with it for every shell run as a command (`bash script.sh`,
+    # `bash -c '...'`, which also puts that spelling of the other rules behind a prompt); `ask`, not
+    # `deny`, because the rule is that broad. omp (unattended seats) denies a `|` followed later on
+    # the line by a word ending in `sh` (sh, bash, zsh, dash, /bin/sh) with or without flags; this
+    # also refuses `... | ssh host` and `a | b && ./x.sh`. Codex: no prefix rule can name a shell
+    # without matching Codex's own `bash -lc` wrapper, so its sandbox (network off) is the control and
+    # the download fails there.
     patterns:
       - [*shells]
-    claude: deny
+    claude: ask
     codex: sandbox
     omp_derived: false
     omp_globs: ["*|*sh", "*|*sh *"]
@@ -596,7 +602,7 @@ claude:
     # globs below cover reads; a sandboxed write to a `.env*` file inside the
     # working directory is not blocked there, since Linux `denyWrite` accepts
     # only a trailing `/**` (known limit, U68). The generator appends the
-    # command_policy `claude: deny` rules after these; the old
+    # command_policy deny rules after these; the old
     # `Bash(curl * | sh)` rule left with them, since Claude Code matches each
     # piped subcommand on its own and no subcommand holds `| sh` (F038).
     deny:
@@ -606,7 +612,7 @@ claude:
       - Edit(.env*)
       - Read(secrets/**)
       - Read(config/credentials.json)
-    # The generator appends the command_policy `claude: ask` rules after these.
+    # The generator appends the command_policy ask rules after these.
     ask:
       # The two commands that run outside the sandbox (sandbox.excludedCommands
       # below) prompt every time, in auto mode too: ask rules are evaluated

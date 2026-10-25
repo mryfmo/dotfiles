@@ -794,14 +794,18 @@ renders it three ways, each with that consumer's own matcher: Claude Code
 deny block of every omp seat policy and of the plain-launch omp config. The
 generator refuses an entry whose own renders let one of its examples through,
 and `tests/unit/test_command_policy.py` fails when a render drops an entry.
-Codex forbids the listed `rm` flag groupings only; Claude and omp also deny a
-recursive and a force flag group in any order with other letters (wildcard
-rules, which over-match on the deny side, `rm -v -f report.txt` for one).
-Claude denies every shell run as a command (`Bash(sh *)`, `Bash(bash *)`,
-`Bash(zsh *)`, `Bash(dash *)`), so `curl … | bash -e` is refused after the
-pipe is split and a script runs by its path; omp denies any line with a `|`
-followed by a word ending in `sh`; Codex has no rule for it, since a rule on a
-shell would match its own `bash -lc`, and relies on its sandbox. A text
+Claude refuses where a rule is exact and prompts where it is broad, since a
+false positive lands in the operator's own session: it denies the listed
+recursive force `rm` forms, and asks for a recursive and a force flag group
+in any order with other letters (wildcard rules that over-match, so
+`rm -v -f report.txt` prompts) and for every shell run as a command
+(`Bash(sh *)`, `Bash(bash *)`, `Bash(zsh *)`, `Bash(dash *)`), so
+`curl … | bash -e` prompts after the pipe is split, and so do
+`bash script.sh` and `bash -c …`. The unattended omp seats deny all of these:
+the same `rm` wildcards, and any line with a `|` followed by a word ending in
+`sh`. Codex forbids the listed `rm` groupings only and has no rule for a shell
+after a pipe, since a rule on a shell would match its own `bash -lc`; it relies
+on its sandbox for both. A text
 rule never sees another spelling of the program (`git -C`, `command gh`, a
 gh alias made earlier, a variable holding the name, a glob, `eval`, a script
 or make target that runs it): for those the

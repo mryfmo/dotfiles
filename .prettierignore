@@ -12,3 +12,6 @@ plans/
 # CompactionDB-managed block: vendor/compactiondb/install.py rewrites it without
 # the blank lines prettier would add, so formatting it would ping-pong.
 CLAUDE.md
+# Reviewed upstream plugin trees (U91): byte-exact copies whose content hash is the
+# pin in scripts/plugin-pins.json, so formatting them would break the pin.
+tests/fixtures/claude-plugins/

@@ -771,6 +771,26 @@ to 30 minutes after each failed launch); one stopped with `regime-stop` or
 lock, so a stop never races a relaunch. Each decision is a line in
 `<store>/supervisor.log` (`docs/orchestrator-seat.md`, "The supervisor").
 
+### Standing rules per agent
+
+The user-level instructions each agent starts with come from one source:
+`standing_rules` in `home/dot_agents/agent-config.yaml` names every rule file
+under `home/dot_config/claude/rules/` and the agents it is for, and
+`scripts/generate-agent-configs.py` renders each agent's copy as a chezmoi
+template that includes the source at apply time. Claude Code gets
+`~/.claude/rules/<name>.md`, Codex gets one `~/.codex/AGENTS.md`, and the omp
+orchestrator and worker seats get `~/.agents/omp/rules/<role>.md`, which
+`hcom-seat` and `omp-run.sh` pass as `--append-system-prompt` (the seat
+overlays disable omp's native provider, so a profile context file never
+loads, and omp reads no `~/.claude` rule and no `~/.codex` file). No rule
+reaches an agent its audience does not name, and the audit takes none: its
+rules are `AGENTS.md` at `origin/main`. All of these are regular files, so a
+checkout changes no agent's instructions until `chezmoi apply`.
+`~/.claude/rules/pstack-models.md`,
+pstack's per-role models in Claude Code, renders from
+`standing_rules.pstack_models` and the `model_profiles` it names; a write by
+`setup-pstack` is replaced at the next apply.
+
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt, and `herdr` is the real Herdr CLI: it

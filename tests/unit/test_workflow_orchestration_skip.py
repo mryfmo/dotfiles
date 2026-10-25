@@ -382,9 +382,10 @@ class DecisionTest(unittest.TestCase):
                     env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head}
                     self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
 
-    def test_the_unit_test_decision_skips_only_the_allowlisted_paths(self) -> None:
+    def test_the_unit_test_decision_skips_only_the_allowlisted_paths_on_every_row(self) -> None:
         # F051: a pattern of paths that need the tests let every other root file skip them (.shellcheckrc, read
-        # by make shellcheck; renovate.json, read by test_supply_chain_policy.py). Only the allowlisted paths skip.
+        # by make shellcheck; renovate.json, read by test_supply_chain_policy.py). Only the allowlisted paths skip,
+        # and one script decides for the Linux and the macOS rows alike.
         script = decide_script(TEST, "test")
         cases = {
             ".shellcheckrc": "true",
@@ -396,7 +397,6 @@ class DecisionTest(unittest.TestCase):
             ".coderabbit.yaml": "true",
             ".github/dependabot.yml": "true",
             ".github/funding.yaml": "true",
-            "docs/x.md": "true",
             "new-root-file": "true",
             ".orchestration/y.md": "false",
             ".ua/knowledge-graph.json": "false",
@@ -404,54 +404,65 @@ class DecisionTest(unittest.TestCase):
             "LICENSE": "false",
             # A .png anywhere else, or LICENSE in a subdirectory, is not on the allowlist.
             "home/x.png": "true",
+            ".github/sub/x.png": "true",
             "vendor/x/LICENSE": "true",
+            # Audit of 5c08e431: BSD grep -z anchored $ at the newline, so this name read as LICENSE on macOS.
+            "home/a\nLICENSE": "true",
+            # A control character keeps a path off the allowlist, inside an allowlisted directory too.
+            ".orchestration/a\nb": "true",
+            ".ua/a\tb": "true",
         }
+        rows = ("ubuntu-24.04", "macos-14", "macos-15")
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
+            heads = {
+                path: pull_request_head(clone, git, f"a-{index}", [(path, "x\n")]) for index, path in enumerate(cases)
+            }
+            heads[""] = pull_request_head(clone, git, "a-empty")
+            cases[""] = "true"  # an empty diff runs the tests on every row
             for path, expected in cases.items():
-                with self.subTest(path=path):
-                    head = pull_request_head(clone, git, f"a-{path.replace('/', '_')}", [(path, "x\n")])
-                    env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head, "OS": "ubuntu-24.04"}
-                    self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
-            with self.subTest(case="empty"):
-                head = pull_request_head(clone, git, "a-empty")
-                env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": head, "OS": "ubuntu-24.04"}
-                self.assertIn("should_test=true\n", run_decision(script, env, clone))
+                for os_name in rows:
+                    with self.subTest(path=path, os=os_name):
+                        env = {"EVENT_NAME": "pull_request", "BASE_REF": "main", "HEAD_SHA": heads[path], "OS": os_name}
+                        self.assertIn(f"should_test={expected}\n", run_decision(script, env, clone))
 
-    def test_the_unit_test_decision_fails_when_grep_fails(self) -> None:
-        # Standing order 21: grep's exit 2 fails the required context instead of reading as "only skippable paths".
+    def test_the_unit_test_decision_fails_when_the_diff_fails(self) -> None:
+        # Standing order 21: a failed `git diff` fails the required context instead of reading as "no path changed".
         script = decide_script(TEST, "test")
         with tempfile.TemporaryDirectory() as temp:
             clone, git = scratch_repository(Path(temp))
-            head = pull_request_head(clone, git, "g-records", [(".orchestration/y.md", "y\n")])
+            head = pull_request_head(clone, git, "g-home", [("home/b", "b\n")])
             shim = Path(temp) / "shim"
             shim.mkdir()
-            (shim / "grep").write_text("#!/bin/sh\nexit 2\n")
-            (shim / "grep").chmod(0o755)
-            with tempfile.TemporaryDirectory() as runner_temp:
-                output = Path(runner_temp) / "github-output"
-                output.touch()
-                result = subprocess.run(
-                    ["bash", "-c", script],
-                    cwd=clone,
-                    env={
-                        **os.environ,
-                        "EVENT_NAME": "pull_request",
-                        "BASE_REF": "main",
-                        "HEAD_SHA": head,
-                        "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}",
-                        "GIT_CONFIG_GLOBAL": os.devnull,
-                        "GIT_CONFIG_NOSYSTEM": "1",
-                        "GITHUB_OUTPUT": str(output),
-                        "RUNNER_TEMP": runner_temp,
-                    },
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                self.assertNotEqual(result.returncode, 0, result.stdout)
-                self.assertIn("failed with exit 2", result.stderr)
-                self.assertNotIn("should_test=", output.read_text())
+            (shim / "git").write_text(
+                f'#!/bin/sh\nfor a in "$@"; do [ "$a" = diff ] && exit 128; done\nexec {shutil.which("git")} "$@"\n'
+            )
+            (shim / "git").chmod(0o755)
+            for os_name in ("ubuntu-24.04", "macos-15"):
+                with self.subTest(os=os_name), tempfile.TemporaryDirectory() as runner_temp:
+                    output = Path(runner_temp) / "github-output"
+                    output.touch()
+                    result = subprocess.run(
+                        ["bash", "-c", script],
+                        cwd=clone,
+                        env={
+                            **os.environ,
+                            "EVENT_NAME": "pull_request",
+                            "BASE_REF": "main",
+                            "HEAD_SHA": head,
+                            "OS": os_name,
+                            "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}",
+                            "GIT_CONFIG_GLOBAL": os.devnull,
+                            "GIT_CONFIG_NOSYSTEM": "1",
+                            "GITHUB_OUTPUT": str(output),
+                            "RUNNER_TEMP": runner_temp,
+                        },
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(128, result.returncode, result.stdout + result.stderr)
+                    self.assertNotIn("should_test=", output.read_text())
 
     def test_the_unit_test_decision_runs_the_registry_test_for_a_flakes_only_diff(self) -> None:
         # audit:4fe2438:2: test_ci_rerun.py validates .github/flakes.yaml, so a change to it alone must run the tests.
@@ -626,6 +637,9 @@ class DecisionTest(unittest.TestCase):
                 # a01 audit P2: Markdown under home/ or install/ is applied or installed, so it keeps macOS.
                 ("home-markdown", [("home/dot_claude/skills/x/SKILL.md", "x\n")], "true"),
                 ("install-markdown", [("install/common/README.md", "x\n")], "true"),
+                # A control character keeps a path off the os-independent list too (BSD grep -z read docs/a as docs/).
+                ("docs-newline", [("home/a\ndocs/b.md", "x\n")], "true"),
+                ("root-markdown-newline", [("home/a\nREADME.md", "x\n")], "true"),
             ):
                 head = pull_request_head(clone, git, f"m-{name}", writes)
                 for event, os_name, expected in (

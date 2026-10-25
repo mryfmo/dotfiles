@@ -98,38 +98,57 @@ jobs:
 
           echo "diff_range=${diff_range}" >> "${GITHUB_OUTPUT}"
 
-          # An allowlist of the paths no test, lint or formatting check reads: a diff made of them alone skips the
-          # unit tests, and every other path runs them (F051). The records under .orchestration/ and the .ua/
-          # index (T128 INV-2), the README images under .github/, and LICENSE. Root configuration files are not
-          # on it: .shellcheckrc, renovate.json, mise.toml and the rest are read by make shellcheck or by the tests.
-          # Neither is docs/: the formatting check reads its Markdown and tests read its pages.
-          skippable='^(\.orchestration/|\.ua/|\.github/[^/]+\.png$|LICENSE$)'
-          # macOS adds nothing to a pull request whose every other path is documentation or a formatting config:
-          # a Python, shell, install, home, bats, Makefile or workflow change keeps it (F154), and a push to main
-          # runs the full matrix.
-          os_independent='^(docs/|plans/|[^/]+\.md$|ruff\.toml$|\.prettierignore$)'
+          # One decision for every matrix row. A diff skips the unit tests only when it lists at least one path
+          # and every path is on the allowlist of paths no test, lint or formatting check reads (F051): the records
+          # under .orchestration/ and the .ua/ index (T128 INV-2), a README image directly in .github/, and LICENSE.
+          # Root configuration files are not on it: .shellcheckrc, renovate.json, mise.toml and the rest are read by
+          # make shellcheck or by the tests. Neither is docs/: the formatting check reads its Markdown and tests read
+          # its pages. An empty diff runs the tests on every row: nothing proves it safe to skip.
+          # Each path is matched whole with case, never by grep over the NUL-separated list: BSD grep -z (macOS)
+          # anchors ^ and $ at a newline inside a name, so home/a<newline>LICENSE would read as LICENSE. A path
+          # holding a control character is never on a list.
+          skippable() {
+            case "$1" in
+              *[[:cntrl:]]*) return 1 ;;
+              .orchestration/* | .ua/* | LICENSE) return 0 ;;
+              .github/*/*) return 1 ;;
+              .github/*.png) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          # macOS adds nothing to a pull request whose every other path is documentation or a formatting config: a
+          # Python, shell, install, home, bats, Makefile or workflow change keeps it (F154), and a push to main runs
+          # the full matrix.
+          os_independent() {
+            case "$1" in
+              *[[:cntrl:]]*) return 1 ;;
+              docs/* | plans/* | ruff.toml | .prettierignore) return 0 ;;
+              */*) return 1 ;;
+              *.md) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
           # --no-renames lists both sides of a rename, so a file moved out of home/ into .orchestration/ still runs
           # the tests, and -z lists every path raw: Git quotes a name holding a quote, a backslash or a control
-          # character even with core.quotePath off, and the quoted form would miss the patterns.
+          # character even with core.quotePath off. A failed diff fails this job (set -e) instead of reading as
+          # "no path changed".
           changed="${RUNNER_TEMP}/changed-paths"
           git diff -z --no-renames --name-only "${diff_range}" > "${changed}"
-          # grep exits 1 when no path matches and 2 when it fails: a failure fails the job instead of reading as
-          # "only skippable paths changed".
-          paths_match() {
-            local status=0
-            grep -zE "$@" || status=$?
-            if [ "${status}" -gt 1 ]; then
-              echo "grep -zE $* failed with exit ${status}" >&2
-              exit 1
-            fi
-            return "${status}"
-          }
-          # An empty diff runs the tests: nothing proves it safe to skip.
-          if [ -s "${changed}" ] && ! paths_match -qv "${skippable}" "${changed}"; then
+          paths=0
+          all_skippable=true
+          all_os_independent=true
+          while IFS= read -r -d '' path; do
+            paths=$((paths + 1))
+            skippable "${path}" && continue
+            all_skippable=false
+            os_independent "${path}" || all_os_independent=false
+          done < "${changed}"
+          if [ "${paths}" -eq 0 ]; then
+            echo "should_test=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${all_skippable}" = true ]; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
             echo "skip_reason=only records, the index, images or LICENSE changed" >> "${GITHUB_OUTPUT}"
-          elif [[ "${OS:-}" == macos-* ]] && [ "${EVENT_NAME}" = pull_request ] &&
-            ! paths_match -qv "${skippable}|${os_independent}" "${changed}"; then
+          elif [[ "${OS:-}" == macos-* ]] && [ "${EVENT_NAME}" = pull_request ] && [ "${all_os_independent}" = true ]; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
             echo "skip_reason=os-independent on ${OS}" >> "${GITHUB_OUTPUT}"
           else

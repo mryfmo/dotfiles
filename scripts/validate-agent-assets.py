@@ -898,11 +898,13 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         f"{codex_path} Codex plugins",
     )
     for marketplace_name, marketplace_config in manifest_codex.get("marketplaces", {}).items():
-        revision = manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(marketplace_name, {})
-        expected = {
-            **{key: revision[key] for key in ("last_updated", "last_revision") if key in revision},
-            **marketplace_config,
-        }
+        plugins = manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {})
+        refs = [
+            plugin["ref"]
+            for plugin_id, plugin in plugins.items()
+            if plugin_id.endswith(f"@{marketplace_name}") and "ref" in plugin
+        ]
+        expected = {**({"ref": refs[0]} if refs else {}), **marketplace_config}
         if data.get("marketplaces", {}).get(marketplace_name) != expected:
             fail(f"{codex_path} must render Codex marketplace {marketplace_name}")
     validate_exact_keys(
@@ -937,9 +939,11 @@ ASSET_VERIFY_BY_SOURCE = {
     "git-commit": {"sha256"},
     "installer-script": {"installer-sha256"},
     "vendored": {"manifest-sha256", "none"},
-    "claude-plugin": {"none"},
-    "codex-plugin": {"none"},
-    "gh-extension": {"none"},
+    # No version argument exists (Claude Code, Codex catalogs) or no checksum is published (gh-poi):
+    # the pin is compared with what is installed, by update-agent-assets.sh and make doctor.
+    "claude-plugin": {"installed-version"},
+    "codex-plugin": {"installed-version"},
+    "gh-extension": {"installed-version"},
 }
 # `release: latest` resolves at install time; only these sources can do that.
 ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
@@ -1333,9 +1337,7 @@ def validate_crit_install_assets(manifest: dict[str, Any]) -> None:
         "crit-darwin-amd64",
         "crit-darwin-arm64",
         "crit@crit",
-        "claude plugin enable",
-        "claude_crit_plugin_is_enabled",
-        "if claude_crit_plugin_is_enabled; then",
+        'converge_claude_step "${CLAUDE_CRIT_PLUGIN}"',
         "crit install codex-plugin --force",
         "tomasz-tomczyk/crit",
     ):
@@ -1424,8 +1426,7 @@ def validate_understand_anything_assets(manifest: dict[str, Any]) -> None:
         "understand-anything@understand-anything",
         "CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL",
         "CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256",
-        'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
-        "if claude_understand_anything_plugin_is_enabled; then",
+        'converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
         "update_claude_understand_anything",
         "update_codex_understand_anything",
         "provision_codex_understand_anything_runtime",

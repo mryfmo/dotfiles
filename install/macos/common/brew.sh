@@ -9,8 +9,8 @@
 set -Eeuo pipefail
 
 # Rendered from assets.homebrew-installer in home/dot_agents/agent-config.yaml; change it there.
-readonly HOMEBREW_INSTALL_COMMIT="c7952e40b7957268f61643152f4db725379b292e"
-readonly HOMEBREW_INSTALL_SHA256="99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d"
+readonly HOMEBREW_INSTALL_COMMIT="09c62fc577ec170172b0a184060f141a2c622dc1"
+readonly HOMEBREW_INSTALL_SHA256="5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148"
 
 if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib.util
 import io
 import hashlib
 import json
@@ -869,6 +870,247 @@ def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = No
     ]
 
 
+PLUGIN_PINS = ROOT / "scripts/plugin-pins.json"
+# Marketplaces whose plugins this repository does not pin: the ones OpenAI ships with Codex, and this
+# repository's own (crit@mryfmo-personal-plugins is the copy the pinned crit CLI writes, assets.crit).
+UNPINNED_CODEX_MARKETPLACES = frozenset(
+    {"openai-bundled", "openai-primary-runtime", "openai-curated-remote", "mryfmo-personal-plugins"}
+)
+
+
+def load_pin_records():
+    """scripts/pin_records.py, the one strict reader of every record the pin checks use."""
+    spec = importlib.util.spec_from_file_location("pin_records", ROOT / "scripts/pin_records.py")
+    if spec is None or spec.loader is None:
+        raise ImportError("cannot load scripts/pin_records.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["pin_records"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+records = load_pin_records()
+RecordError = records.RecordError
+present = records.present
+
+
+def claude_plugin_pin_findings(home: Path, pins: dict) -> list[str]:
+    """Fail for a user-scope Claude Code plugin at another version than its pin; warn for unpinned enabled ones.
+
+    make update manages user scope only, the scope this repository installs: the pins are checked against the
+    user-scope installations, and "enabled" is read from the user settings it manages. A project- or
+    local-scope installation belongs to its project and is reported as not managed, never as a pass. Both
+    records are read by pin_records, so a malformed entry is an error, never "not installed".
+    """
+    findings = []
+    claude_dir = records.agent_home("claude", home)
+    installed_path = claude_dir / "plugins/installed_plugins.json"
+    try:
+        installed = records.load_claude_installs(installed_path)
+    except RecordError as error:
+        return [f"Claude Code plugins: {error}; plugin pins not checked"]
+    if installed is None:
+        findings.append(
+            f"WARN: Claude Code plugins: {installed_path} is missing, so no recorded plugin is installed; run make update"
+        )
+        installed = {}
+    for plugin_id, entries in sorted(installed.items()):
+        for entry in entries:
+            if entry.scope != "user":
+                findings.append(
+                    f"WARN: plugin {plugin_id} installed in {entry.scope} scope at "
+                    f"{entry.project_path or entry.install_path}: not managed"
+                )
+    for plugin_id, pin in sorted(pins.items()):
+        versions = sorted({entry.version for entry in installed.get(plugin_id, []) if entry.scope == "user"})
+        if not versions:
+            findings.append(f"WARN: Claude Code plugin {plugin_id} is not installed (pin {pin.pin})")
+        elif versions != [pin.pin]:
+            findings.append(
+                f"Claude Code plugin {plugin_id} is installed at {', '.join(versions)}, not its pin {pin.pin} "
+                "(assets.claude-plugins in home/dot_agents/agent-config.yaml); review that release and record it, "
+                "or run make update to return to the pin"
+            )
+    settings_path = claude_dir / "settings.json"
+    try:
+        enabled = records.load_claude_enabled(settings_path) or {}
+    except RecordError as error:
+        return [*findings, f"Claude Code plugins: {error}; unpinned plugins not checked"]
+    # The user settings this repository manages; an enable only in a project is that project's own.
+    for plugin_id in sorted(enabled):
+        if enabled[plugin_id] and plugin_id not in pins:
+            findings.append(
+                f"WARN: Claude Code plugin {plugin_id} is enabled but has no pin in assets.claude-plugins; "
+                "record its reviewed version there or disable it"
+            )
+    return findings
+
+
+def codex_plugin_pin_findings(home: Path, pins: dict, script: Path) -> list[str]:
+    """Fail for a Codex plugin or git marketplace off its pin; warn for an enabled third-party plugin without one.
+
+    The copy checked is the one Codex loads (pin_records.load_codex_copy documents Codex's rule); the
+    marketplace's install record and the config.toml marketplace table must name the pinned source.
+    """
+    findings = []
+    codex_dir = records.agent_home("codex", home)
+    config_path = codex_dir / "config.toml"
+    try:
+        config = records.load_codex_config(config_path)
+    except (RecordError, ImportError) as error:
+        return [f"Codex plugins: {error}; plugin pins not checked"]
+    for plugin_id, pin in sorted(pins.items()):
+        plugin, _, marketplace = plugin_id.partition("@")
+        try:
+            root = records.confined(PLUGIN_PINS, f"codex.{plugin_id}", codex_dir / "plugins/cache", marketplace, plugin)
+            copy = records.load_codex_copy(root, plugin, script)
+        except RecordError as error:
+            findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify its pin")
+            continue
+        if pin.ref is not None:
+            try:
+                install_record = (
+                    records.confined(PLUGIN_PINS, f"codex.{plugin_id}", codex_dir / ".tmp/marketplaces", marketplace)
+                    / ".codex-marketplace-install.json"
+                )
+                install = records.load_marketplace_install(install_record, pin.marketplace)
+                clone_present = present(install_record.parent)
+                if config is not None and marketplace in config.marketplaces:
+                    records.codex_marketplace_state(config_path, marketplace, pin.marketplace)
+            except (RecordError, ImportError) as error:
+                findings.append(f"Codex marketplace {marketplace}: {error}")
+            else:
+                if install is not None and install.revision != pin.ref:
+                    findings.append(
+                        f"Codex marketplace {marketplace} is at {install.revision}, not its pinned ref {pin.ref}; "
+                        "run chezmoi apply, then make update"
+                    )
+                elif install is None and (copy is not None or clone_present):
+                    findings.append(
+                        f"Codex marketplace {marketplace}: {install_record} is missing, so its pinned ref {pin.ref} "
+                        "cannot be checked; run make update"
+                    )
+        if copy is None:
+            findings.append(f"WARN: Codex plugin {plugin_id} is not installed (pin {pin.pin})")
+            continue
+        if copy.version != pin.pin:
+            findings.append(
+                f"Codex plugin {plugin_id} is installed at {copy.version}, not its pin {pin.pin} "
+                "(assets.codex-plugins in home/dot_agents/agent-config.yaml); review that release and record it"
+            )
+        # The commit a git copy was installed from, resolved by git itself (HEAD is often `ref: refs/heads/main`).
+        try:
+            git_dir = records.confined(root, "(version directory)", root, copy.version_dir) / ".git"
+            has_git = pin.ref is not None and present(git_dir)
+        except RecordError as error:
+            findings.append(f"Codex plugin {plugin_id}: {error}; cannot verify the commit its copy came from")
+            continue
+        if has_git:
+            try:
+                resolved = subprocess.run(
+                    ["git", f"--git-dir={git_dir}", "rev-parse", "--verify", "HEAD^{commit}"],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                commit, detail = resolved.stdout.strip(), resolved.stderr.strip()
+                failed = resolved.returncode != 0
+            except OSError as error:
+                commit, detail, failed = "", repr(error), True
+            if failed or not re.fullmatch(r"[0-9a-f]{40}", commit):
+                findings.append(
+                    f"Codex plugin {plugin_id}: git cannot resolve the commit of {git_dir} "
+                    f"({detail or commit!r}); cannot verify it"
+                )
+            elif commit != pin.ref:
+                findings.append(
+                    f"Codex plugin {plugin_id} copy {git_dir.parent} was installed from {commit}, "
+                    f"not the pinned ref {pin.ref}"
+                )
+    for plugin_id, on in sorted((config.plugins if config else {}).items()):
+        third_party = plugin_id.partition("@")[2] not in UNPINNED_CODEX_MARKETPLACES
+        if on and third_party and plugin_id not in pins:
+            findings.append(
+                f"WARN: Codex plugin {plugin_id} is enabled but has no pin in assets.codex-plugins; "
+                "record its reviewed version there or disable it"
+            )
+    return findings
+
+
+def gh_extension_pin_findings(home: Path, pins: dict[str, str]) -> list[str]:
+    """Fail for a gh extension at another tag than its pin (assets.gh-extensions), installed unpinned, foreign
+    (a fork of the same name) or without a readable manifest."""
+    gh_dir = records.agent_home("gh", home)
+    findings = []
+    for repository, pin in sorted(pins.items()):
+        try:
+            extension = records.load_gh_extension(gh_dir, repository)
+        except RecordError as error:
+            findings.append(f"gh extension {repository}: {error}; run make update to reinstall it pinned")
+            continue
+        if extension is None:
+            findings.append(
+                f"WARN: gh extension {repository} is not installed (pin {pin}); run make update after make gh-auth"
+            )
+        elif extension.tag != pin:
+            findings.append(
+                f"gh extension {repository} is installed at {extension.tag}, not its pin {pin}; run make update"
+            )
+        elif not extension.pinned:
+            findings.append(
+                f"gh extension {repository} is at its pin {pin} but installed unpinned, so gh extension upgrade "
+                "can move it; run make update to reinstall it pinned"
+            )
+    return findings
+
+
+def plugin_pin_findings(
+    home: Path | None = None, pins_path: Path | None = None, script: Path | None = None
+) -> list[str]:
+    """Compare every recorded plugin and gh extension pin with what this host runs."""
+    home = home or HOME
+    pins_path = pins_path or PLUGIN_PINS
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    try:
+        pins = records.load_plugin_pins(pins_path)
+    except RecordError as error:
+        return [f"plugin pins unreadable: {error}"]
+    return [
+        *claude_plugin_pin_findings(home, pins.claude),
+        *codex_plugin_pin_findings(home, pins.codex, script),
+        *gh_extension_pin_findings(home, pins.gh_extensions),
+    ]
+
+
+def asset_pin_findings(
+    agent: str, asset_id: str, home: Path | None = None, pins_path: Path | None = None, script: Path | None = None
+) -> list[str]:
+    """The doctor's own pin check for one asset (agent claude, codex or gh; a plugin id or <owner>/<repo>).
+
+    update-agent-assets.sh runs it (--pin-check) after each convergence step, so the updater and the doctor
+    never judge a pin differently. The checks run with only that asset's pin, so every error they return
+    concerns it (or a record it depends on); a warning about another plugin is dropped.
+    """
+    home = home or HOME
+    pins_path = pins_path or PLUGIN_PINS
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    try:
+        pins = records.load_plugin_pins(pins_path)
+    except RecordError as error:
+        return [f"plugin pins unreadable: {error}"]
+    table = {"claude": pins.claude, "codex": pins.codex, "gh": pins.gh_extensions}.get(agent)
+    if table is None or asset_id not in table:
+        return [f"plugin pins: {agent} {asset_id} is not recorded in {pins_path}"]
+    subset = {asset_id: table[asset_id]}
+    if agent == "claude":
+        findings = claude_plugin_pin_findings(home, subset)
+    elif agent == "codex":
+        findings = codex_plugin_pin_findings(home, subset, script)
+    else:
+        findings = gh_extension_pin_findings(home, subset)
+    return [finding for finding in findings if not is_warning(finding) or asset_id in finding]
+
+
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 GH_LOGIN_HINT = "run make gh-auth"
 
@@ -1109,6 +1351,7 @@ def check() -> list[str]:
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
     failures.extend(codex_hook_trust_warnings())
+    failures.extend(plugin_pin_findings())
     failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures
@@ -1130,7 +1373,17 @@ def main(argv: list[str] | None = None) -> int:
         metavar="EPOCH",
         help="show recent managed-asset updates, or compare them with EPOCH",
     )
+    parser.add_argument(
+        "--pin-check",
+        nargs=2,
+        metavar=("AGENT", "ID"),
+        help="run the doctor's pin check for one asset (claude|codex|gh and its id); exit 1 on any error",
+    )
     args = parser.parse_args(argv)
+    if args.pin_check is not None:
+        findings = asset_pin_findings(*args.pin_check)
+        print_failures(findings)
+        return 1 if [finding for finding in findings if not is_warning(finding)] else 0
     if args.session_staleness is not None:
         return run_session_staleness(args.session_staleness or None)
     failures = check()

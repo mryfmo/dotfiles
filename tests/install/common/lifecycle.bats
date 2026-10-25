@@ -97,9 +97,10 @@ EOF
 @test "[common] update reports unmerged files before the dirty notice" {
     run_update_fixture running 0 0 0 0 0 "" main origin/main 1 0 1
     [ "$status" -eq 0 ]
-    ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
     [[ "$output" == *"index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"* ]]
     [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
+    # Last: `run` replaces $output, which the assertions above read.
+    run ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {
@@ -124,15 +125,15 @@ herdr server reload-config" ]
     run_update_fixture running 0 0 0 0 24
     [ "$status" -ne 0 ]
     grep -q '^upgrade-tools$' "${UPDATE_FIXTURE}/calls"
-    ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
-    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update skips a Herdr server that is not running" {
     run_update_fixture not_running
     [ "$status" -eq 0 ]
     [[ "$output" == *'Herdr server is not running; skipping config reload.'* ]]
-    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update skips reload when Herdr is absent" {
@@ -153,7 +154,7 @@ herdr server reload-config" ]
     run_update_fixture running 42
     [ "$status" -eq 0 ]
     [[ "$output" == *'Herdr server unreachable; skipping config reload.'* ]]
-    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update skips reload for missing or unknown Herdr server status" {
@@ -161,7 +162,7 @@ herdr server reload-config" ]
         run_update_fixture "${unreadable}"
         [ "$status" -eq 0 ]
         [[ "$output" == *'Herdr server unreachable; skipping config reload.'* ]]
-        ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+        run ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
     done
 }
 
@@ -182,11 +183,11 @@ herdr server reload-config" ]
 @test "[common] update does not reload after apply or asset failure" {
     run_update_fixture running 0 0 19
     [ "$status" -ne 0 ]
-    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 
     run_update_fixture running 0 0 0 20
     [ "$status" -ne 0 ]
-    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+    run ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] Makefile treats private chezmoi as optional during update" {
@@ -244,7 +245,7 @@ herdr server reload-config" ]
 
 @test "[common] doctor requires the OS-aware mise listing" {
     grep -q 'run_required_doctor mise ls --current' scripts/check-tools.sh
-    ! grep -q 'run_required_doctor mise current' scripts/check-tools.sh
+    run ! grep -q 'run_required_doctor mise current' scripts/check-tools.sh
 }
 
 @test "[common] upgrade lifecycle refreshes mise itself before mise-managed tools" {
@@ -275,7 +276,7 @@ herdr server reload-config" ]
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"' scripts/upgrade-tools.sh
-    ! grep -Eq -- '--bump|--before|use --global' scripts/upgrade-tools.sh
+    run ! grep -Eq -- '--bump|--before|use --global' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -295,7 +296,7 @@ herdr server reload-config" ]
     grep -q 'for npm_package in "@openai/codex" "@anthropic-ai/claude-code"' scripts/update-agent-assets.sh
     grep -q 'npm uninstall -g "${npm_package}"' scripts/update-agent-assets.sh
     # Codex and Claude Code are ordinary mise tools now; no separate npm-latest phase.
-    ! grep -q 'upgrade_mise_npm_agent_tool' scripts/upgrade-tools.sh
+    run ! grep -q 'upgrade_mise_npm_agent_tool' scripts/upgrade-tools.sh
     cleanup_line="$(grep -n '^    remove_node_global_agent_cli_shadows$' scripts/update-agent-assets.sh | cut -d: -f1)"
 
     [ -n "${cleanup_line}" ]
@@ -308,27 +309,28 @@ herdr server reload-config" ]
     grep -q 'crit-darwin-amd64' scripts/update-agent-assets.sh
     grep -q 'crit-darwin-arm64' scripts/update-agent-assets.sh
     run ! grep -q 'brew install crit' scripts/update-agent-assets.sh
-    grep -q 'python3 -c' scripts/update-agent-assets.sh
-    grep -q 'plugin.get("id") == plugin_id' scripts/update-agent-assets.sh
-    grep -q 'if claude_crit_plugin_is_enabled; then' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_step "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'claude_outside_projects plugin disable "${plugin_id}" --scope user' scripts/update-agent-assets.sh
+    # The updater never enables a plugin: no `plugin enable` call in command position (the re-enable
+    # guidance printed after a disable is a string, not a call).
+    run ! grep -Eq '(^|[;&|(!]|then|do|else|if|while|until)[[:space:]]*(claude_outside_projects|claude|codex)[[:space:]]+plugin[[:space:]]+enable' scripts/update-agent-assets.sh
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
     grep -q 'dot_config/claude/rules/codex.md' home/dot_codex/AGENTS.md.tmpl
     grep -q 'CRIT_PLAN_REVIEW=off' home/dot_config/claude/rules/codex.md
-    ! grep -q 'crit comments --all --json' home/dot_config/claude/rules/codex.md
+    run ! grep -q 'crit comments --all --json' home/dot_config/claude/rules/codex.md
 }
 
 @test "[common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex" {
     grep -q 'CLAUDE_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
     grep -q 'CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
-    grep -q 'CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"' scripts/update-agent-assets.sh
     grep -q 'codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"' scripts/update-agent-assets.sh
     grep -q 'codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}"' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_step "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}" --ref "${ref}"' scripts/update-agent-assets.sh
     grep -q 'codex plugin add "${CODEX_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'update_claude_ponytail' scripts/update-agent-assets.sh
     grep -q 'update_codex_ponytail' scripts/update-agent-assets.sh
@@ -346,8 +348,7 @@ herdr server reload-config" ]
     grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256=' scripts/update-agent-assets.sh
     grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"' scripts/update-agent-assets.sh
     grep -q '\[ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" \]' scripts/update-agent-assets.sh
-    grep -q 'if claude_understand_anything_plugin_is_enabled; then' scripts/update-agent-assets.sh
-    grep -q 'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'converge_claude_step "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'bash "${installer}" codex < /dev/null' scripts/update-agent-assets.sh
     grep -q 'function provision_codex_understand_anything_runtime()' scripts/update-agent-assets.sh
     grep -q 'packages/core/dist' scripts/update-agent-assets.sh
@@ -376,17 +377,17 @@ herdr server reload-config" ]
     grep -q 'TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1' scripts/update-agent-assets.sh
     grep -q '^    update_terminal_code$' scripts/update-agent-assets.sh
     grep -q '^    update_terminal_browser$' scripts/update-agent-assets.sh
-    ! grep -q 'bump_terminal_tool_pins' scripts/upgrade-tools.sh
+    run ! grep -q 'bump_terminal_tool_pins' scripts/upgrade-tools.sh
 }
 
 @test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
-    ! grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
-    ! grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
-    ! grep -q 'ccgate --version' scripts/update-agent-assets.sh
+    run ! grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
+    run ! grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
+    run ! grep -q 'ccgate --version' scripts/update-agent-assets.sh
     grep -q 'permgate claude' home/.chezmoitemplates/claude-settings-managed.json
     grep -q 'permgate codex' home/.chezmoitemplates/codex-config-managed.toml
-    ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json
-    ! grep -q 'ccgate' home/.chezmoitemplates/codex-config-managed.toml
+    run ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json
+    run ! grep -q 'ccgate' home/.chezmoitemplates/codex-config-managed.toml
     grep -q 'PERMGATE_INNER' home/dot_local/bin/common/executable_permgate
     [ ! -e home/dot_claude/ccgate.jsonnet ]
     [ ! -e home/dot_codex/ccgate.jsonnet ]
@@ -405,7 +406,7 @@ herdr server reload-config" ]
     grep -q 'make update' README.md
     grep -q 'make doctor' README.md
     grep -q 'make update SYSTEM=1' README.md
-    ! grep -q 'make upgrade' README.md
+    run ! grep -q 'make upgrade' README.md
     grep -q 'setup.sh' README.md
     grep -Fq 'git -C "$(chezmoi source-path)" rev-parse --show-toplevel' README.md
 }

@@ -19,6 +19,20 @@ UPDATER = ROOT / "scripts/update-agent-assets.sh"
 WRAPPER = ROOT / "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class AssetManifestTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="asset-manifest-test-"))
@@ -77,21 +91,22 @@ class AssetManifestTest(unittest.TestCase):
             """
         )
 
-        self.assertEqual(0, result.returncode)
+        # The write's real status: the failed commit is a failure of the step, and the old manifest stays.
+        self.assertEqual(1, result.returncode)
         self.assertEqual(
-            ["warning: failed to record asset manifest step stable"],
+            ["ERROR: failed to record asset manifest step stable in ~/.agents/.installed-manifest.json"],
             result.stderr.splitlines(),
         )
         self.assertEqual(before, self.manifest())
 
-    def test_unwritable_destination_warns_once_without_failing(self) -> None:
+    def test_unwritable_destination_fails_with_one_error(self) -> None:
         (self.home / ".agents").write_text("not a directory")
 
         result = self.run_bash(f'source {LIBRARY}; manifest_record broken plugin unknown "$HOME/path"')
 
-        self.assertEqual(0, result.returncode)
+        self.assertEqual(1, result.returncode)
         self.assertEqual(
-            ["warning: failed to record asset manifest step broken"],
+            ["ERROR: failed to record asset manifest step broken in ~/.agents/.installed-manifest.json"],
             result.stderr.splitlines(),
         )
 

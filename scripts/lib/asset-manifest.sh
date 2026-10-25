@@ -4,23 +4,6 @@
 # @brief Record installed agent assets in a private atomic JSON manifest.
 
 #
-# @description Return the installed version of a Claude Code plugin, or `unknown` when the plugin
-#   list cannot be read or does not name it: the manifest records what it could not read as such.
-# @arg $1 string Fully qualified Claude Code plugin ID.
-#
-function manifest_claude_plugin_version() {
-    local plugin_id="$1"
-    local listing version
-
-    if listing="$(claude plugin list --json 2> /dev/null)" &&
-        version="$(jq -er --arg id "${plugin_id}" 'first(.[] | select(.id == $id) | .version)' <<< "${listing}" 2> /dev/null)"; then
-        printf '%s\n' "${version}"
-    else
-        printf 'unknown\n'
-    fi
-}
-
-#
 # @description Return the installed version of a Codex plugin, or `unknown` when the plugin list
 #   cannot be read or does not name it.
 # @arg $1 string Fully qualified Codex plugin ID.
@@ -140,20 +123,23 @@ function _manifest_record() {
 }
 
 #
-# @description Record one install step without propagating manifest failures.
+# @description Record one install step in the manifest (an atomic replace: a temporary file, then mv) and
+#   return the write's real status, so a step whose record was not written fails like any other failure of it
+#   (make doctor reads this manifest; a missing or stale record is not a recorded install).
 # @arg $1 string Install step name.
 # @arg $2 string Asset kind.
 # @arg $3 string Installed source version.
 # @arg $@ string Absolute paths followed by an optional `--` and command lines.
-# @stderr Prints one warning line when recording fails.
+# @stderr Prints one error line when recording fails.
+# @exitcode 1 When the record was not written; the manifest is then left as it was.
 #
 function manifest_record() {
     local step="${1:-unknown}"
 
     if ! _manifest_record "$@" 2> /dev/null; then
-        printf 'warning: failed to record asset manifest step %s\n' "${step}" >&2
+        printf 'ERROR: failed to record asset manifest step %s in ~/.agents/.installed-manifest.json\n' "${step}" >&2
+        return 1
     fi
-    return 0
 }
 
 #

@@ -36,6 +36,20 @@ assets:
 """
 
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes, scratch_env
+
+
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
+
+
 class UpgradeUvToolsTest(unittest.TestCase):
     def run_phase(self, tools, manifest=WHEEL_PINNED, fail=""):
         with tempfile.TemporaryDirectory() as directory:
@@ -52,8 +66,8 @@ class UpgradeUvToolsTest(unittest.TestCase):
             result = subprocess.run(
                 ["bash", "-c", 'source "$1"; repo_root="$2"; upgrade_uv_tools', "bash", str(UPGRADER), directory],
                 env=os.environ
+                | scratch_env(Path(directory))
                 | {
-                    "HOME": directory,
                     "PATH": str(uv.parent) + os.pathsep + os.environ["PATH"],
                     "CALLS": str(calls),
                     "TOOLS": tools,

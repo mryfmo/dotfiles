@@ -1,10 +1,8 @@
 DOCKER_IMAGE_NAME=dotfiles
 HOST ?= 127.0.0.1
 PORT ?= 8000
-MKDOCS_UV = uv run \
-	--with 'mkdocs>=1.6,<2' \
-	--with mkdocs-material \
-	--with mkdocs-toc-md
+# The documentation build installs exactly the versions in scripts/mkdocs-requirements.txt.
+MKDOCS_UV = uv run --no-project --with-requirements scripts/mkdocs-requirements.txt
 MKDOCS = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) mkdocs
 MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 

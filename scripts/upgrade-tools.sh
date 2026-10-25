@@ -10,7 +10,7 @@
 #   The default mode updates user-level tooling and Homebrew-managed packages
 #   when those managers are available. Pass `--system` to include
 #   operating-system package upgrades such as apt. The network-only phases
-#   (Homebrew, mise self-update, uv tools, gh extensions) only warn when they
+#   (Homebrew, mise self-update, uv tools, unpinned gh extensions) only warn when they
 #   fail, so an offline host still converges; installing the declared mise tools
 #   stays required, while a per-tool upgrade that fails only warns. It edits no repository file, and exits 0 without changes
 #   on a GitHub Actions runner (is_ci_runner from scripts/lib/ci-runner.sh); an agent shell's CI=true still updates.
@@ -244,7 +244,33 @@ function run_mise_with_isolated_git_config() {
 # @stdout One tool name per line.
 #
 function current_mise_tools() {
-    run_mise_with_isolated_git_config ls --current --no-header | awk '{print $1}'
+    local listing
+
+    # Captured first: a failed `mise ls` is a failure of the inventory, never an empty one.
+    listing="$(run_mise_with_isolated_git_config ls --current --no-header)" || return 1
+    awk '{print $1}' <<< "${listing}"
+}
+
+#
+# @description Print the tools the applied mise config holds, one per line: an entry whose comment block
+#   directly above it says "Held" (home/dot_mise/config.toml keeps every hold reason there). The config is
+#   the one source, so a hold released there leaves no skip behind here. scripts/pin_records.py reads it
+#   strictly: the config must be valid TOML and every Held entry a tool.
+# @exitcode 2 When the applied config cannot be read or a Held comment names no tool.
+#
+function held_mise_tools() {
+    python3 -I "${repo_root}/scripts/pin_records.py" mise-holds "${MISE_CONFIG_DIR}/config.toml"
+}
+
+#
+# @description Ask scripts/pin_records.py whether the applied mise config holds one tool.
+# @arg $1 string mise tool name.
+# @exitcode 0 Held.
+# @exitcode 1 Not held.
+# @exitcode 2 The config cannot be read or has an unknown shape: never read as "not held".
+#
+function mise_tool_is_held() {
+    python3 -I "${repo_root}/scripts/pin_records.py" is-held "${MISE_CONFIG_DIR}/config.toml" "$1"
 }
 
 #
@@ -257,10 +283,16 @@ function run_mise_tool_command() {
     local mise_command="$1"
     local mise_tool
     local mise_tools
+    local held
     local failed=0
 
     if ! mise_tools="$(current_mise_tools)"; then
         printf 'warning: unable to list current mise tools for %s; continuing\n' "${mise_command}" >&2
+        return 1
+    fi
+    # Read once up front, so an unreadable config stops the phase before any tool moves.
+    if ! held_mise_tools > /dev/null; then
+        printf 'warning: unable to read the held tools from %s/config.toml; no mise tool was upgraded\n' "${MISE_CONFIG_DIR}" >&2
         return 1
     fi
 
@@ -273,10 +305,14 @@ function run_mise_tool_command() {
             printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
             continue
         fi
-        # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
-        if [ "${mise_tool}" = "fd" ]; then
-            printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
+        held=0
+        mise_tool_is_held "${mise_tool}" || held=$?
+        if [ "${held}" -eq 0 ]; then
+            printf 'Skipping mise upgrade for held tool: %s (see its Held comment in the mise config).\n' "${mise_tool}"
             continue
+        elif [ "${held}" -ne 1 ]; then
+            printf 'warning: cannot tell whether %s is held; no further mise tool was upgraded\n' "${mise_tool}" >&2
+            return 1
         fi
         # A plain upgrade keeps the config's "latest" or exact request as written.
         if ! run_mise_with_isolated_git_config upgrade --yes "${mise_tool}"; then
@@ -474,15 +510,41 @@ function upgrade_uv_tools() {
 }
 
 #
-# @description Upgrade GitHub CLI extensions when gh is available.
+# @description Upgrade the GitHub CLI extensions this repository does not pin, one by one, when gh is available.
+# @description
+#   An extension recorded in scripts/plugin-pins.json (assets.gh-extensions) stays at its reviewed tag:
+#   install/common/gh_extensions.sh installs it with --pin, and no blanket `gh extension upgrade --all` runs.
+# @exitcode 1 When the pins or the extension list cannot be read (nothing is upgraded), or an upgrade fails.
 #
 function upgrade_gh_extensions() {
+    local listing repository pinned failed=0
+
     if ! has_command gh; then
         return 0
     fi
 
     section "GitHub CLI extensions"
-    gh extension upgrade --all
+    if ! listing="$(gh extension list)"; then
+        printf 'warning: gh extension list failed; no extension was upgraded\n' >&2
+        return 1
+    fi
+    while IFS=$'\t' read -r _ repository _; do
+        [ -n "${repository}" ] || continue
+        # pin_records.py answers exit 0 pinned, 1 not pinned; anything else (unreadable pins, a row that is not
+        # <owner>/<name>) is a failure, and the extension is not upgraded.
+        pinned=0
+        python3 -I "${repo_root}/scripts/pin_records.py" is-pinned-extension "${repo_root}/scripts/plugin-pins.json" "${repository}" || pinned=$?
+        if [ "${pinned}" -eq 0 ]; then
+            printf 'Skipping gh extension %s: pinned in assets.gh-extensions.\n' "${repository}"
+            continue
+        elif [ "${pinned}" -ne 1 ]; then
+            printf 'warning: cannot tell whether gh extension %s is pinned; it was not upgraded\n' "${repository}" >&2
+            failed=1
+            continue
+        fi
+        gh extension upgrade "${repository##*/}" || failed=1
+    done <<< "${listing}"
+    return "${failed}"
 }
 
 #

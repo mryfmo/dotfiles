@@ -512,8 +512,9 @@ manifest definition embedded in the modify script, a plugin hook from the
 installed plugin file under `~/.codex/plugins/cache/`. A config hook is trusted
 at that hash. A plugin hook is trusted only when that hash equals the
 `trusted_hash` pin the manifest records for it (the renderer refuses a plugin
-key without one). `make update` upgrades plugins, so a release whose hook
-differs from its pin is left untrusted: the apply and `make doctor` print a
+key without one). A plugin copy whose hook
+differs from its pin (a release installed by hand, or a newly recorded plugin
+pin whose hook was not reviewed) is left untrusted: the apply and `make doctor` print a
 warning naming the installed hash and the pin, and Codex lists the hook in
 `/hooks`. Review it there, then record the reviewed hash as its
 `trusted_hash` so the next apply trusts it; a trust granted only in `/hooks`
@@ -535,7 +536,13 @@ step on its own), so the trust always reflects the plugin just installed.
 A hook anyone else writes into `config.toml` or a plugin stays untrusted until
 you review and trust it in `/hooks`. When a plugin's hook file is missing, the
 pin is written as is (Codex trusts only content with that hash) and the apply
-prints a warning.
+prints a warning. The herdr integration `make update` installs is one such
+hook: `herdr integration install codex` writes a `SessionStart` hook into
+`~/.codex/hooks.json`, a file herdr owns, whose command names this host's home,
+so the manifest declares no trust for it. Codex keeps hook trust per config
+file, so trust it once in `/hooks` in a session of each profile you use
+(`codex`, then `codex --profile <name>`); the modify scripts keep that trust,
+since they rewrite only the keys the manifest declares.
 
 ### Claude Code sandbox
 
@@ -1170,8 +1177,63 @@ checksum, rendered drift, and any hand-written `*_VERSION="..."` or
 `version="..."` literal left in `install/` or `scripts/`. Change a pin only in
 the manifest, with `generate-agent-configs.py --set-asset NAME.FIELD=VALUE`,
 then regenerate. `pin: unknown` marks a component with no recorded upstream
-version, and plugin pins record the installed versions, which `make update`
-does not enforce yet.
+version.
+
+Plugin and gh extension pins (`assets.claude-plugins`, `assets.codex-plugins`,
+`assets.gh-extensions`) are the versions both hosts run, rendered into
+`scripts/plugin-pins.json`. `make update` keeps each one there instead of
+taking the newest release:
+
+- Only user-scope installations are managed, the scope this repository
+  installs. A project- or local-scope installation belongs to its project:
+  `make update` and `make doctor` print
+  `plugin <x> installed in project scope at <path>: not managed` and neither
+  converge it nor count it as passing. Claude Code takes no plugin version, so
+  a user-scope installation at its pin is left alone, its enabled state
+  included (a plugin you disabled stays disabled); a missing plugin is
+  installed from its recorded marketplace (registered first when absent), and
+  one at another version is updated. One still off its pin afterwards is
+  disabled at user scope and must then be disabled explicitly in
+  `~/.claude/settings.json`, because Claude Code runs a plugin's hooks with no
+  trust step. Every `claude plugin` command runs from an empty directory, so
+  the directory `make update` runs in never changes a decision. Any failure
+  (unreadable records, a marketplace that cannot be registered, a failed
+  install, a disable that cannot be proven) fails `make update`.
+- Codex fetches the Ponytail marketplace at the pinned commit (`ref` under
+  `[marketplaces.ponytail]`, which the Codex modify script owns), and its hooks
+  are trusted only at their `trusted_hash` pins. The OpenAI-curated Superpowers
+  takes no version, so it is only compared.
+- gh-poi installs with `gh extension install --pin <tag>`. An install at
+  another tag, or at the tag but unpinned (an earlier plain install), is
+  installed again pinned; the old copy is moved aside first and put back if
+  the pinned install fails, so gh-poi is never left missing. `scripts/upgrade-tools.sh` upgrades only
+  the extensions this repository does not pin, one by one; it never runs
+  `gh extension upgrade --all`.
+
+Every record these checks read (`installed_plugins.json`, `enabledPlugins` in
+`~/.claude/settings.json`, the Claude marketplace list, the Codex plugin cache's
+`plugin.json`, the marketplace install record, the Codex `config.toml` plugin
+and marketplace tables, gh's `manifest.yml`, the mise config's `Held`
+comments and `scripts/plugin-pins.json` itself) goes through one strict parser
+in `scripts/pin_records.py`: a record is absent only when its path is missing;
+an unreadable record, a missing or mistyped field, or a foreign identity (a
+fork's extension, another marketplace source) is an error, never "not
+installed" and never a pass.
+
+`make update` never judges its own result: after each plugin and extension step
+it runs `make doctor`'s own pin check for that asset
+(`check-agent-runtime.py --pin-check <agent> <id>`), and any error there fails
+the run. A plugin off its pin is disabled (Claude) or removed (Codex), and the run
+fails only when unreviewed code could be active or the active state cannot be
+verified, so a fresh install that lands off its pin and is proven disabled or
+removed is a warning (its pin needs a review bump) and `make doctor` reports it;
+the Codex Ponytail marketplace is upgraded only when the Codex config pins it to
+the manifest commit (run `chezmoi apply` first otherwise).
+
+`make doctor` fails on any installed version, marketplace revision or extension
+tag that differs from its pin, and warns for an enabled plugin with no pin. To
+move a plugin, review the upstream release, set its pin (and, for a Codex
+plugin hook, its reviewed `trusted_hash`), regenerate, then run `make update`.
 
 ### Run a program in another repository
 

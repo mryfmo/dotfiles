@@ -26,7 +26,9 @@ bash:
     - match: "*pr-body-edit.sh *"
       approval: deny
     # The orchestrator's levers. Only the name followed by a space is denied, so a worker still edits, tests and lints
-    # them as long as such a command names the file last (or names its directory).
+    # them as long as such a command names the file last (or names its directory). Text rows are a speed bump: a glob
+    # spelling passes them (U71); a worker cannot forge the orchestrator's ledger, which lies outside its sandbox (U85),
+    # and a worker that runs `gh` itself is the residual U88 removes.
     - match: "*pr-thread-reply.sh *"
       approval: deny
     - match: "*pr-thread-resolve.sh *"

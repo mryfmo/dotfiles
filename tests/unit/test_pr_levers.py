@@ -875,6 +875,17 @@ class PrMergeTest(PrLeverTestCase):
         (self.records / "ledger.tsv").write_text("ts\tunit\n" + ledger_row(SHA_A))
         self.assert_refused(self.merge(), "does not start with the ledger header")
 
+    def test_an_all_digit_sha_matches_only_itself(self):
+        # U71 audit round 1 (P2): awk compared two numeric-looking shas as numbers, so these two matched.
+        head, other = "1" * 40, "1" * 39 + "2"
+        self.ledger(ledger_row(other))
+        self.github(head=head)
+        self.assert_refused(self.merge(), f"has no row for pull request 7 at head {head}")
+        self.calls.unlink()
+        self.ledger(ledger_row(other), ledger_row(head))
+        self.github(head=head)
+        self.assertEqual(self.merge().returncode, 0)
+
     def test_ci_that_is_not_green_on_the_head_refuses(self):
         for kwargs, message in (
             ({"checks": [{"bucket": "pass", "name": "a"}, {"bucket": "fail", "name": "test"}]}, "test=fail"),
@@ -980,6 +991,7 @@ readlink "$CODEX_HOME/auth.json" > "$FAKE_CODEX_LOG/login"
 cat "$CODEX_HOME/config.toml" > "$FAKE_CODEX_LOG/config"
 ls -A . > "$FAKE_CODEX_LOG/cwd"
 cat > "$FAKE_CODEX_LOG/prompt"
+echo "codex log ${FAKE_CODEX_TAG:-}"
 [ -n "$FAKE_CODEX_VERDICT" ] && printf '%s\\n' "$FAKE_CODEX_VERDICT" > "$out"
 exit "${FAKE_CODEX_EXIT:-0}"
 """
@@ -1043,6 +1055,9 @@ class PrAuditTest(PrLeverTestCase):
     def rows(self):
         return [line.split("\t") for line in (self.records / "ledger.tsv").read_text().splitlines()[1:]]
 
+    def log(self, round_, unit="U71"):
+        return self.tmp / "pr-audit-logs" / f"store-{unit}-{self.head[:8]}-r{round_}.log"
+
     def test_a_round_runs_read_only_on_main_rules_and_records_its_row(self):
         self.github()
         run = self.audit()
@@ -1066,7 +1081,8 @@ class PrAuditTest(PrLeverTestCase):
         self.assertIn(f"(HEAD {self.head[:8]})", prompt)
         [row] = self.rows()
         self.assertEqual(row[1:4], ["U71", "7", self.head])
-        self.assertEqual(row[4], f"correct (pr-audit.sh round 1; verdicts/U71-{self.head[:8]}.md)")
+        self.assertEqual(row[4], f"correct (pr-audit.sh round 1; verdicts/U71-{self.head[:8]}.md, log {self.log(1)})")
+        self.assertEqual(self.log(1).read_text(), "codex log \n")
         self.assertIn("read-only, scratch cwd, scratch CODEX_HOME", row[5])
         self.assertEqual(row[6], "https://github.com/acme/widgets/pull/7")
         self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1, "the worktree is removed")
@@ -1077,7 +1093,9 @@ class PrAuditTest(PrLeverTestCase):
         self.env["FAKE_CODEX_VERDICT"] = "P2 finding\nVerdict: incorrect"
         run = self.audit()
         self.assertEqual(run.returncode, 3, run.stderr)
-        self.assertEqual(self.rows()[-1][4], f"incorrect (pr-audit.sh round 2; verdicts/U71-{self.head[:8]}.md)")
+        self.assertEqual(
+            self.rows()[-1][4], f"incorrect (pr-audit.sh round 2; verdicts/U71-{self.head[:8]}.md, log {self.log(2)})"
+        )
         self.env["FAKE_CODEX_VERDICT"] = "no verdict"
         run = self.audit(unit="U71b")
         self.assertEqual(run.returncode, 3, run.stderr)
@@ -1086,9 +1104,39 @@ class PrAuditTest(PrLeverTestCase):
         self.env["FAKE_CODEX_VERDICT"] = "Verdict: correct"
         run = self.audit(unit="U71b")
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(self.rows()[-1][4], f"correct (pr-audit.sh round 2; verdicts/U71b-{self.head[:8]}-r2.md)")
+        self.assertEqual(
+            self.rows()[-1][4],
+            f"correct (pr-audit.sh round 2; verdicts/U71b-{self.head[:8]}-r2.md, log {self.log(2, 'U71b')})",
+        )
         self.assertEqual((self.records / f"verdicts/U71b-{self.head[:8]}.md").read_text(), "no verdict\n")
         self.assertEqual(len(self.rows()), 4)
+
+    def test_a_silent_round_keeps_its_own_verdict_and_log_and_a_rerun_truncates_nothing(self):
+        # U71 audit round 1 (P2): a no-output round left no verdict file and a shared log the next run truncated.
+        self.github()
+        self.env |= {"FAKE_CODEX_VERDICT": "", "FAKE_CODEX_TAG": "first"}
+        run = self.audit()
+        self.assertEqual(run.returncode, 3, run.stderr)
+        first = self.records / f"verdicts/U71-{self.head[:8]}.md"
+        self.assertIn(f"wrote no final message (exit 0); its log is {self.log(1)}", first.read_text())
+        self.assertTrue(first.read_text().endswith("Verdict: blocked\n"))
+        self.assertEqual(
+            self.rows()[-1][4], f"blocked (no output; pr-audit.sh round 1; verdicts/{first.name}, log {self.log(1)})"
+        )
+        self.env |= {"FAKE_CODEX_TAG": "second", "FAKE_CODEX_EXIT": "4"}
+        run = self.audit()
+        self.assertEqual(run.returncode, 3, run.stderr)
+        second = self.records / f"verdicts/U71-{self.head[:8]}-r2.md"
+        self.assertIn(f"(exit 4); its log is {self.log(2)}", second.read_text())
+        self.assertTrue(self.rows()[-1][4].startswith("blocked (no output; codex exec exited 4; pr-audit.sh round 2;"))
+        self.assertEqual(self.log(1).read_text(), "codex log first\n", "the first round's log is untouched")
+        self.assertEqual(self.log(2).read_text(), "codex log second\n")
+        self.assertIn("wrote no final message (exit 0)", first.read_text(), "the first round's verdict is untouched")
+        # a log at the next round's name (a round the ledger lacks) is a refusal, never a truncation
+        self.log(3).write_text("kept\n")
+        self.assert_refused(self.audit(), "already exists")
+        self.assertEqual(self.log(3).read_text(), "kept\n")
+        self.assertEqual(len(self.rows()), 2)
 
     def test_refusals(self):
         self.github(head=SHA_A)

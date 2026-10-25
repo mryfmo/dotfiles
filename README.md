@@ -800,7 +800,7 @@ merge.
 ```
 
 Who merges is decided outside GitHub. The orchestrator seat's policy denies
-every `gh pr merge`; it merges only through
+the `gh pr merge` command text (a speed bump, not a boundary); its merge path is
 `~/.local/bin/common/pr-merge.sh <pr> --records <program store>`, which
 refuses unless the newest `ledger.tsv` row for the full head sha is `correct`
 and every check on that head passed, then runs

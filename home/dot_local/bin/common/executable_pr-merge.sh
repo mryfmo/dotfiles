@@ -3,8 +3,8 @@
 # @brief Squash-merge a pull request only at a head the program's ledger records as `correct` and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
-#   allows `~/.local/bin/common/pr-merge.sh *` and denies every `gh pr merge` command line, so the seat cannot merge
-#   a head that has no verdict. `<pr>` is decimal and `--records` names the program store
+#   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
+#   not stop a glob spelling; a seat running `gh` itself is the residual unit U88 removes). `<pr>` is decimal and `--records` names the program store
 #   (`.orchestration/orchestrate/<program>`, holding `ledger.tsv` with its header
 #   `ts unit pr head_sha verdict verifier evidence`); both are checked before the first `gh` call. The lever reads
 #   `gh pr view <pr> --json state,baseRefName,headRefOid,isDraft` and refuses unless the pull request is `OPEN`, not a
@@ -121,6 +121,8 @@ gh_bounded() {
 
 # @description Print `<ts>\t<verdict>` of the newest ledger row for pull request $1 at the full sha $2, or nothing
 #   when no row names that pair. A ledger whose first line is not the header is a refusal; a failed read exits 1.
+#   Both sides of every comparison are strings (`""` appended): awk compares two numeric-looking values as numbers,
+#   so two different all-digit shas would otherwise match (U71 audit round 1).
 # @arg $1 int The pull request number.
 # @arg $2 string The 40-hex head sha.
 ledger_verdict() {
@@ -128,7 +130,7 @@ ledger_verdict() {
     out=$(LEDGER_HEADER=${ledger_header} awk -F'\t' -v pr="$1" -v sha="$2" '
         { sub(/\r$/, "") }
         NR == 1 { if ($0 != ENVIRON["LEDGER_HEADER"]) { bad = 1; exit 3 } next }
-        $3 == pr && $4 == sha { found = $1 "\t" $5 }
+        ($3 "") == (pr "") && ($4 "") == (sha "") { found = $1 "\t" $5 }
         END { if (!bad && found != "") print found }
     ' "${ledger}") || status=$?
     case ${status} in

@@ -19,12 +19,16 @@
 #   the manifest the self-check read (`--profile`, default `review`, the profile every program audit has run on).
 #   No user-global AGENTS.md, rules, plugins, hooks or MCP servers reach the auditor. The audit is
 #   `codex exec --skip-git-repo-check -s read-only -C <empty cwd> -o <verdict> -` bounded by PR_AUDIT_TIMEOUT
-#   seconds. The verdict file is `<records>/verdicts/<unit>-<head8>.md`, or `<unit>-<head8>-r<k>.md` when a round of
-#   the same head (a re-run after `blocked`) already wrote that name; a file at the chosen name is a refusal before
-#   the audit starts. Every round appends one `ledger.tsv` row for the full head sha: its verdict is the last
-#   line's `Verdict: correct|incorrect|blocked` word, or `blocked` when the output has no such last line or codex
-#   failed, followed by `(pr-audit.sh round <k>; verdicts/<file>)`, `<k>` being one more than the rows the ledger
-#   already holds for this unit and pull request. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds.
+#   seconds, its output going to the round's own log `<log dir>/<program>-<unit>-<head8>-r<k>.log`. The verdict file
+#   is `<records>/verdicts/<unit>-<head8>.md`, or `<unit>-<head8>-r<k>.md` when a round of the same head (a re-run
+#   after `blocked`) already wrote that name. Both names are created exclusively (noclobber) before codex starts: a
+#   name already taken is a refusal, so no round's verdict or log is ever overwritten or truncated. A round whose
+#   codex wrote no final message still gets its verdict file, which says so and names the log. Every round appends
+#   one `ledger.tsv` row for the full head sha: its verdict is the last line's `Verdict: correct|incorrect|blocked`
+#   word, or `blocked` when the output has no such last line or codex failed, followed by
+#   `(pr-audit.sh round <k>; verdicts/<file>, log <log>)`, `<k>` being one more than the rows the ledger already
+#   holds for this unit and pull request (fields compared as strings). Each `gh` call is bounded by
+#   PR_LEVER_GH_TIMEOUT seconds.
 # @arg $1 int The pull request number.
 # @option --unit <id> The unit id the records use (`U<n>` or `U<n>b`).
 # @option --records <dir> The program store holding `ledger.tsv` and `verdicts/`.
@@ -35,6 +39,7 @@
 # @env PR_AUDIT_WAIT_TRIES Fetches until `refs/pull/<pr>/head` equals the head (default 12).
 # @env PR_AUDIT_WAIT_SECONDS Seconds between those fetches (default 10).
 # @env PR_AUDIT_CODEX_LOGIN The Codex login file the scratch CODEX_HOME links to (default ~/.codex/auth.json).
+# @env PR_AUDIT_LOG_DIR The directory of the per-round logs (default `$TMPDIR/pr-audit-logs`, else /tmp's).
 # @stdout One receipt line: `audited pr=<pr> unit=<id> head=<sha> round=<k> verdict=<word> file=<verdict file>`.
 # @exitcode 0 The round is recorded with `Verdict: correct`.
 # @exitcode 1 A `gh` or `git` read failed, or the ledger row could not be written.
@@ -107,6 +112,7 @@ audit_timeout=${PR_AUDIT_TIMEOUT:-3600}
 wait_tries=${PR_AUDIT_WAIT_TRIES:-12}
 wait_seconds=${PR_AUDIT_WAIT_SECONDS:-10}
 login=${PR_AUDIT_CODEX_LOGIN:-${HOME}/.codex/auth.json}
+log_dir=${PR_AUDIT_LOG_DIR:-${TMPDIR:-/tmp}/pr-audit-logs}
 ledger_header=$'ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence'
 
 # @description Print the refusal on stderr and exit 2; no audit ran and nothing was recorded.
@@ -206,15 +212,19 @@ IFS=$'\t' read -r state base want url <<< "${view}"
 [[ ${want} =~ ^[0-9a-f]{40}$ ]] || fail "pull request ${pr} has no readable head: ${want}"
 [[ ${url} =~ ^https://[^[:space:]]+/pull/${pr}$ ]] || fail "pull request ${pr} has no readable url: ${url}"
 short=${want:0:8}
-rounds=$(awk -F'\t' -v unit="${unit}" -v pr="${pr}" 'NR > 1 && $2 == unit && $3 == pr { n++ } END { print n + 0 }' "${ledger}") ||
+# The fields are compared as strings (`""` appended), so an all-digit value never matches another numerically.
+rounds=$(awk -F'\t' -v unit="${unit}" -v pr="${pr}" 'NR > 1 && ($2 "") == (unit "") && ($3 "") == (pr "") { n++ } END { print n + 0 }' "${ledger}") ||
     fail "cannot read ${ledger}"
 round=$((rounds + 1))
 # The first round of a head keeps the store's `<unit>-<head8>.md` name; a later round of the same head (a re-run
-# after a `blocked` round) adds its round number, so no round's file is ever overwritten.
+# after a `blocked` round) adds its round number. The round's log always carries the round number. Both names are
+# created exclusively (noclobber) before codex starts, so no round's file is ever overwritten or truncated.
 verdict_file=${records}/verdicts/${unit}-${short}.md
 [[ ! -e ${verdict_file} && ! -L ${verdict_file} ]] || verdict_file=${records}/verdicts/${unit}-${short}-r${round}.md
 [[ ! -e ${verdict_file} && ! -L ${verdict_file} ]] ||
     refuse "${verdict_file} already exists; the ledger and verdicts/ disagree on the rounds of ${unit}"
+log=${log_dir}/${program}-${unit}-${short}-r${round}.log
+[[ ! -e ${log} && ! -L ${log} ]] || refuse "${log} already exists; the ledger and the logs disagree on the rounds of ${unit}"
 
 head=''
 for ((try = 1; try <= wait_tries; try++)); do
@@ -256,15 +266,18 @@ printf 'model = "%s"\nmodel_reasoning_effort = "%s"\n' "${model}" "${effort}" > 
     printf '\n\nRun tests or scripts that need no network if they help (python3 -m unittest, shellcheck, bash -n). Do not edit files; no gh or network.\n\nReport each finding with priority P0-P3, confidence, exact file:line, one-line rationale. Then list what you reproduced. End with exactly one line: `Verdict: correct` or `Verdict: incorrect` (or `Verdict: blocked`). P2 or higher findings mean incorrect.\n'
 } > "${scratch}/prompt.md" || fail 'cannot write the prompt'
 
-log=${TMPDIR:-/tmp}/pr-audit-${pr}-${short}.log
+(umask 077 && mkdir -p "${log_dir}") || fail "cannot create the log directory ${log_dir}"
+# Exclusive creation: a name another round took is a refusal, never a truncation.
+(set -o noclobber && : > "${log}") 2> /dev/null || refuse "${log} already exists or cannot be created"
+(set -o noclobber && : > "${verdict_file}") 2> /dev/null || refuse "${verdict_file} already exists or cannot be created"
 codex_status=0
 CODEX_HOME=${scratch}/codex-home bounded "${audit_timeout}" codex exec --skip-git-repo-check -s read-only \
-    -C "${scratch}/cwd" -o "${scratch}/verdict.md" - < "${scratch}/prompt.md" > "${log}" 2>&1 || codex_status=$?
+    -C "${scratch}/cwd" -o "${scratch}/verdict.md" - < "${scratch}/prompt.md" >> "${log}" 2>&1 || codex_status=$?
 
 word=blocked
 note=''
 if [[ -s ${scratch}/verdict.md ]]; then
-    cp "${scratch}/verdict.md" "${verdict_file}" || fail "cannot write ${verdict_file}"
+    cat "${scratch}/verdict.md" >> "${verdict_file}" || fail "cannot write ${verdict_file}"
     tail_line=$(awk 'NF { line = $0 } END { sub(/\r$/, "", line); print line }' "${verdict_file}") ||
         fail "cannot read ${verdict_file}"
     if [[ ${tail_line} =~ ^Verdict:\ (correct|incorrect|blocked)$ ]]; then
@@ -272,15 +285,16 @@ if [[ -s ${scratch}/verdict.md ]]; then
     else
         note='no verdict line; '
     fi
-    evidence_file="verdicts/${verdict_file##*/}"
 else
     note='no output; '
-    evidence_file="log ${log}"
+    printf 'pr-audit.sh round %s of %s at %s: codex exec wrote no final message (exit %s); its log is %s.\n\nVerdict: blocked\n' \
+        "${round}" "${unit}" "${head}" "${codex_status}" "${log}" >> "${verdict_file}" || fail "cannot write ${verdict_file}"
 fi
 ((codex_status == 0)) || {
     word=blocked
     note+="codex exec exited ${codex_status}; "
 }
+evidence_file="verdicts/${verdict_file##*/}, log ${log}"
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) || fail 'date failed'
 verifier="codex exec (${model} ${effort}, read-only, scratch cwd, scratch CODEX_HOME), rules from origin/main ${main:0:8}"
 printf '%s\t%s\t%s\t%s\t%s (%spr-audit.sh round %s; %s)\t%s\t%s\n' "${ts}" "${unit}" "${pr}" "${head}" "${word}" \

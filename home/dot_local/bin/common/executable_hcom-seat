@@ -609,8 +609,8 @@ esac
 # @arg $1 string Darwin or Linux.
 # @set srt_tmp_roots The paths.
 srt_tmp_roots_for() {
-    srt_tmp_roots=(/tmp/claude)
-    if [[ $1 == Darwin || -e /private/tmp/claude ]]; then srt_tmp_roots+=(/private/tmp/claude); fi
+    srt_tmp_roots=(/tmp/claude /private/tmp/claude)
+    if [[ $1 != Darwin && ! -e ${srt_tmp_roots[1]} ]]; then srt_tmp_roots=("${srt_tmp_roots[0]}"); fi
 }
 srt_tmp_roots_for "${os}"
 root_ids=$'\n' root_id_list=() root_path_list=()

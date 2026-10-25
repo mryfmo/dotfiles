@@ -961,7 +961,7 @@ merge.
             "context": "test (ubuntu-24.04, client)"
           },
           {
-            "context": "test (macos-14, client)"
+            "context": "test (macos-15, client)"
           },
           {
             "context": "public-bootstrap (ubuntu-24.04, server)"
@@ -970,7 +970,7 @@ merge.
             "context": "public-bootstrap (ubuntu-24.04, client)"
           },
           {
-            "context": "public-bootstrap (macos-14, client)"
+            "context": "public-bootstrap (macos-15, client)"
           }
         ]
       }

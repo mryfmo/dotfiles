@@ -56,8 +56,6 @@ jobs:
             system: client
           - os: ubuntu-24.04
             system: server
-          - os: macos-14
-            system: client
           - os: macos-15
             system: client
 

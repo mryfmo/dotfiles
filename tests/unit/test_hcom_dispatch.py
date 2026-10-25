@@ -56,7 +56,7 @@ class HcomDispatchTest(unittest.TestCase):
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
     def test_send_prints_a_receipt_the_history_finds_again(self):
-        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", LINE)
+        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", LINE)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         receipt = RECEIPT.match(sent.stdout)
         self.assertIsNotNone(receipt, sent.stdout)
@@ -73,25 +73,33 @@ class HcomDispatchTest(unittest.TestCase):
         self.assertEqual(history.returncode, 0, history.stderr)
         self.assertEqual(history.stdout, f"{event_id}\t{at}\torch\tnemo\tTASK\t{ESCAPED_LINE}\n")
 
-    def test_words_are_joined_and_a_leading_dash_reaches_hcom_unparsed(self):
-        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", "-x", "PING", "v1", "task_id=T1")
+    def test_words_are_joined_and_a_dash_word_reaches_hcom_unparsed(self):
+        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "PING", "-x", "v1", "task_id=T1")
         self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(self.hcom_calls()[0][-2:], ["--", "-x PING v1 task_id=T1"])
-        self.assertTrue(sent.stdout.endswith(" to=nemo kind=-x\n"), sent.stdout)
+        self.assertEqual(self.hcom_calls()[0][-2:], ["--", "PING -x v1 task_id=T1"])
+        self.assertTrue(sent.stdout.endswith(" to=nemo kind=PING\n"), sent.stdout)
+
+    def test_the_retired_pane_argument_and_a_line_without_a_kind_send_nothing(self):
+        for words in (["-", LINE], ["w1:p2", LINE], ["-x", "PING", "v1"], ["AGMSG-TASK v1 task_id=T1"], [" " + LINE]):
+            with self.subTest(words=words):
+                sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", *words)
+                self.assertEqual((sent.returncode, sent.stdout), (1, ""), sent.stderr)
+                self.assertIn("usage: hcom-dispatch <team> <from> <to> <line...>", sent.stderr)
+        self.assertEqual(self.hcom_calls(), [])
 
     def test_an_unknown_seat_is_refused_by_hcom_and_nothing_is_read(self):
-        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", LINE, FAKE_HCOM_AGENTS="bigboss")
+        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", LINE, FAKE_HCOM_AGENTS="bigboss")
         self.assertEqual((sent.returncode, sent.stdout), (1, ""))
         self.assertIn("Error: No active agent for @nemo", sent.stderr)
         self.assertEqual(len(self.hcom_calls()), 1)
 
     def test_malformed_identifiers_and_an_empty_line_send_nothing(self):
         for argv in (
-            ["Team", "orch", "nemo", "w1:p2", LINE],
-            ["u5team", "-orch", "nemo", "w1:p2", LINE],
-            ["u5team", "orch", "nemo/x", "w1:p2", LINE],
-            ["u5team", "orch", "nemo", "w1:p2", ""],
-            ["u5team", "orch", "nemo", "w1:p2"],
+            ["Team", "orch", "nemo", LINE],
+            ["u5team", "-orch", "nemo", LINE],
+            ["u5team", "orch", "nemo/x", LINE],
+            ["u5team", "orch", "nemo", ""],
+            ["u5team", "orch", "nemo"],
         ):
             with self.subTest(argv=argv):
                 sent = self.run_script(DISPATCH, *argv)
@@ -102,7 +110,7 @@ class HcomDispatchTest(unittest.TestCase):
         empty = self.root / "empty"
         empty.mkdir()
         for store in (str(empty), ""):
-            for script, args in ((DISPATCH, ("u5team", "orch", "nemo", "w1:p2", LINE)), (HISTORY, ("u5team",))):
+            for script, args in ((DISPATCH, ("u5team", "orch", "nemo", LINE)), (HISTORY, ("u5team",))):
                 with self.subTest(script=script.name, store=store):
                     run = self.run_script(script, *args, HCOM_DIR=store)
                     self.assertEqual((run.returncode, run.stdout), (1, ""))
@@ -111,7 +119,7 @@ class HcomDispatchTest(unittest.TestCase):
         self.assertEqual(self.hcom_calls(), [])
 
     def test_a_sent_id_the_bus_does_not_hold_is_refused(self):
-        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", "w1:p2", LINE, FAKE_HCOM_HIDE_EVENTS="1")
+        sent = self.run_script(DISPATCH, "u5team", "orch", "nemo", LINE, FAKE_HCOM_HIDE_EVENTS="1")
         self.assertEqual((sent.returncode, sent.stdout), (1, ""))
         self.assertIn("was not found in thread u5team", sent.stderr)
 
@@ -165,7 +173,7 @@ class HcomDispatchTest(unittest.TestCase):
         self.assertEqual(started.returncode, 0, started.stderr)
         seat = re.search(r"\[hcom:([^\]]+)\]", started.stdout).group(1)
         self.assertTrue((store / "hcom.db").is_file())
-        sent = self.run_script(DISPATCH, "u5team", "orch", seat, "w1:p2", LINE, env=env)
+        sent = self.run_script(DISPATCH, "u5team", "orch", seat, LINE, env=env)
         self.assertEqual(sent.returncode, 0, sent.stderr)
         event_id, at, to, kind = RECEIPT.match(sent.stdout).groups()
         self.assertEqual((to, kind), (seat, "TASK"))
@@ -177,7 +185,7 @@ class HcomDispatchTest(unittest.TestCase):
         self.assertEqual(rows[0], [event_id, at, "orch", seat, "TASK", ESCAPED_LINE])
         self.assertEqual(rows[1][2:], [seat, "-", "RESULT", "RESULT v1 task_id=T1 status=done"])
         self.assertEqual(len(rows), 2)
-        refused = self.run_script(DISPATCH, "u5team", "orch", "nobody", "w1:p2", LINE, env=env)
+        refused = self.run_script(DISPATCH, "u5team", "orch", "nobody", LINE, env=env)
         self.assertEqual((refused.returncode, refused.stdout), (1, ""))
         self.assertIn("No active agent for @nobody", refused.stderr)
         self.assertFalse((home / ".hcom").exists())

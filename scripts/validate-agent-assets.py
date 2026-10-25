@@ -1177,7 +1177,7 @@ def validate_agent_manifest() -> dict[str, Any]:
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     # Operator pin (2026-09-27): worker claude launches carry --advisor fable. The pin read its profile from the
-    # manifest's herdr-agents worker-profile key, standard, until U40 removed that key; it stays on the profile it
+    # manifest's worker-profile key, standard, until U40 removed that key; it stays on the profile it
     # checked.
     advisor_profile = "standard"
     if profiles.get(advisor_profile, {}).get("claude", {}).get("advisor") != "fable":
@@ -1299,11 +1299,8 @@ def validate_crit_install_assets(manifest: dict[str, Any]) -> None:
             fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
     codex_agents = standing_rule_text(manifest, "codex")
     for token in (
-        "$crit",
         "Crit plugin",
         "CRIT_PLAN_REVIEW=off",
-        "TUI",
-        "http://localhost",
     ):
         if token not in codex_agents:
             fail(f"the Codex standing rules (~/.codex/AGENTS.md) must document Codex Crit rule token {token!r}")

@@ -22,7 +22,7 @@ def on_ci_runner() -> bool:
     )
 
 
-# scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect the audit seat found.
+# scripts/orchestrator/hcom-seat:58 at 89427c81, the U31 defect its audit found.
 MESSAGE = "a command substitution inside another one loses its status; capture it first, or split a path in the shell"
 
 U31_SHAPE = 'dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P) || exit 2\n'

@@ -1,6 +1,6 @@
 """Check a pull request for its program-unit marker with the base's verifier: the regime CI job (plan 024 P1-11, U26).
 
-`uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha>
+`uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base <ref> --head <sha>
 [--root <base checkout>]` runs from the base checkout and reads the head only through `git diff`: it never checks out,
 imports or executes head content. A diff passes as `no target (records-only)` only when every changed path is under
 `.orchestration/`, or as `no target (program unit <program>/U<n>, D-024-131)` when the pull request body (`PR_BODY`,

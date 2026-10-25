@@ -1,13 +1,12 @@
 name: regime
 
-# The regime job (plan 024 P1-11, redesigned in T133 regime-ci a02): a pull request that carries a task copy is checked
-# by the base's scripts/orchestrator/regime-ci.py against the base's dispatched policy. pull_request_target runs this
-# workflow as it is on the base; the pull request's head is fetched as data and is never checked out or executed.
-# A pull request without a task copy passes only when it changes records alone, or when its body carries its own line
-# `Program-Unit: <program>/U<n>` for a program whose store the base holds and its author is the owner, a member or a
-# collaborator (operator decision D-024-131: program pull requests carry no task copy; U71). It is an optional check
-# until the operator adds `regime` to the ruleset's required contexts (gate G10). The verdict depends on the body, so an
-# edit re-runs it (`edited`); only pull requests into main run it, so no other base branch's verifier decides (U71).
+# The regime job: the base's scripts/orchestrator/regime-ci.py reads the pull request's diff and body, and runs only
+# git. A pull request passes when it changes records alone (every path under .orchestration/), or when its body carries
+# its own line `Program-Unit: <program>/U<n>` for a program whose store the base holds and its author is the owner, a
+# member or a collaborator (operator decision D-024-131; U71). pull_request_target runs this workflow as it is on the
+# base; the pull request's head is fetched as data and is never checked out or executed. The verdict depends on the
+# body, so an edit re-runs it (`edited`); only pull requests into main run it, so no other base branch's verifier
+# decides (U71). It is an optional check until the operator adds `regime` to the ruleset's required contexts (gate G10).
 on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened, ready_for_review]
@@ -45,11 +44,8 @@ jobs:
       - name: Check the pull request with the base's verifier
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # the checker's gh api reads (canonical-main SHA, design bytes, C8/C9) need authentication on a fresh
-          # runner; the job's contents: read token can only read this repository's contents (P1-17)
-          GH_TOKEN: ${{ github.token }}
           # the program marker (D-024-131) is read from the event payload as data, never interpolated into run:
           PR_BODY: ${{ github.event.pull_request.body }}
           # who wrote the pull request (U71, F152): only an owner, member or collaborator's Program-Unit line counts
           PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
-        run: uv run --no-config --no-project --with pyyaml python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"
+        run: uv run --no-config --no-project python -I scripts/orchestrator/regime-ci.py --base "$(git rev-parse HEAD)" --head "${HEAD_SHA}"

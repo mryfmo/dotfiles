@@ -12,21 +12,21 @@ site/
 __pycache__/
 *.pyc
 
-# agmsg per-project codex delivery hooks (machine-local)
+# Codex project-local config and hooks (machine-local; the managed Codex config is home/dot_codex)
 .codex/
 
 .ua/intermediate/
 .ua/tmp/
 .ua/diff-overlay.json
 
-# crit local review state (evidence copies live under .orchestration/)
+# crit local review state (the Crit plugin's Plan Mode review sessions)
 .crit/
 
 # project-map subagent output (one local HTML map and its state)
 .project-map/
 
-# Linked worker worktrees (the omp seats' worktrees under .claude/worktrees/): nested
-# checkouts that git status would otherwise list as untracked; the stop gate relies on this rule.
+# Claude Code's isolation worktrees (its subagents' checkouts under .claude/worktrees/; the omp seats'
+# worktrees live under ~/.local/state/omp-seats/<slug>): nested checkouts git status would list as untracked.
 /.claude/worktrees/
 
 .claude/contextdb/state/*

@@ -351,6 +351,11 @@ class DriftWatchTest(unittest.TestCase):
             "a parent directory": "./a/../../x",
             "an absolute path": "/etc",
             "a backslash": ".\\x",
+            "a DEL (U+007F)": "./x\x7f",
+            "a next line (U+0085)": "./x\x85",
+            "a zero-width space (U+200B)": "./x\u200b",
+            "a right-to-left override (U+202E)": "./x\u202e",
+            "a byte-order mark (U+FEFF)": "./\ufeffx",
         }
         for name, source in injected.items():
             with self.subTest(name):
@@ -373,6 +378,49 @@ class DriftWatchTest(unittest.TestCase):
 
         status, report = self.current(change)
         self.assert_read_failure(status, report)
+
+    def test_every_page_of_a_list_endpoint_is_read(self):
+        older = [{"number": 20000 + n, "state": "open", "title": f"Announcement {n}"} for n in range(100)]
+        retiring = {"number": 13518, "state": "open", "title": "The macOS 14 Sonoma runner images will be retired"}
+        page_two = f"{RUNNER_ISSUES}&page=2"
+
+        def runner(upstream):
+            upstream[RUNNER_ISSUES] = {"body": older, "link_next": page_two}
+            upstream[page_two] = [retiring]
+
+        status, report = self.current(runner, oses=["macos-14"])
+        self.assertEqual(3, status, report)
+        self.assertEqual({("runner-image", "macos-14")}, self.findings(report))
+
+        fd_two = f"{FD}&page=2"
+
+        def releases(upstream):
+            upstream[FD] = {"body": upstream[FD], "link_next": fd_two}
+            upstream[fd_two] = [release("v10.9.0", "2026-09-01T00:00:00Z")]
+
+        status, report = self.current(releases)
+        self.assertEqual(3, status, report)
+        self.assertIn("`v10.9.0 (2026-09-01)`", report)
+
+    def test_a_list_that_does_not_end_or_leaves_api_github_com_is_a_read_failure(self):
+        def endless(upstream):
+            for page in range(1, 22):
+                url = FD if page == 1 else f"{FD}&page={page}"
+                upstream[url] = {"body": [], "link_next": f"{FD}&page={page + 1}"}
+
+        status, report = self.current(endless)
+        self.assert_read_failure(status, report)
+        self.assertIn("more than 20 pages", report)
+        status, report = self.current(
+            lambda upstream: upstream.update({FD: {"body": [], "link_next": "https://evil.invalid/page2"}})
+        )
+        self.assert_read_failure(status, report)
+        self.assertIn("the next page is not on api.github.com", report)
+        status, report = self.current(
+            lambda upstream: upstream.update({FD: {"body": [], "link_next": f"{FD}&page=2"}, f"{FD}&page=2": {}})
+        )
+        self.assert_read_failure(status, report)
+        self.assertIn("a page of the list is dict", report)
 
     def test_an_upstream_with_no_release_is_listed_as_not_watched_not_current(self):
         status, report = self.current(lambda upstream: upstream.update({STARSHIP: []}))
@@ -562,6 +610,32 @@ class UpstreamTokenTest(unittest.TestCase):
         ):
             self.module.Upstream(None, "").get("https://api.github.com/x")
         self.assertIn("HTTP 500", str(raised.exception))
+
+    def test_the_link_header_next_page_is_followed(self):
+        pages = {
+            "https://api.github.com/repos/o/r/releases?per_page=100": (
+                b'[{"n": 1}]',
+                (
+                    '<https://api.github.com/repositories/1/releases?per_page=100&page=2>; rel="next", '
+                    '<https://api.github.com/repositories/1/releases?per_page=100&page=2>; rel="last"'
+                ),
+            ),
+            "https://api.github.com/repositories/1/releases?per_page=100&page=2": (
+                b'[{"n": 2}]',
+                '<https://api.github.com/repositories/1/releases?per_page=100&page=1>; rel="first"',
+            ),
+        }
+
+        def open_page(request, timeout):
+            body, link = pages[request.full_url]
+            response = mock.MagicMock()
+            response.__enter__.return_value.read.return_value = body
+            response.__enter__.return_value.headers = {"Link": link}
+            return response
+
+        with mock.patch.object(self.module.OPENER, "open", side_effect=open_page):
+            items = self.module.Upstream(None, "").get_list("https://api.github.com/repos/o/r/releases?per_page=100")
+        self.assertEqual([{"n": 1}, {"n": 2}], items)
 
     def test_an_error_while_the_body_is_read_is_a_read_failure(self):
         for name, read in (

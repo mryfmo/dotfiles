@@ -15,7 +15,7 @@
 
 ## Response Rule
 
-- After reading this `AGENTS.md`, say: `🤖 I read the AGENTS.md for mryfmo/dotfiles.`
+- In an interactive session, after reading this `AGENTS.md`, say: `🤖 I read the AGENTS.md for mryfmo/dotfiles.` Never put that line in a headless run, a seat's turn, an audit, or any other output a program reads.
 
 ## Comment Policy
 

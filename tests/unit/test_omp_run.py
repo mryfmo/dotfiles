@@ -40,6 +40,10 @@ class OmpRunTest(unittest.TestCase):
         for role in ("orchestrator", "worker", "audit"):
             (self.policies / f"{role}.yml").write_text(POLICY)
             (self.profiles / f"{role}.yml").write_text(PROFILE)
+        self.rules = self.home / ".agents/omp/rules"
+        self.rules.mkdir(parents=True)
+        for role in ("orchestrator", "worker"):
+            (self.rules / f"{role}.md").write_text("## Regime\n")
         self.default_exts = [
             self.home / ".local/lib/omp-extensions/pi-claude-bridge",
             self.home / ".agents/omp/extensions/openai-siwc",
@@ -268,6 +272,8 @@ class OmpRunTest(unittest.TestCase):
                 f"{self.home}/.agents/omp/policies/worker.yml",
                 "--config",
                 f"{self.home}/.agents/omp/profiles/worker.yml",
+                "--append-system-prompt",
+                f"{self.home}/.agents/omp/rules/worker.md",
                 "-e",
                 str(self.default_exts[0]),
                 "-e",
@@ -453,6 +459,15 @@ class OmpRunTest(unittest.TestCase):
         (policy_home / ".agents/omp/policies").mkdir(parents=True)
         (policy_home / ".agents/omp/policies/audit.yml").write_text(POLICY)
         good = ["--role", "audit", "--prompt-file", str(self.prompt), "--cwd", str(self.work)]
+        rules_home = self.root / "rules-home"
+        for kind in ("policies", "profiles"):
+            (rules_home / ".agents/omp" / kind).mkdir(parents=True)
+            for role in ("orchestrator", "worker"):
+                (rules_home / ".agents/omp" / kind / f"{role}.yml").write_text(
+                    POLICY if kind == "policies" else PROFILE
+                )
+        (rules_home / ".agents/omp/rules").mkdir()
+        (rules_home / ".agents/omp/rules/orchestrator.md").write_text("")
         no_base = self.root / "no-base"
         self.git("init", "-q", str(no_base))
         self.git("commit", "-q", "--allow-empty", "-m", "head", cwd=no_base)
@@ -491,6 +506,17 @@ class OmpRunTest(unittest.TestCase):
                 good,
                 {"HOME": str(policy_home)},
                 f"profile overlay not found: {policy_home}/.agents/omp/profiles/audit.yml",
+            ),
+            # U75: a seat role's standing rules ride --append-system-prompt; omp reads a missing path as literal text.
+            "missing standing rules": (
+                ["--role", "worker", "--prompt-file", str(self.prompt)],
+                {"HOME": str(rules_home)},
+                f"standing rules absent or empty: {rules_home}/.agents/omp/rules/worker.md",
+            ),
+            "empty standing rules": (
+                ["--role", "orchestrator", "--prompt-file", str(self.prompt)],
+                {"HOME": str(rules_home)},
+                f"standing rules absent or empty: {rules_home}/.agents/omp/rules/orchestrator.md",
             ),
             "missing extension": ([*good, "--ext", str(self.root / "nowhere")], {}, str(self.root / "nowhere")),
             "missing cwd": ([*good, "--cwd", str(self.root / "gone")], {}, str(self.root / "gone")),

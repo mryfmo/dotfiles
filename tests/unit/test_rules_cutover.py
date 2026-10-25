@@ -21,8 +21,13 @@ class RulesCutoverTest(unittest.TestCase):
             with self.subTest(rule=rule):
                 self.assertFalse({n for n in names if rule in n}, names)
 
-    def test_no_rule_names_a_crit_review_flow(self):
-        for rule in sorted(RULES.glob("*.md")):
+    def test_no_claude_rule_names_a_crit_review_flow(self):
+        # The rules Claude Code receives are the ones rendered under home/dot_claude/rules (standing_rules, U75);
+        # the Codex-only rule keeps the Crit plugin's Codex usage.
+        rendered = sorted(SYMLINKS.glob("*.md.tmpl"))
+        self.assertTrue(rendered)
+        for template in rendered:
+            rule = RULES / template.name.removesuffix(".tmpl")
             with self.subTest(rule=rule.name):
                 self.assertEqual(CRIT.findall(rule.read_text()), [])
 
@@ -48,10 +53,11 @@ class RulesCutoverTest(unittest.TestCase):
         # PR #490 review 4366356034: an allow rule or policy row grants approval, never containment.
         self.assertIn("A lever never widens a seat's boundary: approval is not containment", text)
 
-    def test_the_regime_rule_is_linked_like_the_others(self):
+    def test_the_regime_rule_is_rendered_like_the_others(self):
         self.assertEqual(
-            (SYMLINKS / "symlink_regime.md.tmpl").read_text(),
-            "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/regime.md\n",
+            (SYMLINKS / "regime.md.tmpl").read_text(),
+            "{{- /* Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py. */ -}}\n"
+            '{{ include "dot_config/claude/rules/regime.md" -}}\n',
         )
 
     def test_chezmoi_removes_the_deployed_retired_rules(self):

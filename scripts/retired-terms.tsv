@@ -138,6 +138,7 @@ allow	scripts/orchestrator/README.md	audit seat	documents that the retired dispa
 allow	scripts/orchestrator/README.md	hcom-reply	documents that the retired dispatch form, kinds and seat are refused or gone
 allow	scripts/orchestrator/hcom-dispatch	agmsg	documents that the retired dispatch form is refused
 allow	tests/fixtures/hcom/events-u5team.jsonl	agmsg	recorded bus rows of 2026-10-23, read as opaque kinds
+allow	tests/install/common/lifecycle.bats	crit comments --all --json	proves the Codex rule carries no Crit receipt flow
 allow	tests/unit/test_agmsg_removed.py	agmsg	proves the retired tree is removed from hosts
 allow	tests/unit/test_agmsg_removed.py	herdr-agents	proves the retired tree is removed from hosts
 allow	tests/unit/test_asset_manifest.py	agmsg	proves the updater prunes the retired step's manifest record

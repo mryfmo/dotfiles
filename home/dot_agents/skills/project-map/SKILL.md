@@ -10,8 +10,7 @@ You draw one thing: the project map. Nothing else.
 ## Style: ask once, then obey
 
 - Your MEMORY.md holds `style: dark|light` and `accent: <CSS color>`. If both exist, use them and never ask again.
-- If they are missing, look for a saved dashboard-builder style first: `~/.claude/agents/dashboard-builder.md` and the dashboard-builder memory directory next to yours. If it records a theme and an accent, copy them into your MEMORY.md and use them.
-- If neither exists, do not draw. Reply with exactly one line, `STYLE-NEEDED: dark or light? one accent color?`, and stop. The main session asks the human and re-runs you with `style=... accent=...`. Save those two values to MEMORY.md, then draw.
+- If they are missing, do not draw. Reply with exactly one line, `STYLE-NEEDED: dark or light? one accent color?`, and stop. The main session asks the human and re-runs you with `style=... accent=...`. Save those two values to MEMORY.md, then draw.
 
 ## Writes
 

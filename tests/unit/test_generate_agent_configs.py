@@ -411,7 +411,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_check_reports_asset_render_drift(self) -> None:
         manifest = self.write_asset_fixture()
-        self.module.load_manifest = lambda: manifest
+        self.module.load_manifest = lambda _text=None: manifest
         self.module.expected_outputs = self.module.render_asset_constants
         old_argv = sys.argv
         self.addCleanup(setattr, sys, "argv", old_argv)
@@ -917,7 +917,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         stale = "schema_version: 1\nclaude:\n  levers:\n    sha256:\n      hcom-seat: " + "0" * 64 + "\n"
         manifest_path.write_text(stale)
-        self.module.load_manifest = lambda: {"claude": {}}
+        self.module.load_manifest = lambda _text=None: {"claude": {}}
         self.module.expected_outputs = lambda _manifest: {}
         old_argv = sys.argv
         self.addCleanup(setattr, sys, "argv", old_argv)
@@ -943,7 +943,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         pin = hashlib.sha256(body).hexdigest()
         manifest_path.write_text(f"schema_version: 1\nclaude:\n  levers:\n    sha256:\n      omp-run.sh: {pin}\n")
         manifest = {"claude": {"levers": {"sha256": {"omp-run.sh": pin}}}}
-        self.module.load_manifest = lambda: manifest
+        self.module.load_manifest = lambda _text=None: manifest
         self.module.expected_outputs = self.module.render_lever_installs
         self.addCleanup(setattr, sys, "argv", sys.argv)
         sys.argv = ["generate-agent-configs.py", "--check"]
@@ -986,7 +986,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             (self.temp_dir / rel).parent.mkdir(parents=True, exist_ok=True)
             (self.temp_dir / rel).write_text("x\n")
         expected.write_text("current\n")
-        self.module.load_manifest = dict
+        self.module.load_manifest = lambda _text=None: {}
         self.module.expected_outputs = lambda _manifest: {expected: "current\n"}
         self.addCleanup(setattr, sys, "argv", sys.argv)
 
@@ -3031,6 +3031,278 @@ class ClaudeDoctorLinuxGlobTest(unittest.TestCase):
         self.assertIsNotNone(managed, "the .env pair keeps its glob, so Linux doctor still warns about it")
         self.assertEqual(seen[0], managed[0] + 2, f"the control adds the two key globs: {seen} against {managed}")
         self.assertEqual((managed[0], sorted(managed[1])), (2, sorted(["Read(.env.*)", "Edit(.env*)"])))
+
+
+class StandingRulesTest(unittest.TestCase):
+    """Each agent gets exactly the standing rules its audience names, rendered from one source (regime-cutover U75)."""
+
+    SHARED = "## Shared\n\n- Applies to every audience.\n"
+    CLAUDE_ONLY = "---\npaths: '**/*.py'\n---\n\n## Claude only\n"
+    CODEX_ONLY = "## Codex only\n\n- `{{ not a template }}` stays literal.\n"
+
+    def setUp(self) -> None:
+        self.module = load_generator()
+        self.old_root = self.module.ROOT
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="standing-rules-test-"))
+        self.module.ROOT = self.temp_dir
+        (self.temp_dir / ".chezmoiroot").write_text("home\n")
+        self.rules = self.temp_dir / "home/rules"
+        self.rules.mkdir(parents=True)
+        (self.rules / "shared.md").write_text(self.SHARED)
+        (self.rules / "claude-only.md").write_text(self.CLAUDE_ONLY)
+        (self.rules / "codex-only.md").write_text(self.CODEX_ONLY)
+        self.manifest = sample_manifest()
+        self.manifest["omp"]["roles"] = {"orchestrator": "standard", "worker": "standard", "audit": "standard"}
+        self.manifest["standing_rules"] = {
+            "source_dir": "home/rules",
+            "rules": {
+                "codex-only": ["codex"],
+                "shared": ["claude", "codex", "omp-worker"],
+                "claude-only": ["claude"],
+            },
+        }
+
+    def tearDown(self) -> None:
+        self.module.ROOT = self.old_root
+        shutil.rmtree(self.temp_dir)
+
+    def rendered(self) -> dict[str, str]:
+        """Each output's home-relative path and the text chezmoi renders from it, with the source state in place."""
+        outputs = self.module.render_standing_rules(self.manifest)
+        self.module.write_outputs(outputs)
+        return {
+            str(path.relative_to(self.temp_dir / "home")): execute_chezmoi_template(text, self.temp_dir)
+            for path, text in outputs.items()
+        }
+
+    def refused(self) -> str:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.render_standing_rules(self.manifest)
+        return stderr.getvalue()
+
+    def test_each_agent_gets_exactly_the_rules_its_audience_names(self) -> None:
+        self.assertEqual(
+            self.rendered(),
+            {
+                "dot_claude/rules/shared.md.tmpl": self.SHARED,
+                "dot_claude/rules/claude-only.md.tmpl": self.CLAUDE_ONLY,
+                "dot_codex/AGENTS.md.tmpl": self.CODEX_ONLY + "\n" + self.SHARED,
+                "dot_agents/omp/rules/worker.md.tmpl": self.SHARED,
+            },
+        )
+
+    def test_a_rule_that_could_reach_an_agent_it_is_not_for_is_refused(self) -> None:
+        rules = self.manifest["standing_rules"]["rules"]
+        cases = {
+            "front matter outside claude": ("claude-only", ["claude", "codex"], "front matter"),
+            "the audit run": ("shared", ["claude", "omp-audit"], "origin/main AGENTS.md"),
+            "an unknown audience": ("shared", ["claude", "cursor"], "unknown audience"),
+            "an empty audience": ("shared", [], "non-empty audience"),
+        }
+        for label, (name, audience, message) in cases.items():
+            with self.subTest(label):
+                saved = rules[name]
+                rules[name] = audience
+                self.assertIn(message, self.refused())
+                rules[name] = saved
+        del rules["codex-only"]
+        self.assertIn("not declared in standing_rules.rules: ['codex-only']", self.refused())
+        rules["missing"] = ["claude"]
+        rules["codex-only"] = ["codex"]
+        self.assertIn("no source file home/rules/missing.md", self.refused())
+
+    def test_a_rule_file_left_from_an_old_audience_is_stale_and_removed(self) -> None:
+        outputs = self.module.render_standing_rules(self.manifest)
+        self.module.write_outputs(outputs)
+        old_link = self.temp_dir / "home/dot_claude/rules/retired.md.tmpl"
+        old_seat = self.temp_dir / "home/dot_omp/private_profiles/private_orchestrator/private_agent/AGENTS.md.tmpl"
+        for path in (old_link, old_seat):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("old\n")
+        self.assertEqual(self.module.stale_standing_rule_outputs(outputs), [old_link, old_seat])
+        self.module.remove_stale_generated_outputs(outputs)
+        self.assertFalse(old_link.exists())
+        self.assertFalse(old_seat.parent.parent.exists())
+        self.assertEqual(self.module.stale_standing_rule_outputs(outputs), [])
+
+    def test_a_refused_run_leaves_every_file_byte_identical_even_with_a_stale_lever_pin(self) -> None:
+        # Audit round 6 on 509a9895: the lever-pin refresh wrote the manifest before the unknown-file refusal ran.
+        lever = b"#!/usr/bin/env bash\nexit 0\n"
+        (self.temp_dir / "scripts/orchestrator").mkdir(parents=True)
+        (self.temp_dir / "scripts/orchestrator/hcom-seat").write_bytes(lever)
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(
+            "schema_version: 1\nclaude:\n  levers:\n    sha256:\n      hcom-seat: " + "a" * 64 + "\n"
+            + "".join(f"{key}: {json.dumps(self.manifest[key])}\n" for key in ("standing_rules", "omp", "model_profiles"))
+        )  # fmt: skip
+        parsed: list[str | None] = []
+
+        def load(text: str | None = None) -> dict:  # records the text main parses; no PyYAML in make unit-test
+            parsed.append(text)
+            return self.manifest
+
+        self.module.load_manifest = load
+        self.module.expected_outputs = self.module.render_standing_rule_outputs
+        self.module.stale_profile_outputs = lambda _manifest: []
+        self.module.write_outputs(self.module.render_standing_rule_outputs(self.manifest))
+        planted = self.temp_dir / "home/dot_claude/rules/readonly_retired.md.tmpl"
+        planted.write_text("old\n")
+
+        def snapshot() -> dict[Path, bytes]:
+            return {path: path.read_bytes() for path in sorted(self.temp_dir.rglob("*")) if path.is_file()}
+
+        before = snapshot()
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        for argv in ([], ["--check"]):
+            with self.subTest(argv=argv):
+                sys.argv = ["generate-agent-configs.py", *argv]
+                stderr = io.StringIO()
+                quiet = contextlib.redirect_stdout(io.StringIO())
+                with contextlib.redirect_stderr(stderr), quiet, self.assertRaises(SystemExit):
+                    self.module.main()
+                self.assertIn("not generated by scripts/generate-agent-configs.py", stderr.getvalue())
+                self.assertEqual(before, snapshot())
+                self.assertIn(
+                    f"hcom-seat: {hashlib.sha256(lever).hexdigest()}", parsed[-1], "the refreshed text renders"
+                )
+        planted.unlink()
+        sys.argv = ["generate-agent-configs.py"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.main()
+        self.assertIn(f"hcom-seat: {hashlib.sha256(lever).hexdigest()}", manifest_path.read_text())
+
+    def test_a_rule_root_file_the_generator_does_not_emit_is_refused_not_guessed(self) -> None:
+        # Audit round 4 on bc439b02: a chezmoi attribute (readonly_, empty_) changes the target, so no removal is
+        # derived from such a name; the run fails, check or not, before anything is written or removed.
+        outputs = self.module.render_standing_rule_outputs(self.manifest)
+        self.module.write_outputs(outputs)
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        self.module.load_manifest = lambda _text=None: self.manifest
+        self.module.expected_outputs = self.module.render_standing_rule_outputs
+        self.module.stale_profile_outputs = lambda _manifest: []
+        for name in (
+            "dot_claude/rules/readonly_retired.md.tmpl",
+            "dot_claude/rules/empty_retired.md.tmpl",
+            "dot_omp/private_profiles/private_worker/readonly_agent/AGENTS.md.tmpl",
+        ):
+            with self.subTest(name=name):
+                planted = self.temp_dir / "home" / name
+                planted.parent.mkdir(parents=True, exist_ok=True)
+                planted.write_text("old\n")
+                before = (self.temp_dir / "home/.chezmoiremove").read_text()
+                for argv in (["--check"], []):
+                    sys.argv = ["generate-agent-configs.py", *argv]
+                    stderr = io.StringIO()
+                    quiet = contextlib.redirect_stdout(io.StringIO())
+                    with contextlib.redirect_stderr(stderr), quiet, self.assertRaises(SystemExit):
+                        self.module.main()
+                    self.assertIn(
+                        f"not generated by scripts/generate-agent-configs.py; remove or rename by hand: home/{name}",
+                        stderr.getvalue(),
+                    )
+                self.assertTrue(planted.exists())
+                self.assertEqual(before, (self.temp_dir / "home/.chezmoiremove").read_text())
+                planted.unlink()
+
+    def generate(self) -> dict[Path, str]:
+        """One generate run over the fixture: write the standing-rule outputs, then sweep the stale ones."""
+        outputs = self.module.render_standing_rule_outputs(self.manifest)
+        self.module.write_outputs(outputs)
+        self.module.remove_stale_generated_outputs(outputs)
+        return outputs
+
+    def removals(self) -> set[str]:
+        return self.module.removal_block_entries((self.temp_dir / "home/.chezmoiremove").read_text())
+
+    def test_a_target_that_leaves_an_audience_is_removed_from_the_host_on_apply(self) -> None:
+        remove = self.temp_dir / "home/.chezmoiremove"
+        remove.write_text(".hand/written\n")
+        self.generate()
+        self.assertIn(".hand/written\n", remove.read_text())
+        self.assertNotIn(".claude/rules/shared.md", self.removals())
+        self.assertIn(".omp/profiles/audit/agent/AGENTS.md", self.removals())
+        dest = self.temp_dir / "dest"
+        dest.mkdir()
+        apply = [
+            CHEZMOI,
+            *("--source", str(self.temp_dir), "--destination", str(dest), "--no-tty"),
+            *("--config", str(self.temp_dir / "chezmoi.toml"), "--persistent-state", str(self.temp_dir / "state")),
+            "apply",
+        ]
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertTrue((dest / ".claude/rules/shared.md").is_file())
+        self.assertTrue((dest / ".agents/omp/rules/worker.md").is_file())
+
+        self.manifest["standing_rules"]["rules"]["shared"] = ["codex"]
+        stale = self.module.render_standing_rule_outputs(self.manifest)
+        self.assertNotEqual(stale[remove], remove.read_text(), "--check must report the missing removal")
+        self.generate()
+        self.assertLessEqual({".claude/rules/shared.md", ".agents/omp/rules/worker.md"}, self.removals())
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertFalse((dest / ".claude/rules/shared.md").exists())
+        self.assertFalse((dest / ".agents/omp/rules/worker.md").exists())
+        self.assertTrue((dest / ".codex/AGENTS.md").is_file())
+
+        del self.manifest["standing_rules"]["rules"]["claude-only"]
+        (self.rules / "claude-only.md").unlink()
+        self.generate()
+        self.assertIn(".claude/rules/claude-only.md", self.removals(), "a deleted rule keeps its removal")
+        self.manifest["standing_rules"]["rules"]["shared"] = ["claude"]
+        del self.manifest["standing_rules"]["rules"]["codex-only"]
+        (self.rules / "codex-only.md").unlink()
+        self.generate()
+        self.assertNotIn(".claude/rules/shared.md", self.removals(), "a target rendered again leaves the block")
+        self.assertIn(".codex/AGENTS.md", self.removals(), "Codex with no rule left loses its AGENTS.md")
+        self.assertFalse((self.temp_dir / "home/dot_codex/AGENTS.md.tmpl").exists())
+        subprocess.run(apply, check=True, capture_output=True)
+        self.assertFalse((dest / ".codex/AGENTS.md").exists())
+        self.assertTrue((dest / ".claude/rules/shared.md").is_file())
+
+    def test_check_fails_while_a_codex_rules_file_no_rule_renders_is_present(self) -> None:
+        # PR #544 thread 4370227867: with no codex audience left, the old Codex AGENTS.md template must fail --check.
+        self.module.write_outputs(self.module.render_standing_rules(self.manifest))
+        codex = self.temp_dir / "home/dot_codex/AGENTS.md.tmpl"
+        self.assertTrue(codex.is_file())
+        rules = self.manifest["standing_rules"]["rules"]
+        del rules["codex-only"]
+        (self.rules / "codex-only.md").unlink()
+        rules["shared"] = ["claude", "omp-worker"]
+        self.module.load_manifest = lambda _text=None: self.manifest
+        self.module.expected_outputs = self.module.render_standing_rules
+        self.module.stale_profile_outputs = lambda _manifest: []
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stderr = io.StringIO()
+        quiet = contextlib.redirect_stdout(io.StringIO())
+        with contextlib.redirect_stderr(stderr), quiet, self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn("home/dot_codex/AGENTS.md.tmpl", stderr.getvalue())
+
+    def test_pstack_models_render_from_the_model_profiles_they_name(self) -> None:
+        self.manifest["standing_rules"]["pstack_models"] = {
+            "budget": "medium (high)",
+            "roles": {"bug-fix": "inherit-parent", "arena runners": ["standard", "auto"], "how explainer": "express"},
+        }
+        lines = self.module.render_pstack_models(self.manifest).splitlines()
+        self.assertIn("# budget: medium (high)", lines)
+        self.assertEqual(
+            [line for line in lines if line and not line.startswith("#")],
+            ["bug-fix: inherit-parent", "arena runners: sonnet high, auto", "how explainer: haiku low"],
+        )
+        self.manifest["model_profiles"]["standard"]["claude"]["model"] = "claude-opus-5-5"
+        self.assertIn("arena runners: opus high, auto", self.module.render_pstack_models(self.manifest))
+        for value, message in (("nope", "names no model_profiles entry"), (3, "must be a profile name")):
+            with self.subTest(value=value):
+                self.manifest["standing_rules"]["pstack_models"]["roles"]["bug-fix"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_pstack_models(self.manifest)
+                self.assertIn(message, stderr.getvalue())
 
 
 if __name__ == "__main__":

@@ -700,9 +700,29 @@ bash:
       approval: deny
     - match: "*yarn publish"
       approval: deny
+    - match: "*bun publish *"
+      approval: deny
+    - match: "*bun publish"
+      approval: deny
     - match: "*uv publish *"
       approval: deny
     - match: "*uv publish"
+      approval: deny
+    - match: "*cargo publish *"
+      approval: deny
+    - match: "*cargo publish"
+      approval: deny
+    - match: "*yarn npm publish *"
+      approval: deny
+    - match: "*yarn npm publish"
+      approval: deny
+    - match: "*twine upload *"
+      approval: deny
+    - match: "*twine upload"
+      approval: deny
+    - match: "*gem push *"
+      approval: deny
+    - match: "*gem push"
       approval: deny
     - match: "*terraform apply *"
       approval: deny
@@ -1037,6 +1057,10 @@ bash:
     - match: "*gh project unlink *"
       approval: deny
     - match: "*gh project unlink"
+      approval: deny
+    - match: "*gh codespace ports visibility *"
+      approval: deny
+    - match: "*gh codespace ports visibility"
       approval: deny
     - match: "*gh alias set *"
       approval: deny

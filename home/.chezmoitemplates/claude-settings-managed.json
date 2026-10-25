@@ -441,12 +441,18 @@
       "Bash(npm publish *)",
       "Bash(pnpm publish *)",
       "Bash(yarn publish *)",
+      "Bash(bun publish *)",
       "Bash(uv publish *)",
+      "Bash(cargo publish *)",
+      "Bash(yarn npm publish *)",
+      "Bash(twine upload *)",
+      "Bash(gem push *)",
       "Bash(terraform apply *)",
       "Bash(terraform destroy *)",
       "Bash(kubectl apply *)",
       "Bash(kubectl delete *)",
-      "Bash(gh release *)"
+      "Bash(gh release *)",
+      "Bash(gh codespace ports visibility *)"
     ],
     "defaultMode": "auto",
     "ask": [

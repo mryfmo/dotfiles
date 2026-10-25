@@ -125,11 +125,35 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=[["npm", "pnpm", "yarn", "uv"], "publish"],
+    pattern=[["npm", "pnpm", "yarn", "bun", "uv", "cargo"], "publish"],
     decision="forbidden",
     justification="Package publishing is done by the operator.",
-    match=["npm publish", "pnpm publish --access public", "yarn publish", "uv publish"],
-    not_match=["npm install", "pnpm install", "uv run pytest"],
+    match=["npm publish", "pnpm publish --access public", "yarn publish", "bun publish", "uv publish", "cargo publish --dry-run"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["yarn", "npm", "publish"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["yarn npm publish --tolerate-republish"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["twine", "upload"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["twine upload dist/x.whl"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
+)
+
+prefix_rule(
+    pattern=["gem", "push"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["gem push x-1.0.gem"],
+    not_match=["npm install", "pnpm install", "uv run pytest", "yarn npm info x", "cargo build", "twine check dist/x.whl", "gem install x"],
 )
 
 prefix_rule(
@@ -290,6 +314,14 @@ prefix_rule(
     justification="Labels, gists, keys, codespaces and projects are the operator's.",
     match=["gh project item-add 1"],
     not_match=["gh label list", "gh gist view 1", "gh ssh-key list"],
+)
+
+prefix_rule(
+    pattern=["gh", "codespace", "ports", "visibility"],
+    decision="forbidden",
+    justification="Codespace port visibility is the operator's; a public port exposes the codespace to the internet.",
+    match=["gh codespace ports visibility 8080:public -c x", "gh codespace ports visibility 3000:org"],
+    not_match=["gh codespace ports -c x", "gh codespace list"],
 )
 
 prefix_rule(

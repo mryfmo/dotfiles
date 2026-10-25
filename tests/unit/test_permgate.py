@@ -294,15 +294,36 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
 
     def test_a_ps_form_that_prints_the_environment_is_never_automatically_allowed(self) -> None:
-        """U76 (F139): BSD `e`, `-E`, and macOS `-e` print each process's environment; an `-o` format may still
-        name keywords that hold an `e`."""
+        """U76 (F139 and the PR #554 bot finding): BSD `e`, `-E` and macOS `-e` print each process's environment, and so
+        do the `environ`/`env` format keys; an `-o`/`-O` format is allowed only from a list of keys, and any other
+        option token holding an `e` or an `o` falls through."""
         self.policy_path.write_text((ROOT / "home/dot_agents/permgate-policy.yaml").read_text())
-        for command in ("ps auxe", "ps eww", "ps aux -e", "ps -E", "ps -ef", "ps -p 1 e"):
+        for command in (
+            "ps auxe",
+            "ps eww",
+            "ps aux -e",
+            "ps -E",
+            "ps -ef",
+            "ps -p 1 e",
+            "ps -p 123 -o environ",
+            "ps -p 123 -O environ",
+            "ps -o env",
+            "ps -o pid,environ",
+            "ps -opid,env",
+            "ps axo pid,environ",
+        ):
             with self.subTest(command=command):
                 result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
-        for command in ("ps aux", "ps -ax", "ps -p 123 -o pid,etime,command", "ps -A -o user,pid"):
+        for command in (
+            "ps aux",
+            "ps -ax",
+            "ps -p 123 -o pid,etime,command",
+            "ps -A -o user,pid",
+            "ps -o pid= -p 1",
+            "ps -p 1 -o %cpu,%mem,rss",
+        ):
             with self.subTest(command=command):
                 allowed = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 self.assertEqual(permission_behavior(allowed.stdout), "allow")

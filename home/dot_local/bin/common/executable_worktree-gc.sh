@@ -8,23 +8,30 @@
 #   (`git worktree list --porcelain -z`) under `<toplevel>/.claude/worktrees/`;
 #   every other worktree, the main one and the omp seats included, is never
 #   listed. A candidate qualifies when its tree is clean (`git status --porcelain
-#   --untracked-files=all` prints nothing) and its work landed, the first of:
-#   its head is reachable from `origin/main` (`git merge-base --is-ancestor`), its
-#   branch has a merged pull request (`gh pr list --state merged --head <branch>
-#   --json number --limit 1`), or, detached, its head is the head commit of a
-#   merged pull request (`gh pr list --state merged --search <sha> --json
-#   number,headRefOid`, then `headRefOid == <sha>`). A locked or missing worktree
-#   is kept. The listing is read field by field on its NUL separators, so a path
-#   cannot forge a record; a candidate whose path contains a newline is an
-#   `error` row. Each candidate prints one row `<verdict>\t<path>\t<ref>\t<reason>`
-#   (a newline in the path printed as `\n`), verdict `gc` (qualifies), `keep` or
-#   `error`, then one `summary` row. Nothing
-#   is removed without `--apply`; with it each qualifying path is removed with
-#   `git worktree remove <path>`, never forced, so git itself still refuses a
-#   tree that changed since the check, then `git worktree prune` runs, and each
-#   step prints a `removed`, `failed` or `pruned` row. A `gh` error fails closed:
-#   the run removes nothing and exits 1. `origin/main` is read as it is; run
-#   `git fetch origin` first for a current answer. Every `gh` call is bounded by
+#   --ignored=matching --untracked-files=all` prints nothing: `git worktree
+#   remove` deletes ignored files without asking, so a tree holding one, an
+#   `.env` say, is kept) and its work landed, the first of: its head is
+#   reachable from `origin/main` (`git merge-base --is-ancestor`); merging it
+#   into `origin/main` changes nothing (`git merge-tree --write-tree origin/main
+#   <head>` prints the tree of `origin/main`, the case of a squash merge with no
+#   later commit); or its head is the `headRefOid` of a merged pull request of
+#   this repository (`gh pr list --state merged --head <branch> --json
+#   number,headRefOid --limit 100`, detached `--search <sha>`). A branch name
+#   alone never counts: a commit pushed after a squash merge is not in main,
+#   and `--head` also matches a fork's branch of the same name. A locked or
+#   missing worktree is kept. The listing is read field by field on its NUL
+#   separators, so a path cannot forge a record; a candidate whose path
+#   contains a newline is an `error` row. Each candidate prints one row
+#   `<verdict>\t<path>\t<ref>\t<reason>` (a newline in the path printed as
+#   `\n`), verdict `gc` (qualifies), `keep` or `error`, then one `summary` row.
+#   Nothing is removed without `--apply`; with it each qualifying path is
+#   removed with `git worktree remove <path>`, never forced, so git itself
+#   still refuses a tree that changed since the check, and each prints a
+#   `removed` or `failed` row. `git worktree prune` is never run: it would
+#   drop the admin data of every worktree whose directory is missing, an
+#   unlocked omp seat included. A `gh` error fails closed: the run removes
+#   nothing and exits 1. `origin/main` is read as it is; run `git fetch origin`
+#   first for a current answer. Every `gh` call is bounded by
 #   WORKTREE_GC_GH_TIMEOUT seconds (perl `alarm`, because `timeout` is not on
 #   every host). A path argument narrows the run to those worktrees and is
 #   refused unless it is one of them.
@@ -126,6 +133,10 @@ git -C "${toplevel}" rev-parse --verify --quiet 'origin/main^{commit}' > /dev/nu
     echo 'worktree-gc: origin/main is absent; run git fetch origin' >&2
     exit 1
 }
+main_tree=$(git -C "${toplevel}" rev-parse 'origin/main^{tree}') || {
+    echo 'worktree-gc: cannot read the tree of origin/main' >&2
+    exit 1
+}
 
 # @description Print the physical form of a path, or the path itself when it no longer exists.
 # @arg $1 path A path.
@@ -208,7 +219,7 @@ done
 # @arg $3 string Its branch, empty when detached.
 # @arg $4 string Its state: `locked`, `missing`, `newline` or empty.
 classify() {
-    local path=$1 head=$2 branch=$3 state=$4 status prs number
+    local path=$1 head=$2 branch=$3 state=$4 status merged rc query prs number
     verdict=keep
     if [[ ${state} == newline ]]; then
         verdict=error reason='path contains a newline'
@@ -219,15 +230,19 @@ classify() {
         return
     fi
     if [[ ${state} == missing || ! -d ${path} ]]; then
-        reason='missing (git worktree prune clears it)'
+        reason='missing (its admin data is left for the operator)'
         return
     fi
-    if ! status=$(git -C "${path}" status --porcelain --untracked-files=all); then
+    if ! status=$(git -C "${path}" status --porcelain --ignored=matching --untracked-files=all); then
         verdict=error reason='git status failed'
         return
     fi
-    if [[ -n ${status} ]]; then
+    if [[ -n ${status} ]] && grep -qv '^!! ' <<< "${status}"; then
         reason='dirty or untracked files'
+        return
+    fi
+    if [[ -n ${status} ]]; then
+        reason='ignored files (git worktree remove would delete them)'
         return
     fi
     if [[ ! ${head} =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then
@@ -238,28 +253,30 @@ classify() {
         verdict=gc reason="head ${head:0:12} is in origin/main"
         return
     fi
-    if [[ -n ${branch} ]]; then
-        if ! prs=$(bounded_gh pr list --state merged --head "${branch}" --json number --limit 1) ||
-            ! number=$(jq -r '.[0].number // empty' <<< "${prs}"); then
-            verdict=error reason="gh pr list --head ${branch} failed"
-            return
-        fi
-        if [[ -n ${number} ]]; then
-            verdict=gc reason="branch PR #${number} merged"
-        else
-            reason='no merged PR for the branch'
-        fi
+    # Exit 1 is a conflict: the work is not in origin/main as it stands, so it has not landed by content.
+    merged=$(git -C "${toplevel}" merge-tree --write-tree origin/main "${head}" 2> /dev/null) && rc=0 || rc=$?
+    if ((rc > 1)); then
+        verdict=error reason='git merge-tree failed'
         return
     fi
-    if ! prs=$(bounded_gh pr list --state merged --search "${head}" --json number,headRefOid) ||
+    if ((rc == 0)) && [[ ${merged%%$'\n'*} == "${main_tree}" ]]; then
+        verdict=gc reason="merging head ${head:0:12} into origin/main changes nothing"
+        return
+    fi
+    if [[ -n ${branch} ]]; then
+        query=(--head "${branch}" --json 'number,headRefOid' --limit 100)
+    else
+        query=(--search "${head}" --json 'number,headRefOid')
+    fi
+    if ! prs=$(bounded_gh pr list --state merged "${query[@]}") ||
         ! number=$(jq -r --arg sha "${head}" 'map(select(.headRefOid == $sha))[0].number // empty' <<< "${prs}"); then
-        verdict=error reason="gh pr list --search ${head:0:12} failed"
+        verdict=error reason="gh pr list ${query[0]} ${query[1]:0:12} failed"
         return
     fi
     if [[ -n ${number} ]]; then
-        verdict=gc reason="detached at the head of merged PR #${number}"
+        verdict=gc reason="head ${head:0:12} is the head of merged PR #${number}"
     else
-        reason='detached at no merged PR head'
+        reason="head ${head:0:12} is neither in origin/main nor the head of a merged PR"
     fi
 }
 
@@ -298,7 +315,5 @@ for path in "${gc[@]+"${gc[@]}"}"; do
         failed=$((failed + 1))
     fi
 done
-git -C "${toplevel}" worktree prune
-printf 'pruned\tgit worktree prune\n'
 printf 'summary\t%d removed, %d failed, %d kept\n' "${removed}" "${failed}" "${kept}"
 ((! failed)) || exit 1

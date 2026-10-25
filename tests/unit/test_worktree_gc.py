@@ -3,7 +3,7 @@
 Each test builds a bare `origin` and a checkout under a temporary directory, with worktrees under
 `.claude/worktrees/` in every state the lever tells apart. A fake `gh` written into the scratch PATH answers the two
 `gh pr list --state merged` queries from a JSON table and records its argv; a `git` wrapper records every argv and
-execs the real git, so the tests can assert that no git call carries `--force`. The real `gh` is never called and the
+execs the real git, so the tests can assert that no git call carries `--force` or runs `git worktree prune`. The real `gh` is never called and the
 real worktrees of this repository are never read.
 """
 
@@ -82,22 +82,39 @@ class WorktreeGcTest(unittest.TestCase):
         ).stdout.strip()
 
     def add_tree(self, name, branch=None, commit=True):
-        """Add `.claude/worktrees/<name>` from origin/main, on `branch` or detached, with one commit past main."""
+        """Add `.claude/worktrees/<name>` from origin/main, on `branch` or detached, with one commit past main.
+
+        The commit adds `<name>.txt`, so its content is not in main either.
+        """
         path = self.trees / name
         self.git("worktree", "add", *(["-b", branch] if branch else ["--detach"]), str(path), "origin/main")
         if commit:
-            self.git("commit", "--allow-empty", "-m", name, cwd=path)
+            self.commit_file(path, f"{name}.txt", f"{name}\n")
         return path, self.git("rev-parse", "HEAD", cwd=path)
+
+    def commit_file(self, cwd, name, content, message=None):
+        (cwd / name).write_text(content)
+        self.git("add", name, cwd=cwd)
+        self.git("commit", "-m", message or name, cwd=cwd)
+
+    def land_on_main(self, name, content):
+        """Commit `name` on main and push it, as a squash merge of a branch that added the same file would.
+
+        The message differs from the branch's, so within the same second the commit is not the branch head itself.
+        """
+        self.commit_file(self.checkout, name, content, message=f"squash: {name}")
+        self.git("push", "origin", "main")
 
     def build_states(self):
         """Every state the lever tells apart; returns the expected verdict per worktree name."""
-        landed, _ = self.add_tree("landed-branch", "feat/landed")
+        landed, landed_sha = self.add_tree("landed-branch", "feat/landed")
         self.add_tree("in-main", "feat/in-main", commit=False)
         untracked, _ = self.add_tree("untracked", "feat/untracked")
         (untracked / "notes.txt").write_text("work in progress\n")
         modified, _ = self.add_tree("modified", "feat/modified")
         (modified / "README").write_text("edited\n")
         self.add_tree("open-pr", "feat/open")
+        self.add_tree("reused-name", "feat/reused")
         _, detached_sha = self.add_tree("detached-landed")
         _, other_sha = self.add_tree("detached-other")
         locked, _ = self.add_tree("locked", "feat/locked")
@@ -107,13 +124,12 @@ class WorktreeGcTest(unittest.TestCase):
             json.dumps(
                 {
                     "head": {
-                        branch: [{"number": number}]
-                        for branch, number in (
-                            ("feat/landed", 11),
-                            ("feat/untracked", 12),
-                            ("feat/modified", 13),
-                            ("feat/locked", 14),
-                        )
+                        "feat/landed": [{"number": 11, "headRefOid": landed_sha}],
+                        "feat/untracked": [{"number": 12, "headRefOid": "1" * 40}],
+                        "feat/modified": [{"number": 13, "headRefOid": "2" * 40}],
+                        "feat/locked": [{"number": 14, "headRefOid": "3" * 40}],
+                        # A merged PR with this branch name (another fork's, or the head before later commits).
+                        "feat/reused": [{"number": 15, "headRefOid": "4" * 40}],
                     },
                     "search": {
                         detached_sha: [{"number": 7, "headRefOid": detached_sha}],
@@ -124,13 +140,14 @@ class WorktreeGcTest(unittest.TestCase):
         )
         self.assertTrue(landed.is_dir())
         return {
-            "landed-branch": ("gc", "branch PR #11 merged"),
+            "landed-branch": ("gc", "is the head of merged PR #11"),
             "in-main": ("gc", "is in origin/main"),
             "untracked": ("keep", "dirty or untracked files"),
             "modified": ("keep", "dirty or untracked files"),
-            "open-pr": ("keep", "no merged PR for the branch"),
-            "detached-landed": ("gc", "detached at the head of merged PR #7"),
-            "detached-other": ("keep", "detached at no merged PR head"),
+            "open-pr": ("keep", "neither in origin/main nor the head of a merged PR"),
+            "reused-name": ("keep", "neither in origin/main nor the head of a merged PR"),
+            "detached-landed": ("gc", "is the head of merged PR #7"),
+            "detached-other": ("keep", "neither in origin/main nor the head of a merged PR"),
             "locked": ("keep", "locked"),
         }
 
@@ -166,7 +183,7 @@ class WorktreeGcTest(unittest.TestCase):
                 self.assertEqual(verdicts[name][0], verdict)
                 self.assertIn(reason, verdicts[name][1])
         self.assertEqual(rows[-1][0], "summary")
-        self.assertIn("3 qualify, 5 kept; dry run", rows[-1][1])
+        self.assertIn("3 qualify, 6 kept; dry run", rows[-1][1])
         self.assertEqual(self.remaining(), sorted(expected))
         self.assertTrue((self.root / "outside").is_dir())
         removals = [argv for argv in self.calls(self.git_calls) if "remove" in argv or "prune" in argv]
@@ -182,14 +199,13 @@ class WorktreeGcTest(unittest.TestCase):
         self.assertTrue((self.root / "outside").is_dir())
         removed = [row[1] for row in self.rows(result.stdout) if row[0] == "removed"]
         self.assertEqual(sorted(Path(path).name for path in removed), landed)
-        self.assertIn(["pruned", "git worktree prune"], self.rows(result.stdout))
         git_calls = self.calls(self.git_calls)
         self.assertEqual(
             sorted(Path(argv[-1]).name for argv in git_calls if argv[-3:-1] == ["worktree", "remove"]), landed
         )
-        self.assertIn(["-C", str(self.checkout), "worktree", "prune"], git_calls)
         for argv in git_calls:
             self.assertNotIn("--force", argv)
+            self.assertNotIn("prune", argv)
             if "remove" in argv:
                 self.assertEqual(argv, ["-C", str(self.checkout), "worktree", "remove", argv[-1]])
         self.assertIn("feat/landed", self.git("branch", "--list", "feat/landed"), "the branch ref stays")
@@ -199,7 +215,19 @@ class WorktreeGcTest(unittest.TestCase):
         self.run_gc()
         gh_calls = self.calls(self.gh_calls)
         self.assertIn(
-            ["pr", "list", "--state", "merged", "--head", "feat/landed", "--json", "number", "--limit", "1"], gh_calls
+            [
+                "pr",
+                "list",
+                "--state",
+                "merged",
+                "--head",
+                "feat/landed",
+                "--json",
+                "number,headRefOid",
+                "--limit",
+                "100",
+            ],
+            gh_calls,
         )
         detached = self.git("rev-parse", "HEAD", cwd=self.trees / "detached-landed")
         self.assertIn(
@@ -260,17 +288,74 @@ class WorktreeGcTest(unittest.TestCase):
         self.build_states()
         result = self.run_gc("--apply", str(self.trees / "in-main"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "pruned", "summary"])
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
         self.assertNotIn("in-main", self.remaining())
         self.assertIn("landed-branch", self.remaining())
 
     def test_nothing_to_collect_exits_0(self):
         result = self.run_gc("--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(
-            self.rows(result.stdout), [["pruned", "git worktree prune"], ["summary", "0 removed, 0 failed, 0 kept"]]
-        )
+        self.assertEqual(self.rows(result.stdout), [["summary", "0 removed, 0 failed, 0 kept"]])
         self.assertEqual(self.calls(self.gh_calls), [])
+
+    def test_an_ignored_file_keeps_the_tree(self):
+        """`git worktree remove` deletes ignored files with exit 0, so a tree holding an ignored `.env` is kept."""
+        self.land_on_main(".gitignore", ".env\n")
+        path, _ = self.add_tree("with-env", "feat/with-env", commit=False)
+        (path / ".env").write_text("TOKEN=secret\n")
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows(result.stdout)
+        self.assertEqual(rows[0][:2], ["keep", str(path)])
+        self.assertIn("ignored files", rows[0][3])
+        self.assertEqual(rows[-1], ["summary", "0 removed, 0 failed, 1 kept"])
+        self.assertEqual((path / ".env").read_text(), "TOKEN=secret\n")
+
+    def test_a_squash_merged_branch_is_landed_until_it_gets_a_later_commit(self):
+        path, _ = self.add_tree("squashed", "feat/squashed")
+        self.land_on_main("squashed.txt", "squashed\n")
+        self.merged.write_text(json.dumps({"head": {}, "search": {}}))
+        result = self.run_gc()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        row = self.rows(result.stdout)[0]
+        self.assertEqual(row[0], "gc", row)
+        self.assertIn("into origin/main changes nothing", row[3])
+        self.assertEqual(self.calls(self.gh_calls), [], "content already in main needs no gh call")
+
+        self.commit_file(path, "later.txt", "after the squash\n")
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        row = self.rows(result.stdout)[0]
+        self.assertEqual(row[0], "keep", row)
+        self.assertIn("neither in origin/main nor the head of a merged PR", row[3])
+        self.assertTrue((path / "later.txt").is_file())
+
+    def test_a_merged_pr_with_the_branch_name_but_another_head_does_not_land_the_tree(self):
+        path, head = self.add_tree("same-name", "feat/same-name")
+        self.merged.write_text(json.dumps({"head": {"feat/same-name": [{"number": 21, "headRefOid": "5" * 40}]}}))
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.rows(result.stdout)[0][0], "keep")
+        self.assertTrue(path.is_dir())
+
+        self.merged.write_text(json.dumps({"head": {"feat/same-name": [{"number": 21, "headRefOid": head}]}}))
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        self.assertFalse(path.exists())
+
+    def test_the_admin_data_of_a_sibling_worktree_whose_directory_is_missing_survives(self):
+        """An unlocked seat worktree outside `.claude/worktrees/` whose directory is gone keeps its admin data."""
+        seat = self.root / "seat"
+        self.git("worktree", "add", "-b", "seat", str(seat), "origin/main")
+        shutil.rmtree(seat)
+        self.add_tree("in-main", "feat/in-main", commit=False)
+        result = self.run_gc("--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([row[0] for row in self.rows(result.stdout)], ["gc", "removed", "summary"])
+        listing = self.git("worktree", "list", "--porcelain")
+        self.assertIn(f"worktree {seat}", listing)
 
 
 if __name__ == "__main__":

@@ -1156,9 +1156,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 + " | toJson }}",
                 self.temp_dir,
             )
-            for role in self.module.OMP_WRITING_POLICIES
+            for role in self.module.omp_policy_roles()
         }
+        self.assertEqual(["audit", "orchestrator", "worker"], sorted(policies))
         self.module.validate_omp_policies(manifest, policies)
+        # U71 audit round 3 (P2): a raw merge allow in audit.yml, or any other policy file, is refused too.
+        for role in sorted(policies):
+            for merge in ("gh pr merge 541 --squash --match-head-commit *", "gh api repos/o/r/pulls/541/merge *"):
+                with self.subTest(role=role, merge=merge):
+                    injected = json.loads(json.dumps(policies))
+                    injected[role]["bash"]["patterns"].insert(0, {"match": merge, "approval": "allow"})
+                    with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                        self.module.validate_omp_policies(manifest, injected)
+                    self.assertIn("names a GitHub merge", stderr.getvalue())
+                    self.assertIn(f"{role}.yml", stderr.getvalue())
         if self.module.yaml is None:
             with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
                 self.module.validate_omp_policies(manifest)

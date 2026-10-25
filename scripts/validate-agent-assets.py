@@ -416,10 +416,14 @@ def validate_claude_permissions_allow(permissions: Any, label: str, pinned: Iter
 
 # The omp writing seats' allow rows (regime-cutover U28): an allow in orchestrator.yml or worker.yml is one lever by its
 # installed path, `~/.local/bin/common/<lever> *`, `~/.local/bin/common/<lever> --<flag> *` or the exact bare
-# `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule; a raw `gh pr merge`
-# allow is refused, since the orchestrator merges only through pr-merge.sh (U71). audit.yml keeps its read-only allows under `always-ask`;
-# tests/unit/test_omp_seat_policy.py holds its decision table.
+# `~/.local/bin/common/<lever>` (U28b F3), held to the same lever checks as a Claude allow rule. audit.yml keeps its
+# read-only allows under `always-ask`; tests/unit/test_omp_seat_policy.py holds its decision table. In every policy
+# file under home/dot_agents/omp/policies, found by glob so a new or renamed file is covered too, an allow whose
+# pattern names a GitHub merge (`gh … merge`: `gh pr merge`, `gh api …/merge`) is refused, since the orchestrator
+# merges only through pr-merge.sh (U71).
+OMP_POLICY_DIR = "home/dot_agents/omp/policies"
 OMP_WRITING_POLICIES = ("orchestrator", "worker")
+OMP_RAW_MERGE_ALLOW = re.compile(r"\bgh\b.*\bmerge\b")
 OMP_LEVER_ALLOW = re.compile(r"~/\.local/bin/common/([A-Za-z0-9][A-Za-z0-9_.-]*)(?:(?: --[a-z][a-z-]*)? \*)?")
 OMP_CHECKOUT_LEVER = re.compile(r"\*?(?:\./)?scripts/orchestrator/")
 
@@ -449,15 +453,43 @@ def validate_omp_policy_allow(policy: Any, label: str, pinned: Iterable[str] | N
             fail(f"{label} allow rule {match!r}: no claude.levers.sha256 pin for {lever.group(1)}")
 
 
+def omp_policy_roles() -> list[str]:
+    """The role of every policy file under OMP_POLICY_DIR (`<role>.yml`), found by glob."""
+    roles = sorted(path.stem for path in (ROOT / OMP_POLICY_DIR).glob("*.yml"))
+    if not roles:
+        fail(f"{ROOT / OMP_POLICY_DIR} holds no omp seat policy")
+    return roles
+
+
+def validate_omp_no_raw_merge_allow(policy: Any, label: str) -> None:
+    """Refuse an allow rule whose pattern names a GitHub merge, in any seat's policy (U71)."""
+    patterns = policy.get("bash", {}).get("patterns") if isinstance(policy, dict) else None
+    if not isinstance(patterns, list) or not all(isinstance(rule, dict) for rule in patterns):
+        fail(f"{label} bash.patterns must be a list of rules")
+    for rule in patterns:
+        match = rule.get("match")
+        if rule.get("approval") == "allow" and isinstance(match, str) and OMP_RAW_MERGE_ALLOW.search(match):
+            fail(
+                f"{label} allow rule {match!r} names a GitHub merge; seats merge only through "
+                f"{LEVER_INSTALL_PREFIX}pr-merge.sh (regime-cutover U71)"
+            )
+
+
 def validate_omp_policies(manifest: dict[str, Any], policies: dict[str, Any] | None = None) -> None:
-    """Check the writing seats' allow rows; `policies` maps a role to its parsed overlay, else PyYAML reads the files."""
+    """Check every seat policy for a raw merge allow and the writing seats' allow rows; `policies` maps each role of
+    omp_policy_roles() to its parsed overlay, else PyYAML reads the files."""
     if policies is None and yaml is None:
         fail("PyYAML is required to read the omp seat policies")
     pinned = manifest.get("claude", {}).get("levers", {}).get("sha256", {})
-    for role in OMP_WRITING_POLICIES:
-        path = ROOT / f"home/dot_agents/omp/policies/{role}.yml"
+    roles = omp_policy_roles()
+    if policies is not None and sorted(policies) != roles:
+        fail(f"the parsed omp policies {sorted(policies)} are not the policy files {roles}")
+    for role in roles:
+        path = ROOT / OMP_POLICY_DIR / f"{role}.yml"
         policy = policies[role] if policies is not None else yaml.safe_load(path.read_text())
-        validate_omp_policy_allow(policy, str(path), pinned)
+        validate_omp_no_raw_merge_allow(policy, str(path))
+        if role in OMP_WRITING_POLICIES:
+            validate_omp_policy_allow(policy, str(path), pinned)
 
 
 # The glob forms of Read/Edit permission rules are dropped by the Linux sandbox (claude doctor: "On Linux, glob patterns

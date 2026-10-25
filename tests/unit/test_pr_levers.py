@@ -1191,6 +1191,31 @@ class PrAuditTest(PrLeverTestCase):
         self.assertTrue(text.endswith("\nVerdict: blocked\n"), text)
         self.assertTrue(self.rows()[-1][4].startswith("blocked (codex exec exited 5; pr-audit.sh round 1;"))
 
+    def test_a_context_lost_after_the_check_blocks_the_round_and_starts_no_codex(self):
+        # U71 audit round 3 (P2): a failed `cat` of the context was masked by the printf after it, so the audit ran
+        # without the unit's contract and could record `correct`. The `gh` call comes after the context check, so a
+        # wrapper there takes the context away (unreadable, then emptied) before the prompt is built.
+        gh = self.root / "bin/gh"
+        for name, spoil in (("unreadable", 'chmod 000 "$CTX"'), ("emptied", ': > "$CTX"')):
+            with self.subTest(name):
+                self.context.chmod(0o644)
+                self.context.write_text("## Contract\n\nThe unit's contract.\n")
+                (self.seen / "argv").unlink(missing_ok=True)
+                gh.unlink()
+                gh.write_text(f'#!/bin/sh\nCTX="{self.context}"\n{spoil}\nexec "{FAKE_GH}" "$@"\n')
+                gh.chmod(0o755)
+                self.github()
+                run = self.audit(unit=f"U{len(self.rows()) + 80}")
+                self.assertEqual(run.returncode, 3, run.stdout + run.stderr)
+                self.assertIn("codex did not run", run.stderr)
+                self.assertFalse((self.seen / "argv").exists(), "codex never starts without the contract")
+                row = self.rows()[-1][4]
+                self.assertTrue(row.startswith("blocked ("), row)
+                self.assertIn("codex not run;", row)
+                verdict = self.records / "verdicts" / f"{self.rows()[-1][1]}-{self.head[:8]}.md"
+                self.assertTrue(verdict.read_text().endswith("\nVerdict: blocked\n"), verdict.read_text())
+        self.context.chmod(0o644)
+
     def test_refusals(self):
         self.github(head=SHA_A)
         self.assert_refused(self.audit(), f"refs/pull/7/head is {self.head}, the pull request's head is {SHA_A}")

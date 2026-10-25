@@ -24,6 +24,7 @@ GATE_DRIVER = ROOT / "home/dot_agents/omp/hooks/tests/launch-driver.ts"
 BUN = shutil.which("bun")
 # A real executable binary (Mach-O on macOS, ELF on Linux), for tools hcom-seat requires to be no script.
 BINARY_STAND_IN = Path(os.path.realpath("/usr/bin/true"))
+SYSTEM_PATH = "/usr/bin:/bin"
 
 
 GIT_IDENTITY = {
@@ -78,19 +79,17 @@ class HcomSeatTest(unittest.TestCase):
         self.store.mkdir(exist_ok=True)
         self.repo = root / "repo"
         self.repo.mkdir()
+        # The environment is built, never inherited: the fake bin and the system directories only, under the scratch
+        # HOME, so no tool of the host or the runner (a mise shim of claude, a Homebrew jq) reaches hcom-seat's
+        # resolution unless a test plants it. No HCOM_* marker, team or login variable of the caller's session leaks.
         self.env = {
-            **os.environ,
             **GIT_IDENTITY,
             "HOME": str(self.home),
-            "PATH": f"{bindir}:{os.environ['PATH']}",
+            "PATH": f"{bindir}:{SYSTEM_PATH}",
+            "TMPDIR": os.environ.get("TMPDIR", tempfile.gettempdir()),
             "HCOM_DIR": str(self.store),
             "FAKE_CALLS": str(self.calls),
         }
-        # The checkout's slug (`repo`) is the team unless a test sets one, whatever the caller's session holds.
-        self.env.pop("HCOM_TEAM", None)
-        # A test run from inside a seat would hit the inside-a-seat refusal (U85).
-        for marker in ("HCOM_LAUNCHED", "HCOM_PROCESS_ID", "HCOM_SEAT_SANDBOX"):
-            self.env.pop(marker, None)
         self.git("init", "-q")
         self.git("commit", "-q", "--allow-empty", "-m", "init")
         self.git("update-ref", "refs/remotes/origin/main", "HEAD")
@@ -145,9 +144,22 @@ class HcomSeatTest(unittest.TestCase):
         the preflight refuses the record as unreadable."""
         if sys.platform != "darwin" or not Path("/usr/bin/sandbox-exec").exists():
             self.skipTest("hiding the system jq needs sandbox-exec (macOS); Linux always has /usr/bin/jq")
-        real_jq = next((Path(p).resolve() for p in (shutil.which("jq"), "/usr/bin/jq") if p and Path(p).exists()), None)
+        # A jq binary to plant, one whose copy runs: the host's own (never a shim: its physical file must be jq), else
+        # the system's (macOS launch constraints stop a copy of a platform binary, so each copy is tried first).
+        planted_jq = Path(self.temp.name).resolve() / "jq-probe"
+        candidates = [Path(p).resolve() for p in (shutil.which("jq"), "/usr/bin/jq") if p and Path(p).exists()]
+        real_jq = None
+        for candidate in (c for c in candidates if c.name.startswith("jq")):
+            shutil.copy(candidate, planted_jq)
+            probe = subprocess.run([str(planted_jq), "-n", "1"], capture_output=True, text=True, check=False)
+            if probe.returncode == 0:
+                real_jq = candidate
+                break
         if real_jq is None:
-            self.skipTest("no jq binary to copy")
+            self.skipTest(f"no jq binary on this host whose copy runs (tried {candidates})")
+        real_git = shutil.which("git", path=SYSTEM_PATH)
+        if real_git is None:
+            self.skipTest("no git in /usr/bin or /bin")
         (self.profiles / "worker.yml").write_text("modelRoles:\n  default: openai-siwc/gpt-6-astra\n")
         agent = self.home / ".omp/profiles/worker/agent"
         (agent / "openai-siwc").mkdir(parents=True)
@@ -158,9 +170,11 @@ class HcomSeatTest(unittest.TestCase):
         fakes.mkdir()
         (fakes / "bun").write_text("#!/bin/sh\nprintf '1\\n'\n")  # src/credentials.ts: one openai-siwc login
         (fakes / "bun").chmod(0o755)
+        (fakes / "git").symlink_to(real_git)
         no_system_jq = '(version 1)(allow default)(deny process-exec (literal "/usr/bin/jq"))'
-        # The caller's PATH without any directory holding a jq (a mise shims directory included).
-        bare = ":".join(d for d in self.env["PATH"].split(":") if d and not Path(d, "jq").exists())
+        # The caller's PATH holds exactly what the test planted: the fakes (bun, git, later jq), the fake bin and /bin;
+        # /usr/bin, where macOS 15 keeps a jq, is left out, and its jq is denied to every process besides.
+        bare = f"{self.bindir}:/bin"
 
         def launch(path, name):
             env = {**self.env, "PATH": path, "SSH_CONNECTION": "100.64.0.2 50000 100.64.0.3 22"}
@@ -430,7 +444,7 @@ class HcomSeatTest(unittest.TestCase):
         self.git("update-ref", "refs/remotes/origin/main", self.head)
         wrapper = Path(self.temp.name) / "failing-git"
         wrapper.mkdir()
-        real_git = shutil.which("git")
+        real_git = shutil.which("git", path=SYSTEM_PATH)
         (wrapper / "git").write_text(
             f'#!/bin/sh\ncase " $* " in *" for-each-ref "*) echo "fatal: injected" >&2; exit 128 ;; esac\nexec "{real_git}" "$@"\n'
         )
@@ -1394,15 +1408,24 @@ class HcomSeatTest(unittest.TestCase):
         macOS 14) and /usr/bin/jq on Linux; both readers give the same list from the same file."""
         if sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").exists():
             no_jq = '(version 1)(allow default)(deny process-exec (literal "/usr/bin/jq"))'
+            # The caller's PATH leaves out /usr/bin, whose jq is denied (an optional tool hcom-seat would resolve):
+            # the fake bin, a planted git and /bin only.
+            planted = Path(self.temp.name).resolve() / "no-jq-bin"
+            planted.mkdir()
+            real_git = shutil.which("git", path=SYSTEM_PATH)
+            if real_git is None:
+                self.skipTest("no git in /usr/bin or /bin")
+            (planted / "git").symlink_to(real_git)
+            env = {**self.env, "PATH": f"{planted}:{self.bindir}:/bin"}
             run = subprocess.run(
                 ["/usr/bin/sandbox-exec", "-p", no_jq, str(SEAT), "worker", "--seats-root", self.seats],
-                cwd=self.repo, env=self.env, capture_output=True, text=True, check=False,
+                cwd=self.repo, env=env, capture_output=True, text=True, check=False,
             )  # fmt: skip
             self.assertEqual(run.returncode, 0, run.stderr)
             # A second launch reads the first one's settings back.
             run = subprocess.run(
                 ["/usr/bin/sandbox-exec", "-p", no_jq, str(SEAT), "worker", "--name", "worker-2", "--seats-root",
-                 self.seats], cwd=self.repo, env=self.env, capture_output=True, text=True, check=False,
+                 self.seats], cwd=self.repo, env=env, capture_output=True, text=True, check=False,
             )  # fmt: skip
             self.assertEqual(run.returncode, 0, run.stderr)
         else:

@@ -76,7 +76,9 @@ class RegimeStartTest(unittest.TestCase):
         self.repo.mkdir()
         self.env = {
             "HOME": str(self.home),
-            "PATH": f"{bindir}:{os.environ['PATH']}",
+            # The fake bin and the system directories only: no tool of the host or the runner (a mise shim of claude)
+            # reaches hcom-seat's tool resolution unless this fixture plants it.
+            "PATH": f"{bindir}:/usr/bin:/bin",
             "TMPDIR": str(self.temp),
             "FAKE_HCOM_STATE": str(self.state),
             "HCOM_DIR": str(self.store),

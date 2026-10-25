@@ -1085,9 +1085,9 @@ files without installed tools or logins (`chezmoi doctor --no-network` and
 `scripts/check-agent-runtime.py`) and prints one summary line per system, then
 `make apply-check: client=… server=…`; it fails when any step fails.
 `scripts/check-tools.sh` is left out because only the skipped installers put
-mise, uv, gh and omp on a host. `scripts/apply-check.sh` holds the steps; the
-`chezmoi-apply` CI job runs it on each runner and the `apply-container` job
-runs `make apply-check` itself.
+mise, uv, gh and omp on a host. `scripts/apply-check.sh` holds the steps, and
+the `Apply check` workflow (`.github/workflows/apply-check.yml`) runs
+`make apply-check` itself on every pull request.
 
 ### 🦇 Unit Test with [Bats](https://github.com/bats-core/bats-core) [![Unit test](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml)
 

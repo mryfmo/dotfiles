@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
 EXPECTED_PERMISSIONS = {
+    "apply-check.yml": {"contents": "read"},
     "agent-assets.yml": {"contents": "read"},
     "docs.yml": {"contents": "write"},
     "macos.yaml": {"contents": "read"},

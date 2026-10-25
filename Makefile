@@ -63,7 +63,7 @@ docker: docker-image
 # is left out. The tree is mounted read-only and copied inside; the container gets no network, no credential
 # and no host HOME, and --rm discards it. GITHUB_ACTIONS and RUNNER_TEMP declare it a CI runner in the sense
 # of scripts/lib/ci-runner.sh: as keyless as a runner, so the chezmoi config renders without age encryption.
-# The remote.yaml apply-container job runs this same target.
+# The apply-container job of .github/workflows/apply-check.yml runs this same target.
 apply-check: docker-image
 	@status=0; summary=""; \
 	for system in client server; do \

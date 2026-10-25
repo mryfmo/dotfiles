@@ -3,8 +3,8 @@
 # @file scripts/apply-check.sh
 # @brief Apply home/ as a fresh client or server into a scratch HOME, verify it, and run the credential-free doctor checks.
 # @description
-#   The disposable check behind `make apply-check` (inside a container) and the
-#   chezmoi-apply CI job (on the runner). It copies the parts of the working tree
+#   The disposable check `make apply-check` runs inside a container, for client
+#   and server. It copies the parts of the working tree
 #   that the apply and the checks read (.chezmoiroot, home/, scripts/) into a
 #   scratch directory, applies from that copy as setup.sh's chezmoi would from a
 #   clone, and points HOME at a scratch home, so the tree, the caller's HOME and
@@ -15,7 +15,8 @@
 #   chezmoi config renders without age encryption (home/.chezmoi.yaml.tmpl), and,
 #   as setup.sh does without a tty, the encrypted_* targets leave the copy.
 #   Externals are downloads and scripts are installers, so neither is applied;
-#   the public-bootstrap CI job runs both.
+#   the public-bootstrap CI job runs both. The apply steps are those of the
+#   scratch apply in .github/workflows/remote.yaml, on the clone's layout.
 #   After `chezmoi init`, `apply` and `verify` it runs the parts of `make doctor`
 #   that judge the applied files and need no installed tool and no login:
 #   `chezmoi doctor --no-network` and scripts/check-agent-runtime.py (its GitHub

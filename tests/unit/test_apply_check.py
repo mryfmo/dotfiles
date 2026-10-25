@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify the disposable apply check (U82): `make apply-check` picks docker or podman, refuses without either and
 starts one network-less container per system; scripts/apply-check.sh refuses outside a CI runner and fails on a tree
-that does not apply."""
+that does not apply; CI runs `make apply-check` itself on every pull request."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/apply-check.sh"
+WORKFLOW = ROOT / ".github/workflows/apply-check.yml"
 MAKE = shutil.which("make")
 CHEZMOI = shutil.which("chezmoi")
 # The CI step's credential: make apply-check must keep it on the host.
@@ -167,6 +168,26 @@ class ApplyCheckScriptTest(unittest.TestCase):
         self.assertIn("apply-check summary (client): init=passed apply=failed\n", failed.stdout)
         # The scratch HOME and the source copy are gone either way.
         self.assertEqual([], list(self.runner_temp.iterdir()))
+
+
+class ApplyCheckWorkflowTest(unittest.TestCase):
+    def test_every_pull_request_and_main_push_runs_make_apply_check_unconditionally(self) -> None:
+        text = WORKFLOW.read_text()
+        on = text.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("  push:\n    branches: [main]\n", on)
+        self.assertIn("  pull_request:\n    branches: [main]\n", on)
+        self.assertNotIn("paths", on)
+        body = text.split("\njobs:\n", 1)[1]
+        lines = [line.strip() for line in body.splitlines()]
+        # One job, no condition anywhere that could skip the command and still report success.
+        self.assertEqual(
+            ["apply-container:"],
+            [line.strip() for line in body.splitlines() if line.startswith("  ") and not line.startswith("   ")],
+        )
+        for key in ("if:", "- if:", "needs:", "continue-on-error:"):
+            with self.subTest(key=key):
+                self.assertFalse([line for line in lines if line.startswith(key)])
+        self.assertEqual(["run: make apply-check"], [line for line in lines if line.startswith("run:")])
 
 
 if __name__ == "__main__":

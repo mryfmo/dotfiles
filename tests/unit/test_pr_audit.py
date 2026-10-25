@@ -474,8 +474,10 @@ class PrAuditTest(unittest.TestCase):
         head = self.git("rev-parse", "HEAD")
         self.git("push", "-q", "-f", "origin", "feat:refs/pull/7/head")
         self.git("checkout", "-q", "main")
-        with Path(self.env["GIT_CONFIG_GLOBAL"]).open("a") as config:
-            config.write(f'[filter "mark"]\n\tsmudge = "touch {marker}; cat"\n\tprocess = "touch {marker}"\n')
+        # The lever removes the caller's GIT_CONFIG_GLOBAL, so the drivers go where its git would look: both files.
+        for path in (Path(self.env["GIT_CONFIG_GLOBAL"]), self.home / ".gitconfig"):
+            with path.open("a") as config:
+                config.write(f'[filter "mark"]\n\tsmudge = "touch {marker}; cat"\n\tprocess = "touch {marker}"\n')
         attributes = self.home / ".config/git/attributes"
         attributes.parent.mkdir(parents=True)
         attributes.write_text("* filter=mark\n")
@@ -483,6 +485,50 @@ class PrAuditTest(unittest.TestCase):
         run = self.run_lever("7")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertFalse(marker.exists(), "a filter driver ran on the audited tree")
+
+    def test_the_callers_git_variables_never_change_the_audited_range(self):
+        """U71b audit round 7: an inherited GIT_GRAFT_FILE made main a child of the head, so merge-base(main, head) was
+        the head and the range empty. Every GIT_* the caller exports is removed before any git runs."""
+        grafts = self.root / "grafts"
+        grafts.write_text(f"{self.main} {self.head}\n")  # main's parent becomes the head
+        other = self.root / "other-repo"
+        self.git("init", "-q", str(other), cwd=self.root)
+        empty_objects = self.root / "empty-objects"
+        (empty_objects / "info").mkdir(parents=True)
+        index = self.root / "foreign-index"
+        before = tree_state(self.root, (self.tmp, self.rec))
+        for name, value in (
+            ("GIT_GRAFT_FILE", str(grafts)),
+            ("GIT_DIR", str(other / ".git")),
+            ("GIT_OBJECT_DIRECTORY", str(empty_objects)),
+            ("GIT_ALTERNATE_OBJECT_DIRECTORIES", str(empty_objects)),
+            ("GIT_INDEX_FILE", str(index)),
+            ("GIT_WORK_TREE", str(other)),
+            ("GIT_COMMON_DIR", str(other / ".git")),
+            ("GIT_CEILING_DIRECTORIES", str(self.root)),
+        ):
+            with self.subTest(variable=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                (self.rec / "codex-calls").unlink(missing_ok=True)
+                run = self.run_lever("7", **{name: value})
+                self.assertEqual(run.returncode, 0, run.stderr)
+                prompt = next(c for c in self.codex_calls() if c["argv"][:1] == ["exec"])["prompt"]
+                self.assertIn(f"diff {self.main}..{self.head}", prompt)
+                self.assertFalse(index.exists(), "the caller's index file is never written")
+                self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before)
+
+    def test_a_grafts_or_shallow_file_in_the_audited_repository_refuses(self):
+        """The fresh repository holds neither; a git that wrote one during the fetch is a refusal, not a range."""
+        for name in ("info/grafts", "shallow"):
+            with self.subTest(file=name):
+                for path in self.tmp.iterdir():
+                    shutil.rmtree(path)
+                action = f'"$REAL" "$@"; s=$?; d="${{5%/}}/.git"; mkdir -p "$d/info"; : > "$d/{name}"; exit $s'
+                path = self.failing_tool("git", "*fetch*", action)
+                self.assert_stopped(
+                    self.run_lever("7", PATH=path), 2, "rewrites the history the audited range rests on"
+                )
 
     def test_a_moved_head_a_foreign_base_or_no_contract_is_refused(self):
         for answer, message in (

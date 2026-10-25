@@ -3,7 +3,9 @@
 # @brief Audit one pull request head with a fresh `codex exec` that keeps the ChatGPT login and cannot read credentials, the Codex audit route.
 # @description
 #   Regime-cutover U71b, operator decision G18 (2026-10-26): keep the ChatGPT login, keep the auditor from reading
-#   credentials. Run it from the repository checkout. `<pr>` is decimal and checked before the first `gh` call. The
+#   credentials. Run it from the repository checkout. Every `GIT_*` variable the caller exports is removed first (only
+#   GIT_NO_REPLACE_OBJECTS=1 and GIT_TERMINAL_PROMPT=0 are set), so none reaches any git this lever runs, the fetch
+#   included. `<pr>` is decimal and checked before the first `gh` call. The
 #   lever reads `gh pr view <pr> --json state,baseRefName,headRefOid,url` (any state: a merged pull request can be
 #   re-read) and refuses unless the base is `main`. Everything the lever writes lives in one run directory
 #   `$TMPDIR/pr-audit-<pr>.XXXXXX`; nothing in the checkout, its git directory or the caller's HOME is written, with
@@ -136,11 +138,24 @@ lever_self_check() {
 }
 lever_self_check
 
-# The checkout is named from the cwd alone, and git reads no replace refs or commit-graph, so the objects the lever
-# compares are the ones the sha names (U71 audit round 6); the audited repository is created fresh, so it holds no
-# grafts and no refs but the two it fetches.
-unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_NAMESPACE GIT_OBJECT_DIRECTORY \
-    GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_REPLACE_REF_BASE GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
+# No git variable of the caller reaches any git this lever runs (U71b audit round 7: an inherited GIT_GRAFT_FILE
+# rewrote the ancestry, so merge-base(main, head) was the head and the audited range was empty). Rather than name
+# the variables git reads (a list that misses the next one), every exported `GIT_*` name is removed; a failed listing
+# or removal refuses. Then only the lever's own are set: no replace objects, no terminal prompt. The checkout is
+# named from the cwd alone, and the audited repository is created fresh with no template, so it holds no grafts file
+# (checked before its first read, below) and no refs but the two it fetches.
+git_names=$(compgen -e) || {
+    echo "pr-audit.sh: refused: cannot list the environment to remove the caller's GIT_* variables" >&2
+    exit 2
+}
+while IFS= read -r git_name; do
+    [[ ${git_name} == GIT_* ]] || continue
+    unset "${git_name}" 2> /dev/null || {
+        echo "pr-audit.sh: refused: cannot remove the caller's ${git_name}" >&2
+        exit 2
+    }
+done <<< "${git_names}"
+unset git_names git_name
 export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0
 
 lever='pr-audit.sh'
@@ -429,6 +444,10 @@ for ((try = 1; try <= wait_tries; try++)); do
     ((try == wait_tries)) || sleep "${wait_seconds}"
 done
 [[ ${head} == "${want}" ]] || refuse "the head moved: refs/pull/${pr}/head is ${head:-unreadable}, gh reports ${want}"
+# Nothing may rewrite or cut the history merge-base reads: no grafts file and no shallow file in the fresh repository.
+for path in "${clone}/.git/info/grafts" "${clone}/.git/shallow"; do
+    [[ ! -e ${path} && ! -L ${path} ]] || refuse "${path} exists; it rewrites the history the audited range rests on"
+done
 main=$(git_tree -C "${clone}" rev-parse --verify --quiet 'refs/audit/main^{commit}') || fail 'cannot resolve the fetched main'
 mergebase=$(git_tree -C "${clone}" merge-base "${main}" "${head}") || fail "git merge-base ${main} ${head} failed"
 git_tree -C "${clone}" repack -a -d -q || fail "git repack in ${clone} failed"

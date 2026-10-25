@@ -1171,16 +1171,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(again.stdout, result.stdout)
         self.assertNotIn("divergence", again.stderr)
 
-    def test_profile_modify_scripts_hash_plugin_hooks_or_fall_back_to_the_pin(self) -> None:
+    def test_profile_modify_scripts_trust_a_plugin_hook_only_at_its_pin(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
+        key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
 
         missing = self.run_profile(manifest, home, "")
 
         self.assertEqual(missing.returncode, 0, missing.stderr)
-        self.assertIn(
-            '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:pinned"', missing.stdout
-        )
+        self.assertIn(f'{key}\ntrusted_hash = "sha256:pinned"', missing.stdout)
         self.assertIn(
             "warning: cannot compute hook trust for demo@market:hooks/hooks.json:stop:0:0 (no installed copy",
             missing.stderr,
@@ -1189,15 +1188,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
         plugin.parent.mkdir(parents=True)
         plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
-        expected = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+        installed = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
 
-        installed = self.run_profile(manifest, home, "")
+        # The installed hook is not the pinned one: it stays untrusted, even over an entry that trusted it.
+        changed = self.run_profile(manifest, home, f'[hooks.state]\n\n{key}\ntrusted_hash = "{installed}"\n')
 
-        self.assertEqual(installed.returncode, 0, installed.stderr)
-        self.assertIn(
-            f'[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]\ntrusted_hash = "{expected}"', installed.stdout
-        )
-        self.assertNotIn("cannot compute hook trust for demo@market", installed.stderr)
+        self.assertEqual(changed.returncode, 0, changed.stderr)
+        self.assertIn(f"{key}\nenabled = true\n", changed.stdout)
+        self.assertNotIn(f'trusted_hash = "{installed}"', changed.stdout)
+        self.assertIn(installed, changed.stderr)
+        self.assertIn("sha256:pinned", changed.stderr)
+
+        # Once the reviewed hash is the pin, the same hook is trusted.
+        manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"]["trusted_hash"] = installed
+        reviewed = self.run_profile(manifest, home, changed.stdout)
+
+        self.assertEqual(reviewed.returncode, 0, reviewed.stderr)
+        self.assertIn(f'{key}\ntrusted_hash = "{installed}"', reviewed.stdout)
+
+    def test_plugin_hook_state_without_a_pin_is_refused(self) -> None:
+        manifest = self.hook_trust_manifest()
+        manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"] = {"enabled": True}
+
+        with self.assertRaises(SystemExit):
+            self.module.codex_hook_trust(manifest)
 
     def test_profile_modify_scripts_hash_the_plugin_version_codex_loads(self) -> None:
         manifest = self.hook_trust_manifest()
@@ -1209,6 +1223,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             plugin.parent.mkdir(parents=True)
             plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": version}]}]}}))
         key = '[hooks.state."demo@market:hooks/hooks.json:stop:0:0"]'
+        state = manifest["codex"]["hooks"]["state"]["demo@market:hooks/hooks.json:stop:0:0"]
         for active in ("1.12.0", "local"):
             if active == "local":
                 # Codex prefers a `local` copy over any released version.
@@ -1218,11 +1233,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     json.dumps({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "local"}]}]}})
                 )
             with self.subTest(active=active):
+                # Pinned to the copy Codex loads, the hook is trusted; any other copy would leave it untrusted.
+                state["trusted_hash"] = codex_hook_hash("stop", None, {"type": "command", "command": active})
                 result = self.run_profile(manifest, home, "")
-                expected = codex_hook_hash("stop", None, {"type": "command", "command": active})
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(f'{key}\ntrusted_hash = "{expected}"', result.stdout)
-                self.assertNotIn("cannot compute hook trust for demo@market", result.stderr)
+                self.assertIn(f'{key}\ntrusted_hash = "{state["trusted_hash"]}"', result.stdout)
+                self.assertNotIn("demo@market", result.stderr)
 
     def test_active_plugin_version_matches_codex_on_symlinks_and_invalid_semver(self) -> None:
         namespace = self.hook_trust_namespace(sample_manifest())
@@ -1384,7 +1400,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 self.assertEqual(result.stderr.count("replacing sha256:stale with"), 1)
                 self.assertNotIn("WARN", result.stderr)
 
-    def test_profile_modify_scripts_keep_the_current_content_when_the_merge_is_invalid(self) -> None:
+    def test_profile_modify_scripts_refuse_an_invalid_merge(self) -> None:
         manifest = self.hook_trust_manifest()
         home = self.temp_dir / "target-home"
         self.module.write_outputs(self.module.expected_outputs(manifest))
@@ -1409,9 +1425,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             check=False,
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, current)
-        self.assertIn("WARN: codex config merge produced invalid TOML; keeping the existing file\n", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("ERROR: codex config merge: the merged config is not valid TOML", result.stderr)
+
+    def test_profile_modify_scripts_revoke_an_unpinned_plugin_hook_in_inline_and_dotted_forms(self) -> None:
+        manifest = self.hook_trust_manifest()
+        home = self.temp_dir / "target-home"
+        handler = {"type": "command", "command": "demo stop", "timeout": 5}
+        plugin = home / ".codex/plugins/cache/market/demo/1.0/hooks/hooks.json"
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [handler]}]}}))
+        installed = self.hook_trust_namespace(manifest)["codex_hook_hash"]("stop", None, handler)
+        key = "demo@market:hooks/hooks.json:stop:0:0"
+        entry = f'"{key}" = {{ trusted_hash = "{installed}", enabled = true }}'
+        for form, current in (
+            ("inline table under [hooks]", f"[hooks]\nstate = {{ {entry} }}\n"),
+            ("inline table at the root", f"hooks.state = {{ {entry} }}\n"),
+            ("dotted keys under [hooks]", f'[hooks]\nstate."{key}".trusted_hash = "{installed}"\n'),
+        ):
+            with self.subTest(form=form):
+                result = self.run_profile(manifest, home, current)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(tomllib.loads(result.stdout)["hooks"]["state"][key], {"enabled": True})
+                self.assertNotIn(installed, result.stdout)
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())

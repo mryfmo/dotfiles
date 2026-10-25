@@ -84,12 +84,14 @@ model_profiles:
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "claude-bridge/claude-fable-5-1" }
   security:
-    # Security-audit tier: specialist model for auditing pending changes.
+    # Security-audit tier: specialist model for auditing pending changes. An audit reads
+    # the changes and reports; it never edits, so it runs read-only like the audit tier.
     claude: { model: claude-fable-5, effort: high }
     codex:
       # gpt-daybreak-blue-latest requires API-key auth (rejected under ChatGPT login).
       model: gpt-6-astra
       model_reasoning_effort: high
+      sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
     omp: { model: "openai-siwc/gpt-6-astra" }
   audit:
@@ -134,7 +136,9 @@ codex:
   shell_environment_policy:
     inherit: core
     set:
-      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+      # mise shims resolve node from mise's config, so no per-version node directory goes first;
+      # /opt/homebrew/bin exists only on macOS (the base modify script renders the os conditional).
+      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:{{ if eq .chezmoi.os `darwin` }}/opt/homebrew/bin:{{ end }}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   features:
     plugins: true
     hooks: true
@@ -171,9 +175,11 @@ codex:
         command: '{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify'
         timeout: 3
         status_message: Recording to CompactionDB
-    # The hooks this repository ships or installs, trusted by `make update`: the modify scripts hash each
-    # one at apply time (a config hook from its manifest definition embedded in the modify script, a plugin
-    # hook from the installed plugin file). trusted_hash is only the fallback when a plugin file is absent.
+    # The hooks this repository ships or installs. The modify scripts hash each one at apply time: a config
+    # hook from its manifest definition embedded in the modify script is trusted at that hash; a plugin hook
+    # from the installed plugin file is trusted only when that hash equals its trusted_hash pin, so a plugin
+    # release `make update` installed stays untrusted (apply and `make doctor` warn) until it is reviewed in
+    # /hooks and its hash is recorded here. The pin is written as is when the plugin file is absent.
     state:
       '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':
         enabled: true

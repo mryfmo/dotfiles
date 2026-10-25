@@ -481,8 +481,8 @@ make update
 
 # Ponytail is installed from the upstream marketplace.
 # Claude Code and Codex use DietrichGebert/ponytail as the marketplace source.
-# make update also trusts the Ponytail lifecycle hooks it installs (see the
-# hook trust paragraph below), so no /hooks step is needed for them.
+# make update trusts the Ponytail lifecycle hooks only at their reviewed pins
+# (see the hook trust paragraph below); a new release waits for review in /hooks.
 
 # A fresh Codex install needs authentication before its OpenAI-curated catalog
 # is available. If Superpowers is skipped, complete these commands:
@@ -499,19 +499,33 @@ which run `contextdb-codex-notify`, and the permgate `PermissionRequest` hook)
 plus the Crit and Ponytail plugin hooks. The Codex modify scripts hash each
 declared hook at apply time with Codex's own algorithm: a config hook from its
 manifest definition embedded in the modify script, a plugin hook from the
-installed plugin file under `~/.codex/plugins/cache/`. The result replaces any
-existing entry for that key, and keys the manifest does not declare are kept.
-Config-hook trust follows the manifest definition, so a hook hand-edited in
+installed plugin file under `~/.codex/plugins/cache/`. A config hook is trusted
+at that hash. A plugin hook is trusted only when that hash equals the
+`trusted_hash` pin the manifest records for it (the renderer refuses a plugin
+key without one). `make update` upgrades plugins, so a release whose hook
+differs from its pin is left untrusted: the apply and `make doctor` print a
+warning naming the installed hash and the pin, and Codex lists the hook in
+`/hooks`. Review it there, then record the reviewed hash as its
+`trusted_hash` so the next apply trusts it; a trust granted only in `/hooks`
+is replaced at the next apply. The result replaces any existing entry for a
+declared key in whatever TOML form it is written (a table, an inline table or
+dotted keys under `[hooks.state]`, `[hooks]` or the root; the modify scripts
+rewrite hook state as one table per entry first), and keys the manifest does
+not declare are kept. A Codex config that is not valid TOML, whose hook state
+cannot be rewritten without changing another setting, or whose merged result
+does not hold exactly the managed entry for every declared key, stops the apply
+of that file with an `ERROR: codex config merge:` line: `chezmoi apply` fails
+and `make doctor` reports the Codex config as differing until the file is
+fixed; it is never rewritten with trust the merge could not verify. Config-hook
+trust follows the manifest definition, so a hook hand-edited in
 `~/.codex/config.toml` deliberately stops matching and stays untrusted. As its
 last step, after every plugin update, `scripts/update-agent-assets.sh`
 re-applies only the Codex config files (`make codex-hook-trust` runs the same
-step on its own), so a plugin whose hooks changed in the same `make update` is
-trusted at once.
+step on its own), so the trust always reflects the plugin just installed.
 A hook anyone else writes into `config.toml` or a plugin stays untrusted until
-you review and trust it in `/hooks`. For a plugin, trusting the installed
-content means a plugin upgrade by `make update` is trusted by the same
-`make update`. When a plugin's hook file is missing, the manifest's pinned
-`trusted_hash` is used and the apply prints a warning.
+you review and trust it in `/hooks`. When a plugin's hook file is missing, the
+pin is written as is (Codex trusts only content with that hash) and the apply
+prints a warning.
 
 ### Claude Code sandbox
 

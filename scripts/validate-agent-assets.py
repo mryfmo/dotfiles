@@ -910,9 +910,10 @@ def validate_agent_manifest() -> dict[str, Any]:
     if set(profiles) != required_profiles:
         fail(f"{manifest_path} must define the six base profiles and no others")
     # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
-    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth.
+    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth. It audits pending
+    # changes without editing them, so it is read-only like the audit profile (U70).
     security_codex = profiles["security"].get("codex", {})
-    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high")):
+    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high"), ("sandbox_mode", "read-only")):
         if security_codex.get(key) != expected:
             fail(
                 f"{manifest_path} security profile must set codex.{key}: {expected} "

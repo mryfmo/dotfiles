@@ -1174,6 +1174,48 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 self.module.present(self.target_root / "anything")
 
+    def test_doctor_fails_on_a_listable_cache_with_an_unreadable_version_entry(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        entry = self.target_root / ".codex/plugins/cache/tail/tail/5.0.0"
+        # The cache lists, but its version entry denies reading the manifest inside it.
+        entry.chmod(0)
+        try:
+            findings = self.plugin_findings(pins)
+        finally:
+            entry.chmod(0o755)
+        errors = [finding for finding in findings if not self.module.is_warning(finding)]
+        self.assertTrue(any("tail@tail: cannot read its cache" in error for error in errors), findings)
+        self.assertFalse([finding for finding in findings if "is not installed" in finding], findings)
+
+    def test_doctor_follows_codexs_active_version_rule(self) -> None:
+        pins = self.plugin_pins_fixture()
+        self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")
+        root = self.target_root / ".codex/plugins/cache/tail/tail"
+        # The highest version wins; a symlinked entry and a name outside the segment are not versions.
+        (root / "4.0.0/.codex-plugin").mkdir(parents=True)
+        (root / "4.0.0/.codex-plugin/plugin.json").write_text(json.dumps({"version": "4.0.0"}))
+        (root / "9.0.0").symlink_to(root / "4.0.0")
+        self.assertEqual([], [f for f in self.plugin_findings(pins) if not self.module.is_warning(f)])
+        # `local` wins over any number.
+        (root / "local/.codex-plugin").mkdir(parents=True)
+        (root / "local/.codex-plugin/plugin.json").write_text(json.dumps({"version": "local"}))
+        errors = [f for f in self.plugin_findings(pins) if not self.module.is_warning(f)]
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("tail@tail is installed at local", errors[0])
+
+    def test_doctor_reads_the_user_settings_without_an_installed_record(self) -> None:
+        pins = self.plugin_pins_fixture()
+        (self.target_root / ".claude").mkdir(parents=True)
+        (self.target_root / ".claude/settings.json").write_text(
+            json.dumps({"enabledPlugins": {"extra@elsewhere": True}})
+        )
+
+        findings = self.module.claude_plugin_pin_findings(self.target_root, json.loads(pins.read_text())["claude"])
+
+        self.assertTrue(any("installed_plugins.json is missing" in finding for finding in findings), findings)
+        self.assertTrue(any("extra@elsewhere is enabled but has no pin" in finding for finding in findings), findings)
+
     def test_doctor_warns_for_an_enabled_plugin_without_a_pin(self) -> None:
         pins = self.plugin_pins_fixture()
         self.install_plugin_fixture("2.0.0", "5.0.0", "a" * 40, "v1.0.0")

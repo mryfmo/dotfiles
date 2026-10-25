@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import functools
 import io
 import json
 import os
@@ -634,15 +635,18 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
         installed_present = present(installed_path)
     except OSError as error:
         return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
-    if not installed_present:
-        return [
-            f"WARN: Claude Code plugins: {installed_path} is missing, so no recorded plugin is installed; run make update"
-        ]
-    try:
-        installed = read_json(installed_path)["plugins"]
-    except (OSError, ValueError, KeyError, TypeError) as error:
-        return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
     findings = []
+    if not installed_present:
+        # No record means nothing is installed; the user settings are still read for unpinned enables.
+        findings.append(
+            f"WARN: Claude Code plugins: {installed_path} is missing, so no recorded plugin is installed; run make update"
+        )
+        installed = {}
+    else:
+        try:
+            installed = read_json(installed_path)["plugins"]
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            return [f"Claude Code plugins: cannot read {installed_path} ({error!r}); plugin pins not checked"]
     for plugin_id, entries in sorted(installed.items()):
         for entry in entries if isinstance(entries, list) else []:
             scope = entry.get("scope", "user") if isinstance(entry, dict) else "user"
@@ -694,6 +698,41 @@ def claude_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]]) -> l
     return findings
 
 
+def strict_active_plugin_version(root: Path, version_segment, compare) -> tuple[str | None, dict[str, object]]:
+    """The version directory Codex loads from ROOT, read strictly, and each version entry's manifest.
+
+    Codex's rule (core-plugin-common installed.rs active_plugin_version, mirrored for apply in
+    generate-agent-configs.py): among ROOT's entries that are real directories (lstat, so a symlink is not
+    a version) whose name matches the version segment, `local` wins, else the highest by Codex's version
+    order (COMPARE). Unlike that function, nothing here reads a failure as "no copy": only a missing ROOT
+    is absent (None); a listing, lstat or manifest read that fails with anything but FileNotFoundError
+    raises. The manifest map holds each version's parsed .codex-plugin/plugin.json, or None when absent.
+    """
+    try:
+        entries = list(root.iterdir())
+    except FileNotFoundError:
+        return None, {}
+    versions = []
+    for entry in entries:
+        try:
+            mode = entry.lstat().st_mode
+        except FileNotFoundError:
+            continue  # removed while listing
+        if stat.S_ISDIR(mode) and entry.name not in (".", "..") and version_segment.match(entry.name):
+            versions.append(entry.name)
+    manifests: dict[str, object] = {}
+    for version in versions:
+        try:
+            manifests[version] = read_json(root / version / ".codex-plugin/plugin.json")
+        except FileNotFoundError:
+            manifests[version] = None
+    if not versions:
+        return None, manifests
+    if "local" in versions:
+        return "local", manifests
+    return max(versions, key=functools.cmp_to_key(compare)), manifests
+
+
 def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], script: Path) -> list[str]:
     """Fail for a Codex plugin or git marketplace off its pin; warn for an enabled third-party plugin without one.
 
@@ -705,26 +744,23 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
         namespace: dict[str, object] = {"sys": sys, "Path": Path}
         with contextlib.redirect_stderr(io.StringIO()):
             exec(block.split("\n", 1)[1], namespace)
-        active_plugin_version = namespace["active_plugin_version"]
+        # Only Codex's pure version order and name rule are taken from the block; its reader is not used.
+        compare = namespace["compare_plugin_versions"]
+        version_segment = namespace["PLUGIN_VERSION_SEGMENT"]
     except (Exception, SystemExit) as error:
         return [f"Codex plugins: cannot evaluate {script} ({error!r}); plugin pins not checked"]
     findings = []
     for plugin_id, pin in sorted(pins.items()):
         plugin, _, marketplace = plugin_id.partition("@")
         root = home / ".codex/plugins/cache" / marketplace / plugin
-        # Absent and cannot-tell differ: only a missing cache directory means "not installed". The shared
-        # active_plugin_version reads any OSError as "no copy", so the directory is listed here first.
+        # Absent and cannot-tell differ: only a missing cache directory means "not installed".
         try:
-            list(root.iterdir())
-        except FileNotFoundError:
-            version_dir = None
-        except OSError as error:
+            version_dir, manifests = strict_active_plugin_version(root, version_segment, compare)
+        except (OSError, ValueError) as error:
             findings.append(
                 f"Codex plugin {plugin_id}: cannot read its cache {root} ({error!r}); cannot verify its pin"
             )
             continue
-        else:
-            version_dir = active_plugin_version(root)
         copy = root / version_dir if version_dir is not None else None
         ref = pin.get("ref")
         if ref is not None:
@@ -757,11 +793,14 @@ def codex_plugin_pin_findings(home: Path, pins: dict[str, dict[str, str]], scrip
         if copy is None:
             findings.append(f"WARN: Codex plugin {plugin_id} is not installed (pin {pin['pin']})")
             continue
-        try:
-            version = str(read_json(copy / ".codex-plugin/plugin.json").get("version"))
-        except (OSError, ValueError, AttributeError) as error:
-            findings.append(f"Codex plugin {plugin_id}: cannot read {copy / '.codex-plugin/plugin.json'} ({error!r})")
+        manifest = manifests.get(version_dir)
+        if not isinstance(manifest, dict):
+            findings.append(
+                f"Codex plugin {plugin_id}: {copy / '.codex-plugin/plugin.json'} is missing or not an object; "
+                "cannot verify its pin"
+            )
             continue
+        version = str(manifest.get("version"))
         if version != pin["pin"]:
             findings.append(
                 f"Codex plugin {plugin_id} is installed at {version}, not its pin {pin['pin']} "

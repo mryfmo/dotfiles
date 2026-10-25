@@ -208,18 +208,44 @@ def declared_hook(home: str, key: str):
         return f"no {event} hook {group_index}:{handler_index}"
 
 
-def declared_hook_state(home: str) -> list:
-    """[hooks.state] chunks for the hooks the manifest trusts, hashed from their definitions on this host."""
-    chunks = []
+def declared_hook_trust(home: str) -> list:
+    """(key, entry, trusted hash or None, kind, warning or None) for each hook the manifest declares.
+
+    A config hook is trusted at the hash of its manifest definition. A plugin hook is trusted only at its
+    manifest pin: `make update` upgrades plugins, so an installed hook whose hash differs from the pin is a
+    release nobody reviewed and stays untrusted (kind "changed") until it is reviewed in /hooks and the
+    reviewed hash is recorded as the pin. When the hash cannot be computed, the pin is written as is
+    (kind "fallback"): Codex trusts only content with that hash, so the pin never trusts anything else.
+    """
+    results = []
     for entry in HOOK_TRUST["declared"]:
         key = entry["key"].replace(HOOK_TRUST_HOME, home)
+        pin = entry.get("trusted_hash")
         found = declared_hook(home, key)
         digest = codex_hook_hash(*found) if isinstance(found, tuple) else None
+        kind, warning = "trusted", None
         if digest is None:
-            digest = entry.get("trusted_hash")
             reason = found if isinstance(found, str) else "not a command hook"
-            fallback = "using the manifest's pinned hash" if digest else "leaving it untrusted"
-            print(f"warning: cannot compute hook trust for {key} ({reason}); {fallback}", file=sys.stderr)
+            fallback = "using the manifest's pinned hash" if pin else "leaving it untrusted"
+            kind, warning = "fallback", f"cannot compute hook trust for {key} ({reason}); {fallback}"
+            digest = pin
+        elif not key.startswith(home + "/.codex/config.toml:") and digest != pin:
+            kind = "changed"
+            warning = (
+                f"hook {key} is not trusted: the installed hook hashes to {digest}, not the manifest pin {pin}; "
+                "review it with /hooks in Codex and record the reviewed hash as its trusted_hash in agent-config.yaml"
+            )
+            digest = None
+        results.append((key, entry, digest, kind, warning))
+    return results
+
+
+def declared_hook_state(home: str) -> list:
+    """[hooks.state] chunks for the hooks the manifest declares, trusted as declared_hook_trust decides."""
+    chunks = []
+    for key, entry, digest, _, warning in declared_hook_trust(home):
+        if warning:
+            print(f"warning: {warning}", file=sys.stderr)
         quoted = json.dumps(key, ensure_ascii=False)
         lines = [f"[hooks.state.{quoted}]"]
         if digest:

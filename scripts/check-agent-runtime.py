@@ -570,6 +570,26 @@ def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
     return []
 
 
+def codex_hook_trust_warnings(home: Path | None = None, script: Path | None = None) -> list[str]:
+    """Warn for each declared Codex plugin hook whose installed definition differs from its manifest pin.
+
+    The base modify script trusts such a hook nowhere, so it does not run until it is reviewed. The
+    decision comes from the script's own generated hook-trust block, so doctor and apply never disagree.
+    """
+    home = home or HOME
+    script = script or SOURCE_ROOT / "dot_codex/modify_private_config.toml"
+    try:
+        block = script.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace: dict[str, object] = {"sys": sys, "Path": Path}
+        exec(block.split("\n", 1)[1], namespace)
+        results = namespace["declared_hook_trust"](str(home))
+    except Exception as error:  # A broken block must surface, not read as "every hook matches its pin".
+        return [f"WARN: Codex hook trust: cannot evaluate {script}: {error!r}"]
+    return [
+        f"WARN: Codex hook trust: {warning}" for _key, _entry, _digest, kind, warning in results if kind == "changed"
+    ]
+
+
 GH_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 GH_LOGIN_HINT = "run make gh-auth"
 
@@ -816,6 +836,7 @@ def check() -> list[str]:
         failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
+    failures.extend(codex_hook_trust_warnings())
     failures.extend(gh_login_findings())
     failures.extend(chezmoi_drift_warnings())
     return failures

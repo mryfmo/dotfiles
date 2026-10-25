@@ -989,6 +989,40 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         ):
             self.assertIn("WARN: ua-core sentinel", self.module.check())
 
+    def test_doctor_warns_for_a_plugin_hook_that_differs_from_its_pin(self) -> None:
+        # The real base modify script and manifest pins, with a fixture Ponytail release nobody reviewed.
+        key = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        hook_file = self.target_root / ".codex/plugins/cache/ponytail/ponytail/99.0.0/hooks/claude-codex-hooks.json"
+        hook_file.parent.mkdir(parents=True)
+        handler = {"type": "command", "command": "ponytail-unreviewed session-start"}
+        hook_file.write_text(json.dumps({"hooks": {"SessionStart": [{"matcher": "startup", "hooks": [handler]}]}}))
+
+        warnings = self.module.codex_hook_trust_warnings(self.target_root)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertTrue(warnings[0].startswith("WARN: "), warnings)
+        self.assertIn(key, warnings[0])
+        self.assertIn("/hooks", warnings[0])
+        # No plugin cache at all: every pin is written as is, so there is nothing to review.
+        shutil.rmtree(self.target_root / ".codex")
+        self.assertEqual([], self.module.codex_hook_trust_warnings(self.target_root))
+
+    def test_doctor_reports_an_unreadable_hook_trust_block(self) -> None:
+        script = self.temp_dir / "modify_private_config.toml"
+        script.write_text("#!/usr/bin/env python3\n")
+
+        warnings = self.module.codex_hook_trust_warnings(self.target_root, script)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertTrue(warnings[0].startswith(f"WARN: Codex hook trust: cannot evaluate {script}"), warnings)
+
+    def test_check_includes_codex_hook_trust_warnings(self) -> None:
+        with (
+            mock.patch.object(self.module, "codex_hook_trust_warnings", return_value=["WARN: hook-trust sentinel"]),
+            mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
+        ):
+            self.assertIn("WARN: hook-trust sentinel", self.module.check())
+
     def fake_gh_status(self, accounts: list[dict]) -> str:
         """A fake gh whose `auth status --json hosts` reports ACCOUNTS; it fails if a token variable leaks."""
         status = self.temp_dir / "status.json"

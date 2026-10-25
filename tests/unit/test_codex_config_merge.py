@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import runpy
 import subprocess
@@ -58,6 +59,26 @@ class CodexConfigMergeTest(unittest.TestCase):
         )
         tomllib.loads(result.stdout)
         return result.stdout
+
+    def test_codex_path_uses_mise_shims_and_names_homebrew_only_on_macos(self) -> None:
+        home = self.source_dir / "target-home"
+        self.baseline_path.write_text((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())
+        homebrew = ["/opt/homebrew/bin"]
+        for target_os, os_entries in (("darwin", homebrew), ("linux", [])):
+            with self.subTest(target_os=target_os):
+                env = os.environ.copy()
+                env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home), CHEZMOI_OS=target_os)
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input="", text=True, capture_output=True, env=env, check=True
+                )
+                path = tomllib.loads(result.stdout)["shell_environment_policy"]["set"]["PATH"].split(":")
+                # mise shims first (node from mise's config, no per-version node directory); Homebrew on macOS only.
+                expected = [
+                    *(str(home / entry) for entry in (".local/share/mise/shims", ".local/bin", ".local/bin/common")),
+                    *os_entries,
+                    *("/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"),
+                ]
+                self.assertEqual(path, expected)
 
     def test_managed_templates_are_rendered_before_merge(self) -> None:
         output = self.merge(
@@ -353,6 +374,41 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertIn(f"warning: cannot compute hook trust for {ponytail} (no installed copy", result.stderr)
         # A declared key the template does not carry (crit) is left alone, not injected.
         self.assertNotIn("crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0", state)
+
+    def test_a_plugin_hook_that_differs_from_its_pin_stays_untrusted(self) -> None:
+        # A fixture Ponytail whose installed SessionStart hook is not the one the manifest pinned,
+        # as after `make update` upgraded the marketplace to an unreviewed release.
+        home = self.source_dir / "target-home"
+        ponytail = "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"
+        handler = {"type": "command", "command": "ponytail-unreviewed session-start", "timeout": 5}
+        hook_file = home / ".codex/plugins/cache/ponytail/ponytail/99.0.0/hooks/claude-codex-hooks.json"
+        hook_file.parent.mkdir(parents=True)
+        hook_file.write_text(json.dumps({"hooks": {"SessionStart": [{"matcher": "startup", "hooks": [handler]}]}}))
+        block = MERGE_SCRIPT.read_text().split("# >>> codex hook trust", 1)[1].split("# <<< codex hook trust", 1)[0]
+        namespace = {"sys": __import__("sys"), "Path": Path}
+        exec(block.split("\n", 1)[1], namespace)
+        installed = namespace["codex_hook_hash"]("session_start", "startup", handler)
+        pin = next(entry for entry in namespace["HOOK_TRUST"]["declared"] if entry["key"] == ponytail)["trusted_hash"]
+        self.assertNotEqual(installed, pin)
+        self.baseline_path.write_text(f'[hooks.state]\n\n[hooks.state."{ponytail}"]\nenabled = true\n')
+        env = os.environ.copy()
+        env.update(CHEZMOI_SOURCE_DIR=str(self.source_dir), CHEZMOI_HOME_DIR=str(home))
+        # The current file already trusts the installed hook, as the previous apply-time hashing wrote it.
+        current = f'[hooks.state]\n\n[hooks.state."{ponytail}"]\ntrusted_hash = "{installed}"\nenabled = true\n'
+
+        for applied in range(2):
+            with self.subTest(applied=applied):
+                result = subprocess.run(
+                    [str(MERGE_SCRIPT)], input=current, text=True, capture_output=True, env=env, check=True
+                )
+                state = tomllib.loads(result.stdout)["hooks"]["state"]
+                self.assertEqual(state[ponytail], {"enabled": True})
+                self.assertNotIn(installed, result.stdout)
+                self.assertIn(f"{ponytail}", result.stderr)
+                self.assertIn(installed, result.stderr)
+                self.assertIn(pin, result.stderr)
+                self.assertIn("/hooks", result.stderr)
+                current = result.stdout
 
     def test_declared_hook_trust_replaces_a_single_quoted_existing_entry(self) -> None:
         home = self.source_dir / "target-home"

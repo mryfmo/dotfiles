@@ -365,7 +365,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
-        profiles["security"]["codex"]["model"] = "gpt-6-astra"
+        profiles["security"]["codex"].update(model="gpt-6-astra", sandbox_mode="read-only")
         profiles["audit"]["codex"].update(model="gpt-6-astra", model_reasoning_effort="xhigh", sandbox_mode="read-only")
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
@@ -827,6 +827,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ("model", "gpt-5.6-sol"),
             ("model", "gpt-daybreak-blue-latest"),
             ("model_reasoning_effort", "medium"),
+            ("sandbox_mode", "workspace-write"),
         ):
             with self.subTest(key=key, value=value):
                 manifest = self.write_valid_agent_manifest()

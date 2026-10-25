@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:20 The amendment starts a named agent-browser host daemon, but the threat table lacks the residual daemon-effect row required by stop condition 2 and described in the brief’s Round 5.
-[P2] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:48 The environment-inputs row still describes all three executables as installed tools and the agent binary as bundled/pinned, although TERMINAL_BROWSER_AGENT may select an arbitrary user-provided executable, contrary to the Round 5 correction.
-Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

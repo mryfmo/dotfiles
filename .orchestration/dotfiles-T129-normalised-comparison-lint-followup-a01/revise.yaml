@@ -1,5 +1,0 @@
-# The revise round of 2026-10-18T23:40:53Z (AGMSG-ACCEPTANCE status=revise), as the message contract asks.
-previous_head: 6bea93a0125338f52ccd106196550d000faea2a8
-reason: "the chain's update-branch head b0479c87 (over main 740772ef) fails test_the_tracked_tree_is_clean_against_the_baseline on hits main gained after the branch was cut; the hits are main's, not this branch's"
-checks:
-  - tests/unit/test_lint_comparisons.py::test_the_tracked_tree_is_clean_against_the_baseline

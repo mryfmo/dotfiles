@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-chain-glue-finish-a01.md:92 `resolve-threads.sh` can resolve some threads before exiting 3 for another unresolved thread, so the claim that every refusal leaves GitHub unchanged unless failure occurs “after step 2” omits partial GitHub mutations during step 2 and their recovery contract.
-Task-file verdict: dotfiles-T128-chain-glue-finish-a01: revise

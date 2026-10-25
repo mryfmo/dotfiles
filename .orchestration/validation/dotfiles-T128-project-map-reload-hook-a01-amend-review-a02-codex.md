@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:124 `tabs[].id` is terminal-browser’s numeric ID, not agent-browser’s `tN`/label/CDP-target reference; v0.13.4 `action.ts` explicitly translates between these ID spaces, so `tab <id>` can fail and prevent the reload.
-[P1] high .orchestration/tasks/dotfiles-T128-project-map-reload-hook-a01.md:128 The argv-recording stub assumes the invalid ID mapping and therefore cannot close the hook row’s promise that the selected map tab is actually switched to and reloaded.
-Amendment verdict: dotfiles-T128-project-map-reload-hook-a01: revise

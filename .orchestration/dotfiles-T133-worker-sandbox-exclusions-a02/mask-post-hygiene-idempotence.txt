@@ -1,1 +1,0 @@
-masked 0 match(es) in .orchestration/dotfiles-T133-worker-sandbox-exclusions-a02/validate-agent-assets-after-hygiene.txt

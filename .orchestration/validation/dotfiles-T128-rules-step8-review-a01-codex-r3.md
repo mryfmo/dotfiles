@@ -1,3 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:90 The task omits the standing rule that advisory P2 rows never count toward INV-6, although plan 020 step 1 requires it and plan 022’s D-advisory-exclusion explicitly assigns that sentence to T13’s SKILL change.
-[P2] high .orchestration/tasks/dotfiles-T128-rules-step8-a01.md:23 The closed row covers every SKILL edit in items 1–4, but `test_skill_names_no_unlanded_mechanism` only checks the five D6 patterns and therefore cannot close the advisory-policy, Bot-round, sandbox-platform, or retired-name changes included in that row.
-Task-file verdict: dotfiles-T128-rules-step8-a01: revise

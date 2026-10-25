@@ -1,2 +1,0 @@
-To https://github.com/mryfmo/dotfiles
-   7f7665b9..8c727728  task/dotfiles-T133-python-pin-a01 -> task/dotfiles-T133-python-pin-a01

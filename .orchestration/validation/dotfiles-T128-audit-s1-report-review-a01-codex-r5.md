@@ -1,4 +1,0 @@
-[P2] high .orchestration/tasks/dotfiles-T128-audit-s1-report-a01.md:26 Restricting test changes to two new cases excludes updating `test_orch_audit_runs_the_ledger_check_isolated_from_sibling_modules`, whose TSV-only record at `tests/unit/test_orchestrator_tools.py:1131` will trigger the new exit-2 refusal instead of its expected exit 3; authorize a valid JSON-block fixture while preserving its isolation assertions.
-
-📝 まとめ: Hash matched; both premises reproduced `0`; checker, mask, generic rows, and Completion passed. Implementation tests were not run in this read-only review; the fixture conflict requires revision.
-Task-file verdict: dotfiles-T128-audit-s1-report-a01: revise

@@ -1,7 +1,0 @@
-- [P1] High confidence .orchestration/tasks/dotfiles-T129-anthropic-auth-route-check-followup-a07.md:100 — Explicit `--work-tree` makes `rev-parse --show-toplevel` insufficient to authenticate Git metadata: a read-only probe using main’s `.git` returned worker-g’s expected root; a redirected `.git` pointer or symlink can therefore select another index whose nonempty `home/` listing omits forbidden inputs, while the specified checks pass.
-- [P2] High confidence .orchestration/tasks/dotfiles-T129-anthropic-auth-route-check-followup-a07.md:265 — The normative Completion clause is still imported through an unpinned local pathname; changing that file changes the effective completion contract without changing a07’s reviewed bytes or TASK/RESULT hashes—embed the clause or bind and verify its content.
-
-Every allowed-file entry and §5.14 item 1–10 has a threat row; none claims `closed`. Executable identity, shared caches, later consumption and hostile same-UID processes are explicitly residual. The task expressly prohibits an out-of-sandbox Linux `gh` fallback.
-
-📝 まとめ: Read-only review completed; no files changed, implementation tests or live CI run. Metadata-selection and contract-binding gaps remain for orchestrator disposition.
-Verdict: incorrect

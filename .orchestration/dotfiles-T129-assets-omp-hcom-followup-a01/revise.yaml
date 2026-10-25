@@ -1,5 +1,0 @@
-task_id: dotfiles-T129-assets-omp-hcom-followup-a01
-round: 2
-previous_head: ee035dd4e433041d8bc5bfc0a618388d9863213f
-check: tests/unit/test_update_agent_assets.py::test_update_hcom_reinstalls_a_pinned_install_without_its_retained_wheel
-reason: the Bot's P2 4303212227 on ee035dd4 (review 5558442187), a C-50 round (fix round 1 of INV-6); a pre-fix hcom install at the pin kept the early return, so its receipt, which names a deleted temporary wheel, was never repaired; the version guard now also requires the retained wheel

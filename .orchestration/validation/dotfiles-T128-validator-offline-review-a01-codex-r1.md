@@ -1,2 +1,0 @@
-[P1] high .orchestration/tasks/dotfiles-T128-validator-offline-a01.md:58 The required uv replay did not reproduce the stated facts: uncached pyfiglet, cached PyYAML, and index-enabled pyfiglet all exited 2 because this sandbox cannot initialize `~/.cache/uv`; premises replayed as `2`, `absent`, `0`, while the mask check passed and the consistency checker was consequently unverifiable.
-Task-file verdict: dotfiles-T128-validator-offline-a01: revise
